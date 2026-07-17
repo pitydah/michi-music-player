@@ -1,4 +1,8 @@
+# -*- coding: utf-8 -*-
 """Audio Route Plan — describes the playback path for a given format/profile/device."""
+
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 
 

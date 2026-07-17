@@ -65,6 +65,10 @@ class TrackActionService:
     def add_to_playlist(self, track_id: int, playlist_id: int) -> dict:
         if not self._pl:
             return {"ok": False, "error": "NO_PLAYLIST_BRIDGE"}
+        if self._db:
+            row = self._db.conn.execute("SELECT 1 FROM playlists WHERE id=?", (playlist_id,)).fetchone()
+            if not row:
+                return {"ok": False, "error": "PLAYLIST_NOT_FOUND"}
         return self._pl.addTrackToPlaylist(playlist_id, track_id=str(track_id))
 
     def reveal_track(self, track_id: int) -> dict:

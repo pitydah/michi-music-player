@@ -1,4 +1,8 @@
+# -*- coding: utf-8 -*-
 """Audio Capabilities — checks if a DAC/profile combo supports a format."""
+
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 
@@ -13,7 +17,7 @@ class CapabilityResult:
             self.suggestions = []
 
 
-def check_dac_capability(fmt, profile, device) -> CapabilityResult:
+def check_dac_capability(fmt: "AudioFormatInfo", profile: "AudioOutputProfile", device: "AudioDeviceInfo | None") -> CapabilityResult:
     """Check if a device+profile can handle a format.
 
     Args:
@@ -64,7 +68,7 @@ def check_dac_capability(fmt, profile, device) -> CapabilityResult:
     return CapabilityResult(supported=True, message="Compatible")
 
 
-def check_bitperfect_possible(profile, device, fmt) -> CapabilityResult:
+def check_bitperfect_possible(profile: "AudioOutputProfile", device: "AudioDeviceInfo", fmt: "AudioFormatInfo") -> CapabilityResult:
     """Check if bit-perfect playback is actually possible."""
     if not profile.bitperfect:
         return CapabilityResult(

@@ -411,6 +411,8 @@ class ServiceContainer:
                     self._failures[name] = "missing"
                 continue
             svc = self._services[name]
+            if hasattr(self, '_service_states') and self._service_states.get(name) in ('ready', 'starting', 'running'):
+                continue
             if hasattr(svc, 'start') and callable(svc.start):
                 try:
                     svc.start()

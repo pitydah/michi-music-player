@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.9.0-rc.1] - 2026-07-17
+## [0.10.0-alpha.1] - 2026-07-17
 
 ### Added
 - Sistema de diseno centralizado (MichiTheme, 20 componentes base)

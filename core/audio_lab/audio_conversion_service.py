@@ -163,7 +163,7 @@ class AudioConversionService(QObject):
 
             if not os.path.isfile(target_path):
                 return {"ok": False, "error": "Output file not created", "error_code": "FILE_NOT_CREATED"}
-            return {"ok": True, "target": target_path, "format": profile.format}
+            return {"ok": True, "target": target_path, "format": profile.format, "verified": True}
         except Exception as e:
             logger.exception("Conversion failed for %s", source)
             return {"ok": False, "error": str(e)}

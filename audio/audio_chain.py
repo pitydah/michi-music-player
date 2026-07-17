@@ -1,5 +1,10 @@
+# -*- coding: utf-8 -*-
 """Audio chain — DAC config, quality labels, and parametric EQ builder."""
+
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -27,7 +32,7 @@ class DacConfig:
         return self.device
 
     @classmethod
-    def from_settings(cls, settings) -> "DacConfig":
+    def from_settings(cls, settings: Any) -> "DacConfig":
         return cls(
             device=settings.get("audio/device", "default"),
             mode=settings.get("audio/mode", "standard"),

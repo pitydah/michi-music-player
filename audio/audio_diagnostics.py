@@ -1,4 +1,8 @@
+# -*- coding: utf-8 -*-
 """Audio Diagnostics — exposes the current audio route state."""
+
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 
 
@@ -26,7 +30,7 @@ class AudioRouteDiagnostics:
     bitperfect_status: str = "unknown"  # yes/no/unknown
     warnings: list[str] = field(default_factory=list)
 
-    def to_tooltip(self) -> str:
+    def to_tooltip(self: "AudioRouteDiagnostics") -> str:
         lines = []
         if self.bitperfect_status == "yes":
             lines.append("Bit-Perfect: ACTIVE")

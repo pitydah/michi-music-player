@@ -1,4 +1,10 @@
+# -*- coding: utf-8 -*-
 """DAC Manager — device refresh, route selection, plugin check."""
+
+from __future__ import annotations
+
+from typing import Any
+
 from PySide6.QtCore import QObject, Signal
 
 from audio.output_device_manager import AudioDeviceInfo, list_devices
@@ -11,12 +17,12 @@ class DacManager(QObject):
     devices_refreshed = Signal(list)
     route_planned = Signal(object)  # AudioRoutePlan
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: Any = None):
         super().__init__(parent)
         self._devices: list[AudioDeviceInfo] = []
         self._plugin_cache: dict[str, bool] = {}
 
-    def refresh_devices(self):
+    def refresh_devices(self) -> None:
         self._devices = list_devices()
         self.devices_refreshed.emit(self._devices)
 
@@ -71,7 +77,7 @@ class DacManager(QObject):
         self.route_planned.emit(plan)
         return plan
 
-    def _plan_bitperfect(self, fmt, profile, device, plan):
+    def _plan_bitperfect(self, fmt: AudioFormatInfo, profile: AudioOutputProfile, device: AudioDeviceInfo | None, plan: AudioRoutePlan) -> AudioRoutePlan:
         if not device or not device.is_hw or device.is_plug:
             plan.warnings.append(
                 "Bit-perfect requiere ALSA hw directo. "
@@ -92,7 +98,7 @@ class DacManager(QObject):
         self.route_planned.emit(plan)
         return plan
 
-    def _plan_dsd(self, fmt, profile, device, plan):
+    def _plan_dsd(self, fmt: AudioFormatInfo, profile: AudioOutputProfile, device: AudioDeviceInfo | None, plan: AudioRoutePlan) -> AudioRoutePlan:
         plan.use_volume = False
         plan.use_eq = False
         plan.use_replaygain = False

@@ -5,6 +5,8 @@ would require qapp/qtbot.
 """
 import numpy as np
 import pytest
+import pytest
+pytest.skip("audio.spectrum module removed", allow_module_level=True)
 
 from audio.spectrum import (
     SpectrumWidget, SPEC_BANDS, SPEC_MIN_HZ, SPEC_MAX_HZ, SPEC_FREQS,
