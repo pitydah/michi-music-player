@@ -157,10 +157,9 @@ Item {
 
                 MichiIconButton {
                     objectName: "nowPlayingOpenPlaybackButton"
-                    iconText: ""
-                    iconSource: "../../icons/nowplaying_clean/warm_next_32.png"
+                    iconSource: "qrc:/icons/nowplaying_clean/warm_next_32.png"
                     tooltipText: "Reproducción"
-                    btnSize: 22
+                    btnSize: 28
                     Layout.alignment: Qt.AlignVCenter
                     onClicked: {
                         if (typeof navigationBridge !== "undefined") navigationBridge.navigate("playback")

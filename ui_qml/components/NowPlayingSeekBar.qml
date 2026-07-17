@@ -33,14 +33,14 @@ Item {
 
             Rectangle {
                 anchors.fill: parent
-                radius: 2
+                radius: MichiTheme.radius.xs
                 color: MichiTheme.colors.controlTrack
                 clip: true
 
                 Rectangle {
                     height: parent.height
                     width: root.duration > 0 && root.enabled ? parent.width * Math.min(root.position / root.duration, 1.0) : 0
-                    radius: 2
+                    radius: MichiTheme.radius.xs
                     color: MichiTheme.colors.accentBlue
                 }
             }

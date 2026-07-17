@@ -33,12 +33,7 @@ Item {
         spacing: MichiTheme.spacing.xs
 
         MichiIconButton {
-            Accessible.role: Accessible.Button
-
-            activeFocusOnTab: true
-
-            iconSource: "../../icons/nowplaying_clean/warm_shuffle_32.png"
-            iconText: ""
+            iconSource: "qrc:/icons/nowplaying_clean/warm_shuffle_32.png"
             tooltipText: root.shuffleSupported ? "Aleatorio" : "No soportado por el backend actual"
             selected: root.shuffleEnabled
             btnSize: 34
@@ -46,14 +41,9 @@ Item {
             opacity: root.shuffleSupported ? 1.0 : 0.35
             onClicked: { if (root.shuffleSupported) root.shuffleClicked() }
         }
-            Accessible.role: Accessible.Button
-
-            activeFocusOnTab: true
-
 
         MichiIconButton {
-            iconSource: "../../icons/nowplaying_clean/warm_prev_32.png"
-            iconText: ""
+            iconSource: "qrc:/icons/nowplaying_clean/warm_prev_32.png"
             tooltipText: root.previousSupported ? "Anterior" : "No soportado por el backend actual"
             btnSize: 34
             enabled: root.previousSupported
@@ -61,59 +51,27 @@ Item {
             onClicked: { if (root.previousSupported) root.prevClicked() }
         }
 
-        Item {
-            width: MichiTheme.minimumInteractiveSize
-            height: MichiTheme.minimumInteractiveSize
-
-            Rectangle {
-                objectName: "playPauseButton"
-                anchors.fill: parent
-                radius: MichiTheme.radiusPill
-                color: root.playPauseSupported && maPlay.containsMouse ? MichiTheme.colors.accentBlue : root.playPauseSupported ? MichiTheme.colors.accentBlue : MichiTheme.colors.accentSurface
-                opacity: root.playPauseSupported ? MichiTheme.opacity.enabled : MichiTheme.opacity.disabled
-                Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
-
-                Image {
-                    anchors.centerIn: parent
-                    width: 20
-                    height: 20
-                    source: root.isPlaying ? "../../icons/nowplaying_clean/warm_pause_32.png" : "../../icons/nowplaying_clean/warm_play_32.png"
-                    sourceSize.width: 32
-                    sourceSize.height: 32
-                    fillMode: Image.PreserveAspectFit
-                }
-            }
-
-            MouseArea {
-                id: maPlay
-                anchors.fill: parent
-                hoverEnabled: root.playPauseSupported
-                cursorShape: root.playPauseSupported ? Qt.PointingHandCursor : Qt.ArrowCursor
-                onClicked: { if (root.playPauseSupported) root.playClicked() }
-            Accessible.role: Accessible.Button
-
-            activeFocusOnTab: true
-
-            }
+        MichiIconButton {
+            objectName: "playPauseButton"
+            iconSource: root.isPlaying ? "qrc:/icons/nowplaying_clean/warm_pause_32.png" : "qrc:/icons/nowplaying_clean/warm_play_32.png"
+            tooltipText: root.playPauseSupported ? (root.isPlaying ? "Pausa" : "Reproducir") : "No soportado por el backend actual"
+            btnSize: 44
+            selected: true
+            enabled: root.playPauseSupported
+            onClicked: { if (root.playPauseSupported) root.playClicked() }
         }
 
         MichiIconButton {
-            iconSource: "../../icons/nowplaying_clean/warm_next_32.png"
-            iconText: ""
+            iconSource: "qrc:/icons/nowplaying_clean/warm_next_32.png"
             tooltipText: root.nextSupported ? "Siguiente" : "No soportado por el backend actual"
             btnSize: 34
-            Accessible.role: Accessible.Button
-
-            activeFocusOnTab: true
-
             enabled: root.nextSupported
             opacity: root.nextSupported ? 1.0 : 0.35
             onClicked: { if (root.nextSupported) root.nextClicked() }
         }
 
         MichiIconButton {
-            iconSource: "../../icons/nowplaying_clean/warm_repeat_32.png"
-            iconText: root.repeatMode === "one" ? "1" : ""
+            iconSource: "qrc:/icons/nowplaying_clean/warm_repeat_32.png"
             tooltipText: root.repeatSupported ? "Repetir" : "No soportado por el backend actual"
             selected: root.repeatMode !== "none"
             btnSize: 34

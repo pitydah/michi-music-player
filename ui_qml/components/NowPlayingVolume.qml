@@ -33,7 +33,7 @@ Item {
             Layout.preferredHeight: 22
             Accessible.description: "Activar o desactivar el silencio"
             GlassMaterial {
-                anchors.fill: parent; radius: 11
+                anchors.fill: parent; radius: MichiTheme.radius.lg
                 variant: "status"
                 hovered: muteMouse.containsMouse
                 MouseArea {
@@ -62,14 +62,14 @@ Item {
 
             Rectangle {
                 anchors.fill: parent
-                radius: 2
+                radius: MichiTheme.radius.xs
                 color: MichiTheme.colors.controlTrack
                 clip: true
 
                 Rectangle {
                     height: parent.height
                     width: parent.width * Math.min(1.0, root.volume / 100.0)
-                    radius: 2
+                    radius: MichiTheme.radius.xs
                     color: root.muted ? MichiTheme.colors.textMuted : MichiTheme.colors.accentBlue
                 }
             }
