@@ -205,6 +205,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             iconText: "\u2630"
                             onClicked: filterDrawer.open()
+                            Accessible.description: "Abrir panel de filtros de búsqueda"
                         }
                             Accessible.role: Accessible.Button
 

@@ -63,6 +63,8 @@ QQC2.Popup {
                     color: MichiTheme.colors.accentBlue
                     font.pixelSize: MichiTheme.typography.captionSize
                     font.weight: MichiTheme.typography.weightMedium
+                    Accessible.role: Accessible.Icon
+                    Accessible.name: root.ascending ? "Orden ascendente" : "Orden descendente"
                 }
 
                 background: Item {}
@@ -110,6 +112,8 @@ QQC2.Popup {
                     font.pixelSize: MichiTheme.typography.bodySize
                     font.weight: modelData === root.currentOption
                                  ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
+                    Accessible.role: Accessible.Icon
+                    Accessible.name: (modelData === root.currentOption ? (root.ascending ? "Ascendente: " : "Descendente: ") : "") + modelData
                 }
 
                 onClicked: {

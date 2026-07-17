@@ -111,41 +111,20 @@ Rectangle {
 
         }
 
-        QQC2.AbstractButton {
+        MichiIconButton {
             id: closeBtn
             objectName: "notificationCloseButton"
             anchors.verticalCenter: parent.verticalCenter
-            implicitWidth: 24
-            implicitHeight: 24
+            btnSize: 24
+            iconSource: "qrc:/icons/nav_back.svg"
+            tooltipText: "Cerrar"
+            accessibleName: "Cerrar este banner"
             visible: root.showDismiss
-            focusPolicy: Qt.StrongFocus
-
-            Accessible.description: "Cerrar este banner"
-
-            contentItem: Text {
-                text: "\u00D7"
-                color: closeBtn.hovered ? MichiTheme.colors.textPrimary : MichiTheme.colors.textMuted
-                font.pixelSize: MichiTheme.typography.cardTitleSize
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-            }
-
-            background: Rectangle {
-                radius: MichiTheme.radius.sm
-                color: closeBtn.hovered ? MichiTheme.colors.surfaceHover : "transparent"
-                border.width: closeBtn.activeFocus ? MichiTheme.focusWidth : 0
-                border.color: MichiTheme.colors.borderFocus
-            }
-
             onClicked: {
                 root.dismissed()
                 root.visible = false
             }
-
-            Keys.onEscapePressed: {
-                root.dismissed()
-                root.visible = false
-            }
+            transform: Rotation { angle: 45 }
         }
     }
 

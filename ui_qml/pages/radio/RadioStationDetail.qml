@@ -35,31 +35,22 @@ Item {
             anchors.rightMargin: MichiTheme.spacing.sm
             spacing: MichiTheme.spacing.xs
 
-            MichiButton {
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
-                text: "\u25B6"
-                variant: "ghost"
-                implicitWidth: 32; implicitHeight: 32
+            MichiIconButton {
+                iconSource: "qrc:/icons/warm_play.svg"
+                btnSize: 32
                 tooltipText: "Reproducir"
+                accessibleName: "Reproducir emisora"
+                activeFocusOnTab: true
                 onClicked: root.playRequested()
             }
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
 
             MichiButton {
                 text: root._isFav ? "\u2605" : "\u2606"
                 variant: "ghost"
                 implicitWidth: 32; implicitHeight: 32
                 tooltipText: root._isFav ? "Quitar de favoritos" : "Añadir a favoritos"
-                Accessible.role: Accessible.Button
-
+                Accessible.name: root._isFav ? "Quitar de favoritos" : "Añadir a favoritos"
                 activeFocusOnTab: true
-
                 onClicked: root.toggleFavRequested()
             }
 
@@ -67,12 +58,10 @@ Item {
                 text: "\u270E"
                 variant: "ghost"
                 implicitWidth: 32; implicitHeight: 32
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
                 tooltipText: "Editar"
                 visible: true
+                Accessible.name: "Editar emisora"
+                activeFocusOnTab: true
                 onClicked: root.editRequested()
             }
 
@@ -81,6 +70,8 @@ Item {
                 variant: "danger"
                 implicitWidth: 32; implicitHeight: 32
                 tooltipText: "Eliminar"
+                Accessible.name: "Eliminar emisora"
+                activeFocusOnTab: true
                 onClicked: root.deleteRequested()
             }
         }

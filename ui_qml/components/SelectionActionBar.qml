@@ -69,15 +69,13 @@ Rectangle {
         }
 
         MichiIconButton {
-            Accessible.role: Accessible.Button
-
-            activeFocusOnTab: true
-
             anchors.verticalCenter: parent.verticalCenter
-            iconText: "\u00D7"
+            iconSource: "qrc:/icons/nav_back.svg"
+            btnSize: 24
             tooltipText: "Deseleccionar todo"
             accessibleName: "Limpiar selección"
             onClicked: root.count = 0
+            transform: Rotation { angle: 45 }
         }
     }
 }

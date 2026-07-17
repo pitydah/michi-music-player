@@ -112,31 +112,15 @@ Rectangle {
                 }
             }
 
-            QQC2.AbstractButton {
+            MichiIconButton {
                 id: dismissBtn
                 anchors.verticalCenter: parent.verticalCenter
-                implicitWidth: 24
-                implicitHeight: 24
-                focusPolicy: Qt.StrongFocus
-
-                Accessible.description: "Eliminar esta notificación de la lista"
-
-                contentItem: Text {
-                    text: "\u00D7"
-                    color: dismissBtn.hovered ? MichiTheme.colors.textPrimary : MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.cardTitleSize
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-
-                background: Rectangle {
-                    radius: MichiTheme.radius.sm
-                    color: dismissBtn.hovered ? MichiTheme.colors.surfaceHover : "transparent"
-                    border.width: dismissBtn.activeFocus ? MichiTheme.focusWidth : 0
-                    border.color: MichiTheme.colors.borderFocus
-                }
-
+                btnSize: 24
+                iconSource: "qrc:/icons/nav_back.svg"
+                tooltipText: "Eliminar"
+                accessibleName: "Eliminar esta notificación de la lista"
                 onClicked: root.dismissItem()
+                transform: Rotation { angle: 45 }
             }
         }
 

@@ -72,22 +72,16 @@ Rectangle {
                 height: 1
             }
 
-            QQC2.AbstractButton {
+            MichiIconButton {
                 id: cancelBtn
                 anchors.verticalCenter: parent.verticalCenter
+                btnSize: 24
+                iconSource: "qrc:/icons/nav_back.svg"
+                tooltipText: root.cancelText || "Cancelar"
+                accessibleName: root.cancelText || "Cancelar trabajo"
                 visible: root.showCancel
-                focusPolicy: Qt.StrongFocus
-
-
-                contentItem: Text {
-                    text: root.cancelText || "\u00D7"
-                    color: MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.bodySize
-                }
-
-                background: Item {}
-
                 onClicked: root.cancelRequested()
+                transform: Rotation { angle: 45 }
             }
         }
 

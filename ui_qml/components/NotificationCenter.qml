@@ -86,10 +86,11 @@ Rectangle {
 
             EmptyState {
                 anchors.centerIn: parent
-                iconText: "\uD83D\uDD14"
                 title: "Sin notificaciones"
                 subtitle: "No hay notificaciones activas en este momento"
                 visible: emptyStateItem.visible
+                Accessible.name: "Sin notificaciones"
+                Accessible.description: "No hay notificaciones activas"
             }
         }
             Accessible.role: Accessible.List

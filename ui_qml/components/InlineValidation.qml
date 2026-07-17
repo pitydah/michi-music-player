@@ -70,6 +70,15 @@ Rectangle {
             }
             font.pixelSize: MichiTheme.typography.bodySize
             verticalAlignment: Text.AlignVCenter
+            Accessible.role: Accessible.Icon
+            Accessible.name: {
+                switch (root.variant) {
+                    case InlineValidation.ERROR: return "Error"
+                    case InlineValidation.WARNING: return "Advertencia"
+                    case InlineValidation.SUCCESS: return "Éxito"
+                    default: return "Información"
+                }
+            }
         }
 
         Text {
@@ -86,6 +95,9 @@ Rectangle {
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.captionSize
             visible: root.dismissible
+            Accessible.role: Accessible.Icon
+            Accessible.name: "Descartar"
+            Accessible.description: "Cerrar este mensaje de validación"
             MouseArea {
                 anchors.fill: parent
                 onClicked: {

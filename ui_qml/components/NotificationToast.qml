@@ -162,33 +162,15 @@ Item {
 
             }
 
-            QQC2.AbstractButton {
+            MichiIconButton {
                 id: dismissBtn
                 anchors.verticalCenter: parent.verticalCenter
-                implicitWidth: 28
-                implicitHeight: 28
-                focusPolicy: Qt.StrongFocus
-
-                Accessible.description: "Cerrar esta notificación"
-
-                contentItem: Text {
-                    text: "\u00D7"
-                    color: root.activeFocus ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.cardTitleSize
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-
-                background: Rectangle {
-                    radius: MichiTheme.radius.sm
-                    color: dismissBtn.hovered ? MichiTheme.colors.surfaceHover : "transparent"
-                    border.width: dismissBtn.activeFocus ? MichiTheme.focusWidth : 0
-                    border.color: MichiTheme.colors.borderFocus
-                }
-
+                btnSize: 28
+                iconSource: "qrc:/icons/nav_back.svg"
+                tooltipText: "Cerrar"
+                accessibleName: "Cerrar esta notificación"
                 onClicked: root.dismissToast()
-
-                Keys.onEscapePressed: root.dismissToast()
+                transform: Rotation { angle: 45 }
             }
         }
             Accessible.role: Accessible.ProgressBar

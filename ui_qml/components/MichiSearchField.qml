@@ -47,6 +47,10 @@ Item {
                 font.pixelSize: MichiTheme.typography.bodySize
                 color: MichiTheme.colors.textMuted
                 visible: !root.loading
+                Accessible.role: Accessible.Icon
+                Accessible.name: "Buscar"
+                Accessible.description: "Icono de búsqueda"
+                Accessible.ignored: false
             }
 
             QQC2.TextField {
@@ -99,6 +103,7 @@ Item {
                 tooltipText: "Limpiar"
                 btnSize: Math.min(root.height - MichiTheme.spacing.xs * 2, 28)
                 visible: root.text !== ""
+                accessibleName: "Limpiar búsqueda"
                 onClicked: {
                     root.text = ""
                     field.text = ""

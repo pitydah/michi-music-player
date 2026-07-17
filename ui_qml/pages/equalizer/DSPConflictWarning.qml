@@ -28,6 +28,9 @@ Item {
                 color: MichiTheme.colors.warning
                 font.pixelSize: MichiTheme.typography.bodySize
                 anchors.verticalCenter: parent.verticalCenter
+                Accessible.role: Accessible.Icon
+                Accessible.name: "Advertencia"
+                Accessible.description: "Conflicto de DSP detectado"
             }
 
             Text {

@@ -59,6 +59,9 @@ Rectangle {
             text: "\u26A0"
             color: MichiTheme.colors.error
             font.pixelSize: MichiTheme.typography.bodySize
+            Accessible.role: Accessible.Icon
+            Accessible.name: "Advertencia"
+            Accessible.description: "Indicador de error"
         }
 
         Text {
@@ -103,9 +106,13 @@ Rectangle {
                 text: "\u00D7"
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
+                Accessible.role: Accessible.Icon
+                Accessible.name: "Cerrar"
+                Accessible.description: "Descartar este mensaje de error"
             }
 
             background: Item {}
+            Accessible.description: "Descartar error"
             onClicked: {
                 root.message = ""
                 root.dismissed()
