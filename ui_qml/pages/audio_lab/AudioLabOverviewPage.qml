@@ -1,177 +1,214 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import "../components"
-import "../../ui_qml_bridge"
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "../../theme"
+import "../../components"
 
-GlassCard {
+Item {
     id: root
-    
-    signal areaSelected(string areaKey)
-    
-    property var overviewData: null
-    property bool isLoading: false
-    
-    // Header
-    ColumnLayout {
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.margins: 20
-        spacing: 12
-        
-        SectionHeader {
-            Layout.fillWidth: true
-            title: "Audio Lab"
-            subtitle: "Herramientas profesionales para analizar, identificar, preservar y configurar tu audio"
+    objectName: "audioLabOverviewPage"
+    focus: true
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Audio Lab"
+
+    readonly property int stateLoading: 0
+    readonly property int stateReady: 1
+    readonly property int stateError: 2
+
+    property var bridge: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
+    property var overviewData: ({})
+    property int pageState: stateLoading
+    property string errorMessage: ""
+
+    function refresh() {
+        root.pageState = root.stateLoading
+        root.errorMessage = ""
+        if (!root.bridge || typeof root.bridge.getOverviewData !== "function") {
+            root.pageState = root.stateError
+            root.errorMessage = "El servicio Audio Lab no está disponible."
+            return
         }
-        
-        // Resumen de dependencias y trabajos
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 10
-            
-            StatusBadge {
-                status: overviewData && overviewData.dependencies && overviewData.dependencies.ffmpeg ? "success" : "warning"
-                text: overviewData && overviewData.dependencies && overviewData.dependencies.ffmpeg ? "FFmpeg disponible" : "FFmpeg no disponible"
-            }
-            
-            StatusBadge {
-                status: overviewData && overviewData.dependencies && overviewData.dependencies.replaygain ? "success" : "warning"
-                text: overviewData && overviewData.dependencies && overviewData.dependencies.replaygain ? "ReplayGain disponible" : "ReplayGain no disponible"
-            }
-            
-            Item { Layout.fillWidth: true }
-            
-            Label {
-                text: overviewData && overviewData.active_jobs > 0 
-                    ? `${overviewData.active_jobs} trabajo(s) activo(s)` 
-                    : "Sin trabajos activos"
-                font.pixelSize: 12
-                color: MichiTheme.textSecondary
-            }
+        var result = root.bridge.getOverviewData()
+        if (!result || result.ok === false) {
+            root.pageState = root.stateError
+            root.errorMessage = result && (result.detail || result.error)
+                ? (result.detail || result.error)
+                : "No se pudieron cargar las capacidades de Audio Lab."
+            return
+        }
+        root.overviewData = result
+        root.pageState = root.stateReady
+    }
+
+    function openArea(areaKey) {
+        if (!root.bridge || typeof root.bridge.navigateToArea !== "function")
+            return
+        var result = root.bridge.navigateToArea(areaKey)
+        if (result && result.ok === false) {
+            root.errorMessage = "No se pudo abrir el área solicitada."
         }
     }
-    
-    // Grid de 5 tarjetas principales
-    GridLayout {
-        anchors.top: parent.top
-        anchors.topMargin: 140
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.margins: 20
-        columns: 2
-        rowSpacing: 16
-        columnSpacing: 16
-        
-        // Tarjeta 1: Diagnóstico
-        AreaCard {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 180
-            icon: overviewData && overviewData.areas && overviewData.areas.diagnostics 
-                  ? overviewData.areas.diagnostics.icon : "🔍"
-            title: overviewData && overviewData.areas && overviewData.areas.diagnostics 
-                   ? overviewData.areas.diagnostics.title : "Diagnóstico"
-            description: overviewData && overviewData.areas && overviewData.areas.diagnostics 
-                         ? overviewData.areas.diagnostics.description : "Analiza, verifica integridad y compara archivos"
-            status: overviewData && overviewData.areas && overviewData.areas.diagnostics 
-                    ? overviewData.areas.diagnostics.status : "available"
-            toolsCount: overviewData && overviewData.areas && overviewData.areas.diagnostics 
-                        ? overviewData.areas.diagnostics.tools.length : 3
-            
-            onClicked: root.areaSelected("diagnostics")
-        }
-        
-        // Tarjeta 2: Identificador de Audios
-        AreaCard {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 180
-            icon: overviewData && overviewData.areas && overviewData.areas.identifier 
-                  ? overviewData.areas.identifier.icon : "🆔"
-            title: overviewData && overviewData.areas && overviewData.areas.identifier 
-                   ? overviewData.areas.identifier.title : "Identificador de Audios"
-            description: overviewData && overviewData.areas && overviewData.areas.identifier 
-                         ? overviewData.areas.identifier.description : "Identifica, corrige metadatos y carátulas"
-            status: overviewData && overviewData.areas && overviewData.areas.identifier 
-                    ? overviewData.areas.identifier.status : "partial"
-            toolsCount: overviewData && overviewData.areas && overviewData.areas.identifier 
-                        ? overviewData.areas.identifier.tools.length : 4
-            
-            onClicked: root.areaSelected("identifier")
-        }
-        
-        // Tarjeta 3: Respaldar
-        AreaCard {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 180
-            icon: overviewData && overviewData.areas && overviewData.areas.backup 
-                  ? overviewData.areas.backup.icon : "💾"
-            title: overviewData && overviewData.areas && overviewData.areas.backup 
-                   ? overviewData.areas.backup.title : "Respaldar"
-            description: overviewData && overviewData.areas && overviewData.areas.backup 
-                         ? overviewData.areas.backup.description : "Convierte, normaliza, ripea y organiza"
-            status: overviewData && overviewData.areas && overviewData.areas.backup 
-                    ? overviewData.areas.backup.status : "available"
-            toolsCount: overviewData && overviewData.areas && overviewData.areas.backup 
-                        ? overviewData.areas.backup.tools.length : 4
-            
-            onClicked: root.areaSelected("backup")
-        }
-        
-        // Tarjeta 4: Perfiles de Salida
-        AreaCard {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 180
-            icon: overviewData && overviewData.areas && overviewData.areas.output_profiles 
-                  ? overviewData.areas.output_profiles.icon : "🎧"
-            title: overviewData && overviewData.areas && overviewData.areas.output_profiles 
-                   ? overviewData.areas.output_profiles.title : "Perfiles de Salida"
-            description: overviewData && overviewData.areas && overviewData.areas.output_profiles 
-                         ? overviewData.areas.output_profiles.description : "Configura DAC, EQ y reproducción"
-            status: overviewData && overviewData.areas && overviewData.areas.output_profiles 
-                    ? overviewData.areas.output_profiles.status : "available"
-            toolsCount: overviewData && overviewData.areas && overviewData.areas.output_profiles 
-                        ? overviewData.areas.output_profiles.tools.length : 3
-            
-            onClicked: root.areaSelected("output_profiles")
-        }
-        
-        // Tarjeta 5: Inteligencia Local (ocupa toda la fila)
-        AreaCard {
-            Layout.fillWidth: true
-            Layout.columnSpan: 2
-            Layout.preferredHeight: 180
-            icon: overviewData && overviewData.areas && overviewData.areas.local_intelligence 
-                  ? overviewData.areas.local_intelligence.icon : "🧠"
-            title: overviewData && overviewData.areas && overviewData.areas.local_intelligence 
-                   ? overviewData.areas.local_intelligence.title : "Inteligencia Local"
-            description: overviewData && overviewData.areas && overviewData.areas.local_intelligence 
-                         ? overviewData.areas.local_intelligence.description : "Análisis acústico y automatización"
-            status: overviewData && overviewData.areas && overviewData.areas.local_intelligence 
-                    ? overviewData.areas.local_intelligence.status : "partial"
-            toolsCount: overviewData && overviewData.areas && overviewData.areas.local_intelligence 
-                        ? overviewData.areas.local_intelligence.tools.length : 4
-            
-            onClicked: root.areaSelected("local_intelligence")
-        }
+
+    function area(key, fallback) {
+        if (root.overviewData && root.overviewData.areas && root.overviewData.areas[key])
+            return root.overviewData.areas[key]
+        return fallback
     }
-    
-    // Estado de carga
+
+    Component.onCompleted: root.refresh()
+
+    Connections {
+        target: root.bridge
+        function onServiceAvailableChanged() { root.refresh() }
+    }
+
     LoadingState {
-        visible: root.isLoading
-        anchors.fill: parent
-        message: "Cargando Audio Lab..."
+        anchors.centerIn: parent
+        visible: root.pageState === root.stateLoading
+        title: "Cargando Audio Lab"
+        subtitle: "Comprobando herramientas, dependencias y dispositivos disponibles."
     }
-    
-    // Estado de error
+
     ErrorState {
-        visible: !root.isLoading && overviewData === null
+        anchors.centerIn: parent
+        width: Math.min(480, parent.width * 0.8)
+        visible: root.pageState === root.stateError
+        title: "Audio Lab no está disponible"
+        message: root.errorMessage
+        showRetry: true
+        onRetryRequested: root.refresh()
+    }
+
+    Flickable {
         anchors.fill: parent
-        message: "No se pudieron cargar los datos de Audio Lab"
-        onRetry: {
-            root.isLoading = true
-            // Recargar datos
+        anchors.margins: MichiTheme.spacing.xl
+        visible: root.pageState === root.stateReady
+        contentHeight: contentColumn.height + MichiTheme.spacing.xl
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+
+        ColumnLayout {
+            id: contentColumn
+            width: parent.width
+            spacing: MichiTheme.spacing.lg
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: MichiTheme.spacing.xs
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Audio Lab"
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.pageTitleSize
+                    font.weight: MichiTheme.typography.weightBold
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Herramientas para analizar, identificar, preservar y configurar audio. Las funciones físicas se habilitan únicamente cuando sus dependencias están disponibles."
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    wrapMode: Text.WordWrap
+                }
+            }
+
+            Flow {
+                Layout.fillWidth: true
+                spacing: MichiTheme.spacing.sm
+
+                StatusBadge {
+                    text: root.overviewData.dependencies && root.overviewData.dependencies.ffmpeg
+                        ? "FFmpeg disponible" : "FFmpeg pendiente"
+                    kind: root.overviewData.dependencies && root.overviewData.dependencies.ffmpeg
+                        ? "success" : "warning"
+                }
+                StatusBadge {
+                    text: root.overviewData.dependencies && root.overviewData.dependencies.cdparanoia
+                        ? "CDParanoia disponible" : "CDParanoia pendiente"
+                    kind: root.overviewData.dependencies && root.overviewData.dependencies.cdparanoia
+                        ? "success" : "disconnected"
+                }
+                StatusBadge {
+                    text: root.overviewData.active_jobs > 0
+                        ? String(root.overviewData.active_jobs) + " trabajo(s) activo(s)"
+                        : "Sin trabajos activos"
+                    kind: root.overviewData.active_jobs > 0 ? "info" : "success"
+                }
+            }
+
+            MichiBanner {
+                Layout.fillWidth: true
+                visible: root.errorMessage !== ""
+                kind: "warning"
+                message: root.errorMessage
+                dismissible: true
+                onDismissed: root.errorMessage = ""
+            }
+
+            GridLayout {
+                Layout.fillWidth: true
+                columns: root.width >= 920 ? 2 : 1
+                columnSpacing: MichiTheme.spacing.lg
+                rowSpacing: MichiTheme.spacing.lg
+
+                AudioLabAreaCard {
+                    Layout.fillWidth: true
+                    areaKey: "diagnostics"
+                    title: root.area("diagnostics", { title: "Diagnóstico" }).title
+                    description: root.area("diagnostics", { description: "Analiza e inspecciona archivos" }).description
+                    iconText: root.area("diagnostics", { icon: "🔍" }).icon
+                    status: root.area("diagnostics", { status: "unavailable" }).status
+                    tools: root.area("diagnostics", { tools: [] }).tools
+                    onActivated: function(key) { root.openArea(key) }
+                }
+
+                AudioLabAreaCard {
+                    Layout.fillWidth: true
+                    areaKey: "identifier"
+                    title: root.area("identifier", { title: "Identificador de audios" }).title
+                    description: root.area("identifier", { description: "Identifica y corrige metadatos" }).description
+                    iconText: root.area("identifier", { icon: "🆔" }).icon
+                    status: root.area("identifier", { status: "unavailable" }).status
+                    tools: root.area("identifier", { tools: [] }).tools
+                    onActivated: function(key) { root.openArea(key) }
+                }
+
+                AudioLabAreaCard {
+                    Layout.fillWidth: true
+                    areaKey: "backup"
+                    title: root.area("backup", { title: "Respaldar" }).title
+                    description: root.area("backup", { description: "Convierte y digitaliza audio" }).description
+                    iconText: root.area("backup", { icon: "💾" }).icon
+                    status: root.area("backup", { status: "unavailable" }).status
+                    tools: root.area("backup", { tools: [] }).tools
+                    onActivated: function(key) { root.openArea(key) }
+                }
+
+                AudioLabAreaCard {
+                    Layout.fillWidth: true
+                    areaKey: "output_profiles"
+                    title: root.area("output_profiles", { title: "Perfiles de salida" }).title
+                    description: root.area("output_profiles", { description: "Configura DAC, EQ y reproducción" }).description
+                    iconText: root.area("output_profiles", { icon: "🎧" }).icon
+                    status: root.area("output_profiles", { status: "unavailable" }).status
+                    tools: root.area("output_profiles", { tools: [] }).tools
+                    onActivated: function(key) { root.openArea(key) }
+                }
+
+                AudioLabAreaCard {
+                    Layout.fillWidth: true
+                    Layout.columnSpan: root.width >= 920 ? 2 : 1
+                    areaKey: "local_intelligence"
+                    title: root.area("local_intelligence", { title: "Inteligencia local" }).title
+                    description: root.area("local_intelligence", { description: "Análisis acústico y automatización local" }).description
+                    iconText: root.area("local_intelligence", { icon: "🧠" }).icon
+                    status: root.area("local_intelligence", { status: "partial" }).status
+                    tools: root.area("local_intelligence", { tools: [] }).tools
+                    onActivated: function(key) { root.openArea(key) }
+                }
+            }
         }
     }
 }
