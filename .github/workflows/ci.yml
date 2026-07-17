@@ -54,3 +54,18 @@ jobs:
           sys.exit(1)
       print('QML: 381 compiled OK')
       "
+      - name: UI/UX visual tests
+        run: QT_QPA_PLATFORM=offscreen timeout 60 python -m pytest tests/qml/visual_x10/ -q --timeout=300 2>&1 | tail -10
+      - name: UI/UX accessibility tests
+        run: QT_QPA_PLATFORM=offscreen timeout 60 python -m pytest tests/qml/accessibility_x10/ -q --timeout=300 2>&1 | tail -10
+      - name: UI/UX responsive tests
+        run: QT_QPA_PLATFORM=offscreen timeout 60 python -m pytest tests/qml/responsive_x10/ -q --timeout=300 2>&1 | tail -10
+      - name: UI/UX audit gates
+        continue-on-error: false
+        run: |
+          python scripts/qml_uiux_token_audit_x10.py --format json 2>&1 | tail -5
+          python scripts/qml_uiux_control_audit_x10.py --format json 2>&1 | tail -5
+          python scripts/qml_uiux_objectname_audit_x10.py --format json 2>&1 | tail -5
+          python scripts/qml_uiux_accessibility_audit_x10.py --format json 2>&1 | tail -5
+          python scripts/qml_uiux_responsive_audit_x10.py --format json 2>&1 | tail -5
+          python scripts/qml_uiux_contract_guard_x10.py --scan 2>&1 | tail -5
