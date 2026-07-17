@@ -43,7 +43,8 @@ class CapabilityBridge(QObject):
 
         caps = dict(self._factory.capabilities)
         container = getattr(self._factory, "_container", None)
-        bridge_keys = set(getattr(self._factory, "_bridges", {}).keys())
+        bridges = getattr(self._factory, "_bridges", {})
+        bridge_keys = set(bridges.keys())
 
         for key in CAPABILITY_STATE_KEYS:
             bridge_key = BRIDGE_ALIASES.get(key, key)
@@ -60,6 +61,12 @@ class CapabilityBridge(QObject):
         caps["has_metadata_writer"] = "available" if self._check_metadata_writer() else "unavailable"
 
         self._caps = caps
+
+        navigation = bridges.get("navigation")
+        if navigation is not None and hasattr(navigation, "set_capabilities"):
+            available = {name for name, state in caps.items() if state == "available"}
+            navigation.set_capabilities(available)
+
         self.dataChanged.emit()
         return dict(self._caps)
 
