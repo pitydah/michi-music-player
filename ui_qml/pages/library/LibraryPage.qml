@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Dialogs
 import "../../theme"
 import "../../components"
+import "../../components/foundations"
 import "../../materials"
 
 Item {
@@ -22,6 +23,8 @@ Item {
     property string _labelArtists: "Artistas"
     property string _labelFolders: "Carpetas"
     property string _labelRefresh: "Refrescar"
+
+    MichiResponsive { id: responsive; availableWidth: root.width }
 
     PageStateManager {
         id: pageState

@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../theme"
 import "../components"
+import "../components/foundations"
 import "../materials"
 
 Item {
@@ -21,6 +22,8 @@ Item {
     signal forwardClicked()
     signal breadcrumbClicked(string route)
 
+    MichiResponsive { id: responsive; availableWidth: root.width }
+
     height: MichiTheme.headerHeight
 
     Rectangle {
@@ -36,9 +39,9 @@ Item {
 
         Row {
             anchors.fill: parent
-            anchors.leftMargin: MichiTheme.spacing.xl
-            anchors.rightMargin: MichiTheme.spacing.xl
-            spacing: MichiTheme.spacing.md
+            anchors.leftMargin: responsive.compact ? MichiTheme.spacing.md : MichiTheme.spacing.xl
+            anchors.rightMargin: responsive.compact ? MichiTheme.spacing.md : MichiTheme.spacing.xl
+            spacing: responsive.compact ? MichiTheme.spacing.sm : MichiTheme.spacing.md
 
             Row {
                 anchors.verticalCenter: parent.verticalCenter
@@ -47,7 +50,7 @@ Item {
                 MichiIconButton {
                     iconText: "<"
                     tooltipText: "Atrás"
-                    btnSize: 28
+                    btnSize: responsive.compact ? 24 : 28
                     enabled: root.canGoBack
                     onClicked: root.backClicked()
                     objectName: "backButton"
@@ -57,7 +60,7 @@ Item {
                 MichiIconButton {
                     iconText: ">"
                     tooltipText: "Adelante"
-                    btnSize: 28
+                    btnSize: responsive.compact ? 24 : 28
                     enabled: root.canGoForward
                     onClicked: root.forwardClicked()
                     objectName: "forwardButton"
@@ -73,16 +76,20 @@ Item {
                     visible: root.routeHistory.length > 0
 
                     Repeater {
-                        model: root.routeHistory
+                        model: {
+                            if (responsive.compact && root.routeHistory.length > 1)
+                                return [root.routeHistory[root.routeHistory.length - 1]]
+                            return root.routeHistory
+                        }
 
                         delegate: Row {
                             spacing: MichiTheme.spacing.xs
 
                             Text {
                                 text: modelData
-                                color: index < root.routeHistory.length - 1 ? MichiTheme.colors.textMuted : MichiTheme.colors.textPrimary
+                                color: index < (responsive.compact ? 0 : root.routeHistory.length - 1) ? MichiTheme.colors.textMuted : MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.secondarySize
-                                font.weight: index < root.routeHistory.length - 1 ? MichiTheme.typography.weightNormal : MichiTheme.typography.weightSemiBold
+                                font.weight: index < (responsive.compact ? 0 : root.routeHistory.length - 1) ? MichiTheme.typography.weightNormal : MichiTheme.typography.weightSemiBold
                                 anchors.verticalCenter: parent.verticalCenter
                             }
 
@@ -91,13 +98,13 @@ Item {
                                 color: MichiTheme.colors.textMeta
                                 font.pixelSize: MichiTheme.typography.secondarySize
                                 anchors.verticalCenter: parent.verticalCenter
-                                visible: index < root.routeHistory.length - 1
+                                visible: index < (responsive.compact ? 0 : root.routeHistory.length - 1)
                             }
 
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                enabled: index < root.routeHistory.length - 1
+                                enabled: index < (responsive.compact ? 0 : root.routeHistory.length - 1)
                                 onClicked: root.breadcrumbClicked(modelData)
                             }
                         }
@@ -107,11 +114,13 @@ Item {
                 Text {
                     text: root.pageTitle
                     color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.pageTitleSize
+                    font.pixelSize: responsive.compact ? MichiTheme.typography.bodySize : MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                     anchors.verticalCenter: parent.verticalCenter
                     leftPadding: root.routeHistory.length > 0 ? 0 : MichiTheme.spacing.sm
                     visible: root.routeHistory.length === 0 || routeHistory[root.routeHistory.length - 1] !== root.pageTitle
+                    elide: Text.ElideRight
+                    maximumLineCount: 1
                 }
 
                 StatusBadge {
@@ -120,6 +129,7 @@ Item {
                     kind: "experimental"
                     objectName: "experimentalBadge"
                     Accessible.name: "Experimental"
+                    visible: !responsive.compact
                 }
             }
 
@@ -128,7 +138,7 @@ Item {
             SearchField {
                 anchors.verticalCenter: parent.verticalCenter
                 placeholderText: "Buscar en Michi..."
-                implicitWidth: Math.min(280, root.width * 0.25)
+                implicitWidth: responsive.compact ? Math.min(160, root.width * 0.2) : Math.min(280, root.width * 0.25)
                 objectName: "searchField"
                 Accessible.name: "Buscar en Michi"
             }

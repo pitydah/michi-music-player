@@ -99,9 +99,15 @@ Item {
                 KeyNavigation.tab: playbackCard
                 KeyNavigation.backtab: continueCard
 
+                property real cardW: {
+                    var cols = responsive.columnCount
+                    if (cols <= 1) return parent.width
+                    return (parent.width - (cols - 1) * MichiTheme.spacing.lg) / cols
+                }
+
                 LibraryStatusCard {
                     id: libraryCard
-                    width: responsive.compact ? parent.width : (parent.width - MichiTheme.spacing.lg) / 2
+                    width: cardGrid.cardW
                     albums: root.hb ? root.hb.libraryAlbums : 0
                     artists: root.hb ? root.hb.libraryArtists : 0
                     tracks: root.hb ? root.hb.libraryTracks : 0
@@ -117,7 +123,7 @@ Item {
 
                 EcosystemCard {
                     id: ecosystemCard
-                    width: responsive.compact ? parent.width : (parent.width - MichiTheme.spacing.lg) / 2
+                    width: cardGrid.cardW
                     microServerState: root.cb ? root.cb.microServerState : "not_configured"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onOpenConnections()
@@ -134,7 +140,7 @@ Item {
 
                 GlassCard {
                     id: microCard
-                    width: responsive.compact ? parent.width : (parent.width - MichiTheme.spacing.lg) / 2
+                    width: cardGrid.cardW
                     implicitHeight: 80
                     activeFocusOnTab: true
 
@@ -159,7 +165,7 @@ Item {
 
                 GlassCard {
                     id: jobsCard
-                    width: responsive.compact ? parent.width : (parent.width - MichiTheme.spacing.lg) / 2
+                    width: cardGrid.cardW
                     implicitHeight: 80
                     activeFocusOnTab: true
                     Keys.onReturnPressed: {
