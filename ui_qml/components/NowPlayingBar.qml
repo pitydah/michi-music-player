@@ -23,7 +23,7 @@ Item {
 
     MichiResponsive { id: responsive; availableWidth: root.width }
 
-    height: 116
+    height: MichiTheme.nowPlayingHeight
 
     Connections {
         target: root.ps
@@ -56,11 +56,112 @@ Item {
             anchors.rightMargin: MichiTheme.spacing.md
             spacing: 0
 
-            // ── Row 1: Seek + Volume + Utilities ──
+            // ── Row 1: Cover + Info + Transport (primary) ──
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 54
+                Layout.topMargin: 6
+
+                RowLayout {
+                    anchors.fill: parent
+                    spacing: MichiTheme.spacing.md
+
+                    // Cover art
+                    Rectangle {
+                        Layout.preferredWidth: 48
+                        Layout.preferredHeight: 48
+                        radius: MichiTheme.radius.sm
+                        color: MichiTheme.colors.surfaceCard
+                        visible: root._hasTrack
+
+                        Image {
+                            anchors.fill: parent
+                            source: root.ps && root.ps.coverUrl ? root.ps.coverUrl : ""
+                            fillMode: Image.PreserveAspectCrop
+                            sourceSize.width: 48
+                            sourceSize.height: 48
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "♪"
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: 20
+                            visible: parent.source === ""
+                        }
+                    }
+
+                    // Track info
+                    Column {
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignVCenter
+                        spacing: 2
+
+                        Text {
+                            width: parent.width
+                            text: root.ps && root.ps.title ? root.ps.title : "Sin reproducción"
+                            color: root.ps && root.ps.title ? MichiTheme.colors.textPrimary : MichiTheme.colors.textSecondary
+                            font.pixelSize: MichiTheme.typography.bodySize
+                            font.weight: MichiTheme.typography.weightSemiBold
+                            elide: Text.ElideRight
+                        }
+
+                        Text {
+                            width: parent.width
+                            text: root.ps && root.ps.artist ? root.ps.artist : (root.ps && root.ps.title ? "Sin información" : "")
+                            color: MichiTheme.colors.textSecondary
+                            font.pixelSize: MichiTheme.typography.secondarySize
+                            elide: Text.ElideRight
+                        }
+                    }
+
+                    // Transport controls (primary)
+                    NowPlayingTransport {
+                        id: transport
+                        Layout.alignment: Qt.AlignVCenter
+                        isPlaying: root.ps ? root.ps.isPlaying : false
+                        shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
+                        repeatMode: root.ps ? root.ps.repeatMode : "none"
+                        playPauseSupported: root.ps ? root.ps.playPauseSupported : false
+                        previousSupported: root.ps ? root.ps.previousSupported : false
+                        nextSupported: root.ps ? root.ps.nextSupported : false
+                        shuffleSupported: root.ps ? root.ps.shuffleSupported : false
+                        repeatSupported: root.ps ? root.ps.repeatSupported : false
+                        onPlayClicked: { if (root.ps) root.ps.togglePlay() }
+                        onPrevClicked: { if (root.ps) root.ps.previous() }
+                        onNextClicked: { if (root.ps) root.ps.next() }
+                        onShuffleClicked: { if (root.ps) root.ps.toggleShuffle() }
+                        onRepeatClicked: { if (root.ps) root.ps.toggleRepeat() }
+                    }
+
+                    // Quality badge
+                    NowPlayingQualityBadge {
+                        id: qualityBadge
+                        Layout.alignment: Qt.AlignVCenter
+                        visible: !responsive.compact && root._hasTrack
+                        available: root.ps ? root.ps.qualityInfoAvailable : false
+                        loading: root.ps ? root.ps.qualityLoading : false
+                        error: root.ps ? root.ps.qualityError !== "" : false
+                        sourceType: root.ps ? root.ps.sourceType : ""
+                        formatLabel: root.ps ? root.ps.formatLabel : ""
+                        qualityLabel: root.ps ? root.ps.qualityLabel : ""
+                        sampleRate: root.ps ? root.ps.sampleRate : ""
+                        bitDepth: root.ps ? root.ps.bitDepth : ""
+                        channels: root.ps ? root.ps.channels : ""
+                        bitrate: root.ps ? root.ps.bitrate : ""
+                        onClicked: {
+                            if (typeof navigationBridge !== "undefined")
+                                navigationBridge.navigate("playback")
+                        }
+                    }
+                }
+            }
+
+            // ── Row 2: Seek + Volume + Utilities (secondary) ──
             RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: responsive.compact ? 28 : 32
-                Layout.topMargin: responsive.compact ? 4 : 6
+                Layout.preferredHeight: 28
+                Layout.bottomMargin: 6
                 spacing: MichiTheme.spacing.sm
 
                 NowPlayingSeekBar {
@@ -98,56 +199,6 @@ Item {
                     onTransmitClicked: { }
                     onOutputClicked: outputPopup.open()
                     onMiniPlayerClicked: {
-                        if (typeof navigationBridge !== "undefined")
-                            navigationBridge.navigate("playback")
-                    }
-                }
-            }
-
-            // ── Row 2: Transport + Badge ──
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.preferredHeight: responsive.compact ? 48 : 54
-                Layout.bottomMargin: responsive.compact ? 6 : 8
-                spacing: MichiTheme.spacing.md
-
-                Item { Layout.preferredWidth: responsive.compact ? 0 : MichiTheme.spacing.xl }
-
-                NowPlayingTransport {
-                    id: transport
-                    Layout.alignment: Qt.AlignVCenter
-                    isPlaying: root.ps ? root.ps.isPlaying : false
-                    shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
-                    repeatMode: root.ps ? root.ps.repeatMode : "none"
-                    playPauseSupported: root.ps ? root.ps.playPauseSupported : false
-                    previousSupported: root.ps ? root.ps.previousSupported : false
-                    nextSupported: root.ps ? root.ps.nextSupported : false
-                    shuffleSupported: root.ps ? root.ps.shuffleSupported : false
-                    repeatSupported: root.ps ? root.ps.repeatSupported : false
-                    onPlayClicked: { if (root.ps) root.ps.togglePlay() }
-                    onPrevClicked: { if (root.ps) root.ps.previous() }
-                    onNextClicked: { if (root.ps) root.ps.next() }
-                    onShuffleClicked: { if (root.ps) root.ps.toggleShuffle() }
-                    onRepeatClicked: { if (root.ps) root.ps.toggleRepeat() }
-                }
-
-                Item { Layout.fillWidth: true }
-
-                NowPlayingQualityBadge {
-                    id: qualityBadge
-                    Layout.alignment: Qt.AlignVCenter
-                    visible: !responsive.compact
-                    available: root.ps ? root.ps.qualityInfoAvailable : false
-                    loading: root.ps ? root.ps.qualityLoading : false
-                    error: root.ps ? root.ps.qualityError !== "" : false
-                    sourceType: root.ps ? root.ps.sourceType : ""
-                    formatLabel: root.ps ? root.ps.formatLabel : ""
-                    qualityLabel: root.ps ? root.ps.qualityLabel : ""
-                    sampleRate: root.ps ? root.ps.sampleRate : ""
-                    bitDepth: root.ps ? root.ps.bitDepth : ""
-                    channels: root.ps ? root.ps.channels : ""
-                    bitrate: root.ps ? root.ps.bitrate : ""
-                    onClicked: {
                         if (typeof navigationBridge !== "undefined")
                             navigationBridge.navigate("playback")
                     }
