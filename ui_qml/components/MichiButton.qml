@@ -6,7 +6,7 @@ QQC2.Button {
     id: root
 
     property string controlObjectName: ""
-    objectName: ""
+    objectName: root.controlObjectName
 
     property string variant: "primary"
     property string iconText: ""

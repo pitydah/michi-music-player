@@ -120,13 +120,16 @@ def main():
     else:
         if not all_findings:
             print("✓ All controls have required attributes.")
-            return
-        for f in all_findings:
-            print(
-                f"{f['file']}:{f['line']}  "
-                f"{f['control']}  missing: {', '.join(f['missing'])}"
-            )
-        sys.exit(1 if all_findings else 0)
+        else:
+            for f in all_findings:
+                print(
+                    f"{f['file']}:{f['line']}  "
+                    f"{f['control']}  missing: {', '.join(f['missing'])}"
+                )
+
+    if all_findings:
+        print(f"\nTotal: {len(all_findings)} violations found", file=sys.stderr)
+    sys.exit(1 if all_findings else 0)
 
 
 if __name__ == "__main__":

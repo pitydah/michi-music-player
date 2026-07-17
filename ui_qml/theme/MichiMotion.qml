@@ -6,9 +6,7 @@ QtObject {
     readonly property int durationFast: 120
     readonly property int durationNormal: 200
     readonly property int durationSlow: 300
-    readonly property int fast: 120
-    readonly property int normal: 160
-    readonly property int slow: 220
+
     readonly property int reduced: 40
 
     readonly property QtObject easing: QtObject {

@@ -54,7 +54,6 @@ QtObject {
 
     readonly property real focusWidth: borderWidthFocus
     readonly property real focusOffset: 2
-    readonly property real disabledOpacity: opacity.disabled
 
     readonly property int sidebarWidth: 250
     readonly property int sidebarWidthCompact: 68

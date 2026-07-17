@@ -142,10 +142,13 @@ def main():
     else:
         if not all_violations:
             print("✓ All responsive requirements met.")
-            return
-        for v in all_violations:
-            print(f"{v['file']}:{v['line']}  [{v['pattern_type']}]  {v['detail']}")
-        sys.exit(1 if all_violations else 0)
+        else:
+            for v in all_violations:
+                print(f"{v['file']}:{v['line']}  [{v['pattern_type']}]  {v['detail']}")
+
+    if all_violations:
+        print(f"\nTotal: {len(all_violations)} violations found", file=sys.stderr)
+    sys.exit(1 if all_violations else 0)
 
 
 if __name__ == "__main__":

@@ -110,24 +110,28 @@ def main():
         "controls_without_objectName": control_no_name,
     }
 
+    total = (
+        len(report["convention_violations"])
+        + len(report["duplicate_objectNames"])
+        + len(report["controls_without_objectName"])
+    )
+
     if args.format == "json":
         print(json.dumps(report, indent=2))
     else:
-        total = (
-            len(report["convention_violations"])
-            + len(report["duplicate_objectNames"])
-            + len(report["controls_without_objectName"])
-        )
         if total == 0:
             print("✓ All objectNames follow convention, no duplicates, all controls have objectName.")
-            return
-        for v in report["convention_violations"]:
-            print(f"CONVENTION: {v['file']}:{v['line']}  objectName=\"{v['objectName']}\" (expected {v['expected']})")
-        for d in report["duplicate_objectNames"]:
-            print(f"DUPLICATE: {d['file']}:{d['line']}  objectName=\"{d['objectName']}\" also in {d['also_in']}")
-        for n in report["controls_without_objectName"]:
-            print(f"NO_OBJECTNAME: {n['file']}:{n['line']}  {n['control']}")
-        sys.exit(1 if total else 0)
+        else:
+            for v in report["convention_violations"]:
+                print(f"CONVENTION: {v['file']}:{v['line']}  objectName=\"{v['objectName']}\" (expected {v['expected']})")
+            for d in report["duplicate_objectNames"]:
+                print(f"DUPLICATE: {d['file']}:{d['line']}  objectName=\"{d['objectName']}\" also in {d['also_in']}")
+            for n in report["controls_without_objectName"]:
+                print(f"NO_OBJECTNAME: {n['file']}:{n['line']}  {n['control']}")
+
+    if total:
+        print(f"\nTotal: {total} violations found", file=sys.stderr)
+    sys.exit(1 if total else 0)
 
 
 if __name__ == "__main__":

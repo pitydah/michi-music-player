@@ -70,15 +70,6 @@ QQC2.Popup {
         color: MichiTheme.colors.surfaceCardElevated
         border.width: MichiTheme.borderWidth
         border.color: MichiTheme.colors.borderCard
-
-        layer.enabled: true
-        layer.effect: DropShadow {
-            transparentBorder: true
-            radius: 16
-            samples: 32
-            color: MichiTheme.colors.shadowFloating
-            verticalOffset: 4
-        }
     }
 
     contentItem: Item {

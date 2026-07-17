@@ -27,7 +27,6 @@ Item {
     implicitHeight: fieldBackground.height + (root.label !== "" ? labelText.height + MichiTheme.spacing.xs : 0)
     implicitWidth: 260
 
-    Accessible.role: Accessible.EditableText
     Accessible.name: root.accessibleName
     Accessible.description: root.accessibleDescription
 
@@ -79,6 +78,7 @@ Item {
             text: root.text
             activeFocusOnTab: enabled && visible
             verticalAlignment: TextInput.AlignVCenter
+            maximumLength: root.maxLength > 0 ? root.maxLength : 32767
 
             onTextChanged: root.text = text
             onTextEdited: root.textEdited(text)

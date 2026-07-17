@@ -230,15 +230,18 @@ def main():
     else:
         if not all_findings:
             print("✓ No hardcoded token violations found.")
-            return
-        for finding in all_findings:
-            print(
-                f"{finding['file']}:{finding['line']}  "
-                f"[{finding['pattern_type']}]  "
-                f"value={finding['value']}  "
-                f"suggested={finding['suggested_token']}"
-            )
-        sys.exit(1 if all_findings else 0)
+        else:
+            for finding in all_findings:
+                print(
+                    f"{finding['file']}:{finding['line']}  "
+                    f"[{finding['pattern_type']}]  "
+                    f"value={finding['value']}  "
+                    f"suggested={finding['suggested_token']}"
+                )
+
+    if all_findings:
+        print(f"\nTotal: {len(all_findings)} violations found", file=sys.stderr)
+    sys.exit(1 if all_findings else 0)
 
 
 if __name__ == "__main__":

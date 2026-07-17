@@ -46,7 +46,7 @@ QQC2.Button {
             sourceSize.width: 32
             sourceSize.height: 32
             fillMode: Image.PreserveAspectFit
-            opacity: root.enabled ? 1.0 : MichiTheme.disabledOpacity
+            opacity: root.enabled ? 1.0 : MichiTheme.opacity.disabled
         }
 
         Text {
@@ -54,7 +54,7 @@ QQC2.Button {
             text: root.iconText
             font.pixelSize: MichiTheme.typography.cardTitleSize
             color: root.selected ? MichiTheme.colors.accentBlue : MichiTheme.colors.textPrimary
-            opacity: root.enabled ? 1.0 : MichiTheme.disabledOpacity
+            opacity: root.enabled ? 1.0 : MichiTheme.opacity.disabled
             visible: root.iconSource === "" && root.iconText !== ""
         }
     }
