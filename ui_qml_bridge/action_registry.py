@@ -1,10 +1,11 @@
 """ActionRegistry — central registry of all user actions in the application.
 
 Used by Command Palette, context menus, keyboard shortcuts, and toolbars.
+Each action can optionally reference a service + method for contract validation.
 """
 from __future__ import annotations
 
-from typing import Callable
+from typing import Any, Callable
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
 
@@ -13,7 +14,10 @@ class ActionDescriptor:
     def __init__(self, action_id: str, title: str, category: str,
                  icon_key: str = "", shortcut: str = "",
                  destructive: bool = False, requires_confirmation: bool = False,
-                 handler: Callable | None = None):
+                 handler: Callable | None = None,
+                 service_name: str = "", method_name: str = "",
+                 argument_schema: tuple[str, ...] = (),
+                 capability: str | None = None):
         self.id = action_id
         self.title = title
         self.category = category
@@ -22,6 +26,10 @@ class ActionDescriptor:
         self.destructive = destructive
         self.requires_confirmation = requires_confirmation
         self.handler = handler
+        self.service_name = service_name
+        self.method_name = method_name
+        self.argument_schema = argument_schema
+        self.capability = capability
         self.enabled = True
         self.visible = True
 
@@ -29,10 +37,14 @@ class ActionDescriptor:
 class ActionRegistry(QObject):
     registryChanged = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, container: Any = None, parent=None):
         super().__init__(parent)
+        self._container = container
         self._actions: dict[str, ActionDescriptor] = {}
         self._init_defaults()
+
+    def set_container(self, container: Any):
+        self._container = container
 
     def _init_defaults(self):
         defaults = [
@@ -64,8 +76,8 @@ class ActionRegistry(QObject):
             ("library_add_folder", "Añadir carpeta", "library", "folder_add"),
             ("playlist_create", "Crear playlist", "playlist", "playlist"),
             ("metadata_edit", "Editar metadatos", "metadata", "tag"),
-            ("metadata_smart_tagging", "Smart Tagging", "metadata", "magic"),
-            ("radio_add_station", "Añadir emisora", "radio", "radio"),
+            ("metadata_smart_tagging", "Smart Tagging", "metadata", "magic", "", False, False, None, "", "", (), "smart_tagging"),
+            ("radio_add_station", "Añadir emisora", "radio", "radio", "", False, False, None, "", "", (), "radio"),
             ("diagnostics_show", "Ver diagnóstico", "system", "diagnostics"),
             ("app_quit", "Salir", "system", "quit"),
             ("track_play_now", "Reproducir ahora", "track", "play"),
@@ -122,12 +134,21 @@ class ActionRegistry(QObject):
             ("source_cancel_scan", "Cancelar escaneo", "source", "cancel"),
         ]
         for entry in defaults:
-            action_id, title, category, icon = entry[0], entry[1], entry[2], entry[3]
-            destructive = entry[4] if len(entry) > 4 else False
-            requires_confirmation = entry[5] if len(entry) > 5 else False
+            action_id, title, category, icon_key = entry[0], entry[1], entry[2], entry[3]
+            shortcut = entry[4] if len(entry) > 4 and isinstance(entry[4], str) else ""
+            destructive = entry[4] if len(entry) > 4 and isinstance(entry[4], bool) else (entry[5] if len(entry) > 5 and isinstance(entry[5], bool) else False)
+            requires_confirmation = entry[5] if len(entry) > 5 and isinstance(entry[5], bool) else (entry[6] if len(entry) > 6 and isinstance(entry[6], bool) else False)
+            handler = entry[6] if len(entry) > 6 and callable(entry[6]) else None
+            service_name = entry[7] if len(entry) > 7 and isinstance(entry[7], str) else ""
+            method_name = entry[8] if len(entry) > 8 and isinstance(entry[8], str) else ""
+            argument_schema = entry[9] if len(entry) > 9 and isinstance(entry[9], tuple) else ()
+            capability = entry[10] if len(entry) > 10 and isinstance(entry[10], str) else None
             self._actions[action_id] = ActionDescriptor(
-                action_id=action_id, title=title, category=category, icon_key=icon,
-                destructive=destructive, requires_confirmation=requires_confirmation,
+                action_id=action_id, title=title, category=category, icon_key=icon_key,
+                shortcut=shortcut, destructive=destructive,
+                requires_confirmation=requires_confirmation, handler=handler,
+                service_name=service_name, method_name=method_name,
+                argument_schema=argument_schema, capability=capability,
             )
 
     def register(self, action: ActionDescriptor):
@@ -139,13 +160,27 @@ class ActionRegistry(QObject):
     def validate_all(self) -> list[dict]:
         issues = []
         for aid, action in self._actions.items():
-            if action.handler is None:
-                issues.append({"action_id": aid, "issue": "no_handler"})
-            if getattr(action, 'service', None) and getattr(action, 'method', None):
-                if not hasattr(action.service, action.method):
+            if action.handler is None and not action.service_name:
+                continue
+            if action.service_name and self._container:
+                svc = getattr(self._container, action.service_name, None)
+                if svc is None:
+                    issues.append({
+                        "action_id": aid, "issue": "service_not_found",
+                        "service": action.service_name,
+                    })
+                elif action.method_name and not hasattr(svc, action.method_name):
                     issues.append({
                         "action_id": aid, "issue": "method_not_found",
-                        "method": action.method, "service": type(action.service).__name__,
+                        "method": action.method_name,
+                        "service": type(svc).__name__,
+                    })
+            if action.capability and self._container:
+                cap_bridge = getattr(self._container, 'capability_bridge', None)
+                if cap_bridge and not cap_bridge.has(action.capability):
+                    issues.append({
+                        "action_id": aid, "issue": "missing_capability",
+                        "capability": action.capability,
                     })
         return issues
 
