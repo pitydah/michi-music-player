@@ -1,4 +1,4 @@
-from sync.transport import DeviceInfo, DeviceCapability, SyncTransport
+from sync.transport import DeviceInfo, DeviceCapability
 
 
 class TestTransport:
