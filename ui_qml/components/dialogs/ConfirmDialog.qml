@@ -70,8 +70,8 @@ BaseDialog {
                 Rectangle {
     focus: true
                     anchors.centerIn: parent
-                    width: 10; height: 10
-                    radius: 2
+                    width: MichiTheme.spacing.sm + MichiTheme.spacing.xxs; height: width
+                    radius: MichiTheme.radius.xs
                     color: MichiTheme.colors.textOnAccent
                     visible: dontAskCheck.checked
                 }

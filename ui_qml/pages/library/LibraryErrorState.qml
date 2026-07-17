@@ -24,7 +24,7 @@ Item {
 
         Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
-            width: 64; height: 64; radius: 16
+            width: MichiTheme.coverSizeMedium; height: MichiTheme.coverSizeMedium; radius: MichiTheme.radius.xl
             color: MichiTheme.colors.error
             opacity: MichiTheme.opacity.muted
             Text {

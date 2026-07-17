@@ -37,7 +37,7 @@ Item {
         layer.enabled: root.elevated
         layer.effect: DropShadow {
             transparentBorder: true
-            radius: 12
+            radius: MichiTheme.radius.lg
             samples: 24
             color: MichiTheme.colors.shadowSoft
             verticalOffset: 2
