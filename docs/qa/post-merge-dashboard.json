@@ -1,0 +1,35 @@
+{
+  "qa_summary": {
+    "branch": "main",
+    "date": "2026-07-17",
+    "status": "PARTIALLY_COMPLETE"
+  },
+  "smoke_test": {
+    "total_sections": 17,
+    "status": "PENDING_MANUAL",
+    "checklist": "docs/qa/smoke-test-checklist.md",
+    "note": "Smoke test requires manual execution with the real app"
+  },
+  "screenshots": {
+    "directory": "docs/uiux/screenshots/baseline-post-x10",
+    "count": 10,
+    "files": ["home","library","nowplaying","queue","playlists","mix","settings","devices","connections","eq"],
+    "status": "CAPTURED"
+  },
+  "issues_fixed_post_merge": [
+    "EcosystemCard.qml: removed duplicate Accessible.role/activeFocusOnTab",
+    "MichiTheme.qml: added radiusPill/motionFast/Normal/Slow aliases for backwards compat",
+    "MichiMotion.qml: added fast/normal/slow aliases",
+    "NotificationCenter.qml: Accessible.Panel -> Accessible.Pane",
+    "PlaceholderPage.qml: removed orphan Accessible.role/activeFocusOnTab",
+    "MixHubPage.qml: removed Accessible.role inside onClicked block",
+    "RadioPage.qml: removed orphan Accessible.role between fields",
+    "LibraryContextMenu.qml: removed activeFocusOnTab from Popup",
+    "HeaderBar.qml: replaced anchors.verticalCenter with verticalAlignment in Row"
+  ],
+  "known_issues": [
+    "KeyboardShortcutHint.qml:66 - delay interpreted as bool (Qt 6 quirk)",
+    "ToastHost.qml:22,49,73 - bridge null in offscreen (normal)",
+    "HeaderBar.qml:89 - QVariantMap to QString (bridge null)"
+  ]
+}

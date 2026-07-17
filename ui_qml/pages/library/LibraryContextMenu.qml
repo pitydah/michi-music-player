@@ -6,8 +6,6 @@ import "../../components"
 
 Popup {
     id: root
-    activeFocusOnTab: true
-
 
     property var bridge: null
     property var actionRegistry: null

@@ -90,14 +90,16 @@ Item {
                                 color: index < (responsive.compact ? 0 : root.routeHistory.length - 1) ? MichiTheme.colors.textMuted : MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.secondarySize
                                 font.weight: index < (responsive.compact ? 0 : root.routeHistory.length - 1) ? MichiTheme.typography.weightNormal : MichiTheme.typography.weightSemiBold
-                                anchors.verticalCenter: parent.verticalCenter
+                                height: parent.height
+                                verticalAlignment: Text.AlignVCenter
                             }
 
                             Text {
                                 text: "/"
                                 color: MichiTheme.colors.textMeta
                                 font.pixelSize: MichiTheme.typography.secondarySize
-                                anchors.verticalCenter: parent.verticalCenter
+                                height: parent.height
+                                verticalAlignment: Text.AlignVCenter
                                 visible: index < (responsive.compact ? 0 : root.routeHistory.length - 1)
                             }
 

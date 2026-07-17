@@ -236,7 +236,6 @@ Item {
                         placeholderText: "Nombre"; width: parent.width; onTextChangedByUser: _newName = text
                         activeFocusOnTab: true
                     }
-                        Accessible.role: Accessible.EditableText
 
                     SearchField {
                         placeholderText: "URL del stream"; width: parent.width; onTextChangedByUser: _newUrl = text

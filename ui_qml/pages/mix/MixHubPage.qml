@@ -149,8 +149,6 @@ Item {
                                 root.mx.loadMix("by_decade")
                             if (typeof navigationBridge !== "undefined" && navigationBridge)
                                 navigationBridge.navigate("mix_detail")
-                        Accessible.role: Accessible.Button
-
                         }
                     }
                     MichiButton {
