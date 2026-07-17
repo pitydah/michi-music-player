@@ -38,10 +38,15 @@ class TestDiagnostics:
                 refresh_btn = child
                 break
         assert refresh_btn is not None, "Refresh button not found in diagnosticsPage"
-        from .conftest import wait_for_property
+        from .conftest import wait_for_property, wait_for_condition
+        state_before = getattr(diag_bridge, '_state', '') or getattr(diag_bridge, 'state', '')
         qtest_click_item(refresh_btn, root_window)
         wait_for_property(refresh_btn, "visible", True, timeout_ms=500)
+        wait_for_condition(
+            lambda: (getattr(diag_bridge, '_state', '') or getattr(diag_bridge, 'state', '')) != state_before,
+            timeout_ms=500
+        )
         QTest.qWait(200)
         assert nav.currentRoute == "diagnostics"
         diag_state = getattr(diag_bridge, '_state', '') or getattr(diag_bridge, 'state', '')
-        assert isinstance(diag_state, str)
+        assert diag_state != state_before, f"State should change: '{state_before}' -> '{diag_state}'"

@@ -89,7 +89,13 @@ class TestConnectionsDevicesE2E:
                 break
         assert scan_btn is not None, "Discover button not found"
         qtest_click_item(scan_btn, root_window)
+        from .conftest import wait_for_condition
+        state_before = getattr(conn_bridge, '_state', '') or getattr(conn_bridge, 'state', '')
+        wait_for_condition(
+            lambda: (getattr(conn_bridge, '_state', '') or getattr(conn_bridge, 'state', '')) != state_before,
+            timeout_ms=500
+        )
         QTest.qWait(200)
         assert nav.currentRoute == "connections"
-        state = getattr(conn_bridge, '_state', '') or getattr(conn_bridge, 'state', '')
-        assert isinstance(state, str)
+        state_after = getattr(conn_bridge, '_state', '') or getattr(conn_bridge, 'state', '')
+        assert isinstance(state_after, str), f"State should be a string, got {type(state_after)}"

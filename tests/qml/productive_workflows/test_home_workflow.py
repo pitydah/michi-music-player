@@ -39,8 +39,13 @@ class TestHomeWorkflow:
         assert route_after in ("home", "playback"), (
             f"Route after continue card click: '{route_after}'"
         )
-        state = getattr(playback_bridge, 'state', '')
-        assert state != "" or route_after == "playback"
-        has_playback = getattr(continue_card, '_hasPlayback', None) or continue_card.property("hasPlayback")
-        if has_playback:
-            QTest.qWait(50)
+        from .conftest import wait_for_condition
+        state_before = getattr(playback_bridge, 'state', '')
+        wait_for_condition(
+            lambda: getattr(playback_bridge, 'state', '') != state_before,
+            timeout_ms=500
+        )
+        state_after = getattr(playback_bridge, 'state', '')
+        assert state_before != state_after or route_after == "playback", (
+            f"State should change or route to playback: '{state_before}' -> '{state_after}'"
+        )

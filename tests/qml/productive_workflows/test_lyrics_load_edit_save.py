@@ -32,5 +32,4 @@ class TestLyrics:
         QTest.keyClick(page, Qt.Key_Down)
         QTest.qWait(50)
         assert nav.currentRoute == "lyrics"
-        if hasattr(page, 'property') and page.property("visible") is not None:
-            assert page.property("visible") is True
+        assert page.property("visible") is True, "lyricsPage should be visible after navigation"

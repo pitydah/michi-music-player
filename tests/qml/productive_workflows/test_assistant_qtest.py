@@ -32,7 +32,8 @@ class TestAssistantQTest:
         page = find_qml_item(root_window, "assistantPage")
         assert page is not None, "assistantPage not found"
         suggestion = find_qml_item(root_window, "suggestionCard")
-        if suggestion is not None:
-            qtest_click_item(suggestion, root_window)
-            QTest.qWait(50)
-            assert nav.currentRoute == "ai"
+        if suggestion is None:
+            pytest.skip("No suggestionCard available on AI page")
+        qtest_click_item(suggestion, root_window)
+        QTest.qWait(50)
+        assert nav.currentRoute == "ai"

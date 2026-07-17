@@ -141,6 +141,7 @@ class TestPlaybackQueueE2E:
         assert clear_btn is not None, "Clear/Vaciar button not found in queueHeader"
         qtest_click_item(clear_btn, root_window)
         QTest.qWait(50)
+        QTest.qWait(50)
 
     def test_qtest_navigate_playback(self, nav, playback_bridge, root_window):
         from PySide6.QtCore import Qt

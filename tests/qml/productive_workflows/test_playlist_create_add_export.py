@@ -48,6 +48,6 @@ class TestPlaylistCreateExport:
             "playlistEditorDialog should be visible"
         )
         pl_bridge = all_bridges.get("playlists")
-        if pl_bridge is not None:
-            pl_state = getattr(pl_bridge, '_state', '') or getattr(pl_bridge, 'state', '')
-            assert pl_state is None or isinstance(pl_state, str)
+        assert pl_bridge is not None, "PlaylistsBridge should exist"
+        pl_state = getattr(pl_bridge, '_state', '') or getattr(pl_bridge, 'state', '')
+        assert isinstance(pl_state, str)

@@ -43,6 +43,6 @@ class TestRadio:
         QTest.qWait(100)
         assert nav.currentRoute == "radio"
         radio_bridge = all_bridges.get("radio")
-        if radio_bridge is not None:
-            rb_state = getattr(radio_bridge, '_state', '') or getattr(radio_bridge, 'state', '')
-            assert rb_state is None or isinstance(rb_state, str)
+        assert radio_bridge is not None, "RadioBridge should exist"
+        rb_state = getattr(radio_bridge, '_state', '') or getattr(radio_bridge, 'state', '')
+        assert isinstance(rb_state, str)

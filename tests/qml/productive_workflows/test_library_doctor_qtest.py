@@ -38,8 +38,14 @@ class TestLibraryDoctorQTest:
                 scan_btn = child
                 break
         assert scan_btn is not None, "Scan button not found in libraryDoctorScanPage"
+        from .conftest import wait_for_condition
+        status_before = getattr(doctor_bridge, 'status', '') or getattr(doctor_bridge, '_state', '')
         qtest_click_item(scan_btn, root_window)
+        wait_for_condition(
+            lambda: (getattr(doctor_bridge, 'status', '') or getattr(doctor_bridge, '_state', '')) != status_before,
+            timeout_ms=500
+        )
         QTest.qWait(100)
         assert nav.currentRoute == "library_doctor"
-        status = getattr(doctor_bridge, 'status', '') or getattr(doctor_bridge, '_state', '')
-        assert isinstance(status, str)
+        status_after = getattr(doctor_bridge, 'status', '') or getattr(doctor_bridge, '_state', '')
+        assert status_after != status_before, f"Doctor status should change: '{status_before}' -> '{status_after}'"

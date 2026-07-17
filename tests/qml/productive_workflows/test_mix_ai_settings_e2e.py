@@ -117,13 +117,16 @@ class TestMixAiSettingsE2E:
                     bypass_btn = child
                     break
         assert bypass_btn is not None, "EQ bypass button not found"
+        from .conftest import wait_for_property, wait_for_condition
         bypass_before = getattr(eq_bridge, 'bypass', None)
         qtest_click_item(bypass_btn, root_window)
-        from .conftest import wait_for_property
         wait_for_property(bypass_btn, "visible", True, timeout_ms=200)
+        wait_for_condition(
+            lambda: getattr(eq_bridge, 'bypass', None) != bypass_before,
+            timeout_ms=500
+        )
         QTest.qWait(100)
         bypass_after = getattr(eq_bridge, 'bypass', None)
-        if bypass_before is not None and bypass_after is not None:
-            assert bypass_before != bypass_after, (
-                f"EQ bypass should toggle: {bypass_before} -> {bypass_after}"
-            )
+        assert bypass_before != bypass_after, (
+            f"EQ bypass should toggle: {bypass_before} -> {bypass_after}"
+        )

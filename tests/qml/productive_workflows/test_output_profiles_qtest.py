@@ -40,6 +40,6 @@ class TestOutputProfilesQTest:
         QTest.qWait(50)
         assert nav.currentRoute == "outputs"
         op_bridge = all_bridges.get("output_profiles")
-        if op_bridge is not None:
-            profiles = getattr(op_bridge, 'profiles', None) or getattr(op_bridge, '_profiles', None)
-            assert profiles is None or isinstance(profiles, (list, tuple))
+        assert op_bridge is not None, "OutputProfilesBridge should exist"
+        profiles = getattr(op_bridge, 'profiles', None) or getattr(op_bridge, '_profiles', None)
+        assert profiles is None or isinstance(profiles, (list, tuple))

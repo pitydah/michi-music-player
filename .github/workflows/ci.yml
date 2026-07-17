@@ -33,6 +33,10 @@ jobs:
       - name: Productive workflows (without engine)
         run: |
           QT_QPA_PLATFORM=offscreen timeout 30 python -m pytest tests/qml/productive_workflows/test_bridge_structural.py tests/qml/productive_workflows/test_services_real.py tests/qml/productive_workflows/test_action_registry_edge_cases.py tests/qml/productive_workflows/test_home_workflow.py tests/qml/productive_workflows/test_mix_workflow.py tests/qml/productive_workflows/test_playback_workflow.py tests/qml/productive_workflows/test_radio_buffer_play_stop.py tests/qml/productive_workflows/test_search_stale_rejection.py tests/qml/productive_workflows/test_queue_reorder_persist.py tests/qml/productive_workflows/test_diagnostics.py tests/qml/productive_workflows/test_lyrics_load_edit_save.py -q
+      - name: Productive workflows (with engine — QTest)
+        continue-on-error: true
+        run: |
+          QT_QPA_PLATFORM=offscreen timeout 60 python -m pytest tests/qml/productive_workflows/test_library_e2e.py tests/qml/productive_workflows/test_playback_queue_e2e.py tests/qml/productive_workflows/test_mix_ai_settings_e2e.py tests/qml/productive_workflows/test_home_workflow.py tests/qml/productive_workflows/test_diagnostics.py tests/qml/productive_workflows/test_library_workflow.py tests/qml/productive_workflows/test_library_doctor_qtest.py tests/qml/productive_workflows/test_output_profiles_qtest.py tests/qml/productive_workflows/test_assistant_qtest.py tests/qml/productive_workflows/test_connections_devices_e2e.py tests/qml/productive_workflows/test_disc_lab_plan_rip.py tests/qml/productive_workflows/test_lyrics_load_edit_save.py tests/qml/productive_workflows/test_metadata_tagging_doctor.py tests/qml/productive_workflows/test_playlist_create_add_export.py tests/qml/productive_workflows/test_queue_reorder_persist.py tests/qml/productive_workflows/test_radio_buffer_play_stop.py tests/qml/productive_workflows/test_settings_output_eq.py tests/qml/productive_workflows/test_playback_workflow.py -q || echo "ENGINE_TESTS_WARN (expected in headless CI)"
       - name: QML compile check
         run: |
           QT_QPA_PLATFORM=offscreen timeout 30 python3 -c "

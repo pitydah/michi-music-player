@@ -50,8 +50,7 @@ class TestMetadataTaggingDoctor:
         QTest.keyClick(page, Qt.Key_Down)
         QTest.qWait(50)
         assert nav.currentRoute == "tagging"
-        if hasattr(page, 'property') and page.property("visible") is not None:
-            assert page.property("visible") is True
+        assert page.property("visible") is True, "SmartTaggingPage should be visible after navigation"
 
     def test_qtest_click_select_all(self, nav, root_window, all_bridges):
         from PySide6.QtTest import QTest

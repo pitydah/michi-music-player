@@ -147,8 +147,11 @@ def engine(bootstrap):
 
 @pytest.fixture(scope="module")
 def root_window(engine) -> QQuickWindow:
-    root = engine.rootObjects()[0]
+    roots = engine.rootObjects()
+    assert roots, "Main.qml did not load — no root objects"
+    root = roots[0]
     assert isinstance(root, QQuickWindow), f"Root object is {type(root)}, expected QQuickWindow"
+    assert isinstance(root, QQuickWindow)
     return root
 
 

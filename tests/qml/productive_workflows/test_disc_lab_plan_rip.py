@@ -35,5 +35,4 @@ class TestDiscLab:
         QTest.keyClick(page, Qt.Key_Down)
         QTest.qWait(50)
         assert nav.currentRoute == "disc_lab"
-        if hasattr(page, 'property') and page.property("visible") is not None:
-            assert page.property("visible") is True
+        assert page.property("visible") is True, "discLabPage should be visible after navigation"

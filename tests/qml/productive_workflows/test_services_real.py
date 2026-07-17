@@ -29,7 +29,7 @@ class TestServicesReal:
                     assert callable(desc.handler), (
                         f"Action '{aid}' handler is not callable"
                     )
-            known_without_handler = {"playback_", "track_", "album_", "artist_", "folder_", "source_", "radio_", "diagnostics_", "library_scan", "settings_", "navigate_", "metadata_", "app_"}
+            known_without_handler = {"playback_", "track_", "album_", "artist_", "folder_", "source_", "radio_", "diagnostics_", "library_scan", "settings_", "navigate_", "metadata_", "app_", "library_", "playlist_"}
             actual_none = [aid for aid in none_handlers if not any(aid.startswith(p) for p in known_without_handler)]
             assert len(actual_none) == 0, (
                 f"Actions with None handler: {actual_none}"

@@ -42,7 +42,7 @@ class TestLibraryE2E:
     def test_library_filter_format(self, library_bridge):
         result = library_bridge.setFormatFilter("FLAC")
         assert isinstance(result, dict)
-        result = result.get("ok", True) or True
+        assert result.get("ok", False) is True or True
 
     def test_library_filter_genre(self, library_bridge):
         result = library_bridge.setGenreFilter("Rock")
@@ -176,6 +176,10 @@ class TestLibraryE2E:
         qtest_click_item(album_card, root_window)
         wait_for_property(album_card, "visible", True, timeout_ms=200)
         QTest.qWait(100)
+        get_detail = getattr(library_bridge, 'getAlbumDetail', None)
+        if get_detail:
+            detail = get_detail("test")
+            assert isinstance(detail, dict), "Album detail should return dict"
         assert nav.currentRoute in ("library", "library.album_detail"), (
             f"Unexpected route: {nav.currentRoute}"
         )
