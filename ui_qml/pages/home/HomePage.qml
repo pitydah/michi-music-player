@@ -310,8 +310,23 @@ Item {
     EmptyState {
         anchors.centerIn: parent
         visible: root.homeState === HomePage.EMPTY
-        title: "No hay datos disponibles"
-        subtitle: "Conecta una fuente de música o revisa la configuración."
+        title: "Tu biblioteca está vacía"
+        subtitle: "Añade una carpeta de música o conecta Michi Micro Server para comenzar."
+        iconText: "♪"
+        showAction: true
+        actionText: "Añadir música"
+        onActionClicked: {
+            if (typeof navigationBridge !== "undefined")
+                navigationBridge.navigate("library.sources")
+        }
+    }
+
+    EmptyState {
+        anchors.centerIn: parent
+        anchors.verticalCenterOffset: 60
+        visible: root.homeState === HomePage.EMPTY
+        title: ""
+        subtitle: "También puedes explorar la radio o conectar servidores Subsonic."
         iconText: ""
     }
 
