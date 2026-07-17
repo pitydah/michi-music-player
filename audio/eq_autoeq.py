@@ -1,8 +1,12 @@
+# -*- coding: utf-8 -*-
 """AutoEQ integration — load headphone presets from local cache or GitHub."""
+
+from __future__ import annotations
 
 import json
 import os
 import urllib.request
+from typing import Any
 
 from core.paths import auto_eq_cache_dir
 

@@ -1,4 +1,8 @@
+# -*- coding: utf-8 -*-
 """DSP State — tracks which digital processing features are active."""
+
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 
 
@@ -17,7 +21,7 @@ class DspState:
     transmit_enabled: bool = False
     digital_volume_enabled: bool = True
 
-    def is_dsp_active(self) -> bool:
+    def is_dsp_active(self: "DspState") -> bool:
         """Returns True if ANY digital processing would break bit-perfect."""
         return (
             self.eq_enabled

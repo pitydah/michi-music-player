@@ -1,14 +1,7 @@
-"""DSDIFF (.dff) file parser — EA IFF 85 chunks.
+# -*- coding: utf-8 -*-
+"""DSDIFF (.dff) file parser — EA IFF 85 chunks."""
 
-Format:
-    FRM8 container
-    ├── FVER (version)
-    ├── PROP (properties)
-    │   ├── FS   (sample rate, uint32 BE)
-    │   ├── CHNL (channels, uint16 BE)
-    │   └── CMPR (compression: "DSD " = uncompressed, "DST " = compressed)
-    └── DSD  (raw audio data)
-"""
+from __future__ import annotations
 
 import struct
 from dataclasses import dataclass
