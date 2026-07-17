@@ -22,3 +22,16 @@ class TestDiscLab:
         svc = bootstrap.container.get("disc_lab_service")
         if svc is None:
             pytest.skip("disc_lab_service not registered (optional)")
+
+    def test_qtest_navigate_disc_lab(self, nav, root_window):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        from .conftest import find_qml_item
+        nav.navigate("disc_lab")
+        assert nav.currentRoute == "disc_lab"
+        page = find_qml_item(root_window, "discLabPage")
+        assert page is not None, "discLabPage not found"
+        page.forceActiveFocus()
+        QTest.keyClick(page, Qt.Key_Down)
+        QTest.qWait(50)
+        assert nav.currentRoute == "disc_lab"

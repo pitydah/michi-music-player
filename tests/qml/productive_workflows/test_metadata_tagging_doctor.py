@@ -50,3 +50,23 @@ class TestMetadataTaggingDoctor:
         QTest.keyClick(page, Qt.Key_Down)
         QTest.qWait(50)
         assert nav.currentRoute == "tagging"
+
+    def test_qtest_click_select_all(self, nav, root_window, all_bridges):
+        from PySide6.QtTest import QTest
+        from .conftest import find_qml_item, qtest_click_item
+        smart_bridge = all_bridges.get("smart_tagging")
+        assert smart_bridge is not None
+        nav.navigate("tagging")
+        assert nav.currentRoute == "tagging"
+        page = find_qml_item(root_window, "SmartTaggingPage")
+        assert page is not None, "SmartTaggingPage not found"
+        select_all_btn = None
+        for child in page.childItems():
+            text = child.property("text") if hasattr(child, 'property') else ""
+            if "Select" in str(text) or "All" in str(text):
+                select_all_btn = child
+                break
+        if select_all_btn is not None:
+            qtest_click_item(select_all_btn, root_window)
+            QTest.qWait(50)
+            assert nav.currentRoute == "tagging"

@@ -168,12 +168,13 @@ class TestLibraryE2E:
 
     def test_qtest_click_album_card(self, nav, library_bridge, root_window):
         from PySide6.QtTest import QTest
-        from .conftest import find_qml_item, qtest_click_item
+        from .conftest import find_qml_item, qtest_click_item, wait_for_property
         nav.navigate("library")
         assert nav.currentRoute == "library"
         album_card = find_qml_item(root_window, "albumCard")
         assert album_card is not None, "albumCard not found"
         qtest_click_item(album_card, root_window)
+        wait_for_property(album_card, "visible", True, timeout_ms=200)
         QTest.qWait(100)
         assert nav.currentRoute in ("library", "library.album_detail"), (
             f"Unexpected route: {nav.currentRoute}"

@@ -42,3 +42,4 @@ class TestRadio:
         qtest_click_item(stations[0], root_window)
         QTest.qWait(100)
         assert nav.currentRoute == "radio"
+        buffering = radio_page.property("_buffering") if hasattr(radio_page, 'property') else None

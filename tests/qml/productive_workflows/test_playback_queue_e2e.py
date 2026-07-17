@@ -85,7 +85,7 @@ class TestPlaybackQueueE2E:
         playback_bridge.setVolume(50)
 
     def test_qtest_click_play_pause(self, nav, playback_bridge, root_window):
-        from .conftest import find_qml_item, qtest_click_item, wait_for_condition
+        from .conftest import find_qml_item, qtest_click_item, wait_for_condition, wait_for_property
         nav.navigate("playback")
         assert nav.currentRoute == "playback"
         controls = find_qml_item(root_window, "nowPlayingControls")
@@ -107,6 +107,7 @@ class TestPlaybackQueueE2E:
         assert state_before != state_after, (
             f"Playback state should change: '{state_before}' -> '{state_after}'"
         )
+        wait_for_property(controls, "visible", True, timeout_ms=200)
 
     def test_qtest_click_volume_up(self, nav, playback_bridge, root_window):
         from PySide6.QtTest import QTest

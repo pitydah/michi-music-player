@@ -19,3 +19,16 @@ class TestLyrics:
     def test_lyrics_bridge_exists(self, bootstrap):
         lb = bootstrap._bridges.get("lyrics")
         assert lb is not None
+
+    def test_qtest_navigate_lyrics(self, nav, root_window):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        from .conftest import find_qml_item
+        nav.navigate("lyrics")
+        assert nav.currentRoute == "lyrics"
+        page = find_qml_item(root_window, "lyricsPage")
+        assert page is not None, "lyricsPage not found"
+        page.forceActiveFocus()
+        QTest.keyClick(page, Qt.Key_Down)
+        QTest.qWait(50)
+        assert nav.currentRoute == "lyrics"

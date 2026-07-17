@@ -39,3 +39,6 @@ class TestHomeWorkflow:
         assert route_after in ("home", "playback"), (
             f"Route after continue card click: '{route_after}'"
         )
+        has_playback = getattr(continue_card, '_hasPlayback', None) or continue_card.property("hasPlayback")
+        if has_playback:
+            QTest.qWait(50)
