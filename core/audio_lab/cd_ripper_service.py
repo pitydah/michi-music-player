@@ -1,257 +1,417 @@
+"""Audio-CD extraction service.
+
+Linux is the first productive backend and uses cdparanoia for secure PCM
+extraction followed by FFmpeg encoding. Other platforms remain explicitly
+unsupported until equivalent backends are implemented and tested.
 """
-Servicio de Ripeo de CD de Audio.
-Permite extraer pistas de CDs de audio a formatos digitales.
-"""
-import os
-import subprocess
-import tempfile
-from typing import List, Dict, Optional, Any
-from dataclasses import dataclass
-from pathlib import Path
+from __future__ import annotations
+
 import logging
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import threading
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class CDRomDrive:
     device: str
     model: str
     is_audio_capable: bool
+    backend: str = "unsupported"
 
-@dataclass
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
 class CDTrack:
     track_number: int
     title: str
     artist: str
-    duration: float  # seconds
+    duration: float
     start_sector: int
     end_sector: int
 
-@dataclass
+
+@dataclass(frozen=True)
 class CDInfo:
     album_title: str
     album_artist: str
     year: int
     genre: str
-    tracks: List[CDTrack]
+    tracks: list[CDTrack]
     disc_id: str
     total_tracks: int
+    metadata_source: str = "toc"
+
 
 class CDRipperService:
-    """Servicio para ripeo de CDs de audio."""
-    
-    def __init__(self):
-        self.supported_formats = ['flac', 'wav', 'mp3', 'opus', 'aac']
-        self.default_format = 'flac'
-        self.default_quality = 'lossless'
-        
-    def detect_drives(self) -> List[CDRomDrive]:
-        """Detecta unidades de CD/DVD disponibles en el sistema."""
-        drives = []
-        
-        # Linux: /dev/sr*, /dev/cdrom
-        if os.name == 'posix':
-            for device in ['/dev/sr0', '/dev/sr1', '/dev/cdrom']:
-                if os.path.exists(device):
-                    try:
-                        # Intentar obtener información del dispositivo
-                        result = subprocess.run(
-                            ['cdparanoia', '-V'], 
-                            capture_output=True, 
-                            text=True, 
-                            timeout=5
-                        )
-                        model = "Unknown Drive"
-                        if result.returncode == 0:
-                            # Parsear salida de cdparanoia para obtener modelo
-                            for line in result.stdout.split('\n'):
-                                if 'drive' in line.lower():
-                                    model = line.strip()
-                                    break
-                        
-                        drives.append(CDRomDrive(
-                            device=device,
-                            model=model,
-                            is_audio_capable=True
-                        ))
-                    except Exception as e:
-                        logger.warning(f"Error al verificar unidad {device}: {e}")
-                        
-        # Windows: letras de unidad
-        elif os.name == 'nt':
-            import string
-            for drive_letter in string.ascii_uppercase:
-                drive_path = f"{drive_letter}:"
-                try:
-                    # Verificar si es una unidad óptica
-                    result = subprocess.run(
-                        ['wmic', 'cdrom', 'get', 'drive'], 
-                        capture_output=True, 
-                        text=True
-                    )
-                    if drive_path in result.stdout:
-                        drives.append(CDRomDrive(
-                            device=drive_path,
-                            model=f"CD Drive ({drive_letter}:)",
-                            is_audio_capable=True
-                        ))
-                except Exception as e:
-                    continue
-                    
-        return drives
-    
-    def get_cd_info(self, device: str) -> Optional[CDInfo]:
-        """Obtiene información del CD insertado usando MusicBrainz."""
-        try:
-            # Usar cd-discid para obtener el Disc ID
-            result = subprocess.run(
-                ['cd-discid', device],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
-            
-            if result.returncode != 0:
-                logger.error(f"Error al leer Disc ID: {result.stderr}")
-                return None
-                
-            disc_id = result.stdout.strip().split()[0]
-            
-            # Aquí se integraría con MusicBrainz para obtener metadatos
-            # Por ahora, retornamos estructura básica
-            return CDInfo(
-                album_title="Unknown Album",
-                album_artist="Various Artists",
-                year=0,
-                genre="Unknown",
-                tracks=[],  # Se llenaría con información de MusicBrainz
-                disc_id=disc_id,
-                total_tracks=0
-            )
-        except Exception as e:
-            logger.error(f"Error al obtener información del CD: {e}")
-            return None
-    
-    def rip_track(
-        self, 
-        device: str, 
-        track_number: int, 
-        output_path: str,
-        format: str = 'flac',
-        quality: str = 'lossless'
-    ) -> Dict[str, Any]:
-        """Extrae una pista individual del CD."""
-        result = {
-            'success': False,
-            'error': None,
-            'output_file': output_path,
-            'log': []
+    SUPPORTED_FORMATS = ("flac", "wav", "mp3", "opus", "aac")
+
+    def __init__(self) -> None:
+        self.default_format = "flac"
+        self.default_quality = "lossless"
+        self._lock = threading.RLock()
+        self._active_process: subprocess.Popen[bytes] | None = None
+        self._cancel_requested = threading.Event()
+
+    @property
+    def supported_formats(self) -> list[str]:
+        return list(self.SUPPORTED_FORMATS)
+
+    def capability(self) -> dict[str, Any]:
+        platform_supported = sys.platform.startswith("linux")
+        missing = [tool for tool in ("cdparanoia", "cd-discid", "ffmpeg") if not shutil.which(tool)]
+        return {
+            "available": platform_supported and not missing,
+            "platform_supported": platform_supported,
+            "backend": "cdparanoia" if platform_supported else "unsupported",
+            "missing_tools": missing,
+            "formats": list(self.SUPPORTED_FORMATS),
         }
-        
+
+    def detect_drives(self) -> list[CDRomDrive]:
+        if not sys.platform.startswith("linux"):
+            return []
+        drives: list[CDRomDrive] = []
+        candidates = sorted(Path("/dev").glob("sr*"))
+        cdrom = Path("/dev/cdrom")
+        if cdrom.exists():
+            try:
+                resolved = cdrom.resolve()
+                if resolved not in candidates:
+                    candidates.append(resolved)
+            except OSError:
+                pass
+
+        for candidate in candidates:
+            model = candidate.name
+            if shutil.which("udevadm"):
+                try:
+                    result = subprocess.run(
+                        ["udevadm", "info", "--query=property", f"--name={candidate}"],
+                        capture_output=True,
+                        text=True,
+                        timeout=4,
+                        check=False,
+                    )
+                    properties = dict(
+                        line.split("=", 1)
+                        for line in result.stdout.splitlines()
+                        if "=" in line
+                    )
+                    model = (
+                        properties.get("ID_MODEL_FROM_DATABASE")
+                        or properties.get("ID_MODEL")
+                        or model
+                    ).replace("_", " ")
+                except (OSError, subprocess.TimeoutExpired, ValueError):
+                    pass
+            drives.append(
+                CDRomDrive(
+                    device=str(candidate),
+                    model=model,
+                    is_audio_capable=shutil.which("cdparanoia") is not None,
+                    backend="cdparanoia",
+                )
+            )
+        return drives
+
+    @staticmethod
+    def _parse_cddb_toc(output: str) -> CDInfo | None:
+        """Parse cd-discid's CDDB output into a truthful track list."""
+        fields = output.strip().split()
+        if len(fields) < 4:
+            return None
+        disc_id = fields[0]
         try:
-            # Determinar comando según formato
-            if format == 'flac':
-                cmd = [
-                    'ffmpeg', '-f', 'cdaudio', '-i', f'{device}:{track_number}',
-                    '-c:a', 'flac', '-compression_level', '8',
-                    '-y', output_path
-                ]
-            elif format == 'wav':
-                cmd = [
-                    'ffmpeg', '-f', 'cdaudio', '-i', f'{device}:{track_number}',
-                    '-c:a', 'pcm_s16le',
-                    '-y', output_path
-                ]
-            elif format == 'mp3':
-                cmd = [
-                    'ffmpeg', '-f', 'cdaudio', '-i', f'{device}:{track_number}',
-                    '-c:a', 'libmp3lame', '-b:a', '320k',
-                    '-y', output_path
-                ]
-            else:
-                result['error'] = f"Formato {format} no soportado"
-                return result
-            
-            logger.info(f"Ejecutando ripeo: {' '.join(cmd)}")
-            process = subprocess.run(
-                cmd,
+            track_count = int(fields[1])
+            offsets = [int(value) for value in fields[2 : 2 + track_count]]
+            leadout_seconds = int(fields[2 + track_count])
+        except (ValueError, IndexError):
+            return None
+        if track_count <= 0 or len(offsets) != track_count:
+            return None
+
+        leadout_sector = leadout_seconds * 75
+        tracks: list[CDTrack] = []
+        for index, start_sector in enumerate(offsets):
+            end_sector = offsets[index + 1] if index + 1 < len(offsets) else leadout_sector
+            duration = max(0.0, (end_sector - start_sector) / 75.0)
+            tracks.append(
+                CDTrack(
+                    track_number=index + 1,
+                    title=f"Track {index + 1:02d}",
+                    artist="Unknown Artist",
+                    duration=duration,
+                    start_sector=start_sector,
+                    end_sector=end_sector,
+                )
+            )
+        return CDInfo(
+            album_title="Unknown Album",
+            album_artist="Unknown Artist",
+            year=0,
+            genre="Unknown",
+            tracks=tracks,
+            disc_id=disc_id,
+            total_tracks=track_count,
+            metadata_source="cddb_toc",
+        )
+
+    def get_cd_info(self, device: str) -> CDInfo | None:
+        capability = self.capability()
+        if not capability["platform_supported"] or "cd-discid" in capability["missing_tools"]:
+            return None
+        try:
+            result = subprocess.run(
+                ["cd-discid", device],
                 capture_output=True,
                 text=True,
-                timeout=300  # 5 minutos máximo por pista
+                timeout=12,
+                check=False,
             )
-            
-            if process.returncode == 0:
-                result['success'] = True
-                result['log'].append(f"Pista {track_number} extraída exitosamente")
-            else:
-                result['error'] = process.stderr
-                result['log'].append(f"Error en ripeo: {process.stderr}")
-                
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            logger.warning("Could not read CD TOC from %s: %s", device, exc)
+            return None
+        if result.returncode != 0:
+            logger.warning("cd-discid failed for %s: %s", device, result.stderr.strip())
+            return None
+        return self._parse_cddb_toc(result.stdout)
+
+    @staticmethod
+    def _safe_name(value: str) -> str:
+        cleaned = re.sub(r"[\\/:*?\"<>|\x00-\x1f]", "_", value).strip(" .")
+        return cleaned[:140] or "Unknown"
+
+    @staticmethod
+    def _encode_args(fmt: str, quality: str) -> list[str]:
+        if fmt == "wav":
+            return ["-c:a", "pcm_s16le"]
+        if fmt == "flac":
+            level = "8" if quality in ("lossless", "high") else "5"
+            return ["-c:a", "flac", "-compression_level", level]
+        if fmt == "mp3":
+            bitrate = "320k" if quality in ("lossless", "high") else "192k"
+            return ["-c:a", "libmp3lame", "-b:a", bitrate]
+        if fmt == "opus":
+            bitrate = "256k" if quality in ("lossless", "high") else "160k"
+            return ["-c:a", "libopus", "-b:a", bitrate]
+        if fmt == "aac":
+            bitrate = "256k" if quality in ("lossless", "high") else "192k"
+            return ["-c:a", "aac", "-b:a", bitrate]
+        raise ValueError(f"UNSUPPORTED_FORMAT:{fmt}")
+
+    def _run_process(self, command: list[str], timeout: float) -> tuple[bool, str]:
+        with self._lock:
+            if self._active_process and self._active_process.poll() is None:
+                return False, "CD_RIP_ALREADY_ACTIVE"
+            self._cancel_requested.clear()
+            try:
+                process = subprocess.Popen(
+                    command,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
+                )
+            except OSError as exc:
+                return False, str(exc)
+            self._active_process = process
+
+        try:
+            _, stderr = process.communicate(timeout=timeout)
         except subprocess.TimeoutExpired:
-            result['error'] = "Tiempo de espera agotado durante el ripeo"
-        except Exception as e:
-            result['error'] = str(e)
-            logger.error(f"Error en ripeo de pista {track_number}: {e}")
-            
-        return result
-    
+            process.kill()
+            _, stderr = process.communicate()
+            return False, "CD_RIP_TIMEOUT"
+        finally:
+            with self._lock:
+                if self._active_process is process:
+                    self._active_process = None
+
+        error = stderr.decode("utf-8", errors="replace").strip() if stderr else ""
+        if self._cancel_requested.is_set():
+            return False, "CD_RIP_CANCELLED"
+        return process.returncode == 0, error
+
+    def rip_track(
+        self,
+        device: str,
+        track_number: int,
+        output_path: str,
+        format: str = "flac",
+        quality: str = "lossless",
+    ) -> dict[str, Any]:
+        capability = self.capability()
+        if not capability["available"]:
+            return {
+                "success": False,
+                "error": "CD_RIPPING_UNAVAILABLE",
+                "capability": capability,
+                "output_file": output_path,
+                "log": [],
+            }
+        fmt = format.casefold().strip()
+        if fmt not in self.SUPPORTED_FORMATS:
+            return {"success": False, "error": f"UNSUPPORTED_FORMAT:{fmt}", "log": []}
+        if track_number < 1:
+            return {"success": False, "error": "INVALID_TRACK_NUMBER", "log": []}
+
+        target = Path(output_path).expanduser()
+        if target.suffix.casefold() != f".{fmt}":
+            return {"success": False, "error": "OUTPUT_EXTENSION_MISMATCH", "log": []}
+        if target.exists():
+            return {"success": False, "error": "OUTPUT_EXISTS", "log": []}
+        target.parent.mkdir(parents=True, exist_ok=True)
+
+        with tempfile.TemporaryDirectory(prefix="michi-cd-") as temp_dir:
+            pcm_path = Path(temp_dir) / f"track-{track_number:02d}.wav"
+            extract_command = [
+                "cdparanoia",
+                "-d",
+                device,
+                "-w",
+                str(track_number),
+                str(pcm_path),
+            ]
+            ok, error = self._run_process(extract_command, timeout=900)
+            if not ok:
+                return {
+                    "success": False,
+                    "error": error or "CD_EXTRACTION_FAILED",
+                    "output_file": str(target),
+                    "log": [],
+                }
+
+            if fmt == "wav":
+                shutil.move(str(pcm_path), target)
+            else:
+                encode_command = [
+                    "ffmpeg",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-i",
+                    str(pcm_path),
+                    *self._encode_args(fmt, quality),
+                    "-n",
+                    str(target),
+                ]
+                ok, error = self._run_process(encode_command, timeout=900)
+                if not ok:
+                    return {
+                        "success": False,
+                        "error": error or "CD_ENCODING_FAILED",
+                        "output_file": str(target),
+                        "log": [],
+                    }
+        return {
+            "success": True,
+            "error": "",
+            "output_file": str(target),
+            "log": [f"Track {track_number} extracted with cdparanoia"],
+        }
+
     def rip_full_cd(
         self,
         device: str,
         output_dir: str,
-        format: str = 'flac',
-        quality: str = 'lossless',
-        include_log: bool = True
-    ) -> Dict[str, Any]:
-        """Extrae todo el CD a una carpeta."""
-        result = {
-            'success': False,
-            'tracks_completed': 0,
-            'tracks_failed': 0,
-            'errors': [],
-            'log_file': None
-        }
-        
-        # Obtener información del CD
-        cd_info = self.get_cd_info(device)
-        if not cd_info:
-            result['errors'].append("No se pudo obtener información del CD")
-            return result
-            
-        # Crear directorio de salida
-        album_dir = os.path.join(output_dir, f"{cd_info.album_artist} - {cd_info.album_title}")
-        os.makedirs(album_dir, exist_ok=True)
-        
-        log_entries = []
-        
-        # Extraer cada pista
-        for i in range(1, cd_info.total_tracks + 1):
-            filename = f"{i:02d}. {cd_info.tracks[i-1].title if i <= len(cd_info.tracks) else f'Track {i}'}.{format}"
-            output_path = os.path.join(album_dir, filename)
-            
-            track_result = self.rip_track(device, i, output_path, format, quality)
-            
-            if track_result['success']:
-                result['tracks_completed'] += 1
-                log_entries.extend(track_result['log'])
+        format: str = "flac",
+        quality: str = "lossless",
+        include_log: bool = True,
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> dict[str, Any]:
+        info = self.get_cd_info(device)
+        if not info or info.total_tracks <= 0 or not info.tracks:
+            return {
+                "success": False,
+                "tracks_completed": 0,
+                "tracks_failed": 0,
+                "errors": ["CD_TOC_UNAVAILABLE_OR_EMPTY"],
+                "log_file": None,
+            }
+
+        fmt = format.casefold().strip()
+        if fmt not in self.SUPPORTED_FORMATS:
+            return {
+                "success": False,
+                "tracks_completed": 0,
+                "tracks_failed": info.total_tracks,
+                "errors": [f"UNSUPPORTED_FORMAT:{fmt}"],
+                "log_file": None,
+            }
+
+        album_dir = Path(output_dir).expanduser() / (
+            f"{self._safe_name(info.album_artist)} - {self._safe_name(info.album_title)}"
+        )
+        album_dir.mkdir(parents=True, exist_ok=True)
+        completed = 0
+        failed = 0
+        errors: list[str] = []
+        log_entries: list[str] = []
+
+        for track in info.tracks:
+            if self._cancel_requested.is_set():
+                errors.append("CD_RIP_CANCELLED")
+                break
+            filename = f"{track.track_number:02d}. {self._safe_name(track.title)}.{fmt}"
+            track_result = self.rip_track(
+                device,
+                track.track_number,
+                str(album_dir / filename),
+                fmt,
+                quality,
+            )
+            if track_result["success"]:
+                completed += 1
+                log_entries.extend(track_result.get("log", []))
             else:
-                result['tracks_failed'] += 1
-                result['errors'].append(f"Pista {i}: {track_result['error']}")
-                
-        # Generar log si se solicita
-        if include_log and log_entries:
-            log_path = os.path.join(album_dir, "ripping_log.txt")
-            with open(log_path, 'w') as f:
-                f.write(f"CD Rip Log - {cd_info.album_title}\n")
-                f.write(f"Disc ID: {cd_info.disc_id}\n")
-                f.write("="*50 + "\n")
+                failed += 1
+                errors.append(f"Track {track.track_number}: {track_result.get('error', 'UNKNOWN_ERROR')}")
+            if progress_callback:
+                progress_callback(completed + failed, info.total_tracks)
+
+        log_file: str | None = None
+        if include_log:
+            log_path = album_dir / "ripping_log.txt"
+            with log_path.open("w", encoding="utf-8") as handle:
+                handle.write(f"Michi CD rip log\nDisc ID: {info.disc_id}\n")
+                handle.write(f"Tracks: {info.total_tracks}\nMetadata source: {info.metadata_source}\n")
                 for entry in log_entries:
-                    f.write(entry + "\n")
-                if result['errors']:
-                    f.write("\nErrors:\n")
-                    for error in result['errors']:
-                        f.write(f"- {error}\n")
-            result['log_file'] = log_path
-            
-        result['success'] = result['tracks_failed'] == 0
-        return result
+                    handle.write(f"{entry}\n")
+                for error in errors:
+                    handle.write(f"ERROR: {error}\n")
+            log_file = str(log_path)
+
+        return {
+            "success": completed == info.total_tracks and failed == 0 and not errors,
+            "tracks_completed": completed,
+            "tracks_failed": failed,
+            "errors": errors,
+            "log_file": log_file,
+            "output_dir": str(album_dir),
+        }
+
+    def cancel(self) -> dict[str, Any]:
+        self._cancel_requested.set()
+        with self._lock:
+            process = self._active_process
+            if not process or process.poll() is not None:
+                return {"success": False, "error": "NO_ACTIVE_CD_RIP"}
+            process.terminate()
+        return {"success": True}
+
+    def shutdown(self) -> None:
+        with self._lock:
+            process = self._active_process
+            if process and process.poll() is None:
+                self._cancel_requested.set()
+                process.terminate()
