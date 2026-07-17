@@ -411,10 +411,12 @@ class LibraryQueryService:
         }
 
     def _album_row_to_dict(self, r) -> dict:
+        year = r[3] or 0
+        decade = (year // 10 * 10) if year else 0
         return {
             "album_key": r[0] or "", "title": r[1] or "", "artist": r[2] or "",
-            "year": r[3] or 0, "track_count": r[4] or 0, "duration": r[5] or 0,
-            "genre": r[6] or "", "cover_key": r[0] or "",
+            "year": year, "track_count": r[4] or 0, "duration": r[5] or 0,
+            "genre": r[6] or "", "cover_key": r[0] or "", "decade": decade,
         }
 
     def _artist_row_to_dict(self, r) -> dict:
