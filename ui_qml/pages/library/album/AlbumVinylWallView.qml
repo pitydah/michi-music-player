@@ -51,7 +51,7 @@ Item {
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        anchors.top: parent.top; anchors.topMargin: 30
+                        anchors.top: parent.top; anchors.topMargin: MichiTheme.spacing.xl
                         text: (albumKey || "?").toString().substring(0, 2).toUpperCase()
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: 16
@@ -66,7 +66,7 @@ Item {
                 }
 
                 Text {
-                    anchors.top: parent.bottom; anchors.topMargin: 4
+                    anchors.top: parent.bottom; anchors.topMargin: MichiTheme.spacing.xs
                     width: parent.width; horizontalAlignment: Text.AlignHCenter
                     text: title || ""
                     color: MichiTheme.colors.textPrimary

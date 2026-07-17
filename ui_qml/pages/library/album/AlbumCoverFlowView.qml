@@ -55,7 +55,7 @@ Item {
             }
 
             Text {
-                anchors.top: parent.bottom; anchors.topMargin: 8
+                anchors.top: parent.bottom; anchors.topMargin: MichiTheme.spacing.sm
                 width: parent.width; horizontalAlignment: Text.AlignHCenter
                 text: title || ""
                 color: PathView.isCurrentItem ? MichiTheme.colors.textPrimary : MichiTheme.colors.textMuted

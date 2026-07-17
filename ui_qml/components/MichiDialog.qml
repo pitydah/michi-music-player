@@ -38,13 +38,7 @@ QQC2.Popup {
     onOpened: {
         _savedFocus = root.parent ? root.parent.Window.activeFocusItem : null
         root.forceActiveFocus()
-        for (var i = 0; i < contentArea.children.length; i++) {
-            var child = contentArea.children[i]
-            if (child.activeFocusOnTab || child.focusPolicy !== Qt.NoFocus) {
-                child.forceActiveFocus()
-                break
-            }
-        }
+        focusScope.focusFirst()
     }
 
     onClosed: {
@@ -76,11 +70,26 @@ QQC2.Popup {
         implicitWidth: 400
         implicitHeight: contentColumn.implicitHeight
 
-        Item {
-            id: contentScale
+        FocusScope {
+            id: focusScope
             anchors.fill: parent
 
-            ColumnLayout {
+            property Item firstFocusable: contentArea.children.length > 0 ? contentArea.children[0] : buttonsArea
+            property Item lastFocusable: buttonsArea
+
+            function focusFirst() {
+                firstFocusable.forceActiveFocus(Qt.TabFocusReason)
+            }
+
+            function focusLast() {
+                lastFocusable.forceActiveFocus(Qt.BacktabFocusReason)
+            }
+
+            Item {
+                id: contentScale
+                anchors.fill: parent
+
+                ColumnLayout {
                 id: contentColumn
                 anchors.fill: parent
                 spacing: MichiTheme.spacing.md
@@ -116,6 +125,7 @@ QQC2.Popup {
                     implicitHeight: 40
                 }
             }
+        }
         }
     }
 

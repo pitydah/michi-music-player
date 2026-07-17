@@ -43,7 +43,7 @@ Rectangle {
         }
 
         Text {
-            anchors.leftMargin: 2
+            anchors.leftMargin: MichiTheme.spacing.xxs
             text: root.artistName
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.bodySize
@@ -54,7 +54,7 @@ Rectangle {
         }
 
         Text {
-            anchors.leftMargin: 2
+            anchors.leftMargin: MichiTheme.spacing.xxs
             text: root.albumCount + " álbumes · " + root.trackCount + " canciones"
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.captionSize

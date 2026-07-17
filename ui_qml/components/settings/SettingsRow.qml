@@ -395,7 +395,7 @@ Rectangle {
             onTextEdited: root.scheduleSave(text)
             RowLayout {
                 anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                anchors.rightMargin: 4
+                anchors.rightMargin: MichiTheme.spacing.xs
                 CheckBox {
                 Accessible.role: Accessible.EditableText
 

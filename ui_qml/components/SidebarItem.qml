@@ -48,7 +48,7 @@ Item {
 
         Row {
             anchors.left: parent.left
-            anchors.leftMargin: 16
+            anchors.leftMargin: MichiTheme.spacing.lg
             anchors.verticalCenter: parent.verticalCenter
             spacing: 12
 

@@ -36,7 +36,7 @@ Rectangle {
         }
 
         Text {
-            anchors.leftMargin: 2
+            anchors.leftMargin: MichiTheme.spacing.xxs
             text: root.albumTitle
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.bodySize
@@ -47,7 +47,7 @@ Rectangle {
         }
 
         Text {
-            anchors.leftMargin: 2
+            anchors.leftMargin: MichiTheme.spacing.xxs
             text: root.albumArtist + (root.albumYear > 0 ? " · " + root.albumYear : "")
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.metaSize
@@ -57,7 +57,7 @@ Rectangle {
         }
 
         Text {
-            anchors.leftMargin: 2
+            anchors.leftMargin: MichiTheme.spacing.xxs
             text: root.trackCount > 0 ? root.trackCount + " canciones" : ""
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.captionSize

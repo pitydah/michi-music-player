@@ -127,7 +127,7 @@ Item {
         id: notificationCenter
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.topMargin: 56
+        anchors.topMargin: MichiTheme.headerHeight
         anchors.rightMargin: MichiTheme.spacing.md
         width: 360
         height: Math.min(400, parent.height * 0.5)

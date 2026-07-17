@@ -101,61 +101,62 @@ Item {
         border.color: MichiTheme.colors.borderCard
         z: 1000
 
-        Column {
+        ListView {
+            id: listView
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.xxs
-            spacing: MichiTheme.spacing.xxs
+            model: root.model
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            currentIndex: root.currentIndex
+            highlightMoveDuration: 0
 
-            Repeater {
-                model: root.model
+            delegate: Item {
+                width: parent.width
+                height: MichiTheme.rowHeightCompact
+                property bool isSelected: index === root.currentIndex
+                property bool isHovered: delegateMa.containsMouse
 
-                Item {
-                    width: parent.width
-                    height: MichiTheme.rowHeightCompact
-                    property bool isSelected: index === root.currentIndex
-                    property bool isHovered: itemMa.containsMouse
+                Rectangle {
+                    anchors.fill: parent
+                    radius: MichiTheme.radius.xs
+                    color: isSelected ? MichiTheme.colors.accentSelection
+                         : isHovered ? MichiTheme.colors.surfaceHover : "transparent"
+                }
 
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: MichiTheme.radius.xs
-                        color: isSelected ? MichiTheme.colors.accentSelection
-                             : isHovered ? MichiTheme.colors.surfaceHover : "transparent"
-                    }
+                Text {
+                    anchors.left: parent.left
+                    anchors.leftMargin: MichiTheme.spacing.md
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: typeof modelData === "object" ? (modelData.text || modelData.name || "") : modelData
+                    color: root.currentIndex === index ? MichiTheme.colors.accentBlue : MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    font.weight: root.currentIndex === index ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
+                    elide: Text.ElideRight
+                }
 
-                    Text {
-                        anchors.left: parent.left
-                        anchors.leftMargin: MichiTheme.spacing.md
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: typeof modelData === "object" ? (modelData.text || modelData.name || "") : modelData
-                        color: root.currentIndex === index ? MichiTheme.colors.accentBlue : MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        font.weight: root.currentIndex === index ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
-                        elide: Text.ElideRight
-                    }
-
-                    MouseArea {
-                        id: itemMa
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            root.currentIndex = index
-                            root.popupOpen = false
-                            root.activated(index)
-                        }
-                    }
-
-                    Keys.onReturnPressed: {
+                MouseArea {
+                    id: delegateMa
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
                         root.currentIndex = index
                         root.popupOpen = false
                         root.activated(index)
                     }
+                }
 
-                    Keys.onEnterPressed: {
-                        root.currentIndex = index
-                        root.popupOpen = false
-                        root.activated(index)
-                    }
+                Keys.onReturnPressed: {
+                    root.currentIndex = index
+                    root.popupOpen = false
+                    root.activated(index)
+                }
+
+                Keys.onEnterPressed: {
+                    root.currentIndex = index
+                    root.popupOpen = false
+                    root.activated(index)
                 }
             }
         }

@@ -15,7 +15,7 @@ Item {
         id: toast
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: 80
+        anchors.bottomMargin: MichiTheme.spacing.xxl
         width: Math.min(400, parent.width * 0.8)
         height: 48
         radius: MichiTheme.radius.sm

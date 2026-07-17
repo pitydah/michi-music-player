@@ -70,7 +70,7 @@ Item {
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.top: parent.top
-                        anchors.topMargin: 2
+                        anchors.topMargin: MichiTheme.spacing.xxs
                         text: root.gain.toFixed(1)
                         color: root.gain >= 0 ? MichiTheme.colors.accentBlue : MichiTheme.colors.error
                         font.pixelSize: MichiTheme.typography.metaSize
