@@ -88,7 +88,7 @@ Item {
 
                     Text {
                         text: "Cerrar"
-                        color: MichiTheme.colors.onError
+                        color: MichiTheme.colors.error
                         font.pixelSize: MichiTheme.typography.metaSize
                         MouseArea {
                             anchors.fill: parent

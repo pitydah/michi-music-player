@@ -35,50 +35,14 @@ Item {
 
         ScrollBar.vertical: ScrollBar { width: 8; policy: ScrollBar.AsNeeded }
 
-        delegate: Rectangle {
-            width: parent.width; height: 48; radius: MichiTheme.radius.xs
-            color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
+        delegate: MichiAlbumRow {
+            width: parent.width
+            title: model.title || ""
+            artist: model.artist || ""
+            year: model.year || 0
+            trackCount: model.trackCount || 0
 
-            RowLayout {
-                anchors.fill: parent
-                anchors.margins: MichiTheme.spacing.sm
-                spacing: MichiTheme.spacing.md
-
-                CoverImage {
-                    width: 40; height: 40; coverRadius: 4
-                    coverKey: model.albumKey || ""
-                }
-
-                Column {
-                    Layout.fillWidth: true; Layout.alignment: Qt.AlignVCenter
-                    Text {
-                        text: model.title || ""
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        elide: Text.ElideRight; width: parent.width
-                    }
-                    Text {
-                        text: (model.artist || "") + (model.year > 0 ? " · " + model.year : "") + (model.trackCount > 0 ? " · " + model.trackCount + " temas" : "")
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        elide: Text.ElideRight; width: parent.width
-                    }
-                }
-
-                Text {
-                    text: model.duration ? formatDuration(model.duration) : ""
-                    color: MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.metaSize
-                }
-            }
-
-            MouseArea {
-                id: mouseArea
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.albumClicked(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
-            }
+            onClicked: root.albumClicked(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
         }
     }
 

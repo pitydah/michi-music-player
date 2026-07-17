@@ -129,11 +129,50 @@ class ActionRegistry(QObject):
             "album_play": ("playback_bridge", "playAlbum"),
             "album_shuffle": ("playback_bridge", "shuffleAlbum"),
             "album_queue": ("queue_bridge", "addAlbum"),
+            "album_favorite": ("library_bridge", "toggleFavoriteAlbum"),
+            "album_play_next": ("queue_bridge", "playNext"),
+            "album_add_to_playlist": ("playlists_bridge", "addAlbum"),
         }
         for aid, (svc, method) in album_map.items():
             action = self._actions.get(aid)
             if action:
                 action.handler = self._make_service_handler(svc, method)
+                action.service_name = svc
+
+        artist_map = {
+            "artist_play": ("playback_bridge", "playArtist"),
+            "artist_shuffle": ("playback_bridge", "shuffleArtist"),
+            "artist_queue": ("queue_bridge", "addArtist"),
+            "artist_radio": ("playback_bridge", "radioFromArtist"),
+            "artist_add_to_playlist": ("playlists_bridge", "addArtist"),
+        }
+        for aid, (svc, method) in artist_map.items():
+            action = self._actions.get(aid)
+            if action:
+                action.handler = self._make_service_handler(svc, method)
+                action.service_name = svc
+
+        folder_map = {
+            "folder_play": ("playback_bridge", "playFolder"),
+            "folder_queue": ("queue_bridge", "addFolder"),
+        }
+        for aid, (svc, method) in folder_map.items():
+            action = self._actions.get(aid)
+            if action:
+                action.handler = self._make_service_handler(svc, method)
+                action.service_name = svc
+
+        system_map = {
+            "app_quit": ("app_bridge", "quit"),
+            "diagnostics_show": ("navigation_bridge", "navigate"),
+        }
+        for aid, (svc, method) in system_map.items():
+            action = self._actions.get(aid)
+            if action:
+                if aid == "diagnostics_show":
+                    action.handler = self._make_nav_handler("diagnostics")
+                else:
+                    action.handler = self._make_service_handler(svc, method)
                 action.service_name = svc
 
     def _init_defaults(self):

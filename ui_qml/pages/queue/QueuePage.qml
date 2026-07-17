@@ -53,7 +53,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: "Cola vacía"; subtitle: "Agrega canciones para empezar a reproducir" }
+        sourceComponent: MichiBanner { message: "Cola vacía — agrega canciones para empezar a reproducir"; kind: "info"; dismissible: false }
     }
 
     RowLayout {

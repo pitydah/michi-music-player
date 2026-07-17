@@ -65,6 +65,18 @@ class TestClassify:
 
 
 class TestRecommender:
+    @staticmethod
+    def _reset_provider():
+        from michi_ai.recommender import set_library_provider
+        set_library_provider(None)
+
+    def setup_method(self):
+        self._reset_provider()
+
+    @classmethod
+    def setup_class(cls):
+        cls._reset_provider()
+
     def test_recommend_by_genre(self):
         results = recommend(genre="jazz")
         assert len(results) >= 2

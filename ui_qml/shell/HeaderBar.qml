@@ -140,6 +140,13 @@ Item {
             }
 
             MichiIconButton {
+                objectName: "headerThemeToggle"
+                tooltipText: MichiTheme.darkMode ? "Modo claro" : "Modo oscuro"
+                Accessible.name: tooltipText
+                onClicked: MichiTheme.setDarkMode(!MichiTheme.darkMode)
+            }
+
+            MichiIconButton {
                 objectName: "headerMaximizeButton"
                 tooltipText: root.mainWindow && root.mainWindow.visibility === Window.Maximized ? "Restaurar" : "Maximizar"
                 Accessible.name: tooltipText

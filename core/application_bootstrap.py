@@ -853,6 +853,19 @@ class ApplicationBootstrap:
             )
             self.container.register("michi_ai_service", comp.core_service,
                                     priority=ServicePriority.CAPABILITY_GATED)
+            from michi_ai.recommender import set_library_provider
+            db = self.container.get("database")
+            if db:
+                def _provider():
+                    try:
+                        rows = db.execute("SELECT artist, album, title, genre FROM media WHERE kind='audio' LIMIT 1000").fetchall()
+                        return [{"artist": r[0] or "", "album": r[1] or "", "title": r[2] or "", "genre": r[3] or ""} for r in rows]
+                    except Exception:
+                        return []
+                set_library_provider(_provider)
+                logger.info("Michi AI library provider connected to real database")
+            else:
+                logger.warning("No database available for Michi AI library provider")
         except Exception as e:
             logger.error("Michi AI composition failed: %s", e, exc_info=True)
 

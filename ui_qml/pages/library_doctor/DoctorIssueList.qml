@@ -70,7 +70,7 @@ Item {
                 height: 48
                 radius: MichiTheme.radius.sm
                 color: modelData.selected
-                       ? MichiTheme.colors.surfaceSelected
+                       ? MichiTheme.colors.accentSelection
                        : MichiTheme.colors.surfaceCard
                 border.color: modelData.selected
                               ? MichiTheme.colors.accentBlue
