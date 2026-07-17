@@ -5,7 +5,7 @@ import "../../theme"
 TextField {
     Accessible.role: Accessible.EditableText
 
-    Accessible.name: "Campo de texto"
+    Accessible.name: "Buscar en biblioteca"
 
     activeFocusOnTab: true
 

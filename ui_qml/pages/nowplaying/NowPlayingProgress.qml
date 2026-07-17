@@ -6,7 +6,7 @@ import "../../components"
 Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Now Playing Progress"
-    objectName: "nowPlayingProgress"
+    objectName: "npProgress"
     focus: true
     property var ps: null
 

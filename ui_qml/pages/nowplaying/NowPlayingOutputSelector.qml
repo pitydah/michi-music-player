@@ -6,7 +6,7 @@ import "../../theme"
 Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Now Playing Output Selector"
-    objectName: "nowPlayingOutputSelector"
+    objectName: "npOutputSelector"
     focus: true
     property var ps: null
 

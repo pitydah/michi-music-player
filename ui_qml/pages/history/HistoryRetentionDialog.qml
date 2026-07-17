@@ -63,11 +63,8 @@ Dialog {
             }
             ComboBox {
                 Accessible.role: Accessible.ComboBox
-
-                Accessible.name: "ComboBox"
-
+                Accessible.name: "Período de retención"
                 activeFocusOnTab: true
-
                 focusPolicy: Qt.StrongFocus
                 id: daysCombo
                 Layout.preferredWidth: 140
@@ -98,12 +95,6 @@ Dialog {
             Text {
                 text: "Máximo de entradas:"
                 color: MichiTheme.colors.textPrimary
-                Accessible.role: Accessible.EditableText
-
-                Accessible.name: "SpinBox"
-
-                activeFocusOnTab: true
-
                 font.pixelSize: MichiTheme.typography.bodySize
             }
             SpinBox {
@@ -120,14 +111,6 @@ Dialog {
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
                 anchors.verticalCenter: parent.verticalCenter
-                Accessible.role: Accessible.CheckBox
-
-                Accessible.name: "CheckBox"
-
-                Accessible.checked: root.checked
-
-                activeFocusOnTab: true
-
             }
         }
 

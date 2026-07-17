@@ -7,7 +7,7 @@ import "../../components/foundations"
 import "."
 
 Item {
-    objectName: "homePage"
+    objectName: "homePage_control"
     id: root
     focus: true
 
@@ -46,7 +46,7 @@ Item {
     Flickable {
         anchors.fill: parent
         anchors.margins: responsive.pageMargin
-        contentHeight: column.height + MichiTheme.spacing.xxl
+        contentHeight: column.height + MichiTheme.spacing.xl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         activeFocusOnTab: true
@@ -54,7 +54,7 @@ Item {
         Column {
             id: column
             width: parent.width
-            spacing: MichiTheme.spacing.lg
+            spacing: MichiTheme.spacing.md
 
             HomeHero {
             }
@@ -83,8 +83,8 @@ Item {
                 activeFocusOnTab: true
                 KeyNavigation.tab: cardGrid
                 KeyNavigation.backtab: column
-                Keys.onReturnPressed: activate()
-                Keys.onSpacePressed: activate()
+                Keys.onReturnPressed: onActivate()
+                Keys.onSpacePressed: onActivate()
                 onActivate: {
                     if (root.hb && root.hb.hasPlayback && typeof navigationBridge !== "undefined")
                         navigationBridge.navigate("playback")
@@ -218,7 +218,7 @@ Item {
                     CoverImage {
                         width: 40
                         height: 40
-                        coverRadius: MichiTheme.radiusSm
+                        coverRadius: MichiTheme.radius.sm
                         coverKey: root.hb && root.hb.hasPlayback ? "NOWPLAYING" : ""
                         visible: root.hb && root.hb.hasPlayback
                     }
@@ -256,10 +256,6 @@ Item {
                         }
                         kind: root.hb && root.hb.hasPlayback ? "active" : "disconnected"
                     }
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
 
                     MichiButton {
                         text: "Reanudar"

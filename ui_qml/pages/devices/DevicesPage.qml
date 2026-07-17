@@ -6,7 +6,7 @@ import "../../components"
 import "."
 
 Item {
-    objectName: "devicesPage"
+    objectName: "devicesPage_control"
     id: root
     focus: true
 
@@ -37,8 +37,8 @@ Item {
         Flickable {
             id: flickable
             anchors.fill: parent
-            anchors.margins: MichiTheme.spacing.xl
-            contentHeight: column.height + MichiTheme.spacing.xxl
+            anchors.margins: MichiTheme.spacing.md
+            contentHeight: column.height + MichiTheme.spacing.xl
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             activeFocusOnTab: true
@@ -46,7 +46,7 @@ Item {
             Column {
                 id: column
                 width: parent.width
-                spacing: MichiTheme.spacing.lg
+                spacing: MichiTheme.spacing.md
 
                 Text {
                     text: "Dispositivos y sincronización"

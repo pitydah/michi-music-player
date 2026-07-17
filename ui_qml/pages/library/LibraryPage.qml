@@ -7,7 +7,7 @@ import "../../components"
 import "../../materials"
 
 Item {
-    objectName: "libraryPage"
+    objectName: "libraryPage_control"
     id: root
     focus: true
 
@@ -107,7 +107,7 @@ Item {
     }
 
     Column {
-        anchors.fill: parent; spacing: MichiTheme.spacing.xs
+        anchors.fill: parent; spacing: MichiTheme.spacing.xxs
 
         LibraryNavigationBar {
             id: navBar; width: parent.width
@@ -269,17 +269,10 @@ Item {
         }
     }
 
-    Loader {
+    LoadingState {
         anchors.centerIn: parent
-        active: libraryState === LibraryPage.INITIALIZING || libraryState === LibraryPage.LOADING || libraryState === LibraryPage.SCANNING
-        sourceComponent: Item {
-            id: loadingContainer
-            width: 120; height: 120
-            BusyIndicator {
-                anchors.centerIn: parent
-                running: true
-            }
-        }
+        visible: libraryState === LibraryPage.INITIALIZING || libraryState === LibraryPage.LOADING || libraryState === LibraryPage.SCANNING
+        title: "Cargando biblioteca"
     }
 
     Connections {

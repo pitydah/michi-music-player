@@ -6,7 +6,7 @@ import "../../theme"
 Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Now Playing Lyrics Pane"
-    objectName: "nowPlayingLyricsPane"
+    objectName: "npLyricsPane"
     focus: true
     property var ps: null
 

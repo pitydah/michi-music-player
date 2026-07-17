@@ -132,12 +132,9 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
             }
-                Accessible.role: Accessible.EditableText
-
-                Accessible.name: "Campo de texto"
-
             TextField {
                 focusPolicy: Qt.StrongFocus
+                Accessible.name: "Nombre de la lista inteligente"
                 id: nameInput
                 width: parent.width * 0.5
                 text: root.playlistName
@@ -150,7 +147,6 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
             }
-                    Accessible.role: Accessible.Button
 
             Row {
                 spacing: MichiTheme.spacing.sm
@@ -202,12 +198,6 @@ Item {
                                 text: "Grupo " + (index + 1)
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
-                                Accessible.role: Accessible.ComboBox
-
-                                Accessible.name: "ComboBox"
-
-                                activeFocusOnTab: true
-
                                 font.weight: MichiTheme.typography.weightMedium
                             }
                             Item { Layout.fillWidth: true }
@@ -233,12 +223,6 @@ Item {
                                 variant: "ghost"
                                 onClicked: root.removeRuleGroup(index)
                             }
-                                    Accessible.role: Accessible.ComboBox
-
-                                    Accessible.name: "ComboBox"
-
-                                    activeFocusOnTab: true
-
                         }
 
                         Repeater {
@@ -248,11 +232,11 @@ Item {
                                 width: parent.width
                                 spacing: MichiTheme.spacing.sm
 
-                                    Accessible.role: Accessible.ComboBox
+                                Accessible.role: Accessible.ComboBox
 
-                                    Accessible.name: "ComboBox"
+                                Accessible.name: "Campo de regla"
 
-                                    activeFocusOnTab: true
+                                activeFocusOnTab: true
 
                                 ComboBox {
                                     focusPolicy: Qt.StrongFocus
@@ -263,25 +247,9 @@ Item {
                                     onCurrentTextChanged: {
                                         var groups = root.ruleGroups.slice()
                                         groups[model.index].rules[modelIndex].field = currentText
-                                    Accessible.role: Accessible.EditableText
-
-                                    Accessible.name: "Campo de texto"
-
-                                    activeFocusOnTab: true
-
                                         root.ruleGroups = groups
                                     }
                                 }
-                                ComboBox {
-                                    focusPolicy: Qt.StrongFocus
-                                    id: opCombo
-                                    model: ["is", "is_not", "contains", "gt", "lt", "gte", "lte"]
-                                    currentIndex: Math.max(0, opCombo.find(modelData.operator))
-                                    Accessible.role: Accessible.Button
-
-                                    activeFocusOnTab: true
-
-                                    Layout.preferredWidth: 80
                                     onCurrentTextChanged: {
                                         var groups = root.ruleGroups.slice()
                                         groups[model.index].rules[modelIndex].operator = currentText
@@ -327,10 +295,6 @@ Item {
                 }
             }
 
-                    Accessible.role: Accessible.EditableText
-
-                    Accessible.name: "SpinBox"
-
             MichiButton {
                 text: "+ Añadir grupo de reglas"
                 variant: "ghost"
@@ -352,12 +316,6 @@ Item {
                 Text {
                     text: "Limitar a:"
                     color: MichiTheme.colors.textPrimary
-                    Accessible.role: Accessible.ComboBox
-
-                    Accessible.name: "ComboBox"
-
-                    activeFocusOnTab: true
-
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -370,21 +328,12 @@ Item {
                     onValueChanged: root.limitCount = value
                 }
                 Text {
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
                     text: "(0 = sin límite)"
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.metaSize
                     anchors.verticalCenter: parent.verticalCenter
                 }
-
                 Item { Layout.fillWidth: true }
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
 
                 Text {
                     text: "Ordenar por:"

@@ -82,7 +82,7 @@ Item {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
+                        anchors.margins: MichiTheme.spacing.md
                         spacing: MichiTheme.spacing.md
 
                         RowLayout {
@@ -106,11 +106,8 @@ Item {
 
                             ComboBox {
                                 Accessible.role: Accessible.ComboBox
-
-                                Accessible.name: "ComboBox"
-
+                                Accessible.name: "Dispositivo de salida"
                                 activeFocusOnTab: true
-
                                 focusPolicy: Qt.StrongFocus
                                 model: root.audioDevices.length > 0 ? root.audioDevices : ["Auto"]
                                 currentIndex: {
@@ -132,7 +129,7 @@ Item {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
+                        anchors.margins: MichiTheme.spacing.md
                         spacing: MichiTheme.spacing.md
 
                         RowLayout {
@@ -152,16 +149,11 @@ Item {
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
-                                Accessible.role: Accessible.ComboBox
-
-                                Accessible.name: "ComboBox"
-
-                                activeFocusOnTab: true
-
                             }
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
+                                Accessible.name: "Frecuencia de muestreo"
                                 model: ["0 (auto)", "44100", "48000", "88200", "96000", "176400", "192000"]
                                 currentIndex: {
                                     var sr = String(root._loadValue("audio/sample_rate", 0))
@@ -189,19 +181,12 @@ Item {
                                 }
                                 Label {
                                     text: "Bit depth de salida"
-                                Accessible.role: Accessible.ComboBox
-
-                                Accessible.name: "ComboBox"
-
-                                activeFocusOnTab: true
-
-                                    color: MichiTheme.colors.textMuted
-                                    font.pixelSize: MichiTheme.typography.captionSize
                                 }
                             }
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
+                                Accessible.name: "Profundidad de bits"
                                 model: ["Auto", "16", "24", "32"]
                                 currentIndex: {
                                     var bd = String(root._loadValue("audio/bit_depth", "auto"))
@@ -226,10 +211,6 @@ Item {
                                     text: "Tamaño de buffer"
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
-                                Accessible.role: Accessible.Slider
-
-                                activeFocusOnTab: true
-
                                 }
                                 Label {
                                     text: bufferSlider.value + " ms"
@@ -263,11 +244,6 @@ Item {
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Calidad de resample"
-                                Accessible.role: Accessible.ComboBox
-
-                                Accessible.name: "ComboBox"
-
-                                activeFocusOnTab: true
 
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
@@ -307,16 +283,8 @@ Item {
                     interactive: false
 
                     ColumnLayout {
-                                Accessible.role: Accessible.CheckBox
-
-                                Accessible.name: "Switch"
-
-                                Accessible.checked: root.checked
-
-                                activeFocusOnTab: true
-
                         anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
+                        anchors.margins: MichiTheme.spacing.md
                         spacing: MichiTheme.spacing.md
 
                         RowLayout {
@@ -339,20 +307,12 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                                Accessible.role: Accessible.CheckBox
-
-                                Accessible.name: "Switch"
-
-                                Accessible.checked: root.checked
-
-                                activeFocusOnTab: true
-
                     title: "Opciones avanzadas"
                     interactive: false
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
+                        anchors.margins: MichiTheme.spacing.md
                         spacing: MichiTheme.spacing.md
 
                         RowLayout {
@@ -380,14 +340,6 @@ Item {
                             color: MichiTheme.colors.borderSubtle
                             visible: root.expertMode
                         }
-                                    Accessible.role: Accessible.CheckBox
-
-                                    Accessible.name: "Switch"
-
-                                    Accessible.checked: root.checked
-
-                                    activeFocusOnTab: true
-
 
                         ColumnLayout {
                             Layout.fillWidth: true
@@ -402,14 +354,6 @@ Item {
 
                             RowLayout {
                                 Layout.fillWidth: true
-                                    Accessible.role: Accessible.CheckBox
-
-                                    Accessible.name: "Switch"
-
-                                    Accessible.checked: root.checked
-
-                                    activeFocusOnTab: true
-
                                 spacing: MichiTheme.spacing.md
                                 Label {
                                     text: "Permitir resample"
@@ -425,10 +369,6 @@ Item {
                             }
 
                             Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
-
-                            Accessible.role: Accessible.Button
-
-                            activeFocusOnTab: true
 
                             RowLayout {
                                 Layout.fillWidth: true
@@ -456,7 +396,7 @@ Item {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
+                        anchors.margins: MichiTheme.spacing.md
                         spacing: MichiTheme.spacing.md
 
                         MichiButton {

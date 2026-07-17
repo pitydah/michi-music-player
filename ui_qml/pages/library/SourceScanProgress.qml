@@ -49,9 +49,7 @@ Rectangle {
             ProgressBar {
                 Accessible.role: Accessible.ProgressBar
 
-                Accessible.name: "ProgressBar"
-
-                activeFocusOnTab: true
+                Accessible.name: "Progreso de escaneo"
 
                 Layout.fillWidth: true; height: 4
                 from: 0; to: root.total > 0 ? root.total : 1

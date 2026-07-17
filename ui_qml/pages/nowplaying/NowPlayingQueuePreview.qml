@@ -7,7 +7,7 @@ import "../../components"
 Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Now Playing Queue Preview"
-    objectName: "nowPlayingQueuePreview"
+    objectName: "npQueuePreview"
     focus: true
     property var ps: null
     property var nav: null
@@ -35,21 +35,11 @@ Item {
             }
 
             MichiButton {
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
                 text: "Ver todo"
                 variant: "ghost"
-                onClicked: { if (root.nav) root.nav.navigate("queue") }
+                onClicked: { root.nav && root.nav.navigate("queue") }
             }
         }
-            Accessible.role: Accessible.List
-
-            Accessible.name: "ListView"
-
-            activeFocusOnTab: true
-
 
         ListView {
             focusPolicy: Qt.StrongFocus

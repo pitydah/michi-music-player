@@ -7,13 +7,9 @@ import "../../components"
 
 Dialog {
     Accessible.role: Accessible.Dialog
-
-    Accessible.name: "Dialog"
-
+    Accessible.name: "Exclusiones de fuente"
     id: root
     closePolicy: Popup.CloseOnEscape
-
-    activeFocusOnTab: true
 
 
     property var bridge: null
@@ -37,12 +33,6 @@ Dialog {
             text: "Patrones excluidos del escaneo"
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.sectionTitleSize
-            Accessible.role: Accessible.List
-
-            Accessible.name: "ListView"
-
-            activeFocusOnTab: true
-
             font.weight: MichiTheme.typography.weightSemiBold
         }
 
@@ -67,14 +57,7 @@ Dialog {
                                 root.bridge.removeExclusion(modelData.id || modelData.pattern)
                             }
                         }
-                Accessible.role: Accessible.EditableText
-
-                Accessible.name: "Campo de texto"
-
-                activeFocusOnTab: true
-
                     }
-                }
             }
         }
 

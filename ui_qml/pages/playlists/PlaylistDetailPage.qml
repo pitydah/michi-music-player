@@ -7,7 +7,7 @@ import "../../components"
 import "../../materials"
 
 Item {
-    objectName: "playlistDetailPage"
+    objectName: "playlistDetailPage_control"
     id: root
     focus: true
 
@@ -176,8 +176,8 @@ Item {
 
     Flickable {
         anchors.fill: parent
-        anchors.margins: MichiTheme.spacing.xl
-        contentHeight: column.height + MichiTheme.spacing.xxl
+        anchors.margins: MichiTheme.spacing.md
+        contentHeight: column.height + MichiTheme.spacing.xl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         activeFocusOnTab: true
@@ -185,15 +185,13 @@ Item {
         Column {
             id: column
             width: parent.width
-            spacing: MichiTheme.spacing.lg
+            spacing: MichiTheme.spacing.md
 
             Row {
                 spacing: MichiTheme.spacing.sm
                 width: parent.width
 
                 MichiButton {
-                    Accessible.role: Accessible.Button
-
                     text: "Volver"
                     variant: "ghost"
                     activeFocusOnTab: true
@@ -224,7 +222,7 @@ Item {
             }
 
             Row {
-                spacing: MichiTheme.spacing.lg
+                spacing: MichiTheme.spacing.md
                 width: parent.width
 
                 Column {
@@ -255,15 +253,13 @@ Item {
                 width: parent.width
                 visible: root._state === "LOADING"
                 title: "Cargando playlist"
-                message: "Obteniendo canciones..."
             }
 
             EmptyState {
                 width: parent.width
                 visible: root._state === "EMPTY"
-                iconText: "♪"
                 title: "Playlist vacía"
-                subtitle: "Agrega canciones desde la biblioteca usando el botón 'Agregar canciones'."
+                subtitle: "Agrega canciones desde la biblioteca."
                 actionText: "Agregar canciones"
                 showAction: true
                 onActionClicked: root.addTracks()
@@ -281,7 +277,6 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 visible: root._state === "READY"
-                    Accessible.role: Accessible.Button
 
                 MichiButton {
                     id: playAllBtn
@@ -292,8 +287,6 @@ Item {
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
                     onClicked: root.playAll()
-                    Accessible.role: Accessible.Button
-
                 }
                 MichiButton {
                     id: shuffleBtn
@@ -304,8 +297,6 @@ Item {
                     KeyNavigation.backtab: playAllBtn
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
-                    Accessible.role: Accessible.Button
-
                     onClicked: root.playShuffled()
                 }
                 MichiButton {
@@ -316,8 +307,6 @@ Item {
                     KeyNavigation.tab: renameBtn
                     KeyNavigation.backtab: shuffleBtn
                     Keys.onReturnPressed: onClicked()
-                    Accessible.role: Accessible.Button
-
                     Keys.onSpacePressed: onClicked()
                     onClicked: root.addTracks()
                 }
@@ -328,8 +317,6 @@ Item {
                     activeFocusOnTab: true
                     KeyNavigation.tab: duplicateBtn
                     KeyNavigation.backtab: addTracksBtn
-                    Accessible.role: Accessible.Button
-
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
                     onClicked: renameDialog.open()
@@ -340,8 +327,6 @@ Item {
                     variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.tab: exportBtn
-                    Accessible.role: Accessible.Button
-
                     KeyNavigation.backtab: renameBtn
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -352,8 +337,6 @@ Item {
                     text: "Exportar M3U"
                     variant: "ghost"
                     activeFocusOnTab: true
-                    Accessible.role: Accessible.Button
-
                     KeyNavigation.tab: selectToggleBtn
                     KeyNavigation.backtab: duplicateBtn
                     Keys.onReturnPressed: onClicked()
@@ -365,8 +348,6 @@ Item {
                     text: root._selectionMode ? "Cancelar selección" : "Seleccionar"
                     variant: "ghost"
                     highlighted: root._selectionMode
-                    Accessible.role: Accessible.Button
-
                     activeFocusOnTab: true
                     KeyNavigation.tab: batchRemoveBtn
                     KeyNavigation.backtab: exportBtn
@@ -378,8 +359,6 @@ Item {
                     id: batchRemoveBtn
                     text: "Quitar seleccionadas (" + root._selectedTracks.length + ")"
                     variant: "danger"
-                    Accessible.role: Accessible.Button
-
                     visible: root._selectionMode && root._selectedTracks.length > 0
                     activeFocusOnTab: true
                     KeyNavigation.tab: deleteBtn
@@ -392,8 +371,6 @@ Item {
                     id: deleteBtn
                     text: root._confirmDelete ? "Confirmar eliminar" : "Eliminar playlist"
                     variant: root._confirmDelete ? "danger" : "ghost"
-                    Accessible.role: Accessible.Button
-
                     activeFocusOnTab: true
                     KeyNavigation.backtab: batchRemoveBtn
                     Keys.onReturnPressed: onClicked()
@@ -436,10 +413,6 @@ Item {
             Text {
                 text: root._errorMsg
                 color: MichiTheme.colors.error
-        Accessible.role: Accessible.Dialog
-
-        Accessible.name: "Dialog"
-
                 font.pixelSize: MichiTheme.typography.bodySize
                 visible: text !== ""
                 wrapMode: Text.WordWrap
@@ -456,12 +429,6 @@ Item {
         standardButtons: Dialog.Ok | Dialog.Cancel
         modal: true
         x: (parent.width - width) / 2
-                Accessible.role: Accessible.EditableText
-
-                Accessible.name: "Campo de texto"
-
-                activeFocusOnTab: true
-
         y: (parent.height - height) / 3
         closePolicy: Popup.CloseOnEscape
 
@@ -476,6 +443,7 @@ Item {
             }
             TextField {
                 focusPolicy: Qt.StrongFocus
+                Accessible.name: "Nombre de la lista"
                 id: renameInput
                 text: root.playlistTitle
                 width: parent.width

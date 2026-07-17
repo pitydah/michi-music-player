@@ -69,11 +69,8 @@ Dialog {
             }
             ComboBox {
                 Accessible.role: Accessible.ComboBox
-
-                Accessible.name: "ComboBox"
-
+                Accessible.name: "Formato de exportación"
                 activeFocusOnTab: true
-
                 focusPolicy: Qt.StrongFocus
                 id: formatCombo
                 model: ["json", "csv"]
@@ -95,20 +92,12 @@ Dialog {
         Row {
             spacing: MichiTheme.spacing.sm
             width: parent.width
-                Accessible.role: Accessible.EditableText
-
-                Accessible.name: "Campo de texto"
-
-                activeFocusOnTab: true
-
             visible: !root._exporting
 
             TextField {
                 focusPolicy: Qt.StrongFocus
+                Accessible.name: "Ruta de destino"
                 id: pathInput
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
 
                 width: parent.width - 80
                 placeholderText: "Selecciona ruta de destino..."

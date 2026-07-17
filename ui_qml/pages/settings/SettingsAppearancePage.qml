@@ -74,7 +74,7 @@ Item {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
+                        anchors.margins: MichiTheme.spacing.md
                         spacing: MichiTheme.spacing.md
 
                         RowLayout {
@@ -138,7 +138,7 @@ Item {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
+                        anchors.margins: MichiTheme.spacing.md
                         spacing: MichiTheme.spacing.md
 
                         RowLayout {
@@ -190,7 +190,7 @@ Item {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
+                        anchors.margins: MichiTheme.spacing.md
                         spacing: MichiTheme.spacing.md
 
                         RowLayout {
@@ -201,14 +201,6 @@ Item {
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
-                                Accessible.role: Accessible.CheckBox
-
-                                Accessible.name: "Switch"
-
-                                Accessible.checked: root.checked
-
-                                activeFocusOnTab: true
-
                             }
                             Switch {
                                 id: reducedMotion
@@ -225,14 +217,6 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                Accessible.role: Accessible.CheckBox
-
-                                Accessible.name: "Switch"
-
-                                Accessible.checked: root.checked
-
-                                activeFocusOnTab: true
-
                                 text: "Transparencia reducida"
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
@@ -248,14 +232,6 @@ Item {
                         }
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
-
-                                Accessible.role: Accessible.CheckBox
-
-                                Accessible.name: "Switch"
-
-                                Accessible.checked: root.checked
-
-                                activeFocusOnTab: true
 
                         RowLayout {
                             Layout.fillWidth: true
@@ -273,14 +249,6 @@ Item {
                                 Accessible.description: "Reducir espacios y márgenes"
                                 focusPolicy: Qt.StrongFocus
                             }
-                                Accessible.role: Accessible.CheckBox
-
-                                Accessible.name: "Switch"
-
-                                Accessible.checked: root.checked
-
-                                activeFocusOnTab: true
-
                         }
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
@@ -308,20 +276,12 @@ Item {
                 GlassCard {
                     id: menuCard
                     Layout.fillWidth: true
-                                Accessible.role: Accessible.CheckBox
-
-                                Accessible.name: "Switch"
-
-                                Accessible.checked: root.checked
-
-                                activeFocusOnTab: true
-
                     title: "Barra de menú"
                     interactive: false
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
+                        anchors.margins: MichiTheme.spacing.md
                         spacing: MichiTheme.spacing.md
 
                         RowLayout {

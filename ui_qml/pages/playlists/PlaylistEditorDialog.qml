@@ -49,10 +49,7 @@ Dialog {
             font.pixelSize: MichiTheme.typography.bodySize
         }
         TextField {
-            Accessible.role: Accessible.EditableText
-
-            Accessible.name: "Campo de texto"
-
+            Accessible.name: "Nombre de la lista"
             focusPolicy: Qt.StrongFocus
             id: nameInput
             width: parent.width
@@ -68,9 +65,7 @@ Dialog {
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.bodySize
             Accessible.role: Accessible.EditableText
-
-            Accessible.name: "Campo de texto"
-
+            Accessible.name: "Descripción de la lista"
         }
         TextArea {
             focusPolicy: Qt.StrongFocus
@@ -89,18 +84,11 @@ Dialog {
             font.pixelSize: MichiTheme.typography.bodySize
         }
         Row {
-                Accessible.role: Accessible.EditableText
-
-                Accessible.name: "Campo de texto"
-
-                activeFocusOnTab: true
-
             spacing: MichiTheme.spacing.sm
             width: parent.width
 
             TextField {
                 focusPolicy: Qt.StrongFocus
-                Accessible.role: Accessible.Button
 
                 id: coverInput
                 activeFocusOnTab: true

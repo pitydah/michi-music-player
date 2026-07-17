@@ -5,7 +5,7 @@ import "../../theme"
 Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Now Playing Metadata"
-    objectName: "nowPlayingMetadata"
+    objectName: "npMetadata"
     focus: true
     property var ps: null
 

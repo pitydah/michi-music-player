@@ -110,12 +110,6 @@ Item {
 
                 Column {
                     id: step1
-                        Accessible.role: Accessible.EditableText
-
-                        Accessible.name: "Campo de texto"
-
-                        activeFocusOnTab: true
-
                     spacing: MichiTheme.spacing.md
 
                     Text { text: "Servidor detectado:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
@@ -195,12 +189,6 @@ Item {
 
                         MichiButton {
                             id: cancelBtn1
-                        Accessible.role: Accessible.EditableText
-
-                        Accessible.name: "Campo de texto"
-
-                        activeFocusOnTab: true
-
                             text: "Cancelar"
                             variant: "ghost"
                             onClicked: root.cancelRequested()
@@ -221,12 +209,8 @@ Item {
                         id: hostField
                         width: parent.width
                         height: MichiTheme.rowHeightComfortable
-                        Accessible.role: Accessible.EditableText
-
-                        Accessible.name: "Campo de texto"
-
+                        Accessible.name: "Host o dirección IP"
                         activeFocusOnTab: true
-
                         placeholderText: "Host o dirección IP"
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
@@ -249,12 +233,8 @@ Item {
                     QQC2.TextField {
                         id: portField
                         width: parent.width
-                        Accessible.role: Accessible.EditableText
-
-                        Accessible.name: "Campo de texto"
-
+                        Accessible.name: "Puerto"
                         activeFocusOnTab: true
-
                         height: MichiTheme.rowHeightComfortable
                         placeholderText: "Puerto"
                         color: MichiTheme.colors.textPrimary
@@ -279,12 +259,8 @@ Item {
 
                     QQC2.TextField {
                         id: aliasField2
-                        Accessible.role: Accessible.EditableText
-
-                        Accessible.name: "Campo de texto"
-
+                        Accessible.name: "Alias (opcional)"
                         activeFocusOnTab: true
-
                         width: parent.width
                         height: MichiTheme.rowHeightComfortable
                         placeholderText: "Alias (opcional)"
@@ -303,11 +279,8 @@ Item {
                         KeyNavigation.backtab: portField
                     }
                         Accessible.role: Accessible.EditableText
-
-                        Accessible.name: "Campo de texto"
-
+                        Accessible.name: "Usuario"
                         activeFocusOnTab: true
-
 
                     Text {
                         text: "Autenticación (opcional)"

@@ -47,12 +47,8 @@ Item {
             }
 
             TextField {
-                Accessible.role: Accessible.EditableText
-
-                Accessible.name: "Campo de texto"
-
+                Accessible.name: "Nombre del perfil"
                 activeFocusOnTab: true
-
                 focusPolicy: Qt.StrongFocus
                 id: profileNameField
                 width: parent.width
@@ -60,37 +56,15 @@ Item {
                 text: root.profileName
                 onTextChanged: root.profileName = text
             }
-                Accessible.role: Accessible.ComboBox
-
-                Accessible.name: "ComboBox"
-
-                activeFocusOnTab: true
-
-
             Text { text: "Política de transcodificación"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "transcodePolicyLabel" }
             ComboBox {
                 focusPolicy: Qt.StrongFocus
+                Accessible.name: "Política de transcodificación"
                 id: transcodeCombo
-                width: parent.width
-                model: ["never", "always", "unsupported_only"]
-                Accessible.role: Accessible.ComboBox
-
-                Accessible.name: "ComboBox"
-
-                activeFocusOnTab: true
-
-                currentIndex: model.indexOf(root.transcodePolicy)
-                onCurrentTextChanged: root.transcodePolicy = currentText
-            }
 
             Text { text: "Política de colisión"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "collisionPolicyLabel" }
             ComboBox {
-                Accessible.role: Accessible.EditableText
-
-                Accessible.name: "Campo de texto"
-
-                activeFocusOnTab: true
-
+                Accessible.name: "Política de colisión"
                 focusPolicy: Qt.StrongFocus
                 id: collisionCombo
                 width: parent.width

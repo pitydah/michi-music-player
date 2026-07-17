@@ -58,9 +58,6 @@ Item {
 
                 MichiProgressBar {
                     Accessible.role: Accessible.ProgressBar
-
-                    activeFocusOnTab: true
-
                     width: parent.width
                     height: 4
                     value: root.totalBytes > 0 ? root.transferredBytes / root.totalBytes : 0
