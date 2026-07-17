@@ -12,7 +12,7 @@ Item {
 
     signal openAssistant()
 
-    implicitHeight: 100
+    implicitHeight: MichiTheme.density.comfortable + MichiTheme.spacing.xl * 2
 
     GlassMaterial {
         anchors.fill: parent

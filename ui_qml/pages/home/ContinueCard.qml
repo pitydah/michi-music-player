@@ -17,7 +17,7 @@ Item {
 
     signal activate()
 
-    implicitHeight: 100
+    implicitHeight: MichiTheme.density.comfortable + MichiTheme.spacing.xl * 2
 
     Accessible.onPressAction: root.activate()
 
@@ -50,8 +50,8 @@ Item {
             }
 
             Column {
+                width: parent.width - 160
                 anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - 200
                 spacing: MichiTheme.spacing.xs
 
                 Text {
@@ -73,10 +73,6 @@ Item {
             }
 
             MichiButton {
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.hasPlayback ? "Reproducir" : "Sin reproducción"
                 variant: root.hasPlayback ? "accent" : "secondary"

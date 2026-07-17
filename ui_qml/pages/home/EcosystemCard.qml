@@ -16,7 +16,7 @@ Item {
     signal openConnections()
     signal openHomeAudio()
 
-    implicitHeight: 210
+    implicitHeight: 160
 
     GlassMaterial {
         anchors.fill: parent

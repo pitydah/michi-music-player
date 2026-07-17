@@ -11,7 +11,7 @@ Item {
     focus: true
     id: root
 
-    implicitHeight: 200
+    implicitHeight: Math.max(160, MichiTheme.typography.heroTitleSize * 6)
 
     HeroMaterial {
         anchors.fill: parent
@@ -82,14 +82,14 @@ Item {
                     border.color: MichiTheme.colors.borderFocus
                     border.width: MichiTheme.borderWidth
 
-                    Text {
+                    Image {
                         anchors.centerIn: parent
-                        text: "MM"
-                        color: MichiTheme.colors.accentBlue
-                        font.pixelSize: MichiTheme.typography.sectionTitleSize
-                        font.weight: MichiTheme.typography.weightBold
-                        font.letterSpacing: MichiTheme.spacing.xxs
-                        opacity: MichiTheme.opacity.muted
+                        width: 48
+                        height: 48
+                        source: "qrc:/icons/app_icon.svg"
+                        sourceSize.width: 48
+                        sourceSize.height: 48
+                        fillMode: Image.PreserveAspectFit
                     }
                 }
             }
