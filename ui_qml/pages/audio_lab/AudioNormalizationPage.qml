@@ -21,6 +21,8 @@ Item {
     property real _gateThreshold: -70.0
     property var _previewResult: null
     property string _errorMessage: ""
+    property var _presets: ({})
+    property string _selectedPreset: "custom"
 
     readonly property int stateIdle: 0
     readonly property int statePreviewing: 1
@@ -28,7 +30,34 @@ Item {
     readonly property int stateCompleted: 3
     readonly property int stateFailed: 4
 
-    Component.onCompleted: root.pageState = "READY"
+    Component.onCompleted: {
+        root.pageState = "READY"
+        loadPresets()
+    }
+
+    function loadPresets() {
+        if (root.labService && root.labService.getNormalizationPresets) {
+            var presets = root.labService.getNormalizationPresets()
+            if (presets && Object.keys(presets).length > 0) {
+                root._presets = presets
+                console.log("Presets cargados:", JSON.stringify(presets))
+            } else {
+                console.log("No se pudieron cargar los presets")
+            }
+        }
+    }
+
+    function applyPreset(presetKey) {
+        root._selectedPreset = presetKey
+        if (root.labService && root.labService.getNormalizationPreset) {
+            var preset = root.labService.getNormalizationPreset(presetKey)
+            if (preset && preset.ok !== false) {
+                root._targetLufs = preset.target_loudness
+                root._truePeakLimit = preset.true_peak_limit
+                console.log("Preset aplicado:", preset.name, "- LUFS:", preset.target_loudness)
+            }
+        }
+    }
 
     function _measureLoudness() {
         if (!inputSelection.selectedFiles || inputSelection.selectedFiles.length === 0) {
@@ -91,6 +120,39 @@ Item {
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
 
+                    // Selector de Presets
+                    Column { width: parent.width; spacing: MichiTheme.spacing.sm
+                        Text { 
+                            text: "Preset de plataforma:"
+                            color: MichiTheme.colors.textSecondary
+                            font.pixelSize: MichiTheme.typography.metaSize
+                            font.weight: MichiTheme.typography.weightMedium
+                        }
+                        Row {
+                            spacing: MichiTheme.spacing.sm
+                            wrap: true
+                            Repeater {
+                                model: Object.keys(root._presets)
+                                delegate: MichiButton {
+                                    text: root._presets[modelData] ? root._presets[modelData].name : modelData
+                                    variant: root._selectedPreset === modelData ? "primary" : "ghost"
+                                    enabled: root._state !== root.statePreviewing && root._state !== root.stateApplying
+                                    onClicked: applyPreset(modelData)
+                                    Accessible.role: Accessible.Button
+                                    Keys.onReturnPressed: onClicked()
+                                    Keys.onSpacePressed: onClicked()
+                                }
+                            }
+                        }
+                        Text {
+                            text: root._presets[root._selectedPreset] ? root._presets[root._selectedPreset].description : ""
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.captionSize
+                            wrapMode: Text.WordWrap
+                            width: parent.width
+                        }
+                    }
+
                     Column { width: parent.width; spacing: MichiTheme.spacing.xs
                         Text { text: "Nivel objetivo (LUFS): " + root._targetLufs.toFixed(1); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
                         MichiSlider {
@@ -99,7 +161,10 @@ Item {
                             width: parent.width
                             from: -30; to: -5; value: root._targetLufs; stepSize: 0.5
                             activeFocusOnTab: true
-                            onMoved: root._targetLufs = value
+                            onMoved: {
+                                root._targetLufs = value
+                                root._selectedPreset = "custom"
+                            }
                         }
                     }
 
@@ -111,7 +176,10 @@ Item {
                             width: parent.width
                             from: -6; to: 0; value: root._truePeakLimit; stepSize: 0.1
                             activeFocusOnTab: true
-                            onMoved: root._truePeakLimit = value
+                            onMoved: {
+                                root._truePeakLimit = value
+                                root._selectedPreset = "custom"
+                            }
                         }
                     }
 
