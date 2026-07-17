@@ -1,10 +1,9 @@
-"""RBJ Audio EQ Cookbook — biquad filter coefficient calculator.
+# -*- coding: utf-8 -*-
+"""RBJ Audio EQ Cookbook — biquad filter coefficient calculator."""
 
-Reference: https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html
+from __future__ import annotations
 
-All formulas compute Direct Form I biquad coefficients [b0,b1,b2, a0,a1,a2]
-suitable for GStreamer audioiirfilter elements.
-"""
+from typing import Any
 
 import numpy as np
 

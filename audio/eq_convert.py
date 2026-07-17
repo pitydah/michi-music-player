@@ -1,4 +1,9 @@
+# -*- coding: utf-8 -*-
 """Conversion between graphic (31-band) and parametric EQ modes."""
+
+from __future__ import annotations
+
+from typing import Any
 
 import numpy as np
 from audio.eq_presets import ISO_31_FREQS
