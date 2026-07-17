@@ -7,6 +7,7 @@ import contextlib
 import os
 
 from audio.backends.types import PlaybackSnapshot, AudioDiagnostics, BackendCapabilities
+from audio.pipeline_factory import PipelineFactory, AudioFormatInfo, AudioRoutePlan, DspState
 
 logger = logging.getLogger("michi.audio.gstreamer")
 
@@ -64,13 +65,26 @@ class GStreamerAudioBackend:
             return None
 
     def play(self, uri: str) -> bool:
-        Gst = self.self._ensure_gst()
+        Gst = self._ensure_gst()
         if Gst is None:
             return False
         try:
             file_uri = _path_to_file_uri(uri)
-            self._pipeline = Gst.ElementFactory.make("playbin", "player")
-            self._pipeline.set_property("uri", file_uri)
+            playbin = Gst.ElementFactory.make("playbin", "player")
+            playbin.set_property("uri", file_uri)
+
+            # Attach advanced audio sink (EQ, volume, spectrum) if available
+            try:
+                route = AudioRoutePlan()
+                dsp = DspState()
+                factory = PipelineFactory()
+                sink = factory.build_playbin_audio_sink(route, dsp)
+                if sink:
+                    playbin.set_property("audio-sink", sink)
+            except Exception:
+                pass  # Fall back to playbin default sink
+
+            self._pipeline = playbin
             self._pipeline.set_state(Gst.State.PLAYING)
             self._playing = True
             return True

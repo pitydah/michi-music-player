@@ -61,11 +61,11 @@ def test_workflow_playback():
         # Volume contract
         backend.set_volume(75)
         snap = backend.get_snapshot()
-        assert snap['volume'] == 75
+        assert snap.volume == 75
 
         # Diagnostics
         diag = backend.get_diagnostics()
-        assert diag['backend'] == 'gstreamer'
+        assert diag.backend_id == 'gstreamer'
 
 
 def test_workflow_action_registry():
