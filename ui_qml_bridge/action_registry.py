@@ -220,9 +220,45 @@ class ActionRegistry(QObject):
                 action.handler = self._make_service_handler(svc, method)
                 action.service_name = svc
 
+        audio_lab_map = {
+            "track_analyze_audio_lab": ("audio_lab_bridge", "startAnalysis"),
+            "track_calculate_replaygain": ("audio_lab_bridge", "previewReplayGain"),
+            "track_check_integrity": ("audio_lab_bridge", "previewAnalysis"),
+            "track_convert": ("audio_lab_bridge", "startConversion"),
+            "album_analyze": ("audio_lab_bridge", "startAnalysis"),
+            "album_convert": ("audio_lab_bridge", "startConversion"),
+        }
+        for aid, (svc, method) in audio_lab_map.items():
+            action = self._actions.get(aid)
+            if action:
+                action.handler = self._make_service_handler(svc, method)
+                action.service_name = svc
+
+        source_extra_map = {
+            "source_disable": ("library_sources_bridge", "disable"),
+            "source_enable": ("library_sources_bridge", "enable"),
+            "source_remove": ("library_sources_bridge", "remove"),
+        }
+        for aid, (svc, method) in source_extra_map.items():
+            action = self._actions.get(aid)
+            if action:
+                action.handler = self._make_service_handler(svc, method)
+                action.service_name = svc
+
+        folder_extra2_map = {
+            "folder_exclude": ("library_sources_bridge", "excludeFolder"),
+        }
+        for aid, (svc, method) in folder_extra2_map.items():
+            action = self._actions.get(aid)
+            if action:
+                action.handler = self._make_service_handler(svc, method)
+                action.service_name = svc
+
         other_map = {
             "playlist_create": ("playlists_bridge", "createPlaylist"),
             "radio_add_station": ("radio_bridge", "addStation"),
+            "album_change_artwork": ("navigation_bridge", "navigateToAlbumArtwork"),
+            "album_sync": ("devices_bridge", "syncAlbum"),
         }
         for aid, (svc, method) in other_map.items():
             action = self._actions.get(aid)
