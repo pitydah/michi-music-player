@@ -181,8 +181,11 @@ class PlayerService(QObject):
         self._current_album = album or ""
         if self._engine:
             self._engine.play(filepath)
-        else:
+        elif self._hybrid.active:
             self._hybrid.play(filepath)
+        else:
+            self.error_occurred.emit("No hay motor de reproducción disponible")
+            return
         if title:
             self.track_changed.emit(title, artist)
         self._publish("playback.changed", state="playing", title=title)

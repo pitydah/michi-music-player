@@ -129,6 +129,11 @@ jobs:
           sys.exit(1)
       print(f'QML: {len(list(Path(\"ui_qml\").rglob(\"*.qml\")))} compiled OK')
       "
+      - name: UX Screenshot capture (Xvfb)
+        if: always()
+        run: |
+          sudo apt-get install -y xvfb
+          QT_QPA_PLATFORM=xcb timeout 60 xvfb-run -s "-screen 0 1440x900x24" python tests/ux_captures_baseline.py 2>&1 || echo "Screenshot capture skipped (may fail without full UI stack)"
 
   coverage:
     needs: [test]

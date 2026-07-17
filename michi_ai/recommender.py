@@ -1,7 +1,24 @@
 from __future__ import annotations
 
 import random
-from typing import Any
+from typing import Any, Callable
+
+_LIBRARY_PROVIDER: Callable[[], list[dict[str, str]]] | None = None
+
+
+def set_library_provider(provider: Callable[[], list[dict[str, str]]]):
+    global _LIBRARY_PROVIDER
+    _LIBRARY_PROVIDER = provider
+
+
+def _get_library() -> list[dict[str, str]]:
+    if _LIBRARY_PROVIDER:
+        try:
+            return _LIBRARY_PROVIDER()
+        except Exception:
+            pass
+    return _MOCK_LIBRARY
+
 
 _MOCK_LIBRARY: list[dict[str, str]] = [
     {"artist": "Pink Floyd", "album": "The Dark Side of the Moon", "title": "Money", "genre": "rock"},
@@ -33,7 +50,7 @@ def recommend(
     mood: str | None = None,
     count: int = 5,
 ) -> list[dict[str, Any]]:
-    pool = list(_MOCK_LIBRARY)
+    pool = list(_get_library())
 
     if genre:
         genre_lower = genre.lower()
@@ -49,14 +66,10 @@ def recommend(
             "triste": ["time", "no woman no cry", "ode to joy"],
             "energico": ["respect", "bohemian rhapsody", "money", "alright"],
             "relajado": ["so what", "once in a lifetime", "chan chan"],
-            "nostalgico": ["shine on you crazy diamond", "stairway to heaven"],
         }
-        mood_titles = mood_map.get(mood, [])
-        if mood_titles:
-            pool = [t for t in pool if any(mt in t["title"].lower() for mt in mood_titles)]
-
-    if not pool:
-        return []
+        keywords = mood_map.get(mood, [])
+        if keywords:
+            pool = [t for t in pool if any(kw in t["title"].lower() for kw in keywords)]
 
     random.shuffle(pool)
     return pool[:count]

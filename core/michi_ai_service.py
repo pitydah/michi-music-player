@@ -1,12 +1,17 @@
 """MichiAIService — wraps the local AI engine for the QML bridge."""
 from __future__ import annotations
 
+from typing import Callable
+
 from michi_ai.engine import process
+from michi_ai.recommender import set_library_provider
 
 
 class MichiAIService:
-    def __init__(self):
+    def __init__(self, library_provider: Callable[[], list[dict[str, str]]] | None = None):
         self._active = True
+        if library_provider:
+            set_library_provider(library_provider)
 
     def process_message(self, text: str, context: dict | None = None) -> dict:
         return process(text)

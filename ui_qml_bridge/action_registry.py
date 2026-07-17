@@ -46,6 +46,44 @@ class ActionRegistry(QObject):
     def set_container(self, container: Any):
         self._container = container
 
+    def _make_nav_handler(self, route: str):
+        return lambda: (
+            self._container.navigation_bridge.navigate(route)
+            if self._container and hasattr(self._container, 'navigation_bridge')
+            and self._container.navigation_bridge
+            else {"ok": False, "error": "NO_NAV"}
+        )
+
+    def bind_default_handlers(self):
+        nav_actions = [
+            "navigate_home", "navigate_library", "navigate_playlists",
+            "navigate_radio", "navigate_lyrics", "navigate_settings",
+            "navigate_eq", "navigate_library_sources", "navigate_jobs",
+            "navigate_queue", "navigate_history", "navigate_home_audio",
+            "navigate_diagnostics", "navigate_library_doctor", "navigate_mix",
+        ]
+        route_map = {
+            "navigate_home": "home",
+            "navigate_library": "library",
+            "navigate_playlists": "playlists",
+            "navigate_radio": "radio",
+            "navigate_lyrics": "lyrics",
+            "navigate_settings": "settings",
+            "navigate_eq": "equalizer",
+            "navigate_library_sources": "library.sources",
+            "navigate_jobs": "jobs",
+            "navigate_queue": "queue",
+            "navigate_history": "history",
+            "navigate_home_audio": "home_audio",
+            "navigate_diagnostics": "diagnostics",
+            "navigate_library_doctor": "library_doctor",
+            "navigate_mix": "mix",
+        }
+        for aid in nav_actions:
+            action = self._actions.get(aid)
+            if action and aid in route_map:
+                action.handler = self._make_nav_handler(route_map[aid])
+
     def _init_defaults(self):
         defaults = [
             ("navigate_home", "Ir a Inicio", "navigation", "home"),

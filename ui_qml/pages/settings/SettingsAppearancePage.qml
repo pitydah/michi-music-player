@@ -131,6 +131,51 @@ Item {
                 }
 
                 GlassCard {
+                    Layout.fillWidth: true
+                    title: "Apariencia"
+                    interactive: false
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.md
+                        spacing: MichiTheme.spacing.md
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.md
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: MichiTheme.spacing.xxs
+                                Label {
+                                    text: "Modo oscuro"
+                                    color: MichiTheme.colors.textPrimary
+                                    font.pixelSize: MichiTheme.typography.bodySize
+                                }
+                                Label {
+                                    text: "Alternar entre tema oscuro y claro"
+                                    color: MichiTheme.colors.textMuted
+                                    font.pixelSize: MichiTheme.typography.captionSize
+                                }
+                            }
+
+                            Switch {
+                                id: darkModeSwitch
+                                checked: root._loadValue("appearance/dark_mode", true)
+                                onClicked: {
+                                    root._saveValue("appearance/dark_mode", checked)
+                                    MichiTheme.setDarkMode(checked)
+                                }
+                                Accessible.description: "Alternar modo oscuro/claro"
+                                focusPolicy: Qt.StrongFocus
+                            }
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+                    }
+                }
+
+                GlassCard {
                     id: typographyCard
                     Layout.fillWidth: true
                     title: "Tipografía"

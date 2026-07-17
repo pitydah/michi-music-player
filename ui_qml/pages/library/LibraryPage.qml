@@ -113,8 +113,23 @@ Item {
     Column {
         anchors.fill: parent; spacing: MichiTheme.spacing.xxs
 
+        MichiLibraryToolbar {
+            id: toolbar
+            width: parent.width
+            title: "Biblioteca"
+            filterModel: ["Canciones", "Álbumes", "Artistas", "Géneros"]
+            currentFilterIndex: navBar ? navBar.currentSectionIndex : 0
+            onFilterChanged: function(idx) { if (navBar) navBar.goToSection(idx) }
+            onSearchChanged: function(text) {
+                if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(text)
+                root._searchActive = text.length > 0
+            }
+            onRefreshRequested: root.refreshData()
+        }
+
         LibraryNavigationBar {
             id: navBar; width: parent.width
+            visible: false
             onSearchTextUpdated: { if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(text); root._searchActive = text.length > 0; pageState.searchText = text }
             Keys.onReturnPressed: { if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(navBar.searchText) }
             Keys.onEscapePressed: { navBar.clearSearch(); root._searchActive = false; pageState.searchText = "" }

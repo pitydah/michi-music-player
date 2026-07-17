@@ -28,6 +28,9 @@ class PipelineFactory:
                       transmit_device=None) -> Gst.Element | None:
         """Build a GStreamer pipeline for the given route plan."""
 
+        if os.environ.get("MICHI_FAKESINK") == "1":
+            return self._build_fakesink(uri)
+
         if route.bitperfect_expected and fmt.is_pcm and not fmt.is_dsd:
             return self._build_bitperfect(uri, route)
 
@@ -238,6 +241,25 @@ class PipelineFactory:
         audio_sink.add_pad(
             Gst.GhostPad.new("sink", queue.get_static_pad("sink")))
         return audio_sink
+
+    def _build_fakesink(self, uri) -> Gst.Element | None:
+        pipeline = Gst.Pipeline.new("michi-fake")
+        src = Gst.ElementFactory.make("uridecodebin", "src")
+        if not src:
+            return None
+        src.set_property("uri", uri)
+        sink = Gst.ElementFactory.make("fakesink", "sink")
+        if not sink:
+            return None
+        sink.set_property("sync", False)
+        pipeline.add(src)
+        pipeline.add(sink)
+        src.connect("pad-added", lambda src, pad: pad.link(sink.get_static_pad("sink")))
+        if pipeline.set_state(Gst.State.READY) == Gst.StateChangeReturn.FAILURE:
+            logger.warning("Fakesink pipeline failed to reach READY")
+            return None
+        logger.info("Built fakesink pipeline for %s", uri)
+        return pipeline
 
     def _build_bitperfect(self, uri, route) -> Gst.Element | None:
         pipeline = Gst.Pipeline.new("michi-bp")
