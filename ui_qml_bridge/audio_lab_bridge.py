@@ -202,42 +202,13 @@ class AudioLabBridge(QObject):
                 "integrated_loudness": result.integrated_loudness,
                 "true_peak": result.true_peak,
                 "loudness_range": result.loudness_range,
-                "preset_name": getattr(result, "preset_name", "custom"),
             }
         except Exception as e:
             return {"ok": False, "error_code": "PREVIEW_FAILED", "detail": str(e)}
 
-    @Slot(result=dict)
-    def getNormalizationPresets(self):
-        """Obtiene todos los presets de normalización disponibles."""
-        if not self._svc:
-            return {}
-        module = getattr(self._svc, "normalization", None)
-        if not module or not hasattr(module, "get_presets"):
-            return {}
-        try:
-            return module.get_presets()
-        except Exception as e:
-            logger.exception("Failed to get normalization presets")
-            return {}
-
-    @Slot(str, result=dict)
-    def getNormalizationPreset(self, preset_key: str):
-        """Obtiene un preset específico por clave."""
-        if not self._svc:
-            return None
-        module = getattr(self._svc, "normalization", None)
-        if not module or not hasattr(module, "get_preset"):
-            return None
-        try:
-            return module.get_preset(preset_key)
-        except Exception as e:
-            logger.exception("Failed to get normalization preset: %s", preset_key)
-            return None
-
     @Slot(str, str, result=dict)
-    def startNormalization(self, filepath: str, confirmation_token: str = "", preset_key: str = "custom"):
-        """Inicia la normalización con un preset opcional."""
+    def startNormalization(self, filepath: str, confirmation_token: str = ""):
+        """Inicia la normalización con parámetros manuales."""
         if not self._svc:
             return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
         module = getattr(self._svc, "normalization", None)
@@ -245,11 +216,11 @@ class AudioLabBridge(QObject):
             return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
         try:
             needs_confirm = module.normalize_file(
-                filepath, destructive=True, confirmation_token=confirmation_token or None, preset_key=preset_key
+                filepath, destructive=True, confirmation_token=confirmation_token or None
             )
             if isinstance(needs_confirm, dict) and needs_confirm.get("requires_confirmation"):
                 return needs_confirm
-            return {"ok": True, "status": "metadata_only", "message": "Usar ReplayGain para normalizacion no destructiva", "preset_used": preset_key}
+            return {"ok": True, "status": "metadata_only", "message": "Usar ReplayGain para normalizacion no destructiva"}
         except Exception as e:
             return {"ok": False, "error_code": "NORMALIZE_FAILED", "detail": str(e)}
 
