@@ -133,7 +133,10 @@ def main():
     if args.baseline:
         with open(args.baseline) as f:
             baseline = json.load(f)
-        baseline_count = len(baseline)
+        if isinstance(baseline, dict) and "total" in baseline:
+            baseline_count = baseline["total"]
+        else:
+            baseline_count = len(baseline)
         if total > baseline_count:
             print(f"REGRESSION: {total - baseline_count} new violations (baseline: {baseline_count}, current: {total})", file=sys.stderr)
             sys.exit(1)
