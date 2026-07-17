@@ -443,3 +443,30 @@ class AudioLabBridge(QObject):
                   for jid, info in self._active_jobs.items()
                   if info.get("status") == "failed"]
         return {"ok": True, "has_failures": bool(failed), "failures": failed}
+
+    @Slot(result=dict)
+    def getOverviewData(self):
+        """Retorna datos para la vista de 5 tarjetas principales."""
+        if not self._svc:
+            return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
+        try:
+            data = self._svc.get_overview_data()
+            return {"ok": True, **data}
+        except Exception as e:
+            logger.error(f"Error getting overview data: {e}")
+            return {"ok": False, "error_code": "OVERVIEW_ERROR", "message": str(e)}
+
+    @Slot(str, result=dict)
+    def navigateToArea(self, area_key: str):
+        """Navega a una página específica del área (hub interno)."""
+        route_map = {
+            "diagnostics": "audio_lab.diagnostics_hub",
+            "identifier": "audio_lab.identifier_hub",
+            "backup": "audio_lab.backup_hub",
+            "output_profiles": "audio_lab.output_profiles_hub",
+            "local_intelligence": "audio_lab.local_intelligence_hub"
+        }
+        route = route_map.get(area_key)
+        if not route:
+            return {"ok": False, "error_code": "INVALID_AREA"}
+        return self.navigateTo(route)

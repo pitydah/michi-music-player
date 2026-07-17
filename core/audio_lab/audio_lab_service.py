@@ -126,3 +126,140 @@ class AudioLabService(QObject):
             "capabilities": caps,
             "uptime": 0.0,
         }
+
+    def get_overview_data(self) -> dict[str, Any]:
+        """
+        Retorna datos para la vista general de Audio Lab con 5 áreas principales.
+        Cumple con la especificación: 5 tarjetas, no 8 herramientas sueltas.
+        """
+        # Verificar dependencias externas
+        ffmpeg_available = self._check_ffmpeg()
+        replaygain_available = self._check_replaygain()
+        musicbrainz_available = self._check_musicbrainz()
+        acoustid_available = self._check_acoustid()
+        
+        # Contar trabajos activos del worker manager
+        active_jobs = 0
+        if self._wm:
+            try:
+                all_jobs = self._wm.get_all_jobs() if hasattr(self._wm, 'get_all_jobs') else []
+                active_jobs = len([j for j in all_jobs if getattr(j, 'status', None) == 'running'])
+            except Exception:
+                active_jobs = 0
+        
+        # Estado de las 5 áreas principales (especificación sección 3)
+        areas = {
+            "diagnostics": {
+                "title": "Diagnóstico",
+                "description": "Analiza, verifica integridad y compara archivos",
+                "icon": "🔍",
+                "status": "available",
+                "tools": [
+                    {"id": "analysis", "name": "Análisis Técnico", "status": "available"},
+                    {"id": "integrity", "name": "Integridad", "status": "available"},
+                    {"id": "comparison", "name": "Comparación A/B", "status": "available"}
+                ]
+            },
+            "identifier": {
+                "title": "Identificador de Audios",
+                "description": "Identifica, corrige metadatos y carátulas",
+                "icon": "🆔",
+                "status": "available" if musicbrainz_available else "partial",
+                "tools": [
+                    {"id": "fingerprint", "name": "Fingerprint Acústico", "status": "available" if acoustid_available else "missing_dependency"},
+                    {"id": "metadata", "name": "Editor de Metadatos", "status": "available"},
+                    {"id": "covers", "name": "Carátulas", "status": "available"},
+                    {"id": "lyrics", "name": "Letras", "status": "available"}
+                ]
+            },
+            "backup": {
+                "title": "Respaldar",
+                "description": "Convierte, normaliza, ripea y organiza",
+                "icon": "💾",
+                "status": "available" if ffmpeg_available else "partial",
+                "tools": [
+                    {"id": "conversion", "name": "Conversión", "status": "available" if ffmpeg_available else "missing_dependency"},
+                    {"id": "normalization", "name": "Normalización", "status": "available"},
+                    {"id": "cd_ripping", "name": "Ripeo de CD", "status": "experimental"},
+                    {"id": "organization", "name": "Organización", "status": "available"}
+                ]
+            },
+            "output_profiles": {
+                "title": "Perfiles de Salida",
+                "description": "Configura DAC, EQ y reproducción",
+                "icon": "🎧",
+                "status": "available",
+                "tools": [
+                    {"id": "device_config", "name": "Configuración de Dispositivo", "status": "available"},
+                    {"id": "replaygain", "name": "ReplayGain", "status": "available" if replaygain_available else "partial"},
+                    {"id": "eq_dsp", "name": "EQ y DSP", "status": "available"}
+                ]
+            },
+            "local_intelligence": {
+                "title": "Inteligencia Local",
+                "description": "Análisis acústico y automatización",
+                "icon": "🧠",
+                "status": "partial",
+                "tools": [
+                    {"id": "acoustic_features", "name": "Características Acústicas", "status": "experimental"},
+                    {"id": "similar_songs", "name": "Canciones Similares", "status": "experimental"},
+                    {"id": "local_radio", "name": "Radio Local", "status": "available"},
+                    {"id": "smart_mix", "name": "Smart Mix", "status": "available"}
+                ]
+            }
+        }
+        
+        return {
+            "areas": areas,
+            "dependencies": {
+                "ffmpeg": ffmpeg_available,
+                "replaygain": replaygain_available,
+                "musicbrainz": musicbrainz_available,
+                "acoustid": acoustid_available
+            },
+            "active_jobs": active_jobs,
+            "last_analysis": self._get_last_analysis_date()
+        }
+    
+    def _check_ffmpeg(self) -> bool:
+        """Verifica si FFmpeg está disponible en el sistema."""
+        try:
+            import subprocess
+            result = subprocess.run(['ffmpeg', '-version'], capture_output=True, timeout=5)
+            return result.returncode == 0
+        except (Exception, FileNotFoundError):
+            return False
+    
+    def _check_replaygain(self) -> bool:
+        """Verifica si las herramientas de ReplayGain están disponibles."""
+        try:
+            import subprocess
+            # metaflac es común para ReplayGain en FLAC
+            result = subprocess.run(['metaflac', '--version'], capture_output=True, timeout=5)
+            return result.returncode == 0
+        except (Exception, FileNotFoundError):
+            return False
+    
+    def _check_musicbrainz(self) -> bool:
+        """Verifica si MusicBrainz está accesible."""
+        try:
+            import musicbrainzngs
+            musicbrainzngs.set_useragent("MichiMusicPlayer", "0.11.0")
+            return True
+        except (Exception, ImportError):
+            return False
+    
+    def _check_acoustid(self) -> bool:
+        """Verifica si AcoustID está configurado con API key."""
+        try:
+            import acoustid
+            # Verificar si hay API key configurada
+            return hasattr(acoustid, 'api_key') and acoustid.api_key is not None
+        except (Exception, ImportError):
+            return False
+    
+    def _get_last_analysis_date(self) -> str | None:
+        """Obtiene la fecha del último análisis completado."""
+        # TODO: Implementar consulta real a la base de datos
+        # Por ahora retorna None (nunca analizado)
+        return None
