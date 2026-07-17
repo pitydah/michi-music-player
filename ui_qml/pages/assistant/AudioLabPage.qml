@@ -12,9 +12,11 @@ Item {
     focus: true
     id: root
 
+    property string pageState: "LOADING"
     property var alab: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
 
     Component.onCompleted: {
+        root.pageState = "READY"
         if (root.alab && typeof root.alab.refresh !== "undefined")
             root.alab.refresh()
     }

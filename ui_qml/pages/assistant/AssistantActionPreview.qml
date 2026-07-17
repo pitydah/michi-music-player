@@ -11,6 +11,7 @@ Item {
     focus: true
     id: root
 
+    property string pageState: "LOADING"
     property string actionName: ""
     property string actionDescription: ""
     property var affectedItems: []
@@ -27,6 +28,7 @@ Item {
 
     visible: root.previewVisible
     opacity: root.previewVisible ? 1.0 : 0.0
+    Component.onCompleted: root.pageState = "READY"
     Behavior on opacity { NumberAnimation { duration: MichiTheme.motion.durationFast } }
 
     GlassMaterial {

@@ -9,6 +9,7 @@ Item {
     focus: true
     id: root
 
+    property string pageState: "LOADING"
     property var chatHistory: []
     property bool aiThinking: false
     property alias flickable: flickable
@@ -17,7 +18,7 @@ Item {
 
     implicitHeight: 300
     width: parent ? parent.width : 400
-
+    Component.onCompleted: root.pageState = "READY"
 
     Flickable {
         id: flickable

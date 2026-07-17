@@ -11,6 +11,7 @@ Item {
     focus: true
     id: root
 
+    property string pageState: "LOADING"
     property string status: "" // success, partial, failure
     property string summaryText: ""
     property string detailText: ""
@@ -25,6 +26,7 @@ Item {
 
 
     visible: root.resultVisible
+    Component.onCompleted: root.pageState = "READY"
     opacity: root.resultVisible ? 1.0 : 0.0
     Behavior on opacity { NumberAnimation { duration: MichiTheme.motion.durationFast } }
 

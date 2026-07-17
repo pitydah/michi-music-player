@@ -10,6 +10,7 @@ Item {
     focus: true
     id: root
 
+    property string pageState: "LOADING"
     property string actionName: ""
     property string actionDescription: ""
     property var affectedItems: []
@@ -22,6 +23,7 @@ Item {
     anchors.fill: parent
     visible: root.dialogVisible
     z: 10000
+    Component.onCompleted: root.pageState = "READY"
 
     Accessible.description: actionDescription
 
