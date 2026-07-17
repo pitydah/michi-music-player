@@ -7,7 +7,7 @@ import "../../components"
 
 Item {
     id: root
-    objectName: "queuePage"
+    objectName: "queuePage_control"
     focus: true
 
     Accessible.role: Accessible.Pane
@@ -31,8 +31,8 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: MichiTheme.spacing.md
-        spacing: MichiTheme.spacing.md
+        anchors.margins: MichiTheme.spacing.sm
+        spacing: MichiTheme.spacing.sm
 
         QueueHeader {
             Layout.fillWidth: true

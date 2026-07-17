@@ -6,7 +6,7 @@ import "../../components"
 Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Now Playing Artwork"
-    objectName: "nowPlayingArtwork"
+    objectName: "npArtwork"
     focus: true
     property string coverKey: ""
     property bool placeholderMode: true

@@ -7,7 +7,7 @@ import "../../components"
 import "../../materials"
 
 Item {
-    objectName: "playlistsPage"
+    objectName: "playlistsPage_control"
     id: root
     focus: true
 
@@ -94,8 +94,8 @@ Item {
     Flickable {
         id: flickable
         anchors.fill: parent
-        anchors.margins: MichiTheme.spacing.xl
-        contentHeight: column.height + MichiTheme.spacing.xxl
+        anchors.margins: MichiTheme.spacing.md
+        contentHeight: column.height + MichiTheme.spacing.xl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         activeFocusOnTab: true
@@ -103,13 +103,13 @@ Item {
         Column {
             id: column
             width: parent.width
-            spacing: MichiTheme.spacing.lg
+            spacing: MichiTheme.spacing.md
 
             HeroMaterial {
                 id: playlistHero
                 width: parent.width
                 height: MichiTheme.typography.heroTitleSize * 5
-                radius: MichiTheme.radiusLg
+                radius: MichiTheme.radius.lg
                 showGlow: true
                 Column {
                     anchors.fill: parent
@@ -132,8 +132,6 @@ Item {
             }
 
             SearchField {
-                Accessible.role: Accessible.EditableText
-
                 id: playlistSearch
                 width: parent.width * 0.5
                 placeholderText: "Buscar playlists..."
@@ -147,7 +145,6 @@ Item {
             Row {
                 id: actionRow
                 spacing: MichiTheme.spacing.sm
-                    Accessible.role: Accessible.Button
 
                 MichiButton {
                     id: createPlaylistBtn
@@ -160,8 +157,6 @@ Item {
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
                     onClicked: root.openEditor()
-                    Accessible.role: Accessible.Button
-
                 }
                 MichiButton {
                     id: smartPlaylistBtn
@@ -173,8 +168,6 @@ Item {
                     KeyNavigation.backtab: createPlaylistBtn
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
-                    Accessible.role: Accessible.Button
-
                     onClicked: smartPlaylistDialog.open()
                 }
                 MichiButton {
@@ -186,8 +179,6 @@ Item {
                     KeyNavigation.tab: selectPlaylistBtn
                     KeyNavigation.backtab: smartPlaylistBtn
                     Keys.onReturnPressed: onClicked()
-                    Accessible.role: Accessible.Button
-
                     Keys.onSpacePressed: onClicked()
                     onClicked: root.openImport()
                 }
@@ -200,8 +191,6 @@ Item {
                     KeyNavigation.tab: deletePlaylistBtn
                     KeyNavigation.backtab: importPlaylistBtn
                     Keys.onReturnPressed: onClicked()
-                    Accessible.role: Accessible.Button
-
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._selectionMode = !root._selectionMode
                     highlighted: root._selectionMode
@@ -214,10 +203,6 @@ Item {
                     visible: root._selectionMode && root._selectedPlaylists.length > 0
                     activeFocusOnTab: true
                     KeyNavigation.tab: refreshBtn
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
                     KeyNavigation.backtab: selectPlaylistBtn
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -381,12 +366,6 @@ Item {
             root.refresh()
             smartPlaylistDialog.visible = false
             forceActiveFocus()
-        Accessible.role: Accessible.Dialog
-
-        Accessible.name: "Dialog"
-
-        activeFocusOnTab: true
-
         }
         onBackRequested: {
             smartPlaylistDialog.visible = false

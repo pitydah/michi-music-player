@@ -6,7 +6,7 @@ import "../../theme"
 Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Now Playing Header"
-    objectName: "nowPlayingHeader"
+    objectName: "npHeader"
     focus: true
     property var ps: null
     property var nav: null

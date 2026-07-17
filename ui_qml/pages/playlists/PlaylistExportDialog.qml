@@ -58,12 +58,8 @@ Dialog {
             visible: !root._exporting
 
             TextField {
-                Accessible.role: Accessible.EditableText
-
-                Accessible.name: "Campo de texto"
-
+                Accessible.name: "Nombre del archivo"
                 activeFocusOnTab: true
-
                 focusPolicy: Qt.StrongFocus
                 id: pathInput
                 width: parent.width - 80

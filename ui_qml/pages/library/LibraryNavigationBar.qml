@@ -25,9 +25,6 @@ Item {
 
         TabBar {
             Accessible.role: Accessible.PageTabList
-
-            Accessible.name: "TabBar"
-
             id: tabBar
             activeFocusOnTab: true
 
@@ -36,11 +33,7 @@ Item {
             height: parent.height
             background: Rectangle { color: "transparent" }
 
-                    Accessible.role: Accessible.PageTab
 
-                    Accessible.name: "TabButton"
-
-                    activeFocusOnTab: true
 
             Repeater {
                 model: ["Canciones", "Álbumes", "Artistas", "Carpetas"]

@@ -7,13 +7,9 @@ import "../../components"
 
 Dialog {
     Accessible.role: Accessible.Dialog
-
-    Accessible.name: "Dialog"
-
+    Accessible.name: "Editar fuente"
     id: root
     closePolicy: Popup.CloseOnEscape
-
-    activeFocusOnTab: true
 
 
     property int sourceId: 0
@@ -32,12 +28,6 @@ Dialog {
         Text {
             text: "Nombre"
             color: MichiTheme.colors.textMuted
-            Accessible.role: Accessible.EditableText
-
-            Accessible.name: "Campo de texto"
-
-            activeFocusOnTab: true
-
             font.pixelSize: MichiTheme.typography.metaSize
         }
 
@@ -54,12 +44,6 @@ Dialog {
             text: "Ruta"
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
-                Accessible.role: Accessible.EditableText
-
-                Accessible.name: "Campo de texto"
-
-                activeFocusOnTab: true
-
         }
 
         RowLayout {

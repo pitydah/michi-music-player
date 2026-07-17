@@ -9,7 +9,7 @@ Item {
     Accessible.name: "Settings General"
     focus: true
     id: root
-    objectName: "settingsGeneralPage"
+    objectName: "settingsGeneralPage_control"
 
     property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
@@ -96,7 +96,7 @@ Item {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
+                        anchors.margins: MichiTheme.spacing.md
                         spacing: MichiTheme.spacing.md
 
                         RowLayout {
@@ -120,11 +120,8 @@ Item {
 
                             ComboBox {
                                 Accessible.role: Accessible.ComboBox
-
-                                Accessible.name: "ComboBox"
-
+                                Accessible.name: "Idioma de la interfaz"
                                 activeFocusOnTab: true
-
                                 focusPolicy: Qt.StrongFocus
                                 model: ListModel {
                                     ListElement { text: "Español"; value: "es" }
@@ -156,7 +153,7 @@ Item {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
+                        anchors.margins: MichiTheme.spacing.md
                         spacing: MichiTheme.spacing.md
 
                         RowLayout {
@@ -176,16 +173,11 @@ Item {
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
-                                Accessible.role: Accessible.ComboBox
-
-                                Accessible.name: "ComboBox"
-
-                                activeFocusOnTab: true
-
-                            }
+                                }
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
+                                Accessible.name: "Modo de tema"
                                 model: ListModel {
                                     ListElement { text: "Sistema"; value: "system" }
                                     ListElement { text: "Claro"; value: "light" }
@@ -212,21 +204,13 @@ Item {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
+                        anchors.margins: MichiTheme.spacing.md
                         spacing: MichiTheme.spacing.md
 
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                Accessible.role: Accessible.CheckBox
-
-                                Accessible.name: "Switch"
-
-                                Accessible.checked: root.checked
-
-                                activeFocusOnTab: true
-
                                 text: "Cerrar a la bandeja"
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
@@ -240,14 +224,6 @@ Item {
                         }
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
-
-                                Accessible.role: Accessible.CheckBox
-
-                                Accessible.name: "Switch"
-
-                                Accessible.checked: root.checked
-
-                                activeFocusOnTab: true
 
                         RowLayout {
                             Layout.fillWidth: true
@@ -263,14 +239,6 @@ Item {
                                 onClicked: root._saveValue("general/start_minimized", checked)
                                 focusPolicy: Qt.StrongFocus
                             }
-                                Accessible.role: Accessible.CheckBox
-
-                                Accessible.name: "Switch"
-
-                                Accessible.checked: root.checked
-
-                                activeFocusOnTab: true
-
                         }
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
@@ -285,14 +253,7 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Switch {
-                                Accessible.role: Accessible.CheckBox
-
-                                Accessible.name: "Switch"
-
-                                Accessible.checked: root.checked
-
-                                activeFocusOnTab: true
-
+                                Accessible.name: "Recordar sesión"
                                 checked: root._loadValue("general/remember_session", true)
                                 onClicked: root._saveValue("general/remember_session", checked)
                                 focusPolicy: Qt.StrongFocus
@@ -317,28 +278,15 @@ Item {
                             }
                         }
                     }
-                                Accessible.role: Accessible.CheckBox
-
-                                Accessible.name: "Switch"
-
-                                Accessible.checked: root.checked
-
-                                activeFocusOnTab: true
-
-                }
 
                 GlassCard {
                     Layout.fillWidth: true
                     title: "Actualizaciones"
-                            Accessible.role: Accessible.Button
-
-                            activeFocusOnTab: true
-
                     interactive: false
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
+                        anchors.margins: MichiTheme.spacing.md
                         spacing: MichiTheme.spacing.md
 
                         RowLayout {
@@ -371,16 +319,12 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                                Accessible.role: Accessible.Button
-
-                                activeFocusOnTab: true
-
                     title: "Caché"
                     interactive: false
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
+                        anchors.margins: MichiTheme.spacing.md
                         spacing: MichiTheme.spacing.md
 
                         RowLayout {

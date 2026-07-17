@@ -7,7 +7,7 @@ import "../../components"
 Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Queue Item"
-    objectName: "queueItem"
+    objectName: "queueItem_control"
     focus: true
     id: root
 
@@ -23,7 +23,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: root.itemIsCurrent ? MichiTheme.colors.surfaceCardHighlight : MichiTheme.colors.surfaceCard
+        color: root.itemIsCurrent ? MichiTheme.colors.accentSelection : MichiTheme.colors.surfaceCard
         radius: MichiTheme.radius.sm
         border.width: root.itemIsCurrent ? 1 : 0
         border.color: root.itemIsCurrent ? MichiTheme.colors.accentBlue : "transparent"
@@ -70,10 +70,6 @@ Item {
             }
 
             MichiIconButton {
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
                 iconSource: "../../icons/nowplaying_clean/warm_play_32.png"
                 iconText: ""
                 tooltipText: "Reproducir"
@@ -86,10 +82,6 @@ Item {
                     }
                 }
             }
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
 
             MichiIconButton {
                 iconSource: "../../icons/sidebar_clean/close_32.png"

@@ -60,61 +60,38 @@ Item {
                 placeholderText: "Buscar en historial..."
                 onSearchTextChanged: { root.searchText = text; root.filtersChanged() }
             }
-                Accessible.role: Accessible.EditableText
-
-                Accessible.name: "Campo de texto"
-
-                activeFocusOnTab: true
-
 
             TextField {
                 focusPolicy: Qt.StrongFocus
+                Accessible.name: "Filtrar por artista"
                 id: artistField
                 width: 140
                 placeholderText: "Artista"
-                Accessible.role: Accessible.EditableText
-
-                Accessible.name: "Campo de texto"
-
+                Accessible.name: "Filtrar por artista"
                 activeFocusOnTab: true
-
                 onTextChanged: { root.artistFilter = text.trim(); root.filtersChanged() }
                 Keys.onEscapePressed: { text = ""; root.artistFilter = ""; root.filtersChanged() }
             }
 
             TextField {
                 focusPolicy: Qt.StrongFocus
-                Accessible.role: Accessible.EditableText
-
-                Accessible.name: "Campo de texto"
-
+                Accessible.name: "Filtrar por álbum"
                 id: albumField
                 activeFocusOnTab: true
-
                 width: 140
                 placeholderText: "Álbum"
                 onTextChanged: { root.albumFilter = text.trim(); root.filtersChanged() }
                 Keys.onEscapePressed: { text = ""; root.albumFilter = ""; root.filtersChanged() }
             }
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
-
             TextField {
                 focusPolicy: Qt.StrongFocus
+                Accessible.name: "Filtrar por dispositivo"
                 id: deviceField
                 width: 120
                 placeholderText: "Dispositivo"
                 onTextChanged: { root.deviceFilter = text.trim(); root.filtersChanged() }
                 Keys.onEscapePressed: { text = ""; root.deviceFilter = ""; root.filtersChanged() }
             }
-
-                Accessible.role: Accessible.CheckBox
-
-                Accessible.name: "CheckBox"
-
-                Accessible.checked: root.checked
 
             MichiButton {
                 text: "Limpiar filtros"
@@ -128,12 +105,6 @@ Item {
 
         Row {
             spacing: MichiTheme.spacing.sm
-                Accessible.role: Accessible.EditableText
-
-                Accessible.name: "Campo de texto"
-
-                activeFocusOnTab: true
-
             CheckBox {
                 id: dateRangeCheck
                 text: "Rango de fecha"
@@ -151,13 +122,9 @@ Item {
             }
             TextField {
                 focusPolicy: Qt.StrongFocus
-                Accessible.role: Accessible.EditableText
-
-                Accessible.name: "Campo de texto"
-
+                Accessible.name: "Fecha desde"
                 id: fromDateField
                 activeFocusOnTab: true
-
                 width: 140
                 placeholderText: "YYYY-MM-DD"
                 visible: root.dateRangeEnabled

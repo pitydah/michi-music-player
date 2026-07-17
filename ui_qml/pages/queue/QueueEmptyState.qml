@@ -6,7 +6,7 @@ import "../../theme"
 Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Queue Empty State"
-    objectName: "queueEmptyState"
+    objectName: "queueEmptyState_control"
     focus: true
     implicitHeight: 120
 

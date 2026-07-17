@@ -7,7 +7,7 @@ import "../../components"
 Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Queue Actions"
-    objectName: "queueActions"
+    objectName: "queueActions_control"
     focus: true
     property var qb: null
     property var ps: null
@@ -21,10 +21,6 @@ Item {
         spacing: MichiTheme.spacing.sm
 
         MichiButton {
-            Accessible.role: Accessible.Button
-
-            activeFocusOnTab: true
-
             text: "Reproducir desde inicio"
             variant: "ghost"
             onClicked: {
@@ -37,10 +33,6 @@ Item {
         }
 
         Item { Layout.fillWidth: true }
-            Accessible.role: Accessible.Button
-
-            activeFocusOnTab: true
-
 
         MichiButton {
             text: "Deshacer"

@@ -9,7 +9,7 @@ Item {
     Accessible.name: "Settings Playback"
     focus: true
     id: root
-    objectName: "settingsPlaybackPage"
+    objectName: "settingsPlaybackPage_control"
 
     property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
@@ -60,9 +60,7 @@ Item {
             ColumnLayout {
                 width: Math.min(scrollView.width - MichiTheme.spacing.xl * 2, 800)
                 anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
-                spacing: MichiTheme.spacing.lg
-                
-                
+                spacing: MichiTheme.spacing.md
 
                 PageHeader {
                     title: "Reproducción"
@@ -76,7 +74,7 @@ Item {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
+                        anchors.margins: MichiTheme.spacing.md
                         spacing: MichiTheme.spacing.md
 
                         RowLayout {
@@ -100,11 +98,8 @@ Item {
 
                             ComboBox {
                                 Accessible.role: Accessible.ComboBox
-
-                                Accessible.name: "ComboBox"
-
+                                Accessible.name: "Dispositivo de salida"
                                 activeFocusOnTab: true
-
                                 focusPolicy: Qt.StrongFocus
                                 model: root.audioDevices.length > 0 ? root.audioDevices : ["Predeterminado"]
                                 currentIndex: {
@@ -136,16 +131,11 @@ Item {
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
-                                Accessible.role: Accessible.ComboBox
-
-                                Accessible.name: "ComboBox"
-
-                                activeFocusOnTab: true
-
                             }
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
+                                Accessible.name: "Perfil de audio"
                                 model: ["standard", "hifi_pcm", "bitperfect_pcm", "dsd_to_pcm", "pure_audio", "studio_monitor"]
                                 currentIndex: {
                                     var p = root._loadValue("audio/profile", "standard")
@@ -166,7 +156,7 @@ Item {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
+                        anchors.margins: MichiTheme.spacing.md
                         spacing: MichiTheme.spacing.md
 
                         RowLayout {
@@ -210,14 +200,6 @@ Item {
 
                         RowLayout {
                             Layout.fillWidth: true
-                                Accessible.role: Accessible.CheckBox
-
-                                Accessible.name: "Switch"
-
-                                Accessible.checked: root.checked
-
-                                activeFocusOnTab: true
-
                             spacing: MichiTheme.spacing.md
                             Label {
                                 text: "Recordar volumen"
@@ -239,17 +221,9 @@ Item {
                     title: "Transiciones"
                     interactive: false
 
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
-                                Accessible.role: Accessible.CheckBox
-
-                                Accessible.name: "Switch"
-
-                                Accessible.checked: root.checked
-
-                                activeFocusOnTab: true
-
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: MichiTheme.spacing.md
                         spacing: MichiTheme.spacing.md
 
                         RowLayout {
@@ -273,10 +247,6 @@ Item {
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
-
-                                Accessible.role: Accessible.Slider
-
-                                activeFocusOnTab: true
 
                             ColumnLayout {
                                 Layout.fillWidth: true
@@ -315,29 +285,23 @@ Item {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
-                        spacing: MichiTheme.spacing.md
+                        anchors.margins: MichiTheme.spacing.md
+                        spacing: MichiTheme.spacing.sm
 
                         RowLayout {
                             Layout.fillWidth: true
-                                Accessible.role: Accessible.ComboBox
-
-                                Accessible.name: "ComboBox"
-
-                                activeFocusOnTab: true
-
                             spacing: MichiTheme.spacing.md
 
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Normalización de volumen"
+                                    text: "Dispositivo de salida"
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                                 Label {
-                                    text: "Ajusta el volumen según metadatos ReplayGain"
+                                    text: "Selecciona el dispositivo de audio"
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
@@ -372,12 +336,8 @@ Item {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
+                        anchors.margins: MichiTheme.spacing.md
                         spacing: MichiTheme.spacing.md
-                                Accessible.role: Accessible.Slider
-
-                                activeFocusOnTab: true
-
 
                         RowLayout {
                             Layout.fillWidth: true

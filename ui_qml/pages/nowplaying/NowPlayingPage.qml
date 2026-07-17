@@ -28,15 +28,15 @@ Item {
 
     Flickable {
         anchors.fill: parent
-        anchors.margins: MichiTheme.spacing.xl
-        contentHeight: contentColumn.height + MichiTheme.spacing.xxl
+        anchors.margins: MichiTheme.spacing.md
+        contentHeight: contentColumn.height + MichiTheme.spacing.xl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
         Column {
             id: contentColumn
             width: parent.width
-            spacing: MichiTheme.spacing.lg
+            spacing: MichiTheme.spacing.md
 
             NowPlayingHeader {
                 width: parent.width
@@ -47,7 +47,7 @@ Item {
             Rectangle {
                 width: parent.width
                 height: _showError ? 36 : 0
-                radius: MichiTheme.radiusSm
+                radius: MichiTheme.radius.sm
                 visible: _showError
                 color: MichiTheme.colors.error
                 clip: true
@@ -82,12 +82,12 @@ Item {
             GridLayout {
                 width: parent.width
                 columns: parent.width > 800 ? 2 : 1
-                rowSpacing: MichiTheme.spacing.lg
-                columnSpacing: MichiTheme.spacing.xl
+                rowSpacing: MichiTheme.spacing.md
+                columnSpacing: MichiTheme.spacing.lg
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: MichiTheme.spacing.md
+                    spacing: MichiTheme.spacing.sm
 
                     NowPlayingArtwork {
                         Layout.alignment: Qt.AlignHCenter
@@ -137,11 +137,11 @@ Item {
                         nextSupported: root.ps ? root.ps.nextSupported : false
                         shuffleSupported: root.ps ? root.ps.shuffleSupported : false
                         repeatSupported: root.ps ? root.ps.repeatSupported : false
-                        onPlayClicked: { if (root.ps) root.ps.togglePlay() }
-                        onPrevClicked: { if (root.ps) root.ps.previous() }
-                        onNextClicked: { if (root.ps) root.ps.next() }
-                        onShuffleClicked: { if (root.ps) root.ps.toggleShuffle() }
-                        onRepeatClicked: { if (root.ps) root.ps.toggleRepeat() }
+                        onPlayClicked: { root.ps && root.ps.togglePlay() }
+                        onPrevClicked: { root.ps && root.ps.previous() }
+                        onNextClicked: { root.ps && root.ps.next() }
+                        onShuffleClicked: { root.ps && root.ps.toggleShuffle() }
+                        onRepeatClicked: { root.ps && root.ps.toggleRepeat() }
                     }
 
                     RowLayout {
@@ -160,8 +160,8 @@ Item {
                             Layout.fillWidth: true
                             volume: root.ps ? root.ps.volume : 80
                             muted: root.ps ? root.ps.muted : false
-                            onVolumeAdjusted: function(vol) { if (root.ps) root.ps.setVolume(vol) }
-                            onMuteClicked: { if (root.ps) root.ps.toggleMute() }
+                            onVolumeAdjusted: function(vol) { root.ps && root.ps.setVolume(vol) }
+                            onMuteClicked: { root.ps && root.ps.toggleMute() }
                         }
                     }
 
@@ -180,15 +180,15 @@ Item {
                         spacing: MichiTheme.spacing.sm
                         visible: root._hasTrack
 
-                        MichiButton { text: "Letra"; variant: "ghost"; onClicked: { if (root.nav) root.nav.navigate("lyrics") } }
-                        MichiButton { text: "Cola"; variant: "ghost"; onClicked: { if (root.nav) root.nav.navigate("queue") } }
+                        MichiButton { text: "Letra"; variant: "ghost"; onClicked: { root.nav && root.nav.navigate("lyrics") } }
+                        MichiButton { text: "Cola"; variant: "ghost"; onClicked: { root.nav && root.nav.navigate("queue") } }
                     }
                 }
 
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.preferredWidth: parent.width > 700 ? parent.width * 0.35 : parent.width
-                    spacing: MichiTheme.spacing.md
+                    spacing: MichiTheme.spacing.sm
 
                     NowPlayingQueuePreview {
                         Layout.fillWidth: true

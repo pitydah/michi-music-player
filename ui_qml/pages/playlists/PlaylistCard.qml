@@ -7,7 +7,7 @@ import "../../components"
 Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Playlist Card"
-    objectName: "playlistCard"
+    objectName: "playlistCard_control"
     focus: true
     id: root
 
@@ -27,13 +27,13 @@ Item {
 
     GlassMaterial {
         anchors.fill: parent
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         hovered: mouseArea.containsMouse
         interactive: true
 
         Rectangle {
             anchors.fill: parent
-            radius: MichiTheme.radiusMd
+            radius: MichiTheme.radius.md
             color: root.selected ? MichiTheme.colors.accentSurface : "transparent"
             visible: root.showSelection || root.selected
             border.color: root.selected ? MichiTheme.colors.accent : "transparent"
@@ -58,7 +58,7 @@ Item {
             CoverImage {
                 width: parent.width
                 height: width
-                coverRadius: MichiTheme.radiusSm
+                coverRadius: MichiTheme.radius.sm
                 coverKey: root.coverKey || root.playlistTitle || "PL"
             }
 
@@ -86,30 +86,13 @@ Item {
     }
 
     Menu {
-        Accessible.role: Accessible.PopupMenu
-
-        Accessible.name: "Menu"
-
-            Accessible.role: Accessible.MenuItem
-
         id: contextMenu
-        activeFocusOnTab: true
+        Accessible.role: Accessible.PopupMenu
+        Accessible.name: "Opciones de lista"
 
         MenuItem {
-            Accessible.role: Accessible.MenuItem
-
-            Accessible.name: "MenuItem"
-
-            activeFocusOnTab: true
-
             text: "Reproducir"
             onTriggered: root.contextMenuRequested("shuffle")
-            Accessible.role: Accessible.MenuItem
-
-            Accessible.name: "MenuItem"
-
-            activeFocusOnTab: true
-
         }
         MenuItem {
             text: "Duplicar"

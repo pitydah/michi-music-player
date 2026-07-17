@@ -8,7 +8,7 @@ import "."
 Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Queue List View"
-    objectName: "queueListView"
+    objectName: "queueListView_control"
     focus: true
     property var qb: null
     property var ps: null
@@ -16,12 +16,6 @@ Item {
     property var notif: null
 
     ListView {
-        Accessible.role: Accessible.List
-
-        Accessible.name: "ListView"
-
-        activeFocusOnTab: true
-
         focusPolicy: Qt.StrongFocus
         id: queueList
         anchors.fill: parent

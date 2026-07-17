@@ -92,9 +92,6 @@ Item {
 
                                 MichiProgressBar {
                                     Accessible.role: Accessible.ProgressBar
-
-                                    activeFocusOnTab: true
-
                                     width: parent.width
                                     height: 4
                                     value: (modelData.total_bytes || modelData.totalBytes || 1) > 0

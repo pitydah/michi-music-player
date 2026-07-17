@@ -220,12 +220,6 @@ Item {
                             Text {
                                 text: "Dirección IP"
                                 color: MichiTheme.colors.textSecondary
-                                Accessible.role: Accessible.EditableText
-
-                                Accessible.name: "Campo de texto"
-
-                                activeFocusOnTab: true
-
                                 font.pixelSize: MichiTheme.typography.metaSize
                             }
 
@@ -243,12 +237,6 @@ Item {
                         Column {
                             width: parent.width * 0.25
                             spacing: MichiTheme.spacing.xs
-
-                                Accessible.role: Accessible.EditableText
-
-                                Accessible.name: "Campo de texto"
-
-                                activeFocusOnTab: true
 
                             Text {
                                 text: "Puerto"
@@ -269,12 +257,6 @@ Item {
                         }
 
                         Column {
-                                Accessible.role: Accessible.EditableText
-
-                                Accessible.name: "Campo de texto"
-
-                                activeFocusOnTab: true
-
                             width: parent.width * 0.30
                             spacing: MichiTheme.spacing.xs
 
@@ -361,11 +343,6 @@ Item {
                             }
                         }
                     }
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
-
                     Text {
                         text: root.discoveredDeviceName ? "Dispositivo: " + root.discoveredDeviceName : ""
                         color: MichiTheme.colors.textSecondary
@@ -374,10 +351,6 @@ Item {
                     }
                 }
             }
-
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
 
             Row {
                 spacing: MichiTheme.spacing.sm
