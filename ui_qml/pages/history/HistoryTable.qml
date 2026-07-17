@@ -124,6 +124,9 @@ Item {
                     color: MichiTheme.colors.accent
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Reproducir"
+                    Accessible.description: "Reproducir esta canción"
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
@@ -138,6 +141,9 @@ Item {
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Menú contextual"
+                    Accessible.description: "Abrir menú de acciones para esta canción"
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor

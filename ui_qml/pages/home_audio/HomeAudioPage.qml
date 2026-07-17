@@ -223,7 +223,7 @@ Item {
 
                 StatusBadge {
                     id: statusBadge
-                    text: "Experimental"
+                    text: "Multiroom"
                     kind: "experimental"
                     KeyNavigation.backtab: diagCard
                 }

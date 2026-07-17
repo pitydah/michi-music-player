@@ -16,6 +16,8 @@ Item {
     Text {
         anchors.centerIn: parent
         text: root.favorite ? "★" : root.missing ? "[X]" : ""
+        Accessible.role: Accessible.Icon
+        Accessible.name: root.favorite ? "Favorito" : root.missing ? "Archivo faltante" : ""
         color: root.favorite ? MichiTheme.colors.warning : root.missing ? MichiTheme.colors.error : "transparent"
         font.pixelSize: MichiTheme.typography.captionSize
         visible: root.favorite || root.missing

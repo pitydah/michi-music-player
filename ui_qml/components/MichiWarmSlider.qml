@@ -18,17 +18,14 @@ Slider {
     activeFocusOnTab: enabled
 
     Accessible.role: Accessible.Slider
-    Accessible.minimumValue: from
-    Accessible.maximumValue: to
-    Accessible.value: value
     Accessible.onIncreaseAction: increase()
     Accessible.onDecreaseAction: decrease()
 
-    Keys.onHomePressed: { value = from; commit() }
-    Keys.onEndPressed: { value = to; commit() }
     Keys.onPressed: function(event) {
-        if (event.key === Qt.Key_Left || event.key === Qt.Key_Down) { value = Math.max(from, value - stepSize || 1); commit() }
-        if (event.key === Qt.Key_Right || event.key === Qt.Key_Up) { value = Math.min(to, value + stepSize || 1); commit() }
+        if (event.key === Qt.Key_Left || event.key === Qt.Key_Down) { root.value = Math.max(root.from, root.value - (root.stepSize || 1)); event.accepted = true; root.commit() }
+        else if (event.key === Qt.Key_Right || event.key === Qt.Key_Up) { root.value = Math.min(root.to, root.value + (root.stepSize || 1)); event.accepted = true; root.commit() }
+        else if (event.key === Qt.Key_Home) { root.value = root.from; event.accepted = true; root.commit() }
+        else if (event.key === Qt.Key_End) { root.value = root.to; event.accepted = true; root.commit() }
     }
 
     background: Rectangle {

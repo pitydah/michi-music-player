@@ -87,6 +87,9 @@ Item {
                             text: "▶"
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.captionSize
+                            Accessible.role: Accessible.Icon
+                            Accessible.name: "Abrir género"
+                            Accessible.description: "Navegar a este género"
                         }
                     }
                     MouseArea {

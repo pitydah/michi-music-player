@@ -81,52 +81,57 @@ class _MichiHandler(BaseHTTPRequestHandler):
             return
         body = self._read_json()
 
+        def _require_bridge():
+            if not self._bridge:
+                self._send_json(503, {"error": "bridge_not_available", "recoverable": True})
+            return bool(self._bridge)
+
         if self.path == "/api/player/play":
-            if self._bridge:
+            if _require_bridge():
                 self._bridge.play_requested.emit()
-            self._send_json(200, {"status": "ok"})
+                self._send_json(200, {"status": "ok"})
 
         elif self.path == "/api/player/pause":
-            if self._bridge:
+            if _require_bridge():
                 self._bridge.pause_requested.emit()
-            self._send_json(200, {"status": "ok"})
+                self._send_json(200, {"status": "ok"})
 
         elif self.path == "/api/player/stop":
-            if self._bridge:
+            if _require_bridge():
                 self._bridge.stop_requested.emit()
-            self._send_json(200, {"status": "ok"})
+                self._send_json(200, {"status": "ok"})
 
         elif self.path == "/api/player/next":
-            if self._bridge:
+            if _require_bridge():
                 self._bridge.next_requested.emit()
-            self._send_json(200, {"status": "ok"})
+                self._send_json(200, {"status": "ok"})
 
         elif self.path == "/api/player/previous":
-            if self._bridge:
+            if _require_bridge():
                 self._bridge.previous_requested.emit()
-            self._send_json(200, {"status": "ok"})
+                self._send_json(200, {"status": "ok"})
 
         elif self.path == "/api/player/volume":
             vol = body.get("volume", 70)
-            if self._bridge:
+            if _require_bridge():
                 self._bridge.volume_requested.emit(int(vol))
-            self._send_json(200, {"status": "ok", "volume": vol})
+                self._send_json(200, {"status": "ok", "volume": vol})
 
         elif self.path == "/api/player/play_media":
-            if self._bridge:
+            if _require_bridge():
                 self._bridge.play_media_requested.emit(body)
-            self._send_json(200, {"status": "ok"})
+                self._send_json(200, {"status": "ok"})
 
         elif self.path == "/api/player/select_destination":
             dest_id = body.get("id", "local") or "local"
-            if self._bridge:
+            if _require_bridge():
                 self._bridge.select_destination_requested.emit(dest_id)
-            self._send_json(200, {"status": "ok"})
+                self._send_json(200, {"status": "ok"})
 
         elif self.path == "/api/library/play":
-            if self._bridge:
+            if _require_bridge():
                 self._bridge.library_play_requested.emit(body)
-            self._send_json(200, {"status": "ok"})
+                self._send_json(200, {"status": "ok"})
 
         else:
             self._send_json(404, {"error": "not_found"})

@@ -47,9 +47,12 @@ Item {
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "\u26A0\uFE0F Error"
+                text: "\u26A0 Error"
                 color: MichiTheme.colors.error
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
+                Accessible.role: Accessible.Icon
+                Accessible.name: "Error"
+                Accessible.description: root.errorMessage
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter

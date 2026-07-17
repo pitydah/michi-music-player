@@ -48,6 +48,8 @@ Item {
                     color: root.destructive ? MichiTheme.colors.error : MichiTheme.colors.accentBlue
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     anchors.verticalCenter: parent.verticalCenter
+                    Accessible.role: Accessible.Icon
+                    Accessible.name: root.destructive ? "Acción destructiva" : "Ejecutar acción"
                 }
 
                 Column {

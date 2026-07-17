@@ -47,6 +47,8 @@ Item {
                     color: status === "success" ? MichiTheme.colors.success : status === "partial" ? MichiTheme.colors.warning : MichiTheme.colors.error
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     anchors.verticalCenter: parent.verticalCenter
+                    Accessible.role: Accessible.Icon
+                    Accessible.name: status === "success" ? "Completado" : status === "partial" ? "Completado parcialmente" : "Error"
                 }
 
                 Text {

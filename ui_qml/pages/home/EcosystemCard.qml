@@ -61,7 +61,7 @@ Item {
                         }
                     }
                 }
-                StatusBadge { text: "Experimental"; kind: "experimental" }
+                StatusBadge { text: "Ecosistema"; kind: "info" }
             }
 
             Text {

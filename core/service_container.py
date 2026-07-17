@@ -538,11 +538,7 @@ class ObservableServiceContainer(ServiceContainer, QObject):
                 self._service_states[name] = "ready"
             except Exception as e:
                 self._service_states[name] = "failed"
-<<<<<<< Updated upstream
                 logger.error(f"Service {name} failed to start: {e}", exc_info=True)
-=======
-                logging.getLogger(__name__).error(f"Service {name} failed to start: {e}", exc_info=True)
->>>>>>> Stashed changes
         else:
             self._service_states[name] = "ready"
         self.service_state_changed.emit(name, self._service_states[name])

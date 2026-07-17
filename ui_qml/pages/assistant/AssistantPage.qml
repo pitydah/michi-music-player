@@ -315,6 +315,7 @@ Item {
                     id: sendBtn
                     objectName: "assistantSendButton"
                     iconText: root._executing ? "■" : ">"
+                    accessibleName: root._executing ? "Cancelar ejecución" : "Enviar mensaje"
                     tooltipText: root._executing ? "Cancelar" : "Enviar"
                     btnSize: MichiTheme.minimumInteractiveSize
                     activeFocusOnTab: true

@@ -59,6 +59,8 @@ Item {
             Text {
                 width: parent.width
                 text: root.destructive ? "⚠ Acción destructiva" : "Confirmar acción"
+                Accessible.role: Accessible.Icon
+                Accessible.name: root.destructive ? "Advertencia: Acción destructiva" : "Confirmar acción"
                 color: root.destructive ? MichiTheme.colors.error : MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightBold

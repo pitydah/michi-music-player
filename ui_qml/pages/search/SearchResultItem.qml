@@ -64,6 +64,9 @@ Item {
                 text: "▶"; color: MichiTheme.colors.accent; anchors.verticalCenter: parent.verticalCenter
                 font.pixelSize: MichiTheme.typography.bodySize; width: 24
                 visible: root.resultType === "track"
+                Accessible.role: Accessible.Button
+                Accessible.name: "Reproducir"
+                Accessible.description: "Reproducir esta canción"
                 MouseArea {
                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                     onClicked: root.playRequested()

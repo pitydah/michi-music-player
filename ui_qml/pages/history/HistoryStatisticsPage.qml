@@ -276,6 +276,7 @@ Drawer {
                             variant: "ghost"
                             anchors.verticalCenter: parent.verticalCenter
                             visible: mouseArea.containsMouse
+                            Accessible.name: "Reproducir elemento del historial"
                             onClicked: {
                                 if (modelData.track_id)
                                     root.playTrackRequested(modelData.track_id)

@@ -86,6 +86,8 @@ Item {
                         text: "\u25E2"
                         color: MichiTheme.colors.accent
                         font.pixelSize: 28
+                        Accessible.role: Accessible.Icon
+                        Accessible.name: "Icono de emisora de radio"
                     }
 
                 }
@@ -271,56 +273,71 @@ Item {
                     Accessible.role: Accessible.Button
 
 
-                MichiButton {
-                    text: root._isPlaying ? "\u25A0 Detener" : "\u25B6 Reproducir"
-                    variant: root._isPlaying ? "ghost" : "primary"
-                    activeFocusOnTab: true
-                    onClicked: root._isPlaying ? root.stop() : root.play()
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
-                    Accessible.role: Accessible.Button
+            MichiButton {
+                text: root._isPlaying ? "Detener" : "Reproducir"
+                variant: root._isPlaying ? "ghost" : "primary"
+                activeFocusOnTab: true
+                iconText: root._isPlaying ? "" : ""
+                onClicked: root._isPlaying ? root.stop() : root.play()
+                Keys.onReturnPressed: onClicked()
+                Keys.onSpacePressed: onClicked()
+                Accessible.name: root._isPlaying ? "Detener reproducción" : "Reproducir emisora"
 
-                }
-
-                MichiButton {
-                    text: root._isFav ? "\u2605" : "\u2606"
-                    variant: "ghost"
-                    activeFocusOnTab: true
-                    onClicked: {
-                        if (root.stationData) {
-                            root.toggleFavRequested(root.stationData.id || 0)
-                            root._isFav = !root._isFav
-                        }
+                contentItem: Row {
+                    spacing: MichiTheme.spacing.xs
+                    anchors.centerIn: parent
+                    Text {
+                        text: root._isPlaying ? "\u25A0" : "\u25B6"
+                        color: parent.parent.parent.enabled ? MichiTheme.colors.textOnAccent : MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        anchors.verticalCenter: parent.verticalCenter
                     }
-                    Accessible.role: Accessible.Button
-
-                    Keys.onReturnPressed: onClicked()
-                }
-
-                MichiButton {
-                    text: "\u270E Editar"
-                    variant: "ghost"
-                    activeFocusOnTab: true
-                    visible: true
-                    Accessible.role: Accessible.Button
-
-                    onClicked: root.editRequested(root.stationData)
-                    Keys.onReturnPressed: onClicked()
-                }
-
-                MichiButton {
-                    text: "\u2716"
-                    variant: "danger"
-                    activeFocusOnTab: true
-                    onClicked: {
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
-                        if (root.stationData) root.deleteRequested(root.stationData.url)
+                    Text {
+                        text: root._isPlaying ? " Detener" : " Reproducir"
+                        color: parent.parent.parent.enabled ? MichiTheme.colors.textOnAccent : MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        font.weight: MichiTheme.typography.weightMedium
+                        anchors.verticalCenter: parent.verticalCenter
                     }
-                    Keys.onReturnPressed: onClicked()
                 }
+            }
+
+            MichiButton {
+                text: root._isFav ? "\u2605" : "\u2606"
+                variant: "ghost"
+                activeFocusOnTab: true
+                onClicked: {
+                    if (root.stationData) {
+                        root.toggleFavRequested(root.stationData.id || 0)
+                        root._isFav = !root._isFav
+                    }
+                }
+                Accessible.name: root._isFav ? "Quitar de favoritos" : "Añadir a favoritos"
+                Keys.onReturnPressed: onClicked()
+                tooltipText: root._isFav ? "Quitar de favoritos" : "Añadir a favoritos"
+            }
+
+            MichiButton {
+                text: "Editar"
+                variant: "ghost"
+                activeFocusOnTab: true
+                visible: true
+                Accessible.name: "Editar emisora"
+                onClicked: root.editRequested(root.stationData)
+                Keys.onReturnPressed: onClicked()
+                iconText: "\u270E"
+            }
+
+            MichiButton {
+                text: "\u2716"
+                variant: "danger"
+                activeFocusOnTab: true
+                Accessible.name: "Eliminar emisora"
+                onClicked: {
+                    if (root.stationData) root.deleteRequested(root.stationData.url)
+                }
+                Keys.onReturnPressed: onClicked()
+            }
 
                 MichiButton {
                     text: "Reintentar"

@@ -126,7 +126,7 @@ Item {
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     StatusBadge { text: "Interfaz clásica disponible"; kind: "info" }
-                    StatusBadge { text: "Experimental"; kind: "experimental" }
+                    StatusBadge { text: "Ecualizador avanzado"; kind: "info" }
                 }
             }
         }

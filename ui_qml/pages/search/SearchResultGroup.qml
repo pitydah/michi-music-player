@@ -48,6 +48,9 @@ Item {
                         width: 24; text: "▶"; color: MichiTheme.colors.accent
                         font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter
                         visible: modelData.type === "track"
+                        Accessible.role: Accessible.Button
+                        Accessible.name: "Reproducir"
+                        Accessible.description: "Reproducir esta canción"
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                             onClicked: root.itemClicked(modelData.type || "", modelData.id || "", modelData.title || "")

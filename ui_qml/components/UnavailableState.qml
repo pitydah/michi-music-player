@@ -36,6 +36,8 @@ Item {
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.heroTitleSize
             visible: true
+            Accessible.role: Accessible.Icon
+            Accessible.name: "No disponible"
         }
 
         Text {
