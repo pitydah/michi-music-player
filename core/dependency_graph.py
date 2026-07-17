@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 SERVICE_ORDER = [
     "configuration", "database_factory", "repository_factory",
     "event_bus", "worker_manager", "query_executor", "job_manager",

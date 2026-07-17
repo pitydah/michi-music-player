@@ -27,6 +27,7 @@ class ConfirmationRequest:
 
 class ConfirmationService:
     def __init__(self):
+        logger.debug("ConfirmationService.__init__ called")
         self._pending: dict[str, ConfirmationRequest] = {}
 
     def request(self, operation_id: str, target: str,

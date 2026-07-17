@@ -68,7 +68,9 @@ class CrashReporter(QObject):
 
     def __init__(self, worker_mgr=None, parent=None):
         super().__init__(parent)
-        self._log = logging.getLogger("michi.crash")
+        logger = logging.getLogger("michi.crash")
+        self._log = logger
+        logger.debug("CrashReporter.__init__ called")
         self._worker_mgr = worker_mgr
         self._qt_messages: list[str] = []
         self._worker_errors: list[dict] = []

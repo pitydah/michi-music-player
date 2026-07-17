@@ -5,12 +5,17 @@ Escape clears. Stale results protected by generation counter.
 """
 from __future__ import annotations
 
+import logging
+
 from PySide6.QtCore import QObject, QTimer
+
+logger = logging.getLogger(__name__)
 
 
 class DebouncedQueryController(QObject):
     def __init__(self, callback, delay_ms: int = 250, parent=None):
         super().__init__(parent)
+        logger.debug("DebouncedQueryController.__init__ called")
         self._callback = callback
         self._delay = delay_ms
         self._timer = QTimer(self)

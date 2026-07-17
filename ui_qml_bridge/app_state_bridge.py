@@ -1,9 +1,12 @@
 """AppStateBridge — global QML application state with independent modes."""
 from __future__ import annotations
 
+import logging
 import os
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
+
+logger = logging.getLogger(__name__)
 
 
 class AppStateBridge(QObject):

@@ -5,16 +5,20 @@ Production connections use URI mode read-only.
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
 import threading
 from pathlib import Path
 import contextlib
+
+logger = logging.getLogger(__name__)
 
 _local = threading.local()
 
 
 class LibraryConnectionFactory:
     def __init__(self, db_path: str, timeout_ms: int = 5000):
+        logger.debug("LibraryConnectionFactory.__init__ called")
         self._db_path = db_path
         self._timeout = timeout_ms
 

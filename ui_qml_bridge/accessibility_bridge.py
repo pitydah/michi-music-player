@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import logging
+
 from PySide6.QtCore import QObject, Signal, Property, Slot
 
 from core.settings_manager import SETTINGS
+
+logger = logging.getLogger(__name__)
 
 
 class AccessibilityBridge(QObject):
@@ -11,6 +15,7 @@ class AccessibilityBridge(QObject):
     def __init__(self, service=None, coordinator=None, playback_service=None,
                  settings_service=None, settings_coordinator=None, parent=None):
         super().__init__(parent)
+        logger.debug("AccessibilityBridge.__init__ called")
         assert playback_service is not None, "AccessibilityBridge: playback_service is REQUIRED"
         self._svc = service or settings_service
         self._coordinator = coordinator or settings_coordinator
