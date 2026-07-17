@@ -86,4 +86,7 @@ QtObject {
     readonly property int radiusXl: radius.xl
     readonly property int radiusPill: radius.pill
     readonly property real focusOffset: 2
+
+    // ── Accesibilidad ──
+    property bool reducedMotion: false
 }

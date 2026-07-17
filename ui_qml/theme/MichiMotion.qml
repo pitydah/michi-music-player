@@ -2,10 +2,12 @@ pragma Singleton
 import QtQuick
 
 QtObject {
-    readonly property int durationInstant: 80
-    readonly property int durationFast: 120
-    readonly property int durationNormal: 200
-    readonly property int durationSlow: 300
+    readonly property bool reducedMotion: MichiTheme ? MichiTheme.reducedMotion : false
+
+    readonly property int durationInstant: reducedMotion ? 0 : 80
+    readonly property int durationFast: reducedMotion ? 0 : 120
+    readonly property int durationNormal: reducedMotion ? 0 : 200
+    readonly property int durationSlow: reducedMotion ? 0 : 300
 
     readonly property int fast: durationFast
     readonly property int normal: durationNormal
