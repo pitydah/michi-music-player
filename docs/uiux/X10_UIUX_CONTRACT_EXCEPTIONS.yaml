@@ -1,3 +1,8 @@
 # Excepciones al contract guard
-# (vacío — todas las excepciones previas fueron resueltas)
-exceptions: []
+exceptions:
+  - file: ui_qml/pages/library/SongTable.qml
+    type: service_creation
+    reason: "Falso positivo: el regex detecta 'Bridge' en 'typeof navigationBridge !== undefined' y 'typeof selectionContextBridge !== undefined'. SongTable.qml no crea servicios, solo usa bridges inyectados por contexto QML."
+  - file: ui_qml/theme/ThemeStore.qml
+    type: service_creation
+    reason: "Falso positivo: el regex detecta 'Bridge' en 'updateFromBridge(bridge)'. ThemeStore.qml recibe el bridge por parámetro, no lo crea. La funcion actualiza valores del theme desde un bridge externo."
