@@ -124,6 +124,23 @@ class TestPlaybackQueueE2E:
             f"Volume should change: {vol_before} -> {vol_after}"
         )
 
+    def test_qtest_drag_reorder_queue(self, nav, playback_bridge, root_window):
+        from PySide6.QtCore import QPoint, QPointF, Qt
+        from PySide6.QtTest import QTest
+        from .conftest import find_qml_item
+        playback_bridge.enqueueSong("1")
+        playback_bridge.enqueueSong("2")
+        playback_bridge.enqueueSong("3")
+        queue_item = find_qml_item(root_window, "queueItem")
+        if queue_item is not None:
+            center = queue_item.mapToScene(QPointF(queue_item.width() / 2.0, queue_item.height() / 2.0))
+            start = QPoint(round(center.x()), round(center.y()))
+            end = QPoint(round(center.x()), round(center.y() + queue_item.height() * 2))
+            QTest.mousePress(queue_item, Qt.LeftButton, Qt.NoModifier, start)
+            QTest.mouseMove(queue_item, end)
+            QTest.mouseRelease(queue_item, Qt.LeftButton, Qt.NoModifier, end)
+            QTest.qWait(50)
+
     def test_qtest_clear_queue(self, nav, playback_bridge, root_window):
         from PySide6.QtTest import QTest
         from .conftest import find_qml_item, qtest_click_item

@@ -36,12 +36,18 @@ class TestQueueReorderPersist:
 
     def test_qtest_clear_queue_ui(self, nav, playback_bridge, root_window):
         from PySide6.QtTest import QTest
-        from .conftest import find_qml_item, qtest_click_item
+        from .conftest import find_qml_item, qtest_click_item, wait_for_condition
         playback_bridge.enqueueSong("1")
         playback_bridge.enqueueSong("2")
         qh = find_qml_item(root_window, "queueHeader")
         assert qh is not None, "queueHeader not found"
         clear_btn = find_qml_item(root_window, "clearQueueButton")
         assert clear_btn is not None, "clearQueueButton not found in queueHeader"
+        queue_before = getattr(playback_bridge, 'queue', None) if hasattr(playback_bridge, 'queue') else None
         qtest_click_item(clear_btn, root_window)
+        if queue_before is not None:
+            wait_for_condition(
+                lambda: len(getattr(playback_bridge, 'queue', []) if hasattr(playback_bridge, 'queue') else []) < len(queue_before),
+                timeout_ms=500
+            )
         QTest.qWait(50)

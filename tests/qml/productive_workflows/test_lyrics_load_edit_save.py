@@ -20,16 +20,19 @@ class TestLyrics:
         lb = bootstrap._bridges.get("lyrics")
         assert lb is not None
 
-    def test_qtest_navigate_lyrics(self, nav, root_window):
+    def test_qtest_navigate_lyrics(self, nav, root_window, all_bridges):
         from PySide6.QtCore import Qt
         from PySide6.QtTest import QTest
-        from .conftest import find_qml_item
+        from .conftest import find_qml_item, wait_for_property
         nav.navigate("lyrics")
         assert nav.currentRoute == "lyrics"
         page = find_qml_item(root_window, "lyricsPage")
         assert page is not None, "lyricsPage not found"
         page.forceActiveFocus()
         QTest.keyClick(page, Qt.Key_Down)
+        wait_for_property(page, "visible", True, timeout_ms=500)
         QTest.qWait(50)
         assert nav.currentRoute == "lyrics"
-        assert page.property("visible") is True, "lyricsPage should be visible after navigation"
+        lyrics_bridge = all_bridges.get("lyrics")
+        assert lyrics_bridge is not None
+        assert hasattr(lyrics_bridge, 'getLyrics') or hasattr(lyrics_bridge, 'get_lyrics')

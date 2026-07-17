@@ -62,9 +62,15 @@ class TestMetadataTaggingDoctor:
         page = find_qml_item(root_window, "SmartTaggingPage")
         assert page is not None, "SmartTaggingPage not found"
         select_all_btn = find_qml_item(root_window, "selectFileButton")
+        from .conftest import wait_for_condition
+        status_before = getattr(smart_bridge, 'status', '') or getattr(smart_bridge, '_state', '')
         assert select_all_btn is not None, "selectFileButton not found in SmartTaggingPage"
         qtest_click_item(select_all_btn, root_window)
+        wait_for_condition(
+            lambda: (getattr(smart_bridge, 'status', '') or getattr(smart_bridge, '_state', '')) != status_before,
+            timeout_ms=500
+        )
         QTest.qWait(50)
         assert nav.currentRoute == "tagging"
-        status = getattr(smart_bridge, 'status', '') or getattr(smart_bridge, '_state', '')
-        assert isinstance(status, str)
+        status_after = getattr(smart_bridge, 'status', '') or getattr(smart_bridge, '_state', '')
+        assert status_after != status_before, f"SmartTagging status should change: '{status_before}' -> '{status_after}'"

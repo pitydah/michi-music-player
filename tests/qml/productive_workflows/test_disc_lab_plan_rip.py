@@ -23,7 +23,7 @@ class TestDiscLab:
         if svc is None:
             pytest.skip("disc_lab_service not registered (optional)")
 
-    def test_qtest_navigate_disc_lab(self, nav, root_window):
+    def test_qtest_navigate_disc_lab(self, nav, root_window, all_bridges):
         from PySide6.QtCore import Qt
         from PySide6.QtTest import QTest
         from .conftest import find_qml_item
@@ -35,4 +35,8 @@ class TestDiscLab:
         QTest.keyClick(page, Qt.Key_Down)
         QTest.qWait(50)
         assert nav.currentRoute == "disc_lab"
-        assert page.property("visible") is True, "discLabPage should be visible after navigation"
+        from .conftest import wait_for_property
+        wait_for_property(page, "visible", True, timeout_ms=500)
+        dl_bridge = all_bridges.get("disc_lab")
+        assert dl_bridge is not None, "DiscLabBridge should exist"
+        assert hasattr(dl_bridge, 'scanDisc')

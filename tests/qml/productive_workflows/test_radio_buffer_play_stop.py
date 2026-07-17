@@ -29,7 +29,7 @@ class TestRadio:
 
     def test_qtest_click_station(self, nav, root_window, all_bridges):
         from PySide6.QtTest import QTest
-        from .conftest import find_qml_item, qtest_click_item
+        from .conftest import find_qml_item, qtest_click_item, wait_for_condition
         nav.navigate("radio")
         assert nav.currentRoute == "radio", (
             f"Expected 'radio', got '{nav.currentRoute}'"
@@ -39,10 +39,15 @@ class TestRadio:
         stations = [c for c in radio_page.childItems() if c.objectName() == "radioStationDetail"]
         if len(stations) == 0:
             pytest.skip("No radio stations available to click")
-        qtest_click_item(stations[0], root_window)
-        QTest.qWait(100)
-        assert nav.currentRoute == "radio"
         radio_bridge = all_bridges.get("radio")
         assert radio_bridge is not None, "RadioBridge should exist"
-        rb_state = getattr(radio_bridge, '_state', '') or getattr(radio_bridge, 'state', '')
-        assert isinstance(rb_state, str)
+        state_before = getattr(radio_bridge, '_state', '') or getattr(radio_bridge, 'state', '')
+        qtest_click_item(stations[0], root_window)
+        wait_for_condition(
+            lambda: (getattr(radio_bridge, '_state', '') or getattr(radio_bridge, 'state', '')) != state_before,
+            timeout_ms=500
+        )
+        QTest.qWait(100)
+        assert nav.currentRoute == "radio"
+        state_after = getattr(radio_bridge, '_state', '') or getattr(radio_bridge, 'state', '')
+        assert state_after != state_before, f"Radio state should change: '{state_before}' -> '{state_after}'"

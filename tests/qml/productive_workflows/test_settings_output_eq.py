@@ -27,16 +27,19 @@ class TestSettingsOutputEq:
         assert hasattr(svc, 'save_preset')
         assert hasattr(svc, 'load_preset')
 
-    def test_qtest_navigate_eq(self, nav, root_window):
+    def test_qtest_navigate_eq(self, nav, root_window, all_bridges):
         from PySide6.QtCore import Qt
         from PySide6.QtTest import QTest
-        from .conftest import find_qml_item
+        from .conftest import find_qml_item, wait_for_property
+        eq_bridge = all_bridges.get("eq")
+        assert eq_bridge is not None, "EqBridge should exist"
         nav.navigate("equalizer")
         assert nav.currentRoute == "equalizer"
         eq_page = find_qml_item(root_window, "equalizerPage")
         assert eq_page is not None, "equalizerPage not found"
         eq_page.forceActiveFocus()
         QTest.keyClick(eq_page, Qt.Key_Down)
+        wait_for_property(eq_page, "visible", True, timeout_ms=500)
         QTest.qWait(50)
         assert nav.currentRoute == "equalizer"
-        assert eq_page.property("visible") is True, "equalizerPage should be visible after navigation"
+        assert eq_bridge is not None

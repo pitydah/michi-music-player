@@ -28,7 +28,7 @@ class TestPlaylistCreateExport:
 
     def test_qtest_navigate_playlists(self, nav, root_window, all_bridges):
         from PySide6.QtTest import QTest
-        from .conftest import find_qml_item, qtest_click_item
+        from .conftest import find_qml_item, qtest_click_item, wait_for_property
         nav.navigate("playlists")
         assert nav.currentRoute == "playlists"
         pl_page = find_qml_item(root_window, "playlistsPage")
@@ -36,13 +36,11 @@ class TestPlaylistCreateExport:
         create_btn = find_qml_item(root_window, "createPlaylistButton")
         assert create_btn is not None, "createPlaylistButton not found"
         qtest_click_item(create_btn, root_window)
-        QTest.qWait(100)
         dialog = find_qml_item(root_window, "playlistEditorDialog")
         assert dialog is not None, "playlistEditorDialog should appear after clicking create"
-        assert dialog.property("visible") or dialog.property("opened"), (
-            "playlistEditorDialog should be visible"
-        )
+        wait_for_property(dialog, "visible", True, timeout_ms=500)
+        QTest.qWait(100)
         pl_bridge = all_bridges.get("playlists")
         assert pl_bridge is not None, "PlaylistsBridge should exist"
         pl_state = getattr(pl_bridge, '_state', '') or getattr(pl_bridge, 'state', '')
-        assert isinstance(pl_state, str)
+        assert pl_state != ""
