@@ -14,6 +14,7 @@ Item {
     property string placeholderText: "Seleccionar..."
     property bool loading: false
     property bool popupOpen: false
+    property string textRole: ""
     property string accessibleName: root.placeholderText
     property string accessibleDescription: ""
 
@@ -128,7 +129,11 @@ Item {
                     anchors.left: parent.left
                     anchors.leftMargin: MichiTheme.spacing.md
                     anchors.verticalCenter: parent.verticalCenter
-                    text: typeof modelData === "object" ? (modelData.text || modelData.name || "") : modelData
+                    text: {
+                        if (root.textRole && typeof modelData === "object")
+                            return modelData[root.textRole] || ""
+                        return typeof modelData === "object" ? (modelData.text || modelData.name || "") : modelData
+                    }
                     color: root.currentIndex === index ? MichiTheme.colors.accentBlue : MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                     font.weight: root.currentIndex === index ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
@@ -168,6 +173,7 @@ Item {
         if (root.popupOpen) {
             var prev = Math.max(0, root.currentIndex - 1)
             root.currentIndex = prev
+            listView.positionViewAtIndex(root.currentIndex, ListView.Contain)
             event.accepted = true
         }
     }
@@ -176,6 +182,7 @@ Item {
         if (root.popupOpen) {
             var next = Math.min(root._modelLength() - 1, root.currentIndex + 1)
             root.currentIndex = next
+            listView.positionViewAtIndex(root.currentIndex, ListView.Contain)
             event.accepted = true
         } else {
             root.popupOpen = true

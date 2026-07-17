@@ -14,7 +14,8 @@ Rectangle {
     property bool hovered: ma.containsMouse
     property bool pressed: ma.pressed
     property bool loading: false
-    property string accessibleName: "Valor: " + Math.round(root.value) + "%"
+    property bool reducedMotion: false
+    property string accessibleName: "Valor: " + Math.round(root.value) + " de " + Math.round(root.to)
     property string accessibleDescription: ""
 
     signal moved(real value)
@@ -118,7 +119,12 @@ Rectangle {
         radius: width / 2
         color: root.enabled ? MichiTheme.colors.controlThumb : MichiTheme.colors.textMuted
         visible: root.enabled
-        Behavior on width { NumberAnimation { duration: MichiTheme.motion.fast } }
+        Behavior on width {
+            NumberAnimation {
+                duration: root.reducedMotion ? 0 : MichiTheme.motion.durationFast
+                easing.type: Easing.OutCubic
+            }
+        }
     }
 
     MouseArea {

@@ -102,6 +102,7 @@ def _analyze_block(rel, lineno, ctype, text):
 def main():
     parser = argparse.ArgumentParser(description="Audit QML controls for required attributes")
     parser.add_argument("--format", choices=["json", "text"], default="text")
+    parser.add_argument("--baseline", type=str, help="Baseline JSON file for regression detection")
     args = parser.parse_args()
 
     base = os.path.abspath(UI_QML)
@@ -127,9 +128,22 @@ def main():
                     f"{f['control']}  missing: {', '.join(f['missing'])}"
                 )
 
-    if all_findings:
-        print(f"\nTotal: {len(all_findings)} violations found", file=sys.stderr)
-    sys.exit(1 if all_findings else 0)
+    total = len(all_findings)
+
+    if args.baseline:
+        with open(args.baseline) as f:
+            baseline = json.load(f)
+        baseline_count = len(baseline)
+        if total > baseline_count:
+            print(f"REGRESSION: {total - baseline_count} new violations (baseline: {baseline_count}, current: {total})", file=sys.stderr)
+            sys.exit(1)
+        else:
+            print(f"OK: {total} violations (baseline: {baseline_count})")
+            sys.exit(0)
+
+    if args.format == "text" and total:
+        print(f"\nTotal: {total} violations found", file=sys.stderr)
+    sys.exit(1 if total else 0)
 
 
 if __name__ == "__main__":

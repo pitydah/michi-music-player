@@ -35,6 +35,18 @@ QQC2.Popup {
 
     property Item _savedFocus: null
 
+    function _wireKeyNavigation() {
+        var buttons = buttonsArea.data
+        if (buttons.length > 0) {
+            var first = buttons[0]
+            var last = focusScope.lastFocusable
+            if (first && first !== last) {
+                first.KeyNavigation.backtab = last
+                last.KeyNavigation.tab = first
+            }
+        }
+    }
+
     onOpened: {
         _savedFocus = root.parent ? root.parent.Window.activeFocusItem : null
         root.forceActiveFocus()
@@ -75,7 +87,7 @@ QQC2.Popup {
             anchors.fill: parent
 
             property Item firstFocusable: contentArea.children.length > 0 ? contentArea.children[0] : buttonsArea
-            property Item lastFocusable: buttonsArea
+            readonly property Item lastFocusable: _findLastFocusable()
 
             function focusFirst() {
                 firstFocusable.forceActiveFocus(Qt.TabFocusReason)
@@ -83,6 +95,15 @@ QQC2.Popup {
 
             function focusLast() {
                 lastFocusable.forceActiveFocus(Qt.BacktabFocusReason)
+            }
+
+            function _findLastFocusable() {
+                for (var i = buttonsArea.data.length - 1; i >= 0; i--) {
+                    var child = buttonsArea.data[i]
+                    if (child !== undefined && child !== null)
+                        return child
+                }
+                return buttonsArea
             }
 
             Item {
@@ -132,7 +153,7 @@ QQC2.Popup {
     NumberAnimation on opacity {
         from: 0; to: 1; duration: MichiTheme.motion.normal
         easing.type: Easing.OutCubic
-        running: root.opened
+        running: root.opened && !root.reducedMotion
     }
 
     Keys.onReturnPressed: {

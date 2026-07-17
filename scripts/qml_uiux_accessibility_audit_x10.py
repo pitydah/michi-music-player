@@ -141,6 +141,7 @@ def _collect_block(lines, start, max_lines=30):
 def main():
     parser = argparse.ArgumentParser(description="Audit QML accessibility requirements")
     parser.add_argument("--format", choices=["json", "text"], default="text")
+    parser.add_argument("--baseline", type=str, help="Baseline JSON file for regression detection")
     args = parser.parse_args()
 
     pages_dir = os.path.join(os.path.abspath(UI_QML), "pages")
@@ -163,9 +164,22 @@ def main():
             for v in all_violations:
                 print(f"{v['file']}:{v['line']}  {v['control']}  {v['issue']}")
 
-    if all_violations:
-        print(f"\nTotal: {len(all_violations)} violations found", file=sys.stderr)
-    sys.exit(1 if all_violations else 0)
+    total = len(all_violations)
+
+    if args.baseline:
+        with open(args.baseline) as f:
+            baseline = json.load(f)
+        baseline_count = len(baseline)
+        if total > baseline_count:
+            print(f"REGRESSION: {total - baseline_count} new violations (baseline: {baseline_count}, current: {total})", file=sys.stderr)
+            sys.exit(1)
+        else:
+            print(f"OK: {total} violations (baseline: {baseline_count})")
+            sys.exit(0)
+
+    if args.format == "text" and total:
+        print(f"\nTotal: {total} violations found", file=sys.stderr)
+    sys.exit(1 if total else 0)
 
 
 if __name__ == "__main__":
