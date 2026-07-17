@@ -1,0 +1,229 @@
+# WORKFLOWS_DOMAIN SALVAGE MATRIX
+# Cada entrada documenta si un test de workflows_domain/ tiene cobertura
+# unica que merezca rescatarse, o si es duplicado/invalido.
+
+# Decisiones posibles:
+#   DROP_DUPLICATE       — ya cubierto en productive_workflows/
+#   DROP_INVALID         — test roto (fixture faltante) o verifica el fake
+#   PORT_CORE            — migrar a tests/qml/ como test unitario sin QML
+#   PORT_QML_COMPONENT   — migrar a tests/qml/accessibility/ o similar
+#   PORT_PRODUCTIVE_E2E  — migrar a productive_workflows/
+
+test_album_queue:
+  behavior: "Queue de albumes via action registry"
+  duplicate_in_productive: true
+  unique_value: null
+  destination: DROP_DUPLICATE
+  lines: 94
+
+test_command_palette_ui:
+  behavior: "Command palette shortcuts"
+  duplicate_in_productive: false
+  unique_value: "Keyboard shortcuts via command palette QML"
+  destination: PORT_QML_COMPONENT
+  lines: 48
+
+test_diagnostics_ui:
+  behavior: "Diagnostics page states"
+  duplicate_in_productive: true
+  unique_value: null
+  destination: DROP_DUPLICATE
+  lines: 41
+
+test_doctor_scan_dry_run:
+  behavior: "Library doctor dry run scan"
+  duplicate_in_productive: false
+  unique_value: "Doctor scan dry-run mode"
+  destination: PORT_CORE
+  lines: 80
+
+test_history_filter_play_remove:
+  behavior: "History filter, play, remove"
+  duplicate_in_productive: true
+  unique_value: null
+  destination: DROP_DUPLICATE
+  lines: 106
+
+test_history_ui:
+  behavior: "History page states"
+  duplicate_in_productive: true
+  unique_value: null
+  destination: DROP_DUPLICATE
+  lines: 71
+
+test_keyboard_full_page:
+  behavior: "Keyboard navigation across full pages"
+  duplicate_in_productive: false
+  unique_value: "Tab order, focus restoration, Enter/Space activation"
+  destination: PORT_QML_COMPONENT
+  lines: 107
+
+test_library_doctor_ui:
+  behavior: "Library doctor page load"
+  duplicate_in_productive: true
+  unique_value: null
+  destination: DROP_DUPLICATE
+  lines: 35
+
+test_library_search_play:
+  behavior: "Library search then play workflow"
+  duplicate_in_productive: true
+  unique_value: null
+  destination: DROP_DUPLICATE
+  lines: 139
+
+test_lyrics_ui:
+  behavior: "Lyrics page states"
+  duplicate_in_productive: true
+  unique_value: null
+  destination: DROP_DUPLICATE
+  lines: 72
+
+test_metadata_preview_confirm:
+  behavior: "Metadata preview then confirm"
+  duplicate_in_productive: false
+  unique_value: "Metadata preview workflow con confirmacion"
+  destination: PORT_PRODUCTIVE_E2E
+  lines: 99
+
+test_metadata_ui:
+  behavior: "Metadata page states"
+  duplicate_in_productive: true
+  unique_value: null
+  destination: DROP_DUPLICATE
+  lines: 73
+
+test_michi_ai_proposal_execution:
+  behavior: "Michi AI proposal execute workflow"
+  duplicate_in_productive: false
+  unique_value: "AI proposal + confirmation + execution real"
+  destination: PORT_PRODUCTIVE_E2E
+  lines: 135
+
+test_michi_ai_ui:
+  behavior: "Michi AI page states"
+  duplicate_in_productive: true
+  unique_value: null
+  destination: DROP_DUPLICATE
+  lines: 81
+
+test_negative_backend_error:
+  behavior: "Backend error handling in UI"
+  duplicate_in_productive: false
+  unique_value: "Error state propagation from bridge to QML"
+  destination: PORT_QML_COMPONENT
+  lines: 67
+
+test_negative_cancellation:
+  behavior: "Cancellation of long operation"
+  duplicate_in_productive: false
+  unique_value: "Cancel button during scanning/loading"
+  destination: PORT_PRODUCTIVE_E2E
+  lines: 68
+
+test_negative_invalid_selection:
+  behavior: "Invalid selection handling"
+  duplicate_in_productive: false
+  unique_value: "UI response to invalid user selection"
+  destination: PORT_QML_COMPONENT
+  lines: 72
+
+test_negative_rejected_confirmation:
+  behavior: "Rejected destructive action"
+  duplicate_in_productive: false
+  unique_value: "ConfirmationBridge real + reject from QML"
+  destination: PORT_PRODUCTIVE_E2E
+  lines: 78
+
+test_negative_service_unavailable:
+  behavior: "Service unavailable state"
+  duplicate_in_productive: false
+  unique_value: "CapabilityGuard handling with disabled service"
+  destination: PORT_QML_COMPONENT
+  lines: 42
+
+test_negative_stale_callback:
+  behavior: "Stale callback rejection"
+  duplicate_in_productive: false
+  unique_value: "Stale request detection in async operations"
+  destination: PORT_CORE
+  lines: 55
+
+test_nowplaying_ui:
+  behavior: "Now playing page states"
+  duplicate_in_productive: true
+  unique_value: null
+  destination: DROP_DUPLICATE
+  lines: 64
+
+test_output_profiles_ui:
+  behavior: "Output profiles page states"
+  duplicate_in_productive: true
+  unique_value: null
+  destination: DROP_DUPLICATE
+  lines: 61
+
+test_playback_ui:
+  behavior: "Playback controls page"
+  duplicate_in_productive: true
+  unique_value: null
+  destination: DROP_DUPLICATE
+  lines: 70
+
+test_playlist_create_export:
+  behavior: "Playlist create and export"
+  duplicate_in_productive: true
+  unique_value: null
+  destination: DROP_DUPLICATE
+  lines: 97
+
+test_playlists_ui:
+  behavior: "Playlists page states"
+  duplicate_in_productive: true
+  unique_value: null
+  destination: DROP_DUPLICATE
+  lines: 55
+
+test_queue_reorder_undo:
+  behavior: "Queue reorder and undo"
+  duplicate_in_productive: true
+  unique_value: null
+  destination: DROP_DUPLICATE
+  lines: 82
+
+test_queue_ui:
+  behavior: "Queue page states"
+  duplicate_in_productive: true
+  unique_value: null
+  destination: DROP_DUPLICATE
+  lines: 50
+
+test_settings_rollback:
+  behavior: "Settings change rollback"
+  duplicate_in_productive: false
+  unique_value: "Settings rollback workflow"
+  destination: PORT_PRODUCTIVE_E2E
+  lines: 87
+
+test_settings_ui:
+  behavior: "Settings page states"
+  duplicate_in_productive: true
+  unique_value: null
+  destination: DROP_DUPLICATE
+  lines: 164
+
+test_smart_tagging_ui:
+  behavior: "Smart tagging page states"
+  duplicate_in_productive: true
+  unique_value: null
+  destination: DROP_DUPLICATE
+  lines: 54
+
+# Summary
+# DROP_DUPLICATE:      18 files (1035 lines) — ya cubierto
+# DROP_INVALID:         0 files
+# PORT_CORE:            2 files (135 lines)
+# PORT_QML_COMPONENT:   5 files (336 lines)
+# PORT_PRODUCTIVE_E2E:  5 files (467 lines)
+# TOTAL:               30 files (1973 lines)
+# RESCATE:             12 files (~938 lines) -> ~320 lineas estimadas finales
