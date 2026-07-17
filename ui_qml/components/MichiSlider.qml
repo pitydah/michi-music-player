@@ -31,9 +31,11 @@ Rectangle {
     Accessible.name: root.accessibleName
     Accessible.description: root.accessibleDescription
     Accessible.value: root.value
-    Accessible.minimum: root.from
-    Accessible.maximum: root.to
+    Accessible.minimumValue: root.from
+    Accessible.maximumValue: root.to
     Accessible.stepSize: root.stepSize
+    Accessible.onIncreaseAction: root._step(root.stepSize)
+    Accessible.onDecreaseAction: root._step(-root.stepSize)
 
     function _range() {
         return Math.max(0.0001, root.to - root.from)

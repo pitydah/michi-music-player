@@ -34,7 +34,7 @@ Item {
                        mouse.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
 
                 RowLayout {
-                    anchors.fill: parent; anchors.leftMargin: 4
+                    anchors.fill: parent; anchors.leftMargin: MichiTheme.spacing.xs
                     spacing: MichiTheme.spacing.xs
 
                     Text {
