@@ -24,10 +24,10 @@ Item {
         color: {
             if (!root.notif) return "transparent"
             switch (root.notif.kind) {
-                case "success": return Qt.rgba(0.29, 0.87, 0.50, 0.20)
-                case "warning": return Qt.rgba(1, 0.75, 0.14, 0.20)
-                case "error": return Qt.rgba(1, 0.44, 0.44, 0.20)
-                default: return Qt.rgba(0.561, 0.718, 1.0, 0.15)
+                case "success": return MichiTheme.colors.badgeActiveBg
+                case "warning": return MichiTheme.colors.badgeWarningBg
+                case "error": return MichiTheme.colors.badgeDangerBg
+                default: return MichiTheme.colors.badgeInfoBg
             }
         }
 
@@ -53,19 +53,14 @@ Item {
             width: parent.width - 60
         }
 
-        Text {
+        MichiIconButton {
             anchors.right: parent.right
-            anchors.rightMargin: MichiTheme.spacing.sm
+            anchors.rightMargin: MichiTheme.spacing.xs
             anchors.verticalCenter: parent.verticalCenter
-            text: "[X]"
-            color: MichiTheme.colors.textMuted
-            font.pixelSize: 14
-
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: { if (root.notif) root.notif.clear() }
-            }
+            iconSource: "qrc:/icons/nav_back.svg"
+            btnSize: 28
+            tooltipText: "Cerrar"
+            onClicked: { if (root.notif) root.notif.clear() }
         }
 
         Timer {

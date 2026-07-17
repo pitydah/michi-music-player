@@ -21,6 +21,8 @@ ROUTES: dict[str, dict] = {
     "library.unplayed": {"title": "Sin reproducir", "source": "../pages/library/UnplayedPage.qml", "category": "library", "status": "functional"},
     "library.missing": {"title": "Archivos faltantes", "source": "../pages/library/MissingPage.qml", "category": "library", "status": "functional"},
     "library.genre_detail": {"title": "G\u00e9nero", "source": "../pages/library/GenreDetailPage.qml", "category": "detail", "status": "functional", "params": {"genre": {"required": True, "type": "string"}}},
+    "nowplaying": {"title": "Reproduciendo", "source": "../pages/nowplaying/NowPlayingPage.qml", "category": "core", "status": "functional"},
+    "jobs": {"title": "Trabajos", "source": "../pages/jobs/JobsPage.qml", "category": "system", "status": "functional"},
     "queue": {"title": "Cola", "source": "../pages/queue/QueuePage.qml", "category": "core", "status": "functional"},
     "playlists": {"title": "Playlists", "source": "../pages/playlists/PlaylistsPage.qml", "category": "core", "status": "functional"},
     "playlist_detail": {"title": "Playlist", "source": "../pages/playlists/PlaylistDetailPage.qml", "category": "detail", "status": "functional", "params": {"playlist_id": {"required": True, "type": "int"}}},

@@ -119,14 +119,14 @@ Rectangle {
                     return root.entry.hint || ""
                 }
                 visible: text
-                color: root.errorMsg ? "#F87171" : root.restartMsg ? "#FBBF24" : MichiTheme.colors.textMuted
+                color: root.errorMsg ? MichiTheme.colors.error : root.restartMsg ? MichiTheme.colors.warning : MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.captionSize
             }
         }
 
         Rectangle {
             visible: root.dirty; width: 8; height: 8; radius: 4
-            color: "#FBBF24"; Layout.alignment: Qt.AlignVCenter
+            color: MichiTheme.colors.warning; Layout.alignment: Qt.AlignVCenter
         }
 
         BusyIndicator { running: root.saving; visible: root.saving; width: 16; height: 16; Layout.alignment: Qt.AlignVCenter }
@@ -427,12 +427,12 @@ Rectangle {
         RowLayout { spacing: MichiTheme.spacing.xs
             Rectangle {
                 implicitWidth: 32; implicitHeight: 32; radius: MichiTheme.radius.sm
-                color: root.originalValue || "#8FB7FF"
+                color: root.originalValue || MichiTheme.colors.accent
                 border.width: 1; border.color: MichiTheme.colors.borderCard
             }
             TextField {
                 focusPolicy: Qt.StrongFocus
-                text: root.originalValue || "#8FB7FF"
+                text: root.originalValue || MichiTheme.colors.accent
                 Layout.fillWidth: true
                 font.pixelSize: MichiTheme.typography.captionSize
                 onTextEdited: root.scheduleSave(text)
