@@ -99,11 +99,12 @@ Item {
 
             MichiIconButton {
                 id: clearBtn
-                iconText: "\u2715"
+                iconSource: "qrc:/icons/nav_back.svg"
                 tooltipText: "Limpiar"
                 btnSize: Math.min(root.height - MichiTheme.spacing.xs * 2, 28)
                 visible: root.text !== ""
                 accessibleName: "Limpiar búsqueda"
+                transform: Rotation { angle: 45 }
                 onClicked: {
                     root.text = ""
                     field.text = ""

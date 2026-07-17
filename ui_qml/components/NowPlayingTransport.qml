@@ -93,7 +93,7 @@ Item {
                 Accessible.role: Accessible.Button
                 Accessible.name: root.isPlaying ? "Pausa" : "Reproducir"
                 Accessible.description: root.playPauseSupported ? "" : "No soportado por el backend actual"
-                activeFocusOnTab: true
+                activeFocusOnTab: root.playPauseSupported
                 Keys.onSpacePressed: root.playClicked()
                 Keys.onReturnPressed: root.playClicked()
             }
@@ -202,6 +202,7 @@ Item {
 
             Accessible.role: Accessible.Button
             Accessible.name: btn.tooltipText
+            Accessible.description: enabled ? "" : "No soportado por el backend actual"
             activeFocusOnTab: enabled
             Keys.onSpacePressed: btn.clicked()
             Keys.onReturnPressed: btn.clicked()

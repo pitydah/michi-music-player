@@ -19,6 +19,9 @@ Item {
     property bool showSynced: root.lb && root.lb.hasSyncedLyrics
     property int _offsetMs: 0
 
+    enum State { LOADING, READY, EMPTY, ERROR, UNAVAILABLE }
+    property int pageState: root.lb ? LyricsPage.READY : LyricsPage.UNAVAILABLE
+
     function routeEnter(route) {
         if (root.lb && root.lb.status === "idle")
             root.lb.searchCurrentTrack()
@@ -26,8 +29,39 @@ Item {
 
     Component.onCompleted: routeEnter("lyrics")
 
-    Flickable {
-        anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl
+    StackLayout {
+        anchors.fill: parent
+        currentIndex: {
+            if (!root.lb || root.pageState === LyricsPage.UNAVAILABLE) return 0
+            if (root.lb.status === "searching") return 1
+            if (root.lb.status === "not_found" || root.lb.status === "") return 2
+            if (root.lb.status === "error") return 3
+            return 4
+        }
+
+        UnavailableState {
+            title: "Servicio de letras no disponible"
+            message: "Conecta un reproductor para buscar letras."
+        }
+
+        LoadingState {
+            title: "Buscando letra..."
+        }
+
+        EmptyState {
+            title: "Letra no encontrada"
+            subtitle: "Prueba con una búsqueda manual."
+        }
+
+        ErrorState {
+            title: "Error al buscar letra"
+            message: root.lb ? (root.lb.errorMessage || "") : ""
+            showRetry: true
+            onRetryRequested: { if (root.lb) root.lb.searchCurrentTrack() }
+        }
+
+        Flickable {
+            anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true; boundsBehavior: Flickable.StopAtBounds
 
@@ -198,6 +232,7 @@ Item {
                 }
             }
         }
+    }
     }
 
     LyricsSearchDialog {

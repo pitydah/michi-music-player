@@ -95,24 +95,16 @@ Rectangle {
             onClicked: root.actionTriggered()
         }
 
-        QQC2.AbstractButton {
+        MichiIconButton {
             id: dismissBtn
             anchors.verticalCenter: parent.verticalCenter
             visible: root.showDismiss
-            focusPolicy: Qt.StrongFocus
-
-
-            contentItem: Text {
-                text: "\u00D7"
-                color: MichiTheme.colors.textMuted
-                font.pixelSize: MichiTheme.typography.bodySize
-                Accessible.role: Accessible.Icon
-                Accessible.name: "Cerrar"
-                Accessible.description: "Descartar este mensaje de error"
-            }
-
-            background: Item {}
-            Accessible.description: "Descartar error"
+            iconSource: "qrc:/icons/nav_back.svg"
+            btnSize: 24
+            tooltipText: "Cerrar"
+            accessibleName: "Cerrar"
+            accessibleDescription: "Descartar este mensaje de error"
+            transform: Rotation { angle: 45 }
             onClicked: {
                 root.message = ""
                 root.dismissed()
