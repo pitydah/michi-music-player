@@ -23,7 +23,7 @@ Rectangle {
     radius: MichiTheme.radius.pill
     color: root.activeFocus ? MichiTheme.colors.focusHalo
            : (root.hovered ? MichiTheme.colors.surfacePressed : MichiTheme.colors.controlTrack)
-    opacity: root.enabled ? 1.0 : MichiTheme.disabledOpacity
+    opacity: root.enabled ? 1.0 : MichiTheme.opacity.disabled
     activeFocusOnTab: enabled
     enabled: !root.loading
 

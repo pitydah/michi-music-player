@@ -22,7 +22,7 @@ FocusScope {
 
     implicitHeight: MichiTheme.rowHeightComfortable
     activeFocusOnTab: enabled
-    opacity: enabled ? 1.0 : MichiTheme.disabledOpacity
+    opacity: enabled ? 1.0 : MichiTheme.opacity.disabled
 
     Accessible.role: Accessible.ListItem
     Accessible.name: accessibleName

@@ -354,14 +354,12 @@ class TestMichiDialog:
         assert "property int closePolicy" in qml or "closePolicy" in qml
         assert "CloseOnEscape" in qml
 
-    @pytest.mark.xfail(reason="DropShadow dependency not available in offscreen test environment", strict=False)
     def test_dialog_instantiates(self, qapp):
         loader = _ComponentLoader(self.QML)
         assert loader.is_ready(), f"MichiDialog failed: {loader.error_string()}"
         obj = loader.create()
         assert obj is not None
 
-    @pytest.mark.xfail(reason="DropShadow dependency not available in offscreen test environment", strict=False)
     def test_dialog_escape_closes(self, qapp):
         loader = _ComponentLoader(self.QML)
         assert loader.is_ready(), loader.error_string()
@@ -369,7 +367,6 @@ class TestMichiDialog:
         assert obj is not None
         assert obj.closePolicy is not None
 
-    @pytest.mark.xfail(reason="DropShadow dependency not available in offscreen test environment", strict=False)
     def test_dialog_open_close(self, qapp):
         loader = _ComponentLoader(self.QML)
         assert loader.is_ready(), loader.error_string()
@@ -380,7 +377,6 @@ class TestMichiDialog:
         obj.close()
         assert not obj.opened
 
-    @pytest.mark.xfail(reason="DropShadow dependency not available in offscreen test environment", strict=False)
     def test_dialog_focus_trap(self, qapp):
         loader = _ComponentLoader(self.QML)
         assert loader.is_ready(), loader.error_string()
