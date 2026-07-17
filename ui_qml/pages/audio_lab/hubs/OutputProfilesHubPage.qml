@@ -1,8 +1,8 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import MichiTheme
-import "../../components"
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "../../../theme"
+import "../../../components"
 
 /**
  * Hub de Perfiles de Salida - Configuración DAC, ReplayGain, Dispositivos
@@ -11,9 +11,7 @@ Page {
     id: page
     
     header: SectionHeader {
-        title: "Perfiles de Salida"
-        subtitle: "Configura DAC, EQ y reproducción"
-        onBackClicked: pageStack.pop()
+        text: "Perfiles de Salida"
     }
     
     ScrollView {
@@ -24,7 +22,7 @@ Page {
         ColumnLayout {
             id: container
             width: Math.max(parent.width, 800)
-            padding: 20
+            anchors.margins: 20
             spacing: 20
             
             Label {
@@ -39,7 +37,7 @@ Page {
                 model: [
                     { 
                         id: "device_config", 
-                        title: "Configuración de Dispositivo", 
+                        text: "Configuración de Dispositivo", 
                         icon: "🎧", 
                         description: "Selecciona dispositivo de salida, sample rate y bit depth",
                         route: "audio_lab.device_config",
@@ -47,7 +45,7 @@ Page {
                     },
                     { 
                         id: "replaygain", 
-                        title: "ReplayGain", 
+                        text: "ReplayGain", 
                         icon: "⚖️", 
                         description: "Configura normalización de volumen por pista o álbum",
                         route: "audio_lab.replaygain",
@@ -55,7 +53,7 @@ Page {
                     },
                     { 
                         id: "eq_dsp", 
-                        title: "Ecualizador y DSP", 
+                        text: "Ecualizador y DSP", 
                         icon: "🎚️", 
                         description: "Ajusta ecualización gráfica y efectos de procesamiento",
                         route: "audio_lab.eq",
@@ -66,11 +64,10 @@ Page {
                 delegate: GlassCard {
                     Layout.fillWidth: true
                     height: 100
-                    hoverEnabled: true
                     
                     RowLayout {
                         anchors.fill: parent
-                        padding: 15
+                        anchors.margins: 15
                         spacing: 20
                         
                         Label { text: model.icon; font.pixelSize: 36 }
@@ -121,7 +118,7 @@ Page {
             
             GlassCard {
                 Layout.fillWidth: true
-                padding: 15
+                anchors.margins: 15
                 
                 ColumnLayout {
                     anchors.fill: parent

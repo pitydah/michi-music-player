@@ -1,8 +1,7 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import "../components"
-import "../../ui_qml_bridge"
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "../../components"
 
 GlassCard {
     id: root
@@ -22,8 +21,8 @@ GlassCard {
         
         SectionHeader {
             Layout.fillWidth: true
-            title: "Audio Lab"
-            subtitle: "Herramientas profesionales para analizar, identificar, preservar y configurar tu audio"
+            text: "Audio Lab"
+
         }
         
         // Resumen de dependencias y trabajos
@@ -32,12 +31,12 @@ GlassCard {
             spacing: 10
             
             StatusBadge {
-                status: overviewData && overviewData.dependencies && overviewData.dependencies.ffmpeg ? "success" : "warning"
+                kind: overviewData && overviewData.dependencies && overviewData.dependencies.ffmpeg ? "success" : "warning"
                 text: overviewData && overviewData.dependencies && overviewData.dependencies.ffmpeg ? "FFmpeg disponible" : "FFmpeg no disponible"
             }
             
             StatusBadge {
-                status: overviewData && overviewData.dependencies && overviewData.dependencies.replaygain ? "success" : "warning"
+                kind: overviewData && overviewData.dependencies && overviewData.dependencies.replaygain ? "success" : "warning"
                 text: overviewData && overviewData.dependencies && overviewData.dependencies.replaygain ? "ReplayGain disponible" : "ReplayGain no disponible"
             }
             
@@ -66,94 +65,73 @@ GlassCard {
         columnSpacing: 16
         
         // Tarjeta 1: Diagnóstico
-        AreaCard {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 180
-            icon: overviewData && overviewData.areas && overviewData.areas.diagnostics 
-                  ? overviewData.areas.diagnostics.icon : "🔍"
-            title: overviewData && overviewData.areas && overviewData.areas.diagnostics 
-                   ? overviewData.areas.diagnostics.title : "Diagnóstico"
-            description: overviewData && overviewData.areas && overviewData.areas.diagnostics 
-                         ? overviewData.areas.diagnostics.description : "Analiza, verifica integridad y compara archivos"
-            status: overviewData && overviewData.areas && overviewData.areas.diagnostics 
-                    ? overviewData.areas.diagnostics.status : "available"
-            toolsCount: overviewData && overviewData.areas && overviewData.areas.diagnostics 
-                        ? overviewData.areas.diagnostics.tools.length : 3
-            
-            onClicked: root.areaSelected("diagnostics")
+        Rectangle {
+            Layout.fillWidth: true; Layout.preferredHeight: 180
+            radius: MichiTheme.radius.md
+            color: ma1.containsMouse ? MichiTheme.colors.surfaceCardHover : MichiTheme.colors.surfaceCard
+            border.width: 1; border.color: MichiTheme.colors.borderCard
+            ColumnLayout { anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
+                Text { text: "🔍"; font.pixelSize: 28 }
+                Text { text: "Diagnóstico"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                Text { text: "Analiza, verifica integridad y compara archivos"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
+            }
+            MouseArea { id: ma1; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("diagnostics") }
         }
         
         // Tarjeta 2: Identificador de Audios
-        AreaCard {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 180
-            icon: overviewData && overviewData.areas && overviewData.areas.identifier 
-                  ? overviewData.areas.identifier.icon : "🆔"
-            title: overviewData && overviewData.areas && overviewData.areas.identifier 
-                   ? overviewData.areas.identifier.title : "Identificador de Audios"
-            description: overviewData && overviewData.areas && overviewData.areas.identifier 
-                         ? overviewData.areas.identifier.description : "Identifica, corrige metadatos y carátulas"
-            status: overviewData && overviewData.areas && overviewData.areas.identifier 
-                    ? overviewData.areas.identifier.status : "partial"
-            toolsCount: overviewData && overviewData.areas && overviewData.areas.identifier 
-                        ? overviewData.areas.identifier.tools.length : 4
-            
-            onClicked: root.areaSelected("identifier")
+        Rectangle {
+            Layout.fillWidth: true; Layout.preferredHeight: 180
+            radius: MichiTheme.radius.md
+            color: ma2.containsMouse ? MichiTheme.colors.surfaceCardHover : MichiTheme.colors.surfaceCard
+            border.width: 1; border.color: MichiTheme.colors.borderCard
+            ColumnLayout { anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
+                Text { text: "🆔"; font.pixelSize: 28 }
+                Text { text: "Identificador de Audios"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                Text { text: "Identifica, corrige metadatos y carátulas"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
+            }
+            MouseArea { id: ma2; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("identifier") }
         }
         
         // Tarjeta 3: Respaldar
-        AreaCard {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 180
-            icon: overviewData && overviewData.areas && overviewData.areas.backup 
-                  ? overviewData.areas.backup.icon : "💾"
-            title: overviewData && overviewData.areas && overviewData.areas.backup 
-                   ? overviewData.areas.backup.title : "Respaldar"
-            description: overviewData && overviewData.areas && overviewData.areas.backup 
-                         ? overviewData.areas.backup.description : "Convierte, normaliza, ripea y organiza"
-            status: overviewData && overviewData.areas && overviewData.areas.backup 
-                    ? overviewData.areas.backup.status : "available"
-            toolsCount: overviewData && overviewData.areas && overviewData.areas.backup 
-                        ? overviewData.areas.backup.tools.length : 4
-            
-            onClicked: root.areaSelected("backup")
+        Rectangle {
+            Layout.fillWidth: true; Layout.preferredHeight: 180
+            radius: MichiTheme.radius.md
+            color: ma3.containsMouse ? MichiTheme.colors.surfaceCardHover : MichiTheme.colors.surfaceCard
+            border.width: 1; border.color: MichiTheme.colors.borderCard
+            ColumnLayout { anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
+                Text { text: "💾"; font.pixelSize: 28 }
+                Text { text: "Respaldar"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                Text { text: "Convierte, normaliza, ripea y organiza"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
+            }
+            MouseArea { id: ma3; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("backup") }
         }
         
         // Tarjeta 4: Perfiles de Salida
-        AreaCard {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 180
-            icon: overviewData && overviewData.areas && overviewData.areas.output_profiles 
-                  ? overviewData.areas.output_profiles.icon : "🎧"
-            title: overviewData && overviewData.areas && overviewData.areas.output_profiles 
-                   ? overviewData.areas.output_profiles.title : "Perfiles de Salida"
-            description: overviewData && overviewData.areas && overviewData.areas.output_profiles 
-                         ? overviewData.areas.output_profiles.description : "Configura DAC, EQ y reproducción"
-            status: overviewData && overviewData.areas && overviewData.areas.output_profiles 
-                    ? overviewData.areas.output_profiles.status : "available"
-            toolsCount: overviewData && overviewData.areas && overviewData.areas.output_profiles 
-                        ? overviewData.areas.output_profiles.tools.length : 3
-            
-            onClicked: root.areaSelected("output_profiles")
+        Rectangle {
+            Layout.fillWidth: true; Layout.preferredHeight: 180
+            radius: MichiTheme.radius.md
+            color: ma4.containsMouse ? MichiTheme.colors.surfaceCardHover : MichiTheme.colors.surfaceCard
+            border.width: 1; border.color: MichiTheme.colors.borderCard
+            ColumnLayout { anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
+                Text { text: "🎧"; font.pixelSize: 28 }
+                Text { text: "Perfiles de Salida"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                Text { text: "Configura DAC, EQ y reproducción"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
+            }
+            MouseArea { id: ma4; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("output_profiles") }
         }
         
         // Tarjeta 5: Inteligencia Local (ocupa toda la fila)
-        AreaCard {
-            Layout.fillWidth: true
-            Layout.columnSpan: 2
-            Layout.preferredHeight: 180
-            icon: overviewData && overviewData.areas && overviewData.areas.local_intelligence 
-                  ? overviewData.areas.local_intelligence.icon : "🧠"
-            title: overviewData && overviewData.areas && overviewData.areas.local_intelligence 
-                   ? overviewData.areas.local_intelligence.title : "Inteligencia Local"
-            description: overviewData && overviewData.areas && overviewData.areas.local_intelligence 
-                         ? overviewData.areas.local_intelligence.description : "Análisis acústico y automatización"
-            status: overviewData && overviewData.areas && overviewData.areas.local_intelligence 
-                    ? overviewData.areas.local_intelligence.status : "partial"
-            toolsCount: overviewData && overviewData.areas && overviewData.areas.local_intelligence 
-                        ? overviewData.areas.local_intelligence.tools.length : 4
-            
-            onClicked: root.areaSelected("local_intelligence")
+        Rectangle {
+            Layout.fillWidth: true; Layout.columnSpan: 2; Layout.preferredHeight: 180
+            radius: MichiTheme.radius.md
+            color: ma5.containsMouse ? MichiTheme.colors.surfaceCardHover : MichiTheme.colors.surfaceCard
+            border.width: 1; border.color: MichiTheme.colors.borderCard
+            ColumnLayout { anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
+                Text { text: "🧠"; font.pixelSize: 28 }
+                Text { text: "Inteligencia Local"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                Text { text: "Análisis acústico y automatización"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
+            }
+            MouseArea { id: ma5; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("local_intelligence") }
         }
     }
     
@@ -169,9 +147,8 @@ GlassCard {
         visible: !root.isLoading && overviewData === null
         anchors.fill: parent
         message: "No se pudieron cargar los datos de Audio Lab"
-        onRetry: {
+        onRetryRequested: {
             root.isLoading = true
-            // Recargar datos
         }
     }
 }

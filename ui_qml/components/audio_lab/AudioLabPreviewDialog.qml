@@ -1,7 +1,7 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import MichiTheme
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "../../theme"
 
 /**
  * Diálogo de previsualización y confirmación para operaciones de Audio Lab
@@ -28,14 +28,6 @@ Dialog {
     signal cancelled()
     
     title: operationTitle
-    
-    header: Label {
-        text: operationTitle
-        font.pixelSize: 18
-        font.bold: true
-        color: MichiTheme.textPrimary
-        wrapMode: Text.Wrap
-    }
     
     ColumnLayout {
         anchors.fill: parent
@@ -125,7 +117,7 @@ Dialog {
                     
                     RowLayout {
                         anchors.fill: parent
-                        padding: 8
+                        anchors.margins: 8
                         spacing: 10
                         
                         // Archivo original
@@ -157,38 +149,8 @@ Dialog {
                     }
                 }
                 
-                // Encabezado
-                header: Rectangle {
-                    color: "#2a2a2a"
-                    
-                    RowLayout {
-                        anchors.fill: parent
-                        padding: 8
-                        spacing: 10
-                        
-                        Label {
-                            Layout.fillWidth: true
-                            text: "Archivo Original"
-                            font.pixelSize: 12
-                            font.bold: true
-                            color: MichiTheme.textPrimary
-                        }
-                        
-                        Label {
-                            text: ""
-                            font.pixelSize: 12
-                        }
-                        
-                        Label {
-                            Layout.fillWidth: true
-                            text: "Resultado Propuesto"
-                            font.pixelSize: 12
-                            font.bold: true
-                            color: MichiTheme.textPrimary
-                            horizontalAlignment: Text.AlignRight
-                        }
-                    }
-                }
+                // Encabezado inline (TableView.header no disponible en esta version)
+                Item { height: 0; width: 1; visible: false }
             }
         }
         

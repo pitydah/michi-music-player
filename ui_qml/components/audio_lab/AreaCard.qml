@@ -1,7 +1,8 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import MichiTheme
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "../../theme"
+import ".."
 
 /**
  * Componente de tarjeta para áreas principales de Audio Lab
@@ -13,16 +14,14 @@ GlassCard {
     property string icon: "🔍"
     property string title: "Área"
     property string description: "Descripción del área"
-    property string status: "available" // available, partial, experimental, missing_dependency
+    property string areaStatus: "available" // available, partial, experimental, missing_dependency
     property int toolsCount: 0
     
-    signal clicked()
-    
-    hoverEnabled: true
+    signal areaClicked()
     
     // Color según estado
     readonly property color statusColor: {
-        switch(status) {
+        switch(areaStatus) {
             case "available": return MichiTheme.success
             case "partial": return MichiTheme.warning
             case "experimental": return MichiTheme.accent
@@ -33,18 +32,18 @@ GlassCard {
     
     // Texto de estado legible
     readonly property string statusText: {
-        switch(status) {
+        switch(areaStatus) {
             case "available": return "Listo"
             case "partial": return "Parcial"
             case "experimental": return "Experimental"
             case "missing_dependency": return "Falta dependencia"
-            default: return status
+            default: return areaStatus
         }
     }
     
     ColumnLayout {
         anchors.fill: parent
-        padding: 20
+        anchors.margins: 20
         spacing: 12
         
         // Icono y título

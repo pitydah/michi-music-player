@@ -1,7 +1,8 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import MichiTheme
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import ".."
+import "../../theme"
 
 /**
  * Overlay para monitoreo de trabajos en segundo plano
@@ -48,7 +49,7 @@ Rectangle {
         
         ColumnLayout {
             anchors.fill: parent
-            padding: 20
+            anchors.margins: 20
             spacing: 15
             
             // Encabezado
@@ -148,7 +149,7 @@ Rectangle {
                             
                             RowLayout {
                                 anchors.fill: parent
-                                padding: 12
+                                anchors.margins: 12
                                 spacing: 12
                                 
                                 // Indicador de estado

@@ -1,8 +1,8 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import MichiTheme
-import "../../components"
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "../../../theme"
+import "../../../components"
 
 /**
  * Hub de Inteligencia Local - Similitud acústica, Radio local, Smart Mix
@@ -11,9 +11,7 @@ Page {
     id: page
     
     header: SectionHeader {
-        title: "Inteligencia Local"
-        subtitle: "Análisis acústico y automatización"
-        onBackClicked: pageStack.pop()
+        text: "Inteligencia Local"
     }
     
     ScrollView {
@@ -24,7 +22,7 @@ Page {
         ColumnLayout {
             id: container
             width: Math.max(parent.width, 800)
-            padding: 20
+            anchors.margins: 20
             spacing: 20
             
             Label {
@@ -39,7 +37,7 @@ Page {
                 model: [
                     { 
                         id: "acoustic_features", 
-                        title: "Características Acústicas", 
+                        text: "Características Acústicas", 
                         icon: "📈", 
                         description: "Analiza BPM, tonalidad, energía y otras características",
                         route: "audio_lab.acoustic_features",
@@ -47,7 +45,7 @@ Page {
                     },
                     { 
                         id: "similar_songs", 
-                        title: "Canciones Similares", 
+                        text: "Canciones Similares", 
                         icon: "🎯", 
                         description: "Encuentra canciones similares basadas en características acústicas",
                         route: "audio_lab.similar_songs",
@@ -55,7 +53,7 @@ Page {
                     },
                     { 
                         id: "local_radio", 
-                        title: "Radio Local", 
+                        text: "Radio Local", 
                         icon: "📻", 
                         description: "Genera una cola dinámica desde tu colección local",
                         route: "audio_lab.local_radio",
@@ -63,7 +61,7 @@ Page {
                     },
                     { 
                         id: "smart_mix", 
-                        title: "Smart Mix", 
+                        text: "Smart Mix", 
                         icon: "🎵", 
                         description: "Crea mezclas automáticas basadas en preferencias y contexto",
                         route: "mix.hub",
@@ -74,11 +72,10 @@ Page {
                 delegate: GlassCard {
                     Layout.fillWidth: true
                     height: 100
-                    hoverEnabled: true
                     
                     RowLayout {
                         anchors.fill: parent
-                        padding: 15
+                        anchors.margins: 15
                         spacing: 20
                         
                         Label { text: model.icon; font.pixelSize: 36 }
@@ -131,7 +128,7 @@ Page {
             
             GlassCard {
                 Layout.fillWidth: true
-                padding: 15
+                anchors.margins: 15
                 
                 ColumnLayout {
                     anchors.fill: parent

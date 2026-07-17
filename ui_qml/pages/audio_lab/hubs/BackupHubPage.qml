@@ -1,8 +1,8 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import MichiTheme
-import "../../components"
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "../../../theme"
+import "../../../components"
 
 /**
  * Hub de Respaldar - Agrupa: Conversión, Normalización, Ripeo CD, Grabación ADC, Organización
@@ -12,9 +12,7 @@ Page {
     id: page
     
     header: SectionHeader {
-        title: "Respaldar"
-        subtitle: "Convierte, normaliza, ripea CDs y digitaliza vinilos"
-        onBackClicked: pageStack.pop()
+        text: "Respaldar"
     }
     
     ScrollView {
@@ -25,7 +23,7 @@ Page {
         ColumnLayout {
             id: container
             width: Math.max(parent.width, 800)
-            padding: 20
+            anchors.margins: 20
             spacing: 20
             
             // Descripción del área
@@ -42,7 +40,7 @@ Page {
                 model: [
                     { 
                         id: "conversion", 
-                        title: "Conversión de Formatos", 
+                        text: "Conversión de Formatos", 
                         icon: "🔄", 
                         description: "Convierte entre FLAC, MP3, AAC, Opus, WAV preservando metadatos",
                         route: "audio_lab.conversion",
@@ -50,7 +48,7 @@ Page {
                     },
                     { 
                         id: "normalization", 
-                        title: "Normalización", 
+                        text: "Normalización", 
                         icon: "⚖️", 
                         description: "Ajusta el volumen usando ReplayGain (no destructivo) o normalización destructiva",
                         route: "audio_lab.normalization",
@@ -58,7 +56,7 @@ Page {
                     },
                     { 
                         id: "cd_ripping", 
-                        title: "Ripeo de CD", 
+                        text: "Ripeo de CD", 
                         icon: "💿", 
                         description: "Extrae pistas de CDs de audio con verificación de seguridad",
                         route: "audio_lab.cd_rip",
@@ -66,7 +64,7 @@ Page {
                     },
                     { 
                         id: "adc_recording", 
-                        title: "Grabación ADC (Vinilo/Cassette)", 
+                        text: "Grabación ADC (Vinilo/Cassette)", 
                         icon: "🎙️", 
                         description: "Digitaliza vinilos y cassettes desde tocadiscos USB con ecualización RIAA",
                         route: "audio_lab.adc_record",
@@ -74,7 +72,7 @@ Page {
                     },
                     { 
                         id: "organization", 
-                        title: "Organización de Archivos", 
+                        text: "Organización de Archivos", 
                         icon: "📂", 
                         description: "Reorganiza tu biblioteca con estructuras de carpetas personalizadas",
                         route: "audio_lab.organize",
@@ -85,7 +83,6 @@ Page {
                 delegate: GlassCard {
                     Layout.fillWidth: true
                     height: 100
-                    hoverEnabled: true
                     
                     onClicked: {
                         console.log("Navegando a:", model.route)
@@ -94,7 +91,7 @@ Page {
                     
                     RowLayout {
                         anchors.fill: parent
-                        padding: 15
+                        anchors.margins: 15
                         spacing: 20
                         
                         // Icono
@@ -164,7 +161,7 @@ Page {
             // Información adicional
             GlassCard {
                 Layout.fillWidth: true
-                padding: 15
+                anchors.margins: 15
                 
                 ColumnLayout {
                     anchors.fill: parent

@@ -1,8 +1,8 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import MichiTheme
-import "../../components"
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "../../../theme"
+import "../../../components"
 
 /**
  * Hub de Identificador - Agrupa: Fingerprint, Metadatos, Carátulas, Letras
@@ -11,9 +11,7 @@ Page {
     id: page
     
     header: SectionHeader {
-        title: "Identificador de Audios"
-        subtitle: "Identifica, corrige metadatos y carátulas"
-        onBackClicked: pageStack.pop()
+        text: "Identificador de Audios"
     }
     
     ScrollView {
@@ -24,7 +22,7 @@ Page {
         ColumnLayout {
             id: container
             width: Math.max(parent.width, 800)
-            padding: 20
+            anchors.margins: 20
             spacing: 20
             
             Label {
@@ -39,7 +37,7 @@ Page {
                 model: [
                     { 
                         id: "fingerprint", 
-                        title: "Fingerprint Acústico", 
+                        text: "Fingerprint Acústico", 
                         icon: "🆔", 
                         description: "Identifica canciones usando huella acústica (AcoustID)",
                         route: "audio_lab.fingerprint",
@@ -47,7 +45,7 @@ Page {
                     },
                     { 
                         id: "metadata", 
-                        title: "Editor de Metadatos", 
+                        text: "Editor de Metadatos", 
                         icon: "📝", 
                         description: "Edita tags ID3: título, artista, álbum, género, año",
                         route: "audio_lab.metadata",
@@ -55,7 +53,7 @@ Page {
                     },
                     { 
                         id: "covers", 
-                        title: "Carátulas", 
+                        text: "Carátulas", 
                         icon: "🖼️", 
                         description: "Busca y agrega carátulas desde MusicBrainz y otras fuentes",
                         route: "audio_lab.covers",
@@ -63,7 +61,7 @@ Page {
                     },
                     { 
                         id: "lyrics", 
-                        title: "Letras", 
+                        text: "Letras", 
                         icon: "🎵", 
                         description: "Busca y sincroniza letras de canciones",
                         route: "audio_lab.lyrics",
@@ -74,11 +72,10 @@ Page {
                 delegate: GlassCard {
                     Layout.fillWidth: true
                     height: 100
-                    hoverEnabled: true
                     
                     RowLayout {
                         anchors.fill: parent
-                        padding: 15
+                        anchors.margins: 15
                         spacing: 20
                         
                         Label { text: model.icon; font.pixelSize: 36 }

@@ -1,8 +1,8 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import MichiTheme
-import "../../components"
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "../../../theme"
+import "../../../components"
 
 /**
  * Hub de Diagnóstico - Agrupa: Análisis, Integridad, Comparación A/B
@@ -12,9 +12,7 @@ Page {
     id: page
     
     header: SectionHeader {
-        title: "Diagnóstico"
-        subtitle: "Analiza, verifica integridad y compara archivos de audio"
-        onBackClicked: pageStack.pop()
+        text: "Diagnóstico"
     }
     
     ScrollView {
@@ -25,7 +23,7 @@ Page {
         ColumnLayout {
             id: container
             width: Math.max(parent.width, 800)
-            padding: 20
+            anchors.margins: 20
             spacing: 20
             
             // Descripción del área
@@ -42,7 +40,7 @@ Page {
                 model: [
                     { 
                         id: "analysis", 
-                        title: "Análisis Técnico", 
+                        text: "Análisis Técnico", 
                         icon: "📊", 
                         description: "Obtén información técnica detallada: códec, bitrate, sample rate, duración",
                         route: "audio_lab.analysis",
@@ -50,7 +48,7 @@ Page {
                     },
                     { 
                         id: "integrity", 
-                        title: "Integridad de Archivos", 
+                        text: "Integridad de Archivos", 
                         icon: "✓", 
                         description: "Verifica que los archivos no estén corruptos o truncados",
                         route: "audio_lab.integrity",
@@ -58,7 +56,7 @@ Page {
                     },
                     { 
                         id: "comparison", 
-                        title: "Comparación A/B", 
+                        text: "Comparación A/B", 
                         icon: "⚖️", 
                         description: "Compara dos versiones del mismo audio escuchando diferencias",
                         route: "audio_lab.comparison",
@@ -69,7 +67,6 @@ Page {
                 delegate: GlassCard {
                     Layout.fillWidth: true
                     height: 100
-                    hoverEnabled: true
                     
                     onClicked: {
                         // Navegar a la página específica
@@ -79,7 +76,7 @@ Page {
                     
                     RowLayout {
                         anchors.fill: parent
-                        padding: 15
+                        anchors.margins: 15
                         spacing: 20
                         
                         // Icono
@@ -149,7 +146,7 @@ Page {
             // Información adicional
             GlassCard {
                 Layout.fillWidth: true
-                padding: 15
+                anchors.margins: 15
                 
                 ColumnLayout {
                     anchors.fill: parent
