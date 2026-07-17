@@ -5,7 +5,7 @@ class TestSanitizer:
     def test_sanitize_report(self):
         data = {"name": "test", "path": "/home/user/music"}
         result = sanitize_report(data)
-        assert result["path"] != "/home/user/music"
+        assert "path" not in result or result["path"] != "/home/user/music"
 
     def test_sanitize_for_diagnostic(self):
         data = {"status": "ok", "path": "/secret"}
