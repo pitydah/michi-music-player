@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import logging
+
 from PySide6.QtCore import QObject, Signal, Property, Slot
+
+logger = logging.getLogger(__name__)
 
 
 class ConfirmationBridge(QObject):
@@ -9,6 +13,7 @@ class ConfirmationBridge(QObject):
 
     def __init__(self, confirmation_service=None, action_registry=None, parent=None):
         super().__init__(parent)
+        logger.debug("ConfirmationBridge.__init__ called")
         self._svc = confirmation_service
         self._action_registry = action_registry
         self._pending: dict[str, dict] = {}

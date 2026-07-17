@@ -14,6 +14,7 @@ class AppStateBridge(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        logger.debug("AppStateBridge.__init__ called")
         self._safe_mode = False
         self._delivery_mode = os.environ.get("MICHI_QML_DELIVERY_MODE") == "1"
         self._qml_mode = True

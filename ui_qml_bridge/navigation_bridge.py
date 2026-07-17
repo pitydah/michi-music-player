@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from PySide6.QtCore import QObject, QTimer, Signal, Property, Slot
+
+logger = logging.getLogger(__name__)
 from .route_registry import ROUTES, CAPABILITY_MAP
 
 
@@ -16,6 +19,7 @@ class NavigationBridge(QObject):
 
     def __init__(self, navigation_service: Any = None, parent=None):
         super().__init__(parent)
+        logger.debug("NavigationBridge.__init__ called")
         self._nav_service = navigation_service
         self._current_route = "home"
         self._current_params: dict = {}

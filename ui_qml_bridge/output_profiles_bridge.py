@@ -4,7 +4,11 @@ channels, exclusive, bit-perfect, DSP, fallback, applied state.
 """
 from __future__ import annotations
 
+import logging
+
 from PySide6.QtCore import QObject, Signal, Property, Slot
+
+logger = logging.getLogger(__name__)
 
 
 class OutputProfilesBridge(QObject):
@@ -14,6 +18,7 @@ class OutputProfilesBridge(QObject):
     def __init__(self, player_service=None, parent=None):
         assert player_service is not None, "OutputProfilesBridge: player_service is REQUIRED"
         super().__init__(parent)
+        logger.debug("OutputProfilesBridge.__init__ called")
         self._player = player_service
         self._profiles: list[dict] = []
         self._active_id = ""

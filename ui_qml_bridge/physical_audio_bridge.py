@@ -7,9 +7,12 @@ States: PENDING, RUNNING, VERIFIED, FAILED, BLOCKED_HARDWARE.
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
+
+logger = logging.getLogger(__name__)
 
 
 ARTIFACT_PATH = Path(__file__).resolve().parent.parent / "artifacts" / "qml-physical-results.json"

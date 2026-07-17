@@ -5,12 +5,15 @@ run pytest from QML, or run benchmarks from QML.
 """
 from __future__ import annotations
 
+import logging
 import platform
 import sys
 import time
 from typing import Any
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
+
+logger = logging.getLogger(__name__)
 
 
 class DiagnosticsBridge(QObject):
@@ -21,6 +24,7 @@ class DiagnosticsBridge(QObject):
                  worker_manager=None, query_executor=None,
                  library_bridge=None, parent=None):
         super().__init__(parent)
+        logger.debug("DiagnosticsBridge.__init__ called")
         self._ds = diagnostics_service
         self._player = player_service
         self._wm = worker_manager

@@ -5,7 +5,11 @@ No inline SQL — delegates to service capability checks.
 """
 from __future__ import annotations
 
+import logging
+
 from PySide6.QtCore import QObject, Signal, Property
+
+logger = logging.getLogger(__name__)
 
 
 CAPABILITY_STATE_KEYS = {
@@ -25,6 +29,7 @@ class CapabilityBridge(QObject):
 
     def __init__(self, factory=None, parent=None):
         super().__init__(parent)
+        logger.debug("CapabilityBridge.__init__ called")
         self._factory = factory
         self._caps: dict[str, str] = {}
 
