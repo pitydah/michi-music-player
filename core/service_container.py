@@ -528,10 +528,26 @@ class ObservableServiceContainer(ServiceContainer, QObject):
         QObject.__init__(self)
         self._service_states: dict[str, str] = {}
 
+    def _can_auto_start(self, service) -> bool:
+        """Check if service.start() can be called without arguments."""
+        if not hasattr(service, 'start') or not callable(service.start):
+            return False
+        import inspect
+        try:
+            sig = inspect.signature(service.start)
+            params = list(sig.parameters.keys())
+            # Allow self + optional params with defaults
+            required = [p for p in params
+                       if p != 'self'
+                       and sig.parameters[p].default is inspect.Parameter.empty]
+            return len(required) == 0
+        except (ValueError, TypeError):
+            return False
+
     def register(self, name, service, priority=None, dependencies=None):
         self._service_states[name] = "registered"
         ServiceContainer.register(self, name, service, priority, dependencies or ())
-        if hasattr(service, 'start') and callable(service.start):
+        if self._can_auto_start(service):
             try:
                 self._service_states[name] = "starting"
                 service.start()

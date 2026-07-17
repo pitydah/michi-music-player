@@ -222,11 +222,36 @@ def migrate(conn: sqlite3.Connection, target_version: int | None = None, backup_
         logger.info(f"Database already at version {current} (target: {target})")
         return
 
+    def _exec_migration_safe(conn, sql_block):
+        """Execute SQL block statement by statement, skipping ALTER ADD COLUMN if column exists."""
+        for statement in sql_block.strip().split(';'):
+            stmt = statement.strip()
+            if not stmt:
+                continue
+            # For ALTER TABLE ADD COLUMN, check if column exists first
+            if stmt.upper().startswith('ALTER TABLE') and 'ADD COLUMN' in stmt.upper():
+                import re
+                m = re.search(r'ALTER TABLE\s+(\w+)\s+ADD\s+COLUMN\s+(\w+)', stmt, re.IGNORECASE)
+                if m:
+                    table, col = m.group(1), m.group(2)
+                    cursor = conn.execute(f"PRAGMA table_info({table})")
+                    existing = {r[1] for r in cursor.fetchall()}
+                    if col in existing:
+                        logger.debug(f"Column {table}.{col} already exists, skipping")
+                        continue
+            try:
+                conn.execute(stmt)
+            except Exception as e:
+                logger.warning(f"Statement skipped (non-fatal): {e}")
+                conn.rollback()
+                conn.execute("ROLLBACK")
+
     for version, description, sql_up, _sql_down in MIGRATIONS:
         if version > current and version <= target:
             logger.info(f"Applying migration {version}: {description}")
             try:
-                conn.executescript(sql_up)
+                conn.execute("BEGIN")
+                _exec_migration_safe(conn, sql_up)
                 conn.execute(f"""
                     INSERT OR REPLACE INTO {MIGRATIONS_TABLE} (version, description)
                     VALUES (?, ?)
