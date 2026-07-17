@@ -293,7 +293,6 @@ class TestMichiComboBox:
         loader = _ComponentLoader(self.QML)
         assert loader.is_ready(), f"MichiComboBox failed: {loader.error_string()}"
 
-    @pytest.mark.xfail(reason="QTest.keyClick no enfoca correctamente el ComboBox en QQuickView", strict=False)
     def test_combobox_up_down_changes_index(self, qapp):
         """Down arrow increments currentIndex (real key event)."""
         from PySide6.QtTest import QTest
@@ -313,7 +312,6 @@ class TestMichiComboBox:
         QTest.keyClick(win, Qt.Key_Up)
         assert obj.property("currentIndex") == old_idx
 
-    @pytest.mark.xfail(reason="QTest.keyClick no enfoca correctamente el ComboBox en QQuickView", strict=False)
     def test_combobox_enter_selects(self, qapp):
         """Enter key selects current item (real key event)."""
         from PySide6.QtTest import QTest
@@ -331,7 +329,6 @@ class TestMichiComboBox:
         QTest.keyClick(win, Qt.Key_Return)
         assert obj.property("currentIndex") == 1
 
-    @pytest.mark.xfail(reason="QTest.keyClick no enfoca correctamente el ComboBox en QQuickView", strict=False)
     def test_combobox_escape_closes(self, qapp):
         """Escape closes the dropdown (real key event)."""
         from PySide6.QtTest import QTest
