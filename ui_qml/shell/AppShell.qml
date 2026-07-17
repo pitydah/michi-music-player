@@ -65,6 +65,26 @@ Item {
                 }
             }
 
+            Rectangle {
+                width: 4
+                height: parent.height
+                cursorShape: Qt.SizeHorCursor
+                color: "transparent"
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.leftMargin: -4
+                    anchors.rightMargin: -4
+                    cursorShape: Qt.SizeHorCursor
+                    onPositionChanged: {
+                        if (mouse.buttons & Qt.LeftButton) {
+                            var newWidth = sidebar.width + mouse.x
+                            if (newWidth > 150 && newWidth < 500)
+                                sidebar.width = newWidth
+                        }
+                    }
+                }
+            }
+
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -75,6 +95,25 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 56
                     pageTitle: "Inicio"
+
+                    MouseArea {
+                        anchors.fill: parent
+                        property variant previousPosition: Qt.point(0, 0)
+                        onPressed: {
+                            previousPosition = Qt.point(mouse.x, mouse.y)
+                        }
+                        onPositionChanged: {
+                            if (mouse.buttons & Qt.LeftButton) {
+                                var mainWindow = root.parent
+                                while (mainWindow && mainWindow.objectName !== "mainWindow")
+                                    mainWindow = mainWindow.parent
+                                if (mainWindow && mainWindow.hasOwnProperty("startSystemMove")) {
+                                    mainWindow.startSystemMove()
+                                }
+                            }
+                        }
+                        cursorShape: Qt.OpenHandCursor
+                    }
                     canGoBack: navigationBridge ? navigationBridge.canGoBack : false
                     canGoForward: navigationBridge ? navigationBridge.canGoForward : false
                     routeHistory: navigationBridge ? navigationBridge.history : []

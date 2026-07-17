@@ -134,6 +134,7 @@ Rectangle {
             to: 100
             indeterminate: root.notification && (root.notification.progress === undefined || root.notification.progress < 0)
             reducedMotion: root.reducedMotion
+            Behavior on value { NumberAnimation { duration: 200 } }
             accessibleName: root.notification ? (root.notification.title || "Progreso") : "Progreso"
             accessibleDescription: pctText.text
         }

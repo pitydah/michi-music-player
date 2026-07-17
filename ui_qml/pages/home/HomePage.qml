@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../theme"
 import "../../components"
+import "../../components/states"
 import "."
 
 Item {
@@ -45,7 +46,7 @@ Item {
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
-        boundsBehavior: Flickable.StopAtBounds
+        boundsBehavior: Flickable.OverBounds
         activeFocusOnTab: true
 
         Column {
@@ -294,10 +295,16 @@ Item {
         }
     }
 
-    LoadingState {
+    Loader {
+        active: root.homeState === HomePage.LOADING
         anchors.centerIn: parent
-        visible: root.homeState === HomePage.LOADING
-        title: "Cargando inicio"
+        sourceComponent: Column {
+            spacing: MichiTheme.spacing.sm
+            Repeater {
+                model: 3
+                MichiSkeleton { width: 320; height: 80 }
+            }
+        }
     }
 
     EmptyState {

@@ -17,3 +17,16 @@
 - 38 ramas remotas experimentales sin limpiar
 - track_action_service.py devuelve {"ok": True} sin verificar DB
 - Varios servicios core no tienen tests
+
+## Resueltos en 0.10.0-alpha.1
+- 86 tests nuevos (D1)
+- Logging en 25 servicios/bridges (D3)
+- Estados QML en 16 paginas (D4)
+- Ramas reducidas de 21 a 2 (D6)
+- 6 tests de integracion E2E (D2)
+- Legacy congelado con gate CI (D5)
+- 2 benchmarks de rendimiento (D9)
+- Errores tipados para sync, home_audio, assistant (D11)
+- Ventana movible, fullscreen, maximizar, persistencia (D13)
+- Notificaciones con limite, timestamps, agrupacion (D14)
+- Modo claro, fontScale, transiciones, tooltips, skeletons (D15)

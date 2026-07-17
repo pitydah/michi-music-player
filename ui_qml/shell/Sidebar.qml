@@ -62,6 +62,13 @@ Item {
                             active: root.currentRoute === model.route
                             collapsed: root.collapsed
                             onClicked: root.routeRequested(model.route)
+                            StatusBadge {
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: model.notificationCount > 0 ? model.notificationCount : ""
+                                kind: "info"
+                                visible: model.notificationCount > 0
+                            }
                         }
                     }
                 }
@@ -86,25 +93,25 @@ Item {
     }
 
     ListModel { id: fullModel
-        ListElement { route: "home"; iconSource: "icons/sidebar_home.svg"; label: "Inicio" }
-        ListElement { route: "library"; iconSource: "icons/sidebar_library.svg"; label: "Biblioteca" }
-        ListElement { route: "mix"; iconSource: "icons/sidebar_mix.svg"; label: "Mix" }
-        ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; label: "Reproducción" }
-        ListElement { route: "connections"; iconSource: "icons/sidebar_servers.svg"; label: "Conexiones" }
-        ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio" }
-        ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; label: "Playlists" }
-        ListElement { route: "home_audio"; iconSource: "icons/sidebar_home_audio.svg"; label: "Audio del Hogar" }
-        ListElement { route: "assistant"; iconSource: "icons/sidebar_assistant.svg"; label: "Michi IA" }
-        ListElement { route: "audio_lab"; iconSource: "icons/sidebar_audio_lab.svg"; label: "Audio Lab" }
+        ListElement { route: "home"; iconSource: "icons/sidebar_home.svg"; label: "Inicio"; notificationCount: 0 }
+        ListElement { route: "library"; iconSource: "icons/sidebar_library.svg"; label: "Biblioteca"; notificationCount: 0 }
+        ListElement { route: "mix"; iconSource: "icons/sidebar_mix.svg"; label: "Mix"; notificationCount: 0 }
+        ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; label: "Reproducción"; notificationCount: 0 }
+        ListElement { route: "connections"; iconSource: "icons/sidebar_servers.svg"; label: "Conexiones"; notificationCount: 0 }
+        ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio"; notificationCount: 0 }
+        ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; label: "Playlists"; notificationCount: 0 }
+        ListElement { route: "home_audio"; iconSource: "icons/sidebar_home_audio.svg"; label: "Audio del Hogar"; notificationCount: 0 }
+        ListElement { route: "assistant"; iconSource: "icons/sidebar_assistant.svg"; label: "Michi IA"; notificationCount: 0 }
+        ListElement { route: "audio_lab"; iconSource: "icons/sidebar_audio_lab.svg"; label: "Audio Lab"; notificationCount: 0 }
     }
 
     ListModel { id: deliveryModel
-        ListElement { route: "home"; iconSource: "icons/sidebar_home.svg"; label: "Inicio" }
-        ListElement { route: "library"; iconSource: "icons/sidebar_library.svg"; label: "Biblioteca" }
-        ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; label: "Reproducción" }
-        ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; label: "Playlists" }
-        ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio" }
-        ListElement { route: "settings"; iconSource: "icons/sidebar_playlists.svg"; label: "Ajustes" }
-        ListElement { route: "diagnostics"; iconSource: "icons/sidebar_identifier.svg"; label: "Diagnóstico" }
+        ListElement { route: "home"; iconSource: "icons/sidebar_home.svg"; label: "Inicio"; notificationCount: 0 }
+        ListElement { route: "library"; iconSource: "icons/sidebar_library.svg"; label: "Biblioteca"; notificationCount: 0 }
+        ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; label: "Reproducción"; notificationCount: 0 }
+        ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; label: "Playlists"; notificationCount: 0 }
+        ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio"; notificationCount: 0 }
+        ListElement { route: "settings"; iconSource: "icons/sidebar_playlists.svg"; label: "Ajustes"; notificationCount: 0 }
+        ListElement { route: "diagnostics"; iconSource: "icons/sidebar_identifier.svg"; label: "Diagnóstico"; notificationCount: 0 }
     }
 }

@@ -9,6 +9,7 @@ Rectangle {
 
     property var bridge: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property var nb: bridge
+    ListModel { id: notificationModel }
     property var notifications: []
     property var persistentNotifications: []
     property bool reducedMotion: false
@@ -61,9 +62,11 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "Descartar todas"
                     variant: "ghost"
-                    visible: (root.notifications.length > 0 || root.persistentNotifications.length > 0)
+                    visible: notificationModel.count > 0
                     onClicked: {
+                        notificationModel.clear()
                         if (root.bridge) root.bridge.clear()
+                        if (root.nb) root.nb.clear()
                         root.dismissAllRequested()
                     }
 
@@ -105,17 +108,7 @@ Rectangle {
             id: notificationList
             width: parent.width
             height: parent.height - 48 - 1
-            model: {
-                const all = []
-                for (let i = 0; i < root.persistentNotifications.length; i++) {
-                    const n = root.persistentNotifications[i]
-                    all.push(n)
-                }
-                for (let i = 0; i < root.notifications.length; i++) {
-                    all.push(root.notifications[i])
-                }
-                return all
-            }
+            model: notificationModel
             visible: !emptyStateItem.visible
             clip: true
             focus: true
@@ -140,9 +133,9 @@ Rectangle {
                         if (index === 0) return true
                         const prev = notificationList.model[index - 1]
                         if (!prev || !modelData) return false
-                        const prevPersistent = prev.persistent || prev.kind === "error" || prev.kind === "progress"
-                        const currPersistent = modelData.persistent || modelData.kind === "error" || modelData.kind === "progress"
-                        return prevPersistent !== currPersistent
+                        const prevKind = prev.kind || ""
+                        const currKind = modelData.kind || ""
+                        return prevKind !== currKind
                     }
 
                     Text {
@@ -150,8 +143,10 @@ Rectangle {
                         anchors.leftMargin: MichiTheme.spacing.md
                         anchors.verticalCenter: parent.verticalCenter
                         text: {
-                            const isPersistent = modelData.persistent || modelData.kind === "error" || modelData.kind === "progress"
-                            return isPersistent ? "PERSISTENTES" : "NOTIFICACIONES"
+                            if (!modelData || !modelData.kind) return "NOTIFICACIONES"
+                            if (modelData.kind === "error") return "Errores"
+                            if (modelData.kind === "warning") return "Advertencias"
+                            return "Info"
                         }
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.badgeSize
@@ -178,6 +173,22 @@ Rectangle {
                             root.notificationActivated(modelData.id || "")
                         })
                     }
+                }
+
+                Text {
+                    anchors.right: parent.right
+                    anchors.rightMargin: MichiTheme.spacing.md
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: MichiTheme.spacing.xs
+                    text: {
+                        if (!modelData || !modelData.timestamp) return ""
+                        var elapsed = Math.round((Date.now() / 1000) - modelData.timestamp)
+                        if (elapsed < 60) return elapsed + "s"
+                        if (elapsed < 3600) return Math.floor(elapsed / 60) + "m"
+                        return Math.floor(elapsed / 3600) + "h"
+                    }
+                    color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.metaSize
                 }
 
                 Rectangle {
@@ -227,12 +238,18 @@ Rectangle {
     }
 
     function refresh() {
-        if (root.bridge) {
-            const current = root.bridge.currentNotification
-            const all = []
-            if (current) all.push(current)
-            root.notifications = root.bridge.queueLength > 0 ? [] : []
-            root.persistentNotifications = root.bridge.persistentNotifications || []
+        if (!root.bridge) return
+        notificationModel.clear()
+        const persistent = root.bridge.persistentNotifications || []
+        const current = root.bridge.currentNotification
+        const queue = root.bridge.queueLength > 0 ? [] : []
+        root.notifications = queue
+        root.persistentNotifications = persistent
+        for (let i = 0; i < persistent.length; i++) {
+            notificationModel.append(persistent[i])
+        }
+        if (current) {
+            notificationModel.append(current)
         }
     }
 

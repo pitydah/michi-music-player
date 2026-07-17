@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Animators
 import "../theme"
 
 Item {
@@ -14,13 +15,14 @@ Item {
 
     onTargetChanged: {
         if (target) {
-            target.opacity = root.reducedMotion ? 1.0 : 0.0
+            target.opacity = 1.0
             if (!root.reducedMotion) {
-                var anim = Qt.createQmlObject(
-                    "import QtQuick; NumberAnimation { to: 1.0; duration: " + root.duration + "; easing.type: Easing.OutCubic }",
-                    root, "routeFade")
-                anim.target = target
-                anim.property = "opacity"
+                var anim = OpacityAnimator.createObject(target, {
+                    "from": 0,
+                    "to": 1,
+                    "duration": root.reducedMotion ? 0 : 200,
+                    "easing.type": Easing.OutCubic
+                })
                 anim.start()
             }
         }

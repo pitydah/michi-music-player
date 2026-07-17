@@ -31,7 +31,8 @@ class NotificationBridge(QObject):
         self._diagnostics_service = diagnostics_service
         self._current: dict | None = None
         self._queue: list[dict] = []
-        self._max_queue = 20
+        self._max_queue = 50
+        self._MAX_QUEUE = 50
         self._priority_map: dict[str, int] = {}
         self._dedup_map: dict[str, str] = {}
         self._persistent_map: dict[str, dict] = {}
@@ -74,9 +75,9 @@ class NotificationBridge(QObject):
         dedup_key = msg.get("_dedup_key", text)
         if self._dedup(dedup_key, msg):
             return {"ok": True, "dedup": True}
-        self._queue.append(msg)
-        if len(self._queue) > self._max_queue:
+        if len(self._queue) >= self._MAX_QUEUE:
             self._queue.pop(0)
+        self._queue.append(msg)
         if not self._current:
             self._next()
         self.notificationCountChanged.emit()

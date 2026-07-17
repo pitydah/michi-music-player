@@ -17,6 +17,7 @@ Item {
     property bool canGoBack: false
     property bool canGoForward: false
     property var routeHistory: []
+    property var mainWindow: null
 
     signal backClicked()
     signal forwardClicked()
@@ -136,6 +137,18 @@ Item {
                 implicitWidth: responsive.compact ? Math.min(160, root.width * 0.2) : Math.min(280, root.width * 0.25)
                 objectName: "searchField"
                 Accessible.name: "Buscar en Michi"
+            }
+
+            MichiIconButton {
+                objectName: "headerMaximizeButton"
+                tooltipText: root.mainWindow && root.mainWindow.visibility === Window.Maximized ? "Restaurar" : "Maximizar"
+                Accessible.name: tooltipText
+                onClicked: {
+                    if (root.mainWindow && root.mainWindow.visibility === Window.Maximized)
+                        root.mainWindow.showNormal()
+                    else if (root.mainWindow)
+                        root.mainWindow.showMaximized()
+                }
             }
         }
     }

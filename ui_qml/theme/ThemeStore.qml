@@ -12,6 +12,7 @@ QtObject {
     property string fontScale: "normal"
     property bool reduceMotion: false
     property bool darkMode: true
+    property real fontScale: 1.0
 
     readonly property color bgApp: darkMode ? (highContrast ? "#000205" : "#070A10") : (highContrast ? "#FFFFFF" : "#F5F6FA")
     readonly property color bgContent: darkMode ? (highContrast ? "#000408" : "#090B11") : (highContrast ? "#FAFAFE" : "#EEF0F5")
@@ -84,6 +85,10 @@ QtObject {
         reduceMotion = bridge.reduceMotion || false
         darkMode = currentTheme !== "light"
         ready = true
+    }
+
+    function toggleTheme() {
+        darkMode = !darkMode
     }
 
     function apply() {

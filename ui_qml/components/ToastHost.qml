@@ -19,10 +19,10 @@ Item {
         width: Math.min(400, parent.width * 0.8)
         height: 48
         radius: MichiTheme.radius.sm
-        visible: root.notif ? root.notif.visible : false
+        visible: root.notif ? (root.notif.visible || false) : false
 
         color: {
-            if (!root.notif) return "transparent"
+            if (!root.notif || !root.notif.kind) return "transparent"
             switch (root.notif.kind) {
                 case "success": return MichiTheme.colors.badgeActiveBg
                 case "warning": return MichiTheme.colors.badgeWarningBg
@@ -32,7 +32,7 @@ Item {
         }
 
         border.color: {
-            if (!root.notif) return "transparent"
+            if (!root.notif || !root.notif.kind) return "transparent"
             switch (root.notif.kind) {
                 case "success": return MichiTheme.colors.success
                 case "warning": return MichiTheme.colors.warning
@@ -46,7 +46,7 @@ Item {
             anchors.left: parent.left
             anchors.leftMargin: MichiTheme.spacing.md
             anchors.verticalCenter: parent.verticalCenter
-            text: root.notif ? root.notif.message : ""
+            text: root.notif ? (root.notif.message || "") : ""
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.bodySize
             elide: Text.ElideRight
@@ -65,7 +65,7 @@ Item {
 
         Timer {
             interval: 4000
-            running: root.notif ? root.notif.visible : false
+            running: root.notif ? (root.notif.visible || false) : false
             onTriggered: { if (root.notif) root.notif.clear() }
         }
     }

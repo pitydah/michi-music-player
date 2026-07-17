@@ -80,7 +80,14 @@ Item {
             }
         }
 
+        ToolTip {
+            visible: root.collapsed && ma.containsMouse
+            text: root.label
+            delay: 600
+        }
+
         MouseArea {
+            id: ma
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
