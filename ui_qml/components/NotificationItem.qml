@@ -167,7 +167,7 @@ Rectangle {
         property: "opacity"
         from: 1
         to: 0
-        duration: root.reducedMotion ? 1 : MichiTheme.motion.normal
+        duration: root.reducedMotion ? 1 : MichiTheme.motion.durationNormal
         onFinished: root.dismissed()
     }
 
