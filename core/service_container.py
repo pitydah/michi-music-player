@@ -9,6 +9,8 @@ import logging
 from enum import Enum
 from typing import Any
 
+from PySide6.QtCore import QObject, Signal
+
 logger = logging.getLogger("michi.service_container")
 
 
@@ -514,3 +516,45 @@ class ServiceContainer:
                 "capable": self.is_capable(name),
             }
         return result
+
+
+class ObservableServiceContainer(ServiceContainer, QObject):
+    service_state_changed = Signal(str, str)
+
+    VALID_STATES = {"registered", "starting", "ready", "degraded", "unavailable", "failed", "stopping", "stopped"}
+
+    def __init__(self):
+        ServiceContainer.__init__(self)
+        QObject.__init__(self)
+        self._service_states: dict[str, str] = {}
+
+    def register(self, name, service, dependencies=None):
+        self._service_states[name] = "registered"
+        ServiceContainer.register(self, name, service, dependencies)
+        if hasattr(service, 'start') and callable(service.start):
+            try:
+                self._service_states[name] = "starting"
+                service.start()
+                self._service_states[name] = "ready"
+            except Exception as e:
+                self._service_states[name] = "failed"
+                logger.error(f"Service {name} failed to start: {e}", exc_info=True)
+        else:
+            self._service_states[name] = "ready"
+        self.service_state_changed.emit(name, self._service_states[name])
+
+    def get_service_state(self, name) -> str:
+        return self._service_states.get(name, "unavailable")
+
+    def get_service_states(self) -> dict[str, str]:
+        return dict(self._service_states)
+
+    def get_service_diagnostics(self, name) -> dict:
+        return {
+            "name": name,
+            "state": self._service_states.get(name, "unavailable"),
+            "available": self.contains(name),
+            "priority": self.priority(name).value if self.priority(name) else "unknown",
+            "failed": name in self._failures,
+            "error": self._failures.get(name, ""),
+        }

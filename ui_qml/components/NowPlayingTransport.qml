@@ -5,6 +5,7 @@ import "../components"
 
 Item {
     id: root
+    objectName: "nowPlayingTransport"
 
     property bool isPlaying: false
     property bool shuffleEnabled: false

@@ -4,6 +4,7 @@ import "../theme"
 
 Rectangle {
     id: root
+    objectName: "nowPlayingQualityBadge"
 
     property bool available: false
     property bool loading: false
