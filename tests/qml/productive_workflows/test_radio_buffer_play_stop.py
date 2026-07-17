@@ -37,7 +37,8 @@ class TestRadio:
         radio_page = find_qml_item(root_window, "radioPage")
         assert radio_page is not None, "radioPage not found"
         stations = [c for c in radio_page.childItems() if c.objectName() == "radioStationDetail"]
-        if len(stations) > 0:
-            qtest_click_item(stations[0], root_window)
-            QTest.qWait(100)
-            assert nav.currentRoute == "radio"
+        if len(stations) == 0:
+            pytest.skip("No radio stations available to click")
+        qtest_click_item(stations[0], root_window)
+        QTest.qWait(100)
+        assert nav.currentRoute == "radio"

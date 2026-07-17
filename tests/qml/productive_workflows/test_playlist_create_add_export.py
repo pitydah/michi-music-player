@@ -39,11 +39,11 @@ class TestPlaylistCreateExport:
             if "Nueva" in str(text) or "Crear" in str(text):
                 create_btn = child
                 break
-        if create_btn is not None:
-            qtest_click_item(create_btn, root_window)
-            QTest.qWait(100)
-            dialog = find_qml_item(root_window, "playlistEditorDialog")
-            if dialog is not None:
-                assert dialog.property("visible") or dialog.property("opened"), (
-                    "playlistEditorDialog should be visible"
-                )
+        assert create_btn is not None, "Create playlist button not found"
+        qtest_click_item(create_btn, root_window)
+        QTest.qWait(100)
+        dialog = find_qml_item(root_window, "playlistEditorDialog")
+        assert dialog is not None, "playlistEditorDialog should appear after clicking create"
+        assert dialog.property("visible") or dialog.property("opened"), (
+            "playlistEditorDialog should be visible"
+        )

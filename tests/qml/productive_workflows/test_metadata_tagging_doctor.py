@@ -45,8 +45,8 @@ class TestMetadataTaggingDoctor:
         nav.navigate("tagging")
         assert nav.currentRoute == "tagging"
         page = find_qml_item(root_window, "SmartTaggingPage")
-        if page is not None:
-            page.forceActiveFocus()
-            QTest.keyClick(page, Qt.Key_Down)
-            QTest.qWait(50)
-            assert nav.currentRoute == "tagging"
+        assert page is not None, "SmartTaggingPage not found"
+        page.forceActiveFocus()
+        QTest.keyClick(page, Qt.Key_Down)
+        QTest.qWait(50)
+        assert nav.currentRoute == "tagging"

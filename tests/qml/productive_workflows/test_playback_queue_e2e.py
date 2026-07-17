@@ -85,8 +85,7 @@ class TestPlaybackQueueE2E:
         playback_bridge.setVolume(50)
 
     def test_qtest_click_play_pause(self, nav, playback_bridge, root_window):
-        from PySide6.QtTest import QTest
-        from .conftest import find_qml_item, qtest_click_item
+        from .conftest import find_qml_item, qtest_click_item, wait_for_condition
         nav.navigate("playback")
         assert nav.currentRoute == "playback"
         controls = find_qml_item(root_window, "nowPlayingControls")
@@ -100,7 +99,10 @@ class TestPlaybackQueueE2E:
         if play_area is None:
             play_area = controls
         qtest_click_item(play_area, root_window)
-        QTest.qWait(100)
+        wait_for_condition(
+            lambda: getattr(playback_bridge, 'state', '') != state_before,
+            timeout_ms=500
+        )
         state_after = getattr(playback_bridge, 'state', '')
         assert state_before != state_after, (
             f"Playback state should change: '{state_before}' -> '{state_after}'"
@@ -135,9 +137,9 @@ class TestPlaybackQueueE2E:
             if "Vaciar" in str(text) or "Clear" in str(text):
                 clear_btn = child
                 break
-        if clear_btn is not None:
-            qtest_click_item(clear_btn, root_window)
-            QTest.qWait(50)
+        assert clear_btn is not None, "Clear/Vaciar button not found in queueHeader"
+        qtest_click_item(clear_btn, root_window)
+        QTest.qWait(50)
 
     def test_qtest_navigate_playback(self, nav, playback_bridge, root_window):
         from PySide6.QtCore import Qt

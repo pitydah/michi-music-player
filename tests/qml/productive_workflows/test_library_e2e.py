@@ -118,10 +118,16 @@ class TestLibraryE2E:
     def test_qtest_click_refresh(self, nav, library_bridge, root_window):
         from .conftest import find_qml_item, qtest_click_item
         nav.navigate("library")
+        assert nav.currentRoute == "library"
         refresh_btn = find_qml_item(root_window, "libraryRefreshButton")
-        if refresh_btn is not None:
-            qtest_click_item(refresh_btn, root_window)
-            QTest.qWait(50)
+        assert refresh_btn is not None, "libraryRefreshButton not found"
+        state_before = getattr(library_bridge, 'state', '')
+        qtest_click_item(refresh_btn, root_window)
+        QTest.qWait(50)
+        state_after = getattr(library_bridge, 'state', '')
+        assert state_before != state_after or state_after == "LOADING", (
+            f"Library state should change: '{state_before}' -> '{state_after}'"
+        )
 
     def test_qtest_click_filter_chip_format(self, nav, library_bridge, root_window):
         from PySide6.QtTest import QTest

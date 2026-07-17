@@ -37,6 +37,7 @@ class TestDiagnostics:
             if "Refrescar" in str(text) or "Refresh" in str(text):
                 refresh_btn = child
                 break
-        if refresh_btn is not None:
-            qtest_click_item(refresh_btn, root_window)
-            QTest.qWait(200)
+        assert refresh_btn is not None, "Refresh button not found in diagnosticsPage"
+        qtest_click_item(refresh_btn, root_window)
+        QTest.qWait(200)
+        assert nav.currentRoute == "diagnostics"
