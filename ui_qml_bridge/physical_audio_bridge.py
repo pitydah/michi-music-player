@@ -32,6 +32,7 @@ class PhysicalAudioBridge(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        logger.debug("PhysicalAudioBridge.__init__ called")
 
     def _artifact(self) -> dict:
         return _read_artifact()

@@ -1,7 +1,11 @@
 """PlaybackBridge — delegates to NowPlayingBridge, propagates real results."""
 from __future__ import annotations
 
+import logging
+
 from PySide6.QtCore import QObject, Property, Signal, Slot
+
+logger = logging.getLogger(__name__)
 
 from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
 
@@ -12,6 +16,7 @@ class PlaybackBridge(QObject):
     def __init__(self, player_service=None, playback_ctrl=None, nowplaying_bridge=None,
                  audio_quality_adapter=None, parent=None):
         super().__init__(parent)
+        logger.debug("PlaybackBridge.__init__ called")
         assert player_service is not None or playback_ctrl is not None, \
             "PlaybackBridge: player_service is REQUIRED"
         player = player_service or playback_ctrl

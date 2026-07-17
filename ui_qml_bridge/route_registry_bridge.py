@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import logging
+
 from PySide6.QtCore import QObject, Signal, Property, Slot
+
+logger = logging.getLogger(__name__)
 from .route_registry import ROUTES
 
 
@@ -11,6 +15,7 @@ class RouteRegistryBridge(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        logger.debug("RouteRegistryBridge.__init__ called")
 
     @Property("QVariantList", notify=registryChanged)
     def routes(self):
