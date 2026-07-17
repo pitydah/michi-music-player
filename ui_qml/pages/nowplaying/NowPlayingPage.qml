@@ -190,16 +190,6 @@ Item {
                         }
                     }
 
-                    NowPlayingTechnicalInfo {
-                        Layout.fillWidth: true
-                        ps: root.ps
-                    }
-
-                    NowPlayingOutputSelector {
-                        Layout.fillWidth: true
-                        ps: root.ps
-                    }
-
                     RowLayout {
                         Layout.alignment: Qt.AlignHCenter
                         spacing: MichiTheme.spacing.sm
@@ -207,6 +197,43 @@ Item {
 
                         MichiButton { text: "Letra"; variant: "ghost"; onClicked: { root.nav && root.nav.navigate("lyrics") } }
                         MichiButton { text: "Cola"; variant: "ghost"; onClicked: { root.nav && root.nav.navigate("queue") } }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 1
+                        color: MichiTheme.colors.borderSubtle
+                        visible: root._hasTrack
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Información técnica"
+                        color: MichiTheme.colors.textMeta
+                        font.pixelSize: MichiTheme.typography.captionSize
+                        font.weight: MichiTheme.typography.weightMedium
+                        visible: root._hasTrack
+                    }
+
+                    NowPlayingTechnicalInfo {
+                        Layout.fillWidth: true
+                        ps: root.ps
+                        visible: root._hasTrack
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Salida de audio"
+                        color: MichiTheme.colors.textMeta
+                        font.pixelSize: MichiTheme.typography.captionSize
+                        font.weight: MichiTheme.typography.weightMedium
+                        visible: root._hasTrack
+                    }
+
+                    NowPlayingOutputSelector {
+                        Layout.fillWidth: true
+                        ps: root.ps
+                        visible: root._hasTrack
                     }
                 }
 
