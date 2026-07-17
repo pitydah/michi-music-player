@@ -45,7 +45,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: "Sin conexiones"; subtitle: "Configura servidores para conectar tu ecosistema" }
+        sourceComponent: MichiBanner { message: "Sin conexiones — configura servidores para conectar tu ecosistema"; kind: "info"; dismissible: false }
     }
 
     CapabilityGuard {

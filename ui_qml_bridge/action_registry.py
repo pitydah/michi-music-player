@@ -162,6 +162,74 @@ class ActionRegistry(QObject):
                 action.handler = self._make_service_handler(svc, method)
                 action.service_name = svc
 
+        track_extra_map = {
+            "track_add_to_playlist": ("playlists_bridge", "addTrack"),
+            "track_open_artist": ("navigation_bridge", "navigateToArtist"),
+            "track_open_folder": ("navigation_bridge", "navigateToFolder"),
+            "track_show_properties": ("navigation_bridge", "navigateToTrackProperties"),
+            "track_edit_metadata": ("navigation_bridge", "navigateToMetadataEditor"),
+            "track_radio": ("playback_bridge", "radioFromTrack"),
+            "track_replace_queue": ("queue_bridge", "replace"),
+            "track_unfavorite": ("library_bridge", "unfavorite"),
+        }
+        for aid, (svc, method) in track_extra_map.items():
+            action = self._actions.get(aid)
+            if action:
+                action.handler = self._make_service_handler(svc, method)
+                action.service_name = svc
+
+        album_extra_map = {
+            "album_open_folder": ("navigation_bridge", "navigateToAlbumFolder"),
+            "album_edit_metadata": ("navigation_bridge", "navigateToAlbumMetadata"),
+        }
+        for aid, (svc, method) in album_extra_map.items():
+            action = self._actions.get(aid)
+            if action:
+                action.handler = self._make_service_handler(svc, method)
+                action.service_name = svc
+
+        folder_extra_map = {
+            "folder_open_filesystem": ("navigation_bridge", "navigateToFolder"),
+            "folder_rescan": ("library_sources_bridge", "rescanFolder"),
+        }
+        for aid, (svc, method) in folder_extra_map.items():
+            action = self._actions.get(aid)
+            if action:
+                action.handler = self._make_service_handler(svc, method)
+                action.service_name = svc
+
+        source_map = {
+            "source_add": ("navigation_bridge", "navigateToSourceAdd"),
+            "source_edit": ("navigation_bridge", "navigateToSourceEdit"),
+            "source_scan": ("library_sources_bridge", "scan"),
+            "source_cancel_scan": ("library_sources_bridge", "cancelScan"),
+        }
+        for aid, (svc, method) in source_map.items():
+            action = self._actions.get(aid)
+            if action:
+                action.handler = self._make_service_handler(svc, method)
+                action.service_name = svc
+
+        meta_map = {
+            "metadata_edit": ("navigation_bridge", "navigateToMetadataEditor"),
+            "metadata_smart_tagging": ("navigation_bridge", "navigateToSmartTagging"),
+        }
+        for aid, (svc, method) in meta_map.items():
+            action = self._actions.get(aid)
+            if action:
+                action.handler = self._make_service_handler(svc, method)
+                action.service_name = svc
+
+        other_map = {
+            "playlist_create": ("playlists_bridge", "createPlaylist"),
+            "radio_add_station": ("radio_bridge", "addStation"),
+        }
+        for aid, (svc, method) in other_map.items():
+            action = self._actions.get(aid)
+            if action:
+                action.handler = self._make_service_handler(svc, method)
+                action.service_name = svc
+
         system_map = {
             "app_quit": ("app_bridge", "quit"),
             "diagnostics_show": ("navigation_bridge", "navigate"),
