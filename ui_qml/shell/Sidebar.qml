@@ -32,11 +32,13 @@ Item {
                 width: parent.width; anchors.topMargin: MichiTheme.spacing.xl
                 spacing: MichiTheme.spacing.xs; topPadding: MichiTheme.spacing.xl; bottomPadding: MichiTheme.spacing.sm
 
-                Row { anchors.left: parent.left; anchors.leftMargin: MichiTheme.spacing.md; spacing: MichiTheme.spacing.xs
-                    Text { text: "M"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightBold; height: 36 }
-                    Text { text: "P"; color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightBold; height: 36 }
+                Row { anchors.left: parent.left; anchors.leftMargin: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
+                    Image { source: "qrc:/icons/app_icon.svg"; sourceSize.width: 28; sourceSize.height: 28; fillMode: Image.PreserveAspectFit }
+                    Column { spacing: 0; visible: !root.collapsed
+                        Text { text: "Michi"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightBold }
+                        Text { text: "Music Player"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+                    }
                 }
-                Text { anchors.left: parent.left; anchors.leftMargin: MichiTheme.spacing.lg; text: "Music Player"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; height: 18; visible: !root.collapsed }
             }
 
             Rectangle { width: collapsed ? parent.width * 0.4 : parent.width - MichiTheme.spacing.xl * 2; height: 1; color: MichiTheme.colors.borderSubtle; anchors.horizontalCenter: parent.horizontalCenter }
@@ -56,7 +58,6 @@ Item {
 
                         SidebarItem {
                             iconSource: Qt.resolvedUrl("../../" + model.iconSource)
-                            iconText: model.glyph
                             label: model.label
                             active: root.currentRoute === model.route
                             collapsed: root.collapsed
@@ -94,25 +95,25 @@ Item {
     }
 
     ListModel { id: fullModel
-        ListElement { route: "home"; iconSource: "icons/sidebar_home.svg"; glyph: "IN"; label: "Inicio" }
-        ListElement { route: "library"; iconSource: "icons/sidebar_library.svg"; glyph: "BL"; label: "Biblioteca" }
-        ListElement { route: "mix"; iconSource: "icons/sidebar_mix.svg"; glyph: "MX"; label: "Mix" }
-        ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; glyph: "RP"; label: "Reproducción" }
-        ListElement { route: "connections"; iconSource: "icons/sidebar_servers.svg"; glyph: "SV"; label: "Conexiones" }
-        ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; glyph: "RD"; label: "Radio" }
-        ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; glyph: "PL"; label: "Playlists" }
-        ListElement { route: "home_audio"; iconSource: "icons/sidebar_home_audio.svg"; glyph: "HA"; label: "Home Audio" }
-        ListElement { route: "assistant"; iconSource: "icons/sidebar_assistant.svg"; glyph: "AI"; label: "Michi AI" }
-        ListElement { route: "audio_lab"; iconSource: "icons/sidebar_audio_lab.svg"; glyph: "AL"; label: "Audio Lab" }
+        ListElement { route: "home"; iconSource: "icons/sidebar_home.svg"; label: "Inicio" }
+        ListElement { route: "library"; iconSource: "icons/sidebar_library.svg"; label: "Biblioteca" }
+        ListElement { route: "mix"; iconSource: "icons/sidebar_mix.svg"; label: "Mix" }
+        ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; label: "Reproducción" }
+        ListElement { route: "connections"; iconSource: "icons/sidebar_servers.svg"; label: "Conexiones" }
+        ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio" }
+        ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; label: "Playlists" }
+        ListElement { route: "home_audio"; iconSource: "icons/sidebar_home_audio.svg"; label: "Home Audio" }
+        ListElement { route: "assistant"; iconSource: "icons/sidebar_assistant.svg"; label: "Michi AI" }
+        ListElement { route: "audio_lab"; iconSource: "icons/sidebar_audio_lab.svg"; label: "Audio Lab" }
     }
 
     ListModel { id: deliveryModel
-        ListElement { route: "home"; iconSource: "icons/sidebar_home.svg"; glyph: "IN"; label: "Inicio" }
-        ListElement { route: "library"; iconSource: "icons/sidebar_library.svg"; glyph: "BL"; label: "Biblioteca" }
-        ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; glyph: "RP"; label: "Reproducción" }
-        ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; glyph: "PL"; label: "Playlists" }
-        ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; glyph: "RD"; label: "Radio" }
-        ListElement { route: "settings"; iconSource: "icons/sidebar_servers.svg"; glyph: "SV"; label: "Ajustes" }
-        ListElement { route: "diagnostics"; iconSource: "icons/sidebar_home_audio.svg"; glyph: "DG"; label: "Diagnóstico" }
+        ListElement { route: "home"; iconSource: "icons/sidebar_home.svg"; label: "Inicio" }
+        ListElement { route: "library"; iconSource: "icons/sidebar_library.svg"; label: "Biblioteca" }
+        ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; label: "Reproducción" }
+        ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; label: "Playlists" }
+        ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio" }
+        ListElement { route: "settings"; iconSource: "icons/sidebar_servers.svg"; label: "Ajustes" }
+        ListElement { route: "diagnostics"; iconSource: "icons/sidebar_home_audio.svg"; label: "Diagnóstico" }
     }
 }

@@ -455,3 +455,22 @@ Herramientas open source de metadatos como MusicBrainz Picard, beets, Kid3, pudd
 Michi Music Player no incluye intencionalmente logos, iconos, screenshots, assets visuales, assets propietarios, bases de datos ni código fuente de esos proyectos, salvo que un aviso específico a nivel de archivo lo indique.
 
 Ver `NOTICE` y `docs/THIRD_PARTY.md` para las declaraciones completas de atribución, inspiración, dependencias, compatibilidad y marcas comerciales.
+
+## Estado Actual del Proyecto (Julio 2026)
+
+### Últimos hitos
+- **Jul 2026**: Migración UI/UX QML completada. Merge de 31 commits, 385 archivos, +19.700 líneas.
+  Sistema de diseño centralizado (MichiTheme), 20 componentes base, accesibilidad granular,
+  responsive, focus trap, gates CI diferenciales.
+
+### Próximos pasos
+- P0: Unificar GStreamerEngine y GStreamerAudioBackend (completado)
+- P0: Pruebas E2E de reproducción QML
+- P0: Empaquetado wheel + CI canónico
+- P1: Eliminar CoverFlow legacy
+- P1: Probar BD limpia y migraciones
+- P1: Reescribir documentación
+- P2: Flatpak, Wayland, Windows
+
+### Cómo contribuir
+Ver CONTRIBUTING.md (próximamente).

@@ -26,6 +26,7 @@ from PySide6.QtCore import QObject, Signal, QTimer  # noqa: E402
 
 from audio.audio_chain import DacConfig  # noqa: E402
 from audio.dff_parser import parse_dff  # noqa: E402
+from audio.backends.gstreamer_backend import GStreamerAudioBackend  # noqa: E402
 
 Gst.init(None)
 
@@ -61,13 +62,14 @@ class GStreamerEngine(QObject):
     spectrum_data = Signal(object)      # numpy array for FFT
     queue_changed = Signal(list)
     audio_route_changed = Signal(object)  # AudioRouteDiagnostics
-    eq_bitperfect_warning = Signal()  # Emitted when EQ conflicts with bit-perfect
+    eq_bitperfect_warning = Signal()
 
     POLL_MS = 250
 
     def __init__(self, dac: DacConfig = None, parent=None):
         super().__init__(parent)
         self._dac = dac or DacConfig()
+        self._backend = GStreamerAudioBackend()
         self._pipeline: Gst.Pipeline | None = None
         self._bus_id = 0
         self._timer = None
@@ -103,7 +105,7 @@ class GStreamerEngine(QObject):
 
         # Crossfade / ReplayGain
         self._volume = 0.70
-        self._crossfade = 0       # seconds
+        self._crossfade = 0
         self._replaygain = False
         self._gapless_enabled = True
         self._audio_profile = "standard"
@@ -132,7 +134,6 @@ class GStreamerEngine(QObject):
         self._replaygain = (mode != "off")
 
     def get_position_ns(self) -> int:
-        """Return current playback position in nanoseconds, or 0."""
         if self._pipeline:
             ok, pos_ns = self._pipeline.query_position(Gst.Format.TIME)
             if ok:
@@ -141,14 +142,9 @@ class GStreamerEngine(QObject):
 
     @property
     def current(self) -> str:
-        """Current playing filepath or URL."""
         return self._current
 
     def set_output_device_id(self, device_id: str):
-        """Select a local audio output device (ALSA hw:, PipeWire, etc.).
-
-        This is the LOCAL output branch — does NOT affect network transmit.
-        """
         from audio.output_device_manager import get_device
         dev = get_device(device_id)
         if dev:
@@ -162,11 +158,6 @@ class GStreamerEngine(QObject):
         return self._dac.device or self._dac.output_device_id
 
     def set_transmit_device(self, device) -> None:
-        """Set the network transmit device (TransmitDevice or None for none).
-
-        This is the TRANSMIT branch — sends audio over TCP to remote device.
-        Does NOT affect the local audio output sink.
-        """
         self._transmit_device = device
         self._restart_if_playing()
 
@@ -224,7 +215,6 @@ class GStreamerEngine(QObject):
         self.stop()
 
         try:
-            # DFF uses separate appsrc pipeline
             if filepath_or_url.lower().endswith(".dff"):
                 self._play_dff(filepath_or_url)
                 self._current = filepath_or_url
@@ -233,7 +223,6 @@ class GStreamerEngine(QObject):
             uri = self._to_uri(filepath_or_url)
             self._is_dsd = filepath_or_url.lower().endswith(".dsf")
 
-            # Build pipeline via PipelineFactory
             from audio.format_probe import probe_format
             from audio.output_profiles import get_profile
             from audio.output_device_manager import get_device
@@ -249,7 +238,6 @@ class GStreamerEngine(QObject):
                 devs = list_devices()
                 dev = devs[0] if devs else None
 
-            # ReplayGain advanced — extract tags, compute safe gain
             rg_gain_db: float | None = None
             if self._replaygain and profile.allows_replaygain:
                 try:
@@ -311,7 +299,6 @@ class GStreamerEngine(QObject):
             self._state = PlaybackState.PLAYING
             self.state_changed.emit(self._state)
 
-            # Audio diagnostics
             diag = AudioRouteDiagnostics(
                 current_uri=filepath_or_url,
                 profile=profile.key,
@@ -357,7 +344,6 @@ class GStreamerEngine(QObject):
 
         self._dff_header = header
 
-        # Use PipelineFactory for unified pipeline construction
         from audio.format_probe import probe_format
         from audio.output_profiles import get_profile
         from audio.dac_manager import DacManager
@@ -388,7 +374,6 @@ class GStreamerEngine(QObject):
             self.error_occurred.emit("Failed to create DFF pipeline")
             return
 
-        # Set caps on appsrc
         caps_str = (f"audio/x-dsd,format=DSDU8,reversed-bytes=false,"
                     f"layout=interleaved,channels={header.channels},"
                     f"rate={header.sample_rate}")
@@ -397,7 +382,7 @@ class GStreamerEngine(QObject):
             caps = Gst.Caps.from_string(caps_str)
             appsrc.set_property("caps", caps)
         self._appsrc = appsrc
-        self._file_handle = open(filepath, "rb")  # noqa: SIM115 — handle lives across DFF thread
+        self._file_handle = open(filepath, "rb")
 
         self._setup_bus()
         self._setup_timer()
@@ -447,30 +432,24 @@ class GStreamerEngine(QObject):
         ret = self._appsrc.emit("push-buffer", buf)
         if ret != Gst.FlowReturn.OK:
             logging.getLogger("michi.player").warning("DFF push-buffer failed: %s", ret)
-        return False  # one-shot via GLib.idle_add
+        return False
 
     def _push_dff_eos(self) -> bool:
         if self._appsrc:
             self._appsrc.emit("end-of-stream")
         return False
 
-    # ── Controls ──
+    # ── Controls (delegate to backend) ──
 
     def pause(self):
-        if self._pipeline and self._state == PlaybackState.PLAYING:
-            ret = self._pipeline.set_state(Gst.State.PAUSED)
-            if ret == Gst.StateChangeReturn.FAILURE:
-                return
-            self._state = PlaybackState.PAUSED
-            self.state_changed.emit(self._state)
+        self._backend.pause()
+        self._state = PlaybackState.PAUSED
+        self.state_changed.emit(self._state)
 
     def resume(self):
-        if self._pipeline and self._state == PlaybackState.PAUSED:
-            ret = self._pipeline.set_state(Gst.State.PLAYING)
-            if ret == Gst.StateChangeReturn.FAILURE:
-                return
-            self._state = PlaybackState.PLAYING
-            self.state_changed.emit(self._state)
+        self._backend.resume()
+        self._state = PlaybackState.PLAYING
+        self.state_changed.emit(self._state)
 
     def toggle(self):
         if self._state == PlaybackState.PLAYING:
@@ -505,6 +484,7 @@ class GStreamerEngine(QObject):
         if self._timer:
             self._timer.stop()
             self._timer = None
+        self._backend.stop()
         self._state = PlaybackState.STOPPED
         self.state_changed.emit(self._state)
 
@@ -534,7 +514,6 @@ class GStreamerEngine(QObject):
         self._restart_if_playing()
 
     def _check_dsp_vs_bitperfect(self):
-        """Emit warning if DSP is active in bit-perfect mode."""
         from audio.output_profiles import get_profile
         profile = get_profile(self._audio_profile)
         if profile.bitperfect and self._eq.mode != "bypass":
@@ -545,7 +524,6 @@ class GStreamerEngine(QObject):
         self._restart_if_playing()
 
     def get_eq_state(self) -> dict:
-        """Return current EQ state as a plain dict. Safe to call anytime."""
         return {
             "mode": self._eq.mode,
             "bands_31": list(self._eq.bands_31) if self._eq.bands_31 else [0.0] * 31,
@@ -597,7 +575,6 @@ class GStreamerEngine(QObject):
             buf = sample.get_buffer()
             ok, map_info = buf.map(Gst.MapFlags.READ)
             if ok:
-                # Interpret as float32 audio
                 arr = np.frombuffer(map_info.data, dtype=np.float32)
                 buf.unmap(map_info)
                 if len(arr) > 0:
@@ -613,7 +590,6 @@ class GStreamerEngine(QObject):
         bus = self._pipeline.get_bus()
         bus.add_signal_watch()
         self._bus_id = bus.connect("message", self._on_bus_message)
-        # Gapless: preload next URI when current track is about to end
         self._gapless_active = False
         playbin = self._pipeline.get_by_name("playbin")
         if not playbin:
@@ -624,12 +600,11 @@ class GStreamerEngine(QObject):
             playbin.connect("about-to-finish", self._on_about_to_finish)
 
     def _on_about_to_finish(self, playbin):
-        """Preload next track URI for gapless playback."""
         if not getattr(self, '_gapless_enabled', True):
             return
         current_uri = getattr(self, '_current', '')
         if current_uri and (current_uri.startswith("http") or "icy" in current_uri):
-            return  # No gapless for streams
+            return
         if (self._queue_index >= 0
                 and self._queue_index < len(self._queue) - 1):
             next_fp = self._queue[self._queue_index + 1]
@@ -642,7 +617,6 @@ class GStreamerEngine(QObject):
         self.error_occurred.emit(self._error_message)
 
     def _on_media_finished_eos(self):
-        """Handle track end — gapless-aware."""
         if self._gapless_active:
             self._gapless_active = False
             next_idx = self._queue_index + 1
@@ -673,7 +647,6 @@ class GStreamerEngine(QObject):
             err_text = str(err) if err else "Unknown"
             log = logging.getLogger("michi.player")
 
-            # Classify error
             is_stream = "SoupHTTPSrc" in debug_text or "streaming stopped" in debug_text
             is_local_media = any(x in debug_text for x in ["No such file", "not found", "Permission denied"])
             is_decoder = "flacparse" in debug_text or "No valid frames" in debug_text
@@ -733,7 +706,7 @@ class GStreamerEngine(QObject):
                 if ret == Gst.StateChangeReturn.FAILURE:
                     logging.getLogger("michi.player").warning("Failed to resume after buffering")
         elif t == Gst.MessageType.TAG:
-            pass  # Stream metadata — could emit track_changed for radio
+            pass
         elif t == Gst.MessageType.STATE_CHANGED:
             if message.src == self._pipeline:
                 old, new, pending = message.parse_state_changed()
@@ -758,97 +731,62 @@ class GStreamerEngine(QObject):
                     self._duration = d
                     self.duration_changed.emit(d)
 
-    # ── Queue ──
+    # ── Queue (delegate to backend) ──
 
     def enqueue_next(self, filepaths: list[str]):
-        """Insert tracks immediately after the currently playing track."""
-        if not filepaths:
-            return
-        insert_pos = self._queue_index + 1
-        self._queue[insert_pos:insert_pos] = filepaths
+        self._backend.enqueue_next(filepaths)
+        self._queue = self._backend._queue
         self.queue_changed.emit(self._queue)
         if self._db:
             self._db.save_queue(self._queue, self._queue_index)
 
     def enqueue(self, filepaths: list[str], play_now: bool = True):
-        if play_now:
-            self._queue = list(filepaths)
-            self._queue_index = 0
-            if self._queue:
-                self.play(self._queue[0])
-        else:
-            self._queue.extend(filepaths)
-            if self._queue_index < 0 and self._queue:
-                self._queue_index = 0
-                self.play(self._queue[0])
+        self._backend.enqueue(filepaths, play_now)
+        self._queue = self._backend._queue
+        self._queue_index = self._backend._queue_index
         self.queue_changed.emit(self._queue)
         if self._db:
             self._db.save_queue(self._queue, self._queue_index)
 
     def set_queue(self, filepaths: list[str], start_index: int = 0):
-        """Replace the entire queue and start playing from start_index."""
-        self._queue = list(filepaths)
-        self._queue_index = max(0, min(start_index, len(self._queue) - 1)) if self._queue else 0
+        self._backend.set_queue(filepaths, start_index)
+        self._queue = self._backend._queue
+        self._queue_index = self._backend._queue_index
         self.queue_changed.emit(self._queue)
         if self._db:
             self._db.save_queue(self._queue, self._queue_index)
-        if self._queue and self._queue_index < len(self._queue):
-            self.play(self._queue[self._queue_index])
 
     def clear_queue(self):
-        self._queue = []
-        self._queue_index = -1
+        self._backend.clear_queue()
+        self._queue = self._backend._queue
+        self._queue_index = self._backend._queue_index
         self.queue_changed.emit([])
         if self._db:
             self._db.clear_queue_state()
 
     def play_next(self) -> bool:
-        if self._queue_index < len(self._queue) - 1:
-            self._queue_index += 1
-            self.play(self._queue[self._queue_index])
-            if self._db:
-                self._db.save_queue(self._queue, self._queue_index)
-            return True
-        # Repeat "one": replay current track
-        if self._repeat == "one" and self._queue:
-            self.play(self._queue[self._queue_index])
-            if self._db:
-                self._db.save_queue(self._queue, self._queue_index)
-            return True
-        # Repeat "all": wrap to start
-        if self._repeat == "all" and self._queue:
-            self._queue_index = 0
-            self.play(self._queue[0])
-            if self._db:
-                self._db.save_queue(self._queue, self._queue_index)
-            return True
-        return False
+        result = self._backend.play_next()
+        self._queue = self._backend._queue
+        self._queue_index = self._backend._queue_index
+        if result and self._db:
+            self._db.save_queue(self._queue, self._queue_index)
+        return result
 
     def play_prev(self) -> bool:
-        if self._queue_index > 0:
-            self._queue_index -= 1
-            self.play(self._queue[self._queue_index])
-            if self._db:
-                self._db.save_queue(self._queue, self._queue_index)
-            return True
-        return False
+        result = self._backend.play_prev()
+        self._queue = self._backend._queue
+        self._queue_index = self._backend._queue_index
+        if result and self._db:
+            self._db.save_queue(self._queue, self._queue_index)
+        return result
 
     def get_queue(self) -> list[dict]:
-        items = []
-        for i, fp in enumerate(self._queue):
-            name = os.path.basename(fp)
-            items.append({
-                "filepath": fp, "title": name, "artist": "",
-                "duration": 0, "is_current": (i == self._queue_index),
-            })
-        return items
+        return self._backend.get_queue()
 
     def get_queue_index(self) -> int:
-        """Return the current queue index, or -1 if empty."""
-        return self._queue_index
+        return self._backend.get_queue_index()
 
     def reorder_queue(self, filepaths: list[str]):
-        """Reorder the queue preserving the current track."""
         current_fp = self._queue[self._queue_index] if self._queue_index >= 0 else None
         self._queue = filepaths
         if current_fp:
@@ -872,6 +810,7 @@ class GStreamerEngine(QObject):
             vol_elem = self._pipeline.get_by_name("michi_volume") if hasattr(self._pipeline, 'get_by_name') else None
             if vol_elem:
                 vol_elem.set_property("volume", self._volume)
+        self._backend.set_volume(vol)
 
     def _on_media_finished(self):
         if not self.play_next():

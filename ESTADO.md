@@ -287,3 +287,19 @@ Sidebar click → sidebar_controller → navigation_requested(key)
 2. **Conversión real de archivos** con backend seguro
 3. **Pre-beta packaging** — Flatpak / AppImage / `.deb`
 4. **Actualizar AGENTS.md**
+
+## Estado Post-Merge UI/UX (Julio 2026)
+
+### Integrado en main
+- Sistema de diseño centralizado (MichiTheme, MichiColors, MichiTypography, MichiMotion)
+- 20 componentes base Michi (Button, Slider, TextField, ComboBox, Dialog, etc.)
+- Accesibilidad granular (734 Accessible.role, 554 activeFocusOnTab)
+- Responsive (breakpoints compact/medium/wide/ultrawide)
+- Focus trap en MichiDialog
+- Gates CI diferenciales con fingerprints
+- 10 capturas baseline en docs/uiux/screenshots/baseline-post-x10/
+
+### Pendiente
+- Smoke test manual (checklist en docs/qa/)
+- Hacer bloqueante Xvfb en CI
+- Focus trap runtime con Tab real (requiere display)
