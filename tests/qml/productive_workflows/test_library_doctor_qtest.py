@@ -31,13 +31,8 @@ class TestLibraryDoctorQTest:
         assert nav.currentRoute == "library_doctor"
         scan_page = find_qml_item(root_window, "libraryDoctorScanPage")
         assert scan_page is not None, "libraryDoctorScanPage not found"
-        scan_btn = None
-        for child in scan_page.childItems():
-            text = child.property("text") if hasattr(child, 'property') else ""
-            if "Scan" in str(text) or "Escanear" in str(text):
-                scan_btn = child
-                break
-        assert scan_btn is not None, "Scan button not found in libraryDoctorScanPage"
+        scan_btn = find_qml_item(root_window, "scanLibraryButton")
+        assert scan_btn is not None, "scanLibraryButton not found"
         from .conftest import wait_for_condition
         status_before = getattr(doctor_bridge, 'status', '') or getattr(doctor_bridge, '_state', '')
         qtest_click_item(scan_btn, root_window)

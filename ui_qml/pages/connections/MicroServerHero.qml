@@ -72,11 +72,13 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
+                    objectName: "discoverServerButton"
                     text: "Buscar Michi Micro Server"
                     variant: "primary"
                     onClicked: root.scanClicked()
                 }
                 MichiButton {
+                    objectName: "manualAddServerButton"
                     text: "Agregar manualmente"
                     variant: "ghost"
                     onClicked: root.manualAddClicked()

@@ -147,6 +147,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
                     id: createPlaylistBtn
+                    objectName: "createPlaylistButton"
                     text: "+ Nueva playlist"
                     variant: "primary"
                     activeFocusOnTab: true
@@ -158,6 +159,7 @@ Item {
                 }
                 MichiButton {
                     id: smartPlaylistBtn
+                    objectName: "smartPlaylistButton"
                     text: "Smart playlist"
                     variant: "secondary"
                     activeFocusOnTab: true
@@ -169,6 +171,7 @@ Item {
                 }
                 MichiButton {
                     id: importPlaylistBtn
+                    objectName: "importPlaylistButton"
                     text: "Importar"
                     variant: "secondary"
                     activeFocusOnTab: true
@@ -180,6 +183,7 @@ Item {
                 }
                 MichiButton {
                     id: selectPlaylistBtn
+                    objectName: "selectPlaylistButton"
                     text: "Seleccionar"
                     variant: "ghost"
                     activeFocusOnTab: true
@@ -192,6 +196,7 @@ Item {
                 }
                 MichiButton {
                     id: deletePlaylistBtn
+                    objectName: "deletePlaylistButton"
                     text: "Eliminar seleccionadas"
                     variant: "danger"
                     visible: root._selectionMode && root._selectedPlaylists.length > 0
@@ -204,6 +209,7 @@ Item {
                 }
                 MichiButton {
                     id: refreshBtn
+                    objectName: "refreshPlaylistsButton"
                     text: "Refrescar"
                     variant: "ghost"
                     visible: root._state !== "LOADING"

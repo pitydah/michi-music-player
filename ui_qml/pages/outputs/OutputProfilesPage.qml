@@ -64,6 +64,7 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
+                    objectName: "createProfileButton"
                     text: "Crear perfil"
                     variant: "primary"
                     onClicked: {

@@ -4,7 +4,7 @@ import "../theme"
 Rectangle {
     Accessible.role: Accessible.Pane
     Accessible.name: "Filter Chip"
-    objectName: "filterChip"
+    objectName: root.objectName || "filterChip"
     focus: true
     id: root
 

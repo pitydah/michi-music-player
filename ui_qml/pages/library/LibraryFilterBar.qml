@@ -27,7 +27,7 @@ Item {
         visible: true
 
         FilterChip { text: "Todos"; selected: !root.lib || root.lib.activeFormatFilter === ""; onClicked: root.formatFilterChanged("") }
-        FilterChip { text: "FLAC"; selected: root.lib && root.lib.activeFormatFilter === "flac"; onClicked: root.formatFilterChanged("flac") }
+        FilterChip { objectName: "filterChipFlac"; text: "FLAC"; selected: root.lib && root.lib.activeFormatFilter === "flac"; onClicked: root.formatFilterChanged("flac") }
         FilterChip { text: "MP3"; selected: root.lib && root.lib.activeFormatFilter === "mp3"; onClicked: root.formatFilterChanged("mp3") }
         FilterChip { text: "WAV"; selected: root.lib && root.lib.activeFormatFilter === "wav"; onClicked: root.formatFilterChanged("wav") }
         FilterChip { text: "DSD"; selected: root.lib && root.lib.activeFormatFilter === "dsd"; onClicked: root.formatFilterChanged("dsd") }

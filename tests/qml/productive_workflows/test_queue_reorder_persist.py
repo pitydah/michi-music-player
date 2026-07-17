@@ -41,12 +41,7 @@ class TestQueueReorderPersist:
         playback_bridge.enqueueSong("2")
         qh = find_qml_item(root_window, "queueHeader")
         assert qh is not None, "queueHeader not found"
-        clear_btn = None
-        for child in qh.childItems():
-            text = child.property("text") if hasattr(child, 'property') else ""
-            if "Vaciar" in str(text) or "Clear" in str(text):
-                clear_btn = child
-                break
-        assert clear_btn is not None, "Clear button not found in queueHeader"
+        clear_btn = find_qml_item(root_window, "clearQueueButton")
+        assert clear_btn is not None, "clearQueueButton not found in queueHeader"
         qtest_click_item(clear_btn, root_window)
         QTest.qWait(50)

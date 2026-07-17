@@ -78,6 +78,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 MichiButton {
+                    objectName: "selectFileButton"
                     text: root.sel && root.sel.hasSelection && root.sel.selectedSource === "track_id" ? "Usar canción seleccionada" : "Seleccionar archivo"
                     variant: "primary"
                     activeFocusOnTab: true
@@ -95,6 +96,7 @@ Item {
 
                 MichiButton {
                     id: scanBtn
+                    objectName: "scanFileButton"
                     text: root.stb && root.stb.status === "scanning" ? "Escaneando..." : "Escanear"
                     variant: "secondary"
                     enabled: root.selectedFile !== "" && (root.stb ? root.stb.status !== "scanning" : true)
@@ -117,6 +119,7 @@ Item {
 
                 MichiButton {
                     id: clearBtn
+                    objectName: "clearFileButton"
                     text: "Limpiar"
                     variant: "ghost"
                     visible: root.selectedFile !== ""
@@ -188,6 +191,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 MichiButton {
+                    objectName: "applySuggestionsButton"
                     text: root._confirmApply ? "Confirmar aplicar sugerencias" : "Aplicar sugerencias"
                     variant: root._confirmApply ? "danger" : "primary"
                     visible: root.stb && root.stb.suggestions.length > 0
@@ -210,6 +214,7 @@ Item {
 
                 MichiButton {
                     id: cancelApplyBtn
+                    objectName: "cancelApplyButton"
                     text: "Cancelar"
                     variant: "ghost"
                     visible: root._confirmApply

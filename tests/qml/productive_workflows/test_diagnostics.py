@@ -31,13 +31,8 @@ class TestDiagnostics:
         assert nav.currentRoute == "diagnostics"
         diag_page = find_qml_item(root_window, "diagnosticsPage")
         assert diag_page is not None, "diagnosticsPage not found"
-        refresh_btn = None
-        for child in diag_page.childItems():
-            text = child.property("text") if hasattr(child, 'property') else ""
-            if "Refrescar" in str(text) or "Refresh" in str(text):
-                refresh_btn = child
-                break
-        assert refresh_btn is not None, "Refresh button not found in diagnosticsPage"
+        refresh_btn = find_qml_item(root_window, "refreshDiagnosticsButton")
+        assert refresh_btn is not None, "refreshDiagnosticsButton not found"
         from .conftest import wait_for_property, wait_for_condition
         state_before = getattr(diag_bridge, '_state', '') or getattr(diag_bridge, 'state', '')
         qtest_click_item(refresh_btn, root_window)

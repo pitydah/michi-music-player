@@ -57,7 +57,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: MichiTheme.spacing.sm
 
-            MichiButton { text: root.actionText; variant: "primary"; onClicked: root.actionRequested() }
+            MichiButton { objectName: "emptyStateActionButton"; text: root.actionText; variant: "primary"; onClicked: root.actionRequested() }
             MichiButton { text: "Ajustes"; variant: "ghost"; onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("settings") } }
         }
     }

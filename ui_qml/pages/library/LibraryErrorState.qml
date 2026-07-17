@@ -54,6 +54,7 @@ Item {
         }
 
         MichiButton {
+            objectName: "errorStateActionButton"
             anchors.horizontalCenter: parent.horizontalCenter
             text: root.actionText
             variant: "primary"

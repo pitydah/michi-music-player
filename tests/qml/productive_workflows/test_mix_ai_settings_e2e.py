@@ -105,18 +105,8 @@ class TestMixAiSettingsE2E:
         )
         eq_page = find_qml_item(root_window, "equalizerPage")
         assert eq_page is not None, "equalizerPage not found"
-        bypass_btn = None
-        for child in eq_page.childItems():
-            text = child.property("text") if hasattr(child, 'property') else ""
-            if "Bypass" in str(text) or "Activar" in str(text):
-                bypass_btn = child
-                break
-        if bypass_btn is None:
-            for child in eq_page.childItems():
-                if hasattr(child, 'clicked'):
-                    bypass_btn = child
-                    break
-        assert bypass_btn is not None, "EQ bypass button not found"
+        bypass_btn = find_qml_item(root_window, "eqBypassButton")
+        assert bypass_btn is not None, "eqBypassButton not found"
         from .conftest import wait_for_property, wait_for_condition
         bypass_before = getattr(eq_bridge, 'bypass', None)
         qtest_click_item(bypass_btn, root_window)

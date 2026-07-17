@@ -33,6 +33,7 @@ Item {
                 Row {
                     spacing: MichiTheme.spacing.sm
                     MichiButton {
+                        objectName: "scanLibraryButton"
                         text: root.doc && root.doc.status === "scanning" ? "Escaneando..." : "Escanear biblioteca"
                         variant: "primary"
                         onClicked: {
@@ -41,6 +42,7 @@ Item {
                         }
                     }
                     MichiButton {
+                        objectName: "cancelScanButton"
                         text: "Cancelar escaneo"
                         variant: "ghost"
                         visible: root.doc && root.doc.status === "scanning"

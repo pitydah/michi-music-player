@@ -36,6 +36,7 @@ Item {
         }
 
         MichiButton {
+            objectName: "clearQueueButton"
             text: "Vaciar"
             variant: "danger"
             visible: root.qb && root.qb.queueCount > 0
@@ -48,6 +49,7 @@ Item {
         }
 
         MichiButton {
+            objectName: "saveQueueButton"
             text: "Guardar como playlist"
             variant: "ghost"
             visible: root.qb && root.qb.queueCount > 0

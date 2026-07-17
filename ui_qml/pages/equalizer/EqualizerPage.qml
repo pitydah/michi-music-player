@@ -72,6 +72,7 @@ Item {
                 visible: root._cap("backendAvailable")
 
                 MichiButton {
+                    objectName: "eqBypassButton"
                     text: root.eq && root.eq.bypass ? "Activar EQ" : "Bypass EQ"
                     variant: root.eq && root.eq.bypass ? "primary" : "danger"
                     enabled: root._cap("backendAvailable")
@@ -85,6 +86,7 @@ Item {
                 }
 
                 MichiButton {
+                    objectName: "eqResetButton"
                     text: "Restablecer"
                     variant: "ghost"
                     enabled: root._cap("backendAvailable")

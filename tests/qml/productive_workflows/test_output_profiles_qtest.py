@@ -29,13 +29,8 @@ class TestOutputProfilesQTest:
         assert nav.currentRoute == "outputs"
         page = find_qml_item(root_window, "outputProfilesPage")
         assert page is not None, "outputProfilesPage not found"
-        create_btn = None
-        for child in page.childItems():
-            text = child.property("text") if hasattr(child, 'property') else ""
-            if "Crear" in str(text) or "Create" in str(text) or "New" in str(text):
-                create_btn = child
-                break
-        assert create_btn is not None, "Create profile button not found"
+        create_btn = find_qml_item(root_window, "createProfileButton")
+        assert create_btn is not None, "createProfileButton not found"
         qtest_click_item(create_btn, root_window)
         QTest.qWait(50)
         assert nav.currentRoute == "outputs"

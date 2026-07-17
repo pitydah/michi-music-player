@@ -81,13 +81,8 @@ class TestConnectionsDevicesE2E:
         assert nav.currentRoute == "connections"
         hero = find_qml_item(root_window, "microServerHero")
         assert hero is not None, "microServerHero not found"
-        scan_btn = None
-        for child in hero.childItems():
-            text = child.property("text") if hasattr(child, 'property') else ""
-            if "Buscar" in str(text) or "Discover" in str(text):
-                scan_btn = child
-                break
-        assert scan_btn is not None, "Discover button not found"
+        scan_btn = find_qml_item(root_window, "discoverServerButton")
+        assert scan_btn is not None, "discoverServerButton not found"
         qtest_click_item(scan_btn, root_window)
         from .conftest import wait_for_condition
         state_before = getattr(conn_bridge, '_state', '') or getattr(conn_bridge, 'state', '')

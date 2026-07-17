@@ -61,13 +61,8 @@ class TestMetadataTaggingDoctor:
         assert nav.currentRoute == "tagging"
         page = find_qml_item(root_window, "SmartTaggingPage")
         assert page is not None, "SmartTaggingPage not found"
-        select_all_btn = None
-        for child in page.childItems():
-            text = child.property("text") if hasattr(child, 'property') else ""
-            if "Select" in str(text) or "All" in str(text):
-                select_all_btn = child
-                break
-        assert select_all_btn is not None, "Select All button not found in SmartTaggingPage"
+        select_all_btn = find_qml_item(root_window, "selectFileButton")
+        assert select_all_btn is not None, "selectFileButton not found in SmartTaggingPage"
         qtest_click_item(select_all_btn, root_window)
         QTest.qWait(50)
         assert nav.currentRoute == "tagging"

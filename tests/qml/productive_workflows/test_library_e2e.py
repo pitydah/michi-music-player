@@ -119,8 +119,8 @@ class TestLibraryE2E:
         from .conftest import find_qml_item, qtest_click_item
         nav.navigate("library")
         assert nav.currentRoute == "library"
-        refresh_btn = find_qml_item(root_window, "libraryRefreshButton")
-        assert refresh_btn is not None, "libraryRefreshButton not found"
+        refresh_btn = find_qml_item(root_window, "emptyStateActionButton")
+        assert refresh_btn is not None, "emptyStateActionButton not found"
         state_before = getattr(library_bridge, 'state', '')
         qtest_click_item(refresh_btn, root_window)
         QTest.qWait(50)
@@ -136,13 +136,8 @@ class TestLibraryE2E:
         assert nav.currentRoute == "library"
         filter_bar = find_qml_item(root_window, "libraryFilterBar")
         assert filter_bar is not None, "libraryFilterBar not found"
-        flac_chip = None
-        for child in filter_bar.childItems():
-            text = child.property("text") if hasattr(child, 'property') else ""
-            if text == "FLAC":
-                flac_chip = child
-                break
-        assert flac_chip is not None, "FLAC filter chip not found"
+        flac_chip = find_qml_item(filter_bar, "filterChipFlac")
+        assert flac_chip is not None, "filterChipFlac not found"
         fmt_before = getattr(library_bridge, 'activeFormatFilter', '')
         qtest_click_item(flac_chip, root_window)
         QTest.qWait(50)

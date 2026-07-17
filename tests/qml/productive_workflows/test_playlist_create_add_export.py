@@ -33,13 +33,8 @@ class TestPlaylistCreateExport:
         assert nav.currentRoute == "playlists"
         pl_page = find_qml_item(root_window, "playlistsPage")
         assert pl_page is not None, "playlistsPage not found"
-        create_btn = None
-        for child in pl_page.childItems():
-            text = child.property("text") if hasattr(child, 'property') else ""
-            if "Nueva" in str(text) or "Crear" in str(text):
-                create_btn = child
-                break
-        assert create_btn is not None, "Create playlist button not found"
+        create_btn = find_qml_item(root_window, "createPlaylistButton")
+        assert create_btn is not None, "createPlaylistButton not found"
         qtest_click_item(create_btn, root_window)
         QTest.qWait(100)
         dialog = find_qml_item(root_window, "playlistEditorDialog")

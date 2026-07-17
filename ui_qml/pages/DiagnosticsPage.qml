@@ -54,8 +54,8 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                MichiButton { text: "Refrescar"; variant: "primary"; onClicked: { if (root.diag) root.diag.refresh() } }
-                MichiButton { text: "Copiar diagnóstico"; variant: "ghost"; onClicked: { if (root.diag) root.diag.copyDiagnostics() } }
+                MichiButton { objectName: "refreshDiagnosticsButton"; text: "Refrescar"; variant: "primary"; onClicked: { if (root.diag) root.diag.refresh() } }
+                MichiButton { objectName: "copyDiagnosticsButton"; text: "Copiar diagnóstico"; variant: "ghost"; onClicked: { if (root.diag) root.diag.copyDiagnostics() } }
             }
 
             GlassMaterial {
