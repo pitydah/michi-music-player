@@ -35,4 +35,4 @@ def test_volume_contract():
     for vol in [0, 1, 50, 99, 100]:
         backend.set_volume(vol)
         snap = backend.get_snapshot()
-        assert snap['volume'] == vol, f"Volume {vol} -> {snap['volume']}"
+        assert snap.volume == vol, f"Volume {vol} -> {snap.volume}"

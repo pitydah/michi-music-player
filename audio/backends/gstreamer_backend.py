@@ -4,9 +4,20 @@ from __future__ import annotations
 
 import logging
 import contextlib
-from typing import Any
+import os
+
+from audio.backends.types import PlaybackSnapshot, AudioDiagnostics, BackendCapabilities
 
 logger = logging.getLogger("michi.audio.gstreamer")
+
+
+def _path_to_file_uri(path: str) -> str:
+    """Convert a local file path to a file:// URI."""
+    if path.startswith('file://') or path.startswith('http://') or path.startswith('https://'):
+        return path
+    if not os.path.isabs(path):
+        path = os.path.abspath(path)
+    return 'file://' + path
 
 
 class GStreamerAudioBackend:
@@ -41,14 +52,25 @@ class GStreamerAudioBackend:
     def get_pipeline(self):
         return self._pipeline
 
-    def play(self, uri: str) -> bool:
+    @staticmethod
+    def _ensure_gst():
         try:
             import gi
             gi.require_version("Gst", "1.0")
             from gi.repository import Gst
             Gst.init(None)
+            return Gst
+        except ImportError:
+            return None
+
+    def play(self, uri: str) -> bool:
+        Gst = self.self._ensure_gst()
+        if Gst is None:
+            return False
+        try:
+            file_uri = _path_to_file_uri(uri)
             self._pipeline = Gst.ElementFactory.make("playbin", "player")
-            self._pipeline.set_property("uri", uri)
+            self._pipeline.set_property("uri", file_uri)
             self._pipeline.set_state(Gst.State.PLAYING)
             self._playing = True
             return True
@@ -57,22 +79,20 @@ class GStreamerAudioBackend:
             return False
 
     def pause(self):
-        if self._pipeline:
+        Gst = self._ensure_gst()
+        if self._pipeline and Gst:
             try:
-                import gi
-                gi.require_version("Gst", "1.0")
-                from gi.repository import Gst
                 self._pipeline.set_state(Gst.State.PAUSED)
+                self._playing = False
             except Exception:
                 pass
 
     def resume(self):
-        if self._pipeline:
+        Gst = self._ensure_gst()
+        if self._pipeline and Gst:
             try:
-                import gi
-                gi.require_version("Gst", "1.0")
-                from gi.repository import Gst
                 self._pipeline.set_state(Gst.State.PLAYING)
+                self._playing = True
             except Exception:
                 pass
 
@@ -113,42 +133,44 @@ class GStreamerAudioBackend:
         else:
             self.resume()
 
-    def get_snapshot(self) -> dict:
-        return {
-            "state": "PLAYING" if self._playing else ("PAUSED" if self._pipeline else "STOPPED"),
-            "position": self.get_position(),
-            "duration": self.get_duration(),
-            "volume": int(self._volume * 100),
-            "backend_id": "gstreamer",
-        }
+    def get_snapshot(self) -> PlaybackSnapshot:
+        state = "playing" if self._playing else ("paused" if self._pipeline and hasattr(self._pipeline, 'set_state') else "stopped")
+        return PlaybackSnapshot(
+            backend_id="gstreamer",
+            state=state,
+            position_seconds=self.get_position(),
+            duration_seconds=self.get_duration(),
+            volume=int(self._volume * 100),
+            queue_index=self._queue_index,
+            queue_length=len(self._queue),
+        )
 
-    def get_diagnostics(self) -> dict:
-        return {
-            "backend": "gstreamer",
-            "pipeline_active": self._pipeline is not None,
-            "volume_raw": self._volume,
-            "playing": self._playing,
-            "queue_size": len(self._queue),
-            "queue_index": self._queue_index,
-        }
+    def get_diagnostics(self) -> AudioDiagnostics:
+        return AudioDiagnostics(
+            backend_id="gstreamer",
+            profile="default",
+            device_name="default",
+            dsp_active=False,
+            eq_active=False,
+            replaygain_active=False,
+            spectrum_active=False,
+            digital_volume_active=True,
+        )
 
     @property
-    def capabilities(self) -> dict:
-        return {
-            "max_volume": 100,
-            "supports_seek": True,
-            "supports_queue": True,
-            "supports_eq": False,
-            "supports_replaygain": False,
-            "supports_spectrum": False,
-        }
+    def capabilities(self) -> BackendCapabilities:
+        return BackendCapabilities(
+            backend_id="gstreamer",
+            display_name="GStreamer",
+            supports_seek=True,
+            supports_queue=True,
+            supports_digital_volume=True,
+        )
 
     def get_position(self) -> float:
-        if self._pipeline:
+        Gst = self._ensure_gst()
+        if self._pipeline and Gst:
             try:
-                import gi
-                gi.require_version("Gst", "1.0")
-                from gi.repository import Gst
                 ok, pos = self._pipeline.query_position(Gst.Format.TIME)
                 if ok:
                     self._position = pos / float(Gst.SECOND)
@@ -157,11 +179,9 @@ class GStreamerAudioBackend:
         return self._position
 
     def get_duration(self) -> float:
-        if self._pipeline:
+        Gst = self._ensure_gst()
+        if self._pipeline and Gst:
             try:
-                import gi
-                gi.require_version("Gst", "1.0")
-                from gi.repository import Gst
                 ok, dur = self._pipeline.query_duration(Gst.Format.TIME)
                 if ok:
                     self._duration = dur / float(Gst.SECOND)
@@ -183,11 +203,14 @@ class GStreamerAudioBackend:
     def set_queue(self, paths: list[str], start_index: int = 0):
         self._queue = list(paths)
         self._queue_index = start_index
+        if start_index >= 0 and start_index < len(self._queue):
+            self.play(self._queue[start_index])
 
     def enqueue(self, paths: list[str], play_now: bool = True):
         self._queue.extend(paths)
         if play_now and self._queue_index < 0 and self._queue:
             self._queue_index = 0
+            self.play(self._queue[0])
 
     def enqueue_next(self, paths: list[str]):
         pos = self._queue_index + 1 if self._queue_index >= 0 else len(self._queue)
@@ -201,12 +224,14 @@ class GStreamerAudioBackend:
     def play_next(self) -> bool:
         if self._queue_index < len(self._queue) - 1:
             self._queue_index += 1
+            self.play(self._queue[self._queue_index])
             return True
         return False
 
     def play_prev(self) -> bool:
         if self._queue_index > 0:
             self._queue_index -= 1
+            self.play(self._queue[self._queue_index])
             return True
         return False
 
