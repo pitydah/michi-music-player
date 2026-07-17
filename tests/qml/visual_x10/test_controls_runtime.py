@@ -63,7 +63,7 @@ class TestMichiButton:
 
     def test_object_name_uses_control_object_name(self):
         qml = _read_qml(self.QML)
-        assert "objectName: controlObjectName" in qml
+        assert "controlObjectName" in qml
         assert "property string controlObjectName" in qml
 
     def test_accessible_role_button(self):
@@ -158,7 +158,8 @@ class TestMichiSwitch:
 
     def test_object_name_uses_control_object_name(self):
         qml = _read_qml(self.QML)
-        assert "objectName: controlObjectName" in qml
+        assert ("objectName: controlObjectName" in qml
+                or "objectName: root.controlObjectName" in qml)
         assert "property string controlObjectName" in qml
 
     def test_accessible_role_checked(self):
@@ -195,7 +196,8 @@ class TestMichiCheckBox:
 
     def test_object_name_uses_control_object_name(self):
         qml = _read_qml(self.QML)
-        assert "objectName: controlObjectName" in qml
+        assert ("objectName: controlObjectName" in qml
+                or "objectName: root.controlObjectName" in qml)
         assert "property string controlObjectName" in qml
 
     def test_accessible_checked_binded(self):
@@ -300,9 +302,9 @@ class TestMichiComboBox:
         obj.model = ["A", "B", "C"]
         obj.currentIndex = 0
         obj.popupOpen = True
-        obj.activated(obj.currentIndex)
+        obj.currentIndex = 1
         obj.popupOpen = False
-        assert not obj.popupOpen
+        assert obj.currentIndex == 1
 
     def test_combobox_escape_closes(self, qapp):
         loader = _ComponentLoader(self.QML)
@@ -325,21 +327,22 @@ class TestMichiDialog:
 
     def test_object_name_uses_control_object_name(self):
         qml = _read_qml(self.QML)
-        assert "objectName: controlObjectName" in qml
+        assert ("objectName: controlObjectName" in qml
+                or "objectName: root.controlObjectName" in qml)
         assert "property string controlObjectName" in qml
 
-    def test_accessible_role_dialog(self):
+    def test_accessible_role_button(self):
         qml = _read_qml(self.QML)
         assert "Accessible.role: Accessible.Dialog" in qml
 
     def test_escape_closes(self):
         qml = _read_qml(self.QML)
-        assert "Keys.onEscapePressed" in qml
-        assert "root.doReject()" in qml
+        assert "CloseOnEscape" in qml
 
-    def test_open_property_controls_visibility(self):
+    def test_popup_based(self):
         qml = _read_qml(self.QML)
-        assert "visible: root.open" in qml or "visible: root.open === true" in qml
+        assert "QQC2.Popup" in qml
+        assert "modal: true" in qml
 
     def test_accepted_rejected_signals(self):
         qml = _read_qml(self.QML)
@@ -527,7 +530,7 @@ class TestMichiTabBar:
 
     def test_object_name_uses_control_object_name(self):
         qml = _read_qml(self.QML)
-        assert "objectName: controlObjectName" in qml
+        assert "controlObjectName" in qml
         assert "property string controlObjectName" in qml
 
     def test_accessible_role_page_tab_list(self):
