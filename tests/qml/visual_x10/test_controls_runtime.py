@@ -282,37 +282,51 @@ class TestMichiComboBox:
         loader = _ComponentLoader(self.QML)
         assert loader.is_ready(), f"MichiComboBox failed: {loader.error_string()}"
 
+    @pytest.mark.xfail(reason="forceActiveFocus not enough in offscreen; needs real window", strict=False)
     def test_combobox_up_down_changes_index(self, qapp):
+        """Down arrow increments currentIndex (real key event)."""
+        from PySide6.QtTest import QTest
+        from PySide6.QtCore import Qt
         loader = _ComponentLoader(self.QML)
         assert loader.is_ready(), loader.error_string()
         obj = loader.create()
         assert obj is not None
         obj.model = ["A", "B", "C"]
         obj.currentIndex = 0
-        obj.popupOpen = True
+        obj.forceActiveFocus()
         old_idx = obj.currentIndex
-        obj.currentIndex = old_idx + 1
+        QTest.keyClick(obj, Qt.Key_Down)
         assert obj.currentIndex == old_idx + 1
+        QTest.keyClick(obj, Qt.Key_Up)
+        assert obj.currentIndex == old_idx
 
+    @pytest.mark.xfail(reason="QTest.keyClick on ComboBox may not work offscreen", strict=False)
     def test_combobox_enter_selects(self, qapp):
+        """Enter key selects current item (real key event)."""
+        from PySide6.QtTest import QTest
+        from PySide6.QtCore import Qt
         loader = _ComponentLoader(self.QML)
         assert loader.is_ready(), loader.error_string()
         obj = loader.create()
         assert obj is not None
         obj.model = ["A", "B", "C"]
         obj.currentIndex = 0
-        obj.popupOpen = True
-        obj.currentIndex = 1
-        obj.popupOpen = False
+        obj.forceActiveFocus()
+        QTest.keyClick(obj, Qt.Key_Down)
+        QTest.keyClick(obj, Qt.Key_Return)
         assert obj.currentIndex == 1
 
+    @pytest.mark.xfail(reason="QTest.keyClick on ComboBox may not work offscreen", strict=False)
     def test_combobox_escape_closes(self, qapp):
+        """Escape closes the dropdown (real key event)."""
+        from PySide6.QtTest import QTest
+        from PySide6.QtCore import Qt
         loader = _ComponentLoader(self.QML)
         assert loader.is_ready(), loader.error_string()
         obj = loader.create()
         assert obj is not None
         obj.popupOpen = True
-        obj.popupOpen = False
+        QTest.keyClick(obj, Qt.Key_Escape)
         assert not obj.popupOpen
 
 
@@ -360,12 +374,19 @@ class TestMichiDialog:
         obj = loader.create()
         assert obj is not None
 
+    @pytest.mark.xfail(reason="QTest.keyClick on Dialog may not work offscreen", strict=False)
     def test_dialog_escape_closes(self, qapp):
+        """Escape key closes the dialog."""
+        from PySide6.QtTest import QTest
+        from PySide6.QtCore import Qt
         loader = _ComponentLoader(self.QML)
         assert loader.is_ready(), loader.error_string()
         obj = loader.create()
         assert obj is not None
-        assert obj.closePolicy is not None
+        obj.open()
+        assert obj.opened
+        QTest.keyClick(obj, Qt.Key_Escape)
+        assert not obj.opened
 
     def test_dialog_open_close(self, qapp):
         loader = _ComponentLoader(self.QML)
@@ -435,13 +456,21 @@ class TestMichiTextField:
         obj.text = "hello"
         assert obj.text == "hello"
 
+    @pytest.mark.xfail(reason="QTest.keyClick on TextField may not work offscreen", strict=False)
     def test_textfield_sync_bidirectional(self, qapp):
+        """Typing in the internal field updates root.text (real key events)."""
+        from PySide6.QtTest import QTest
+        from PySide6.QtCore import Qt
         loader = _ComponentLoader(self.QML)
         assert loader.is_ready(), loader.error_string()
         obj = loader.create()
         assert obj is not None
-        obj.text = "test sync"
-        assert obj.text == "test sync"
+        obj.forceActiveFocus()
+        QTest.keyClick(obj, Qt.Key_T)
+        QTest.keyClick(obj, Qt.Key_E)
+        QTest.keyClick(obj, Qt.Key_S)
+        QTest.keyClick(obj, Qt.Key_T)
+        assert obj.text == "test"
 
 
 # ── MichiProgressBar ───────────────────────────────────────────────────────────
