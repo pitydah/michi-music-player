@@ -42,7 +42,7 @@ class TestLibraryWorkflow:
 
     def test_qtest_queue_enqueue(self, nav, playback_bridge, root_window):
         result = playback_bridge.enqueueSong("1")
-        assert result.get("ok") is not False
+        assert result.get("ok") is True
         result2 = playback_bridge.playQueueItem(0)
         assert isinstance(result2, dict)
 

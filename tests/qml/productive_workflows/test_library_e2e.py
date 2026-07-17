@@ -32,39 +32,46 @@ class TestLibraryE2E:
     def test_library_search_field(self, library_bridge):
         result = library_bridge.setSearchQuery("queen")
         assert isinstance(result, dict)
+        assert "ok" in result
         library_bridge.clearSearch()
 
     def test_library_search_clear(self, library_bridge):
         library_bridge.setSearchQuery("test")
         result = library_bridge.clearSearch()
         assert isinstance(result, dict)
+        assert "ok" in result
 
     def test_library_filter_format(self, library_bridge):
         result = library_bridge.setFormatFilter("FLAC")
         assert isinstance(result, dict)
-        assert result.get("ok") is True or result.get("ok") is None
+        assert "ok" in result
 
     def test_library_filter_genre(self, library_bridge):
         result = library_bridge.setGenreFilter("Rock")
         assert isinstance(result, dict)
+        assert "ok" in result
 
     def test_library_filter_year(self, library_bridge):
         result = library_bridge.setYearFilter("2020")
         assert isinstance(result, dict)
+        assert "ok" in result
         library_bridge.clearFilters()
 
     def test_library_filter_clear(self, library_bridge):
         library_bridge.setFormatFilter("FLAC")
         result = library_bridge.clearFilters()
         assert isinstance(result, dict)
+        assert "ok" in result
 
     def test_library_sort_by_title(self, library_bridge):
         result = library_bridge.sortBy("title")
         assert isinstance(result, dict)
+        assert "ok" in result
 
     def test_library_sort_by_artist(self, library_bridge):
         result = library_bridge.sortBy("artist")
         assert isinstance(result, dict)
+        assert "ok" in result
 
     def test_library_get_songs_page(self, library_bridge):
         result = library_bridge.getSongsPage(0, 20)
@@ -74,22 +81,27 @@ class TestLibraryE2E:
         library_bridge.getSongsPage(0, 20)
         result = library_bridge.loadNextPage()
         assert isinstance(result, dict)
+        assert "ok" in result
 
     def test_library_load_library(self, library_bridge):
         result = library_bridge.loadLibrary()
         assert isinstance(result, dict)
+        assert "ok" in result
 
     def test_library_favorites(self, library_bridge):
         result = library_bridge.toggleFavoriteById(1)
         assert isinstance(result, dict)
+        assert "ok" in result
 
     def test_library_goto_album(self, library_bridge):
         result = library_bridge.getAlbumDetail("test_key")
         assert isinstance(result, dict)
+        assert "ok" in result
 
     def test_library_goto_artist(self, library_bridge):
         result = library_bridge.getArtistDetail("Queen")
         assert isinstance(result, dict)
+        assert "ok" in result
 
     def test_library_workflow_search_then_play(self, nav, library_bridge, playback_bridge):
         nav.navigate("library")

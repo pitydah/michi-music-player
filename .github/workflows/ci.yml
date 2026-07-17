@@ -2,18 +2,27 @@ name: CI
 
 on: [push, pull_request]
 
+env:
+  ruff_out: --output-format=github
+  compile_exclude: .venv/|\.tmpl\.'
+
 jobs:
-  qml-migration-gate:
+  core:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('pyproject.toml') }}
       - name: Install system deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 xvfb
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1
       - name: Install Python deps
         run: |
           pip install -e ".[dev]" 2>/dev/null || pip install PySide6 ruff pytest
@@ -24,15 +33,46 @@ jobs:
           echo "Qt: $(python3 -c 'from PySide6.QtCore import qVersion; print(qVersion())' 2>&1)"
           echo "EGL: $(ldconfig -p | grep libEGL | head -1)"
       - name: Ruff check
-        run: ruff check . --output-format concise 2>&1 | grep -v 'docs/archive\|docs/migration' | (! grep -E '\.py:')
+        run: ruff check . ${{ env.ruff_out }}
       - name: Compileall
-        run: python -m compileall -q -x '.venv/|\.tmpl\.' .
+        run: python -m compileall -q -x '${{ env.compile_exclude }}' .
       - name: Core tests
         run: |
-          QT_QPA_PLATFORM=offscreen python -m pytest tests/test_songs_service.py tests/test_library_service.py tests/test_album_service.py tests/test_genres_service.py tests/test_folder_service.py tests/test_metadata_editor_service.py tests/test_library_mutation_service.py tests/test_micro_server_service.py -q
-      - name: Productive workflows (sequential, file by file)
+          QT_QPA_PLATFORM=offscreen python -m pytest tests/test_songs_service.py tests/test_library_service.py tests/test_album_service.py tests/test_genres_service.py tests/test_folder_service.py tests/test_metadata_editor_service.py tests/test_library_mutation_service.py tests/test_micro_server_service.py -q --junitxml=results-core.xml
+      - name: Upload core results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-core
+          path: results-core.xml
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('pyproject.toml') }}
+      - name: Install system deps
         run: |
-          QT_QPA_PLATFORM=offscreen bash scripts/run_tests.sh tests/qml/productive_workflows/
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 xvfb
+      - name: Install Python deps
+        run: |
+          pip install -e ".[dev]" 2>/dev/null || pip install PySide6 ruff pytest
+      - name: Productive workflows (offscreen)
+        run: |
+          QT_QPA_PLATFORM=offscreen bash scripts/run_tests.sh tests/qml/productive_workflows/ offscreen
+      - name: Productive workflows (Xvfb)
+        continue-on-error: true
+        run: |
+          xvfb-run -a bash scripts/run_tests.sh tests/qml/productive_workflows/ xcb
       - name: QML compile check
         run: |
           QT_QPA_PLATFORM=offscreen timeout 30 python3 -c "
@@ -49,5 +89,11 @@ jobs:
       if errors:
           for e in errors: print(f'QML ERROR: {e}')
           sys.exit(1)
-      print('QML: 381 compiled OK')
+      print('QML OK')
       "
+      - name: Upload e2e results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-e2e
+          path: results.xml

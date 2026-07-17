@@ -88,6 +88,7 @@ BaseDialog {
 
         MichiButton {
             id: cancelBtn
+            objectName: "confirmDialogCancelButton"
             text: root.cancelText
             variant: "ghost"
             Layout.minimumWidth: 80
@@ -100,6 +101,7 @@ BaseDialog {
 
         MichiButton {
             id: confirmBtn
+            objectName: "confirmDialogConfirmButton"
             text: root.confirmText
             variant: root.iconType === "error" ? "danger" : "primary"
             focus: true

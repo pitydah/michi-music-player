@@ -396,6 +396,7 @@ Item {
                         spacing: MichiTheme.spacing.md
 
                         MichiButton {
+                            objectName: "runAudioDiagnosticsButton"
                             text: "Ejecutar diagnóstico de audio"
                             variant: "primary"
                             Layout.fillWidth: true

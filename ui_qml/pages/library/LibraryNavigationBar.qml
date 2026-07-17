@@ -33,6 +33,7 @@ Item {
             Repeater {
                 model: ["Canciones", "Álbumes", "Artistas", "Carpetas"]
                 TabButton {
+                    objectName: "libraryNavTab" + index
                     text: modelData
                     font.pixelSize: MichiTheme.typography.bodySize
                     contentItem: Text {

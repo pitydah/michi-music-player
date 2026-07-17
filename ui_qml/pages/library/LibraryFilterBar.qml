@@ -26,12 +26,12 @@ Item {
         spacing: MichiTheme.spacing.xs
         visible: true
 
-        FilterChip { text: "Todos"; selected: !root.lib || root.lib.activeFormatFilter === ""; onClicked: root.formatFilterChanged("") }
+        FilterChip { objectName: "filterChipTodos"; text: "Todos"; selected: !root.lib || root.lib.activeFormatFilter === ""; onClicked: root.formatFilterChanged("") }
         FilterChip { objectName: "filterChipFlac"; text: "FLAC"; selected: root.lib && root.lib.activeFormatFilter === "flac"; onClicked: root.formatFilterChanged("flac") }
-        FilterChip { text: "MP3"; selected: root.lib && root.lib.activeFormatFilter === "mp3"; onClicked: root.formatFilterChanged("mp3") }
-        FilterChip { text: "WAV"; selected: root.lib && root.lib.activeFormatFilter === "wav"; onClicked: root.formatFilterChanged("wav") }
-        FilterChip { text: "DSD"; selected: root.lib && root.lib.activeFormatFilter === "dsd"; onClicked: root.formatFilterChanged("dsd") }
-        FilterChip { text: "Favoritos"; selected: false; onClicked: { if (root.lib) root.lib.setFavoritesFilter() } }
-        FilterChip { text: "No reproducidos"; selected: false; onClicked: { if (root.lib) root.lib.setUnplayedFilter() } }
+        FilterChip { objectName: "filterChipMp3"; text: "MP3"; selected: root.lib && root.lib.activeFormatFilter === "mp3"; onClicked: root.formatFilterChanged("mp3") }
+        FilterChip { objectName: "filterChipWav"; text: "WAV"; selected: root.lib && root.lib.activeFormatFilter === "wav"; onClicked: root.formatFilterChanged("wav") }
+        FilterChip { objectName: "filterChipDsd"; text: "DSD"; selected: root.lib && root.lib.activeFormatFilter === "dsd"; onClicked: root.formatFilterChanged("dsd") }
+        FilterChip { objectName: "filterChipFavorites"; text: "Favoritos"; selected: false; onClicked: { if (root.lib) root.lib.setFavoritesFilter() } }
+        FilterChip { objectName: "filterChipUnplayed"; text: "No reproducidos"; selected: false; onClicked: { if (root.lib) root.lib.setUnplayedFilter() } }
     }
 }

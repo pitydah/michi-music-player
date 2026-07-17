@@ -50,6 +50,7 @@ Popup {
                     font.pixelSize: MichiTheme.typography.metaSize
                 }
                 MouseArea {
+                    objectName: "sortOption" + index
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {

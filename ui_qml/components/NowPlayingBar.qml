@@ -89,6 +89,7 @@ Item {
                     }
 
                     MouseArea {
+                        objectName: "nowPlayingTrackInfoArea"
                         anchors.fill: parent
                         cursorShape: root._hasTrack ? Qt.PointingHandCursor : Qt.ArrowCursor
                         onClicked: {
@@ -155,6 +156,7 @@ Item {
                 }
 
                 MichiIconButton {
+                    objectName: "nowPlayingOpenPlaybackButton"
                     iconText: ""
                     iconSource: "../../icons/nowplaying_clean/warm_next_32.png"
                     tooltipText: "Reproducción"

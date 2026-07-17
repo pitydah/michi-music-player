@@ -14,8 +14,9 @@ class TestNegativeCancellationE2E:
         assert ar is not None
         action = ar.get("queue.clear")
         assert action is not None
+        assert callable(action.handler) if hasattr(action, 'handler') else True
 
     def test_library_doctor_cancel(self, bootstrap, bridges):
         doc = bridges.get("library_doctor")
         assert doc is not None
-        assert hasattr(doc, 'cancelScan')
+        assert callable(getattr(doc, 'cancelScan', None))

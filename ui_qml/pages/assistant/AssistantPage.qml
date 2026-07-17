@@ -282,6 +282,7 @@ Item {
 
                 MichiIconButton {
                     id: sendBtn
+                    objectName: "assistantSendButton"
                     iconText: root._executing ? "■" : ">"
                     tooltipText: root._executing ? "Cancelar" : "Enviar"
                     btnSize: MichiTheme.minimumInteractiveSize

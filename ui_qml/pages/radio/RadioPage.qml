@@ -203,6 +203,7 @@ Item {
 
                 MichiButton {
                     id: addStationBtn
+                    objectName: "addStationToggleButton"
                     text: _showAddStation ? "Cancelar" : "Añadir emisora"
                     variant: "ghost"
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -238,6 +239,7 @@ Item {
                         activeFocusOnTab: true
                     }
                     MichiButton {
+                        objectName: "addStationSubmitButton"
                         text: "Añadir"; variant: "primary"
                         anchors.horizontalCenter: parent.horizontalCenter
                         activeFocusOnTab: true

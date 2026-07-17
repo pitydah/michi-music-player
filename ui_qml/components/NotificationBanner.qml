@@ -97,6 +97,7 @@ Rectangle {
 
         MichiButton {
             id: actionBtn
+            objectName: "notificationActionButton"
             anchors.verticalCenter: parent.verticalCenter
             text: root.actionText
             variant: "ghost"
@@ -112,6 +113,7 @@ Rectangle {
 
         QQC2.AbstractButton {
             id: closeBtn
+            objectName: "notificationCloseButton"
             anchors.verticalCenter: parent.verticalCenter
             implicitWidth: 24
             implicitHeight: 24

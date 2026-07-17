@@ -20,6 +20,7 @@ class TestConnectionsDevicesE2E:
         assert cb is not None
         result = cb.discover()
         assert isinstance(result, dict)
+        assert "ok" in result
 
     def test_connections_navigation(self, nav):
         nav.navigate("connections")
@@ -52,6 +53,7 @@ class TestConnectionsDevicesE2E:
         assert dv is not None
         result = dv.discover() if hasattr(dv, 'discover') else {"ok": True}
         assert isinstance(result, dict)
+        assert "ok" in result
 
     def test_devices_navigation(self, nav):
         nav.navigate("devices.list")

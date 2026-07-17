@@ -104,6 +104,7 @@ BaseDialog {
 
         MichiButton {
             id: cancelBtn
+            objectName: "inputDialogCancelButton"
             text: root.cancelText
             variant: "ghost"
             Layout.minimumWidth: 80
@@ -115,6 +116,7 @@ BaseDialog {
 
         MichiButton {
             id: confirmBtn
+            objectName: "inputDialogConfirmButton"
             text: root.confirmText
             variant: "primary"
             focus: true

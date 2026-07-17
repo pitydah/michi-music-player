@@ -304,6 +304,7 @@ Item {
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
 
                         MichiButton {
+                            objectName: "checkUpdatesButton"
                             text: "Buscar actualizaciones ahora"
                             variant: "ghost"
                             Layout.fillWidth: true
@@ -342,6 +343,7 @@ Item {
                             }
 
                             MichiButton {
+                                objectName: "clearCacheButton"
                                 text: "Limpiar caché"
                                 variant: "danger"
                                 enabled: root.cacheSize > 0 && !root.loadingCache

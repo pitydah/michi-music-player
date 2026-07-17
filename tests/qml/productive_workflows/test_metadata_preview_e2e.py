@@ -12,14 +12,14 @@ class TestMetadataPreviewE2E:
     def test_metadata_bridge_preview(self, bootstrap, bridges):
         mb = bridges.get("metadata")
         assert mb is not None
-        assert hasattr(mb, 'preview')
+        assert callable(getattr(mb, 'preview', None))
 
     def test_metadata_bridge_diff(self, bootstrap, bridges):
         mb = bridges.get("metadata")
         assert mb is not None
-        assert hasattr(mb, 'diff')
+        assert callable(getattr(mb, 'diff', None))
 
     def test_metadata_bridge_conflicts(self, bootstrap, bridges):
         mb = bridges.get("metadata")
         assert mb is not None
-        assert hasattr(mb, 'conflicts')
+        assert callable(getattr(mb, 'conflicts', None))

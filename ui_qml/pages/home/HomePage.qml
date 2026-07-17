@@ -194,6 +194,7 @@ Item {
                         Item { Layout.fillWidth: true }
 
                         MichiButton {
+                            objectName: "homeViewJobsButton"
                             text: "Ver trabajos"
                             variant: "ghost"
                             onClicked: {
@@ -259,6 +260,7 @@ Item {
                     }
 
                     MichiButton {
+                        objectName: "homeResumeButton"
                         text: "Reanudar"
                         variant: "accent"
                         enabled: root.hb && root.hb.hasPlayback

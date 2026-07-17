@@ -1,8 +1,6 @@
-"""Workflow: PlaceholderPage — QTest navigation and interaction."""
+"""Workflow: PlaceholderPage — navigation."""
 from __future__ import annotations
 import pytest
-from PySide6.QtCore import Qt
-from PySide6.QtTest import QTest
 
 pytestmark = [
     pytest.mark.qml_module("core"),

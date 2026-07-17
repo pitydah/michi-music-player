@@ -1,8 +1,6 @@
 """Service unavailable state — core service test, no QML."""
 from __future__ import annotations
 
-import pytest
-
 from core.service_container import ServiceContainer, ServicePriority
 
 

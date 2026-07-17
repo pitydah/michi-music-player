@@ -521,7 +521,7 @@ class MixBridge(QObject):
         if self._current_mix_id:
             return self.loadMix(self._current_mix_id)
         self.dataChanged.emit()
-        return {"ok": True if self._current_mix_id else False, "has_mix": bool(self._current_mix_id)}
+        return {"ok": bool(self._current_mix_id), "has_mix": bool(self._current_mix_id)}
 
     @Slot(str, result=dict)
     def navigateTo(self, route: str):

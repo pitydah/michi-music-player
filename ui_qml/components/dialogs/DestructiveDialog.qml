@@ -156,6 +156,7 @@ BaseDialog {
 
         MichiButton {
             id: cancelBtn
+            objectName: "destructiveDialogCancelButton"
             text: root.cancelText
             variant: "ghost"
             Layout.minimumWidth: 80
@@ -168,6 +169,7 @@ BaseDialog {
 
         MichiButton {
             id: confirmBtn
+            objectName: "destructiveDialogConfirmButton"
             text: root.confirmText
             variant: "danger"
             enabled: root._keywordMatched

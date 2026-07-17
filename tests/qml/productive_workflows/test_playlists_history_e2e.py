@@ -26,12 +26,14 @@ class TestPlaylistsHistoryE2E:
         assert pl is not None
         result = pl.getPlaylistDetail(1)
         assert isinstance(result, dict)
+        assert "ok" in result
 
     def test_playlists_detail(self, all_bridges):
         pl = all_bridges.get("playlists")
         assert pl is not None
         result = pl.getPlaylistDetail(1)
         assert isinstance(result, dict)
+        assert "ok" in result
 
     def test_playlists_navigation(self, nav):
         nav.navigate("playlists")
@@ -48,13 +50,14 @@ class TestPlaylistsHistoryE2E:
         assert hb is not None
         result = hb.refresh()
         assert isinstance(result, dict)
+        assert "ok" in result
 
     def test_history_clear(self, all_bridges):
         hb = all_bridges.get("history")
         assert hb is not None
         result = hb.clearHistory()
         assert isinstance(result, dict)
-        assert result.get("ok") is not False
+        assert result.get("ok") is True
 
     def test_playlists_bridge_methods_return_dicts(self, all_bridges):
         pl = all_bridges.get("playlists")
