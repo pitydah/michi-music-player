@@ -75,7 +75,7 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         y: MichiTheme.spacing.lg
         width: Math.min(480, parent.width * 0.85)
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         color: MichiTheme.colors.surfaceCardElevated
         border.width: MichiTheme.borderWidth
         border.color: {
@@ -100,7 +100,7 @@ Item {
                 id: typeIndicator
                 width: 4
                 height: parent.height
-                radius: MichiTheme.radiusXs
+                radius: MichiTheme.radius.xs
                 color: {
                     if (!root.notification) return "transparent"
                     switch (root.notification.kind) {
@@ -180,7 +180,7 @@ Item {
                 }
 
                 background: Rectangle {
-                    radius: MichiTheme.radiusSm
+                    radius: MichiTheme.radius.sm
                     color: dismissBtn.hovered ? MichiTheme.colors.surfaceHover : "transparent"
                     border.width: dismissBtn.activeFocus ? MichiTheme.focusWidth : 0
                     border.color: MichiTheme.colors.borderFocus

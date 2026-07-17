@@ -156,7 +156,7 @@ Item {
             SectionHeader { text: "Estado del backend"; width: parent.width; objectName: "backendHeader"; Accessible.name: "Estado del backend" }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "base"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     Text { text: "Backend: " + (root.alab ? (root.alab.backendInfo ? root.alab.backendInfo.backend : "no disponible") : "no disponible"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
@@ -165,7 +165,7 @@ Item {
             }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "status"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "status"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     StatusBadge { text: "Experimental"; kind: "experimental"; objectName: "experimentalBadge" }

@@ -78,7 +78,7 @@ Item {
                 Rectangle {
                     width: 64
                     height: 64
-                    radius: MichiTheme.radiusMd
+                    radius: MichiTheme.radius.md
                     color: MichiTheme.colors.accentFaint
 
                     Text {

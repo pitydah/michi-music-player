@@ -24,7 +24,7 @@ Item {
 
     GlassMaterial {
         anchors.fill: parent
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         hovered: mouseArea.containsMouse
         interactive: true
 
@@ -42,7 +42,7 @@ Item {
             spacing: MichiTheme.spacing.md
 
             Rectangle {
-                width: 40; height: 40; radius: MichiTheme.radiusSm; anchors.verticalCenter: parent.verticalCenter
+                width: 40; height: 40; radius: MichiTheme.radius.sm; anchors.verticalCenter: parent.verticalCenter
                 color: root.paired ? MichiTheme.colors.badgeActiveBg : MichiTheme.colors.accentSurface
                 Text {
                     anchors.centerIn: parent

@@ -18,20 +18,21 @@ Item {
     property string accessibleDescription: ""
 
     signal activated(int index)
-    signal currentIndexChanged()
-
     implicitHeight: MichiTheme.minimumInteractiveSize
     implicitWidth: 200
+    activeFocusOnTab: enabled && visible
 
     Accessible.role: Accessible.ComboBox
     Accessible.name: root.accessibleName
     Accessible.description: root.accessibleDescription
 
     onCurrentIndexChanged: {
-        if (root.currentIndex >= 0 && root.currentIndex < root.model.length)
-            root.currentText = root.model[root.currentIndex]
-        else
+        if (root.currentIndex >= 0 && root.currentIndex < root.model.length) {
+            var item = root.model[root.currentIndex]
+            root.currentText = typeof item === "object" ? (item.text || item.name || "") : item
+        } else {
             root.currentText = ""
+        }
     }
 
     Rectangle {
@@ -98,7 +99,7 @@ Item {
 
                 Item {
                     width: parent.width
-                    implicitHeight: MichiTheme.rowHeightCompact
+                    height: MichiTheme.rowHeightCompact
                     property bool isSelected: index === root.currentIndex
                     property bool isHovered: itemMa.containsMouse
 
@@ -113,7 +114,7 @@ Item {
                         anchors.left: parent.left
                         anchors.leftMargin: MichiTheme.spacing.md
                         anchors.verticalCenter: parent.verticalCenter
-                        text: modelData
+                        text: typeof modelData === "object" ? (modelData.text || modelData.name || "") : modelData
                         color: root.currentIndex === index ? MichiTheme.colors.accentBlue : MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         font.weight: root.currentIndex === index ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
@@ -147,7 +148,7 @@ Item {
             }
         }
 
-        implicitHeight: Math.min(root.model.length * MichiTheme.rowHeightCompact + MichiTheme.spacing.xxs * 2, 300)
+        height: Math.min(root.model.length * MichiTheme.rowHeightCompact + MichiTheme.spacing.xxs * 2, 300)
     }
 
     Keys.onUpPressed: function(event) {

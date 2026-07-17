@@ -29,7 +29,7 @@ Item {
             Rectangle {
                 width: parent.width; height: 40
                 color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-                radius: MichiTheme.radiusSm
+                radius: MichiTheme.radius.sm
 
                 Row {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm

@@ -29,7 +29,7 @@ Item {
         }
 
         GlassMaterial {
-            width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
+            width: parent.width; radius: MichiTheme.radius.md; variant: "base"
             Row {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.xl
                 Column { spacing: MichiTheme.spacing.xs

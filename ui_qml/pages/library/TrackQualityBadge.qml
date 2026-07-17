@@ -12,7 +12,7 @@ Rectangle {
     property int bitDepth: 0
     property int bitrate: 0
 
-    width: 36; height: 18; radius: MichiTheme.radiusXs
+    width: 36; height: 18; radius: MichiTheme.radius.xs
     visible: format !== ""
     color: {
         if (format === "DSD") return MichiTheme.colors.warning

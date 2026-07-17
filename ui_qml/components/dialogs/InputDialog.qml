@@ -63,7 +63,7 @@ BaseDialog {
             Accessible.description: validationError || ""
 
             background: Rectangle {
-                radius: MichiTheme.radiusSm
+                radius: MichiTheme.radius.sm
                 color: MichiTheme.colors.surfaceInput
                 border.width: parent.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
                 border.color: {

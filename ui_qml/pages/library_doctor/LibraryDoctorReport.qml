@@ -20,7 +20,7 @@ Item {
         SectionHeader { text: "Reporte"; width: parent.width }
 
         GlassMaterial {
-            width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
+            width: parent.width; radius: MichiTheme.radius.md; variant: "base"
             visible: root.doc && root.doc.status === "done"
 
             Column {

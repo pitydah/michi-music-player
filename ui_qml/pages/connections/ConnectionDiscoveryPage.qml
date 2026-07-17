@@ -42,7 +42,6 @@ Item {
             contentHeight: column.height + MichiTheme.spacing.xxl
             clip: true
             boundsBehavior: Flickable.StopAtBounds
-            activeFocusOnTab: true
 
             Column {
                 id: column
@@ -55,7 +54,6 @@ Item {
 
                     MichiButton {
                         Accessible.role: Accessible.Button
-
                         text: "Volver"
                         variant: "ghost"
                         activeFocusOnTab: true

@@ -21,7 +21,7 @@ Item {
 
     GlassMaterial {
         anchors.fill: parent
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         variant: "elevated"
 
         Column {
@@ -62,7 +62,7 @@ Item {
                     width: parent.width
                     height: 48
                     color: root.selectedZoneIds.indexOf(modelData.id) >= 0 ? MichiTheme.colors.accentSurface : "transparent"
-                    radius: MichiTheme.radiusSm
+                    radius: MichiTheme.radius.sm
                     border.color: root.selectedZoneIds.indexOf(modelData.id) >= 0 ? MichiTheme.colors.accentBlue : "transparent"
                     border.width: MichiTheme.borderWidth
 

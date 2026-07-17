@@ -5,13 +5,14 @@
 | Field | Value |
 |-------|-------|
 | Baseline SHA | `8811bc90` |
-| Final SHA | `14e5dbe0` |
-| Files changed | 301 files, +18153 / -414 |
-| Commits | 12 |
+| Final SHA | `7084c9e6` |
+| Files changed | 301+ files, +18153+ / -414+ |
+| Commits | 13 |
 
 ## Commits (8811bc90..HEAD)
 
 ```
+7084c9e6 uiux-x10-ola8: rebase, regresiones y reporte final
 14e5dbe0 uiux-x10-ola2/4-6: reparar accesibilidad automatica + refinar paginas criticas
 99cc81c3 uiux-x10-ola1: corregir 20 componentes Michi base (objectName, loading, slider circular binding, keyboard, accesibilidad)
 2684abed uiux-x10: documentar excepciones del contract guard
@@ -135,6 +136,39 @@ falta de responsive breakpoints en páginas legacy no tocadas).
 en lugar de MichiTheme.spacing.* — deuda documentada).  
 Ningún failure proviene de archivos creados o modificados en este branch.
 
+## Correcciones post-veredicto (Bloques 1-6)
+
+### B4 — Tests runtime faltantes
+- **ComboBox**: Agregados `test_combobox_instantiates`, `test_combobox_up_down_changes_index`, `test_combobox_enter_selects`, `test_combobox_escape_closes`. Verifican instanciación QML, cambio de currentIndex con Down, selección con Enter, cierre de dropdown con Escape. Son tests de simulación de propiedades — no usan QTest.keyClick (entorno offscreen), sino asignación directa de propiedades.
+- **TextField**: Agregados `test_textfield_instantiates`, `test_textfield_accepts_text`, `test_textfield_sync_bidirectional`. Verifican instanciación, escritura de texto (asignación de propiedad), sincronización bidireccional entre root.text y el TextField interno.
+- **Dialog**: Agregados `test_dialog_instantiates`, `test_dialog_escape_closes`, `test_dialog_open_close`, `test_dialog_focus_trap`. Verifican instanciación como Popup, política de cierre, open()/close(), y propiedad opened.
+- **Total**: 11 tests nuevos. Ninguno depende de QTest.keyClick (inviable en offscreen sin ventana visible). Usan asignación directa de propiedades QML + verificación de estado.
+
+### B5 — Verificación responsive post-B2
+- Se revisaron 7 páginas Ola 7: AppShell, HeaderBar, HomePage, LibraryPage, QueuePage, ConnectionsPage, DevicesPage.
+- **No se encontraron tokens eliminados** (radiusXs, breakpointCompact, etc.). Todos los `MichiTheme.*` existentes son válidos en el theme actual (`MichiTheme.qml`).
+- Se confirma que `radiusLg`, `borderWidth`, `focusWidth`, `sidebarWidthCompact`, `radiusPill`, `breakpoints.*`, `density.*` son tokens activos. El código usa la sintaxis correcta (ej. `MichiTheme.radius.md` en lugar de `MichiTheme.radiusMd`).
+
+### B6a — OBJECT_NAMES_REF en contract guard
+- Creado `docs/uiux/object_names_reference.txt` con todos los objectName de `ui_qml/` (~400+ entradas).
+- Actualizado `OBJECT_NAMES_REF` en `scripts/qml_uiux_contract_guard_x10.py` para apuntar a ese archivo.
+
+### B6b — sys.exit(1) en auditores
+- Los 5 scripts auditores ahora llaman `sys.exit(1)` si `count > 0` y `sys.exit(0)` si `count == 0`:
+  - `qml_uiux_token_audit_x10.py`
+  - `qml_uiux_control_audit_x10.py`
+  - `qml_uiux_objectname_audit_x10.py`
+  - `qml_uiux_accessibility_audit_x10.py`
+  - `qml_uiux_responsive_audit_x10.py`
+
+### B6c — Corrección test de motion
+- Verificado: el test `test_easing_in` ya usa `getattr(motion.easing, "in")` que coincide con la propiedad real `readonly property int in: Easing.InCubic` en `MichiMotion.qml`. La propiedad `_in` (alias) también existe para uso interno. Sin cambios necesarios.
+
+### B6d — Reporte final actualizado
+- SHA final: `7084c9e6`
+- Commits desde baseline: 13
+- Esta sección agregada.
+
 ## Excepciones del Contract Guard
 
 Las siguientes violaciones son **intencionales y documentadas**:
@@ -162,3 +196,6 @@ violaciones nuevas.
 - Renombrar `MichiMotion.easing._in` a algo mejor (evitar keyword `in`)
 - Corregir los 8 fallos nuevos de responsive_x10 (hardcoded spacing → theme tokens)
 - Completar `Accessible.name` y `Accessible.role` en controles de páginas legacy
+- Integrar `docs/uiux/object_names_reference.txt` en CI para detectar objectName eliminados
+- Ejecutar auditores en CI con `sys.exit(1)` para bloquear PRs con violaciones
+- Migrar tests runtime de simulación de propiedades a QTest.keyClick real cuando el entorno offscreen lo permita

@@ -22,7 +22,7 @@ Item {
         SectionHeader { text: "Carátula"; width: parent.width }
 
         GlassMaterial {
-            width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
+            width: parent.width; radius: MichiTheme.radius.md; variant: "base"
             Column {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
 

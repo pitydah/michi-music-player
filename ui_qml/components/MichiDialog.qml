@@ -3,112 +3,102 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import "../theme"
 
-Item {
+QQC2.Popup {
     id: root
 
     property string controlObjectName: ""
     objectName: controlObjectName
 
     property string titleText: ""
-    property bool open: false
-    property int closePolicy: QQC2.Popup.CloseOnEscape
     property bool loading: false
     property string accessibleName: root.titleText
     property string accessibleDescription: ""
 
-    property Item contentItem: null
-    property Item buttonsItem: null
+    property bool reducedMotion: false
 
     signal accepted()
     signal rejected()
 
-    visible: root.open
-    enabled: visible
+    modal: true
+    closePolicy: QQC2.Popup.CloseOnEscape
 
     Accessible.role: Accessible.Dialog
     Accessible.name: root.accessibleName
     Accessible.description: root.accessibleDescription
 
-    function doAccept() {
-        root.open = false
-        root.accepted()
-    }
+    default property alias content: contentArea.data
+    property alias buttons: buttonsArea.data
 
-    function doReject() {
-        root.open = false
-        root.rejected()
-    }
+    width: Math.min(420, parent ? parent.width * 0.9 : 420)
+    height: Math.min(contentColumn.implicitHeight + MichiTheme.spacing.xl * 2, parent ? parent.height * 0.8 : 600)
+    anchors.centerIn: parent
 
-    onOpenChanged: {
-        if (root.open) {
-            root.forceActiveFocus()
-        }
-    }
+    property Item _savedFocus: null
 
-    Keys.onEscapePressed: {
-        if (root.closePolicy & QQC2.Popup.CloseOnEscape) {
-            root.doReject()
-        }
-    }
-
-    Keys.onReturnPressed: {
-        if (!root.loading)
-            root.doAccept()
-    }
-
-    Keys.onEnterPressed: {
-        if (!root.loading)
-            root.doAccept()
-    }
-
-    Rectangle {
-        anchors.fill: parent
-        color: MichiTheme.colors.overlayDark
-        z: 9990
-        opacity: root.open ? 1 : 0
-
-        Behavior on opacity {
-            NumberAnimation { duration: MichiTheme.motion.normal; easing.type: Easing.OutCubic }
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            onClicked: {
-                if (root.closePolicy & QQC2.Popup.CloseOnPressOutside) {
-                    root.doReject()
-                }
+    onOpened: {
+        _savedFocus = root.parent ? root.parent.Window.activeFocusItem : null
+        root.forceActiveFocus()
+        for (var i = 0; i < contentArea.children.length; i++) {
+            var child = contentArea.children[i]
+            if (child.activeFocusOnTab || child.focusPolicy !== Qt.NoFocus) {
+                child.forceActiveFocus()
+                break
             }
         }
     }
 
-    FocusScope {
-        id: dialogFrame
-        anchors.centerIn: parent
-        width: Math.min(420, parent.width * 0.9)
-        height: Math.min(contentLayout.implicitHeight + MichiTheme.spacing.xl * 2, parent.height * 0.8)
-        z: 9991
-        focus: root.visible
-        scale: root.open ? 1 : 0.92
+    onClosed: {
+        if (_savedFocus)
+            _savedFocus.forceActiveFocus()
+    }
 
-        Behavior on scale {
-            NumberAnimation { duration: MichiTheme.motion.normal; easing.type: Easing.OutCubic }
+    enter: Transition {
+        enabled: !root.reducedMotion
+        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: MichiTheme.motion.normal; easing.type: Easing.OutCubic }
+        NumberAnimation { target: contentScale; property: "scale"; from: 0.92; to: 1.0; duration: MichiTheme.motion.normal; easing.type: Easing.OutCubic }
+    }
+
+    exit: Transition {
+        enabled: !root.reducedMotion
+        NumberAnimation { property: "opacity"; from: 1; to: 0; duration: MichiTheme.motion.fast; easing.type: Easing.InCubic }
+        NumberAnimation { target: contentScale; property: "scale"; from: 1.0; to: 0.92; duration: MichiTheme.motion.fast; easing.type: Easing.InCubic }
+    }
+
+    background: Rectangle {
+        id: dialogBg
+        radius: MichiTheme.radius.md
+        color: MichiTheme.colors.surfaceCardElevated
+        border.width: MichiTheme.borderWidth
+        border.color: MichiTheme.colors.borderCard
+
+        layer.enabled: true
+        layer.effect: DropShadow {
+            transparentBorder: true
+            radius: 16
+            samples: 32
+            color: MichiTheme.colors.shadowFloating
+            verticalOffset: 4
         }
+    }
 
-        Rectangle {
+    contentItem: Item {
+        implicitWidth: 400
+        implicitHeight: contentColumn.implicitHeight
+
+        Item {
+            id: contentScale
             anchors.fill: parent
-            radius: MichiTheme.radius.md
-            color: MichiTheme.colors.surfaceCardElevated
-            border.width: MichiTheme.borderWidth
-            border.color: MichiTheme.colors.borderCard
 
             ColumnLayout {
-                id: contentLayout
+                id: contentColumn
                 anchors.fill: parent
-                anchors.margins: MichiTheme.spacing.xl
                 spacing: MichiTheme.spacing.md
 
                 Text {
                     Layout.fillWidth: true
+                    Layout.topMargin: MichiTheme.spacing.md
+                    Layout.leftMargin: MichiTheme.spacing.xl
+                    Layout.rightMargin: MichiTheme.spacing.xl
                     text: root.titleText
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.cardTitleSize
@@ -121,24 +111,18 @@ Item {
                     id: contentArea
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    implicitHeight: root.contentItem ? root.contentItem.implicitHeight || 40 : 0
+                    Layout.leftMargin: MichiTheme.spacing.xl
+                    Layout.rightMargin: MichiTheme.spacing.xl
                     clip: true
-
-                    onChildrenChanged: {
-                        if (contentArea.children.length > 0)
-                            root.contentItem = contentArea.children[0]
-                    }
                 }
 
                 Item {
                     id: buttonsArea
                     Layout.fillWidth: true
-                    implicitHeight: root.buttonsItem ? root.buttonsItem.implicitHeight || 40 : 0
-
-                    onChildrenChanged: {
-                        if (buttonsArea.children.length > 0)
-                            root.buttonsItem = buttonsArea.children[0]
-                    }
+                    Layout.bottomMargin: MichiTheme.spacing.md
+                    Layout.leftMargin: MichiTheme.spacing.xl
+                    Layout.rightMargin: MichiTheme.spacing.xl
+                    implicitHeight: 40
                 }
             }
         }
@@ -147,6 +131,16 @@ Item {
     NumberAnimation on opacity {
         from: 0; to: 1; duration: MichiTheme.motion.normal
         easing.type: Easing.OutCubic
-        running: root.open
+        running: root.opened
+    }
+
+    Keys.onReturnPressed: {
+        if (!root.loading)
+            root.accepted()
+    }
+
+    Keys.onEnterPressed: {
+        if (!root.loading)
+            root.accepted()
     }
 }

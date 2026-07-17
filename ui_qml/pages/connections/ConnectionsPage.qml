@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../theme"
 import "../../components"
+import "../../components/foundations"
 import "."
 
 Item {
@@ -14,6 +15,8 @@ Item {
     Accessible.name: "Servidores y conexiones"
 
     property var conn: typeof connectionsBridge !== "undefined" ? connectionsBridge : null
+
+    MichiResponsive { id: responsive; availableWidth: root.width }
 
     Component.onCompleted: {
         if (root.conn && typeof root.conn.refresh !== "undefined")
@@ -29,11 +32,10 @@ Item {
         Flickable {
             id: flickable
             anchors.fill: parent
-            anchors.margins: MichiTheme.spacing.md
+            anchors.margins: responsive.pageMargin
             contentHeight: column.height + MichiTheme.spacing.xl
             clip: true
             boundsBehavior: Flickable.StopAtBounds
-            activeFocusOnTab: true
 
             Column {
                 id: column
@@ -70,18 +72,18 @@ Item {
                     width: parent.width
                 }
 
-                Grid {
+                Flow {
                     id: externalGrid
                     width: parent.width
-                    columns: 2
-                    columnSpacing: MichiTheme.spacing.md
-                    rowSpacing: MichiTheme.spacing.md
+                    spacing: MichiTheme.spacing.md
 
                     Repeater {
                         model: root.conn ? root.conn.externalServers : []
 
                         ExternalServerCard {
-                            width: (parent.width - MichiTheme.spacing.md) / 2
+                            width: responsive.compact ? parent.width
+                                 : responsive.medium ? (parent.width - MichiTheme.spacing.md) / 2
+                                                     : (parent.width - MichiTheme.spacing.md * 2) / 3
                             height: 80
                             serverName: modelData.name || "Servidor externo"
                             serverType: modelData.serverType || modelData.apiType || "API"

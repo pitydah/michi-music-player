@@ -25,7 +25,7 @@ RowLayout {
     Accessible.name: "Library View Selector"
     objectName: "libraryViewSelector"
     focus: true
-            width: 28; height: 28; radius: MichiTheme.radiusXs
+            width: 28; height: 28; radius: MichiTheme.radius.xs
             color: root.currentView === index ? MichiTheme.colors.accentSurface : "transparent"
             border.color: root.currentView === index ? MichiTheme.colors.accentBlue : "transparent"
 

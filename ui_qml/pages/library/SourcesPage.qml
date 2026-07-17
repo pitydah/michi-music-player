@@ -56,7 +56,7 @@ Item {
         ListView {
             Accessible.role: Accessible.List
 
-            Accessible.name: "ListView"
+            Accessible.name: "Lista de fuentes"
 
             activeFocusOnTab: true
 
@@ -113,12 +113,8 @@ Item {
         bridge: root.lib
         Accessible.role: Accessible.Dialog
 
-        Accessible.name: "Popup"
-
+        Accessible.name: "Editar fuente"
         closePolicy: Popup.CloseOnEscape
-
-        activeFocusOnTab: true
-
     }
 
     Popup {
@@ -143,14 +139,10 @@ Item {
 
             Label {
                 text: "¿Eliminar esta fuente de la biblioteca?"
-                color: MichiTheme.colors.textSecondary
-                font.pixelSize: MichiTheme.typography.bodySize
-                wrapMode: Text.WordWrap
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
-                width: parent.width
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    wrapMode: Text.WordWrap
+                    width: parent.width
             }
 
             Row {

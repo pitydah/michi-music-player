@@ -38,7 +38,7 @@ Item {
             width: timelineView.width
             height: 52
             color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-            radius: MichiTheme.radiusSm
+            radius: MichiTheme.radius.sm
 
             Row {
                 anchors.fill: parent

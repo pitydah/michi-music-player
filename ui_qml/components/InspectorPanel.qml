@@ -15,7 +15,7 @@ Item {
     GlassMaterial {
         anchors.fill: parent
         variant: "base"
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
 
         Column {
             anchors.fill: parent

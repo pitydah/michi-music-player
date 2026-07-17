@@ -25,7 +25,7 @@ Item {
         anchors.fill: parent
         anchors.leftMargin: MichiTheme.spacing.sm
         anchors.rightMargin: MichiTheme.spacing.sm
-        radius: MichiTheme.radiusSm
+        radius: MichiTheme.radius.sm
         color: {
             if (root.active) return MichiTheme.colors.accentSelection
             if (root.sidebarHovered) return Qt.rgba(1.0, 1.0, 1.0, 0.04)
@@ -55,7 +55,7 @@ Item {
             Rectangle {
                 width: 28
                 height: 28
-                radius: MichiTheme.radiusXs
+                radius: MichiTheme.radius.xs
                 color: root.active ? MichiTheme.colors.accentSurface : "transparent"
                 anchors.verticalCenter: parent.verticalCenter
                 visible: root.iconSource !== "" || root.iconText !== ""

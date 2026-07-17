@@ -49,9 +49,6 @@ Item {
 
                     MichiButton {
                         Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
                         text: "Continuar escuchando"
                         variant: "primary"
                         onClicked: {
@@ -59,10 +56,6 @@ Item {
                                 navigationBridge.navigate("playback")
                         }
                     }
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
 
                     MichiButton {
                         text: "Explorar"

@@ -68,7 +68,7 @@ Item {
             Rectangle {
                 width: parent.width
                 height: 48
-                radius: MichiTheme.radiusSm
+                radius: MichiTheme.radius.sm
                 color: modelData.selected
                        ? MichiTheme.colors.surfaceSelected
                        : MichiTheme.colors.surfaceCard
@@ -94,7 +94,7 @@ Item {
                     spacing: MichiTheme.spacing.sm
 
                     Rectangle {
-                        width: 18; height: 18; radius: MichiTheme.radiusXs
+                        width: 18; height: 18; radius: MichiTheme.radius.xs
                         anchors.verticalCenter: parent.verticalCenter
                         color: modelData.selected ? MichiTheme.colors.accentBlue : "transparent"
                         border.color: modelData.selected

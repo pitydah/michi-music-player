@@ -102,7 +102,7 @@ Item {
             ListView {
                 Accessible.role: Accessible.List
 
-                Accessible.name: "ListView"
+                Accessible.name: "Álbumes del artista"
 
                 activeFocusOnTab: true
 
@@ -137,12 +137,6 @@ Item {
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor }
                 }
             }
-
-                Accessible.role: Accessible.List
-
-                Accessible.name: "ListView"
-
-                activeFocusOnTab: true
 
             SectionHeader { text: "Canciones"; width: parent.width }
 

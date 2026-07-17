@@ -42,7 +42,7 @@ Item {
         anchors.centerIn: parent
         width: 400
         implicitHeight: dialogColumn.height + MichiTheme.spacing.xl * 2
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         color: MichiTheme.colors.surfacePopup
         border.color: root.destructive ? MichiTheme.colors.error : MichiTheme.colors.borderCard
         border.width: MichiTheme.borderWidth
@@ -80,7 +80,7 @@ Item {
                 Rectangle {
                     width: parent.width
                     height: 28
-                    radius: MichiTheme.radiusXs
+                    radius: MichiTheme.radius.xs
                     color: MichiTheme.colors.surfaceSubtle
 
                     Text {

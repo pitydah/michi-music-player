@@ -9,7 +9,7 @@ Rectangle {
     id: root
 
     property Item control: null
-    property real controlRadius: MichiTheme.radiusSm
+    property real controlRadius: MichiTheme.radius.sm
     property bool keyboardFocusVisible: control ? control.activeFocus : false
 
     anchors.fill: control

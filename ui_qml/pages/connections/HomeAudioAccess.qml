@@ -16,10 +16,10 @@ Item {
 
     GlassMaterial {
         anchors.fill: parent
-        variant: "accent"
+        variant: "primary"
         hovered: mouseArea.containsMouse
         interactive: true
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
 
         MouseArea {
             id: mouseArea
@@ -60,7 +60,7 @@ Item {
 
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Abrir"
-                variant: "accent"
+                variant: "primary"
                 onClicked: root.openHomeAudio()
             }
         }

@@ -22,7 +22,7 @@ Item {
         model: root.results || []
 
         GlassMaterial {
-            width: parent.width; height: 40; radius: MichiTheme.radiusSm; variant: "base"
+            width: parent.width; height: 40; radius: MichiTheme.radius.sm; variant: "base"
             Row {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                 Text { width: parent.width * 0.60; text: modelData.filepath || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }

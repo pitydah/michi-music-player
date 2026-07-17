@@ -75,7 +75,7 @@ Item {
                 model: root.disc ? root.disc.tracks : []
 
                 GlassMaterial {
-                    width: parent.width; height: 36; radius: MichiTheme.radiusSm; variant: "base"
+                    width: parent.width; height: 36; radius: MichiTheme.radius.sm; variant: "base"
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                         Text { width: 30; text: modelData.track || ""; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
@@ -102,7 +102,7 @@ Item {
             }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "status"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "status"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     StatusBadge { text: "Contractual — Sin unidad física no se declara verificado"; kind: "info" }

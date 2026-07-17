@@ -67,7 +67,7 @@ Item {
         anchors.margins: MichiTheme.spacing.md
         width: hintColumn.implicitWidth + MichiTheme.spacing.lg
         height: hintColumn.implicitHeight + MichiTheme.spacing.lg
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         color: MichiTheme.colors.surfacePopup
         border.width: MichiTheme.borderWidth
         border.color: MichiTheme.colors.borderCard

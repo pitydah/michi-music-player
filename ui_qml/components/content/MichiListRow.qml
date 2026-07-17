@@ -36,7 +36,7 @@ FocusScope {
     objectName: "michiListRow"
     focus: true
         anchors.fill: parent
-        radius: MichiTheme.radiusSm
+        radius: MichiTheme.radius.sm
         color: root.selected ? MichiTheme.colors.accentSelection
                              : pointer.hovered ? MichiTheme.colors.surfaceHover : "transparent"
     }
@@ -51,7 +51,7 @@ FocusScope {
         Text { width: parent.width; text: root.subtitle; color: MichiTheme.colors.textSecondary; elide: Text.ElideRight; visible: text !== "" }
     }
     Item { id: trailing; anchors.right: parent.right; width: childrenRect.width; height: parent.height }
-    MichiFocusRing { control: root; controlRadius: MichiTheme.radiusSm }
+    MichiFocusRing { control: root; controlRadius: MichiTheme.radius.sm }
     HoverHandler { id: pointer }
     TapHandler { onTapped: root.clicked(); onDoubleTapped: root.doubleClicked() }
     TapHandler {

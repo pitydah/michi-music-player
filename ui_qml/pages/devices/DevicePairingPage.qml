@@ -33,7 +33,6 @@ Item {
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-        activeFocusOnTab: true
         visible: root.pairingState !== "loading"
 
         Column {
@@ -67,7 +66,7 @@ Item {
                 id: discoveryCard
                 width: parent.width
                 height: discoveryColumn.height + MichiTheme.spacing.xl * 2
-                radius: MichiTheme.radiusMd
+                radius: MichiTheme.radius.md
                 variant: "elevated"
 
                 Column {
@@ -90,8 +89,6 @@ Item {
                         wrapMode: Text.WordWrap
                         width: parent.width
                     }
-
-                        Accessible.role: Accessible.Button
 
                     MichiButton {
                         text: "Escanear red"
@@ -123,7 +120,7 @@ Item {
                         GlassMaterial {
                             width: parent.width
                             height: 56
-                            radius: MichiTheme.radiusSm
+                            radius: MichiTheme.radius.sm
                             variant: "base"
 
                             Row {
@@ -151,10 +148,6 @@ Item {
                                         visible: modelData.ip
                                     }
                                 }
-                                    Accessible.role: Accessible.Button
-
-                                    activeFocusOnTab: true
-
 
                                 MichiButton {
                                     anchors.verticalCenter: parent.verticalCenter
@@ -193,7 +186,7 @@ Item {
                 id: manualConnectionSection
                 width: parent.width
                 height: manualColumn.height + MichiTheme.spacing.xl * 2
-                radius: MichiTheme.radiusMd
+                radius: MichiTheme.radius.md
                 variant: "base"
 
                 Column {
@@ -266,8 +259,6 @@ Item {
                                 font.pixelSize: MichiTheme.typography.metaSize
                             }
 
-                        Accessible.role: Accessible.Button
-
                             TextField {
                                 focusPolicy: Qt.StrongFocus
                                 id: manualAuthField
@@ -309,7 +300,7 @@ Item {
                 id: pairingStatusCard
                 width: parent.width
                 height: statusColumn.height + MichiTheme.spacing.xl * 2
-                radius: MichiTheme.radiusMd
+                radius: MichiTheme.radius.md
                 variant: root.pairingState === "paired" ? "accent" : "base"
                 visible: root.pairingState !== "idle"
 

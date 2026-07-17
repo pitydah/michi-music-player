@@ -58,7 +58,7 @@ Item {
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: 36
                             height: 36
-                            radius: MichiTheme.radiusSm
+                            radius: MichiTheme.radius.sm
                             color: root.selectedMode === index ? MichiTheme.colors.accentSelection : "transparent"
 
                             Text {

@@ -31,7 +31,7 @@ Item {
     Rectangle {
         anchors.centerIn: parent
         width: Math.min(implicitWidth, 420)
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         color: MichiTheme.colors.surfaceCard
         border.width: MichiTheme.borderWidth
         border.color: MichiTheme.colors.badgeWarningBg

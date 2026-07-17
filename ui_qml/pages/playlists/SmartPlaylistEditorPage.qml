@@ -182,7 +182,7 @@ Item {
                     width: parent.width
                     height: ruleColumn.height + MichiTheme.spacing.lg
                     color: MichiTheme.colors.surfaceCard
-                    radius: MichiTheme.radiusMd
+                    radius: MichiTheme.radius.md
                     border.color: MichiTheme.colors.borderCard
                     border.width: 1
 

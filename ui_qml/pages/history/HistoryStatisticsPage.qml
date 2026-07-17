@@ -227,7 +227,7 @@ Drawer {
                     width: parent.width
                     height: 36
                     color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-                    radius: MichiTheme.radiusSm
+                    radius: MichiTheme.radius.sm
 
                     Row {
                         anchors.fill: parent
@@ -331,7 +331,7 @@ Drawer {
                     width: parent.width
                     height: 36
                     color: mouseArea2.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-                    radius: MichiTheme.radiusSm
+                    radius: MichiTheme.radius.sm
 
                     Row {
                         anchors.fill: parent
@@ -403,7 +403,7 @@ Drawer {
                     width: parent.width
                     height: 36
                     color: mouseArea3.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-                    radius: MichiTheme.radiusSm
+                    radius: MichiTheme.radius.sm
 
                     Row {
                         anchors.fill: parent
@@ -467,7 +467,7 @@ Drawer {
                     width: parent.width
                     height: 36
                     color: mouseArea4.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-                    radius: MichiTheme.radiusSm
+                    radius: MichiTheme.radius.sm
 
                     Row {
                         anchors.fill: parent

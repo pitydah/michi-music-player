@@ -17,7 +17,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: MichiTheme.radiusSm
+        radius: MichiTheme.radius.sm
         color: MichiTheme.colors.surfaceCard
 
         Row {
@@ -27,7 +27,7 @@ Item {
             CoverImage {
                 width: 80
                 height: 80
-                coverRadius: MichiTheme.radiusXs
+                coverRadius: MichiTheme.radius.xs
                 coverKey: root.coverKey
             }
 

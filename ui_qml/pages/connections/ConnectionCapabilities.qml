@@ -19,7 +19,7 @@ Item {
         id: glass
         width: parent.width
         height: column.height + MichiTheme.spacing.xl * 2
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         variant: "base"
         visible: root.capabilities.length > 0
 

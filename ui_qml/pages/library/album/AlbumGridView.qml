@@ -20,7 +20,7 @@ Item {
     GridView {
         Accessible.role: Accessible.List
 
-        Accessible.name: "GridView"
+        Accessible.name: "Cuadrícula de álbumes"
 
         activeFocusOnTab: true
 

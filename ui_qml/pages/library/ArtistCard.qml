@@ -18,7 +18,7 @@ Rectangle {
 
     signal clicked()
 
-    radius: MichiTheme.radiusSm
+    radius: MichiTheme.radius.sm
     color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
 
     Accessible.onPressAction: root.clicked()
@@ -29,7 +29,7 @@ Rectangle {
 
         Rectangle {
             width: parent.width; height: parent.width
-            radius: MichiTheme.radiusSm
+            radius: MichiTheme.radius.sm
             color: MichiTheme.colors.surfaceCard
 
             Text {

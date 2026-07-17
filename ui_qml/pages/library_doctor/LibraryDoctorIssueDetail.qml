@@ -21,7 +21,7 @@ Item {
         SectionHeader { text: "Detalle del problema"; width: parent.width }
 
         GlassMaterial {
-            width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
+            width: parent.width; radius: MichiTheme.radius.md; variant: "base"
             visible: root._selectedIssue !== null
             Column {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm

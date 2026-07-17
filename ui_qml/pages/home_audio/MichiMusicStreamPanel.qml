@@ -22,7 +22,7 @@ Item {
             width: parent.width
             height: 80
             variant: "base"
-            radius: MichiTheme.radiusMd
+            radius: MichiTheme.radius.md
 
             Row {
                 anchors.fill: parent

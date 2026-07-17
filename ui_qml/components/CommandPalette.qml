@@ -123,7 +123,7 @@ Item {
         anchors.centerIn: parent
         width: 480
         height: Math.min(420, parent.height * 0.7)
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         color: MichiTheme.colors.surfacePopup
         border.color: MichiTheme.colors.borderCard
         border.width: MichiTheme.borderWidth
@@ -137,7 +137,7 @@ Item {
             Rectangle {
                 width: parent.width
                 height: 40
-                radius: MichiTheme.radiusSm
+                radius: MichiTheme.radius.sm
                 color: MichiTheme.colors.surfaceInput
                 border.color: searchField.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderSubtle
                 border.width: searchField.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
@@ -206,7 +206,7 @@ Item {
                     width: listView.width
                     height: 36
                     color: index === listView.currentIndex ? MichiTheme.colors.accentSelection : "transparent"
-                    radius: MichiTheme.radiusXs
+                    radius: MichiTheme.radius.xs
                     Accessible.description: modelData._unavailable ? "Acción no disponible en el estado actual" : ""
 
                     Rectangle {

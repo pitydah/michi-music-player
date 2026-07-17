@@ -28,8 +28,8 @@ Item {
 
     readonly property int mode: {
         if (availableWidth < 600) return ResponsivePageLayout.NARROW
-        if (availableWidth < MichiTheme.breakpointCompact) return ResponsivePageLayout.COMPACT
-        if (availableWidth < MichiTheme.breakpointWide) return ResponsivePageLayout.STANDARD
+        if (availableWidth < MichiTheme.breakpoints.compact) return ResponsivePageLayout.COMPACT
+        if (availableWidth < MichiTheme.breakpoints.wide) return ResponsivePageLayout.STANDARD
         return ResponsivePageLayout.WIDE
     }
 

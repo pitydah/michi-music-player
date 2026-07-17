@@ -61,7 +61,7 @@ Item {
     Rectangle {
         id: bg
         anchors.fill: parent
-        radius: MichiTheme.radiusSm
+        radius: MichiTheme.radius.sm
         color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
         border.color: root.activeFocus ? MichiTheme.colors.borderFocus : "transparent"
         border.width: root.activeFocus ? MichiTheme.borderWidthFocus : 0
@@ -74,7 +74,7 @@ Item {
             Rectangle {
                 width: 36
                 height: 36
-                radius: MichiTheme.radiusSm
+                radius: MichiTheme.radius.sm
                 anchors.verticalCenter: parent.verticalCenter
                 color: MichiTheme.colors.accentFaint
 

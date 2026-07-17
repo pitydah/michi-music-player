@@ -199,7 +199,7 @@ Item {
             SectionHeader { text: "Opciones de codificación"; width: parent.width; objectName: "codecOptionsHeader"; Accessible.name: "Opciones de codificación" }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "base"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
 
@@ -310,7 +310,7 @@ Item {
 
                             activeFocusOnTab: true
 
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "base"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     Row {
@@ -349,7 +349,7 @@ Item {
             SectionHeader { text: "Opciones de salida"; width: parent.width; objectName: "outputHeader"; Accessible.name: "Opciones de salida" }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "base"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
                     Row {
@@ -368,7 +368,7 @@ Item {
                             placeholderText: "Seleccionar carpeta de salida"
                             font.pixelSize: MichiTheme.typography.bodySize
                             color: MichiTheme.colors.textPrimary
-                            background: Rectangle { color: MichiTheme.colors.surfaceInput; radius: MichiTheme.radiusSm; border.width: parent.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth; border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard }
+                            background: Rectangle { color: MichiTheme.colors.surfaceInput; radius: MichiTheme.radius.sm; border.width: parent.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth; border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard }
                             onTextChanged: root._outputDir = text
                         }
                         MichiButton {
@@ -396,7 +396,7 @@ Item {
                             text: root._namingTemplate
                             font.pixelSize: MichiTheme.typography.bodySize
                             color: MichiTheme.colors.textPrimary
-                            background: Rectangle { color: MichiTheme.colors.surfaceInput; radius: MichiTheme.radiusSm; border.width: parent.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth; border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard }
+                            background: Rectangle { color: MichiTheme.colors.surfaceInput; radius: MichiTheme.radius.sm; border.width: parent.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth; border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard }
                             onTextChanged: root._namingTemplate = text
                         }
                     }
@@ -425,7 +425,7 @@ Item {
             SectionHeader { text: "Previsualización"; width: parent.width; objectName: "previewHeader"; Accessible.name: "Previsualización" }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: root._previewResult ? "accent" : "status"
+                width: parent.width; radius: MichiTheme.radius.md; variant: root._previewResult ? "accent" : "status"
                 height: root._previewResult ? 100 : 60
                 Text {
                     anchors.centerIn: parent
@@ -493,7 +493,7 @@ Item {
             }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "accent"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "primary"
                 visible: root._state === root.stateConverting || root._state === root.stateCancelling || root._state === root.stateCompleted || root._state === root.stateFailed
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm

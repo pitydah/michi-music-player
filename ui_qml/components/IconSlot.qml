@@ -37,7 +37,7 @@ Rectangle {
 
     width: root.iconSize + 16
     height: root.iconSize + 16
-    radius: root.rounded ? width / 2 : MichiTheme.radiusSm
+    radius: root.rounded ? width / 2 : MichiTheme.radius.sm
     color: MichiTheme.colors.surfaceSubtle
 
     Image {

@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../theme"
 import "../../components"
+import "../../components/foundations"
 
 Rectangle {
     Accessible.role: Accessible.Pane
@@ -11,6 +12,8 @@ Rectangle {
     focus: true
     id: root
     width: parent.width; height: 28
+
+    MichiResponsive { id: responsive; availableWidth: root.width }
 
     property var bridge: null
     property string sortKey: "title"
@@ -29,7 +32,11 @@ Rectangle {
         Item { width: 30; height: 1 }
 
         Repeater {
-            model: [
+            model: responsive.compact ? [
+                {label: "Título", key: "title", width: 0.40},
+                {label: "Artista", key: "artist", width: 0.30},
+                {label: "Álbum", key: "album", width: 0.30},
+            ] : [
                 {label: "Título", key: "title", width: 0.28},
                 {label: "Artista", key: "artist", width: 0.22},
                 {label: "Álbum", key: "album", width: 0.22},

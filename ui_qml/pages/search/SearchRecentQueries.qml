@@ -31,7 +31,7 @@ Item {
             model: root.recentQueries
 
             Rectangle {
-                width: parent.width; height: 32; color: "transparent"; radius: MichiTheme.radiusSm
+                width: parent.width; height: 32; color: "transparent"; radius: MichiTheme.radius.sm
                 Text {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm
                     text: modelData; color: MichiTheme.colors.textSecondary

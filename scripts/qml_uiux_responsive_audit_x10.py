@@ -145,6 +145,7 @@ def main():
             return
         for v in all_violations:
             print(f"{v['file']}:{v['line']}  [{v['pattern_type']}]  {v['detail']}")
+        sys.exit(1 if all_violations else 0)
 
 
 if __name__ == "__main__":

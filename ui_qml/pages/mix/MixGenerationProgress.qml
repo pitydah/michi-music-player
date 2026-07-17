@@ -21,7 +21,7 @@ Item {
     implicitHeight: 60
 
     GlassMaterial {
-        anchors.fill: parent; radius: MichiTheme.radiusMd; variant: "subtle"
+        anchors.fill: parent; radius: MichiTheme.radius.md; variant: "subtle"
 
         Row {
             anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.md

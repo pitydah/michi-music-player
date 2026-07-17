@@ -34,7 +34,7 @@ Item {
         MichiButton { text: "← Volver a fuentes"; variant: "ghost"; onClicked: root.backRequested() }
 
         Rectangle {
-            Layout.fillWidth: true; Layout.preferredHeight: 120; radius: MichiTheme.radiusSm
+            Layout.fillWidth: true; Layout.preferredHeight: 120; radius: MichiTheme.radius.sm
             color: MichiTheme.colors.surfaceCard
 
             Column {

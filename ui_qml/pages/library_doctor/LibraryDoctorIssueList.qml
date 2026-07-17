@@ -24,7 +24,7 @@ Item {
             model: root.doc ? root.doc.issues : []
 
             GlassMaterial {
-                width: parent.width; height: 48; radius: MichiTheme.radiusSm
+                width: parent.width; height: 48; radius: MichiTheme.radius.sm
                 variant: modelData.type === "missing_file" ? "danger" :
                          modelData.type === "missing_metadata" ? "warning" :
                          modelData.type === "duplicate_path" ? "warning" : "base"

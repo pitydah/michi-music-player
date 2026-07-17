@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../theme"
 import "../../components"
+import "../../components/foundations"
 import "."
 
 Item {
@@ -15,6 +16,8 @@ Item {
 
     property var devicesBridge: typeof devicesBridge !== "undefined" ? devicesBridge : null
     property var deviceSyncService: devicesBridge
+
+    MichiResponsive { id: responsive; availableWidth: root.width }
 
     PageStateManager {
         id: pageState
@@ -37,11 +40,10 @@ Item {
         Flickable {
             id: flickable
             anchors.fill: parent
-            anchors.margins: MichiTheme.spacing.md
+            anchors.margins: responsive.pageMargin
             contentHeight: column.height + MichiTheme.spacing.xl
             clip: true
             boundsBehavior: Flickable.StopAtBounds
-            activeFocusOnTab: true
 
             Column {
                 id: column
@@ -82,17 +84,25 @@ Item {
                     width: parent.width
                 }
 
-                Repeater {
-                    model: root.devicesBridge ? root.devicesBridge.pairedDevices : []
+                Flow {
+                    id: pairedFlow
+                    width: parent.width
+                    spacing: MichiTheme.spacing.md
 
-                    DeviceCard {
-                        width: parent.width
-                        deviceAlias: modelData.alias || ""
-                        deviceType: modelData.device || "desktop"
-                        paired: true
-                        activeFocusOnTab: true
-                        Keys.onReturnPressed: onClicked()
-                        Keys.onSpacePressed: onClicked()
+                    Repeater {
+                        model: root.devicesBridge ? root.devicesBridge.pairedDevices : []
+
+                        DeviceCard {
+                            width: responsive.compact ? parent.width
+                                 : responsive.medium ? (parent.width - MichiTheme.spacing.md) / 2
+                                                     : (parent.width - MichiTheme.spacing.md * 2) / 3
+                            deviceAlias: modelData.alias || ""
+                            deviceType: modelData.device || "desktop"
+                            paired: true
+                            activeFocusOnTab: true
+                            Keys.onReturnPressed: onClicked()
+                            Keys.onSpacePressed: onClicked()
+                        }
                     }
                 }
 
@@ -109,19 +119,27 @@ Item {
                     width: parent.width
                 }
 
-                Repeater {
-                    model: root.devicesBridge ? root.devicesBridge.peers : []
+                Flow {
+                    id: peersFlow
+                    width: parent.width
+                    spacing: MichiTheme.spacing.md
 
-                    DeviceCard {
-                        width: parent.width
-                        deviceAlias: modelData.alias || ""
-                        deviceIp: modelData.ip || ""
-                        devicePort: modelData.port || 0
-                        deviceType: modelData.device || "desktop"
-                        paired: false
-                        activeFocusOnTab: true
-                        Keys.onReturnPressed: onClicked()
-                        Keys.onSpacePressed: onClicked()
+                    Repeater {
+                        model: root.devicesBridge ? root.devicesBridge.peers : []
+
+                        DeviceCard {
+                            width: responsive.compact ? parent.width
+                                 : responsive.medium ? (parent.width - MichiTheme.spacing.md) / 2
+                                                     : (parent.width - MichiTheme.spacing.md * 2) / 3
+                            deviceAlias: modelData.alias || ""
+                            deviceIp: modelData.ip || ""
+                            devicePort: modelData.port || 0
+                            deviceType: modelData.device || "desktop"
+                            paired: false
+                            activeFocusOnTab: true
+                            Keys.onReturnPressed: onClicked()
+                            Keys.onSpacePressed: onClicked()
+                        }
                     }
                 }
 

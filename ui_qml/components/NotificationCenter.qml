@@ -189,7 +189,7 @@ Rectangle {
 
             highlight: Rectangle {
                 color: MichiTheme.colors.surfaceHover
-                radius: MichiTheme.radiusSm
+                radius: MichiTheme.radius.sm
             }
 
             Keys.onUpPressed: {

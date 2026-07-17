@@ -62,10 +62,6 @@ Item {
                     Text { text: "Elige cómo conectar:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
 
                     MichiButton {
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
                         text: "Buscar en red"
                         variant: "primary"
                         onClicked: {
@@ -77,10 +73,6 @@ Item {
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
                     }
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
 
                     MichiButton {
                         id: manualBtn
@@ -90,10 +82,6 @@ Item {
                         KeyNavigation.tab: cancelBtn0
                         KeyNavigation.backtab: scanBtn
                         Keys.onReturnPressed: onClicked()
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
                         Keys.onSpacePressed: onClicked()
                     }
 
@@ -126,14 +114,10 @@ Item {
                         Accessible.description: "Nombre opcional para identificar el servidor"
 
                         background: Rectangle {
-                            radius: MichiTheme.radiusSm
+                            radius: MichiTheme.radius.sm
                             color: MichiTheme.colors.surfaceInput
                             border.width: parent.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
                             border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
-                            Accessible.role: Accessible.Button
-
-                            activeFocusOnTab: true
-
                         }
                         KeyNavigation.tab: connectBtn1
                         KeyNavigation.backtab: backToStep0
@@ -143,11 +127,7 @@ Item {
                         spacing: MichiTheme.spacing.sm
 
                         MichiButton {
-                            Accessible.role: Accessible.Button
-
                             id: connectBtn1
-                            activeFocusOnTab: true
-
                             text: "Conectar"
                             variant: "primary"
                             onClicked: root.connectRequested(root.discoveredHost, root.discoveredPort, root.serverAlias, "", "")
@@ -156,10 +136,6 @@ Item {
                             Keys.onReturnPressed: onClicked()
                             Keys.onSpacePressed: onClicked()
                         }
-                            Accessible.role: Accessible.Button
-
-                            activeFocusOnTab: true
-
 
                         MichiButton {
                             id: manualBtn1
@@ -169,10 +145,6 @@ Item {
                             KeyNavigation.tab: backToStep0
                             KeyNavigation.backtab: connectBtn1
                             Keys.onReturnPressed: onClicked()
-                            Accessible.role: Accessible.Button
-
-                            activeFocusOnTab: true
-
                             Keys.onSpacePressed: onClicked()
                         }
 
@@ -210,7 +182,6 @@ Item {
                         width: parent.width
                         height: MichiTheme.rowHeightComfortable
                         Accessible.name: "Host o dirección IP"
-                        activeFocusOnTab: true
                         placeholderText: "Host o dirección IP"
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
@@ -221,7 +192,7 @@ Item {
                         Accessible.description: "Dirección IP o nombre de host"
 
                         background: Rectangle {
-                            radius: MichiTheme.radiusSm
+                            radius: MichiTheme.radius.sm
                             color: MichiTheme.colors.surfaceInput
                             border.width: parent.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
                             border.color: root.validationError && !parent.activeFocus ? MichiTheme.colors.error : parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
@@ -234,7 +205,6 @@ Item {
                         id: portField
                         width: parent.width
                         Accessible.name: "Puerto"
-                        activeFocusOnTab: true
                         height: MichiTheme.rowHeightComfortable
                         placeholderText: "Puerto"
                         color: MichiTheme.colors.textPrimary
@@ -248,7 +218,7 @@ Item {
                         Accessible.description: "Número de puerto para la conexión"
 
                         background: Rectangle {
-                            radius: MichiTheme.radiusSm
+                            radius: MichiTheme.radius.sm
                             color: MichiTheme.colors.surfaceInput
                             border.width: parent.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
                             border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
@@ -260,7 +230,6 @@ Item {
                     QQC2.TextField {
                         id: aliasField2
                         Accessible.name: "Alias (opcional)"
-                        activeFocusOnTab: true
                         width: parent.width
                         height: MichiTheme.rowHeightComfortable
                         placeholderText: "Alias (opcional)"
@@ -270,7 +239,7 @@ Item {
                         Accessible.description: "Nombre opcional para identificar el servidor"
 
                         background: Rectangle {
-                            radius: MichiTheme.radiusSm
+                            radius: MichiTheme.radius.sm
                             color: MichiTheme.colors.surfaceInput
                             border.width: parent.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
                             border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
@@ -278,9 +247,6 @@ Item {
                         KeyNavigation.tab: userField
                         KeyNavigation.backtab: portField
                     }
-                        Accessible.role: Accessible.EditableText
-                        Accessible.name: "Usuario"
-                        activeFocusOnTab: true
 
                     Text {
                         text: "Autenticación (opcional)"
@@ -300,7 +266,7 @@ Item {
                         Accessible.description: "Nombre de usuario para autenticación"
 
                         background: Rectangle {
-                            radius: MichiTheme.radiusSm
+                            radius: MichiTheme.radius.sm
                             color: MichiTheme.colors.surfaceInput
                             border.width: parent.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
                             border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
@@ -316,16 +282,12 @@ Item {
                         placeholderText: "Contraseña"
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
-                            Accessible.role: Accessible.Button
-
-                            activeFocusOnTab: true
-
                         echoMode: TextInput.Password
                         onTextChanged: root.authPassword = text
                         Accessible.description: "Contraseña para autenticación"
 
                         background: Rectangle {
-                            radius: MichiTheme.radiusSm
+                            radius: MichiTheme.radius.sm
                             color: MichiTheme.colors.surfaceInput
                             border.width: parent.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
                             border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
@@ -336,10 +298,6 @@ Item {
 
                     Text {
                         text: root.validationError
-                            Accessible.role: Accessible.Button
-
-                            activeFocusOnTab: true
-
                         color: MichiTheme.colors.error
                         font.pixelSize: MichiTheme.typography.captionSize
                         visible: root.validationError !== ""
@@ -356,11 +314,7 @@ Item {
                         spacing: MichiTheme.spacing.sm
 
                         MichiButton {
-                            Accessible.role: Accessible.Button
-
                             id: testBtn
-                            activeFocusOnTab: true
-
                             text: root.testing ? "Probando..." : "Probar conexión"
                             variant: "secondary"
                             enabled: !root.testing && root.manualHost !== ""
@@ -369,10 +323,6 @@ Item {
                                 root.testResult = ""
                                 root.connectRequested(root.manualHost, root.manualPort, root.serverAlias, root.authUser, root.authPassword)
                                 root.testResult = root.manualPort === 53318 ? "Conexión exitosa" : "Error: Puerto rechazado"
-                            Accessible.role: Accessible.Button
-
-                            activeFocusOnTab: true
-
                                 root.testing = false
                             }
                             KeyNavigation.tab: connectBtn2

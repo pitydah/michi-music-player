@@ -238,7 +238,7 @@ def main():
                 f"value={finding['value']}  "
                 f"suggested={finding['suggested_token']}"
             )
-        sys.exit(0 if not all_findings else 0)
+        sys.exit(1 if all_findings else 0)
 
 
 if __name__ == "__main__":

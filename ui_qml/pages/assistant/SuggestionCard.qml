@@ -22,7 +22,7 @@ Item {
 
     GlassMaterial {
         anchors.fill: parent
-        radius: MichiTheme.radiusSm
+        radius: MichiTheme.radius.sm
         hovered: mouseArea.containsMouse
         interactive: true
 

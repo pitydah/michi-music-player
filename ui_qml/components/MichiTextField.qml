@@ -22,7 +22,7 @@ Item {
 
     signal accepted()
     signal textEdited(string newText)
-    signal textChanged(string newText)
+
 
     implicitHeight: fieldBackground.height + (root.label !== "" ? labelText.height + MichiTheme.spacing.xs : 0)
     implicitWidth: 260
@@ -80,7 +80,7 @@ Item {
             activeFocusOnTab: enabled && visible
             verticalAlignment: TextInput.AlignVCenter
 
-            onTextChanged: root.textChanged(text)
+            onTextChanged: root.text = text
             onTextEdited: root.textEdited(text)
             onAccepted: root.accepted()
 

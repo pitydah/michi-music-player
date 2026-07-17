@@ -20,13 +20,13 @@ Rectangle {
     height: active ? 40 : 0
     width: parent ? parent.width : implicitWidth
     color: MichiTheme.colors.warning
-    radius: MichiTheme.radiusSm
+    radius: MichiTheme.radius.sm
     visible: active
     clip: true
 
     Behavior on height {
         NumberAnimation {
-            duration: root.reducedMotion ? 0 : MichiTheme.motionFast
+            duration: root.reducedMotion ? 0 : MichiTheme.motion.durationFast
             easing.type: Easing.OutCubic
         }
     }

@@ -16,7 +16,7 @@ Item {
     visible: root.waveformData !== null
 
     GlassMaterial {
-        width: parent.width; height: 100; radius: MichiTheme.radiusSm; variant: "base"
+        width: parent.width; height: 100; radius: MichiTheme.radius.sm; variant: "base"
         Text {
             anchors.centerIn: parent
             text: root.waveformData ? "Resumen de forma de onda disponible" : "Sin datos de forma de onda"

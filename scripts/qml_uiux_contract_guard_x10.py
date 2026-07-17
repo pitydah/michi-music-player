@@ -11,7 +11,7 @@ import yaml
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 EXCEPTIONS_FILE = os.path.join(PROJECT_ROOT, "docs", "uiux", "X10_UIUX_CONTRACT_EXCEPTIONS.yaml")
-OBJECT_NAMES_REF = None
+OBJECT_NAMES_REF = os.path.join(PROJECT_ROOT, "docs", "uiux", "object_names_reference.txt")
 
 PROTECTED_PATHS = [
     "ui_qml_bridge/",

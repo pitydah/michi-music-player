@@ -39,7 +39,7 @@ Item {
 
                 Rectangle {
                     width: parent.width - MichiTheme.spacing.md
-                    radius: MichiTheme.radiusSm
+                    radius: MichiTheme.radius.sm
                     color: model.role === "user" ? MichiTheme.colors.accentSelection : MichiTheme.colors.surfaceCard
                     border.color: model.role === "user" ? MichiTheme.colors.borderActive : MichiTheme.colors.borderSubtle
                     border.width: MichiTheme.borderWidth

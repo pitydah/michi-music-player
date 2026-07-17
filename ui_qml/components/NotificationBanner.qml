@@ -25,7 +25,7 @@ Rectangle {
     Accessible.description: root.message !== root.title ? root.message : ""
 
     implicitHeight: contentRow.implicitHeight + MichiTheme.spacing.md * 2
-    radius: MichiTheme.radiusMd
+    radius: MichiTheme.radius.md
     color: {
         switch (root.kind) {
             case "success": return Qt.rgba(0.29, 0.87, 0.50, 0.10)
@@ -131,7 +131,7 @@ Rectangle {
             }
 
             background: Rectangle {
-                radius: MichiTheme.radiusSm
+                radius: MichiTheme.radius.sm
                 color: closeBtn.hovered ? MichiTheme.colors.surfaceHover : "transparent"
                 border.width: closeBtn.activeFocus ? MichiTheme.focusWidth : 0
                 border.color: MichiTheme.colors.borderFocus

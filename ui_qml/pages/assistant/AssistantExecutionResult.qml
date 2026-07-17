@@ -26,10 +26,10 @@ Item {
 
     visible: root.resultVisible
     opacity: root.resultVisible ? 1.0 : 0.0
-    Behavior on opacity { NumberAnimation { duration: MichiTheme.motionFast } }
+    Behavior on opacity { NumberAnimation { duration: MichiTheme.motion.durationFast } }
 
     GlassMaterial {
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         variant: status === "failure" ? "danger" : status === "partial" ? "warning" : "base"
 
         Column {
@@ -70,7 +70,7 @@ Item {
             Rectangle {
                 width: parent.width
                 height: 28
-                radius: MichiTheme.radiusXs
+                radius: MichiTheme.radius.xs
                 color: MichiTheme.colors.surfaceSubtle
                 visible: root.detailText !== ""
 

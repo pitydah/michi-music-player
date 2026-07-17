@@ -52,7 +52,6 @@ Item {
             contentHeight: column.height + MichiTheme.spacing.xxl
             clip: true
             boundsBehavior: Flickable.StopAtBounds
-            activeFocusOnTab: true
 
             Column {
                 id: column
@@ -61,9 +60,6 @@ Item {
 
                 MichiButton {
                     Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
                     text: "< Volver"
                     variant: "ghost"
                     onClicked: root.backClicked()
@@ -153,10 +149,6 @@ Item {
 
                 Row {
                     spacing: MichiTheme.spacing.sm
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
 
                     MichiButton {
                         id: reconnectBtn
@@ -164,10 +156,6 @@ Item {
                         variant: "primary"
                         onClicked: root.reconnectClicked()
                         KeyNavigation.tab: disconnectBtn
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
                         KeyNavigation.backtab: errorPanel
                     }
 
@@ -175,10 +163,6 @@ Item {
                         id: disconnectBtn
                         text: "Desconectar"
                         variant: "secondary"
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
                         onClicked: root.disconnectClicked()
                         KeyNavigation.tab: editBtn
                         KeyNavigation.backtab: reconnectBtn
@@ -186,10 +170,6 @@ Item {
 
                     MichiButton {
                         id: editBtn
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
                         text: "Editar"
                         variant: "ghost"
                         onClicked: root.editClicked()

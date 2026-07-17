@@ -117,7 +117,7 @@ Item {
         }
 
         GlassMaterial {
-            width: parent.width; radius: MichiTheme.radiusSm; variant: "base"
+            width: parent.width; radius: MichiTheme.radius.sm; variant: "base"
             visible: root.state === root.stateEmpty
             height: 60
             Text {
@@ -129,7 +129,7 @@ Item {
         }
 
         GlassMaterial {
-            width: parent.width; radius: MichiTheme.radiusSm; variant: "accent"
+            width: parent.width; radius: MichiTheme.radius.sm; variant: "primary"
             visible: root.state === root.stateLoadingMetadata
             height: 60
             Row {
@@ -140,7 +140,7 @@ Item {
         }
 
         GlassMaterial {
-            width: parent.width; radius: MichiTheme.radiusSm; variant: "accent"
+            width: parent.width; radius: MichiTheme.radius.sm; variant: "primary"
             visible: root.state === root.stateHasFiles
             Column {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.xs
@@ -169,7 +169,7 @@ Item {
             model: root.state === root.stateHasFiles ? root.selectedFiles : []
 
             GlassMaterial {
-                width: parent.width; height: 36; radius: MichiTheme.radiusSm; variant: "base"
+                width: parent.width; height: 36; radius: MichiTheme.radius.sm; variant: "base"
                 Row {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm
                     Text {

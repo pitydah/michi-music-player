@@ -24,7 +24,7 @@ QQC2.Popup {
     closePolicy: QQC2.Popup.CloseOnEscape | QQC2.Popup.CloseOnPressOutside
 
     background: Rectangle {
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         color: MichiTheme.colors.surfacePopup
         border.width: MichiTheme.borderWidth
         border.color: MichiTheme.colors.borderCard
@@ -65,7 +65,7 @@ QQC2.Popup {
 
                 Rectangle {
                     anchors.fill: parent
-                    radius: MichiTheme.radiusSm
+                    radius: MichiTheme.radius.sm
                     color: {
                         if (modelData.enabled === false) return "transparent"
                         var isHighlighted = ListView.isCurrentItem

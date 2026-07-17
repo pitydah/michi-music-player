@@ -56,7 +56,7 @@ Item {
             }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "accent"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "primary"
                 Row {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.xl
                     Column { spacing: MichiTheme.spacing.xs
@@ -76,7 +76,7 @@ Item {
                 model: root.jobBr ? root.jobBr.jobs.filter(function(j) { return j.state === "queued" || j.state === "running" || j.state === "cancel_requested" }) : []
 
                 GlassMaterial {
-                    width: parent.width; height: 48; radius: MichiTheme.radiusSm; variant: modelData.state === "failed" ? "danger" : modelData.state === "completed" ? "success" : "base"
+                    width: parent.width; height: 48; radius: MichiTheme.radius.sm; variant: modelData.state === "failed" ? "danger" : modelData.state === "completed" ? "success" : "base"
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                         Text { width: parent.width * 0.30; text: modelData.title || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight }
@@ -94,7 +94,7 @@ Item {
                 model: root.jobBr ? root.jobBr.jobs.filter(function(j) { return j.state === "completed" || j.state === "completed_with_errors" }) : []
 
                 GlassMaterial {
-                    width: parent.width; height: 40; radius: MichiTheme.radiusSm; variant: modelData.state === "completed_with_errors" ? "warning" : "base"
+                    width: parent.width; height: 40; radius: MichiTheme.radius.sm; variant: modelData.state === "completed_with_errors" ? "warning" : "base"
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                         Text { width: parent.width * 0.30; text: modelData.title || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
@@ -110,7 +110,7 @@ Item {
                 model: root.jobBr ? root.jobBr.jobs.filter(function(j) { return j.state === "failed" }) : []
 
                 GlassMaterial {
-                    width: parent.width; height: 40; radius: MichiTheme.radiusSm; variant: "danger"
+                    width: parent.width; height: 40; radius: MichiTheme.radius.sm; variant: "danger"
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                         Text { width: parent.width * 0.30; text: modelData.title || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
@@ -126,7 +126,7 @@ Item {
                 model: root.jobBr ? root.jobBr.jobs.filter(function(j) { return j.state === "cancelled" }) : []
 
                 GlassMaterial {
-                    width: parent.width; height: 36; radius: MichiTheme.radiusSm; variant: "base"
+                    width: parent.width; height: 36; radius: MichiTheme.radius.sm; variant: "base"
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                         Text { width: parent.width * 0.50; text: modelData.title || ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }

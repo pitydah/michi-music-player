@@ -29,7 +29,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: MichiTheme.colors.surfaceCardElevated
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
 
         Rectangle {
             anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter

@@ -30,7 +30,7 @@ Item {
     GlassMaterial {
         width: parent.width
         height: column.height + MichiTheme.spacing.xl * 2
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         variant: "base"
 
         Column {
@@ -98,10 +98,6 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 CheckBox { id: fullSyncCb; checked: root.fullSync; onCheckedChanged: root.fullSync = checked; enabled: !incrementalSyncCb.checked; objectName: "fullSyncCheckBox"; Accessible.name: "Sincronización completa" }
                 Text { text: "Sincronización completa"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
             }
 
             Row {
@@ -117,10 +113,6 @@ Item {
                     text: "Guardar perfil"
                     variant: "primary"
                     onClicked: {
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
                         root.profileSaved(root.deviceKey, {
                             profile_name: root.profileName,
                             transcode_policy: root.transcodePolicy,

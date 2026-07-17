@@ -52,7 +52,7 @@ Item {
             ListView {
                 Accessible.role: Accessible.List
 
-                Accessible.name: "ListView"
+                Accessible.name: "Canciones del género"
 
                 activeFocusOnTab: true
 

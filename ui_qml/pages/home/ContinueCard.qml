@@ -25,7 +25,7 @@ Item {
         anchors.fill: parent
         hovered: mouseArea.containsMouse
         interactive: true
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
 
         MouseArea {
             id: mouseArea
@@ -44,7 +44,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 56
                 height: 56
-                coverRadius: MichiTheme.radiusSm
+                coverRadius: MichiTheme.radius.sm
                 coverKey: root.hasPlayback ? "NOWPLAYING" : ""
                 visible: root.hasPlayback
             }

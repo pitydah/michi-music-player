@@ -79,7 +79,7 @@ Item {
     NumberAnimation on y {
         from: -root.height
         to: 0
-        duration: MichiTheme.motionNormal
+        duration: MichiTheme.motion.durationNormal
         easing.type: Easing.OutCubic
     }
 

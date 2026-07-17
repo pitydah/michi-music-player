@@ -41,7 +41,7 @@ Item {
                 model: root.diag ? root.diag.checks : []
 
                 GlassMaterial {
-                    width: parent.width; height: 36; radius: MichiTheme.radiusSm
+                    width: parent.width; height: 36; radius: MichiTheme.radius.sm
                     variant: modelData.ok ? "base" : "danger"
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
@@ -59,7 +59,7 @@ Item {
             }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "status"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "status"
                 Column { anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     StatusBadge { text: "Experimental"; kind: "experimental" }
                     StatusBadge { text: "Para depuración técnica"; kind: "info" }

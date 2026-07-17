@@ -29,7 +29,7 @@ Item {
 
         GlassMaterial {
             width: parent.width
-            radius: MichiTheme.radiusMd
+            radius: MichiTheme.radius.md
             variant: "danger"
             visible: root.total > 0
 

@@ -16,7 +16,7 @@ Item {
     visible: root.analysisResult !== null
 
     GlassMaterial {
-        width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
+        width: parent.width; radius: MichiTheme.radius.md; variant: "base"
         Column {
             anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
             Text { text: "Reporte técnico"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold }

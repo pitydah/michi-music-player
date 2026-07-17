@@ -22,7 +22,7 @@ Rectangle {
 
     implicitWidth: 180
     implicitHeight: MichiTheme.rowHeightComfortable
-    radius: MichiTheme.radiusSm
+    radius: MichiTheme.radius.sm
     color: MichiTheme.colors.skeletonBase
 
     Accessible.description: message
@@ -30,7 +30,7 @@ Rectangle {
     SequentialAnimation on opacity {
         running: root.busy && !root.reducedMotion
         loops: Animation.Infinite
-        NumberAnimation { from: 0.55; to: 1.0; duration: MichiTheme.motionSlow }
-        NumberAnimation { from: 1.0; to: 0.55; duration: MichiTheme.motionSlow }
+        NumberAnimation { from: 0.55; to: 1.0; duration: MichiTheme.motion.durationSlow }
+        NumberAnimation { from: 1.0; to: 0.55; duration: MichiTheme.motion.durationSlow }
     }
 }

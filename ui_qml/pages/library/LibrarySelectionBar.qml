@@ -23,7 +23,7 @@ Rectangle {
     color: MichiTheme.colors.accentSurface
     border.color: MichiTheme.colors.accentBlue
     border.width: 1
-    radius: MichiTheme.radiusSm
+    radius: MichiTheme.radius.sm
 
     RowLayout {
         anchors.fill: parent

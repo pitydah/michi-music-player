@@ -10,7 +10,7 @@ Item {
 
     property bool focused: false
     property bool hoveredInput: false
-    property int radius: MichiTheme.radiusSm
+    property int radius: MichiTheme.radius.sm
 
     Rectangle {
         anchors.fill: parent

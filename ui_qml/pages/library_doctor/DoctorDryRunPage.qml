@@ -30,7 +30,7 @@ Item {
 
         GlassMaterial {
             width: parent.width
-            radius: MichiTheme.radiusMd
+            radius: MichiTheme.radius.md
             variant: root._running ? "accent" : "base"
             visible: root.doc && root.doc.issues.length > 0
 

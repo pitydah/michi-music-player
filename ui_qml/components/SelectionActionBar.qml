@@ -17,7 +17,7 @@ Rectangle {
     Accessible.description: "Acciones disponibles para elementos seleccionados"
 
     height: root.visible_b ? 56 : 0
-    radius: MichiTheme.radiusMd
+    radius: MichiTheme.radius.md
     color: MichiTheme.colors.surfaceCardElevated
     border.width: MichiTheme.borderWidth
     border.color: MichiTheme.colors.borderCard
@@ -27,7 +27,7 @@ Rectangle {
 
     Behavior on height {
         NumberAnimation {
-            duration: MichiTheme.motionFast
+            duration: MichiTheme.motion.durationFast
             easing.type: Easing.OutCubic
         }
     }

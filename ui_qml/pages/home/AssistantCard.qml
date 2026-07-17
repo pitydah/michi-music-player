@@ -18,7 +18,7 @@ Item {
         anchors.fill: parent
         hovered: mouseArea.containsMouse
         interactive: true
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
 
         MouseArea {
             id: mouseArea

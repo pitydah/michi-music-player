@@ -21,8 +21,8 @@ Item {
     GlassMaterial {
         width: parent.width
         height: column.height + MichiTheme.spacing.xl * 2
-        radius: MichiTheme.radiusMd
-        variant: "accent"
+        radius: MichiTheme.radius.md
+        variant: "primary"
         visible: root.errorText !== ""
 
         Column {
@@ -54,18 +54,10 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 MichiButton {
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
                     text: "Reintentar"
                     variant: "primary"
                     onClicked: root.retryClicked()
                 }
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
 
                 MichiButton {
                     text: "Descartar"

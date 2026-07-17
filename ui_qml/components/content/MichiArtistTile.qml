@@ -30,7 +30,7 @@ FocusScope {
     Keys.onReturnPressed: root.clicked()
     Keys.onSpacePressed: root.clicked()
 
-    Rectangle { anchors.fill: parent; radius: MichiTheme.radiusMd; color: root.selected ? MichiTheme.colors.accentSelection : hover.hovered ? MichiTheme.colors.surfaceHover : MichiTheme.colors.surfaceCard }
+    Rectangle { anchors.fill: parent; radius: MichiTheme.radius.md; color: root.selected ? MichiTheme.colors.accentSelection : hover.hovered ? MichiTheme.colors.surfaceHover : MichiTheme.colors.surfaceCard }
     objectName: "michiArtistTile"
     focus: true
     Image { id: portrait; anchors.horizontalCenter: parent.horizontalCenter; y: MichiTheme.spacing.md; width: parent.width - MichiTheme.spacing.xl; height: width; source: root.coverSource; fillMode: Image.PreserveAspectCrop; visible: source.toString() !== "" }
@@ -40,7 +40,7 @@ FocusScope {
         Text { width: parent.width; text: root.title; color: MichiTheme.colors.textPrimary; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; font.weight: MichiTheme.typography.weightSemiBold }
         Text { width: parent.width; text: root.subtitle; color: MichiTheme.colors.textSecondary; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; visible: text !== "" }
     }
-    MichiFocusRing { control: root; controlRadius: MichiTheme.radiusMd }
+    MichiFocusRing { control: root; controlRadius: MichiTheme.radius.md }
     HoverHandler { id: hover }
     TapHandler { onTapped: root.clicked(); onDoubleTapped: root.doubleClicked() }
     TapHandler { acceptedButtons: Qt.RightButton; onTapped: function(point) { root.contextRequested(point.position.x, point.position.y) } }

@@ -42,7 +42,7 @@ Item {
             Rectangle {
                 width: parent.width
                 height: _showError ? 36 : 0
-                radius: MichiTheme.radiusSm
+                radius: MichiTheme.radius.sm
                 visible: _showError
                 color: MichiTheme.colors.error
                 clip: true

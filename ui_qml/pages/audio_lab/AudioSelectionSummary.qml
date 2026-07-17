@@ -16,7 +16,7 @@ Item {
     visible: root.selection && root.selection.count > 0
 
     GlassMaterial {
-        width: parent.width; radius: MichiTheme.radiusSm; variant: "accent"
+        width: parent.width; radius: MichiTheme.radius.sm; variant: "primary"
         Row {
             anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
             Text {

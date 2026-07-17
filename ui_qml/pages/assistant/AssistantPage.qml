@@ -238,7 +238,7 @@ Item {
                 Rectangle {
                     width: parent.width - MichiTheme.minimumInteractiveSize
                     height: MichiTheme.minimumInteractiveSize
-                    radius: MichiTheme.radiusSm
+                    radius: MichiTheme.radius.sm
                     color: MichiTheme.colors.surfaceInput
                     border.color: chatInput.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderSubtle
                     border.width: chatInput.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth

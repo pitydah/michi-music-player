@@ -31,7 +31,7 @@ Item {
 
         GlassMaterial {
             width: parent.width
-            radius: MichiTheme.radiusMd
+            radius: MichiTheme.radius.md
             variant: root.failedCount > 0 ? "status" : "base"
             visible: root.fixedCount > 0 || root.failedCount > 0 || root.skippedCount > 0
 

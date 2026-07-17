@@ -25,7 +25,7 @@ Rectangle {
     }
 
     implicitHeight: contentColumn.implicitHeight + MichiTheme.spacing.md * 2
-    radius: MichiTheme.radiusMd
+    radius: MichiTheme.radius.md
     color: root.activeFocus ? MichiTheme.colors.surfaceHover : MichiTheme.colors.surfaceCard
     border.width: root.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
     border.color: root.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
@@ -128,7 +128,7 @@ Rectangle {
                 }
 
                 background: Rectangle {
-                    radius: MichiTheme.radiusSm
+                    radius: MichiTheme.radius.sm
                     color: dismissBtn.hovered ? MichiTheme.colors.surfaceHover : "transparent"
                     border.width: dismissBtn.activeFocus ? MichiTheme.focusWidth : 0
                     border.color: MichiTheme.colors.borderFocus

@@ -87,7 +87,7 @@ Item {
 
             Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: 48; height: 48; radius: MichiTheme.radiusMd
+                width: 48; height: 48; radius: MichiTheme.radius.md
                 color: MichiTheme.colors.accentSurface
                 Text {
                     anchors.centerIn: parent; text: "MI"
@@ -117,7 +117,7 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             GlassMaterial {
-                width: parent.width; height: 120; radius: MichiTheme.radiusMd; variant: "base"
+                width: parent.width; height: 120; radius: MichiTheme.radius.md; variant: "base"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     Text { text: root.md ? root.md.trackTitle : "—"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
@@ -127,7 +127,7 @@ Item {
             }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "base"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
 
@@ -173,7 +173,7 @@ Item {
             }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: root._editing ? "accent" : "base"
+                width: parent.width; radius: MichiTheme.radius.md; variant: root._editing ? "accent" : "base"
                 visible: root._editing
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
@@ -203,7 +203,7 @@ Item {
             }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "base"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
                     Text { text: "Acciones"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }

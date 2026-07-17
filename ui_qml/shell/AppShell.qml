@@ -200,7 +200,7 @@ Item {
             MichiButton {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "Reintentar"
-                variant: "accent"
+                variant: "primary"
                 onClicked: pageStack.loadRoute(pageStack.currentRoute)
             }
         }
@@ -242,7 +242,7 @@ Item {
             MichiButton {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "Reintentar"
-                variant: "accent"
+                variant: "primary"
                 onClicked: root.dismissFatal()
             }
         }
