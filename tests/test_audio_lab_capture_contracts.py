@@ -77,10 +77,16 @@ class FakeRipper:
         return {"success": True}
 
 
+class FakeAnalysis:
+    def analyze_file(self, filepath):
+        return {"status": "ok", "filepath": filepath, "format": "flac"}
+
+
 class FakeAudioLabService:
     def __init__(self):
         self.adc_recorder = FakeRecorder()
         self.cd_ripper = FakeRipper()
+        self.analysis = FakeAnalysis()
         self.started = 0
 
     def start(self):
@@ -88,7 +94,7 @@ class FakeAudioLabService:
         return self
 
     def capability_map(self):
-        return {"adc_recording": True, "cd_ripping": True}
+        return {"analysis": True, "adc_recording": True, "cd_ripping": True}
 
     def get_overview_data(self):
         return {"areas": {}, "dependencies": {}, "active_jobs": 0}
@@ -161,7 +167,14 @@ def test_bridge_reuses_same_adc_recorder_for_whole_session(tmp_path):
     assert paused["ok"] is True
     assert marker["ok"] is True
     assert stopped["ok"] is True
-    assert [call[0] for call in recorder.calls] == ["detect", "detect", "start", "pause", "marker", "stop"]
+    assert [call[0] for call in recorder.calls] == [
+        "detect",
+        "detect",
+        "start",
+        "pause",
+        "marker",
+        "stop",
+    ]
 
 
 def test_bridge_area_navigation_uses_registered_routes():
@@ -189,6 +202,28 @@ def test_capture_capabilities_are_truthful():
     }
 
 
+def test_job_result_is_map_for_qml_and_string_compatible_for_legacy_tests():
+    bridge = AudioLabBridge(audio_lab_service=FakeAudioLabService())
+
+    result = bridge.startAnalysis("/tmp/example.flac")
+
+    assert result["ok"] is True
+    assert result["job_id"].startswith("analysis_")
+    assert result.startswith("analysis_")
+    assert bridge.cancelJob(result)["ok"] is True
+
+
+def test_active_jobs_is_qvariant_list_and_callable_for_legacy_contract():
+    bridge = AudioLabBridge(audio_lab_service=FakeAudioLabService())
+    bridge.startAnalysis("/tmp/example.flac")
+
+    jobs = bridge.activeJobs
+
+    assert isinstance(jobs, list)
+    assert isinstance(jobs(), list)
+    assert jobs[0]["job_id"].startswith("analysis_")
+
+
 def test_audio_lab_overview_uses_real_components_and_retry_signal():
     source = Path("ui_qml/pages/audio_lab/AudioLabOverviewPage.qml").read_text(encoding="utf-8")
 
@@ -196,7 +231,16 @@ def test_audio_lab_overview_uses_real_components_and_retry_signal():
     assert "AudioLabAreaCard" in source
     assert "onRetryRequested" in source
     assert "AreaCard {" not in source
-    assert "status:" not in source or "StatusBadge" not in source  # no invalid StatusBadge.status binding
+    assert "StatusBadge {\n                status:" not in source
+
+
+def test_conversion_page_uses_real_selection_and_bridge_methods():
+    source = Path("ui_qml/pages/audio_lab/AudioConversionPage.qml").read_text(encoding="utf-8")
+
+    assert "readonly property var selectedFiles: inputSelection.selectedFiles" in source
+    assert "root.bridge.previewConversion(root.selectedFile, root.selectedFormat)" in source
+    assert "root.bridge.startConversion(root.selectedFile, root.selectedFormat)" in source
+    assert "root.selectedFiles" not in source
 
 
 def test_notification_center_has_real_model_and_timer_contract():
