@@ -3,9 +3,10 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "../../../theme"
-import "../../../components"
+import "../../../../theme"
+import "../../../../components"
 import "delegates"
+import "components"
 
 Item {
     Accessible.role: Accessible.Pane
@@ -59,7 +60,7 @@ Item {
                         width: parent.width - 200
 
                         Text {
-                            text: "Álbum destacado"
+                            text: "Album destacado"
                             color: MichiTheme.colors.accentBlue
                             font.pixelSize: MichiTheme.typography.badgeSize
                             font.weight: MichiTheme.typography.weightSemiBold
@@ -185,7 +186,77 @@ Item {
             }
 
             SectionHeader {
-                text: "Todos los álbumes"
+                text: "Hi-Res"
+                width: parent.width
+            }
+
+            ListView {
+                width: parent.width
+                height: 200
+                orientation: ListView.Horizontal
+                spacing: MichiTheme.spacing.sm
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                snapMode: ListView.SnapToItem
+                model: root.albumModel
+                delegate: Item {
+                    width: 160
+                    height: 180
+
+                    Column {
+                        anchors.fill: parent
+                        spacing: MichiTheme.spacing.xs
+
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: 140
+                            height: 140
+                            radius: MichiTheme.coverRadius
+                            color: MichiTheme.colors.borderInner
+
+                            CoverImage {
+                                anchors.fill: parent
+                                coverRadius: MichiTheme.coverRadius
+                                coverKey: model.albumKey || ""
+                            }
+
+                            AlbumQualityBadge {
+                                anchors.top: parent.top
+                                anchors.right: parent.right
+                                anchors.topMargin: 4
+                                anchors.rightMargin: 4
+                                qualityKind: "hires"
+                            }
+                        }
+
+                        Text {
+                            width: parent.width
+                            text: model.title || ""
+                            color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.metaSize
+                            font.weight: MichiTheme.typography.weightMedium
+                            elide: Text.ElideRight
+                        }
+
+                        Text {
+                            width: parent.width
+                            text: model.artist || ""
+                            color: MichiTheme.colors.textSecondary
+                            font.pixelSize: MichiTheme.typography.captionSize
+                            elide: Text.ElideRight
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.albumClicked(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
+                    }
+                }
+            }
+
+            SectionHeader {
+                text: "Todos los albumes"
                 width: parent.width
             }
 

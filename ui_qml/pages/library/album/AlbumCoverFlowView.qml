@@ -5,8 +5,8 @@
 
 import QtQuick
 import QtQuick.Controls
-import "../../../theme"
-import "../../../components"
+import "../../../../theme"
+import "../../../../components"
 
 Item {
     Accessible.role: Accessible.Pane

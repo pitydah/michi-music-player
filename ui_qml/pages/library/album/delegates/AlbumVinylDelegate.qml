@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import "../../../../theme"
 import "../../../../components"
+import "../components"
 
 Item {
     id: root
@@ -13,6 +14,9 @@ Item {
     property string albumArtist: ""
     property int albumYear: 0
     property int trackCount: 0
+    property string qualityKind: ""
+    property int sampleRate: 0
+    property int bitDepth: 0
 
     signal clicked()
     signal contextRequested(real x, real y)
@@ -31,7 +35,10 @@ Item {
             radius: 60
             color: MichiTheme.colors.borderInner
             border.width: 2
-            border.color: MichiTheme.colors.borderSubtle
+            border.color: hover.hovered ? MichiTheme.colors.accentBlue : MichiTheme.colors.borderSubtle
+            Behavior on border.color {
+                ColorAnimation { duration: MichiTheme.motionNormal; easing.type: Easing.OutQuad }
+            }
 
             Rectangle {
                 anchors.centerIn: parent
@@ -56,6 +63,16 @@ Item {
                 radius: 5
                 color: MichiTheme.colors.borderInner
             }
+
+            AlbumQualityBadge {
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.topMargin: 4
+                anchors.rightMargin: 4
+                qualityKind: root.qualityKind
+                sampleRate: root.sampleRate
+                bitDepth: root.bitDepth
+            }
         }
 
         Text {
@@ -64,11 +81,25 @@ Item {
             width: parent.width
             horizontalAlignment: Text.AlignHCenter
             text: root.albumTitle
-            color: MichiTheme.colors.textPrimary
+            color: root.albumArtist !== "" ? MichiTheme.colors.textPrimary : MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.metaSize
             font.weight: MichiTheme.typography.weightMedium
             elide: Text.ElideRight
         }
+
+        Text {
+            anchors.top: vinylDisc.bottom
+            anchors.topMargin: MichiTheme.spacing.sm + MichiTheme.typography.metaSize
+            width: parent.width
+            horizontalAlignment: Text.AlignHCenter
+            text: root.albumArtist
+            color: MichiTheme.colors.textSecondary
+            font.pixelSize: MichiTheme.typography.captionSize
+            elide: Text.ElideRight
+            visible: text !== ""
+        }
+
+        HoverHandler { id: hover }
 
         MouseArea {
             anchors.fill: parent
@@ -77,12 +108,15 @@ Item {
             onClicked: root.clicked()
             onPressAndHold: root.contextRequested(mouse.x, mouse.y)
             acceptedButtons: Qt.LeftButton | Qt.RightButton
-            onEntered: {
-                vinylDisc.rotation = 0
-            }
-            onExited: {
-                vinylDisc.rotation = 0
-            }
+        }
+
+        NumberAnimation on rotation {
+            id: vinylSpin
+            running: hover.hovered
+            loops: Animation.Infinite
+            from: 0
+            to: 360
+            duration: 4000
         }
     }
 }
