@@ -1,0 +1,215 @@
+"""Tests for AlbumInfoBanner — 3 sections: info, tracks, actions."""
+import pytest; pytest.skip("legacy_widgets removed", allow_module_level=True)
+from unittest.mock import MagicMock
+
+
+from metadata.album_summary import AlbumSummary
+
+
+class TestAlbumInfoBanner:
+    def test_creates_with_default_state(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        assert banner.minimumHeight() == 213
+
+    def test_set_album_summary_shows_info(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        summary = AlbumSummary(
+            album_key="k", title="Dark Side", artist="Pink Floyd",
+            year="1973", genre="Rock", track_count=10, duration=2700.0)
+        banner.set_album_summary(summary)
+        assert "Dark Side" in banner._title_lbl.text()
+
+    def test_set_album_summary_none_clears(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        banner.set_album_summary(None)
+        assert "Sin álbum" in banner._title_lbl.text()
+
+    def test_set_track_list_shows_tracks(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        tracks = []
+        for i in range(4):
+            t = MagicMock()
+            t.title = f"Track {i}"
+            t.duration = 180.0 + i * 10
+            tracks.append(t)
+        banner.set_track_list(tracks)
+        assert len(banner._track_rows) == 4
+
+    def test_set_track_list_more_than_six_shows_remaining(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        banner.show()
+        tracks = []
+        for i in range(8):
+            t = MagicMock()
+            t.title = f"Track {i}"
+            t.duration = 180.0
+            tracks.append(t)
+        banner.set_track_list(tracks)
+        assert banner._more_lbl.isVisible()
+
+    def test_set_track_list_empty_shows_fallback(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        banner.set_track_list([])
+
+    def test_show_source_badge(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        banner.show()
+        summary = AlbumSummary(
+            album_key="k", title="Album", artist="A",
+            source="musicbrainz")
+        banner.set_album_summary(summary)
+        assert banner._source_badge.isVisible()
+
+    def test_hide_source_badge_for_local(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        summary = AlbumSummary(
+            album_key="k", title="Album", artist="A",
+            source="local")
+        banner.set_album_summary(summary)
+        assert not banner._source_badge.isVisible()
+
+    def test_show_genre_badge(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        banner.show()
+        summary = AlbumSummary(
+            album_key="k", title="Album", artist="A",
+            genre="Progressive Rock")
+        banner.set_album_summary(summary)
+        assert banner._genre_badge.isVisible()
+
+    def test_signal_play_requested(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        results = []
+        banner.play_requested.connect(lambda k: results.append(k))
+        summary = AlbumSummary(album_key="k1", title="A", artist="B")
+        banner.set_album_summary(summary)
+        btn = banner._layout.itemAt(2).widget().layout().itemAt(0).widget()
+        btn.click()
+        assert len(results) > 0
+
+    def test_signal_queue_requested(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        results = []
+        banner.queue_requested.connect(lambda k: results.append(k))
+        summary = AlbumSummary(album_key="k1", title="A", artist="B")
+        banner.set_album_summary(summary)
+        btn = banner._layout.itemAt(2).widget().layout().itemAt(1).widget()
+        btn.click()
+        assert len(results) > 0
+
+    def test_signal_details_requested(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        results = []
+        banner.details_requested.connect(lambda k: results.append(k))
+        summary = AlbumSummary(album_key="k1", title="A", artist="B")
+        banner.set_album_summary(summary)
+        btn = banner._layout.itemAt(2).widget().layout().itemAt(2).widget()
+        btn.click()
+        assert len(results) > 0
+
+    def test_clear_resets_all(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        summary = AlbumSummary(album_key="k", title="Title", artist="Artist")
+        banner.set_album_summary(summary)
+        banner.clear()
+        assert "Sin álbum" in banner._title_lbl.text()
+
+    def test_set_loading_state(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        banner.set_loading_state("loading")
+        assert "Cargando" in banner._title_lbl.text()
+
+    def test_compact_mode(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        banner.set_compact_mode(True)
+        assert banner._compact is True
+
+    def test_fmt_dur(self):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        assert AlbumInfoBanner._fmt_dur(0) == ""
+        assert AlbumInfoBanner._fmt_dur(60) == "1:00"
+        assert AlbumInfoBanner._fmt_dur(3661) == "1:01:01"
+
+    def test_set_cover_pixmap(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        from PySide6.QtGui import QPixmap
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        pix = QPixmap(100, 100)
+        pix.fill(0xFF0000)
+        banner.set_cover_pixmap(pix)
+        assert banner._cover_lbl.pixmap() is not None
+
+    def test_set_cover_pixmap_null_ignored(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        from PySide6.QtGui import QPixmap
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        banner.set_cover_pixmap(QPixmap())
+
+    def test_track_row_has_number_and_name(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        tracks = []
+        for i in range(3):
+            t = MagicMock()
+            t.title = f"Track {i}"
+            t.duration = 180.0
+            t.filepath = f"/path/{i}.flac"
+            tracks.append(t)
+        banner.set_track_list(tracks)
+        assert len(banner._track_rows) == 3
+
+    def test_track_row_click_emits_filepath(self, qtbot):
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
+        from PySide6.QtCore import QEvent, QPointF, Qt
+        from PySide6.QtGui import QMouseEvent
+        banner = AlbumInfoBanner()
+        qtbot.addWidget(banner)
+        tracks = []
+        for _ in range(1):
+            t = MagicMock()
+            t.title = "Song"
+            t.duration = 180.0
+            t.filepath = "/path/song.flac"
+            tracks.append(t)
+        results = []
+        banner.track_clicked.connect(lambda f: results.append(f))
+        banner.set_track_list(tracks)
+        row = banner._track_rows[0]
+        ev = QMouseEvent(QEvent.MouseButtonPress, QPointF(0, 0), QPointF(0, 0),
+                         Qt.NoButton, Qt.MouseButton.LeftButton, Qt.NoModifier)
+        row.mousePressEvent(ev)
+        assert len(results) == 1
+        assert results[0] == "/path/song.flac"

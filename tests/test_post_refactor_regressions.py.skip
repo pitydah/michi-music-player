@@ -1,0 +1,82 @@
+"""Regression tests — verify no regressions from the Inicio refactor.
+import pytest; pytest.skip("legacy_widgets removed", allow_module_level=True)
+
+Heads-up: tests creating HomePage without qtbot will SEGFAULT on Qt init.
+Run them with pytest-qt only when a qtbot fixture is used.
+"""
+from __future__ import annotations
+
+
+class TestNoHeavyImports:
+    def test_home_page_does_not_import_heavy_services(self):
+        import sys
+
+        heavy_modules = [
+            "gstreamer",
+            "PySide6.QtMultimedia",
+            "shazamio",
+            "pyaudio",
+            "librosa",
+        ]
+        for mod in heavy_modules:
+            assert mod not in sys.modules
+
+
+class TestNavigationRoutesValid:
+    VALID_ROUTES = {
+        "home", "library_hub", "playback_hub", "audio_lab",
+        "audio_lab_output", "audio_lab_diagnostics", "audio_lab_artwork",
+        "audio_lab_intelligence", "connections_hub", "metadata_editor",
+        "assistant", "mix_hub", "devices_page",
+    }
+
+    def test_home_emits_valid_routes(self, qtbot):
+        from legacy_widgets.ui.hubs.home_page import HomePage
+
+        page = HomePage()
+        qtbot.addWidget(page)
+        emitted = []
+
+        def capture(route):
+            emitted.append(route)
+
+        page.navigation_requested.connect(capture)
+
+        for route in self.VALID_ROUTES:
+            page.navigation_requested.emit(route)
+
+        for route in emitted:
+            assert route in self.VALID_ROUTES, f"Route '{route}' not in NAV_ROUTES"
+
+
+class TestSafeModeCompatibility:
+    def test_safe_mode_badge_text(self, qtbot):
+        from legacy_widgets.ui.hubs.home_page import HomePage
+
+        page = HomePage()
+        qtbot.addWidget(page)
+        page.render_snapshot(
+            {
+                "overall_state": "safe_mode",
+                "headline": "Michi está en modo seguro",
+                "library_health": {"track_count": 100},
+                "playback": {},
+            }
+        )
+        assert page._headline.text() == "Michi está en modo seguro"
+
+
+class TestPartialFailure:
+    def test_home_page_handles_no_db(self, qtbot):
+        from legacy_widgets.ui.hubs.home_page import HomePage
+
+        page = HomePage()
+        qtbot.addWidget(page)
+        snap = {
+            "overall_state": "ready",
+            "headline": "Michi está listo",
+            "library_health": {"track_count": 0},
+            "playback": {},
+        }
+        page.render_snapshot(snap)
+        assert page._headline.text() == "Michi está listo"

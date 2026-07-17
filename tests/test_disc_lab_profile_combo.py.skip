@@ -1,0 +1,110 @@
+"""Tests: Disc Lab profile combo and EncoderService error cleanup."""
+import pytest; pytest.skip("legacy_widgets removed", allow_module_level=True)
+
+from unittest.mock import MagicMock, patch
+
+import pytest
+from PySide6.QtCore import Qt, QProcess
+from PySide6.QtGui import QPixmap
+
+
+def _pix():
+    pix = QPixmap(1, 1)
+    pix.fill(Qt.transparent)
+    return pix
+
+
+class TestDiscLabProfileCombo:
+
+    def test_rip_profiles_have_available_flag(self):
+        from legacy_widgets.ui_archive.audio_lab.models import RIP_PROFILES
+        assert len(RIP_PROFILES) > 0
+        has_available = any(p.available for p in RIP_PROFILES)
+        has_unavailable = any(not p.available for p in RIP_PROFILES)
+        assert has_available
+        assert has_unavailable
+
+    def test_rip_profiles_have_format(self):
+        from legacy_widgets.ui_archive.audio_lab.models import RIP_PROFILES
+        for p in RIP_PROFILES:
+            assert p.fmt, f"Profile {p.name} has no format"
+
+    def test_first_available_is_wav(self):
+        from legacy_widgets.ui_archive.audio_lab.models import RIP_PROFILES
+        available = [p for p in RIP_PROFILES if p.available]
+        assert len(available) > 0
+        assert available[0].fmt == "wav", (
+            f"First available profile should be WAV, got {available[0].fmt}"
+        )
+
+    def test_unavailable_profiles_have_no_usable_fmt_as_currentData(self):
+        from legacy_widgets.ui_archive.audio_lab.models import RIP_PROFILES
+        for p in RIP_PROFILES:
+            if not p.available:
+                assert p.fmt  # fmt is informational, not executable
+
+    @patch("ui.audio_lab.michi_disc_lab_page.apply_card_shadow")
+    @patch("ui.audio_lab.michi_disc_lab_page.check_all_tools")
+    @patch("ui.audio_lab.michi_disc_lab_page.DiscDetectionService")
+    @patch("ui.audio_lab.michi_disc_lab_page.RipJobManager")
+    @patch("ui.audio_lab.michi_disc_lab_page.EncoderService")
+    def test_unavailable_profiles_are_disabled_in_combo(
+        self, mock_enc, mock_rip, mock_det, mock_tools, mock_shadow, qtbot
+    ):
+        from legacy_widgets.ui.audio_lab.michi_disc_lab_page import MichiDiscLabPage
+        from legacy_widgets.ui_archive.audio_lab.models import RIP_PROFILES
+
+        mock_tools.return_value = {}
+        mock_det.return_value = MagicMock()
+        mock_rip.return_value = MagicMock()
+        mock_enc.return_value = MagicMock()
+
+        page = MichiDiscLabPage()
+        qtbot.addWidget(page)
+
+        combo = page._profile_combo
+        model = combo.model()
+
+        available_count = sum(1 for p in RIP_PROFILES if p.available)
+        unavailable_count = sum(1 for p in RIP_PROFILES if not p.available)
+
+        assert combo.count() == len(RIP_PROFILES)
+        assert combo.count() == available_count + unavailable_count
+
+        for i in range(combo.count()):
+            item = model.item(i)
+            if i < available_count:
+                assert item.isEnabled(), (
+                    f"Item {i} should be enabled"
+                )
+            else:
+                assert not item.isEnabled(), (
+                    f"Item {i} should be disabled"
+                )
+
+
+class TestEncoderServiceErrors:
+
+    @pytest.fixture
+    def encoder(self):
+        from legacy_widgets.ui.audio_lab.services.encoder_service import EncoderService
+        return EncoderService()
+
+    def test_failed_to_start_cleans_up_process(self, encoder):
+        mock_proc = MagicMock(spec=QProcess)
+        encoder._processes = [mock_proc]
+        encoder._on_encoder_error(QProcess.FailedToStart, "/tmp/a.wav", mock_proc)
+        assert mock_proc not in encoder._processes
+
+    def test_encoder_error_emitted(self, encoder):
+        errors = []
+        encoder.encode_error.connect(lambda ip, msg: errors.append((ip, msg)))
+        encoder._on_encoder_error(QProcess.FailedToStart, "/tmp/a.wav")
+        assert len(errors) == 1
+
+    def test_no_zombie_process_after_error(self, encoder):
+        mock_proc = MagicMock(spec=QProcess)
+        encoder._processes = [mock_proc]
+        initial_count = len(encoder._processes)
+        encoder._on_encoder_error(QProcess.Crashed, "/tmp/a.wav", mock_proc)
+        assert len(encoder._processes) < initial_count

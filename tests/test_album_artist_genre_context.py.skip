@@ -1,0 +1,121 @@
+"""Tests: Album/Artist/Genre controllers use scope and clean incompatible fields."""
+import pytest; pytest.skip("legacy_widgets removed", allow_module_level=True)
+
+from unittest.mock import MagicMock
+
+
+class DummyTrack:
+    filepath = "/music/song.flac"
+    title = "Song"
+    artist = "Artist"
+    album = "Album"
+    genre = "Rock"
+    duration = 180
+    year = 2000
+    ext = ".flac"
+
+
+class DummyCoverItem:
+    title = "Album"
+    subtitle = "Artist"
+    pixmap = None
+    data = {"tracks": [DummyTrack()]}
+
+
+class DummyArtistGroup:
+    display_name = "Artist"
+    album_count = 2
+    track_count = 10
+    total_duration = 3600
+
+
+class DummyGenre:
+    name = "Rock"
+    track_count = 10
+    artist_count = 3
+    album_count = 4
+
+
+def _make_win(ctx_svc=None):
+    win = MagicMock()
+    win._context_svc = ctx_svc
+    win._ctx.context_svc = ctx_svc
+    win._nav_ctrl.checkpoint = MagicMock()
+    win._count = MagicMock()
+    win._albums_stack = MagicMock()
+    win._album_detail_view = MagicMock()
+    win._all_items = [DummyTrack()]
+    win._items_index = {DummyTrack.filepath: DummyTrack()}
+    return win
+
+
+class TestAlbumControllerContext:
+
+    def test_show_album_detail_uses_scope_album(self):
+        ctx_svc = MagicMock()
+        win = _make_win(ctx_svc)
+
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
+        ctrl = AlbumController(win)
+        ctrl.show_album_detail_from_cover_item(DummyCoverItem())
+
+        ctx_svc.update_selection.assert_called_once()
+        kwargs = ctx_svc.update_selection.call_args[1]
+        assert kwargs["scope"] == "album"
+        assert kwargs["album"] == "Album"
+        assert kwargs["artist"] == "Artist"
+        assert kwargs["genre"] == ""
+        assert kwargs["playlist_name"] == ""
+        assert kwargs["folder_name"] == ""
+        assert kwargs["mix_key"] == ""
+        assert kwargs["search_query"] == ""
+
+
+class TestArtistControllerContext:
+
+    def test_open_artist_detail_uses_scope_artist(self):
+        ctx_svc = MagicMock()
+        win = _make_win(ctx_svc)
+        win._artists_stack = MagicMock()
+
+        from legacy_widgets.ui.controllers.legacy_controllers.artist_controller import ArtistController
+        ctrl = ArtistController(win)
+        ctrl._ctx.artist_repo.get_group = MagicMock(return_value=DummyArtistGroup())
+        ctrl._ctx.artist_detail = MagicMock()
+        ctrl._ctx.section_title = MagicMock()
+        ctrl._ctx.section_subtitle = MagicMock()
+        ctrl._ctx.view_switcher = MagicMock()
+
+        ctrl.open_artist_detail("artist_key")
+
+        ctx_svc.update_selection.assert_called_once()
+        kwargs = ctx_svc.update_selection.call_args[1]
+        assert kwargs["scope"] == "artist"
+        assert kwargs["artist"] == "Artist"
+        assert kwargs["album"] == ""
+        assert kwargs["genre"] == ""
+
+
+class TestGenreControllerContext:
+
+    def test_open_genre_detail_uses_scope_genre(self):
+        ctx_svc = MagicMock()
+        win = _make_win(ctx_svc)
+        win._genres_stack = MagicMock()
+
+        from legacy_widgets.ui.controllers.legacy_controllers.genre_controller import GenreController
+        ctrl = GenreController(win)
+        ctrl._ctx.genre_repo.get_group = MagicMock(return_value=DummyGenre())
+        ctrl._detail = MagicMock()
+        ctrl._ctx.section_title = MagicMock()
+        ctrl._ctx.section_subtitle = MagicMock()
+        ctrl._ctx.view_switcher = MagicMock()
+
+        ctrl.open_genre_detail("genre_key")
+
+        ctx_svc.update_selection.assert_called_once()
+        kwargs = ctx_svc.update_selection.call_args[1]
+        assert kwargs["scope"] == "genre"
+        assert kwargs["genre"] == "Rock"
+        assert kwargs["album"] == ""
+        assert kwargs["artist"] == ""

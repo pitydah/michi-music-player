@@ -1,0 +1,173 @@
+"""Tests for ArtworkResolver — local cover detection and ranking."""
+import pytest; pytest.skip("legacy_widgets removed", allow_module_level=True)
+import os
+import tempfile
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from legacy_widgets.ui.audio_lab.services.artwork_resolver import ArtworkResolver
+
+
+def _create_fake_jpeg(path: str, w: int = 500, h: int = 500):
+    """Create a minimal JPEG-like file with dimensions in SOF."""
+    import struct
+    data = bytearray()
+    data += b"\xff\xd8\xff\xe0"  # SOI + APP0
+    data += b"\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
+    sof = bytearray()
+    sof += b"\xff\xc0"
+    sof += b"\x00\x0b"
+    sof += b"\x08"
+    sof += struct.pack(">HH", h, w)
+    sof += b"\x03"
+    sof += b"\x01\x22\x00\x02\x11\x01\x03\x11\x01"
+    data += sof
+    # Pad to minimum size for artwork detection
+    data += b"\xff\xda" + b"\x00" * max(1200 - len(data), 0)
+    data += b"\xff\xd9"
+    with open(path, "wb") as f:
+        f.write(bytes(data))
+
+
+def _create_fake_png(path: str):
+    """Create a minimal valid PNG file (padded to minimum artwork size)."""
+    import struct
+    import zlib
+    width, height = 500, 500
+    raw_data = b"\x00" + b"\xff" * (width * 3)
+
+    def chunk(ctype, data):
+        c = ctype + data
+        return struct.pack(">I", len(data)) + c + struct.pack(">I", zlib.crc32(c) & 0xffffffff)
+
+    with open(path, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n")
+        ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+        f.write(chunk(b"IHDR", ihdr))
+        f.write(chunk(b"IDAT", zlib.compress(raw_data)))
+        f.write(chunk(b"IEND", b""))
+    # Pad to minimum 2KB
+    with open(path, "ab") as f:
+        f.write(b"\x00" * 2000)
+
+
+class TestArtworkResolver:
+    @pytest.fixture
+    def resolver(self):
+        return ArtworkResolver()
+
+    @pytest.fixture
+    def album_dir(self):
+        tmpdir = tempfile.mkdtemp()
+        yield tmpdir
+        import shutil
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+    def test_available(self, resolver):
+        assert resolver.available is True
+
+    def test_search_empty_folder(self, resolver):
+        tmpdir = tempfile.mkdtemp()
+        try:
+            results = resolver.search_album_art({"folder": tmpdir})
+            assert results == []
+        finally:
+            import shutil
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    def test_search_missing_folder(self, resolver):
+        results = resolver.search_album_art({"folder": "/nonexistent/path"})
+        assert results == []
+
+    def test_detects_cover_jpg(self, resolver, album_dir):
+        _create_fake_jpeg(os.path.join(album_dir, "cover.jpg"))
+        results = resolver.search_album_art({"folder": album_dir})
+        assert len(results) == 1
+        assert results[0]["source"] == "local"
+        assert results[0]["filename"] == "cover.jpg"
+        assert results[0]["score"] >= 90
+
+    def test_detects_folder_png(self, resolver, album_dir):
+        _create_fake_png(os.path.join(album_dir, "folder.png"))
+        results = resolver.search_album_art({"folder": album_dir})
+        assert len(results) == 1
+        assert results[0]["filename"] == "folder.png"
+        assert results[0]["score"] >= 80
+
+    def test_detects_front_jpg(self, resolver, album_dir):
+        _create_fake_jpeg(os.path.join(album_dir, "front.jpeg"), 400, 400)
+        results = resolver.search_album_art({"folder": album_dir})
+        assert len(results) == 1
+        assert results[0]["score"] >= 70
+
+    def test_ignores_non_image_files(self, resolver, album_dir):
+        open(os.path.join(album_dir, "track01.flac"), "w").close()
+        open(os.path.join(album_dir, "notes.txt"), "w").close()
+        _create_fake_jpeg(os.path.join(album_dir, "cover.jpg"))
+        results = resolver.search_album_art({"folder": album_dir})
+        assert len(results) == 1
+
+    def test_AlbumArtSmall_low_score(self, resolver, album_dir):
+        _create_fake_jpeg(os.path.join(album_dir, "AlbumArtSmall.jpg"), 75, 75)
+        results = resolver.search_album_art({"folder": album_dir})
+        assert len(results) == 1
+        assert results[0]["score"] <= 10
+
+    def test_rank_prefers_large_square(self, resolver):
+        results = [
+            {"source": "local", "path": "/a.jpg", "filename": "cover.jpg",
+             "width": 500, "height": 500, "score": 100, "mime": "image/jpeg", "size": 50000},
+            {"source": "local", "path": "/b.jpg", "filename": "folder.jpg",
+             "width": 200, "height": 150, "score": 90, "mime": "image/jpeg", "size": 30000},
+        ]
+        ranked = resolver.rank_artwork_quality(results)
+        assert ranked[0]["filename"] == "cover.jpg"
+        assert ranked[1]["filename"] == "folder.jpg"
+
+    def test_rank_penalizes_thumbnails(self, resolver):
+        results = [
+            {"source": "local", "path": "/c.jpg", "filename": "cover.jpg",
+             "width": 100, "height": 100, "score": 100, "mime": "image/jpeg", "size": 5000},
+            {"source": "local", "path": "/d.jpg", "filename": "folder.jpg",
+             "width": 600, "height": 600, "score": 90, "mime": "image/jpeg", "size": 80000},
+        ]
+        ranked = resolver.rank_artwork_quality(results)
+        assert ranked[0]["filename"] == "folder.jpg"
+
+    def test_save_cover_copies_file(self, resolver, album_dir):
+        src = os.path.join(album_dir, "source.jpg")
+        dest_dir = os.path.join(album_dir, "album")
+        _create_fake_jpeg(src)
+        resolver.save_cover_file(src, dest_dir)
+        assert os.path.isfile(os.path.join(dest_dir, "cover.jpg"))
+
+    def test_save_cover_no_overwrite(self, resolver, album_dir):
+        src = os.path.join(album_dir, "a.jpg")
+        dest_dir = os.path.join(album_dir, "album")
+        _create_fake_jpeg(src)
+        resolver.save_cover_file(src, dest_dir)
+        mtime1 = os.path.getmtime(os.path.join(dest_dir, "cover.jpg"))
+        _create_fake_jpeg(src)  # create different source
+        resolver.save_cover_file(src, dest_dir, overwrite=False)
+        mtime2 = os.path.getmtime(os.path.join(dest_dir, "cover.jpg"))
+        assert mtime1 == mtime2  # not overwritten
+
+    def test_embed_cover_delegates_to_tagwriter(self, resolver, album_dir):
+        audio = os.path.join(album_dir, "test.flac")
+        cover = os.path.join(album_dir, "cover.jpg")
+        open(audio, "w").close()
+        _create_fake_jpeg(cover)
+
+        mock_writer = MagicMock()
+        with patch("ui.audio_lab.services.tag_writer.TagWriter", return_value=mock_writer):
+            resolver.embed_cover(audio, cover)
+            mock_writer.embed_cover.assert_called_once_with(audio, cover)
+
+    def test_download_cover_raises_not_implemented(self, resolver):
+        with pytest.raises(NotImplementedError, match="not yet implemented"):
+            resolver.download_cover("http://example.com/cover.jpg", "/tmp/out.jpg")
+
+    def test_save_cover_missing_source(self, resolver):
+        with pytest.raises(FileNotFoundError):
+            resolver.save_cover_file("/nonexistent.jpg", "/tmp/out")

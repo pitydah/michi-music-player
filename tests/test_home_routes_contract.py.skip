@@ -1,0 +1,183 @@
+"""Contract tests — every route emitted from Home must exist in NAV_ROUTES."""
+import pytest; pytest.skip("legacy_widgets removed", allow_module_level=True)
+from __future__ import annotations
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QPushButton
+
+from core.home.home_status import (
+    AssistantSuggestion,
+    AudioHomeStatus,
+    EcosystemHomeStatus,
+    HomeAlert,
+    HomeDashboardSnapshot,
+    LibraryHomeStatus,
+    PlaybackHomeStatus,
+)
+from legacy_widgets.ui.hubs.home_page import HomePage
+
+
+class TestHomeRoutesContract:
+    NAV_ROUTES = {
+        "home", "library_hub", "playback_hub", "audio_lab",
+        "audio_lab_output", "audio_lab_diagnostics", "audio_lab_artwork",
+        "audio_lab_intelligence", "connections_hub", "metadata_editor",
+        "assistant", "mix_hub", "devices_page",
+    }
+
+    ROUTE_BY_BUTTON = {
+        "homeContinueButton": "playback_hub",
+        "homeQueueButton": "playback_hub",
+        "homeExploreLibraryButton": "library_hub",
+        "homeCreateMixButton": "mix_hub",
+        "homeViewLibraryButton": "library_hub",
+        "homeReviewProblemsButton": "audio_lab_diagnostics",
+        "homeAudioOutputButton": "audio_lab_output",
+        "homeAudioLabButton": "audio_lab",
+        "homeConnectServerButton": "connections_hub",
+        "homeSyncMobileButton": "devices_page",
+        "homeConnectionDiagnosticsButton": "connections_hub",
+        "homeAssistantOpenButton": "assistant",
+    }
+
+    @staticmethod
+    def _make_snapshot(
+        alerts: list | None = None,
+        suggestions: list | None = None,
+        actions: list | None = None,
+        micro_state: str = "disconnected",
+        has_playback: bool = True,
+    ) -> HomeDashboardSnapshot:
+        return HomeDashboardSnapshot(
+            overall_state="ready",
+            headline="Michi está listo",
+            subtitle="100 canciones",
+            library=LibraryHomeStatus(
+                track_count=100, album_count=10, artist_count=5,
+                genre_count=3, active_roots_count=1, last_scan="today",
+                index_error_count=0, missing_file_count=0,
+                missing_metadata_count=0, missing_cover_count=0,
+                tracks_without_audio_features=0, new_tracks_count=0,
+                is_empty=False, is_healthy=True,
+            ),
+            playback=PlaybackHomeStatus(
+                has_current_track=has_playback,
+                current_title="Test Song" if has_playback else "",
+                current_artist="Artist" if has_playback else "",
+                state="playing" if has_playback else "stopped",
+                queue_active=True,
+                queue_count=5,
+                can_continue=has_playback,
+            ),
+            audio=AudioHomeStatus(
+                output_device="USB DAC",
+                output_profile="hifi_pcm",
+                dac_active=True,
+            ),
+            ecosystem=EcosystemHomeStatus(
+                micro_server_state=micro_state,
+                micro_server_name="MyServer" if micro_state == "connected" else "",
+                diagnostics_available=micro_state == "connected",
+            ),
+            alerts=alerts or [],
+            assistant_suggestions=suggestions or [],
+            actions=actions or [],
+            errors=[],
+        )
+
+    def test_all_nav_routes_valid(self, qtbot):
+        page = HomePage()
+        qtbot.addWidget(page)
+        page.show()
+        emitted = set()
+
+        def capture(route):
+            emitted.add(route)
+
+        page.navigation_requested.connect(capture)
+
+        for route in self.NAV_ROUTES:
+            page.navigation_requested.emit(route)
+
+        for route in emitted:
+            assert route in self.NAV_ROUTES, f"Route '{route}' not in NAV_ROUTES"
+
+    def test_buttons_emit_correct_routes(self, qtbot):
+        page = HomePage()
+        qtbot.addWidget(page)
+        page.show()
+        snap = self._make_snapshot(
+            alerts=[
+                HomeAlert(
+                    severity="critical", kind="index_errors",
+                    title="Error", message="test",
+                    target_route="audio_lab_diagnostics", action_label="Revisar",
+                ),
+            ],
+            suggestions=[
+                AssistantSuggestion(
+                    title="Sugerencia", target_route="metadata_editor",
+                ),
+            ],
+        )
+        page.render_snapshot(snap)
+        emitted = []
+        page.navigation_requested.connect(lambda r: emitted.append(r))
+
+        for obj_name, expected_route in self.ROUTE_BY_BUTTON.items():
+            btn = page.findChild(QPushButton, obj_name)
+            if btn and btn.isVisible():
+                qtbot.mouseClick(btn, Qt.LeftButton)
+                assert expected_route in emitted, (
+                    f"Button '{obj_name}' should emit '{expected_route}', got {emitted}"
+                )
+                emitted.clear()
+
+    def test_connect_server_for_not_configured(self, qtbot):
+        page = HomePage()
+        qtbot.addWidget(page)
+        page.show()
+        snap = self._make_snapshot(micro_state="not_configured")
+        page.render_snapshot(snap)
+        btn = page.findChild(QPushButton, "homeConnectServerButton")
+        assert btn is not None
+        emitted = []
+        page.navigation_requested.connect(lambda r: emitted.append(r))
+        btn.click()
+        assert "connections_hub" in emitted
+
+    def test_connect_server_for_unreachable(self, qtbot):
+        page = HomePage()
+        qtbot.addWidget(page)
+        page.show()
+        snap = self._make_snapshot(micro_state="unreachable")
+        page.render_snapshot(snap)
+        btn = page.findChild(QPushButton, "homeConnectServerButton")
+        assert btn is not None
+
+    def test_connect_server_for_requires_pairing(self, qtbot):
+        page = HomePage()
+        qtbot.addWidget(page)
+        page.show()
+        snap = self._make_snapshot(micro_state="requires_pairing")
+        page.render_snapshot(snap)
+        btn = page.findChild(QPushButton, "homeConnectServerButton")
+        assert btn is not None
+
+    def test_connect_server_for_contract_error(self, qtbot):
+        page = HomePage()
+        qtbot.addWidget(page)
+        page.show()
+        snap = self._make_snapshot(micro_state="contract_error")
+        page.render_snapshot(snap)
+        btn = page.findChild(QPushButton, "homeConnectServerButton")
+        assert btn is not None
+
+    def test_connect_server_hidden_when_connected(self, qtbot):
+        page = HomePage()
+        qtbot.addWidget(page)
+        page.show()
+        snap = self._make_snapshot(micro_state="connected")
+        page.render_snapshot(snap)
+        btn = page.findChild(QPushButton, "homeConnectServerButton")
+        assert btn is None

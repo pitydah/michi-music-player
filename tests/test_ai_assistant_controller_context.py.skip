@@ -1,0 +1,19 @@
+"""Tests: AiAssistantController uses set_context_service, not self._win."""
+
+import pytest
+pytest.skip("legacy_widgets module removed", allow_module_level=True)
+
+from unittest.mock import MagicMock
+from legacy_widgets.ui.controllers.legacy_controllers.ai_assistant_controller import AiAssistantController
+
+
+class TestAiAssistantControllerContext:
+    def test_accepts_context_service(self):
+        ctrl = AiAssistantController(db=MagicMock())
+        svc = MagicMock()
+        ctrl.set_context_service(svc)
+        assert ctrl._context_svc is svc
+
+    def test_no_win_attribute(self):
+        ctrl = AiAssistantController(db=MagicMock())
+        assert not hasattr(ctrl, '_win')

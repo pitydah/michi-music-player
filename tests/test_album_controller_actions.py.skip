@@ -1,0 +1,158 @@
+"""Tests for AlbumController — new premium actions."""
+import pytest; pytest.skip("legacy_widgets removed", allow_module_level=True)
+from __future__ import annotations
+
+from unittest.mock import MagicMock, patch
+
+
+class _MockCtx:
+    toast = MagicMock()
+    playback = MagicMock()
+    db = MagicMock()
+
+
+class _MockWin:
+    _ctx = _MockCtx()
+    _playback = MagicMock()
+    _playback_ctrl = MagicMock()
+    _metadata_editor = MagicMock()
+    _db = MagicMock()
+    _nav_ctrl = MagicMock()
+    _workers = MagicMock()
+    _workers.run_task = MagicMock()
+
+
+def _make_track(filepath="/music/s.flac", title="Test", artist="A",
+                album="Album", duration=200.0, year=2024, ext="flac",
+                sample_rate=44100):
+    t = MagicMock()
+    t.filepath = filepath
+    t.title = title
+    t.artist = artist
+    t.album = album
+    t.duration = duration
+    t.year = year
+    t.ext = ext
+    t.sample_rate = sample_rate
+    return t
+
+
+class TestAlbumControllerActions:
+    def test_play_album_llama_reproduccion(self):
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
+        w = _MockWin()
+        ctrl = AlbumController(w)
+        tracks = [_make_track()]
+        with patch.object(w._playback, "enqueue") as mock_play:
+            ctrl.play_album(tracks)
+            assert mock_play.called
+
+    def test_play_album_empty(self):
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
+        w = _MockWin()
+        ctrl = AlbumController(w)
+        ctrl.play_album([])
+        w._ctx.toast.show.assert_called()
+
+    def test_queue_album_encola(self):
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
+        w = _MockWin()
+        ctrl = AlbumController(w)
+        tracks = [_make_track()]
+        ctrl.queue_album(tracks)
+        assert w._playback.enqueue.called
+
+    def test_queue_album_empty(self):
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
+        w = _MockWin()
+        ctrl = AlbumController(w)
+        ctrl.queue_album([])
+        w._ctx.toast.show.assert_called()
+
+    def test_create_playlist_from_tracks(self):
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
+        w = _MockWin()
+        ctrl = AlbumController(w)
+        tracks = [_make_track()]
+        with patch("PySide6.QtWidgets.QInputDialog.getText",
+                   return_value=("My Playlist", True)):
+            ctrl.create_playlist_from_tracks(tracks)
+            w._db.create_playlist.assert_called_with("My Playlist")
+
+    def test_edit_album_metadata_delega(self):
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
+        w = _MockWin()
+        ctrl = AlbumController(w)
+        tracks = [_make_track()]
+        ctrl.edit_album_metadata(tracks)
+        w._metadata_editor.load_files.assert_called_once()
+
+    def test_edit_album_metadata_empty(self):
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
+        w = _MockWin()
+        ctrl = AlbumController(w)
+        ctrl.edit_album_metadata([])
+        w._ctx.toast.show.assert_called()
+
+    def test_search_or_change_cover_sin_archivo(self):
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
+        w = _MockWin()
+        ctrl = AlbumController(w)
+        tracks = [_make_track()]
+        with patch("os.path.isfile", return_value=False), \
+             patch("library.cover_art_service.CoverArtService.find_cover",
+                   return_value=None):
+            ctrl.search_or_change_cover(tracks)
+            w._ctx.toast.show.assert_called()
+
+    def test_analyze_album_quality(self):
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
+        w = _MockWin()
+        ctrl = AlbumController(w)
+        tracks = [_make_track()]
+        ctrl.analyze_album_quality(tracks)
+        w._ctx.toast.show.assert_called_with("Analizando calidad...", "info")
+        w._workers.run_task.assert_called_once()
+
+    def test_send_album_to_server_sin_config(self):
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
+        w = _MockWin()
+        ctrl = AlbumController(w)
+        tracks = [_make_track()]
+        ctrl.send_album_to_server(tracks)
+        w._ctx.toast.show.assert_called()
+
+    def test_review_album_duplicates_no_dup(self):
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
+        w = _MockWin()
+        ctrl = AlbumController(w)
+        tracks = [_make_track()]
+        ctrl.review_album_duplicates(tracks)
+        w._ctx.toast.show.assert_called()
+
+    def test_review_album_duplicates_empty(self):
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
+        w = _MockWin()
+        ctrl = AlbumController(w)
+        ctrl.review_album_duplicates([])
+        w._ctx.toast.show.assert_called_with(
+            "No hay canciones para revisar duplicados", "error")
+
+    def test_review_album_duplicates_uses_repo(self):
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
+        w = _MockWin()
+        ctrl = AlbumController(w)
+        tracks = [_make_track()]
+        with patch("PySide6.QtWidgets.QMessageBox.information") as mock_info:
+            ctrl.review_album_duplicates(tracks)
+            assert mock_info.called or w._ctx.toast.show.called
+
+    def test_open_album_folder(self, tmp_path):
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
+        w = _MockWin()
+        ctrl = AlbumController(w)
+        audio_file = tmp_path / "s.flac"
+        tracks = [_make_track(filepath=str(audio_file))]
+        with patch("subprocess.Popen") as mock_popen:
+            ctrl.open_album_folder(tracks)
+            mock_popen.assert_called_once()

@@ -1,0 +1,123 @@
+"""Tests for SmartMixPreview — counts, previews, queries without UI mutation."""
+import pytest; pytest.skip("legacy_widgets removed", allow_module_level=True)
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from legacy_widgets.ui.controllers.legacy_controllers.smart_mix_preview import SmartMixPreview, MixPreview, _get_fav_filepaths, _get_recent_filepaths
+
+
+@pytest.fixture
+def db():
+    d = MagicMock()
+    d._conn = MagicMock()
+    return d
+
+
+class TestMixPreview:
+    def test_dataclass_fields(self):
+        p = MixPreview(key="mix_daily", label="Daily", description="Desc",
+                        count=5, empty_reason="", files=["/a.flac"])
+        assert p.key == "mix_daily"
+        assert p.count == 5
+
+    def test_dataclass_defaults(self):
+        p = MixPreview(key="x", label="x", description="", count=0,
+                        empty_reason="Empty", files=[])
+        assert p.empty_reason == "Empty"
+
+
+class TestSmartMixPreview:
+    def test_get_preview_daily(self, db):
+        preview = SmartMixPreview(db)
+        with patch("ui.controllers.smart_mix_preview.get_daily_mix") as mock_mix:
+            mock_mix.return_value = ["/song.flac"]
+            with patch("os.path.isfile", return_value=True):
+                result = preview.get_preview("mix_daily")
+        assert result.key == "mix_daily"
+        assert result.count == 1
+        assert result.empty_reason == ""
+
+    def test_get_preview_unplayed(self, db):
+        preview = SmartMixPreview(db)
+        with patch("ui.controllers.smart_mix_preview.get_unplayed") as mock_mix:
+            mock_mix.return_value = []
+            result = preview.get_preview("mix_unplayed")
+        assert result.count == 0
+        assert result.empty_reason != ""
+
+    def test_get_preview_popular(self, db):
+        preview = SmartMixPreview(db)
+        with patch("ui.controllers.smart_mix_preview.get_popular") as mock_mix:
+            mock_mix.return_value = ["/a.flac", "/b.flac"]
+            with patch("os.path.isfile", return_value=True):
+                result = preview.get_preview("mix_popular")
+        assert result.count == 2
+
+    def test_get_preview_unknown_key(self, db):
+        preview = SmartMixPreview(db)
+        result = preview.get_preview("nonexistent")
+        assert result.count == 0
+        assert result.empty_reason == "Mix no disponible."
+
+    def test_get_preview_with_http_filepath(self, db):
+        preview = SmartMixPreview(db)
+        with patch("ui.controllers.smart_mix_preview.get_daily_mix") as mock_mix:
+            mock_mix.return_value = ["http://stream.example.com/song"]
+            result = preview.get_preview("mix_daily")
+        assert result.count == 1
+
+    def test_get_preview_exception_is_caught(self, db):
+        preview = SmartMixPreview(db)
+        with patch("ui.controllers.smart_mix_preview.get_daily_mix") as mock_mix:
+            mock_mix.side_effect = ValueError("fail")
+            result = preview.get_preview("mix_daily")
+        assert result.count == 0
+
+    def test_get_all_previews_returns_all_mixes(self, db):
+        preview = SmartMixPreview(db)
+        with patch("ui.controllers.smart_mix_preview.get_daily_mix", return_value=[]), \
+             patch("ui.controllers.smart_mix_preview.get_unplayed", return_value=[]), \
+             patch("ui.controllers.smart_mix_preview.get_popular", return_value=[]), \
+             patch("ui.controllers.smart_mix_preview._get_fav_filepaths", return_value=[]), \
+             patch("ui.controllers.smart_mix_preview._get_recent_filepaths", return_value=[]):
+            results = preview.get_all_previews()
+        assert len(results) == 5
+        assert all(isinstance(r, MixPreview) for r in results)
+
+    def test_mixes_property_has_expected_keys(self, db):
+        preview = SmartMixPreview(db)
+        keys = list(preview._MIXES.keys())
+        assert "mix_daily" in keys
+        assert "mix_unplayed" in keys
+        assert "mix_popular" in keys
+        assert "favs" in keys
+        assert "recent" in keys
+
+
+class TestFavFilepaths:
+    def test_with_db_returns_filepaths(self):
+        db = MagicMock()
+        db.conn.execute.return_value.fetchall.return_value = [("/path/fav.flac",)]
+        result = _get_fav_filepaths(db=db)
+        assert result == ["/path/fav.flac"]
+
+    def test_with_db_exception_returns_empty(self):
+        db = MagicMock()
+        db.conn.execute.side_effect = Exception("db error")
+        result = _get_fav_filepaths(db=db)
+        assert result == []
+
+
+class TestRecentFilepaths:
+    def test_with_db_returns_filepaths(self):
+        db = MagicMock()
+        db.conn.execute.return_value.fetchall.return_value = [("/path/recent.flac",)]
+        result = _get_recent_filepaths(db=db)
+        assert result == ["/path/recent.flac"]
+
+    def test_with_db_exception_returns_empty(self):
+        db = MagicMock()
+        db.conn.execute.side_effect = Exception("db error")
+        result = _get_recent_filepaths(db=db)
+        assert result == []

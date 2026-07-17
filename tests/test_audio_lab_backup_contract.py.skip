@@ -1,0 +1,32 @@
+"""Contract tests for Backup area — safety, dependency handling, honesty."""
+import pytest; pytest.skip("legacy_widgets removed", allow_module_level=True)
+
+import os
+
+
+class TestBackupContract:
+
+    def test_backup_routes_have_handlers(self):
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NAV_ROUTES
+        backup_keys = [k for k in NAV_ROUTES if k in (
+            "michi_disc_lab", "audio_lab_vinyl_lab",
+            "audio_lab_conversion", "audio_lab_organize",
+        )]
+        for key in backup_keys:
+            method_name = NAV_ROUTES.get(key)
+            assert method_name, f"{key} missing from NAV_ROUTES"
+            assert hasattr(ui.window.MainWindow, method_name), f"{key} → {method_name} missing"
+
+    def test_no_destructive_ops_without_confirm(self):
+        import ast
+        organize_path = os.path.join(
+            os.path.dirname(__file__), "..", "ui", "audio_lab", "organize_page.py"
+        )
+        with open(organize_path) as f:
+            tree = ast.parse(f.read())
+        has_question = any(
+            isinstance(n, ast.Call)
+            and getattr(n.func, 'attr', None) == 'question'
+            for n in ast.walk(tree)
+        )
+        assert has_question, "organize_page.py must have QMessageBox.question before applying changes"

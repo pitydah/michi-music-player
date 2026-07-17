@@ -1,0 +1,208 @@
+"""Tests for HomeController — snapshot-based refresh and fallback behavior."""
+import pytest; pytest.skip("legacy_widgets removed", allow_module_level=True)
+from __future__ import annotations
+
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from core.home.home_dashboard_service import HomeDashboardService
+from core.home.home_status import HomeDashboardSnapshot
+
+
+@pytest.fixture
+def mock_parent():
+    p = MagicMock()
+    p.__class__ = __import__("PySide6.QtCore").QtCore.QObject
+    return p
+
+
+@pytest.fixture
+def win():
+    w = MagicMock()
+    w._db = MagicMock()
+    w._playback = MagicMock()
+    w._views = MagicMock()
+    w._views.widget.return_value = None
+    w._all_items = []
+    w._on_sidebar_navigate = MagicMock()
+    w._ctx = MagicMock()
+    w._fade_content = MagicMock()
+    w._context_svc = MagicMock()
+    w._sync_mgr = MagicMock()
+    w._audio_output_ctrl = MagicMock()
+    w._player = MagicMock()
+    w._features = MagicMock()
+    w._toast_svc = MagicMock()
+    w._services = MagicMock()
+    w._services.library_import = MagicMock()
+    return w
+
+
+@pytest.fixture
+def ctrl(win):
+    from legacy_widgets.ui.controllers.legacy_controllers.home_controller import HomeController
+
+    c = HomeController.__new__(HomeController)
+    from PySide6.QtCore import QObject
+
+    QObject.__init__(c)
+    c._win = win
+    c._page = None
+    c._dashboard_svc = None
+    return c
+
+
+class TestHomeControllerInit:
+    def test_init_sets_win(self, ctrl, win):
+        assert ctrl._win is win
+        assert ctrl._page is None
+
+    def test_page_property_returns_none_initially(self, ctrl):
+        assert ctrl.page is None
+
+    def test_page_property_returns_page_after_ensure(self, ctrl, win):
+        with patch("ui.controllers.home_controller.HomePage") as mock_page_cls:
+            mock_page = mock_page_cls.return_value
+            page = ctrl._ensure_page()
+            assert page is mock_page
+            assert ctrl._page is mock_page
+            mock_page_cls.assert_called_with()
+
+    def test_ensure_page_returns_cached(self, ctrl, win):
+        with patch("ui.controllers.home_controller.HomePage") as mock_page_cls:
+            first = ctrl._ensure_page()
+            second = ctrl._ensure_page()
+            assert first is second
+            mock_page_cls.assert_called_once()
+
+    def test_show_registers_and_fades(self, ctrl, win):
+        with patch("ui.controllers.home_controller.HomePage"):
+            ctrl.show()
+            win._views.register.assert_called_with("home", ctrl._page)
+            win._fade_content.assert_called_with("home")
+
+    def test_show_skips_register_if_exists(self, ctrl, win):
+        win._views.widget.return_value = MagicMock()
+        with patch("ui.controllers.home_controller.HomePage"):
+            ctrl.show()
+            win._views.register.assert_not_called()
+
+
+class TestHomeControllerDashboardService:
+    def test_ensure_service_creates_service(self, ctrl, win):
+        svc = ctrl._ensure_service()
+        assert isinstance(svc, HomeDashboardService)
+
+    def test_ensure_service_caches(self, ctrl, win):
+        first = ctrl._ensure_service()
+        second = ctrl._ensure_service()
+        assert first is second
+
+    def test_service_receives_dependencies(self, ctrl, win):
+        svc = ctrl._ensure_service()
+        assert svc._db is win._db
+        assert svc._playback is win._playback
+        assert svc._context_svc is win._context_svc
+        assert svc._sync_mgr is win._sync_mgr
+        assert svc._audio_output_ctrl is win._audio_output_ctrl
+        assert svc._features is win._features
+        assert svc._michi_link_ctrl is getattr(win, "_michi_link_ctrl", None)
+
+
+class TestHomeControllerRefresh:
+    def test_refresh_does_nothing_if_no_page(self, ctrl):
+        ctrl.refresh()
+
+    def test_refresh_calls_build_snapshot(self, ctrl, win):
+        with patch("ui.controllers.home_controller.HomePage"), patch(
+            "core.home.home_dashboard_service.HomeDashboardService.build_snapshot"
+        ) as mock_build:
+            mock_build.return_value = HomeDashboardSnapshot(
+                overall_state="ready", headline="Michi está listo"
+            )
+            ctrl._ensure_page()
+            ctrl.refresh()
+            mock_build.assert_called_once()
+
+    def test_refresh_calls_render_snapshot(self, ctrl, win):
+        with patch("ui.controllers.home_controller.HomePage") as mock_page_cls, patch(
+            "core.home.home_dashboard_service.HomeDashboardService.build_snapshot"
+        ) as mock_build:
+            mock_page = mock_page_cls.return_value
+            mock_build.return_value = HomeDashboardSnapshot(
+                overall_state="ready", headline="Michi está listo"
+            )
+            ctrl._ensure_page()
+            ctrl.refresh()
+            mock_page.render_snapshot.assert_called_once()
+            call_arg = mock_page.render_snapshot.call_args[0][0]
+            assert call_arg.headline == "Michi está listo"
+
+    def test_refresh_logs_exception(self, ctrl, win):
+        with (
+            patch("ui.controllers.home_controller.HomePage"),
+            patch(
+                "core.home.home_dashboard_service.HomeDashboardService.build_snapshot",
+                side_effect=ValueError("fail"),
+            ),
+            patch("ui.controllers.home_controller.logger") as mock_log,
+        ):
+            ctrl._ensure_page()
+            ctrl.refresh()
+            mock_log.exception.assert_called()
+
+    def test_refresh_fallback_snapshot_on_exception(self, ctrl, win):
+        with patch("ui.controllers.home_controller.HomePage") as mock_page_cls, patch(
+            "core.home.home_dashboard_service.HomeDashboardService.build_snapshot",
+            side_effect=ValueError("fail"),
+        ):
+            mock_page = mock_page_cls.return_value
+            ctrl._ensure_page()
+            ctrl.refresh()
+            mock_page.render_snapshot.assert_called_once()
+            call_arg = mock_page.render_snapshot.call_args[0][0]
+            assert call_arg.overall_state == "error"
+
+    def test_refresh_fallback_headline(self, ctrl, win):
+        with patch("ui.controllers.home_controller.HomePage") as mock_page_cls, patch(
+            "core.home.home_dashboard_service.HomeDashboardService.build_snapshot",
+            side_effect=ValueError("fail"),
+        ):
+            mock_page = mock_page_cls.return_value
+            ctrl._ensure_page()
+            ctrl.refresh()
+            call_arg = mock_page.render_snapshot.call_args[0][0]
+            assert call_arg.headline == "Error al cargar"
+
+
+class TestHomeControllerAddMusic:
+    def test_add_music_uses_import_service(self, ctrl, win):
+        ctrl._on_add_music(["/tmp/test.flac"])
+        win._services.library_import.add_files.assert_called_with(
+            ["/tmp/test.flac"], reason="home_add_music"
+        )
+
+    def test_add_folder_calls_scan(self, ctrl, win):
+        ctrl._on_add_folder("/tmp/music")
+        win._services.library_import.scan_folder.assert_called_with("/tmp/music")
+
+    def test_add_music_fallback_import(self, ctrl, win):
+        win._services = None
+        win._library_import = None
+        with patch(
+            "ui.controllers.home_controller.HomeController._get_import_service",
+            return_value=None,
+        ):
+            ctrl._on_add_music(["/tmp/test.flac"])
+            win._toast_svc.show.assert_called()
+
+    def test_add_folder_fallback_scan(self, ctrl, win):
+        win._services = None
+        win._library_import = None
+        with patch(
+            "ui.controllers.home_controller.HomeController._get_import_service",
+            return_value=None,
+        ):
+            ctrl._on_add_folder("/tmp/music")
+            win._scan_path.assert_called_with("/tmp/music")
