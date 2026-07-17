@@ -4,6 +4,7 @@ set -euo pipefail
 
 OUTPUT_DIR="${1:-artifacts/ux-screenshots}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+OUTPUT_DIR="$(mkdir -p "$OUTPUT_DIR" && cd "$OUTPUT_DIR" && pwd)"
 
 if ! command -v Xvfb >/dev/null 2>&1; then
     echo "ERROR: Xvfb no está instalado. Instala el paquete xvfb." >&2
@@ -25,23 +26,12 @@ export DISPLAY=":${DISPLAY_NUM}"
 export QT_QPA_PLATFORM=xcb
 export MICHI_SAFE_MODE=1
 export MICHI_CAPTURE_MODE=1
+export MICHI_UX_OUTPUT_DIR="$OUTPUT_DIR"
 
 cd "$REPO_ROOT"
 
-# The Python audit owns route navigation, settling delays, capture hashes and
-# failure reporting. Keep one implementation of this workflow instead of two
-# scripts that can diverge.
-python3 - <<'PY' "$OUTPUT_DIR"
-from __future__ import annotations
+# Keep route navigation, settling delays, hash validation and failure handling in
+# one Python implementation so the shell and CI workflows cannot diverge.
+python3 tests/ux_captures_baseline.py
 
-import sys
-from pathlib import Path
-
-import tests.ux_captures_baseline as audit
-
-requested_output = Path(sys.argv[1]).resolve()
-audit.OUTPUT_DIR = requested_output
-raise SystemExit(audit.run())
-PY
-
-echo "UX screenshots verified in: $(realpath "$OUTPUT_DIR")"
+echo "UX screenshots verified in: $OUTPUT_DIR"
