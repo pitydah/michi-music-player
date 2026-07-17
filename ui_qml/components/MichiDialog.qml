@@ -47,9 +47,27 @@ QQC2.Popup {
         }
     }
 
+    function _isFocusable(item) {
+        return item !== null && item !== undefined
+            && item.visible !== false
+            && item.enabled !== false
+            && (item.activeFocusOnTab === true || (item.focusPolicy !== undefined && item.focusPolicy !== Qt.NoFocus))
+    }
+
+    function _findFirstFocusable(container) {
+        if (!container || !container.data) return container
+        for (var i = 0; i < container.data.length; i++) {
+            var child = container.data[i]
+            if (_isFocusable(child)) return child
+            var sub = _findFirstFocusable(child)
+            if (sub) return sub
+        }
+        return container.data.length > 0 ? container.data[0] : container
+    }
+
     onOpened: {
         _savedFocus = root.parent ? root.parent.Window.activeFocusItem : null
-        root.forceActiveFocus()
+        _wireKeyNavigation()
         focusScope.focusFirst()
     }
 
@@ -86,7 +104,7 @@ QQC2.Popup {
             id: focusScope
             anchors.fill: parent
 
-            property Item firstFocusable: contentArea.children.length > 0 ? contentArea.children[0] : buttonsArea
+            readonly property Item firstFocusable: _findFirstFocusable(contentArea)
             readonly property Item lastFocusable: _findLastFocusable()
 
             function focusFirst() {

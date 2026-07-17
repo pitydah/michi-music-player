@@ -151,13 +151,17 @@ def main():
 
     if args.baseline:
         with open(args.baseline) as f:
-            baseline = json.load(f)
-        baseline_count = baseline.get("total", len(baseline))
-        if total > baseline_count:
-            print(f"REGRESSION: {total - baseline_count} new violations (baseline: {baseline_count}, current: {total})", file=sys.stderr)
+            baseline_data = json.load(f)
+        baseline_fp = set(baseline_data.get("fingerprints", []))
+        current_fp = {f"{v['file']}:{v['pattern_type']}:{str(v.get('value', ''))}" for v in all_violations}
+        new_fp = current_fp - baseline_fp
+        if new_fp:
+            print(f"REGRESSION: {len(new_fp)} new fingerprints", file=sys.stderr)
+            for fp in sorted(new_fp):
+                print(f"  NEW: {fp}", file=sys.stderr)
             sys.exit(1)
         else:
-            print(f"OK: {total} violations (baseline: {baseline_count})")
+            print(f"OK: {len(current_fp)} fingerprints (baseline: {len(baseline_fp)})")
             sys.exit(0)
 
     if args.format == "text" and total:

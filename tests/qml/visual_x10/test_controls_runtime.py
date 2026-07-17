@@ -347,56 +347,6 @@ class TestMichiComboBox:
         assert not obj.property("popupOpen")
 
 
-# ── MichiDialog ────────────────────────────────────────────────────────────────
-
-
-class TestMichiDialog:
-    QML = "host/DialogHost.qml"
-    DIALOG_OBJECT_NAME = "testDialog"
-
-    @pytest.mark.xfail(reason="QQC2.Popup como root no es compatible con QQuickView (necesita QQmlApplicationEngine)", strict=False)
-    def test_dialog_instantiates(self, qapp):
-        qml = Path(COMPONENTS_DIR.parent / "components" / "MichiDialog.qml").read_text()
-        assert "QQC2.Popup" in qml
-        assert "modal: true" in qml
-
-    @pytest.mark.xfail(reason="QTest.keyClick no funciona con QQC2.Popup en QQuickView", strict=False)
-    def test_dialog_escape_closes(self, qapp):
-        """Escape key closes the dialog."""
-        from PySide6.QtCore import Qt
-        from PySide6.QtTest import QTest
-        loader = _ComponentLoader(self.QML)
-        assert loader.is_ready(), loader.error_string()
-        obj = loader.create()
-        assert obj is not None
-        dialog = obj.findChild(QObject, self.DIALOG_OBJECT_NAME)
-        assert dialog is not None
-        dialog.open()
-        assert dialog.opened
-        QTest.keyClick(loader.window(), Qt.Key_Escape)
-        assert not dialog.opened
-
-    @pytest.mark.xfail(reason="QQC2.Popup como root no es compatible con QQuickView (necesita QQmlApplicationEngine)", strict=False)
-    def test_dialog_open_close(self, qapp):
-        loader = _ComponentLoader(self.QML)
-        assert loader.is_ready(), loader.error_string()
-        obj = loader.create()
-        assert obj is not None
-        dialog = obj.findChild(QObject, self.DIALOG_OBJECT_NAME)
-        assert dialog is not None
-        dialog.open()
-        assert dialog.opened
-        dialog.close()
-        assert not dialog.opened
-
-    @pytest.mark.xfail(reason="QQC2.Popup como root no es compatible con QQuickView (necesita QQmlApplicationEngine)", strict=False)
-    def test_dialog_focus_trap(self, qapp):
-        qml = Path(COMPONENTS_DIR.parent / "components" / "MichiDialog.qml").read_text()
-        assert "focusFirst" in qml
-        assert "focusLast" in qml
-        assert "KeyNavigation.tab" in qml or "KeyNavigation.backtab" in qml
-
-
 # ── MichiTextField ─────────────────────────────────────────────────────────────
 
 

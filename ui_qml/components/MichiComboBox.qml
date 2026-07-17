@@ -39,10 +39,16 @@ Item {
         return root.model[idx]
     }
 
+    function _textForItem(item) {
+        if (item === undefined || item === null) return ""
+        if (typeof item !== "object") return String(item)
+        if (root.textRole && item[root.textRole] !== undefined) return String(item[root.textRole])
+        return String(item.text || item.name || "")
+    }
+
     onCurrentIndexChanged: {
         if (root.currentIndex >= 0 && root.currentIndex < root._modelLength()) {
-            var item = root._modelGet(root.currentIndex)
-            root.currentText = typeof item === "object" ? (item.text || item.name || "") : (item !== undefined ? String(item) : "")
+            root.currentText = root._textForItem(root._modelGet(root.currentIndex))
         } else {
             root.currentText = ""
         }
@@ -129,11 +135,7 @@ Item {
                     anchors.left: parent.left
                     anchors.leftMargin: MichiTheme.spacing.md
                     anchors.verticalCenter: parent.verticalCenter
-                    text: {
-                        if (root.textRole && typeof modelData === "object")
-                            return modelData[root.textRole] || ""
-                        return typeof modelData === "object" ? (modelData.text || modelData.name || "") : modelData
-                    }
+                    text: root._textForItem(modelData)
                     color: root.currentIndex === index ? MichiTheme.colors.accentBlue : MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                     font.weight: root.currentIndex === index ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
