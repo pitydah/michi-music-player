@@ -13,6 +13,11 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Reproducción"
 
+    readonly property int stateLoading: 0
+    readonly property int stateReady: 1
+    readonly property int stateError: 2
+    readonly property int stateEmpty: 3
+
     property var ps: typeof nowplayingBridge !== "undefined" ? nowplayingBridge
                    : (typeof playbackBridge !== "undefined" ? playbackBridge : null)
     property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null
@@ -20,34 +25,54 @@ Item {
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false
     property bool _showError: false
     property string _errorText: ""
-    property int pageState: root.ps ? stateReady : stateError
-
-    readonly property int stateLoading: 0
-    readonly property int stateReady: 1
-    readonly property int stateError: 2
-    readonly property int stateEmpty: 3
+    readonly property int pageState: {
+        if (!root.ps || !root.ps.backendAvailable)
+            return root.stateError
+        if (root.ps.commandPending && !root.ps.hasTrack)
+            return root.stateLoading
+        if (!root.ps.hasTrack)
+            return root.stateEmpty
+        return root.stateReady
+    }
 
     function routeEnter(route) {
         if (root.ps && typeof root.ps.refresh !== "undefined")
             root.ps.refresh()
     }
 
-    Loader {
+    LoadingState {
         anchors.centerIn: parent
-        active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: "Cargando reproducción" }
+        visible: root.pageState === root.stateLoading
+        title: "Preparando reproducción"
+        subtitle: "Sincronizando el estado del motor de audio."
     }
 
-    Loader {
+    ErrorState {
         anchors.centerIn: parent
-        active: root.pageState === root.stateError
-        sourceComponent: ErrorState { message: "Reproducción no disponible" }
+        visible: root.pageState === root.stateError
+        title: "Reproductor no disponible"
+        message: root.ps && root.ps.errorMessage
+                 ? root.ps.errorMessage
+                 : "El motor de audio no está disponible en este momento."
+        showRetry: root.ps !== null
+        onRetryRequested: {
+            if (root.ps && typeof root.ps.refresh !== "undefined")
+                root.ps.refresh()
+        }
     }
 
-    Loader {
+    EmptyState {
         anchors.centerIn: parent
-        active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: "Sin reproducción activa" }
+        visible: root.pageState === root.stateEmpty
+        title: "Sin reproducción activa"
+        subtitle: "Selecciona una canción, un álbum, una playlist o una emisora para comenzar."
+        iconText: "play"
+        showAction: true
+        actionText: "Abrir biblioteca"
+        onActionClicked: {
+            if (root.nav)
+                root.nav.navigate("library")
+        }
     }
 
     Flickable {
@@ -69,39 +94,13 @@ Item {
                 nav: root.nav
             }
 
-            Rectangle {
+            MichiBanner {
                 width: parent.width
-                height: _showError ? 36 : 0
-                radius: MichiTheme.radius.sm
-                visible: _showError
-                color: MichiTheme.colors.error
-                clip: true
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: MichiTheme.spacing.md
-                    anchors.rightMargin: MichiTheme.spacing.sm
-                    spacing: MichiTheme.spacing.sm
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: _errorText
-                        color: "white"
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        elide: Text.ElideRight
-                        verticalAlignment: Text.AlignVCenter
-                    }
-
-                    Text {
-                        text: "Cerrar"
-                        color: MichiTheme.colors.onError
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: _showError = false
-                        }
-                    }
-                }
+                visible: root._showError
+                message: root._errorText
+                kind: "error"
+                dismissible: true
+                onDismissed: root._showError = false
             }
 
             GridLayout {
@@ -142,9 +141,9 @@ Item {
                     StatusBadge {
                         Layout.alignment: Qt.AlignHCenter
                         text: root.ps && root.ps.isPlaying ? "Reproduciendo"
-                            : root.ps && root.ps.backendAvailable ? "Pausado" : "No disponible"
+                              : root.ps && root.ps.backendAvailable ? "Pausado" : "No disponible"
                         kind: root.ps && root.ps.isPlaying ? "success"
-                            : root.ps && root.ps.backendAvailable ? "info" : "disconnected"
+                              : root.ps && root.ps.backendAvailable ? "info" : "disconnected"
                     }
 
                     NowPlayingProgress {
@@ -162,16 +161,16 @@ Item {
                         nextSupported: root.ps ? root.ps.nextSupported : false
                         shuffleSupported: root.ps ? root.ps.shuffleSupported : false
                         repeatSupported: root.ps ? root.ps.repeatSupported : false
-                        onPlayClicked: { root.ps && root.ps.togglePlay() }
-                        onPrevClicked: { root.ps && root.ps.previous() }
-                        onNextClicked: { root.ps && root.ps.next() }
-                        onShuffleClicked: { root.ps && root.ps.toggleShuffle() }
-                        onRepeatClicked: { root.ps && root.ps.toggleRepeat() }
+                        onPlayClicked: { if (root.ps) root.ps.togglePlay() }
+                        onPrevClicked: { if (root.ps) root.ps.previous() }
+                        onNextClicked: { if (root.ps) root.ps.next() }
+                        onShuffleClicked: { if (root.ps) root.ps.toggleShuffle() }
+                        onRepeatClicked: { if (root.ps) root.ps.toggleRepeat() }
                     }
 
                     RowLayout {
                         Layout.fillWidth: true
-                        Layout.maximumWidth: 200
+                        Layout.maximumWidth: 240
                         Layout.alignment: Qt.AlignHCenter
                         spacing: MichiTheme.spacing.sm
 
@@ -185,8 +184,10 @@ Item {
                             Layout.fillWidth: true
                             volume: root.ps ? root.ps.volume : 80
                             muted: root.ps ? root.ps.muted : false
-                            onVolumeAdjusted: function(vol) { root.ps && root.ps.setVolume(vol) }
-                            onMuteClicked: { root.ps && root.ps.toggleMute() }
+                            volumeSupported: root.ps ? root.ps.volumeSupported : false
+                            muteSupported: root.ps ? root.ps.muteSupported : false
+                            onVolumeAdjusted: function(vol) { if (root.ps) root.ps.setVolume(vol) }
+                            onMuteClicked: { if (root.ps) root.ps.toggleMute() }
                         }
                     }
 
@@ -195,8 +196,16 @@ Item {
                         spacing: MichiTheme.spacing.sm
                         visible: root._hasTrack
 
-                        MichiButton { text: "Letra"; variant: "ghost"; onClicked: { root.nav && root.nav.navigate("lyrics") } }
-                        MichiButton { text: "Cola"; variant: "ghost"; onClicked: { root.nav && root.nav.navigate("queue") } }
+                        MichiButton {
+                            text: "Letra"
+                            variant: "ghost"
+                            onClicked: { if (root.nav) root.nav.navigate("lyrics") }
+                        }
+                        MichiButton {
+                            text: "Cola"
+                            variant: "ghost"
+                            onClicked: { if (root.nav) root.nav.navigate("queue") }
+                        }
                     }
 
                     Rectangle {
@@ -263,16 +272,16 @@ Item {
         target: root.ps
         function onErrorChanged() {
             if (root.ps && root.ps.errorMessage) {
-                _errorText = root.ps.errorMessage
-                _showError = true
+                root._errorText = root.ps.errorMessage
+                root._showError = true
             }
         }
         function onCommandStateChanged() {
             if (root.ps && root.ps.lastCommandError && root.ps.lastCommandMessage) {
-                _errorText = root.ps.lastCommandMessage
-                _showError = true
+                root._errorText = root.ps.lastCommandMessage
+                root._showError = true
             } else if (root.ps && root.ps.lastCommandOk) {
-                _showError = false
+                root._showError = false
             }
         }
     }
