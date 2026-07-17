@@ -42,4 +42,7 @@ class TestRadio:
         qtest_click_item(stations[0], root_window)
         QTest.qWait(100)
         assert nav.currentRoute == "radio"
-        buffering = radio_page.property("_buffering") if hasattr(radio_page, 'property') else None
+        radio_bridge = all_bridges.get("radio")
+        if radio_bridge is not None:
+            rb_state = getattr(radio_bridge, '_state', '') or getattr(radio_bridge, 'state', '')
+            assert rb_state is None or isinstance(rb_state, str)

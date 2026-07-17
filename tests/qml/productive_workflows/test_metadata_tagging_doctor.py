@@ -50,6 +50,8 @@ class TestMetadataTaggingDoctor:
         QTest.keyClick(page, Qt.Key_Down)
         QTest.qWait(50)
         assert nav.currentRoute == "tagging"
+        if hasattr(page, 'property') and page.property("visible") is not None:
+            assert page.property("visible") is True
 
     def test_qtest_click_select_all(self, nav, root_window, all_bridges):
         from PySide6.QtTest import QTest
@@ -66,7 +68,9 @@ class TestMetadataTaggingDoctor:
             if "Select" in str(text) or "All" in str(text):
                 select_all_btn = child
                 break
-        if select_all_btn is not None:
-            qtest_click_item(select_all_btn, root_window)
-            QTest.qWait(50)
-            assert nav.currentRoute == "tagging"
+        assert select_all_btn is not None, "Select All button not found in SmartTaggingPage"
+        qtest_click_item(select_all_btn, root_window)
+        QTest.qWait(50)
+        assert nav.currentRoute == "tagging"
+        status = getattr(smart_bridge, 'status', '') or getattr(smart_bridge, '_state', '')
+        assert isinstance(status, str)

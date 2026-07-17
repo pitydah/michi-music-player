@@ -37,7 +37,9 @@ class TestLibraryDoctorQTest:
             if "Scan" in str(text) or "Escanear" in str(text):
                 scan_btn = child
                 break
-        if scan_btn is not None:
-            qtest_click_item(scan_btn, root_window)
-            QTest.qWait(100)
-            assert nav.currentRoute == "library_doctor"
+        assert scan_btn is not None, "Scan button not found in libraryDoctorScanPage"
+        qtest_click_item(scan_btn, root_window)
+        QTest.qWait(100)
+        assert nav.currentRoute == "library_doctor"
+        status = getattr(doctor_bridge, 'status', '') or getattr(doctor_bridge, '_state', '')
+        assert isinstance(status, str)

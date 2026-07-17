@@ -35,7 +35,11 @@ class TestOutputProfilesQTest:
             if "Crear" in str(text) or "Create" in str(text) or "New" in str(text):
                 create_btn = child
                 break
-        if create_btn is not None:
-            qtest_click_item(create_btn, root_window)
-            QTest.qWait(50)
-            assert nav.currentRoute == "outputs"
+        assert create_btn is not None, "Create profile button not found"
+        qtest_click_item(create_btn, root_window)
+        QTest.qWait(50)
+        assert nav.currentRoute == "outputs"
+        op_bridge = all_bridges.get("output_profiles")
+        if op_bridge is not None:
+            profiles = getattr(op_bridge, 'profiles', None) or getattr(op_bridge, '_profiles', None)
+            assert profiles is None or isinstance(profiles, (list, tuple))

@@ -92,4 +92,4 @@ class TestConnectionsDevicesE2E:
         QTest.qWait(200)
         assert nav.currentRoute == "connections"
         state = getattr(conn_bridge, '_state', '') or getattr(conn_bridge, 'state', '')
-        assert state != "" or True
+        assert isinstance(state, str)

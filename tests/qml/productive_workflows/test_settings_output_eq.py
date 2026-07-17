@@ -39,3 +39,5 @@ class TestSettingsOutputEq:
         QTest.keyClick(eq_page, Qt.Key_Down)
         QTest.qWait(50)
         assert nav.currentRoute == "equalizer"
+        if hasattr(eq_page, 'property') and eq_page.property("visible") is not None:
+            assert eq_page.property("visible") is True

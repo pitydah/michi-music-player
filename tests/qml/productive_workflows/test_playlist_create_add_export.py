@@ -26,7 +26,7 @@ class TestPlaylistCreateExport:
         assert hasattr(svc, 'import_m3u')
         assert hasattr(svc, 'export_m3u')
 
-    def test_qtest_navigate_playlists(self, nav, root_window):
+    def test_qtest_navigate_playlists(self, nav, root_window, all_bridges):
         from PySide6.QtTest import QTest
         from .conftest import find_qml_item, qtest_click_item
         nav.navigate("playlists")
@@ -47,3 +47,7 @@ class TestPlaylistCreateExport:
         assert dialog.property("visible") or dialog.property("opened"), (
             "playlistEditorDialog should be visible"
         )
+        pl_bridge = all_bridges.get("playlists")
+        if pl_bridge is not None:
+            pl_state = getattr(pl_bridge, '_state', '') or getattr(pl_bridge, 'state', '')
+            assert pl_state is None or isinstance(pl_state, str)
