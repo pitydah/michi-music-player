@@ -6,6 +6,7 @@ import json
 import os
 import re
 import sys
+from collections import Counter
 
 UI_QML = os.path.join(os.path.dirname(__file__), "..", "ui_qml")
 
@@ -245,16 +246,22 @@ def main():
     if args.baseline:
         with open(args.baseline) as f:
             baseline_data = json.load(f)
-        baseline_fp = set(baseline_data.get("fingerprints", []))
-        current_fp = {f"{v['file']}:{v['pattern_type']}:{str(v.get('value', ''))}" for v in all_findings}
-        new_fp = current_fp - baseline_fp
-        if new_fp:
-            print(f"REGRESSION: {len(new_fp)} new fingerprints", file=sys.stderr)
-            for fp in sorted(new_fp):
-                print(f"  NEW: {fp}", file=sys.stderr)
+        baseline_fp = baseline_data.get("fingerprints", {})
+        current_fp = Counter()
+        for v in all_findings:
+            key = f"{v['file']}:{v['pattern_type']}:{str(v.get('value', ''))}"
+            current_fp[key] += 1
+        new_regressions = False
+        for key, count in sorted(current_fp.items()):
+            baseline_count = baseline_fp.get(key, 0)
+            if count > baseline_count:
+                new_regressions = True
+                print(f"  REGRESSION: {key} count {count} > baseline {baseline_count}", file=sys.stderr)
+        if new_regressions:
+            print(f"REGRESSION DETECTED", file=sys.stderr)
             sys.exit(1)
         else:
-            print(f"OK: {len(current_fp)} fingerprints (baseline: {len(baseline_fp)})")
+            print(f"OK: {sum(current_fp.values())} occurrences ({len(current_fp)} fingerprints, baseline: {len(baseline_fp)})")
             sys.exit(0)
 
     if args.format == "text" and total:

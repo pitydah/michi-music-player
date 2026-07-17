@@ -36,14 +36,11 @@ QQC2.Popup {
     property Item _savedFocus: null
 
     function _wireKeyNavigation() {
-        var buttons = buttonsArea.data
-        if (buttons.length > 0) {
-            var first = buttons[0]
-            var last = focusScope.lastFocusable
-            if (first && first !== last) {
-                first.KeyNavigation.backtab = last
-                last.KeyNavigation.tab = first
-            }
+        var first = focusScope.firstFocusable
+        var last = focusScope.lastFocusable
+        if (first && last && first !== last) {
+            first.KeyNavigation.backtab = last
+            last.KeyNavigation.tab = first
         }
     }
 

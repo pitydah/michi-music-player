@@ -7,7 +7,7 @@ env:
   compile_exclude: .venv/|\.tmpl\.'
 
 jobs:
-  core:
+  qml-migration-gate:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -25,16 +25,10 @@ jobs:
       - name: Install system deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 xvfb
       - name: Install Python deps
         run: |
           pip install -e ".[dev]" 2>/dev/null || pip install PySide6 ruff pytest
-      - name: Environment debug
-        continue-on-error: true
-        run: |
-          echo "Python: $(python3 --version)"
-          echo "Qt: $(python3 -c 'from PySide6.QtCore import qVersion; print(qVersion())' 2>&1)"
-          echo "EGL: $(ldconfig -p | grep libEGL | head -1)"
       - name: Ruff check
         run: ruff check . ${{ env.ruff_out }}
       - name: Compileall
@@ -42,33 +36,6 @@ jobs:
       - name: Core tests
         run: |
           QT_QPA_PLATFORM=offscreen python -m pytest tests/test_songs_service.py tests/test_library_service.py tests/test_album_service.py tests/test_genres_service.py tests/test_folder_service.py tests/test_metadata_editor_service.py tests/test_library_mutation_service.py tests/test_micro_server_service.py -q --junitxml=results-core.xml
-      - name: Upload core results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: results-core
-          path: results-core.xml
-
-  e2e:
-    runs-on: ubuntu-latest
-    needs: core
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: pip-${{ hashFiles('pyproject.toml') }}
-      - name: Install system deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 xvfb
-      - name: Install Python deps
-        run: |
-          pip install -e ".[dev]" 2>/dev/null || pip install PySide6 ruff pytest
       - name: Productive workflows (offscreen)
         run: |
           QT_QPA_PLATFORM=offscreen bash scripts/run_tests.sh tests/qml/productive_workflows/ offscreen
@@ -111,9 +78,44 @@ jobs:
           print('QML OK')
       sys.exit(exit_code)
       "
-      - name: Upload e2e results
+      - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: results-e2e
-          path: results.xml
+          name: results-migration-gate
+          path: results-*.xml
+
+  uiux-gate:
+    needs: [qml-migration-gate]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 xvfb
+      - name: Install Python deps
+        run: |
+          pip install -e ".[dev]" 2>/dev/null || pip install PySide6 ruff pytest
+      - name: UI/UX runtime tests
+        run: |
+          xvfb-run -a python -m pytest tests/qml/visual_x10/test_controls_runtime.py tests/qml/visual_x10/test_dialog_runtime.py -q --timeout=120
+      - name: UI/UX static tests
+        run: |
+          QT_QPA_PLATFORM=offscreen python -m pytest tests/qml/accessibility_x10 tests/qml/responsive_x10 tests/qml/visual_x10/test_theme_tokens.py tests/qml/visual_x10/test_component_visual_states.py -q --timeout=300
+      - name: UI/UX contract guard
+        run: |
+          python scripts/qml_uiux_contract_guard_x10.py --scan
+      - name: UI/UX regression gates
+        run: |
+          python scripts/qml_uiux_token_audit_x10.py --baseline docs/uiux/baselines/token-audit.json
+          python scripts/qml_uiux_control_audit_x10.py --baseline docs/uiux/baselines/control-audit.json
+          python scripts/qml_uiux_objectname_audit_x10.py --baseline docs/uiux/baselines/objectname-audit.json
+          python scripts/qml_uiux_accessibility_audit_x10.py --baseline docs/uiux/baselines/accessibility-audit.json
+          python scripts/qml_uiux_responsive_audit_x10.py --baseline docs/uiux/baselines/responsive-audit.json

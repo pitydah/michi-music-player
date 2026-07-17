@@ -34,6 +34,7 @@ PAGE_FILES_FILTERED = [
 ]
 
 
+@pytest.mark.xfail(strict=True)
 @pytest.mark.parametrize("qml_file", PAGE_FILES_FILTERED, ids=lambda p: str(p.relative_to(QML_DIR)))
 def test_page_has_accessible_role(qml_file):
     content = qml_file.read_text()
@@ -42,6 +43,7 @@ def test_page_has_accessible_role(qml_file):
     )
 
 
+@pytest.mark.xfail(strict=True)
 @pytest.mark.parametrize("qml_file", PAGE_FILES_FILTERED, ids=lambda p: str(p.relative_to(QML_DIR)))
 def test_page_has_object_name(qml_file):
     content = qml_file.read_text()

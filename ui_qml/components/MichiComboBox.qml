@@ -26,6 +26,7 @@ Item {
     Accessible.role: Accessible.ComboBox
     Accessible.name: root.accessibleName
     Accessible.description: root.accessibleDescription
+    Accessible.expanded: root.popupOpen
 
     function _modelLength() {
         if (root.model === null || root.model === undefined) return 0
