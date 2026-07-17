@@ -10,9 +10,8 @@ QtObject {
     property bool highContrast: false
     property bool compactMode: false
     property string fontScale: "normal"
-    property bool reduceMotion: false
+
     property bool darkMode: true
-    property real fontScale: 1.0
 
     readonly property color bgApp: darkMode ? (highContrast ? "#000205" : "#070A10") : (highContrast ? "#FFFFFF" : "#F5F6FA")
     readonly property color bgContent: darkMode ? (highContrast ? "#000408" : "#090B11") : (highContrast ? "#FAFAFE" : "#EEF0F5")

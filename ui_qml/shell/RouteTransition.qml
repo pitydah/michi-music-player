@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Animators
 import "../theme"
 
 Item {
@@ -9,20 +8,18 @@ Item {
     focus: true
     id: root
 
-    property Item target
-    property int duration: MichiTheme.motion.fast
-    property bool reducedMotion: false
+    property var target: null
+    property bool reducedMotion: typeof themeBridge !== "undefined" && themeBridge ? themeBridge.reducedMotion : false
+
+    signal navigate(string route)
 
     onTargetChanged: {
         if (target) {
             target.opacity = 1.0
             if (!root.reducedMotion) {
-                var anim = OpacityAnimator.createObject(target, {
-                    "from": 0,
-                    "to": 1,
-                    "duration": root.reducedMotion ? 0 : 200,
-                    "easing.type": Easing.OutCubic
-                })
+                var anim = Qt.createQmlObject(
+                    'import QtQuick; NumberAnimation { from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }',
+                    target, "routeAnim")
                 anim.start()
             }
         }

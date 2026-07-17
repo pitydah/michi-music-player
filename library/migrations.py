@@ -176,6 +176,7 @@ MIGRATIONS = [
         ALTER TABLE media_items ADD COLUMN albumartist TEXT DEFAULT '';
         ALTER TABLE media_items ADD COLUMN disc_number INTEGER DEFAULT 0;
     """, """
+        DROP INDEX IF EXISTS idx_media_albumartist;
         ALTER TABLE media_items DROP COLUMN albumartist;
         ALTER TABLE media_items DROP COLUMN disc_number;
     """),

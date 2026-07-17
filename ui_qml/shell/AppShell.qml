@@ -68,7 +68,6 @@ Item {
             Rectangle {
                 width: 4
                 height: parent.height
-                cursorShape: Qt.SizeHorCursor
                 color: "transparent"
                 MouseArea {
                     anchors.fill: parent
