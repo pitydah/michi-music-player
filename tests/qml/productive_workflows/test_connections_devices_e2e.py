@@ -71,3 +71,23 @@ class TestConnectionsDevicesE2E:
         QTest.keyClick(page, Qt.Key_Down)
         QTest.qWait(50)
         assert nav.currentRoute == "connections"
+
+    def test_qtest_click_discover(self, nav, root_window, all_bridges):
+        from PySide6.QtTest import QTest
+        from .conftest import find_qml_item, qtest_click_item
+        conn_bridge = all_bridges.get("connections")
+        assert conn_bridge is not None, "ConnectionsBridge should exist"
+        nav.navigate("connections")
+        assert nav.currentRoute == "connections"
+        hero = find_qml_item(root_window, "microServerHero")
+        assert hero is not None, "microServerHero not found"
+        scan_btn = None
+        for child in hero.childItems():
+            text = child.property("text") if hasattr(child, 'property') else ""
+            if "Buscar" in str(text) or "Discover" in str(text):
+                scan_btn = child
+                break
+        assert scan_btn is not None, "Discover button not found"
+        qtest_click_item(scan_btn, root_window)
+        QTest.qWait(200)
+        assert nav.currentRoute == "connections"

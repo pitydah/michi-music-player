@@ -64,9 +64,11 @@ def qml_item_type_names(item: QQuickItem, depth: int = 0) -> list[str]:
 
 def qtest_click_item(item: QQuickItem, window: QQuickWindow | None = None,
                      button: Qt.MouseButton = Qt.LeftButton) -> None:
+    from PySide6.QtCore import QPoint, QPointF
     from PySide6.QtTest import QTest
-    center = item.mapToScene(item.width / 2, item.height / 2)
-    QTest.mouseClick(window or item, button, Qt.NoModifier, center)
+    center = item.mapToScene(QPointF(item.width() / 2.0, item.height() / 2.0))
+    target = QPoint(round(center.x()), round(center.y()))
+    QTest.mouseClick(window or item, button, Qt.NoModifier, target)
     QTest.qWait(50)
 
 

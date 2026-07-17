@@ -25,3 +25,25 @@ class TestPlaylistCreateExport:
         assert hasattr(svc, 'add_track')
         assert hasattr(svc, 'import_m3u')
         assert hasattr(svc, 'export_m3u')
+
+    def test_qtest_navigate_playlists(self, nav, root_window):
+        from PySide6.QtTest import QTest
+        from .conftest import find_qml_item, qtest_click_item
+        nav.navigate("playlists")
+        assert nav.currentRoute == "playlists"
+        pl_page = find_qml_item(root_window, "playlistsPage")
+        assert pl_page is not None, "playlistsPage not found"
+        create_btn = None
+        for child in pl_page.childItems():
+            text = child.property("text") if hasattr(child, 'property') else ""
+            if "Nueva" in str(text) or "Crear" in str(text):
+                create_btn = child
+                break
+        if create_btn is not None:
+            qtest_click_item(create_btn, root_window)
+            QTest.qWait(100)
+            dialog = find_qml_item(root_window, "playlistEditorDialog")
+            if dialog is not None:
+                assert dialog.property("visible") or dialog.property("opened"), (
+                    "playlistEditorDialog should be visible"
+                )

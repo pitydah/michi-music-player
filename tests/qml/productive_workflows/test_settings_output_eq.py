@@ -26,3 +26,16 @@ class TestSettingsOutputEq:
         assert hasattr(svc, 'set_enabled')
         assert hasattr(svc, 'save_preset')
         assert hasattr(svc, 'load_preset')
+
+    def test_qtest_navigate_eq(self, nav, root_window):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        from .conftest import find_qml_item
+        nav.navigate("equalizer")
+        assert nav.currentRoute == "equalizer"
+        eq_page = find_qml_item(root_window, "equalizerPage")
+        assert eq_page is not None, "equalizerPage not found"
+        eq_page.forceActiveFocus()
+        QTest.keyClick(eq_page, Qt.Key_Down)
+        QTest.qWait(50)
+        assert nav.currentRoute == "equalizer"

@@ -26,3 +26,18 @@ class TestRadio:
     def test_radio_bridge_exists(self, bootstrap, bridges):
         rb = bridges.get("radio")
         assert rb is not None
+
+    def test_qtest_click_station(self, nav, root_window, all_bridges):
+        from PySide6.QtTest import QTest
+        from .conftest import find_qml_item, qtest_click_item
+        nav.navigate("radio")
+        assert nav.currentRoute == "radio", (
+            f"Expected 'radio', got '{nav.currentRoute}'"
+        )
+        radio_page = find_qml_item(root_window, "radioPage")
+        assert radio_page is not None, "radioPage not found"
+        stations = [c for c in radio_page.childItems() if c.objectName() == "radioStationDetail"]
+        if len(stations) > 0:
+            qtest_click_item(stations[0], root_window)
+            QTest.qWait(100)
+            assert nav.currentRoute == "radio"

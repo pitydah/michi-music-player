@@ -37,3 +37,16 @@ class TestMetadataTaggingDoctor:
         if svc is None:
             pytest.skip("library_doctor_service not registered (optional)")
         assert hasattr(svc, 'scan')
+
+    def test_qtest_navigate_tagging(self, nav, root_window):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        from .conftest import find_qml_item
+        nav.navigate("tagging")
+        assert nav.currentRoute == "tagging"
+        page = find_qml_item(root_window, "SmartTaggingPage")
+        if page is not None:
+            page.forceActiveFocus()
+            QTest.keyClick(page, Qt.Key_Down)
+            QTest.qWait(50)
+            assert nav.currentRoute == "tagging"

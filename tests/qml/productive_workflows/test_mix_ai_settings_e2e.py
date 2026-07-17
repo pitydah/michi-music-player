@@ -93,3 +93,35 @@ class TestMixAiSettingsE2E:
         QTest.keyClick(header, Qt.Key_Down)
         QTest.qWait(50)
         assert nav.currentRoute == "settings"
+
+    def test_qtest_click_eq_bypass(self, nav, root_window, all_bridges):
+        from PySide6.QtTest import QTest
+        from .conftest import find_qml_item, qtest_click_item
+        eq_bridge = all_bridges.get("eq")
+        assert eq_bridge is not None, "EqBridge should exist"
+        nav.navigate("equalizer")
+        assert nav.currentRoute == "equalizer", (
+            f"Expected 'equalizer', got '{nav.currentRoute}'"
+        )
+        eq_page = find_qml_item(root_window, "equalizerPage")
+        assert eq_page is not None, "equalizerPage not found"
+        bypass_btn = None
+        for child in eq_page.childItems():
+            text = child.property("text") if hasattr(child, 'property') else ""
+            if "Bypass" in str(text) or "Activar" in str(text):
+                bypass_btn = child
+                break
+        if bypass_btn is None:
+            for child in eq_page.childItems():
+                if hasattr(child, 'clicked'):
+                    bypass_btn = child
+                    break
+        assert bypass_btn is not None, "EQ bypass button not found"
+        bypass_before = getattr(eq_bridge, 'bypass', None)
+        qtest_click_item(bypass_btn, root_window)
+        QTest.qWait(100)
+        bypass_after = getattr(eq_bridge, 'bypass', None)
+        if bypass_before is not None and bypass_after is not None:
+            assert bypass_before != bypass_after, (
+                f"EQ bypass should toggle: {bypass_before} -> {bypass_after}"
+            )
