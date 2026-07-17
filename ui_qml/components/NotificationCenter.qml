@@ -12,6 +12,7 @@ Rectangle {
     property var notifications: []
     property var persistentNotifications: []
     property bool reducedMotion: false
+    Keys.onEscapePressed: { if (root.visible) root.close() }
 
     signal dismissAllRequested()
     signal notificationActivated(string notificationId)
