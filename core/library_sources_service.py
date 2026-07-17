@@ -56,11 +56,13 @@ class LibrarySourcesService:
         if not self._db or not hasattr(self._db, 'conn'):
             return {"ok": False, "error": "NO_DB"}
         try:
-            self._db.conn.execute(
+            cur = self._db.conn.execute(
                 "UPDATE library_roots SET enabled=? WHERE path=?",
                 (int(enabled), path)
             )
             self._db.conn.commit()
+            if cur.rowcount == 0:
+                return {"ok": False, "error": "PATH_NOT_FOUND"}
             return {"ok": True}
         except Exception:
             return {"ok": False, "error": "UPDATE_FAILED"}

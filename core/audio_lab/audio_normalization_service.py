@@ -118,6 +118,8 @@ class AudioNormalizationService(QObject):
             )
             if result.returncode == 0:
                 os.replace(filepath + ".tmp", filepath)
+                if not os.path.isfile(filepath):
+                    return {"ok": False, "error": "Output file not found after normalization", "error_code": "FILE_NOT_FOUND"}
                 return {"ok": True, "filepath": filepath, "target_loudness": target_loudness}
             return {"ok": False, "error": f"ffmpeg error: {result.stderr[:200]}"}
         except Exception as e:

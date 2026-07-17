@@ -37,6 +37,9 @@ class GStreamerAudioBackend:
         self._pipeline = pipeline
         self._playing = False
 
+    def get_pipeline(self):
+        return self._pipeline
+
     def play(self, uri: str) -> bool:
         try:
             import gi
