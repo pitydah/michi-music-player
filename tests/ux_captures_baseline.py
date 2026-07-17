@@ -36,7 +36,8 @@ PAGES = [
     "lyrics",
     "equalizer",
 ]
-OUTPUT_DIR = Path(__file__).resolve().parent.parent / "artifacts" / "ux-baseline"
+_DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parent.parent / "artifacts" / "ux-baseline"
+OUTPUT_DIR = Path(os.environ.get("MICHI_UX_OUTPUT_DIR", _DEFAULT_OUTPUT_DIR)).resolve()
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ["MICHI_CAPTURE_MODE"] = "1"
@@ -142,9 +143,10 @@ def run() -> int:
             return
 
         # Allow PageStack and asynchronous loaders to settle before capture.
-        QTimer.singleShot(400, lambda page=requested: QTimer.singleShot(
-            500, lambda: capture_current(page)
-        ))
+        QTimer.singleShot(
+            400,
+            lambda page=requested: QTimer.singleShot(500, lambda: capture_current(page)),
+        )
 
     QTimer.singleShot(800, navigate_next)
     return app.exec()
