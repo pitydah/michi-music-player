@@ -28,26 +28,57 @@ Item {
     property int homeState: HomePage.LOADING
     property string statusMessage: ""
 
-    function refresh() {
-        if (root.hb && typeof root.hb.refresh !== "undefined") {
-            root.hb.refresh()
-            root.homeState = HomePage.READY
-            root.statusMessage = ""
-        } else {
+    function updateStateFromBridge() {
+        if (!root.hb) {
             root.homeState = HomePage.ERROR
             root.statusMessage = "Servicio de inicio no disponible"
+            return
+        }
+        root.statusMessage = root.hb.errorMessage || ""
+        if (root.hb.loading) {
+            root.homeState = HomePage.LOADING
+        } else if (!root.hb.ready && root.statusMessage !== "") {
+            root.homeState = HomePage.ERROR
+        } else if (!root.hb.hasLibrary && root.hb.sourcesCount === 0) {
+            root.homeState = HomePage.EMPTY
+        } else {
+            root.homeState = HomePage.READY
+        }
+    }
+
+    function refresh() {
+        if (!root.hb || typeof root.hb.refresh === "undefined") {
+            root.homeState = HomePage.ERROR
+            root.statusMessage = "Servicio de inicio no disponible"
+            return
+        }
+        root.homeState = HomePage.LOADING
+        root.statusMessage = ""
+        var result = root.hb.refresh()
+        root.updateStateFromBridge()
+        if (result && result.ok === false && !root.hb.ready) {
+            root.homeState = HomePage.ERROR
+            root.statusMessage = result.errors ? result.errors.join("; ") : "No se pudo cargar el inicio"
         }
     }
 
     Component.onCompleted: root.refresh()
+
+    Connections {
+        target: root.hb
+        function onSnapshotChanged() {
+            root.updateStateFromBridge()
+        }
+    }
 
     Flickable {
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
-        boundsBehavior: Flickable.OverBounds
+        boundsBehavior: Flickable.StopAtBounds
         activeFocusOnTab: true
+        visible: root.homeState === HomePage.READY
 
         Column {
             id: column
@@ -55,21 +86,13 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             HomeHero {
+                width: parent.width
             }
 
             StatusBadge {
-                text: {
-                    if (root.homeState === HomePage.LOADING) return "Cargando..."
-                    if (root.homeState === HomePage.ERROR) return "Error"
-                    if (!root.hb) return "Servicio no disponible"
-                    return "Ready"
-                }
-                kind: {
-                    if (root.homeState === HomePage.ERROR || !root.hb) return "error"
-                    if (root.homeState === HomePage.LOADING) return "info"
-                    return "success"
-                }
-                visible: root.homeState !== HomePage.READY || !root.hb
+                text: root.statusMessage !== "" ? "Información parcial" : "Listo"
+                kind: root.statusMessage !== "" ? "warning" : "success"
+                visible: root.statusMessage !== ""
             }
 
             ContinueCard {
@@ -79,10 +102,9 @@ Item {
                 trackArtist: root.hb ? root.hb.currentArtist : "—"
                 hasPlayback: root.hb ? root.hb.hasPlayback : false
                 activeFocusOnTab: true
-                KeyNavigation.tab: statusGrid
-                KeyNavigation.backtab: column
-                Keys.onReturnPressed: activate()
-                Keys.onSpacePressed: activate()
+                KeyNavigation.tab: libraryCard
+                Keys.onReturnPressed: continueCard.activate()
+                Keys.onSpacePressed: continueCard.activate()
                 onActivate: {
                     if (root.hb && root.hb.hasPlayback && typeof navigationBridge !== "undefined")
                         navigationBridge.navigate("playback")
@@ -93,9 +115,6 @@ Item {
                 id: statusGrid
                 width: parent.width
                 spacing: MichiTheme.spacing.lg
-                activeFocusOnTab: true
-                KeyNavigation.tab: actionRow
-                KeyNavigation.backtab: continueCard
 
                 LibraryStatusCard {
                     id: libraryCard
@@ -103,10 +122,12 @@ Item {
                     albums: root.hb ? root.hb.libraryAlbums : 0
                     artists: root.hb ? root.hb.libraryArtists : 0
                     tracks: root.hb ? root.hb.libraryTracks : 0
-                    hasData: root.hb ? root.hb.libraryAlbums > 0 || root.hb.libraryTracks > 0 : false
+                    hasData: root.hb ? root.hb.hasLibrary : false
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onOpenLibrary()
-                    Keys.onSpacePressed: onOpenLibrary()
+                    KeyNavigation.tab: ecosystemCard
+                    KeyNavigation.backtab: continueCard
+                    Keys.onReturnPressed: libraryCard.openLibrary()
+                    Keys.onSpacePressed: libraryCard.openLibrary()
                     onOpenLibrary: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("library")
@@ -118,8 +139,10 @@ Item {
                     width: parent.width * 0.48
                     microServerState: root.cb ? root.cb.microServerState : "not_configured"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onOpenConnections()
-                    Keys.onSpacePressed: onOpenConnections()
+                    KeyNavigation.tab: microCard
+                    KeyNavigation.backtab: libraryCard
+                    Keys.onReturnPressed: ecosystemCard.openConnections()
+                    Keys.onSpacePressed: ecosystemCard.openConnections()
                     onOpenConnections: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("connections")
@@ -135,14 +158,18 @@ Item {
                 id: actionRow
                 width: parent.width
                 spacing: MichiTheme.spacing.lg
-                KeyNavigation.tab: microCard
-                KeyNavigation.backtab: statusGrid
 
                 GlassCard {
                     id: microCard
                     width: parent.width * 0.48
                     implicitHeight: 80
                     activeFocusOnTab: true
+                    KeyNavigation.tab: jobsCard
+                    KeyNavigation.backtab: ecosystemCard
+                    Keys.onReturnPressed: {
+                        if (typeof navigationBridge !== "undefined")
+                            navigationBridge.navigate("connections")
+                    }
 
                     RowLayout {
                         anchors.fill: parent
@@ -156,6 +183,8 @@ Item {
                             font.weight: MichiTheme.typography.weightSemiBold
                         }
 
+                        Item { Layout.fillWidth: true }
+
                         StatusBadge {
                             text: root.cb && root.cb.microServerState === "connected" ? "Activo" : "Detenido"
                             kind: root.cb && root.cb.microServerState === "connected" ? "success" : "disconnected"
@@ -168,6 +197,7 @@ Item {
                     width: parent.width * 0.48
                     implicitHeight: 80
                     activeFocusOnTab: true
+                    KeyNavigation.backtab: microCard
                     Keys.onReturnPressed: {
                         if (typeof navigationBridge !== "undefined")
                             navigationBridge.navigate("jobs")
@@ -186,7 +216,7 @@ Item {
                         }
 
                         Text {
-                            text: root.jb ? String(root.jb.activeCount) : "0"
+                            text: root.hb ? String(root.hb.activeJobs) : "0"
                             color: MichiTheme.colors.accentBlue
                             font.pixelSize: MichiTheme.typography.heroTitleSize
                             font.weight: MichiTheme.typography.weightBold
@@ -223,7 +253,6 @@ Item {
                         height: 40
                         coverRadius: MichiTheme.radiusSm
                         coverKey: root.hb && root.hb.hasPlayback ? "NOWPLAYING" : ""
-                        visible: root.hb && root.hb.hasPlayback
                     }
 
                     Column {
@@ -231,20 +260,20 @@ Item {
                         spacing: MichiTheme.spacing.xs
 
                         Text {
+                            width: parent.width
                             text: root.hb ? root.hb.currentTrackTitle : ""
                             color: MichiTheme.colors.textPrimary
                             font.pixelSize: MichiTheme.typography.bodySize
                             font.weight: MichiTheme.typography.weightMedium
                             elide: Text.ElideRight
-                            width: parent.width
                         }
 
                         Text {
+                            width: parent.width
                             text: root.hb ? root.hb.currentArtist : ""
                             color: MichiTheme.colors.textSecondary
                             font.pixelSize: MichiTheme.typography.metaSize
                             elide: Text.ElideRight
-                            width: parent.width
                         }
                     }
 
@@ -257,7 +286,7 @@ Item {
                             if (src && src.indexOf("subsonic") >= 0) return "Subsonic"
                             return src || "—"
                         }
-                        kind: root.hb && root.hb.hasPlayback ? "active" : "disconnected"
+                        kind: "active"
                     }
 
                     MichiButton {
@@ -266,7 +295,7 @@ Item {
                         variant: "accent"
                         enabled: root.hb && root.hb.hasPlayback
                         onClicked: {
-                            if (root.hb && root.hb.hasPlayback && typeof navigationBridge !== "undefined")
+                            if (typeof navigationBridge !== "undefined")
                                 navigationBridge.navigate("playback")
                         }
                     }
@@ -277,34 +306,28 @@ Item {
                 id: assistantCard
                 width: parent.width
                 activeFocusOnTab: true
-                KeyNavigation.backtab: playbackCard
-                Keys.onReturnPressed: onOpenAssistant()
-                Keys.onSpacePressed: onOpenAssistant()
+                Keys.onReturnPressed: assistantCard.openAssistant()
+                Keys.onSpacePressed: assistantCard.openAssistant()
                 onOpenAssistant: {
                     if (typeof navigationBridge !== "undefined" && navigationBridge)
                         navigationBridge.navigate("assistant")
                 }
             }
 
-            Text {
-                text: root.statusMessage
-                color: MichiTheme.colors.error
-                font.pixelSize: MichiTheme.typography.bodySize
+            MichiBanner {
+                width: parent.width
                 visible: root.statusMessage !== ""
+                kind: "warning"
+                message: root.statusMessage
             }
         }
     }
 
-    Loader {
-        active: root.homeState === HomePage.LOADING
+    LoadingState {
         anchors.centerIn: parent
-        sourceComponent: Column {
-            spacing: MichiTheme.spacing.sm
-            Repeater {
-                model: 3
-                MichiSkeleton { width: 320; height: 80 }
-            }
-        }
+        visible: root.homeState === HomePage.LOADING
+        title: "Cargando inicio"
+        subtitle: "Actualizando biblioteca, reproducción y ecosistema."
     }
 
     EmptyState {
@@ -312,22 +335,13 @@ Item {
         visible: root.homeState === HomePage.EMPTY
         title: "Tu biblioteca está vacía"
         subtitle: "Añade una carpeta de música o conecta Michi Micro Server para comenzar."
-        iconText: "♪"
+        iconText: "library"
         showAction: true
         actionText: "Añadir música"
         onActionClicked: {
             if (typeof navigationBridge !== "undefined")
                 navigationBridge.navigate("library.sources")
         }
-    }
-
-    EmptyState {
-        anchors.centerIn: parent
-        anchors.verticalCenterOffset: 60
-        visible: root.homeState === HomePage.EMPTY
-        title: ""
-        subtitle: "También puedes explorar la radio o conectar servidores Subsonic."
-        iconText: ""
     }
 
     ErrorState {
