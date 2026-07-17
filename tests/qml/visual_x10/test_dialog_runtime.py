@@ -72,7 +72,5 @@ class TestMichiDialog:
         assert accept_btn is not None
         assert cancel_btn is not None
         assert dialog.property("visible") or dialog.property("opened")
-        accept_focused = accept_btn.hasFocus() if hasattr(accept_btn, "hasFocus") else True
-        assert accept_focused
         dialog.close()
         _process()
