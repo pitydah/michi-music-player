@@ -12,7 +12,8 @@ logger = logging.getLogger("michi.qml_app")
 
 
 def run_qml() -> int:
-    os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
+    os.environ.setdefault("QT_QPA_PLATFORM", "wayland;xcb")
+    os.environ.setdefault("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1")
     try:
         from PySide6.QtGui import QGuiApplication
         from PySide6.QtQml import QQmlApplicationEngine
