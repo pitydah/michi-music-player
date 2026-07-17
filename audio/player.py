@@ -110,16 +110,16 @@ class GStreamerEngine(QObject):
         self._audio_profile = "standard"
 
     def _on_backend_state_changed(self, state):
-        pass
+        self._state = state
 
     def _on_backend_track_ended(self):
-        pass
+        self._on_media_finished_eos()
 
     def _on_backend_position_updated(self, position: float):
-        pass
+        self.position_changed.emit(position)
 
     def _on_backend_error(self, msg: str):
-        pass
+        self.error_occurred.emit(msg)
 
     def set_library_db(self, db):
         self._db = db

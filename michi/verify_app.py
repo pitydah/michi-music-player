@@ -26,7 +26,9 @@ def run_verify() -> int:
         from PySide6.QtQml import QQmlApplicationEngine
 
         app = QGuiApplication(sys.argv)
-        app.setApplicationName("Michi Verify")
+        app.setApplicationName("Michi Music Player")
+        app.setOrganizationName("Michi")
+        app.setOrganizationDomain("michi.app")
         engine = QQmlApplicationEngine()
 
         bootstrap.create_bridges()

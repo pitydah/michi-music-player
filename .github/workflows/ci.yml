@@ -77,6 +77,9 @@ jobs:
           QT_QPA_PLATFORM=offscreen python -m pytest tests/ -q --timeout=300 \
             --ignore=tests/qml --ignore=tests/test_large_library.py \
             -x --junitxml=results-core.xml
+      - name: App start test
+        run: |
+          QT_QPA_PLATFORM=offscreen python -m pytest tests/test_rc_compile.py::test_app_starts -q --timeout=60
       - name: QML tests
         run: |
           QT_QPA_PLATFORM=offscreen python -m pytest tests/qml/visual_x10/test_controls_runtime.py tests/qml/visual_x10/test_dialog_runtime.py -q --timeout=120 --junitxml=results-qml.xml
@@ -149,6 +152,13 @@ jobs:
         run: |
           coverage report --omit="*/shibokensupport/*,*signature_bootstrap*" > artifacts/coverage-report.txt
           cat artifacts/coverage-report.txt
+          COVERAGE=$(coverage report --omit="*/shibokensupport/*,*signature_bootstrap*" | tail -1 | awk '{print $NF}' | tr -d '%')
+          echo "Coverage: ${COVERAGE}%"
+          MIN_COVERAGE=40
+          if [ "${COVERAGE}" -lt "${MIN_COVERAGE}" ]; then
+            echo "FAIL: Coverage ${COVERAGE}% < minimum ${MIN_COVERAGE}%"
+            exit 1
+          fi
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
@@ -177,11 +187,16 @@ jobs:
       whl = sorted(glob.glob('dist/*.whl'))
       with zipfile.ZipFile(whl[-1]) as z:
           names = z.namelist()
-          required = ['michi/', 'audio/', 'core/', 'library/', 'ui_qml/', 'ui_qml_bridge/']
+          required = ['michi/', 'audio/', 'core/', 'library/', 'ui_qml/', 'ui_qml_bridge/', 'icons/']
           for pkg in required:
               assert any(n.startswith(pkg) for n in names), f'Missing: {pkg}'
           qml_files = [n for n in names if n.endswith('.qml')]
-          print(f'Wheel OK: {len(names)} files, {len(qml_files)} QML')
+          svg_files = [n for n in names if n.endswith('.svg')]
+          png_files = [n for n in names if n.endswith('.png')]
+          required_icons = ['nav_back.svg', 'app_icon.svg', 'sidebar_home.svg']
+          for ico in required_icons:
+              assert any(ico in n for n in names), f'Missing icon: {ico}'
+          print(f'Wheel OK: {len(names)} files, {len(qml_files)} QML, {len(svg_files)} SVG, {len(png_files)} PNG')
       "
       - name: Install wheel
         run: |

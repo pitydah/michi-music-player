@@ -1,4 +1,11 @@
-"""GStreamerAudioBackend — production audio backend using GStreamer pipeline."""
+"""GStreamerAudioBackend — legacy playbin backend.
+
+DEPRECATED: Use GStreamerEngine via EngineBackendAdapter instead.
+The Engine path uses PipelineFactory for full DSP chain (format probe,
+profile, DAC, ReplayGain, EQ, spectrum, transmit).
+
+This backend is kept for backward compatibility during the transition.
+"""
 
 from __future__ import annotations
 
@@ -31,6 +38,7 @@ class GStreamerAudioBackend:
         self._volume = 1.0
         self._position = 0.0
         self._duration = 0.0
+        self._current_path: str = ""
         self._queue: list[str] = []
         self._queue_index = -1
 
@@ -69,6 +77,7 @@ class GStreamerAudioBackend:
         if Gst is None:
             return False
         try:
+            self._current_path = uri
             file_uri = _path_to_file_uri(uri)
             playbin = Gst.ElementFactory.make("playbin", "player")
             playbin.set_property("uri", file_uri)
@@ -152,6 +161,7 @@ class GStreamerAudioBackend:
         return PlaybackSnapshot(
             backend_id="gstreamer",
             state=state,
+            current_path=self._current_path,
             position_seconds=self.get_position(),
             duration_seconds=self.get_duration(),
             volume=int(self._volume * 100),

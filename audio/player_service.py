@@ -33,6 +33,7 @@ class PlayerService(QObject):
         super().__init__(parent)
         self._engine = engine
         self._event_bus = event_bus
+        self._volume_before_mute = None
         self._retry_url = None
         self._retry_title = ""
         self._retry_artist = ""
@@ -49,9 +50,10 @@ class PlayerService(QObject):
         self._active_backend_id = ""
 
         from audio.backends.hybrid_audio_manager import HybridAudioManager
-        if engine is not None and hasattr(engine, '_backend') and engine._backend is not None:
-            self._gst_backend = engine._backend
-            self._hybrid = HybridAudioManager(default_backend=self._gst_backend)
+        from audio.backends.engine_backend_adapter import EngineBackendAdapter
+        if engine is not None:
+            self._engine_adapter = EngineBackendAdapter(engine)
+            self._hybrid = HybridAudioManager(default_backend=self._engine_adapter)
             self._active_backend_id = "gstreamer"
             self._engine.position_changed.connect(lambda s: self.position_changed.emit(s))
             self._engine.duration_changed.connect(lambda s: self.duration_changed.emit(s))
@@ -60,6 +62,7 @@ class PlayerService(QObject):
             self._engine.finished.connect(lambda: self.finished.emit())
             self._engine.error_occurred.connect(self._on_error)
         else:
+            self._engine_adapter = None
             self._hybrid = HybridAudioManager()
 
     def _on_state(self, state):
@@ -176,7 +179,10 @@ class PlayerService(QObject):
         self._current_title = title or ""
         self._current_artist = artist or ""
         self._current_album = album or ""
-        self._hybrid.play(filepath)
+        if self._engine:
+            self._engine.play(filepath)
+        else:
+            self._hybrid.play(filepath)
         if title:
             self.track_changed.emit(title, artist)
         self._publish("playback.changed", state="playing", title=title)
@@ -211,13 +217,20 @@ class PlayerService(QObject):
         self._hybrid.seek(seconds)
 
     def mute(self, muted: bool = True):
-        if self._engine:
-            try:
-                self._engine.set_volume(0.0 if muted else 1.0)
-                return {"ok": True}
-            except Exception as e:
-                return {"ok": False, "error": str(e)}
-        return {"ok": False, "error": "NO_ENGINE"}
+        if not self._engine:
+            return {"ok": False, "error": "NO_ENGINE"}
+        try:
+            if muted:
+                snap = self._hybrid.get_snapshot()
+                self._volume_before_mute = snap.volume if snap else 50
+                self._engine.set_volume(0.0)
+            else:
+                restore = self._volume_before_mute if self._volume_before_mute is not None else 50
+                self._volume_before_mute = None
+                self._engine.set_volume(restore / 100.0)
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     def set_volume(self, vol):
         try:

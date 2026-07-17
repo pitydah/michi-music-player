@@ -83,6 +83,8 @@ include-package-data = true
 
 [tool.setuptools.package-data]
 ui_qml = ["*.qml", "*.js", "qmldir", "**/*.qml", "**/*.js", "**/qmldir"]
+icons = ["*.svg", "*.png"]
+config = ["*.yaml", "*.yml"]
 
 [tool.setuptools.packages.find]
 where = ["."]
