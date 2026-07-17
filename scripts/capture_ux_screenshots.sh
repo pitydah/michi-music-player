@@ -1,114 +1,183 @@
-#!/bin/bash
-# Captura screenshots de las paginas principales de Michi QML para auditoria visual.
-# Requiere: Xvfb, python3, PySide6
-# Uso: ./scripts/capture_ux_screenshots.sh [output_dir]
+#!/usr/bin/env bash
+# Capture the main QML routes after real navigation and reject duplicate frames.
 set -euo pipefail
 
 OUTPUT_DIR="${1:-artifacts/ux-screenshots}"
-SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+OUTPUT_DIR="$(mkdir -p "$OUTPUT_DIR" && cd "$OUTPUT_DIR" && pwd)"
 
-echo "=== UX Screenshot Capture ==="
-echo "Output: $OUTPUT_DIR"
-
-# Verificar Xvfb
-if ! command -v Xvfb &> /dev/null; then
-    echo "ERROR: Xvfb no instalado. Instalar con: apt install xvfb"
+if ! command -v Xvfb >/dev/null 2>&1; then
+    echo "ERROR: Xvfb no está instalado. Instala el paquete xvfb." >&2
     exit 1
 fi
 
-mkdir -p "$OUTPUT_DIR"
-
-# Iniciar Xvfb
-DISPLAY_NUM=$(shuf -i 100-999 -n 1)
-Xvfb ":$DISPLAY_NUM" -screen 0 1440x900x24 &
+DISPLAY_NUM="$(shuf -i 100-999 -n 1)"
+Xvfb ":${DISPLAY_NUM}" -screen 0 1440x900x24 >/tmp/michi-xvfb.log 2>&1 &
 XVFB_PID=$!
-sleep 1
 
-export DISPLAY=":$DISPLAY_NUM"
+cleanup() {
+    kill "$XVFB_PID" 2>/dev/null || true
+    wait "$XVFB_PID" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+sleep 1
+export DISPLAY=":${DISPLAY_NUM}"
 export QT_QPA_PLATFORM=xcb
 export MICHI_SAFE_MODE=1
+export MICHI_UX_OUTPUT_DIR="$OUTPUT_DIR"
 
-echo "Xvfb PID: $XVFB_PID en display :$DISPLAY_NUM"
+cd "$REPO_ROOT"
 
-# Ejecutar captura
-cd "$SCRIPT_DIR"
-python3 -c "
-import os, sys, time
-os.environ['QT_QPA_PLATFORM'] = 'xcb'
-os.environ['MICHI_SAFE_MODE'] = '1'
+echo "=== Michi UX screenshot audit ==="
+echo "Display: $DISPLAY"
+echo "Output:  $OUTPUT_DIR"
 
-from PySide6.QtGui import QGuiApplication
-from PySide6.QtQml import QQmlApplicationEngine
+python3 <<'PY'
+from __future__ import annotations
+
+import hashlib
+import os
+import sys
+from pathlib import Path
+
+os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
+os.environ.setdefault("MICHI_SAFE_MODE", "1")
+
 from PySide6.QtCore import QTimer, QUrl
-
-app = QGuiApplication(sys.argv)
-app.setApplicationName('Michi')
-app.setOrganizationName('Michi')
+from PySide6.QtGui import QGuiApplication, QWindow
+from PySide6.QtQml import QQmlApplicationEngine
 
 from core.application_bootstrap import ApplicationBootstrap
 
+PAGES = [
+    "home",
+    "library",
+    "playback",
+    "queue",
+    "playlists",
+    "radio",
+    "mix",
+    "connections",
+    "devices",
+    "home_audio",
+    "settings",
+    "diagnostics",
+    "assistant",
+    "audio_lab",
+    "library_doctor",
+    "disc_lab",
+    "history",
+    "lyrics",
+    "equalizer",
+]
+
+output_dir = Path(os.environ["MICHI_UX_OUTPUT_DIR"])
+output_dir.mkdir(parents=True, exist_ok=True)
+
+app = QGuiApplication(sys.argv)
+app.setApplicationName("Michi UX Audit")
+app.setOrganizationName("Michi")
+app.setOrganizationDomain("michi.app")
+
 bootstrap = ApplicationBootstrap()
-try:
-    bootstrap.build()
-    bootstrap.start()
-except Exception as e:
-    print(f'WARN: bootstrap partial: {e}')
+bootstrap.build()
+bootstrap.start()
+bridges = bootstrap.create_bridges()
 
 engine = QQmlApplicationEngine()
-engine.addImportPath(os.path.join(os.path.dirname(__file__), 'ui_qml'))
+bootstrap.register_context(engine)
+qml_path = Path.cwd() / "ui_qml" / "Main.qml"
+engine.load(QUrl.fromLocalFile(str(qml_path)))
 
-try:
-    bootstrap.create_bridges()
-    bootstrap.register_context(engine)
-except Exception as e:
-    print(f'WARN: bridges partial: {e}')
+windows = [obj for obj in engine.rootObjects() if isinstance(obj, QWindow)]
+if not windows:
+    print("ERROR: Main.qml no creó una ventana", file=sys.stderr)
+    bootstrap.shutdown()
+    raise SystemExit(1)
 
-qml_path = os.path.join(os.path.dirname(__file__), 'ui_qml', 'Main.qml')
-engine.load(QUrl.fromLocalFile(qml_path))
+window = windows[0]
+navigation = bridges.get("navigation")
+if navigation is None or not callable(getattr(navigation, "navigate", None)):
+    print("ERROR: NavigationBridge no está disponible", file=sys.stderr)
+    bootstrap.shutdown()
+    raise SystemExit(1)
 
-if not engine.rootObjects():
-    print('ERROR: No root objects')
-    sys.exit(1)
+screen = QGuiApplication.primaryScreen()
+if screen is None:
+    print("ERROR: no existe una pantalla para capturar", file=sys.stderr)
+    bootstrap.shutdown()
+    raise SystemExit(1)
 
-PAGES = ['home', 'library', 'playback', 'nowplaying', 'queue',
-         'playlists', 'radio', 'mix', 'connections', 'devices',
-         'home_audio', 'settings', 'diagnostics', 'assistant',
-         'audio_lab', 'library_doctor', 'disc_lab', 'history', 'lyrics']
-OUTPUT = '$OUTPUT_DIR'
-captured = []
+state = {
+    "index": 0,
+    "captures": [],
+    "hashes": {},
+    "failures": [],
+}
 
-def capture_page(page_name):
-    from PySide6.QtGui import QWindow
-    for obj in engine.rootObjects():
-        if isinstance(obj, QWindow):
-            path = os.path.join(OUTPUT, f'{page_name}.png')
-            screen = QGuiApplication.primaryScreen()
-            if screen:
-                pix = screen.grabWindow(obj.winId())
-                pix.save(path)
-                captured.append((page_name, os.path.getsize(path)))
-                print(f'  {page_name}: {path} ({os.path.getsize(path)} bytes)')
-            break
 
-def finish():
+def finish() -> None:
     try:
         bootstrap.shutdown()
-    except Exception:
-        pass
-    print(f'\\n{len(captured)}/{len(PAGES)} capturas guardadas en {OUTPUT}')
-    for name, size in captured:
-        kb = size / 1024
-        print(f'  {name}: {kb:.0f} KB')
-    QTimer.singleShot(0, app.quit)
+    finally:
+        print(f"\nCapturas válidas: {len(state['captures'])}/{len(PAGES)}")
+        for page, path, digest in state["captures"]:
+            print(f"  {page:18} {path.name:28} sha256={digest[:12]}")
+        if state["failures"]:
+            print("\nERRORES:", file=sys.stderr)
+            for failure in state["failures"]:
+                print(f"  - {failure}", file=sys.stderr)
+        app.exit(1 if state["failures"] else 0)
 
-# Capturar cada pagina con 1s de intervalo
-for i, page in enumerate(PAGES):
-    QTimer.singleShot((i + 1) * 1000, lambda p=page: capture_page(p))
-QTimer.singleShot((len(PAGES) + 2) * 1000, finish)
 
-app.exec()
-"
+def capture_current(page: str) -> None:
+    path = output_dir / f"{page}.png"
+    pixmap = screen.grabWindow(window.winId())
+    if pixmap.isNull() or not pixmap.save(str(path)):
+        state["failures"].append(f"{page}: no fue posible guardar la captura")
+    else:
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        previous = state["hashes"].get(digest)
+        if previous is not None:
+            state["failures"].append(
+                f"{page}: captura idéntica a {previous}; la navegación no cambió la vista"
+            )
+        else:
+            state["hashes"][digest] = page
+        state["captures"].append((page, path, digest))
 
-# Limpiar
-kill "$XVFB_PID" 2>/dev/null || true
-echo "=== Done ==="
+    state["index"] += 1
+    QTimer.singleShot(150, navigate_next)
+
+
+def navigate_next() -> None:
+    if state["index"] >= len(PAGES):
+        finish()
+        return
+
+    page = PAGES[state["index"]]
+    try:
+        result = navigation.navigate(page)
+    except Exception as exc:
+        state["failures"].append(f"{page}: navegación lanzó {exc}")
+        state["index"] += 1
+        QTimer.singleShot(50, navigate_next)
+        return
+
+    if isinstance(result, dict) and result.get("ok") is False:
+        error = result.get("error") or result.get("message") or "ruta rechazada"
+        state["failures"].append(f"{page}: {error}")
+        state["index"] += 1
+        QTimer.singleShot(50, navigate_next)
+        return
+
+    # Two event-loop turns let PageStack instantiate the route and resolve bindings.
+    QTimer.singleShot(350, lambda p=page: QTimer.singleShot(450, lambda: capture_current(p)))
+
+
+QTimer.singleShot(800, navigate_next)
+raise SystemExit(app.exec())
+PY
+
+echo "=== UX screenshot audit completed ==="
