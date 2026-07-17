@@ -4,8 +4,6 @@ import "../theme"
 
 QQC2.Popup {
     id: root
-    activeFocusOnTab: true
-
 
     property string title: "Ordenar por"
     property var options: []

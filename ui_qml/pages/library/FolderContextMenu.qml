@@ -7,9 +7,6 @@ Popup {
     id: root
     closePolicy: Popup.CloseOnEscape
 
-    activeFocusOnTab: true
-
-
     property string folderPath: ""
     property var bridge: null
 

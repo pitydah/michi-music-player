@@ -35,27 +35,15 @@ Item {
                 Row {
                     spacing: MichiTheme.spacing.sm
                     MichiButton {
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
                         text: "Elegir archivo"
                         variant: "secondary"
                         onClicked: artworkFileDialog.open()
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
                     }
                     MichiButton {
                         text: "Extraer carátula"
                         variant: "ghost"
                         onClicked: {
                             if (root.mb && typeof root.mb.hasArtwork !== "undefined")
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
                                 root.mb.hasArtwork()
                         }
                     }

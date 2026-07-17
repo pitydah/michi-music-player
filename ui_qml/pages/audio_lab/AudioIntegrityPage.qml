@@ -124,8 +124,6 @@ Item {
 
                             Accessible.checked: root.checked
 
-                            activeFocusOnTab: true
-
                             onCheckedChanged: root._checkMetadata = checked
                         }
                     }
@@ -137,18 +135,12 @@ Item {
                             Keys.onReturnPressed: toggle()
                             Keys.onSpacePressed: toggle()
                             onCheckedChanged: root._checkHeader = checked
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
                         }
                     }
                 }
             }
 
             SectionHeader { text: "Acciones"; width: parent.width; objectName: "integrityActionsHeader"; Accessible.name: "Acciones" }
-
-                    Accessible.role: Accessible.Button
 
             Row {
                 spacing: MichiTheme.spacing.sm
@@ -158,10 +150,6 @@ Item {
                     enabled: inputSelection.selectedFiles.length > 0 && root._state !== root.stateChecking
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._startCheck(false)
                 }

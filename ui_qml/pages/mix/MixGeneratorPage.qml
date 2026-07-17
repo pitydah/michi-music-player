@@ -225,12 +225,6 @@ Item {
                             enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
                         }
                     }
-                            Accessible.role: Accessible.EditableText
-
-                            Accessible.name: "Campo de texto"
-
-                            activeFocusOnTab: true
-
 
                     Column { spacing: MichiTheme.spacing.sm; width: parent.width
                         Text { text: "Artista semilla"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium }
@@ -244,12 +238,6 @@ Item {
                             activeFocusOnTab: true
                             KeyNavigation.tab: exclusionsField
                             KeyNavigation.backtab: seedField
-                            Accessible.role: Accessible.EditableText
-
-                            Accessible.name: "Campo de texto"
-
-                            activeFocusOnTab: true
-
                             enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
                         }
                     }
@@ -404,12 +392,6 @@ Item {
                                     { text: "Clásica", value: "classical" },
                                     { text: "Electrónica", value: "electronic" },
                                     { text: "Hip Hop", value: "hip hop" },
-                                Accessible.role: Accessible.EditableText
-
-                                Accessible.name: "SpinBox"
-
-                                activeFocusOnTab: true
-
                                     { text: "R&B", value: "rnb" },
                                     { text: "Metal", value: "metal" },
                                     { text: "Folk", value: "folk" },
@@ -511,10 +493,6 @@ Item {
                     onClicked: {
                         if (root._state === "CANCELLED" || root._state === "NO_CANDIDATES") {
                             root.retry()
-                            Accessible.role: Accessible.ProgressBar
-
-                            activeFocusOnTab: true
-
                         } else {
                             root.generate()
                         }

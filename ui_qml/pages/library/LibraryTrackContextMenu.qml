@@ -13,8 +13,6 @@ import "../../components"
 
 Menu {
     id: root
-    activeFocusOnTab: true
-
 
     property var bridge: null
     property var selectionController: null

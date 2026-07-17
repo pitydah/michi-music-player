@@ -34,14 +34,7 @@ Item {
         Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
         Behavior on border.color { ColorAnimation { duration: MichiTheme.motion.fast } }
 
-        layer.enabled: root.elevated
-        layer.effect: DropShadow {
-            transparentBorder: true
-            radius: MichiTheme.radius.lg
-            samples: 24
-            color: MichiTheme.colors.shadowSoft
-            verticalOffset: 2
-        }
+        layer.enabled: false
     }
 
     Item {

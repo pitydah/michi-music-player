@@ -31,39 +31,41 @@ Item {
 
     Component.onCompleted: root.refresh()
 
-    StackLayout {
+    Item {
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
-        currentIndex: {
-            if (root.pageState === DiscLabPage.LOADING) return 0
-            if (root.pageState === DiscLabPage.ERROR) return 1
-            if (root.pageState === DiscLabPage.UNAVAILABLE) return 2
-            if (root.pageState === DiscLabPage.EMPTY) return 3
-            return 4
-        }
 
         LoadingState {
+            anchors.fill: parent
             title: "Cargando Disc Lab..."
+            visible: root.pageState === DiscLabPage.LOADING
         }
 
         ErrorState {
+            anchors.fill: parent
             title: "Error"
             message: root.errorMessage
             showRetry: true
             onRetryRequested: root.refresh()
+            visible: root.pageState === DiscLabPage.ERROR
         }
 
         UnavailableState {
+            anchors.fill: parent
             title: "Disc Lab no disponible"
             message: "No se detectó unidad de disco o el servicio no está activo."
+            visible: root.pageState === DiscLabPage.UNAVAILABLE
         }
 
         EmptyState {
+            anchors.fill: parent
             title: "Sin disco"
             subtitle: "Inserta un disco o conecta una unidad externa."
+            visible: root.pageState === DiscLabPage.EMPTY
         }
 
         Flickable {
+            visible: root.pageState === DiscLabPage.READY
             id: flickable
             clip: true
             boundsBehavior: Flickable.StopAtBounds

@@ -161,11 +161,8 @@ BaseDialog {
     buttonsItem: RowLayout {
         spacing: MichiTheme.spacing.sm
         Layout.alignment: Qt.AlignRight
-            Accessible.role: Accessible.Button
 
         property bool confirmEnabled: false
-            activeFocusOnTab: true
-
 
         MichiButton {
             id: cancelBtn
@@ -176,10 +173,6 @@ BaseDialog {
             Accessible.description: "Cancelar acción destructiva"
             onClicked: {
                 root.open = false
-            Accessible.role: Accessible.Button
-
-            activeFocusOnTab: true
-
                 root.cancelled()
             }
         }

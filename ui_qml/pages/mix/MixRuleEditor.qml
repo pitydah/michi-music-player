@@ -99,19 +99,10 @@ Item {
                     focusPolicy: Qt.StrongFocus
             }
         }
-                Accessible.role: Accessible.EditableText
-
-                Accessible.name: "Campo de texto"
-
-                activeFocusOnTab: true
-
 
         Row {
             spacing: MichiTheme.spacing.md; width: parent.width
             CheckBox { text: "Excluir recientes"; checked: root._excludeRecent; onCheckedChanged: root._excludeRecent = checked }
-            Accessible.role: Accessible.Button
-
-            activeFocusOnTab: true
 
             Text {
                 text: "Seed (opcional)"; color: MichiTheme.colors.textPrimary

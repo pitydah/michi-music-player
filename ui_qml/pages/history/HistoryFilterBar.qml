@@ -63,11 +63,9 @@ Item {
 
             TextField {
                 focusPolicy: Qt.StrongFocus
-                Accessible.name: "Filtrar por artista"
                 id: artistField
                 width: 140
                 placeholderText: "Artista"
-                Accessible.name: "Filtrar por artista"
                 activeFocusOnTab: true
                 onTextChanged: { root.artistFilter = text.trim(); root.filtersChanged() }
                 Keys.onEscapePressed: { text = ""; root.artistFilter = ""; root.filtersChanged() }

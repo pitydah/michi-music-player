@@ -67,10 +67,6 @@ Item {
                         if (root.stb && typeof root.stb.scanTrack !== "undefined" && root._selectedFile)
                             root.stb.scanTrack(root._selectedFile)
                     }
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
                 }
                 MichiButton {
                     text: root.stb && root.stb.status === "scanning" ? "Cancelar" : "Limpiar"
@@ -174,10 +170,6 @@ Item {
                     variant: "ghost"
                     onClicked: { if (root.stb) root.stb.selectHighConfidence() }
                 }
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
                 MichiButton {
                     text: "Seleccionar todos"
                     variant: "ghost"

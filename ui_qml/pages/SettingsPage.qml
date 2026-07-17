@@ -311,10 +311,6 @@ Item {
                     MichiButton { text: "< Volver"; variant: "ghost"; onClicked: root.back(); Accessible.name: "Volver" }
                     Label {
                         text: root.selectedEntry ? root.selectedEntry.label :
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
                               root.selectedSection ? root.selectedSection.title :
                               root.selectedCategory ? root.selectedCategory.title : ""
                         font.pixelSize: root.selectedEntry ? MichiTheme.typography.bodySize : MichiTheme.typography.sectionTitleSize
@@ -353,19 +349,9 @@ Item {
 
         Rectangle {
             Layout.preferredWidth: root.selectedCategory === null ? parent.width : 200
-                    Accessible.role: Accessible.EditableText
-
-                    activeFocusOnTab: true
-
             Layout.fillHeight: true
             color: MichiTheme.colors.surfaceCard
             visible: root.selectedCategory === null || root.width >= 700
-
-                    Accessible.role: Accessible.List
-
-                    Accessible.name: "ListView"
-
-                    activeFocusOnTab: true
 
             ColumnLayout {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
@@ -488,10 +474,6 @@ Item {
             Layout.fillWidth: true; Layout.fillHeight: true; clip: true
             Loader {
                 sourceComponent: {
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
                     if (root.selectedCategory === null) return compactList
                     if (root.selectedEntry) return entryDetailView
                     if (root.selectedSection) return sectionDetailView
@@ -540,12 +522,6 @@ Item {
                     if (root.selectedCategory === null) return compactList
                     if (root.selectedEntry) return entryDetailView
                     if (root.selectedSection) return sectionDetailView
-            Accessible.role: Accessible.List
-
-            Accessible.name: "ListView"
-
-            activeFocusOnTab: true
-
                     return compactCategoryDetail
                 }
             }
@@ -614,12 +590,6 @@ Item {
             }
             Item { Layout.fillHeight: true }
         }
-            Accessible.role: Accessible.List
-
-            Accessible.name: "ListView"
-
-            activeFocusOnTab: true
-
     }
 
     Component { id: entryDetailView

@@ -105,10 +105,6 @@ Item {
                         onClicked: {
                             root._running = true
                             root.confirmRepair()
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
                         }
                     }
 

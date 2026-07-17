@@ -102,16 +102,16 @@ Item {
         event.accepted = true
     }
 
-    Keys.onHomePressed: function(event) {
-        root.currentIndex = 0
-        root.activated(0)
-        event.accepted = true
-    }
-
-    Keys.onEndPressed: function(event) {
-        root.currentIndex = root.model.length - 1
-        root.activated(root.currentIndex)
-        event.accepted = true
+    Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Home) {
+            root.currentIndex = 0
+            root.activated(0)
+            event.accepted = true
+        } else if (event.key === Qt.Key_End) {
+            root.currentIndex = root.model.length - 1
+            root.activated(root.currentIndex)
+            event.accepted = true
+        }
     }
 
     Rectangle {

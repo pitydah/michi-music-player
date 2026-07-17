@@ -107,10 +107,6 @@ Item {
                         if (typeof notificationBridge !== "undefined" && notificationBridge)
                             notificationBridge.showMessage("Reporte exportado", "success")
                     }
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
                 }
                 MichiButton {
                     text: "Refrescar biblioteca"

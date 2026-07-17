@@ -376,3 +376,4 @@ Item {
 
     signal closeRequested()
 }
+}

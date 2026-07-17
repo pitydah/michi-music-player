@@ -188,8 +188,6 @@ Dialog {
                             root.exportCompleted(root._exportPath, result.count || 0)
                         } else {
                             root._status = result && result.error ? "Error: " + result.error : "Error al exportar"
-                Accessible.role: Accessible.Button
-
                         }
                     } else {
                         root._status = "Error: servicio no disponible"

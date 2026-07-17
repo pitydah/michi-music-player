@@ -5,15 +5,8 @@ import "../../components"
 import "../../materials"
 
 Dialog {
-    Accessible.role: Accessible.Dialog
-
-    Accessible.name: "Dialog"
-
     id: root
     closePolicy: Popup.CloseOnEscape
-
-    activeFocusOnTab: true
-
 
     property var lyricsBridge: null
 
@@ -61,21 +54,9 @@ Dialog {
                 color: MichiTheme.colors.textPrimary
                 wrapMode: Text.WordWrap
             }
-                Accessible.role: Accessible.Button
-
-                Accessible.name: "Button"
-
-                activeFocusOnTab: true
-
         }
 
         Row {
-                Accessible.role: Accessible.Button
-
-                Accessible.name: "Button"
-
-                activeFocusOnTab: true
-
             spacing: MichiTheme.spacing.sm
             anchors.horizontalCenter: parent.horizontalCenter
 

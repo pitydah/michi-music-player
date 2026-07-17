@@ -68,7 +68,6 @@ BaseDialog {
                 border.color: dontAskCheck.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
 
                 Rectangle {
-    focus: true
                     anchors.centerIn: parent
                     width: MichiTheme.spacing.sm + MichiTheme.spacing.xxs; height: width
                     radius: MichiTheme.radius.xs
@@ -90,11 +89,8 @@ BaseDialog {
     buttonsItem: RowLayout {
         spacing: MichiTheme.spacing.sm
         Layout.alignment: Qt.AlignRight
-            Accessible.role: Accessible.Button
 
         property bool confirmEnabled: true
-            activeFocusOnTab: true
-
 
         MichiButton {
             id: cancelBtn
@@ -105,10 +101,6 @@ BaseDialog {
             Accessible.description: "Cancelar acción"
             onClicked: {
                 root.open = false
-            Accessible.role: Accessible.Button
-
-            activeFocusOnTab: true
-
                 root.cancelled()
             }
         }

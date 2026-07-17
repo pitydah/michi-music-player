@@ -7,9 +7,6 @@ Popup {
     id: root
     closePolicy: Popup.CloseOnEscape
 
-    activeFocusOnTab: true
-
-
     property var bridge: null
     property var model: [
         {key: "title", label: "Título"},

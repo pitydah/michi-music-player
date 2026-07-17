@@ -105,10 +105,6 @@ BaseDialog {
         spacing: MichiTheme.spacing.sm
         Layout.alignment: Qt.AlignRight
         property bool confirmEnabled: !root.validationError
-            Accessible.role: Accessible.Button
-
-            activeFocusOnTab: true
-
 
         MichiButton {
             id: cancelBtn
@@ -119,10 +115,6 @@ BaseDialog {
             onClicked: {
                 root.open = false
                 root.cancelled()
-            Accessible.role: Accessible.Button
-
-            activeFocusOnTab: true
-
             }
         }
 

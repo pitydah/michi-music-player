@@ -47,14 +47,7 @@ Item {
         border.width: MichiTheme.borderWidth
         border.color: MichiTheme.colors.borderCard
 
-        layer.enabled: true
-        layer.effect: DropShadow {
-            transparentBorder: true
-            radius: MichiTheme.radius.xl
-            samples: 32
-            color: MichiTheme.colors.shadowFloating
-            verticalOffset: 4
-        }
+        layer.enabled: false
 
         Column {
             anchors.fill: parent

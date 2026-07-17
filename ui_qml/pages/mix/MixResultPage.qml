@@ -103,10 +103,6 @@ Item {
                     text: "Guardar como playlist"; variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.tab: regenerateBtn
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
                     KeyNavigation.backtab: enqueueAllBtn
                     enabled: root._songs.length > 0
                     onClicked: root.saveAsPlaylistRequested()

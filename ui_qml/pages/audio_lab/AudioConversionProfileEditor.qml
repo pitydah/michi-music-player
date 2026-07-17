@@ -245,10 +245,6 @@ Item {
                             onCurrentIndexChanged: root._profileChannels = root._channelsOptions[currentIndex]
                         }
                     }
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
                 }
             }
 

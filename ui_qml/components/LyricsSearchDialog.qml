@@ -4,15 +4,8 @@ import "../theme"
 import "../materials"
 
 Dialog {
-    Accessible.role: Accessible.Dialog
-
-    Accessible.name: "Dialog"
-
     id: root
     closePolicy: Popup.CloseOnEscape
-
-    activeFocusOnTab: true
-
 
     property var lyricsBridge: null
 

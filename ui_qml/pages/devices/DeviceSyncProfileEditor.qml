@@ -61,6 +61,11 @@ Item {
                 focusPolicy: Qt.StrongFocus
                 Accessible.name: "Política de transcodificación"
                 id: transcodeCombo
+                width: parent.width
+                model: ["transcode_auto", "transcode_always", "transcode_never", "transcode_keep_original"]
+                currentIndex: model.indexOf(root.transcodePolicy)
+                onCurrentTextChanged: root.transcodePolicy = currentText
+            }
 
             Text { text: "Política de colisión"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "collisionPolicyLabel" }
             ComboBox {

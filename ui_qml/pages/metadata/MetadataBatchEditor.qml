@@ -110,10 +110,6 @@ Item {
                         root._confirmApply = true
                     } else {
                         root._confirmApply = false
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
                     }
                 }
             }

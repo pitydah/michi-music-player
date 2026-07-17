@@ -188,11 +188,6 @@ Item {
                     font.pixelSize: MichiTheme.typography.captionSize
                     visible: root.selectedZoneIds.length < 2
                 }
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
-
                 Row {
                     spacing: MichiTheme.spacing.sm
 

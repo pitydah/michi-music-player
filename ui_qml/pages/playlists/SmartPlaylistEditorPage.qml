@@ -82,9 +82,9 @@ Item {
                 root._saving = false
                 return
             }
+            root.saved(name, root.ruleGroups)
+            root._saving = false
         }
-        root.saved(name, root.ruleGroups)
-        root._saving = false
     }
 
     Flickable {
@@ -232,12 +232,6 @@ Item {
                                 width: parent.width
                                 spacing: MichiTheme.spacing.sm
 
-                                Accessible.role: Accessible.ComboBox
-
-                                Accessible.name: "Campo de regla"
-
-                                activeFocusOnTab: true
-
                                 ComboBox {
                                     focusPolicy: Qt.StrongFocus
                                     id: fieldCombo
@@ -250,15 +244,18 @@ Item {
                                         root.ruleGroups = groups
                                     }
                                 }
+                                ComboBox {
+                                    focusPolicy: Qt.StrongFocus
+                                    model: ["is", "is_not", "contains", "gt", "lt", "gte", "lte"]
+                                    currentIndex: {
+                                        var idx = model.indexOf(modelData.operator)
+                                        return idx >= 0 ? idx : 0
+                                    }
                                     onCurrentTextChanged: {
                                         var groups = root.ruleGroups.slice()
                                         groups[model.index].rules[modelIndex].operator = currentText
                                         root.ruleGroups = groups
                                     }
-                            Accessible.role: Accessible.Button
-
-                            activeFocusOnTab: true
-
                                 }
                                 TextField {
                                     focusPolicy: Qt.StrongFocus
@@ -269,10 +266,6 @@ Item {
                                         var groups = root.ruleGroups.slice()
                                         groups[model.index].rules[modelIndex].value = text
                                         root.ruleGroups = groups
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
                                     }
                                 }
                                 MichiButton {
@@ -387,3 +380,4 @@ Item {
         }
     }
 }
+

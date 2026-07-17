@@ -133,8 +133,6 @@ Item {
                             root.mx.playMix()
                     }
                 }
-                    Accessible.role: Accessible.Button
-
 
                 MichiButton {
                     id: detailEnqueueBtn
@@ -325,14 +323,6 @@ Item {
                         : "Mix vacío. Selecciona un tipo de mix para generar contenido."
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 }
-        Accessible.role: Accessible.Dialog
-
-        Accessible.name: "Dialog"
-
-        closePolicy: Popup.CloseOnEscape
-
-        activeFocusOnTab: true
-
             }
 
             MixFeedbackControls {

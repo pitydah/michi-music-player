@@ -254,10 +254,6 @@ Drawer {
 
         Item { width: 1; height: MichiTheme.spacing.md }
 
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
         Row {
             width: parent.width
             spacing: MichiTheme.spacing.sm

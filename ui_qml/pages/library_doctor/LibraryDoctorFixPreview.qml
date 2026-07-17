@@ -40,17 +40,9 @@ Item {
                 Row {
                     spacing: MichiTheme.spacing.sm
                     MichiButton {
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
                         text: "Seleccionar todos"
                         variant: "ghost"
                         onClicked: { if (root.doc) root.doc.selectAll() }
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
                     }
                     MichiButton {
                         text: "Deseleccionar todos"
@@ -94,10 +86,6 @@ Item {
                                 root._confirmRepair = true
                             } else {
                                 root._confirmRepair = false
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
                                 if (root.doc && typeof root.doc.repairSelected !== "undefined")
                                     root.doc.repairSelected()
                             }

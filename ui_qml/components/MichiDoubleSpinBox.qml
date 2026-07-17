@@ -70,13 +70,12 @@ Item {
                 border.width: field.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
                 border.color: field.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
             }
-            validator: QQC2.DoubleValidator {
-                bottom: root.from
-                top: root.to
-                decimals: root.decimals
+            validator: IntValidator {
+                bottom: root.from * 100
+                top: root.to * 100
             }
             onEditingFinished: {
-                var v = parseFloat(text)
+                var v = parseInt(text) / 100
                 if (!isNaN(v)) {
                     v = Math.max(root.from, Math.min(root.to, v))
                     v = Math.round(v / root.stepSize) * root.stepSize

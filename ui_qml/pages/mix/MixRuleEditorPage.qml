@@ -167,12 +167,6 @@ Item {
                     Keys.onReturnPressed: removeBtn.clicked()
                     Keys.onSpacePressed: removeBtn.clicked()
 
-                                    Accessible.role: Accessible.ComboBox
-
-                                    Accessible.name: "ComboBox"
-
-                                    activeFocusOnTab: true
-
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm
 
@@ -209,9 +203,6 @@ Item {
                                         return idx >= 0 ? idx : 0
                                     }
                                     onCurrentTextChanged: modelData.operator = currentText
-                            Accessible.role: Accessible.Button
-
-                                    activeFocusOnTab: true
                                 }
 
                                 TextField {

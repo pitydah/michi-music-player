@@ -20,9 +20,7 @@ Rectangle {
     signal clicked()
 
     height: 34
-    implicitWidth: label.implicitWidth + MichiTheme.spacing.lg * 2
-    minimumWidth: 88
-    maximumWidth: 176
+    implicitWidth: Math.max(88, label.implicitWidth + MichiTheme.spacing.lg * 2)
     radius: MichiTheme.radius.xl - 2
     color: MichiTheme.colors.nowPlayingQualityBg
     border.width: 1

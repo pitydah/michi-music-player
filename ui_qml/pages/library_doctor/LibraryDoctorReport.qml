@@ -75,10 +75,6 @@ Item {
                         text: "Volver a escanear"
                         variant: "secondary"
                         onClicked: { if (root.doc && typeof root.doc.scan !== "undefined") root.doc.scan() }
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
                     }
                     MichiButton {
                         text: "Exportar reporte"

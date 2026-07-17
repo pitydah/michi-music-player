@@ -430,19 +430,12 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: root._previewResult
-                          ? "Estimado: " + (root._previewResult.estimated_size ? (root._previewResult.estimated_size / 1048576).toFixed(1) + " MB" : "desconocido")
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
-                            + " | Espacio libre: " + (root._previewResult.free_space ? (root._previewResult.free_space / 1073741824).toFixed(1) + " GB" : "desconocido")
+                          ? "Estimado: " + (root._previewResult.estimated_size ? (root._previewResult.estimated_size / 1048576).toFixed(1) + " MB" : "desconocido") + " | Espacio libre: " + (root._previewResult.free_space ? (root._previewResult.free_space / 1073741824).toFixed(1) + " GB" : "desconocido")
                           : "Selecciona archivo y perfil para previsualizar"
                     color: root._previewResult ? MichiTheme.colors.textPrimary : MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.bodySize
                 }
             }
-
-                    Accessible.role: Accessible.Button
 
             Row {
                 spacing: MichiTheme.spacing.sm

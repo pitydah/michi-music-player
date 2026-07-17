@@ -31,17 +31,9 @@ Item {
         Row {
             spacing: MichiTheme.spacing.sm
             MichiButton {
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
                 text: root._editing ? "Cancelar edición" : "Editar campos"
                 variant: root._editing ? "ghost" : "primary"
                 onClicked: root._editing = !root._editing
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
             }
             MichiButton {
                 text: root.editing ? "Guardar cambios" : "Guardar"
@@ -50,10 +42,6 @@ Item {
                 onClicked: {
                     if (root.mb && typeof root.mb.saveChanges !== "undefined")
                         root.mb.saveChanges()
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
                     root._editing = false
                 }
             }

@@ -57,10 +57,6 @@ Item {
                     text: "Edición individual"
                     variant: root._mode === "single" ? "primary" : "ghost"
                     onClicked: { root._mode = "single"; root.loadFromSelection() }
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
                 }
                 MichiButton {
                     text: "Edición por lotes"

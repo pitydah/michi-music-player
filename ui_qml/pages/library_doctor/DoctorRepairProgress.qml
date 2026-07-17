@@ -82,10 +82,6 @@ Item {
                         onClicked: {
                             root._cancelling = true
                             root.cancelRequested()
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
                         }
                     }
 

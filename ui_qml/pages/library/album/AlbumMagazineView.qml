@@ -3,8 +3,8 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "../../../../theme"
-import "../../../../components"
+import "../../../theme"
+import "../../../components"
 import "delegates"
 import "components"
 

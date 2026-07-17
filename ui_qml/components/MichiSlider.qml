@@ -31,10 +31,6 @@ Rectangle {
     Accessible.role: Accessible.Slider
     Accessible.name: root.accessibleName
     Accessible.description: root.accessibleDescription
-    Accessible.value: root.value
-    Accessible.minimumValue: root.from
-    Accessible.maximumValue: root.to
-    Accessible.stepSize: root.stepSize
     Accessible.onIncreaseAction: root._step(root.stepSize)
     Accessible.onDecreaseAction: root._step(-root.stepSize)
 
@@ -92,16 +88,15 @@ Rectangle {
         event.accepted = true
     }
 
-    Keys.onHomePressed: function(event) {
+    Keys.onPressed: function(event) {
         if (!root.enabled) return
-        root.setClampedValue(root.from, true)
-        event.accepted = true
-    }
-
-    Keys.onEndPressed: function(event) {
-        if (!root.enabled) return
-        root.setClampedValue(root.to, true)
-        event.accepted = true
+        if (event.key === Qt.Key_Home) {
+            root.setClampedValue(root.from, true)
+            event.accepted = true
+        } else if (event.key === Qt.Key_End) {
+            root.setClampedValue(root.to, true)
+            event.accepted = true
+        }
     }
 
     Rectangle {

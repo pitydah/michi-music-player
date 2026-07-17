@@ -131,7 +131,7 @@ Item {
             visible: parent.activeFocus
         }
 
-        QQC2.ToolTip {
+        ToolTip {
             visible: btnMa.containsMouse && tooltipText !== ""
             text: tooltipText
             delay: 600

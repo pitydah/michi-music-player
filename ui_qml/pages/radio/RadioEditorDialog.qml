@@ -226,8 +226,6 @@ Dialog {
                         root._testingConnection = false
                         root._connectionTestResult = "Conexión exitosa"
                     }, 1500)
-                Accessible.role: Accessible.Button
-
                 }
             }
 

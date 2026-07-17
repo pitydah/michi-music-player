@@ -90,10 +90,6 @@ Item {
                             if (root.mb) root.mb.loadMetadata(root._selectedFile)
                         }
                     }
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
                 }
                 MichiButton {
                     text: "Edición por lotes"
