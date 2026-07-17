@@ -41,6 +41,14 @@ Item {
             "assistant": "../pages/assistant/AssistantPage.qml",
             "library": "../pages/library/LibraryPage.qml",
             "audio_lab": "../pages/audio_lab/AudioLabOverviewPage.qml",
+            "audio_lab.analysis": "../pages/audio_lab/AudioAnalysisPage.qml",
+            "audio_lab.conversion": "../pages/audio_lab/AudioConversionPage.qml",
+            "audio_lab.normalization": "../pages/audio_lab/AudioNormalizationPage.qml",
+            "audio_lab.replaygain": "../pages/audio_lab/ReplayGainPage.qml",
+            "audio_lab.integrity": "../pages/audio_lab/AudioIntegrityPage.qml",
+            "audio_lab.comparison": "../pages/audio_lab/AudioComparisonPage.qml",
+            "audio_lab.jobs": "../pages/audio_lab/AudioBatchJobsPage.qml",
+            "audio_lab.profiles": "../pages/audio_lab/AudioConversionProfileEditor.qml",
             "radio": "../pages/radio/RadioPage.qml",
             "group_editor": "../pages/home_audio/GroupEditorPage.qml",
             "playlists": "../pages/playlists/PlaylistsPage.qml",
@@ -59,6 +67,9 @@ Item {
             "output_profiles": "../pages/outputs/OutputProfilesPage.qml",
             "smart_tagging": "../pages/SmartTaggingPage.qml",
             "diagnostics": "../pages/DiagnosticsPage.qml",
+            "zone_detail": "../pages/home_audio/ZoneDetailPage.qml",
+            "stream_routing": "../pages/home_audio/StreamRoutingPage.qml",
+            "latency": "../pages/home_audio/LatencyPage.qml",
         }
         return sources[route] || "../pages/PlaceholderPage.qml"
     }
@@ -83,6 +94,14 @@ Item {
             "diagnostics": "Diagnóstico",
             "assistant": "Michi IA",
             "audio_lab": "Audio Lab",
+            "audio_lab.analysis": "Análisis Técnico",
+            "audio_lab.conversion": "Conversión",
+            "audio_lab.normalization": "Normalización",
+            "audio_lab.replaygain": "ReplayGain",
+            "audio_lab.integrity": "Integridad",
+            "audio_lab.comparison": "Comparación",
+            "audio_lab.jobs": "Trabajos",
+            "audio_lab.profiles": "Perfiles",
             "library_doctor": "Library Doctor",
             "disc_lab": "Disc Lab",
             "output_profiles": "Perfiles de salida",
@@ -95,6 +114,9 @@ Item {
             "mix_rule_editor": "Reglas de Mix",
             "album_detail": "Álbum",
             "artist_detail": "Artista",
+            "zone_detail": "Detalle de Zona",
+            "stream_routing": "Enrutamiento",
+            "latency": "Latencia",
         }
         return titles[route] || "Michi Music Player"
     }
