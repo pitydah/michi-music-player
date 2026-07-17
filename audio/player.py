@@ -69,9 +69,9 @@ class GStreamerEngine(QObject):
     def __init__(self, dac: DacConfig = None, parent=None):
         super().__init__(parent)
         self._dac = dac or DacConfig()
-        from audio.backends.engine_backend_adapter import EngineBackendAdapter
-        self._backend = EngineBackendAdapter(self)
-        self._backend.set_callbacks(
+        from audio.backends.pipeline_transport import GStreamerPipelineTransport
+        self._transport = GStreamerPipelineTransport()
+        self._transport.set_callbacks(
             on_state_changed=self._on_backend_state_changed,
             on_track_ended=self._on_backend_track_ended,
             on_position_updated=self._on_backend_position_updated,
@@ -146,7 +146,7 @@ class GStreamerEngine(QObject):
         self._replaygain = (mode != "off")
 
     def get_position_ns(self) -> int:
-        pipeline = self._backend.get_pipeline()
+        pipeline = self._transport.get_pipeline()
         if pipeline:
             ok, pos_ns = pipeline.query_position(Gst.Format.TIME)
             if ok:
@@ -298,7 +298,7 @@ class GStreamerEngine(QObject):
                 self.state_changed.emit(self._state)
                 return
 
-            self._backend.adopt_pipeline(pipeline)
+            self._transport.adopt_pipeline(pipeline)
 
             self._current = filepath_or_url
             self._setup_bus()
@@ -389,7 +389,7 @@ class GStreamerEngine(QObject):
             self.error_occurred.emit("Failed to create DFF pipeline")
             return
 
-        self._backend.adopt_pipeline(pipeline)
+        self._transport.adopt_pipeline(pipeline)
 
         caps_str = (f"audio/x-dsd,format=DSDU8,reversed-bytes=false,"
                     f"layout=interleaved,channels={header.channels},"
@@ -457,12 +457,12 @@ class GStreamerEngine(QObject):
         return False
 
     def pause(self):
-        self._backend.pause()
+        self._transport.pause()
         self._state = PlaybackState.PAUSED
         self.state_changed.emit(self._state)
 
     def resume(self):
-        self._backend.resume()
+        self._transport.resume()
         self._state = PlaybackState.PLAYING
         self.state_changed.emit(self._state)
 
@@ -476,8 +476,8 @@ class GStreamerEngine(QObject):
 
     def stop(self):
         self._dff_running = False
-        pipeline = self._backend.get_pipeline()
-        self._backend.adopt_pipeline(None)
+        pipeline = self._transport.get_pipeline()
+        self._transport.adopt_pipeline(None)
         self._appsrc = None
         if pipeline:
             pipeline.set_state(Gst.State.NULL)
@@ -490,12 +490,12 @@ class GStreamerEngine(QObject):
         if self._timer:
             self._timer.stop()
             self._timer = None
-        self._backend.stop()
+        self._transport.stop()
         self._state = PlaybackState.STOPPED
         self.state_changed.emit(self._state)
 
     def seek(self, seconds: float):
-        self._backend.seek(seconds)
+        self._transport.seek(seconds)
 
     def set_eq_graphic(self, bands: list[float]):
         self._eq.mode = "graphic"
@@ -534,7 +534,7 @@ class GStreamerEngine(QObject):
 
     def set_spectrum_enabled(self, enabled: bool):
         self._spectrum_enabled = enabled
-        pipeline = self._backend.get_pipeline()
+        pipeline = self._transport.get_pipeline()
         if pipeline and self._state == PlaybackState.PLAYING:
             self._restart_if_playing()
 
@@ -545,7 +545,7 @@ class GStreamerEngine(QObject):
         try:
             if self._current and self._state in (PlaybackState.PLAYING, PlaybackState.PAUSED):
                 pos = 0
-                pipeline = self._backend.get_pipeline()
+                pipeline = self._transport.get_pipeline()
                 if pipeline:
                     with contextlib.suppress(Exception):
                         ok, pos_ns = pipeline.query_position(Gst.Format.TIME)
@@ -562,7 +562,7 @@ class GStreamerEngine(QObject):
         return Gst.ElementFactory.find(name) is not None
 
     def _setup_spectrum(self):
-        pipeline = self._backend.get_pipeline()
+        pipeline = self._transport.get_pipeline()
         if not self._spectrum_enabled or not pipeline:
             return
         sink = pipeline.get_by_name("spectrum_sink")
@@ -584,7 +584,7 @@ class GStreamerEngine(QObject):
         return Gst.FlowReturn.OK
 
     def _setup_bus(self):
-        pipeline = self._backend.get_pipeline()
+        pipeline = self._transport.get_pipeline()
         if not pipeline:
             return
         bus = pipeline.get_bus()
@@ -638,7 +638,7 @@ class GStreamerEngine(QObject):
         self._timer.start(self.POLL_MS)
 
     def _on_bus_message(self, bus, message):
-        pipeline = self._backend.get_pipeline()
+        pipeline = self._transport.get_pipeline()
         t = message.type
         if t == Gst.MessageType.EOS:
             self._on_media_finished_eos()
@@ -670,7 +670,7 @@ class GStreamerEngine(QObject):
                 self._classify_and_emit("UNKNOWN_GSTREAMER_ERROR", err_text)
 
             self._dff_running = False
-            self._backend.adopt_pipeline(None)
+            self._transport.adopt_pipeline(None)
             self._appsrc = None
             if pipeline:
                 pipeline.set_state(Gst.State.NULL)
@@ -715,7 +715,7 @@ class GStreamerEngine(QObject):
                     self.duration_changed.emit(self._duration)
 
     def _poll(self):
-        pipeline = self._backend.get_pipeline()
+        pipeline = self._transport.get_pipeline()
         if pipeline and self._state == PlaybackState.PLAYING:
             ok, pos = pipeline.query_position(Gst.Format.TIME)
             if ok:
@@ -728,54 +728,54 @@ class GStreamerEngine(QObject):
                     self.duration_changed.emit(d)
 
     def enqueue_next(self, filepaths: list[str]):
-        self._backend.enqueue_next(filepaths)
+        self._transport.enqueue_next(filepaths)
         self._sync_queue_from_backend()
         if self._db:
             self._db.save_queue(self._queue, self._queue_index)
 
     def enqueue(self, filepaths: list[str], play_now: bool = True):
-        self._backend.enqueue(filepaths, play_now)
+        self._transport.enqueue(filepaths, play_now)
         self._sync_queue_from_backend()
         if self._db:
             self._db.save_queue(self._queue, self._queue_index)
 
     def set_queue(self, filepaths: list[str], start_index: int = 0):
-        self._backend.set_queue(filepaths, start_index)
+        self._transport.set_queue(filepaths, start_index)
         self._sync_queue_from_backend()
         if self._db:
             self._db.save_queue(self._queue, self._queue_index)
 
     def clear_queue(self):
-        self._backend.clear_queue()
+        self._transport.clear_queue()
         self._sync_queue_from_backend()
         self.queue_changed.emit([])
         if self._db:
             self._db.clear_queue_state()
 
     def play_next(self) -> bool:
-        result = self._backend.play_next()
+        result = self._transport.play_next()
         self._sync_queue_from_backend()
         if result and self._db:
             self._db.save_queue(self._queue, self._queue_index)
         return result
 
     def play_prev(self) -> bool:
-        result = self._backend.play_prev()
+        result = self._transport.play_prev()
         self._sync_queue_from_backend()
         if result and self._db:
             self._db.save_queue(self._queue, self._queue_index)
         return result
 
     def _sync_queue_from_backend(self):
-        self._queue = [q["filepath"] for q in self._backend.get_queue()]
-        self._queue_index = self._backend.get_queue_index()
+        self._queue = [q["filepath"] for q in self._transport.get_queue()]
+        self._queue_index = self._transport.get_queue_index()
         self.queue_changed.emit(self._queue)
 
     def get_queue(self) -> list[dict]:
-        return self._backend.get_queue()
+        return self._transport.get_queue()
 
     def get_queue_index(self) -> int:
-        return self._backend.get_queue_index()
+        return self._transport.get_queue_index()
 
     def reorder_queue(self, filepaths: list[str]):
         current_fp = self._queue[self._queue_index] if self._queue_index >= 0 else None
@@ -796,12 +796,13 @@ class GStreamerEngine(QObject):
         self.play(url)
 
     def set_volume(self, vol: int):
-        self._volume = max(0.0, min(1.0, vol / 100.0))
-        self._backend.set_volume(vol)
+        clamped = max(0, min(100, int(vol)))
+        self._volume = clamped
+        self._transport.set_volume(clamped / 100.0)
 
     def _on_media_finished(self):
         if not self.play_next():
-            pipeline = self._backend.get_pipeline()
+            pipeline = self._transport.get_pipeline()
             if pipeline:
                 pipeline.set_state(Gst.State.NULL)
                 result = pipeline.get_state(100 * Gst.MSECOND)

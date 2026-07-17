@@ -59,13 +59,41 @@ def run():
 
     screenshots = []
 
-    def capture_all():
-        for i, page_name in enumerate(PAGES):
-            QTimer.singleShot((i + 1) * 800, lambda p=page_name: _capture_one(p))
-        QTimer.singleShot((len(PAGES) + 1) * 800, finish)
+    _nav_bridge = None
+    for b_name in dir(bootstrap):
+        b = getattr(bootstrap, b_name, None)
+        if b and hasattr(b, 'navigate') and hasattr(b, 'currentRoute'):
+            _nav_bridge = b
+            break
 
-    def _capture_one(page_name):
+    _previous_hash = None
+
+    def capture_all():
+        nonlocal _nav_bridge
+        if not _nav_bridge:
+            for name in dir(bootstrap):
+                obj = getattr(bootstrap, name, None)
+                if obj and hasattr(obj, 'navigate') and hasattr(obj, 'currentRoute'):
+                    _nav_bridge = obj
+                    break
+        navigate_next(0)
+
+    def navigate_next(idx):
+        if idx >= len(PAGES):
+            finish()
+            return
+        page_name = PAGES[idx]
+        if _nav_bridge and hasattr(_nav_bridge, 'navigate'):
+            try:
+                _nav_bridge.navigate(page_name)
+            except Exception:
+                pass
+        QTimer.singleShot(1200, lambda: _capture_one(page_name, idx))
+
+    def _capture_one(page_name, idx):
+        nonlocal _previous_hash
         from PySide6.QtGui import QScreen
+        import hashlib
         window = None
         for obj in engine.rootObjects():
             if isinstance(obj, QWindow):
@@ -75,7 +103,12 @@ def run():
             path = os.path.join(OUTPUT_DIR, f"{page_name}.png")
             screen = QScreen.grabWindow(QGuiApplication.primaryScreen(), window.winId())
             screen.save(path)
+            current_hash = hashlib.md5(open(path, "rb").read()).hexdigest()
+            if _previous_hash and current_hash == _previous_hash:
+                print(f"  WARN: {page_name} has same hash as previous page (navigation may have failed)")
+            _previous_hash = current_hash
             screenshots.append((page_name, path))
+        QTimer.singleShot(200, lambda: navigate_next(idx + 1))
 
     def finish():
         try:
@@ -85,6 +118,9 @@ def run():
         for name, path in screenshots:
             print(f"  {name}: {path}")
         print(f"\n{len(screenshots)} captures saved to {OUTPUT_DIR}")
+        unique_hashes = len(set(s[0] for s in screenshots))
+        if unique_hashes < len(screenshots) and len(screenshots) > 1:
+            print(f"  WARNING: {len(screenshots) - unique_hashes} duplicate pages detected")
         QTimer.singleShot(0, app.quit)
 
     QTimer.singleShot(500, capture_all)

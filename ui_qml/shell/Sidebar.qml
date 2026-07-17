@@ -16,8 +16,9 @@ Item {
     property bool deliveryMode: typeof appStateBridge !== "undefined" && appStateBridge ? appStateBridge.deliveryMode : false
     signal routeRequested(string route)
 
-    MichiResponsive { id: responsive; availableWidth: root.width }
-    property bool collapsed: responsive.sidebarAutoCollapse
+    property bool _userCollapsed: false
+    readonly property bool _autoCollapsed: parent ? parent.width < 900 : false
+    property bool collapsed: _autoCollapsed || _userCollapsed
 
     width: collapsed ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
     Behavior on width { NumberAnimation { duration: MichiTheme.motion.durationNormal; easing.type: Easing.OutCubic } }
@@ -111,7 +112,7 @@ Item {
                     border.width: collapseBtn.activeFocus ? MichiTheme.focusWidth : 0
                     border.color: MichiTheme.colors.borderFocus
                     Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
-                    Image { anchors.centerIn: parent; source: "../icons/nav_back.svg"; sourceSize.width: 14; sourceSize.height: 14; rotation: root.collapsed ? 180 : 0; fillMode: Image.PreserveAspectFit }
+                    Image { anchors.centerIn: parent; source: "../../icons/nav_back.svg"; sourceSize.width: 14; sourceSize.height: 14; rotation: root.collapsed ? 180 : 0; fillMode: Image.PreserveAspectFit }
                     MouseArea { id: collapseBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.collapsed = !root.collapsed }
                 }
                 Accessible.role: Accessible.Button

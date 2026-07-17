@@ -10,7 +10,7 @@ Popup {
     property int maxHeight: Math.min(400, parent ? parent.height * 0.6 : 400)
     property bool sheetOpen: false
 
-    signal closed()
+    signal sheetClosed()
 
     width: sheetWidth
     height: maxHeight

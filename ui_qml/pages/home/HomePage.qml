@@ -105,9 +105,10 @@ Item {
                     tracks: root.hb ? root.hb.libraryTracks : 0
                     hasData: root.hb ? root.hb.libraryAlbums > 0 || root.hb.libraryTracks > 0 : false
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onOpenLibrary()
-                    Keys.onSpacePressed: onOpenLibrary()
-                    onOpenLibrary: {
+                    Keys.onReturnPressed: root.goToLibrary()
+                    Keys.onSpacePressed: root.goToLibrary()
+                    onOpenLibrary: root.goToLibrary()
+                    function goToLibrary() {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("library")
                     }
@@ -118,9 +119,10 @@ Item {
                     width: parent.width * 0.48
                     microServerState: root.cb ? root.cb.microServerState : "not_configured"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onOpenConnections()
-                    Keys.onSpacePressed: onOpenConnections()
-                    onOpenConnections: {
+                    Keys.onReturnPressed: root.goToConnections()
+                    Keys.onSpacePressed: root.goToConnections()
+                    onOpenConnections: root.goToConnections()
+                    function goToConnections() {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("connections")
                     }
@@ -278,9 +280,10 @@ Item {
                 width: parent.width
                 activeFocusOnTab: true
                 KeyNavigation.backtab: playbackCard
-                Keys.onReturnPressed: onOpenAssistant()
-                Keys.onSpacePressed: onOpenAssistant()
-                onOpenAssistant: {
+                Keys.onReturnPressed: root.goToAssistant()
+                Keys.onSpacePressed: root.goToAssistant()
+                onOpenAssistant: root.goToAssistant()
+                function goToAssistant() {
                     if (typeof navigationBridge !== "undefined" && navigationBridge)
                         navigationBridge.navigate("assistant")
                 }

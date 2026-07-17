@@ -28,7 +28,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: root.playing ? MichiTheme.colors.accentSelection
-             : root.selected ? MichiTheme.colors.surfaceSelected
+             : root.selected ? MichiTheme.colors.accentSelection
              : ma.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
         radius: MichiTheme.radius.sm
 

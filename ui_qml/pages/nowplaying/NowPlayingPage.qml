@@ -20,7 +20,7 @@ Item {
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false
     property bool _showError: false
     property string _errorText: ""
-    property int pageState: root.ps ? stateReady : stateError
+    property int pageState: !root.ps ? stateError : !root._hasTrack ? stateEmpty : stateReady
 
     readonly property int stateLoading: 0
     readonly property int stateReady: 1
@@ -94,7 +94,7 @@ Item {
 
                     Text {
                         text: "Cerrar"
-                        color: MichiTheme.colors.onError
+                        color: MichiTheme.colors.error
                         font.pixelSize: MichiTheme.typography.metaSize
                         MouseArea {
                             anchors.fill: parent

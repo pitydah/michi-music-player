@@ -1,8 +1,8 @@
 """EngineBackendAdapter — wraps GStreamerEngine as an AudioBackend for HybridAudioManager.
 
-Eliminates the parallel playback path where PlayerService → HybridAudioManager
-→ GStreamerAudioBackend.play() bypassed GStreamerEngine.play() (which has the
-full DSP chain: format probe, profile, DAC, ReplayGain, EQ, spectrum, transmit).
+This is the EXTERNAL adapter. It wraps GStreamerEngine for use by HybridAudioManager
+and PlayerService. GStreamerEngine internally uses GStreamerPipelineTransport.
+There is exactly ONE EngineBackendAdapter instance per engine.
 """
 from __future__ import annotations
 
@@ -35,7 +35,18 @@ class EngineBackendAdapter(QObject):
              PlaybackState.STOPPED: "stopped"}.get(s, "stopped")))
 
     def set_callbacks(self, **kwargs):
-        pass
+        on_state = kwargs.get("on_state_changed")
+        on_track_ended = kwargs.get("on_track_ended")
+        on_position = kwargs.get("on_position_updated")
+        on_error = kwargs.get("on_error")
+        if on_state:
+            self._engine.state_changed.connect(on_state)
+        if on_track_ended:
+            self._engine.finished.connect(on_track_ended)
+        if on_position:
+            self._engine.position_changed.connect(on_position)
+        if on_error:
+            self._engine.error_occurred.connect(on_error)
 
     @property
     def capabilities(self) -> BackendCapabilities:
@@ -68,7 +79,7 @@ class EngineBackendAdapter(QObject):
 
     def set_volume(self, volume: int):
         clamped = max(0, min(100, int(volume)))
-        self._engine.set_volume(clamped / 100.0)
+        self._engine.set_volume(clamped)
 
     def get_snapshot(self) -> PlaybackSnapshot:
         s = self._engine.state
@@ -82,7 +93,7 @@ class EngineBackendAdapter(QObject):
             state=state_map.get(s, "stopped"),
             current_path=self._engine.current or "",
             position_seconds=self._engine.get_position_ns() / 1e9 if hasattr(self._engine, 'get_position_ns') else 0.0,
-            volume=int(getattr(self._engine, '_volume', 0.7) * 100),
+            volume=int(getattr(self._engine, '_volume', 70)),
             queue_index=getattr(self._engine, '_queue_index', -1),
             queue_length=len(getattr(self._engine, '_queue', [])),
         )

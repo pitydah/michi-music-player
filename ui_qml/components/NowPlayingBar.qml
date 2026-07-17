@@ -75,6 +75,7 @@ Item {
                         visible: root._hasTrack
 
                         Image {
+                            id: coverImage
                             anchors.fill: parent
                             source: root.ps && root.ps.coverUrl ? root.ps.coverUrl : ""
                             fillMode: Image.PreserveAspectCrop
@@ -87,7 +88,7 @@ Item {
                             text: "♪"
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: 20
-                            visible: parent.source === ""
+                            visible: coverImage.source.toString() === "" || coverImage.status === Image.Error
                         }
                     }
 
