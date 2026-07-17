@@ -7,7 +7,7 @@ import "../components/foundations"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Now Playing Bar"
+    Accessible.name: "Barra de reproducción"
     objectName: "nowPlayingBar"
     focus: true
     id: root
@@ -17,6 +17,7 @@ Item {
                      : (typeof playbackBridge !== "undefined" ? playbackBridge : null)
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property var outputBridge: typeof outputProfilesBridge !== "undefined" ? outputProfilesBridge : null
+    property var capability: typeof capabilityBridge !== "undefined" ? capabilityBridge : null
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false
     property bool _backendAvailable: root.ps ? root.ps.backendAvailable : false
     property string _lastShownError: ""
@@ -56,7 +57,6 @@ Item {
             anchors.rightMargin: MichiTheme.spacing.md
             spacing: 0
 
-            // ── Row 1: Cover + Info + Transport (primary) ──
             Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 54
@@ -66,32 +66,16 @@ Item {
                     anchors.fill: parent
                     spacing: MichiTheme.spacing.md
 
-                    // Cover art
-                    Rectangle {
+                    CoverImage {
+                        id: currentCover
                         Layout.preferredWidth: 48
                         Layout.preferredHeight: 48
-                        radius: MichiTheme.radius.sm
-                        color: MichiTheme.colors.surfaceCard
+                        coverRadius: MichiTheme.radius.sm
+                        coverKey: root.ps ? root.ps.coverPath : ""
+                        showPlaceholder: true
                         visible: root._hasTrack
-
-                        Image {
-                            anchors.fill: parent
-                            source: root.ps && root.ps.coverUrl ? root.ps.coverUrl : ""
-                            fillMode: Image.PreserveAspectCrop
-                            sourceSize.width: 48
-                            sourceSize.height: 48
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "♪"
-                            color: MichiTheme.colors.textMuted
-                            font.pixelSize: 20
-                            visible: parent.source === ""
-                        }
                     }
 
-                    // Track info
                     Column {
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignVCenter
@@ -99,8 +83,9 @@ Item {
 
                         Text {
                             width: parent.width
-                            text: root.ps && root.ps.title ? root.ps.title : "Sin reproducción"
-                            color: root.ps && root.ps.title ? MichiTheme.colors.textPrimary : MichiTheme.colors.textSecondary
+                            text: root.ps && root.ps.trackTitle && root.ps.trackTitle !== "—"
+                                  ? root.ps.trackTitle : "Sin reproducción"
+                            color: root._hasTrack ? MichiTheme.colors.textPrimary : MichiTheme.colors.textSecondary
                             font.pixelSize: MichiTheme.typography.bodySize
                             font.weight: MichiTheme.typography.weightSemiBold
                             elide: Text.ElideRight
@@ -108,14 +93,14 @@ Item {
 
                         Text {
                             width: parent.width
-                            text: root.ps && root.ps.artist ? root.ps.artist : (root.ps && root.ps.title ? "Sin información" : "")
+                            text: root.ps && root.ps.trackArtist ? root.ps.trackArtist : ""
                             color: MichiTheme.colors.textSecondary
                             font.pixelSize: MichiTheme.typography.secondarySize
                             elide: Text.ElideRight
+                            visible: text !== ""
                         }
                     }
 
-                    // Transport controls (primary)
                     NowPlayingTransport {
                         id: transport
                         Layout.alignment: Qt.AlignVCenter
@@ -134,7 +119,6 @@ Item {
                         onRepeatClicked: { if (root.ps) root.ps.toggleRepeat() }
                     }
 
-                    // Quality badge
                     NowPlayingQualityBadge {
                         id: qualityBadge
                         Layout.alignment: Qt.AlignVCenter
@@ -157,7 +141,6 @@ Item {
                 }
             }
 
-            // ── Row 2: Seek + Volume + Utilities (secondary) ──
             RowLayout {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 28
@@ -190,14 +173,22 @@ Item {
                     id: utilityCtrl
                     Layout.alignment: Qt.AlignVCenter
                     visible: !responsive.compact
-                    eqSupported: true
-                    transmitSupported: false
+                    eqSupported: root.capability ? root.capability.has("eq") : false
+                    transmitSupported: root.capability
+                                       ? (root.capability.has("home_audio") || root.capability.has("snapcast"))
+                                       : false
                     onEqClicked: {
                         if (typeof navigationBridge !== "undefined")
                             navigationBridge.navigate("equalizer")
                     }
-                    onTransmitClicked: { }
-                    onOutputClicked: outputPopup.open()
+                    onTransmitClicked: {
+                        if (typeof navigationBridge !== "undefined")
+                            navigationBridge.navigate("home_audio")
+                    }
+                    onOutputClicked: {
+                        if (root.outputBridge)
+                            outputPopup.open()
+                    }
                     onMiniPlayerClicked: {
                         if (typeof navigationBridge !== "undefined")
                             navigationBridge.navigate("playback")
@@ -240,9 +231,10 @@ Item {
 
                 Rectangle {
                     width: parent.width
-                    height: 32
+                    height: 36
                     radius: MichiTheme.radius.sm
-                    color: modelData.active ? MichiTheme.colors.accentSurface : "transparent"
+                    color: modelData.active ? MichiTheme.colors.accentSurface
+                                            : outputMouse.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
@@ -256,7 +248,9 @@ Item {
                     }
 
                     MouseArea {
+                        id: outputMouse
                         anchors.fill: parent
+                        hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             if (root.outputBridge && root.outputBridge.setActiveProfile)
@@ -271,7 +265,8 @@ Item {
             }
 
             Text {
-                text: root.outputBridge && (!root.outputBridge.profiles || root.outputBridge.profiles.length === 0) ? "No hay perfiles disponibles" : ""
+                text: root.outputBridge && (!root.outputBridge.profiles || root.outputBridge.profiles.length === 0)
+                      ? "No hay perfiles disponibles" : ""
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
                 visible: text !== ""
