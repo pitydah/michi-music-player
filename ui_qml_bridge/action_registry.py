@@ -141,7 +141,7 @@ class ActionRegistry(QObject):
         for aid, action in self._actions.items():
             if action.handler is None:
                 issues.append({"action_id": aid, "issue": "no_handler"})
-            if action.service and action.method:
+            if getattr(action, 'service', None) and getattr(action, 'method', None):
                 if not hasattr(action.service, action.method):
                     issues.append({
                         "action_id": aid, "issue": "method_not_found",

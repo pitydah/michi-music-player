@@ -119,3 +119,64 @@ jobs:
           python scripts/qml_uiux_objectname_audit_x10.py --baseline docs/uiux/baselines/objectname-audit.json
           python scripts/qml_uiux_accessibility_audit_x10.py --baseline docs/uiux/baselines/accessibility-audit.json
           python scripts/qml_uiux_responsive_audit_x10.py --baseline docs/uiux/baselines/responsive-audit.json
+
+  build-and-verify:
+    needs: [qml-migration-gate, uiux-gate]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1
+      - name: Install Python deps
+        run: |
+          pip install build
+          pip install -e ".[dev]" 2>/dev/null || pip install PySide6 ruff pytest
+      - name: Build wheel
+        run: python -m build --wheel
+      - name: Verify wheel contents
+        run: |
+          python -c "
+import zipfile, glob, sys
+whl = sorted(glob.glob('dist/*.whl'))
+if not whl:
+    print('No wheel found')
+    sys.exit(1)
+with zipfile.ZipFile(whl[-1]) as z:
+    names = z.namelist()
+    errors = []
+    for pkg in ['michi/', 'audio/', 'core/', 'library/', 'ui_qml/', 'ui_qml_bridge/']:
+        if not any(n.startswith(pkg) for n in names):
+            errors.append(f'Missing: {pkg}')
+    for ext in ['.qml', 'qmldir']:
+        if not any(n.endswith(ext) for n in names):
+            errors.append(f'Missing: *{ext}')
+    if errors:
+        for e in errors:
+            print(f'ERROR: {e}')
+        sys.exit(1)
+    print(f'Wheel OK: {len(names)} files')
+"
+      - name: Install wheel
+        run: |
+          pip install dist/*.whl
+      - name: Verify installed app
+        run: |
+          python -c "
+import michi
+print('michi imported OK')
+from michi import app_launcher
+print('app_launcher imported OK')
+" 2>&1
+      - name: Upload wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ github.sha }}
+          path: dist/*.whl
