@@ -11,6 +11,7 @@ Item {
     focus: true
     id: root
 
+    property string pageState: "LOADING"
     property var selCtx: typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null
     property var libBridge: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property var labService: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
@@ -28,6 +29,8 @@ Item {
     readonly property int stateEmpty: 0
     readonly property int stateHasFiles: 1
     readonly property int stateLoadingMetadata: 2
+
+    Component.onCompleted: root.pageState = "READY"
 
     function _updateFileInfo(files) {
         root.selectedFiles = files

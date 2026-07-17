@@ -11,6 +11,7 @@ Item {
     focus: true
     id: root
 
+    property string pageState: "LOADING"
     property string suggestionTitle: ""
     property string suggestionDescription: ""
     property string actionRoute: ""
@@ -19,6 +20,7 @@ Item {
 
     implicitHeight: 80
     width: parent ? parent.width : 400
+    Component.onCompleted: root.pageState = "READY"
 
     GlassMaterial {
         anchors.fill: parent

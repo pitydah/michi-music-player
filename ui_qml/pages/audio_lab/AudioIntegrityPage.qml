@@ -11,6 +11,7 @@ Item {
     focus: true
     id: root
 
+    property string pageState: "LOADING"
     property var labService: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
     property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null
 
@@ -26,6 +27,8 @@ Item {
     readonly property int stateCancelling: 2
     readonly property int stateCompleted: 3
     readonly property int stateFailed: 4
+
+    Component.onCompleted: root.pageState = "READY"
 
     function _startCheck(quick) {
         if (!inputSelection.selectedFiles || inputSelection.selectedFiles.length === 0) {

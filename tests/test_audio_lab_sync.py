@@ -1,5 +1,5 @@
 import sqlite3
-from core.audio_lab.audio_lab_sync import sync_quality_to_db, _ensure_columns
+from core.audio_lab.audio_lab_sync import sync_audio_lab_cache_to_media_items, _ensure_columns
 
 
 class TestAudioLabSync:
@@ -11,9 +11,9 @@ class TestAudioLabSync:
         assert "quality" in cols
         conn.close()
 
-    def test_sync_quality_empty(self):
+    def test_sync_cache_empty(self):
         conn = sqlite3.connect(":memory:")
         conn.execute("CREATE TABLE media_items (id INTEGER PRIMARY KEY, title TEXT, quality TEXT)")
-        result = sync_quality_to_db(conn, changes={})
+        result = sync_audio_lab_cache_to_media_items(conn)
         assert result is not None
         conn.close()

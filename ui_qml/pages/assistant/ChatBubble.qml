@@ -10,12 +10,14 @@ Item {
     focus: true
     id: root
 
+    property string pageState: "LOADING"
     property string messageText: ""
     property string role: "assistant"
     property bool hovered: false
 
     implicitHeight: bubbleColumn.height + MichiTheme.spacing.md * 2
     width: parent ? parent.width : 400
+    Component.onCompleted: root.pageState = "READY"
 
     GlassMaterial {
         radius: MichiTheme.radius.md

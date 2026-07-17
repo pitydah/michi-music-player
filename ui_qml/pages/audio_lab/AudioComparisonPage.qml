@@ -11,6 +11,7 @@ Item {
     focus: true
     id: root
 
+    property string pageState: "LOADING"
     property var labService: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
     property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null
 
@@ -24,6 +25,8 @@ Item {
     readonly property int stateComparing: 1
     readonly property int stateCompleted: 2
     readonly property int stateFailed: 3
+
+    Component.onCompleted: root.pageState = "READY"
 
     function _startComparison() {
         if (!root._fileA || !root._fileB) {

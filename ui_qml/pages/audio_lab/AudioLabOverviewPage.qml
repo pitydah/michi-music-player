@@ -11,6 +11,7 @@ Item {
     focus: true
     id: root
 
+    property string pageState: "LOADING"
     property var alab: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
     property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null
 
@@ -21,6 +22,7 @@ Item {
     readonly property int stateError: 2
 
     Component.onCompleted: {
+        root.pageState = "READY"
         if (root.alab && typeof root.alab.refresh !== "undefined")
             root.alab.refresh()
         alabGuard.checkCapability(root.alab)

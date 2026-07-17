@@ -12,6 +12,7 @@ Item {
     focus: true
     id: root
 
+    property string pageState: "LOADING"
     property var labService: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
     property var convBridge: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
     property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null
@@ -44,6 +45,8 @@ Item {
     readonly property int stateCancelling: 3
     readonly property int stateCompleted: 4
     readonly property int stateFailed: 5
+
+    Component.onCompleted: root.pageState = "READY"
 
     property var _formatOptions: [
         { label: "FLAC", codec: "flac", lossless: true },

@@ -12,6 +12,7 @@ Item {
     focus: true
     id: root
 
+    property string pageState: "LOADING"
     property var labService: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
     property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null
 
@@ -61,6 +62,8 @@ Item {
         if (!root._isValid()) return
         root._editing = false
     }
+
+    Component.onCompleted: root.pageState = "READY"
 
     function _loadProfile(preset) {
         root._profileName = preset.name
