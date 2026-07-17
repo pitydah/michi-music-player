@@ -23,7 +23,7 @@ Rectangle {
     implicitWidth: label.implicitWidth + MichiTheme.spacing.lg * 2
     minimumWidth: 88
     maximumWidth: 176
-    radius: 14
+    radius: MichiTheme.radius.xl - 2
     color: MichiTheme.colors.nowPlayingQualityBg
     border.width: 1
     border.color: MichiTheme.colors.nowPlayingQualityBorder
@@ -54,9 +54,9 @@ Rectangle {
             }
             return parts.join(" · ")
         }
-        color: Qt.rgba(245/255, 245/255, 247/255, 0.82)
-        font.pixelSize: 10
-        font.weight: Font.DemiBold
+        color: MichiTheme.colors.textPrimary
+        font.pixelSize: MichiTheme.typography.badgeSize
+        font.weight: MichiTheme.typography.weightSemiBold
         elide: Text.ElideRight
         maximumLineCount: 1
     }

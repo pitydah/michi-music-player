@@ -14,13 +14,38 @@ Item {
     property var eq: typeof eqBridge !== "undefined" ? eqBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property string _selectedPreset: "Plano"
+    property int pageState: root.eq ? stateReady : stateError
+
+    readonly property int stateLoading: 0
+    readonly property int stateReady: 1
+    readonly property int stateError: 2
+    readonly property int stateEmpty: 3
 
     Component.onCompleted: {
         if (root.eq && typeof root.eq.refresh !== "undefined")
             root.eq.refresh()
     }
 
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateLoading
+        sourceComponent: LoadingState { title: "Cargando ecualizador" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateError
+        sourceComponent: ErrorState { message: "Ecualizador no disponible" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateEmpty
+        sourceComponent: EmptyState { title: "Sin presets de ecualización" }
+    }
+
     Flickable {
+        visible: root.pageState === root.stateReady
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl

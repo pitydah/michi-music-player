@@ -20,13 +20,38 @@ Item {
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false
     property bool _showError: false
     property string _errorText: ""
+    property int pageState: root.ps ? stateReady : stateError
+
+    readonly property int stateLoading: 0
+    readonly property int stateReady: 1
+    readonly property int stateError: 2
+    readonly property int stateEmpty: 3
 
     function routeEnter(route) {
         if (root.ps && typeof root.ps.refresh !== "undefined")
             root.ps.refresh()
     }
 
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateLoading
+        sourceComponent: LoadingState { title: "Cargando reproducción" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateError
+        sourceComponent: ErrorState { message: "Servicio de reproducción no disponible" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateEmpty
+        sourceComponent: EmptyState { title: "Sin reproducción activa" }
+    }
+
     Flickable {
+        visible: root.pageState === root.stateReady
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: contentColumn.height + MichiTheme.spacing.xxl
@@ -38,7 +63,6 @@ Item {
             width: parent.width
             spacing: MichiTheme.spacing.lg
 
-            // Error banner
             Rectangle {
                 width: parent.width
                 height: _showError ? 36 : 0
@@ -74,19 +98,16 @@ Item {
                 }
             }
 
-            // Main content
             GridLayout {
                 width: parent.width
                 columns: parent.width > 800 ? 2 : 1
                 rowSpacing: MichiTheme.spacing.lg
                 columnSpacing: MichiTheme.spacing.xl
 
-                // Left column: cover + info + controls
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: MichiTheme.spacing.md
 
-                    // Cover
                     NowPlayingCover {
                         id: coverArt
                         Layout.alignment: Qt.AlignHCenter
@@ -96,7 +117,6 @@ Item {
                         placeholderMode: !root._hasTrack
                     }
 
-                    // Title, artist, album
                     Text {
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignHCenter
@@ -130,7 +150,6 @@ Item {
                         visible: text !== ""
                     }
 
-                    // Quality badges
                     RowLayout {
                         Layout.alignment: Qt.AlignHCenter
                         spacing: MichiTheme.spacing.xs
@@ -142,14 +161,12 @@ Item {
                         StatusBadge { text: root.ps ? root.ps.bitrate : ""; kind: "info"; visible: text !== "" }
                     }
 
-                    // State
                     StatusBadge {
                         Layout.alignment: Qt.AlignHCenter
                         text: root.ps && root.ps.isPlaying ? "Reproduciendo" : root.ps && root.ps.backendAvailable ? "Pausado" : "No disponible"
                         kind: root.ps && root.ps.isPlaying ? "success" : root.ps && root.ps.backendAvailable ? "info" : "disconnected"
                     }
 
-                    // Controls
                     NowPlayingControls {
                         Layout.alignment: Qt.AlignHCenter
                         isPlaying: root.ps ? root.ps.isPlaying : false
@@ -167,7 +184,6 @@ Item {
                         onRepeatClicked: { if (root.ps) root.ps.toggleRepeat() }
                     }
 
-                    // Seek bar
                     NowPlayingSeekBar {
                         Layout.fillWidth: true
                         position: root.ps ? root.ps.position : 0
@@ -176,7 +192,6 @@ Item {
                         onSeekRequested: function(pos) { if (root.ps) root.ps.seek(pos) }
                     }
 
-                    // Volume
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.maximumWidth: 200
@@ -198,7 +213,6 @@ Item {
                         }
                     }
 
-                    // Navigation links
                     RowLayout {
                         Layout.alignment: Qt.AlignHCenter
                         spacing: MichiTheme.spacing.sm
@@ -209,14 +223,12 @@ Item {
                     }
                 }
 
-                // Right column: queue + history
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.preferredWidth: parent.width > 700 ? parent.width * 0.35 : parent.width
                     spacing: MichiTheme.spacing.md
                     visible: true
 
-                    // Queue
                     Text {
                         text: "Cola"
                         color: MichiTheme.colors.textPrimary
@@ -268,7 +280,6 @@ Item {
                         }
                     }
 
-                    // History
                     Text {
                         text: "Historial"
                         color: MichiTheme.colors.textPrimary
@@ -325,7 +336,6 @@ Item {
         }
     }
 
-    // Track errors via Connections
     Connections {
         target: root.ps
         function onErrorChanged() {

@@ -58,7 +58,7 @@ Item {
 
             Rectangle {
                 anchors.fill: parent
-                radius: 18
+                radius: MichiTheme.radius.xl + 2
                 color: {
                     if (!root.playPauseSupported) return "transparent"
                     if (playMa.containsPress) return MichiTheme.colors.nowPlayingTransportPressed
@@ -102,7 +102,7 @@ Item {
                 anchors.centerIn: parent
                 width: parent.width + 4
                 height: parent.height + 4
-                radius: 20
+                radius: MichiTheme.radius.xl + 4
                 color: "transparent"
                 border.width: parent.activeFocus ? 2 : 0
                 border.color: MichiTheme.colors.borderFocus
@@ -134,7 +134,7 @@ Item {
 
             Rectangle {
                 anchors.centerIn: parent; y: -2
-                width: 10; height: 10; radius: 5
+                width: MichiTheme.spacing.sm + MichiTheme.spacing.xxs; height: width; radius: width / 2
                 color: MichiTheme.colors.nowPlayingThumb
                 visible: root.repeatMode === "one" && root.repeatSupported
 
@@ -142,8 +142,8 @@ Item {
                     anchors.centerIn: parent
                     text: "1"
                     color: MichiTheme.colors.textOnAccent
-                    font.pixelSize: 7
-                    font.weight: Font.Bold
+                    font.pixelSize: MichiTheme.typography.badgeSize
+                    font.weight: MichiTheme.typography.weightBold
                 }
             }
         }

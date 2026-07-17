@@ -16,6 +16,12 @@ Item {
 
     property var devicesBridge: typeof devicesBridge !== "undefined" ? devicesBridge : null
     property var deviceSyncService: devicesBridge
+    property int pageState: root.devicesBridge ? stateReady : stateError
+
+    readonly property int stateLoading: 0
+    readonly property int stateReady: 1
+    readonly property int stateError: 2
+    readonly property int stateEmpty: 3
 
     MichiResponsive { id: responsive; availableWidth: root.width }
 
@@ -32,6 +38,24 @@ Item {
         deviceGuard.checkCapability(root.devicesBridge)
     }
 
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateLoading
+        sourceComponent: LoadingState { title: "Cargando dispositivos" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateError
+        sourceComponent: ErrorState { message: "Servicio de dispositivos no disponible" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateEmpty
+        sourceComponent: EmptyState { title: "Sin dispositivos"; subtitle: "Configura dispositivos desde Conexiones" }
+    }
+
     CapabilityGuard {
         id: deviceGuard
         anchors.fill: parent
@@ -39,6 +63,7 @@ Item {
 
         Flickable {
             id: flickable
+            visible: root.pageState === root.stateReady
             anchors.fill: parent
             anchors.margins: responsive.pageMargin
             contentHeight: column.height + MichiTheme.spacing.xl

@@ -4,6 +4,7 @@ import "../theme"
 
 Slider {
     id: root
+    objectName: "michiWarmSlider"
 
     property bool showThumb: enabled && (pressed || hovered || to > 0)
     property alias trackHeight: trackItem.height
@@ -36,14 +37,14 @@ Slider {
         y: root.topPadding + (root.availableHeight - height) / 2
         width: root.availableWidth
         height: 8
-        radius: 4
+        radius: MichiTheme.radius.sm
         color: MichiTheme.colors.nowPlayingTrack
 
         Rectangle {
             anchors.top: parent.top
             width: parent.width
             height: 1
-            color: Qt.rgba(0, 0, 0, 0.25)
+            color: MichiTheme.colors.nowPlayingTrack
         }
 
         Rectangle {
@@ -51,7 +52,7 @@ Slider {
             y: 0
             width: root.handle.visible ? root.handle.x + root.handle.width / 2 : root.visualPosition * parent.width
             height: parent.height
-            radius: 4
+            radius: MichiTheme.radius.sm
             visible: root.enabled
 
             gradient: Gradient {
@@ -70,7 +71,7 @@ Slider {
         y: root.topPadding + (root.availableHeight - height) / 2
         width: 18
         height: 18
-        radius: 9
+        radius: width / 2
         color: MichiTheme.colors.nowPlayingThumb
         border.width: 2
         border.color: MichiTheme.colors.nowPlayingThumbBorder
@@ -80,7 +81,7 @@ Slider {
             anchors.centerIn: parent
             width: 6
             height: 6
-            radius: 3
+            radius: width / 2
             color: MichiTheme.colors.nowPlayingThumbBorder
             opacity: 0.5
         }

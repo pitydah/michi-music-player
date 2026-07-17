@@ -110,5 +110,19 @@ KeyboardShortcutHint 1.0 KeyboardShortcutHint.qml
 # breadcrumbs
 Breadcrumbs 1.0 Breadcrumbs.qml
 
+# nowplaying
+NowPlayingBar 1.0 NowPlayingBar.qml
+NowPlayingTransport 1.0 NowPlayingTransport.qml
+NowPlayingSeekBar 1.0 NowPlayingSeekBar.qml
+NowPlayingVolume 1.0 NowPlayingVolume.qml
+NowPlayingCover 1.0 NowPlayingCover.qml
+NowPlayingInfo 1.0 NowPlayingInfo.qml
+NowPlayingQualityBadge 1.0 NowPlayingQualityBadge.qml
+NowPlayingUtilityControls 1.0 NowPlayingUtilityControls.qml
+NowPlayingQueuePanel 1.0 NowPlayingQueuePanel.qml
+NowPlayingControls 1.0 NowPlayingControls.qml
+MichiWarmSlider 1.0 MichiWarmSlider.qml
+BalanceSlider 1.0 BalanceSlider.qml
+
 # dev (not for production)
 ComponentGallery 1.0 dev/ComponentGallery.qml

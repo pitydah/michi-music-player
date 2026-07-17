@@ -22,9 +22,9 @@ Item {
             Layout.preferredWidth: 36
             horizontalAlignment: Text.AlignHCenter
             text: formatTime(root.position)
-            color: Qt.rgba(245/255, 245/255, 247/255, 0.86)
-            font.pixelSize: 10
-            font.weight: Font.DemiBold
+            color: MichiTheme.colors.textPrimary
+            font.pixelSize: MichiTheme.typography.badgeSize
+            font.weight: MichiTheme.typography.weightSemiBold
         }
 
         MichiWarmSlider {
@@ -44,9 +44,9 @@ Item {
             Layout.preferredWidth: 36
             horizontalAlignment: Text.AlignHCenter
             text: formatTime(root.duration)
-            color: Qt.rgba(245/255, 245/255, 247/255, 0.86)
-            font.pixelSize: 10
-            font.weight: Font.DemiBold
+            color: MichiTheme.colors.textPrimary
+            font.pixelSize: MichiTheme.typography.badgeSize
+            font.weight: MichiTheme.typography.weightSemiBold
         }
     }
 

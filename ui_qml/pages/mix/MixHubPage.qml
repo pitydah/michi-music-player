@@ -15,11 +15,35 @@ Item {
 
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
     property bool _loading: false
+    property int pageState: root.mx ? stateReady : stateError
+
+    readonly property int stateLoading: 0
+    readonly property int stateReady: 1
+    readonly property int stateError: 2
+    readonly property int stateEmpty: 3
 
     Component.onCompleted: {
         if (root.mx && typeof root.mx.refresh !== "undefined")
             root.mx.refresh()
         mixGuard.checkCapability(root.mx)
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateLoading
+        sourceComponent: LoadingState { title: "Cargando Mix" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateError
+        sourceComponent: ErrorState { message: "Mix no disponible" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateEmpty
+        sourceComponent: EmptyState { title: "Sin mixes disponibles" }
     }
 
     CapabilityGuard {
@@ -29,6 +53,7 @@ Item {
 
         Flickable {
             id: flickable
+            visible: root.pageState === root.stateReady
             anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl
             contentHeight: column.height + MichiTheme.spacing.xxl
             clip: true; boundsBehavior: Flickable.StopAtBounds

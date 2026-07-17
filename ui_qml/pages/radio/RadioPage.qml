@@ -24,6 +24,12 @@ Item {
     property string _newCountry: ""
     property int _activeDetailId: -1
     property bool _buffering: false
+    property int pageState: stateReady
+
+    readonly property int stateLoading: 0
+    readonly property int stateReady: 1
+    readonly property int stateError: 2
+    readonly property int stateEmpty: 3
 
     function doSearch(text) {
         _filterText = text.toLowerCase()
@@ -78,10 +84,29 @@ Item {
         radioGuard.checkCapability(root.rd)
     }
 
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateLoading
+        sourceComponent: LoadingState { title: "Cargando emisoras" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateError
+        sourceComponent: ErrorState { message: "Radio no disponible" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateEmpty
+        sourceComponent: EmptyState { title: "Sin emisoras"; subtitle: "Agrega emisoras para empezar a escuchar" }
+    }
+
     CapabilityGuard {
         id: radioGuard
         anchors.fill: parent
         capabilityName: "radio"
+        visible: root.pageState === root.stateReady
 
         Flickable {
             id: flickable
@@ -202,8 +227,6 @@ Item {
                     width: parent.width; wrapMode: Text.WordWrap
                     visible: root.rd && root.rd.stations.length === 0
                 }
-
-                    Accessible.role: Accessible.Button
 
                 MichiButton {
                     id: addStationBtn

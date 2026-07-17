@@ -18,6 +18,12 @@ Item {
     property string _aiStatus: root.ai ? root.ai.status || "idle" : "unavailable"
     property string _lastError: root.ai ? root.ai.lastError || "" : "No disponible"
     property var _chatHistory: root.ai ? parseChatHistory(root.ai.getChatHistory()) : []
+    property int pageState: root.ai ? stateReady : stateError
+
+    readonly property int stateLoading: 0
+    readonly property int stateReady: 1
+    readonly property int stateError: 2
+    readonly property int stateEmpty: 3
 
     function parseChatHistory(jsonStr) {
         if (!jsonStr || jsonStr === "") return []
@@ -71,7 +77,26 @@ Item {
         root._initialized = true
     }
 
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateLoading
+        sourceComponent: LoadingState { title: "Cargando asistente" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateError
+        sourceComponent: ErrorState { message: "Asistente no disponible" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateEmpty
+        sourceComponent: EmptyState { title: "Asistente sin datos"; subtitle: "Configura el asistente en Ajustes" }
+    }
+
     Flickable {
+        visible: root.pageState === root.stateReady
         id: flickable
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl

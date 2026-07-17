@@ -14,13 +14,38 @@ Item {
     id: root
 
     property var doc: typeof libraryDoctorBridge !== "undefined" ? libraryDoctorBridge : null
+    property int pageState: root.doc ? stateReady : stateError
+
+    readonly property int stateLoading: 0
+    readonly property int stateReady: 1
+    readonly property int stateError: 2
+    readonly property int stateEmpty: 3
 
     Component.onCompleted: {
         if (root.doc && typeof root.doc.refresh !== "undefined")
             root.doc.refresh()
     }
 
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateLoading
+        sourceComponent: LoadingState { title: "Cargando Library Doctor" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateError
+        sourceComponent: ErrorState { message: "Library Doctor no disponible" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateEmpty
+        sourceComponent: EmptyState { title: "Sin datos de biblioteca" }
+    }
+
     Flickable {
+        visible: root.pageState === root.stateReady
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl

@@ -15,6 +15,12 @@ Item {
     Accessible.name: "Servidores y conexiones"
 
     property var conn: typeof connectionsBridge !== "undefined" ? connectionsBridge : null
+    property int pageState: root.conn ? stateReady : stateError
+
+    readonly property int stateLoading: 0
+    readonly property int stateReady: 1
+    readonly property int stateError: 2
+    readonly property int stateEmpty: 3
 
     MichiResponsive { id: responsive; availableWidth: root.width }
 
@@ -24,12 +30,31 @@ Item {
         connectionGuard.checkCapability(root.conn)
     }
 
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateLoading
+        sourceComponent: LoadingState { title: "Cargando conexiones" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateError
+        sourceComponent: ErrorState { message: "Servicio de conexiones no disponible" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateEmpty
+        sourceComponent: EmptyState { title: "Sin conexiones"; subtitle: "Configura servidores para conectar tu ecosistema" }
+    }
+
     CapabilityGuard {
         id: connectionGuard
         anchors.fill: parent
         capabilityName: "connections_michilink"
 
         Flickable {
+            visible: root.pageState === root.stateReady
             id: flickable
             anchors.fill: parent
             anchors.margins: responsive.pageMargin

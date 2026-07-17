@@ -15,11 +15,35 @@ Item {
 
     property var ha: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
     property var _volumeTimers: ({})
+    property int pageState: root.ha ? stateReady : stateError
+
+    readonly property int stateLoading: 0
+    readonly property int stateReady: 1
+    readonly property int stateError: 2
+    readonly property int stateEmpty: 3
 
     Component.onCompleted: {
         if (root.ha && typeof root.ha.refresh !== "undefined")
             root.ha.refresh()
         homeAudioGuard.checkCapability(root.ha)
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateLoading
+        sourceComponent: LoadingState { title: "Cargando Home Audio" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateError
+        sourceComponent: ErrorState { message: "Home Audio no disponible" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateEmpty
+        sourceComponent: EmptyState { title: "Sin dispositivos Home Audio"; subtitle: "Configura dispositivos desde Conexiones" }
     }
 
     CapabilityGuard {
@@ -28,6 +52,7 @@ Item {
         capabilityName: "home_audio"
 
         Flickable {
+            visible: root.pageState === root.stateReady
             id: flickable
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.xl

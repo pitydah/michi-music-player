@@ -13,12 +13,37 @@ Item {
     Accessible.name: "Diagnóstico"
 
     property var diag: typeof diagnosticsBridge !== "undefined" ? diagnosticsBridge : null
+    property int pageState: root.diag ? stateReady : stateError
+
+    readonly property int stateLoading: 0
+    readonly property int stateReady: 1
+    readonly property int stateError: 2
+    readonly property int stateEmpty: 3
 
     function routeEnter(route) {
         if (root.diag) root.diag.refresh()
     }
 
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateLoading
+        sourceComponent: LoadingState { title: "Cargando diagnóstico" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateError
+        sourceComponent: ErrorState { message: "Diagnóstico no disponible" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateEmpty
+        sourceComponent: EmptyState { title: "Sin datos de diagnóstico" }
+    }
+
     Flickable {
+        visible: root.pageState === root.stateReady
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl

@@ -20,13 +20,38 @@ Item {
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false
     property bool _showError: false
     property string _errorText: ""
+    property int pageState: root.ps ? stateReady : stateError
+
+    readonly property int stateLoading: 0
+    readonly property int stateReady: 1
+    readonly property int stateError: 2
+    readonly property int stateEmpty: 3
 
     function routeEnter(route) {
         if (root.ps && typeof root.ps.refresh !== "undefined")
             root.ps.refresh()
     }
 
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateLoading
+        sourceComponent: LoadingState { title: "Cargando reproducción" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateError
+        sourceComponent: ErrorState { message: "Reproducción no disponible" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateEmpty
+        sourceComponent: EmptyState { title: "Sin reproducción activa" }
+    }
+
     Flickable {
+        visible: root.pageState === root.stateReady
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.md
         contentHeight: contentColumn.height + MichiTheme.spacing.xl

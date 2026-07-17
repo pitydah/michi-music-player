@@ -5,6 +5,7 @@ import "../components"
 
 Item {
     id: root
+    objectName: "nowPlayingUtilityControls"
 
     property bool eqSupported: true
     property bool transmitActive: false

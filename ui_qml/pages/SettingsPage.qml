@@ -13,6 +13,13 @@ Item {
     Accessible.name: "Ajustes"
 
     property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : (typeof settingsBridge !== "undefined" ? settingsBridge : null)
+    property int pageState: root.bridge ? stateReady : stateError
+
+    readonly property int stateLoading: 0
+    readonly property int stateReady: 1
+    readonly property int stateError: 2
+    readonly property int stateEmpty: 3
+
     property string selectedCategoryId: ""
     property var selectedCategory: null
     property string selectedSectionId: ""
@@ -160,7 +167,7 @@ Item {
     // Desktop layout: width >= 900
     RowLayout {
         anchors.fill: parent; spacing: 0
-        visible: root.width >= 900
+        visible: root.pageState === root.stateReady && root.width >= 900
 
         // Left panel: category list
         Rectangle {
@@ -342,7 +349,7 @@ Item {
     // Tablet layout: width >= 600 and < 900
     RowLayout {
         anchors.fill: parent; spacing: 0
-        visible: root.width >= 600 && root.width < 900
+        visible: root.pageState === root.stateReady && root.width >= 600 && root.width < 900
 
         Rectangle {
             Layout.preferredWidth: root.selectedCategory === null ? parent.width : 200
@@ -445,7 +452,7 @@ Item {
     // Compact layout: width >= 400 and < 600
     ColumnLayout {
         anchors.fill: parent; spacing: 0
-        visible: root.width >= 400 && root.width < 600
+        visible: root.pageState === root.stateReady && root.width >= 400 && root.width < 600
 
         RowLayout {
             Layout.fillWidth: true; Layout.margins: MichiTheme.spacing.md
@@ -497,7 +504,7 @@ Item {
     // Narrow layout: width < 400
     ColumnLayout {
         anchors.fill: parent; spacing: 0
-        visible: root.width < 400
+        visible: root.pageState === root.stateReady && root.width < 400
 
         RowLayout {
             Layout.fillWidth: true; Layout.margins: MichiTheme.spacing.sm
@@ -650,6 +657,24 @@ Item {
                 onClicked: root.openSection(modelData.id)
             }
         }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateLoading
+        sourceComponent: LoadingState { title: "Cargando ajustes" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateError
+        sourceComponent: ErrorState { message: "Ajustes no disponibles" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateEmpty
+        sourceComponent: EmptyState { title: "Sin opciones de configuración" }
     }
 
     ConfirmActionDialog {

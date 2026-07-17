@@ -21,6 +21,12 @@ Item {
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property string _selectedItems: ""
     property bool _multiSelect: false
+    property int pageState: root.qb ? stateReady : stateError
+
+    readonly property int stateLoading: 0
+    readonly property int stateReady: 1
+    readonly property int stateError: 2
+    readonly property int stateEmpty: 3
 
     MichiResponsive { id: responsive; availableWidth: root.width }
 
@@ -32,7 +38,26 @@ Item {
         root.refresh()
     }
 
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateLoading
+        sourceComponent: LoadingState { title: "Cargando cola" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateError
+        sourceComponent: ErrorState { message: "Servicio de cola no disponible" }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateEmpty
+        sourceComponent: EmptyState { title: "Cola vacía"; subtitle: "Agrega canciones para empezar a reproducir" }
+    }
+
     RowLayout {
+        visible: root.pageState === root.stateReady
         anchors.fill: parent
         anchors.margins: responsive.pageMargin
         spacing: MichiTheme.spacing.lg
