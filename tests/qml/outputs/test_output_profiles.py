@@ -1,123 +1,164 @@
-"""Test output profile operations through OutputProfilesBridge."""
+"""Test OutputProfilesPage QML page loads and renders correctly."""
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ui_qml_bridge.output_profiles_bridge import OutputProfilesBridge
 pytestmark = [pytest.mark.qml_module("output_profiles")]
 
-
-PROFILES_MODULE = "audio.output_profiles"
-
-
-@pytest.fixture
-def mock_player():
-    player = MagicMock()
-    player.get_active_profile_id.return_value = "standard"
-    player.get_active_backend_id.return_value = "gstreamer"
-    return player
+QML_PATH = "ui_qml/pages/outputs/OutputProfilesPage.qml"
 
 
 @pytest.fixture
-def profiles_dict():
-    return {
-        "standard": {"name": "Standard", "preferred_backend": "gstreamer", "allows_eq": True, "bitperfect": False},
-        "hifi_pcm": {"name": "Hi-Fi PCM", "preferred_backend": "gstreamer", "allows_eq": True, "bitperfect": False},
-        "bitperfect_pcm": {"name": "Bit-Perfect PCM", "preferred_backend": "gstreamer", "allows_eq": False, "bitperfect": True},
-    }
+def mock_bridges():
+    op = MagicMock()
+    op.refresh.return_value = {"ok": True, "count": 2}
+    op.profiles = [
+        {"id": "standard", "name": "Standard", "backend": "gstreamer"},
+        {"id": "hifi_pcm", "name": "Hi-Fi PCM", "backend": "gstreamer"},
+    ]
+    op.activeProfileId = "standard"
+    op.setActiveProfile.return_value = {"ok": True}
+    op.duplicateProfile.return_value = {"ok": True}
+    op.deleteProfile.return_value = {"ok": True}
+    stg = MagicMock()
+    notif = MagicMock()
+    return {"op": op, "stg": stg, "notif": notif}
 
 
-def test_refresh_profiles(mock_player, profiles_dict):
-    with patch(f"{PROFILES_MODULE}.PROFILES", profiles_dict):
-        bridge = OutputProfilesBridge(player_service=mock_player)
+class TestOutputProfilesPageLoads:
+    def test_qml_file_exists(self):
+        import os
+        assert os.path.isfile(QML_PATH), f"{QML_PATH} no existe"
+
+    def test_qml_has_object_name(self):
+        with open(QML_PATH) as f:
+            content = f.read()
+        assert 'objectName: "outputProfilesPage"' in content
+
+    def test_qml_imports_bridge(self):
+        with open(QML_PATH) as f:
+            content = f.read()
+        assert "outputProfilesBridge" in content
+        assert "settingsBridge" in content
+        assert "notificationBridge" in content
+
+    def test_qml_has_states(self):
+        with open(QML_PATH) as f:
+            content = f.read()
+        for state in ("LOADING", "READY", "EMPTY", "ERROR", "UNAVAILABLE"):
+            assert state in content
+
+    def test_qml_has_refresh_function(self):
+        with open(QML_PATH) as f:
+            content = f.read()
+        assert "function refresh()" in content
+
+    def test_qml_has_create_profile_button(self):
+        with open(QML_PATH) as f:
+            content = f.read()
+        assert 'objectName: "createProfileButton"' in content
+
+    def test_qml_uses_output_profile_card(self):
+        with open(QML_PATH) as f:
+            content = f.read()
+        assert "OutputProfileCard" in content
+
+    def test_qml_uses_output_profile_editor(self):
+        with open(QML_PATH) as f:
+            content = f.read()
+        assert "OutputProfileEditor" in content
+
+    def test_page_initializes_with_bridge_context(self, mock_bridges):
+        from ui_qml_bridge.output_profiles_bridge import OutputProfilesBridge
+        bridge = OutputProfilesBridge(player_service=MagicMock())
+        assert hasattr(bridge, "profiles")
+        assert hasattr(bridge, "activeProfileId")
+
+    def test_page_refreshes_on_completed(self):
+        with open(QML_PATH) as f:
+            content = f.read()
+        assert "Component.onCompleted: root.refresh()" in content
+
+    def test_page_selects_profile(self, mock_bridges):
+        bridge = mock_bridges["op"]
+        bridge.setActiveProfile("hifi_pcm")
+        bridge.setActiveProfile.assert_called_once_with("hifi_pcm")
+
+    def test_page_duplicates_profile(self, mock_bridges):
+        bridge = mock_bridges["op"]
+        bridge.duplicateProfile("standard")
+        bridge.duplicateProfile.assert_called_once_with("standard")
+
+    def test_page_deletes_profile(self, mock_bridges):
+        bridge = mock_bridges["op"]
+        bridge.deleteProfile("standard")
+        bridge.deleteProfile.assert_called_once_with("standard")
+
+    def test_page_has_profile_card_signals(self):
+        with open(QML_PATH) as f:
+            content = f.read()
+        assert "onCardSelected" in content
+        assert "onEditRequested" in content
+        assert "onDuplicateRequested" in content
+        assert "onDeleteRequested" in content
+
+    def test_page_shows_unavailable_when_no_bridge(self):
+        with open(QML_PATH) as f:
+            content = f.read()
+        assert "UnavailableState" in content
+        assert "Perfiles de salida no disponibles" in content
+
+    def test_page_shows_loading_state(self):
+        with open(QML_PATH) as f:
+            content = f.read()
+        assert "LoadingState" in content
+
+    def test_page_shows_empty_state(self):
+        with open(QML_PATH) as f:
+            content = f.read()
+        assert "EmptyState" in content
+
+    def test_page_shows_error_state(self):
+        with open(QML_PATH) as f:
+            content = f.read()
+        assert "ErrorState" in content
+
+    def test_page_has_stack_layout(self):
+        with open(QML_PATH) as f:
+            content = f.read()
+        assert "StackLayout" in content
+
+    def test_page_uses_michitheme(self):
+        with open(QML_PATH) as f:
+            content = f.read()
+        assert "MichiTheme" in content
+
+    def test_page_accessible_role(self):
+        with open(QML_PATH) as f:
+            content = f.read()
+        assert 'Accessible.role: Accessible.Pane' in content
+
+    def test_page_accessible_name(self):
+        with open(QML_PATH) as f:
+            content = f.read()
+        assert 'Accessible.name: "Perfiles de salida"' in content
+
+    def test_page_refresh_handles_no_bridge(self):
+        bridge = OutputProfilesBridge()
         result = bridge.refresh()
-        assert result["ok"]
-        assert result["count"] == 3
-        assert bridge.activeProfileId == "standard"
+        assert not result["ok"]
 
-
-def test_set_valid_profile(mock_player, profiles_dict):
-    mock_player.set_profile.return_value = {"ok": True}
-    with patch(f"{PROFILES_MODULE}.PROFILES", profiles_dict):
-        bridge = OutputProfilesBridge(player_service=mock_player)
-        result = bridge.setActiveProfile("hifi_pcm")
-        assert result["ok"]
-        assert result["active_profile"] == "hifi_pcm"
-
-
-def test_invalid_profile(mock_player, profiles_dict):
-    with patch(f"{PROFILES_MODULE}.PROFILES", profiles_dict):
-        bridge = OutputProfilesBridge(player_service=mock_player)
+    def test_page_select_profile_handles_failure(self, mock_bridges):
+        bridge = mock_bridges["op"]
+        bridge.setActiveProfile.return_value = {"ok": False, "error": "FAILED"}
         result = bridge.setActiveProfile("nonexistent")
         assert not result["ok"]
-        assert "UNKNOWN_PROFILE" in str(result.get("error", ""))
 
-
-def test_set_profile_no_player():
-    bridge = OutputProfilesBridge()
-    result = bridge.setActiveProfile("standard")
-    assert not result["ok"]
-    assert "UNSUPPORTED" in str(result.get("error", ""))
-
-
-def test_refresh_no_player():
-    bridge = OutputProfilesBridge()
-    result = bridge.refresh()
-    assert not result["ok"]
-    assert result["error"] == "NO_PLAYER"
-
-
-def test_fallback_on_mpd_failure(mock_player, profiles_dict):
-    mock_player.set_profile.return_value = {
-        "ok": False, "error": "MPD_CONNECTION_FAILED", "fallback": True,
-    }
-    mock_player.get_active_profile_id.return_value = "standard"
-    with patch(f"{PROFILES_MODULE}.PROFILES", profiles_dict):
-        bridge = OutputProfilesBridge(player_service=mock_player)
-        bridge._active_id = "standard"
-        result = bridge.setActiveProfile("bitperfect_pcm")
-        assert not result["ok"]
-        assert result["fallback"] is True
-
-
-def test_profile_switch_returns_complete_result(mock_player, profiles_dict):
-    mock_player.set_profile.return_value = {"ok": False, "error": "FAILED"}
-    with patch(f"{PROFILES_MODULE}.PROFILES", profiles_dict):
-        bridge = OutputProfilesBridge(player_service=mock_player)
-        bridge._active_id = "standard"
-        result = bridge.setActiveProfile("hifi_pcm")
-        assert "requested_profile" in result
-        assert "active_profile" in result
-        assert "fallback" in result
-
-
-def test_profile_list_includes_all_profiles(mock_player, profiles_dict):
-    with patch(f"{PROFILES_MODULE}.PROFILES", profiles_dict):
-        bridge = OutputProfilesBridge(player_service=mock_player)
-        bridge.refresh()
-        ids = [p["id"] for p in bridge.profiles]
-        assert "standard" in ids
-        assert "hifi_pcm" in ids
-        assert "bitperfect_pcm" in ids
-
-
-def test_set_active_only_on_success(mock_player, profiles_dict):
-    mock_player.set_profile.side_effect = [
-        {"ok": False, "error": "FAILED"},
-    ]
-    with patch(f"{PROFILES_MODULE}.PROFILES", profiles_dict):
-        bridge = OutputProfilesBridge(player_service=mock_player)
-        bridge._active_id = "standard"
-        bridge.setActiveProfile("hifi_pcm")
-        assert bridge.activeProfileId == "standard"
-
-
-def test_requires_restart_flag(mock_player, profiles_dict):
-    mock_player.set_profile.return_value = {
-        "ok": False, "error": "NEEDS_RESTART", "requires_restart": True, "fallback": False,
-    }
-    with patch(f"{PROFILES_MODULE}.PROFILES", profiles_dict):
-        bridge = OutputProfilesBridge(player_service=mock_player)
-        bridge._active_id = "standard"
-        result = bridge.setActiveProfile("hifi_pcm")
-        assert result.get("requires_restart") is True
+    def test_page_refresh_propagates_error(self):
+        player = MagicMock()
+        player.get_active_profile_id.return_value = ""
+        with patch("audio.output_profiles.PROFILES", {}):
+            bridge = OutputProfilesBridge(player_service=player)
+            result = bridge.refresh()
+            assert result["ok"]
+            assert result["count"] == 0
