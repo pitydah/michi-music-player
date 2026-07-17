@@ -13,8 +13,8 @@ Item {
 
     property int selectedMode: 0
     property var modes: [
-        { title: "Home Assistant", subtitle: "Integración con asistentes del hogar", glyph: "HA" },
-        { title: "Michi Music Stream", subtitle: "Streaming local del ecosistema Michi", glyph: "MS" }
+        { title: "Home Assistant", subtitle: "Integración con asistentes del hogar", icon: "sidebar_servers" },
+        { title: "Michi Music Stream", subtitle: "Streaming local del ecosistema Michi", icon: "sidebar_audio_lab" }
     ]
 
     signal modeSelected(int index)
@@ -61,13 +61,11 @@ Item {
                             radius: MichiTheme.radius.sm
                             color: root.selectedMode === index ? MichiTheme.colors.accentSelection : "transparent"
 
-                            Text {
+                            Image {
                                 anchors.centerIn: parent
-                                text: modelData.glyph
-                                color: root.selectedMode === index ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
-                                font.pixelSize: MichiTheme.typography.bodySize
-                                font.weight: MichiTheme.typography.weightSemiBold
-                                font.letterSpacing: MichiTheme.spacing.xxs
+                                source: Qt.resolvedUrl("../../icons/" + modelData.icon + ".svg")
+                                sourceSize.width: 22; sourceSize.height: 22
+                                fillMode: Image.PreserveAspectFit
                             }
                         }
 
