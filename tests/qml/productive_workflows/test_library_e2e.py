@@ -42,7 +42,7 @@ class TestLibraryE2E:
     def test_library_filter_format(self, library_bridge):
         result = library_bridge.setFormatFilter("FLAC")
         assert isinstance(result, dict)
-        assert result.get("ok", False) is True or True
+        assert result.get("ok") is True or result.get("ok") is None
 
     def test_library_filter_genre(self, library_bridge):
         result = library_bridge.setGenreFilter("Rock")
