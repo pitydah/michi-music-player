@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 
 QtObject {
-    readonly property bool reducedMotion: MichiTheme ? MichiTheme.reducedMotion : false
+    readonly property bool reducedMotion: typeof MichiAccessibility !== "undefined" && MichiAccessibility ? MichiAccessibility.reduceMotion : false
 
     readonly property int durationInstant: reducedMotion ? 0 : 80
     readonly property int durationFast: reducedMotion ? 0 : 120

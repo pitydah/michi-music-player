@@ -87,6 +87,11 @@ QtObject {
     readonly property int radiusPill: radius.pill
     readonly property real focusOffset: 2
 
-    // ── Accesibilidad ──
-    property bool reducedMotion: false
+    // ── Theme toggle ──
+    property bool darkMode: true
+
+    function setDarkMode(enabled: bool) {
+        darkMode = enabled
+        MichiColors.lightMode = !enabled
+    }
 }

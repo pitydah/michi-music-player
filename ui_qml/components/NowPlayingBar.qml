@@ -191,8 +191,8 @@ Item {
                     id: utilityCtrl
                     Layout.alignment: Qt.AlignVCenter
                     visible: !responsive.compact
-                    eqSupported: true
-                    transmitSupported: false
+                    eqSupported: typeof capabilityBridge !== "undefined" && capabilityBridge ? capabilityBridge.has("eq") : true
+                    transmitSupported: typeof capabilityBridge !== "undefined" && capabilityBridge ? capabilityBridge.has("transmit") : false
                     onEqClicked: {
                         if (typeof navigationBridge !== "undefined")
                             navigationBridge.navigate("equalizer")

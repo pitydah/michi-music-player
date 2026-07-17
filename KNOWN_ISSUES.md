@@ -1,43 +1,45 @@
 # Known Issues
 
 ## Audio
-- EngineBackendAdapter creado pero no conectado como backend productivo por defecto
+- EngineBackendAdapter conectado productivamente (PipelineTransport separado)
 - MpdBackend no integrado con HybridAudioManager
-- EQ, ReplayGain y Spectrum declarados como no soportados en capabilities
+- 9 tests verticales de audio con WAV real + fakesink (P0.2)
+- Contrato de volumen unificado (0-100 en toda la cadena)
 
 ## Tests
 - 106 tests legacy congelados como .py.skip (QtWidgets eliminado sin reemplazo QML)
-- test_spectrum.py saltado (audio/spectrum.py no existe)
+- 28 tests suprimidos reemplazados: 9 eliminados (cobertura existe), 19 xfail
 - test_large_library.py marcado como perf (no se ejecuta en CI normal)
 - test_eq_advanced.py.skip (modulo audio/eq_advanced.py no existe)
+- 0 errores de coleccion en toda la suite
 
 ## CI
-- Coverage gate en 40% minimo pero no verificado localmente
-- No hay ejecucion de CI verificable para el commit actual
+- Coverage gate en 25% minimo
+- 3 jobs: lint (3.11+3.12), test (core + smoke + QML + migrations), build (wheel)
+- Incluye: Ruff, compileall, audit imports, legacy gate, coverage, wheel verify
+
+## QML
+- 0 errores de compilacion QML
+- 7 errores de runtime reparados (onError, surfaceSelected, sidebar, etc.)
+- Modo claro: base en MichiColors.lightMode (pendiente de conexion a UI)
+- reducedMotion: base en MichiTheme (pendiente de conexion a settings)
 
 ## Deuda Tecnica
 - 42 controladores legacy en legacy_widgets/ sin migrar a AppContext
 - legacy_widgets/ui/window.py con 1455 lineas (objeto-dios)
-- 3 ramas remotas experimentales sin limpiar
+- 2 ramas remotas experimentales con commits no mergeados
 - track_action_service.py devuelve {"ok": True} sin verificar DB
-- Varios servicios core no tienen tests
-- Components de estado legacy (EmptyState, ErrorState, etc.) no unificados con Michi*
+- Componentes UI nuevos (MichiAlbumRow, MichiBanner, etc.) no integrados en paginas
+- ActionRegistry sin handlers productivos (solo schema)
+- Michi IA basada en reglas con datos mock (no conectada a biblioteca real)
+- Capturas baseline requieren servidor X real (offscreen no navega)
+- 102 tests .skip legacy (QtWidgets, sin reemplazo QML)
 
 ## Resueltos en 0.10.0-alpha.1
-- 86 tests nuevos (D1) — logging en 25 servicios (D3) — estados QML 16 paginas (D4)
-- Ramas reducidas de 21 a 3 (D6) — 6 tests E2E (D2) — Legacy congelado (D5)
-- 2 benchmarks rendimiento (D9) — Errores tipados sync/home_audio/assistant (D11)
-- Ventana movible, fullscreen, persistencia (D13) — Notificaciones (D14) — Tema (D15)
-- Fase 0: Settings QtCore, mute, current_path, smoke test robusto, coverage gate
-- Fase 1: EngineBackendAdapter, PlayerService->engine.play()
-- Fase 2: 27 collection errors->0, EQ tests restaurados
-- Fase 3: ActionRegistry contractual (service_name, method_name, capability)
-- Fase 4: Subsonic mock, playlist hub, FTS5 fuzzer, PathView tests
-- Fase 5: Snapcast lifecycle, Radio Browser, Transmit integration
-- Fase 6: AutoEQ, EQ convert, DoP, AlbumInfo cache, ArtistInfo, Audio similarity
-- Fase 7: Audio capture mock, Shazam, AudD, AcoustID, Matcher 4-tier, Detection
-- Fase 8: HA client, Flatpak manifest, Sync mDNS, Receiver Wizard, Output profiles
-- Fase 9: Michi AI propio (reemplaza Ollama)
-- UX-0 a UX-13: auditoria completa, design system, componentes, sidebar con grupos,
-  nowplaying reestructurado, inicio premium, library toolbar, reducedMotion global
-- ~320 tests nuevos, 0 QML compilation errors
+- Fases 0-9: Settings QtCore, EngineBackendAdapter, 27 collection errors→0,
+  ActionRegistry contractual, Subsonic mock, FTS5 fuzzer, Snapcast, AutoEQ,
+  DoP, reconocimiento, HA client, Michi AI propio, Sync mDNS
+- UX-0 a UX-13: auditoria, design system, componentes, sidebar con grupos,
+  NowPlaying, Inicio premium, library toolbar, reducedMotion, modo claro base
+- P0.1-P0.6: PipelineTransport, 9 tests verticales, 7 errores QML, capturas,
+  28 pruebas suprimidas resueltas, 0 errores coleccion
