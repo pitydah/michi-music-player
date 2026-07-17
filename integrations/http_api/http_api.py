@@ -1,9 +1,12 @@
 """Michi HTTP API — exposes player control for Home Assistant integration."""
 import json
+import logging
 import os
 import uuid
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from threading import Thread
+
+logger = logging.getLogger("michi.http_api")
 
 
 API_PORT_DEFAULT = 8124
@@ -86,41 +89,49 @@ class _MichiHandler(BaseHTTPRequestHandler):
                 self._send_json(503, {"error": "bridge_not_available", "recoverable": True})
             return bool(self._bridge)
 
+        def _emit_and_respond(cmd: str, extra: dict | None = None):
+            logger.debug("HTTP API: %s", cmd)
+            snap = self._store.player_snapshot() if hasattr(self, '_store') and self._store else {}
+            resp = {"status": "ok", "command": cmd, "state": snap.get("state", "unknown")}
+            if extra:
+                resp.update(extra)
+            self._send_json(200, resp)
+
         if self.path == "/api/player/play":
             if _require_bridge():
                 self._bridge.play_requested.emit()
-                self._send_json(200, {"status": "ok"})
+                _emit_and_respond("play")
 
         elif self.path == "/api/player/pause":
             if _require_bridge():
                 self._bridge.pause_requested.emit()
-                self._send_json(200, {"status": "ok"})
+                _emit_and_respond("pause")
 
         elif self.path == "/api/player/stop":
             if _require_bridge():
                 self._bridge.stop_requested.emit()
-                self._send_json(200, {"status": "ok"})
+                _emit_and_respond("stop")
 
         elif self.path == "/api/player/next":
             if _require_bridge():
                 self._bridge.next_requested.emit()
-                self._send_json(200, {"status": "ok"})
+                _emit_and_respond("next")
 
         elif self.path == "/api/player/previous":
             if _require_bridge():
                 self._bridge.previous_requested.emit()
-                self._send_json(200, {"status": "ok"})
+                _emit_and_respond("previous")
 
         elif self.path == "/api/player/volume":
             vol = body.get("volume", 70)
             if _require_bridge():
                 self._bridge.volume_requested.emit(int(vol))
-                self._send_json(200, {"status": "ok", "volume": vol})
+                _emit_and_respond("volume", {"volume": vol})
 
         elif self.path == "/api/player/play_media":
             if _require_bridge():
                 self._bridge.play_media_requested.emit(body)
-                self._send_json(200, {"status": "ok"})
+                _emit_and_respond("play_media")
 
         elif self.path == "/api/player/select_destination":
             dest_id = body.get("id", "local") or "local"

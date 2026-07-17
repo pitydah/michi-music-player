@@ -870,6 +870,28 @@ class ApplicationBootstrap:
         except Exception:
             self.container.register("accessibility_service", None, priority=ServicePriority.OPTIONAL)
 
+        # New-style prototype services (not yet productively connected)
+        try:
+            from sync.transports.usb_mass_storage import UsbMassStorageTransport
+            self.container.register("ums_transport_service", UsbMassStorageTransport(),
+                                     priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+        try:
+            from integrations.micro_server_service import MicroServerService
+            self.container.register("micro_server_client_service", MicroServerService(),
+                                     priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+        try:
+            from integrations.home_audio_service import SnapcastService, HomeAssistantService
+            self.container.register("snapcast_service", SnapcastService(),
+                                     priority=ServicePriority.OPTIONAL)
+            self.container.register("home_assistant_service", HomeAssistantService(),
+                                     priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
     def get_queue_service(self):
         return self.container.get("queue_service")
 

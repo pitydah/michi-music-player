@@ -1,4 +1,7 @@
-"""Formal database migration system with versioning, transactions, and rollback."""
+"""Formal database migration system with versioning, transactions, and rollback.
+
+Uses the real schema tables from library/schema.py.
+"""
 import logging
 import sqlite3
 
@@ -7,87 +10,194 @@ logger = logging.getLogger(__name__)
 MIGRATIONS_TABLE = "_migrations"
 
 # Each migration: (version, description, sql_up, sql_down)
+# Version 1 corresponds to the schema created by Schema.initialize() in schema.py
 MIGRATIONS = [
     (1, "Initial schema", """
-        CREATE TABLE IF NOT EXISTS songs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            artist TEXT DEFAULT '',
-            album TEXT DEFAULT '',
-            filepath TEXT UNIQUE NOT NULL,
-            duration REAL DEFAULT 0,
-            bitrate INTEGER DEFAULT 0,
-            samplerate INTEGER DEFAULT 0,
-            channels INTEGER DEFAULT 2,
-            genre TEXT DEFAULT '',
-            year INTEGER DEFAULT 0,
-            track_number INTEGER DEFAULT 0,
-            disc_number INTEGER DEFAULT 0,
-            rating INTEGER DEFAULT 0,
-            playcount INTEGER DEFAULT 0,
-            last_played TEXT DEFAULT '',
-            date_added TEXT DEFAULT (datetime('now')),
-            date_modified TEXT DEFAULT (datetime('now')),
-            favorite INTEGER DEFAULT 0,
-            format TEXT DEFAULT '',
-            has_coverart INTEGER DEFAULT 0
+        CREATE TABLE IF NOT EXISTS media_items (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            filepath    TEXT UNIQUE NOT NULL,
+            filename    TEXT NOT NULL,
+            directory   TEXT NOT NULL,
+            ext         TEXT NOT NULL,
+            kind        TEXT NOT NULL,
+            size        INTEGER,
+            mtime       REAL,
+            duration    REAL,
+            channels    INTEGER,
+            sample_rate INTEGER,
+            bitrate     INTEGER,
+            title       TEXT,
+            artist      TEXT,
+            album       TEXT,
+            year        INTEGER,
+            genre       TEXT,
+            track_number INTEGER,
+            composer    TEXT,
+            date_added  REAL DEFAULT (strftime('%s','now'))
         );
-        CREATE TABLE IF NOT EXISTS albums (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            artist TEXT DEFAULT '',
-            genre TEXT DEFAULT '',
-            year INTEGER DEFAULT 0,
+        CREATE TABLE IF NOT EXISTS playlists (
+            id   INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
             cover_path TEXT DEFAULT '',
-            track_count INTEGER DEFAULT 0,
-            duration REAL DEFAULT 0,
-            album_artist TEXT DEFAULT ''
+            cover_type TEXT DEFAULT 'mosaic',
+            description TEXT DEFAULT '',
+            created_at REAL DEFAULT (strftime('%s','now'))
         );
-        CREATE TABLE IF NOT EXISTS artists (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL,
-            bio TEXT DEFAULT '',
-            genre TEXT DEFAULT '',
-            album_count INTEGER DEFAULT 0,
-            track_count INTEGER DEFAULT 0
+        CREATE TABLE IF NOT EXISTS playlist_items (
+            playlist_id INTEGER NOT NULL REFERENCES playlists(id),
+            filepath    TEXT NOT NULL,
+            track_id    INTEGER REFERENCES media_items(id),
+            position    INTEGER DEFAULT 0
         );
-        CREATE VIRTUAL TABLE IF NOT EXISTS songs_fts USING fts5(
-            title, artist, album, genre, content='songs', content_rowid='id'
+        CREATE TABLE IF NOT EXISTS queue_state (
+            id INTEGER PRIMARY KEY,
+            filepath TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS play_history (
+            track_id   TEXT NOT NULL,
+            device     TEXT DEFAULT 'desktop',
+            played_at  REAL DEFAULT (strftime('%s','now'))
+        );
+        CREATE TABLE IF NOT EXISTS favorites (
+            track_id TEXT NOT NULL UNIQUE,
+            device   TEXT DEFAULT 'desktop',
+            added_at REAL DEFAULT (strftime('%s','now'))
+        );
+        CREATE TABLE IF NOT EXISTS album_art_cache (
+            album_hash TEXT PRIMARY KEY,
+            mime       TEXT,
+            data       BLOB
+        );
+        CREATE TABLE IF NOT EXISTS detected_tracks (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            title     TEXT NOT NULL,
+            artist    TEXT NOT NULL,
+            album     TEXT,
+            year      INTEGER,
+            genre     TEXT,
+            duration  REAL,
+            source    TEXT DEFAULT '',
+            provider  TEXT DEFAULT '',
+            confidence REAL,
+            isrc      TEXT,
+            artwork_url TEXT,
+            external_url TEXT,
+            filepath  TEXT,
+            matched_library_id INTEGER,
+            raw_json  TEXT,
+            detected_at REAL NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS scan_roots (
+            path TEXT PRIMARY KEY,
+            enabled INTEGER DEFAULT 1,
+            last_scan_started REAL,
+            last_scan_finished REAL,
+            file_count INTEGER DEFAULT 0,
+            added_count INTEGER DEFAULT 0,
+            updated_count INTEGER DEFAULT 0,
+            skipped_count INTEGER DEFAULT 0,
+            missing_count INTEGER DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS index_errors (
+            filepath TEXT,
+            error TEXT,
+            stage TEXT,
+            updated_at REAL DEFAULT (strftime('%s','now'))
+        );
+        CREATE TABLE IF NOT EXISTS library_roots (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            path          TEXT UNIQUE NOT NULL,
+            enabled       INTEGER DEFAULT 1,
+            last_scan     REAL,
+            file_count    INTEGER DEFAULT 0,
+            added_count   INTEGER DEFAULT 0,
+            updated_count INTEGER DEFAULT 0,
+            skipped_count INTEGER DEFAULT 0,
+            missing_count INTEGER DEFAULT 0,
+            created_at    REAL DEFAULT (strftime('%s','now')),
+            updated_at    REAL
+        );
+        CREATE TABLE IF NOT EXISTS track_genres (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            track_id        INTEGER NOT NULL REFERENCES media_items(id) ON DELETE CASCADE,
+            genre           TEXT NOT NULL,
+            canonical_genre TEXT NOT NULL DEFAULT '',
+            original_value  TEXT NOT NULL DEFAULT '',
+            confidence      REAL DEFAULT 1.0,
+            source          TEXT DEFAULT 'tag',
+            is_manual       INTEGER DEFAULT 0,
+            created_at      REAL DEFAULT (strftime('%s','now')),
+            updated_at      REAL,
+            UNIQUE(track_id, genre)
+        );
+        CREATE TABLE IF NOT EXISTS genre_aliases (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            alias           TEXT NOT NULL UNIQUE,
+            canonical_genre TEXT NOT NULL,
+            confidence      REAL DEFAULT 1.0,
+            source          TEXT DEFAULT 'builtin',
+            is_builtin      INTEGER DEFAULT 0,
+            is_user_defined INTEGER DEFAULT 0,
+            created_at      REAL DEFAULT (strftime('%s','now')),
+            updated_at      REAL
         );
     """, """
-        DROP TABLE IF EXISTS songs_fts;
-        DROP TABLE IF EXISTS songs;
-        DROP TABLE IF EXISTS albums;
-        DROP TABLE IF EXISTS artists;
+        DROP TABLE IF EXISTS genre_aliases;
+        DROP TABLE IF EXISTS track_genres;
+        DROP TABLE IF EXISTS library_roots;
+        DROP TABLE IF EXISTS index_errors;
+        DROP TABLE IF EXISTS scan_roots;
+        DROP TABLE IF EXISTS detected_tracks;
+        DROP TABLE IF EXISTS album_art_cache;
+        DROP TABLE IF EXISTS favorites;
+        DROP TABLE IF EXISTS play_history;
+        DROP TABLE IF EXISTS queue_state;
+        DROP TABLE IF EXISTS playlist_items;
+        DROP TABLE IF EXISTS playlists;
+        DROP TABLE IF EXISTS media_items;
     """),
-    (2, "Add track_uid and content_hash", """
-        ALTER TABLE songs ADD COLUMN track_uid TEXT DEFAULT '';
-        ALTER TABLE songs ADD COLUMN content_hash TEXT DEFAULT '';
+    (2, "Add track_uid and content_hash to media_items", """
+        ALTER TABLE media_items ADD COLUMN track_uid TEXT DEFAULT '';
+        ALTER TABLE media_items ADD COLUMN content_hash TEXT DEFAULT '';
     """, """
-        ALTER TABLE songs DROP COLUMN track_uid;
-        ALTER TABLE songs DROP COLUMN content_hash;
+        ALTER TABLE media_items DROP COLUMN track_uid;
+        ALTER TABLE media_items DROP COLUMN content_hash;
     """),
-    (3, "Add deleted_at and scan_status", """
-        ALTER TABLE songs ADD COLUMN deleted_at TEXT DEFAULT NULL;
-        ALTER TABLE songs ADD COLUMN scan_status TEXT DEFAULT 'active';
-        CREATE INDEX IF NOT EXISTS idx_songs_scan_status ON songs(scan_status);
+    (3, "Add mtime_processed, file_size, and format to media_items", """
+        ALTER TABLE media_items ADD COLUMN mtime_processed REAL DEFAULT 0;
+        ALTER TABLE media_items ADD COLUMN file_size INTEGER DEFAULT 0;
+        ALTER TABLE media_items ADD COLUMN format TEXT DEFAULT '';
     """, """
-        DROP INDEX IF EXISTS idx_songs_scan_status;
-        ALTER TABLE songs DROP COLUMN deleted_at;
-        ALTER TABLE songs DROP COLUMN scan_status;
+        ALTER TABLE media_items DROP COLUMN mtime_processed;
+        ALTER TABLE media_items DROP COLUMN file_size;
+        ALTER TABLE media_items DROP COLUMN format;
+    """),
+    (4, "Add albumartist and disc_number to media_items", """
+        ALTER TABLE media_items ADD COLUMN albumartist TEXT DEFAULT '';
+        ALTER TABLE media_items ADD COLUMN disc_number INTEGER DEFAULT 0;
+    """, """
+        ALTER TABLE media_items DROP COLUMN albumartist;
+        ALTER TABLE media_items DROP COLUMN disc_number;
+    """),
+    (5, "Add rating and playcount to media_items", """
+        ALTER TABLE media_items ADD COLUMN rating INTEGER DEFAULT 0;
+        ALTER TABLE media_items ADD COLUMN playcount INTEGER DEFAULT 0;
+        ALTER TABLE media_items ADD COLUMN last_played TEXT DEFAULT '';
+    """, """
+        ALTER TABLE media_items DROP COLUMN last_played;
+        ALTER TABLE media_items DROP COLUMN playcount;
+        ALTER TABLE media_items DROP COLUMN rating;
     """),
 ]
 
 
 def get_current_version(conn: sqlite3.Connection) -> int:
-    """Get current migration version from database."""
     cursor = conn.execute(f"SELECT MAX(version) FROM {MIGRATIONS_TABLE}")
     row = cursor.fetchone()
     return row[0] if row and row[0] else 0
 
 
 def ensure_migrations_table(conn: sqlite3.Connection):
-    """Create migrations tracking table if not exists."""
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {MIGRATIONS_TABLE} (
             version INTEGER PRIMARY KEY,
@@ -99,7 +209,6 @@ def ensure_migrations_table(conn: sqlite3.Connection):
 
 
 def migrate(conn: sqlite3.Connection, target_version: int | None = None, backup_path: str | None = None):
-    """Run migrations up to target_version (or latest if None)."""
     ensure_migrations_table(conn)
     current = get_current_version(conn)
 
@@ -131,7 +240,6 @@ def migrate(conn: sqlite3.Connection, target_version: int | None = None, backup_
 
 
 def rollback(conn: sqlite3.Connection, target_version: int):
-    """Rollback migrations to target_version."""
     ensure_migrations_table(conn)
     current = get_current_version(conn)
 

@@ -11,6 +11,8 @@ import hashlib
 import logging
 import sqlite3
 
+from library.migrations import migrate as formal_migrate
+
 logger = logging.getLogger("michi.schema")
 
 # ── TABLE SQL ──
@@ -395,7 +397,13 @@ class Schema:
 
     @staticmethod
     def run_migrations(conn: sqlite3.Connection):
-        """Add missing columns to existing tables."""
+        """Add missing columns to existing tables + formal versioned migrations."""
+        # Formal versioned migrations (from library/migrations.py)
+        try:
+            formal_migrate(conn)
+        except Exception as e:
+            logger.error("Formal migration failed: %s", e)
+
         Schema._add_columns(conn, "media_items", MEDIA_ITEMS_MIGRATIONS)
         Schema._add_columns(conn, "playlists", PLAYLISTS_MIGRATIONS)
         Schema._add_columns(conn, "detected_tracks", DETECTED_TRACKS_MIGRATIONS)
