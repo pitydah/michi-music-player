@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../theme"
 import "../components"
+import "../components/foundations"
 import "."
 
 Item {
@@ -17,6 +18,8 @@ Item {
     property var cmdPalette: commandPalette
     property bool fatalError: false
     property string fatalMessage: ""
+
+    MichiResponsive { id: responsive; availableWidth: root.width }
 
     function updateHeaderTitle(route) {
         if (typeof routeRegistryBridge !== "undefined" && routeRegistryBridge) {
@@ -46,7 +49,7 @@ Item {
             Sidebar {
                 id: sidebar
                 Layout.fillHeight: true
-                Layout.preferredWidth: 250
+                Layout.preferredWidth: responsive.sidebarAutoCollapse ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
                 currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
 
                 onRouteRequested: function(route) {
