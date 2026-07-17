@@ -100,7 +100,7 @@ Item {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: MichiTheme.spacing.xs
-        width: 120; height: 32; radius: MichiTheme.radiusSm; variant: "status"
+        width: 120; height: 32; radius: MichiTheme.radius.sm; variant: "status"
         visible: root.lyricsBridge && root.lyricsBridge.hasSyncedLyrics
 
         Row {

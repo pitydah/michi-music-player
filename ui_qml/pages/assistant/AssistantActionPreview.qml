@@ -27,10 +27,10 @@ Item {
 
     visible: root.previewVisible
     opacity: root.previewVisible ? 1.0 : 0.0
-    Behavior on opacity { NumberAnimation { duration: MichiTheme.motionFast } }
+    Behavior on opacity { NumberAnimation { duration: MichiTheme.motion.durationFast } }
 
     GlassMaterial {
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         variant: root.destructive ? "danger" : "base"
 
         Column {
@@ -81,7 +81,7 @@ Item {
                 Rectangle {
                     width: parent.width
                     height: 28
-                    radius: MichiTheme.radiusXs
+                    radius: MichiTheme.radius.xs
                     color: MichiTheme.colors.surfaceSubtle
 
                     Text {

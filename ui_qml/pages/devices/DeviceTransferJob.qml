@@ -27,7 +27,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: MichiTheme.colors.surface
-        radius: MichiTheme.radiusSm
+        radius: MichiTheme.radius.sm
         border.color: MichiTheme.colors.border
         border.width: MichiTheme.borderWidth
 
@@ -89,19 +89,11 @@ Item {
                         }
                     }
                 }
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
 
                 MichiButton {
                     text: "Cancelar"
                     variant: "ghost"
                     visible: root.status === "queued" || root.status === "transferring"
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
                     onClicked: root.cancelClicked(root.jobId)
                 }
 

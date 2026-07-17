@@ -34,7 +34,7 @@ Item {
                 GlassMaterial {
                     width: parent.width
                     height: 48
-                    radius: MichiTheme.radiusSm
+                    radius: MichiTheme.radius.sm
                     hovered: mouseArea.containsMouse
                     interactive: true
 
@@ -53,7 +53,7 @@ Item {
                         spacing: MichiTheme.spacing.sm
 
                         Rectangle {
-                            width: 24; height: 24; radius: MichiTheme.radiusXs
+                            width: 24; height: 24; radius: MichiTheme.radius.xs
                             color: MichiTheme.colors.borderInner
                             anchors.verticalCenter: parent.verticalCenter
                             Text {

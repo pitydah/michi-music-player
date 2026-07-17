@@ -29,7 +29,7 @@ Item {
         anchors.fill: parent
         focused: root.fieldFocused
         hoveredInput: hover.hovered
-        radius: MichiTheme.radiusSm
+        radius: MichiTheme.radius.sm
     }
 
     TextInput {

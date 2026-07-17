@@ -18,7 +18,7 @@ Item {
         spacing: MichiTheme.spacing.sm
 
         GlassMaterial {
-            width: parent.width; radius: MichiTheme.radiusMd
+            width: parent.width; radius: MichiTheme.radius.md
             variant: root.doc && root.doc.status === "scanning" ? "accent" :
                      root.doc && root.doc.status === "repairing" ? "danger" : "base"
             visible: root.doc && (root.doc.status === "scanning" || root.doc.status === "repairing")

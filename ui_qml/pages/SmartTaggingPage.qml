@@ -159,7 +159,7 @@ Item {
                 model: root.stb ? root.stb.suggestions : []
 
                 GlassMaterial {
-                    width: parent.width; height: 48; radius: MichiTheme.radiusSm; variant: "base"
+                    width: parent.width; height: 48; radius: MichiTheme.radius.sm; variant: "base"
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                         Text {
@@ -227,7 +227,7 @@ Item {
             }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "status"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "status"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     StatusBadge { text: "Interfaz clásica disponible"; kind: "info" }

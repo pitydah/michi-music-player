@@ -52,7 +52,7 @@ Item {
                 width: parent.width; height: 80
                 title: "Inspector de metadatos"
                 subtitle: "Revisa campos, carátulas y consistencia de una pista."
-                variant: "accent"
+                variant: "primary"
                 onClicked: {
                     if (typeof navigationBridge !== "undefined" && navigationBridge)
                         navigationBridge.navigate("metadata_inspector")
@@ -62,7 +62,7 @@ Item {
             SectionHeader { text: "Estado de la biblioteca"; width: parent.width }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "base"
                 Row {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.xl
                     Column { spacing: MichiTheme.spacing.xs
@@ -109,7 +109,7 @@ Item {
                 GlassCard {
                     width: (parent.width - MichiTheme.spacing.md) / 2; height: 80
                     title: "Smart Tagging"; subtitle: "Sugerencias de metadatos"
-                    variant: "accent"
+                    variant: "primary"
                     onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("smart_tagging") }
                     StatusBadge { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: MichiTheme.spacing.sm; text: "Funcional"; kind: "success" }
                 }
@@ -141,14 +141,14 @@ Item {
                 GlassCard {
                     width: (parent.width - MichiTheme.spacing.md) / 2; height: 80
                     title: "Inspector metadata"; subtitle: "Edición de campos"
-                    variant: "accent"
+                    variant: "primary"
                     onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("metadata_inspector") }
                     StatusBadge { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: MichiTheme.spacing.sm; text: "Funcional"; kind: "success" }
                 }
             }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "status"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "status"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     StatusBadge { text: "Solo lectura"; kind: "info" }

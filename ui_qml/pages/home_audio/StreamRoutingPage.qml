@@ -80,7 +80,7 @@ Item {
                     GlassMaterial {
                         width: parent.width
                         height: 80
-                        radius: MichiTheme.radiusMd
+                        radius: MichiTheme.radius.md
                         variant: "base"
 
                         Row {

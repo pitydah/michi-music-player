@@ -118,7 +118,7 @@ Item {
             SectionHeader { text: "Ajustes"; width: parent.width; objectName: "rgSettingsHeader"; Accessible.name: "Ajustes" }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "base"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
 
@@ -190,7 +190,7 @@ Item {
             SectionHeader { text: "Resultados"; width: parent.width; objectName: "rgResultsHeader"; Accessible.name: "Resultados" }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: root._results ? "accent" : root._state === root.stateFailed ? "danger" : "status"
+                width: parent.width; radius: MichiTheme.radius.md; variant: root._results ? "accent" : root._state === root.stateFailed ? "danger" : "status"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     Text {

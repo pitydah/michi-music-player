@@ -115,7 +115,7 @@ Item {
                     id: volumeCard
                     width: parent.width
                     height: 80
-                    radius: MichiTheme.radiusMd
+                    radius: MichiTheme.radius.md
                     variant: "base"
 
                     Row {
@@ -183,7 +183,7 @@ Item {
                     id: infoCard
                     width: parent.width
                     height: infoColumn.height + MichiTheme.spacing.xl * 2
-                    radius: MichiTheme.radiusMd
+                    radius: MichiTheme.radius.md
                     variant: "base"
 
                     Column {
@@ -299,7 +299,7 @@ Item {
 
         degradedOverlay: Rectangle {
             color: Qt.rgba(1, 0.75, 0.14, 0.05)
-            radius: MichiTheme.radiusMd
+            radius: MichiTheme.radius.md
             anchors.fill: parent
             visible: true
 

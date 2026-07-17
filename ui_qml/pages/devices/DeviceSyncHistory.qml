@@ -22,7 +22,7 @@ Item {
     GlassMaterial {
         width: parent.width
         height: column.height + MichiTheme.spacing.xl * 2
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         variant: "base"
 
         Column {
@@ -61,7 +61,7 @@ Item {
                     width: parent.width
                     height: 56
                     color: index % 2 === 0 ? MichiTheme.colors.surface : "transparent"
-                    radius: MichiTheme.radiusSm
+                    radius: MichiTheme.radius.sm
 
                     Row {
                         anchors.fill: parent

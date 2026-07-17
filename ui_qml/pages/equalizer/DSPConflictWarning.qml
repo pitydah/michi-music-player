@@ -16,7 +16,7 @@ Item {
 
     GlassMaterial {
         anchors.fill: parent
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         variant: "status"
 
         Row {

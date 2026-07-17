@@ -19,7 +19,7 @@ Rectangle {
     property bool indeterminate: false
 
     width: parent.width; height: 48
-    radius: MichiTheme.radiusSm
+    radius: MichiTheme.radius.sm
     color: MichiTheme.colors.surfaceCard
     visible: root.scanning
 

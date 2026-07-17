@@ -126,6 +126,7 @@ def main():
                 f"{f['file']}:{f['line']}  "
                 f"{f['control']}  missing: {', '.join(f['missing'])}"
             )
+        sys.exit(1 if all_findings else 0)
 
 
 if __name__ == "__main__":

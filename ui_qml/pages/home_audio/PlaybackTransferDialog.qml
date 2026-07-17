@@ -21,7 +21,7 @@ Item {
 
     GlassMaterial {
         anchors.fill: parent
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         variant: "elevated"
 
         Column {
@@ -50,7 +50,7 @@ Item {
                 Rectangle {
                     width: parent.width
                     height: 48
-                    radius: MichiTheme.radiusSm
+                    radius: MichiTheme.radius.sm
                     color: mouseArea.containsMouse ? MichiTheme.colors.accentSurface : "transparent"
                     border.color: MichiTheme.colors.border
                     border.width: MichiTheme.borderWidth

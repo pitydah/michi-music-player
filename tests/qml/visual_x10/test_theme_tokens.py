@@ -249,7 +249,7 @@ class TestMichiMotionTokens:
         assert motion.easing.out is not None
 
     def test_easing_in(self, motion):
-        assert getattr(motion.easing, "in") is not None
+        assert motion.easing.inCubic is not None
 
     def test_easing_standard(self, motion):
         assert motion.easing.standard is not None

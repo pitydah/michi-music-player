@@ -28,7 +28,7 @@ Item {
 
         Rectangle {
             width: parent.width
-            radius: MichiTheme.radiusMd
+            radius: MichiTheme.radius.md
             color: MichiTheme.colors.surfaceCard
             border.color: MichiTheme.colors.borderCard
             visible: root.issueData !== null

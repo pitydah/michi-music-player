@@ -24,7 +24,7 @@ Item {
     GlassMaterial {
         width: parent.width
         height: column.height + MichiTheme.spacing.xl * 2
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         variant: "elevated"
         visible: root.dialogVisible
 
@@ -69,10 +69,6 @@ Item {
             }
 
             Row {
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
                 spacing: MichiTheme.spacing.sm
 
                 MichiButton {

@@ -6,7 +6,7 @@ QQC2.Button {
     id: root
 
     property string controlObjectName: ""
-    objectName: controlObjectName
+    objectName: ""
 
     property string variant: "primary"
     property string iconText: ""
@@ -27,6 +27,7 @@ QQC2.Button {
                              contentRow.implicitHeight + topPadding + bottomPadding)
     focusPolicy: Qt.StrongFocus
     activeFocusOnTab: enabled && !loading
+    enabled: !root.loading
 
     Accessible.role: Accessible.Button
     Accessible.name: root.accessibleName

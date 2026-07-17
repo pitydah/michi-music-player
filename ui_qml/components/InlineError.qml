@@ -22,7 +22,7 @@ Rectangle {
     Accessible.description: message
 
     implicitHeight: visible ? row.implicitHeight + MichiTheme.spacing.sm * 2 : 0
-    radius: MichiTheme.radiusSm
+    radius: MichiTheme.radius.sm
     color: MichiTheme.colors.badgeDangerBg
     border.color: MichiTheme.colors.error
     border.width: MichiTheme.borderWidth
@@ -31,7 +31,7 @@ Rectangle {
 
     Behavior on implicitHeight {
         NumberAnimation {
-            duration: MichiTheme.motionFast
+            duration: MichiTheme.motion.durationFast
             easing.type: Easing.OutCubic
         }
     }

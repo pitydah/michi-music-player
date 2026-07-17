@@ -5,6 +5,7 @@ QtObject {
     id: root
 
     property real availableWidth: MichiTheme.breakpoints.compact
+    property real parentWidth: availableWidth
 
     readonly property bool compact: availableWidth < MichiTheme.breakpoints.compact
     readonly property bool medium: availableWidth >= MichiTheme.breakpoints.compact && availableWidth < MichiTheme.breakpoints.medium

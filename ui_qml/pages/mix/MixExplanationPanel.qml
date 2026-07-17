@@ -23,7 +23,7 @@ Item {
     implicitHeight: 160
 
     GlassMaterial {
-        anchors.fill: parent; radius: MichiTheme.radiusMd; hovered: false
+        anchors.fill: parent; radius: MichiTheme.radius.md; hovered: false
 
         Column {
             anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm

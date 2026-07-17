@@ -18,7 +18,7 @@ Item {
         anchors.bottomMargin: 80
         width: Math.min(400, parent.width * 0.8)
         height: 48
-        radius: MichiTheme.radiusSm
+        radius: MichiTheme.radius.sm
         visible: root.notif ? root.notif.visible : false
 
         color: {

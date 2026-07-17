@@ -13,7 +13,7 @@ Item {
     property bool hovered: false
     property bool interactive: false
     property bool pressed: false
-    property int radius: MichiTheme.radiusMd
+    property int radius: MichiTheme.radius.md
     property alias backgroundColor: bgRect.color
     property alias borderColor: bgRect.border.color
     property alias borderWidth: bgRect.border.width

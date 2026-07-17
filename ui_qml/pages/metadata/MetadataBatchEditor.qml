@@ -23,7 +23,7 @@ Item {
         SectionHeader { text: "Edición por lotes"; width: parent.width }
 
         GlassMaterial {
-            width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
+            width: parent.width; radius: MichiTheme.radius.md; variant: "base"
             Column {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                 Text { text: root.selectedFiles.length + " archivos seleccionados"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
@@ -31,7 +31,7 @@ Item {
         }
 
         GlassMaterial {
-            width: parent.width; radius: MichiTheme.radiusMd; variant: "accent"
+            width: parent.width; radius: MichiTheme.radius.md; variant: "primary"
             Column {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
                 Text { text: "Buscar y reemplazar"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
@@ -67,7 +67,7 @@ Item {
         }
 
         GlassMaterial {
-            width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
+            width: parent.width; radius: MichiTheme.radius.md; variant: "base"
             Column {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
                 Text { text: "Numeración"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }

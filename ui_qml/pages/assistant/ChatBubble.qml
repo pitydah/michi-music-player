@@ -18,7 +18,7 @@ Item {
     width: parent ? parent.width : 400
 
     GlassMaterial {
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         variant: root.role === "user" ? "accent" : "base"
         hovered: root.hovered
 

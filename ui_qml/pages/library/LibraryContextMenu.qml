@@ -36,7 +36,7 @@ Popup {
     Accessible.name: "Menú contextual"
 
     background: Rectangle {
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         color: MichiTheme.colors.surfacePopup
         border.width: MichiTheme.borderWidth
         border.color: MichiTheme.colors.borderCard
@@ -79,7 +79,7 @@ Popup {
                 Rectangle {
                     anchors.fill: parent
                     color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-                    radius: MichiTheme.radiusSm
+                    radius: MichiTheme.radius.sm
 
                     Text {
                         anchors.left: parent.left

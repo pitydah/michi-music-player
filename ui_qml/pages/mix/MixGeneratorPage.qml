@@ -539,7 +539,7 @@ Item {
                 visible: root._state === "GENERATING" || root._state === "CANCELLING" || root._state === "CANCELLED"
 
                 GlassMaterial {
-                    width: parent.width; radius: MichiTheme.radiusMd; variant: "subtle"
+                    width: parent.width; radius: MichiTheme.radius.md; variant: "subtle"
 
                     Column {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
@@ -573,7 +573,7 @@ Item {
                 visible: root._state === "NO_CANDIDATES"
 
                 GlassMaterial {
-                    width: parent.width; radius: MichiTheme.radiusMd; variant: "subtle"
+                    width: parent.width; radius: MichiTheme.radius.md; variant: "subtle"
 
                     Column {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
@@ -601,7 +601,7 @@ Item {
                 visible: root._state === "CANCELLED"
 
                 GlassMaterial {
-                    width: parent.width; radius: MichiTheme.radiusMd; variant: "subtle"
+                    width: parent.width; radius: MichiTheme.radius.md; variant: "subtle"
 
                     Column {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
@@ -638,7 +638,7 @@ Item {
                     delegate: Rectangle {
                         width: parent.width; height: 44
                         color: modelData._hovered ? MichiTheme.colors.surfaceHover : "transparent"
-                        radius: MichiTheme.radiusSm
+                        radius: MichiTheme.radius.sm
                         activeFocusOnTab: true
                         KeyNavigation.tab: index < root._resultSongs.length - 1
                             ? resultList.itemAtIndex(index + 1)

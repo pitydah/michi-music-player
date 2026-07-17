@@ -100,7 +100,7 @@ Item {
             SectionHeader { text: "Dimensiones de comparación"; width: parent.width; objectName: "comparisonDimsHeader"; Accessible.name: "Dimensiones" }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: root._comparisonResult ? "accent" : "base"
+                width: parent.width; radius: MichiTheme.radius.md; variant: root._comparisonResult ? "accent" : "base"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     Repeater {

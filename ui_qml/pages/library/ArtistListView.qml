@@ -20,7 +20,7 @@ Item {
     ListView {
         Accessible.role: Accessible.List
 
-        Accessible.name: "ListView"
+        Accessible.name: "Lista de artistas"
 
         activeFocusOnTab: true
 
@@ -35,7 +35,7 @@ Item {
         ScrollBar.vertical: ScrollBar { width: 8; policy: ScrollBar.AsNeeded }
 
         delegate: Rectangle {
-            width: parent.width; height: 48; radius: MichiTheme.radiusXs
+            width: parent.width; height: 48; radius: MichiTheme.radius.xs
             color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
 
             RowLayout {

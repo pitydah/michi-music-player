@@ -144,7 +144,7 @@ Item {
             SectionHeader { text: "Resultado del análisis"; width: parent.width; objectName: "analysisResultsHeader"; Accessible.name: "Resultados" }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: root._state === root.stateCompleted ? "accent" : root._state === root.stateFailed ? "danger" : "base"
+                width: parent.width; radius: MichiTheme.radius.md; variant: root._state === root.stateCompleted ? "accent" : root._state === root.stateFailed ? "danger" : "base"
                 visible: root._state === root.stateCompleted || root._state === root.stateFailed
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
@@ -166,7 +166,7 @@ Item {
             }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "status"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "status"
                 visible: root._state === root.stateIdle || root._state === root.stateAnalyzing
                 height: 80
                 Text {

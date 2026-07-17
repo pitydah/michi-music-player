@@ -153,7 +153,7 @@ Item {
                 delegate: Rectangle {
                     width: rulesList.width; height: 64
                     color: MichiTheme.colors.surfaceCard
-                    radius: MichiTheme.radiusSm
+                    radius: MichiTheme.radius.sm
                     border.width: MichiTheme.borderWidth
                     border.color: MichiTheme.colors.borderCard
                     activeFocusOnTab: true

@@ -47,7 +47,7 @@ Item {
             }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: root.jobData && root.jobData.state === "failed" ? "danger" : root.jobData && root.jobData.state === "completed" ? "success" : "base"
+                width: parent.width; radius: MichiTheme.radius.md; variant: root.jobData && root.jobData.state === "failed" ? "danger" : root.jobData && root.jobData.state === "completed" ? "success" : "base"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
 
@@ -105,7 +105,7 @@ Item {
                         model: root.jobData && root.jobData.files ? root.jobData.files : []
 
                         GlassMaterial {
-                            width: parent.width; height: 32; radius: MichiTheme.radiusSm; variant: "base"
+                            width: parent.width; height: 32; radius: MichiTheme.radius.sm; variant: "base"
                             Row {
                                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm
                                 Text {

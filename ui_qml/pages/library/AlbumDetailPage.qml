@@ -58,7 +58,7 @@ Item {
                     anchors.margins: MichiTheme.spacing.md
 
                     CoverImage {
-                        width: 160; height: 160; coverRadius: MichiTheme.radiusSm
+                        width: 160; height: 160; coverRadius: MichiTheme.radius.sm
                         coverKey: root.albumCoverKey || root.albumKey || "ALBUM"
                     }
 
@@ -121,7 +121,7 @@ Item {
             ListView {
                 Accessible.role: Accessible.List
 
-                Accessible.name: "ListView"
+                Accessible.name: "Canciones del álbum"
 
                 activeFocusOnTab: true
 

@@ -26,7 +26,7 @@ Item {
         variant: "elevated"
         hovered: mouseArea.containsMouse
         interactive: true
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
 
         MouseArea {
             id: mouseArea
@@ -67,15 +67,10 @@ Item {
                 StatusBadge { text: root.statusText; kind: root.statusKind }
 
                 MichiButton {
-                    Accessible.role: Accessible.Button
                     text: "Configurar"
                     variant: "secondary"
                     onClicked: root.configureClicked()
                 }
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
 
                 MichiButton {
                     text: "Desconectar"

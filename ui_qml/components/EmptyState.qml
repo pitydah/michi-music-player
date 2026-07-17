@@ -30,7 +30,7 @@ Column {
         font.pixelSize: MichiTheme.typography.sectionTitleSize
         font.weight: MichiTheme.typography.weightMedium
         horizontalAlignment: Text.AlignHCenter
-        opacity: MichiTheme.opacityHover
+        opacity: MichiTheme.opacity.hover
         visible: root.title !== ""
     }
 

@@ -17,7 +17,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         color: MichiTheme.colors.surfaceCard
 
         Row {

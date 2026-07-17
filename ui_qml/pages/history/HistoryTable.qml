@@ -48,7 +48,7 @@ Item {
             color: root._selectedItems.indexOf(model.trackId || modelData.track_id || model.track_id || 0) >= 0
                    ? MichiTheme.colors.accentFaint
                    : mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-            radius: MichiTheme.radiusSm
+            radius: MichiTheme.radius.sm
 
             Row {
                 anchors.fill: parent

@@ -40,7 +40,7 @@ FocusScope {
     objectName: "michiTrackRow"
     focus: true
         anchors.fill: parent
-        radius: MichiTheme.radiusSm
+        radius: MichiTheme.radius.sm
         color: root.selected ? MichiTheme.colors.accentSelection
                              : hover.hovered ? MichiTheme.colors.surfaceHover : "transparent"
     }
@@ -76,7 +76,7 @@ FocusScope {
         text: [root.format, root.duration].filter(function(value) { return value !== "" }).join(" · ")
         color: MichiTheme.colors.textMuted
     }
-    MichiFocusRing { control: root; controlRadius: MichiTheme.radiusSm }
+    MichiFocusRing { control: root; controlRadius: MichiTheme.radius.sm }
     HoverHandler { id: hover }
     TapHandler { onTapped: root.clicked(); onDoubleTapped: root.doubleClicked() }
     TapHandler { acceptedButtons: Qt.RightButton; onTapped: function(point) { root.contextRequested(point.position.x, point.position.y) } }

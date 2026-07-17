@@ -50,7 +50,7 @@ Item {
                 model: root._years
 
                 Rectangle {
-                    width: 80; height: 60; radius: MichiTheme.radiusSm
+                    width: 80; height: 60; radius: MichiTheme.radius.sm
                     color: mouse.containsMouse ? MichiTheme.colors.surfaceHover : MichiTheme.colors.surfaceCard
 
                     Column {

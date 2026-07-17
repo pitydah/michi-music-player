@@ -181,7 +181,7 @@ Item {
                                 delegate: Rectangle {
                                     width: parent.width; height: 48
                                     color: MichiTheme.colors.surfaceCard
-                                    radius: MichiTheme.radiusSm
+                                    radius: MichiTheme.radius.sm
                                     border.width: MichiTheme.borderWidth
                                     border.color: MichiTheme.colors.borderSubtle
 

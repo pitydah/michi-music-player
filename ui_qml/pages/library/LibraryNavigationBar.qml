@@ -13,6 +13,8 @@ Item {
     id: root
     width: parent.width; height: 38
 
+    MichiResponsive { id: responsive; availableWidth: root.width }
+
     property int currentTab: 0
     property string searchText: ""
 
@@ -55,10 +57,6 @@ Item {
                             visible: tabBar.currentIndex === index
                         }
                     }
-            Accessible.role: Accessible.EditableText
-
-            activeFocusOnTab: true
-
                     onClicked: { root.currentTab = index; tabBar.currentIndex = index }
                 }
             }
@@ -68,7 +66,7 @@ Item {
             id: searchInput
             anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
             anchors.rightMargin: MichiTheme.spacing.md
-            width: 200; height: 28
+            width: responsive.compact ? 140 : 200; height: 28
             placeholderText: "Buscar en biblioteca..."
             onSearchTextChanged: {
                 root.searchText = text

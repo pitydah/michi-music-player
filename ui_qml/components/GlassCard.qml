@@ -26,7 +26,7 @@ Item {
         variant: root.variant
         hovered: root.hovered
         interactive: true
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
 
         MouseArea {
             anchors.fill: parent

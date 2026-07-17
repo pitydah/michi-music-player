@@ -97,7 +97,7 @@ Item {
             }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "status"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "status"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     StatusBadge { text: "Interfaz clásica disponible"; kind: "info" }

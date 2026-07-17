@@ -20,7 +20,7 @@ Rectangle {
 
     signal clicked()
 
-    radius: MichiTheme.radiusSm
+    radius: MichiTheme.radius.sm
     color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
 
     Accessible.onPressAction: root.clicked()
@@ -31,7 +31,7 @@ Rectangle {
 
         CoverImage {
             width: parent.width; height: parent.width
-            coverRadius: MichiTheme.radiusSm
+            coverRadius: MichiTheme.radius.sm
             coverKey: root.albumKey || "ALBUM"
         }
 

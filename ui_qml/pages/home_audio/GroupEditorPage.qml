@@ -83,7 +83,7 @@ Item {
                     Accessible.description: "Nombre para identificar el grupo de zonas"
 
                     background: Rectangle {
-                        radius: MichiTheme.radiusSm
+                        radius: MichiTheme.radius.sm
                         color: MichiTheme.colors.surfaceInput
                         border.width: parent.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
                         border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
@@ -108,7 +108,7 @@ Item {
                         color: root.selectedZoneIds.indexOf(modelData.id) >= 0
                             ? MichiTheme.colors.accentSurface
                             : "transparent"
-                        radius: MichiTheme.radiusSm
+                        radius: MichiTheme.radius.sm
                         border.color: root.selectedZoneIds.indexOf(modelData.id) >= 0
                             ? MichiTheme.colors.accentBlue
                             : "transparent"

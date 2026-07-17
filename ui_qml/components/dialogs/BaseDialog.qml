@@ -128,7 +128,7 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            radius: MichiTheme.radiusMd
+            radius: MichiTheme.radius.md
             color: MichiTheme.colors.surfaceCardElevated
             border.width: MichiTheme.borderWidth
             border.color: MichiTheme.colors.borderCard

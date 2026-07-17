@@ -132,7 +132,7 @@ Item {
         delegate: Rectangle {
             width: trackList.width; height: 48
             color: modelData._hovered ? MichiTheme.colors.surfaceHover : "transparent"
-            radius: MichiTheme.radiusSm
+            radius: MichiTheme.radius.sm
             activeFocusOnTab: true
             KeyNavigation.tab: index < root._songs.length - 1
                 ? trackList.itemAtIndex(index + 1)

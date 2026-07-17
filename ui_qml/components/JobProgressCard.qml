@@ -29,7 +29,7 @@ Rectangle {
     Accessible.description: statusText + (indeterminate ? "" : " " + Math.round((progress - from) / Math.max(1, to - from) * 100) + "%")
 
     implicitHeight: column.implicitHeight + MichiTheme.spacing.lg * 2
-    radius: MichiTheme.radiusMd
+    radius: MichiTheme.radius.md
     color: MichiTheme.colors.surfaceCard
     border.width: MichiTheme.borderWidth
     border.color: {

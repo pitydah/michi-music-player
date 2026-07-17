@@ -71,7 +71,7 @@ Item {
         ListView {
             Accessible.role: Accessible.List
 
-            Accessible.name: "ListView"
+            Accessible.name: "Lista de canciones de la playlist"
 
             activeFocusOnTab: true
 
@@ -90,7 +90,7 @@ Item {
                 color: root.selectedTracks.indexOf(modelData.track_id || 0) >= 0
                        ? MichiTheme.colors.accentFaint
                        : mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-                radius: MichiTheme.radiusSm
+                radius: MichiTheme.radius.sm
 
                 Row {
                     anchors.fill: parent

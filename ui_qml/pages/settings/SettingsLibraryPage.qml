@@ -115,7 +115,7 @@ Item {
                         ListView {
                             Accessible.role: Accessible.List
 
-                            Accessible.name: "ListView"
+                            Accessible.name: "Lista de carpetas de música"
 
                             activeFocusOnTab: true
 
@@ -144,10 +144,6 @@ Item {
                                         font.pixelSize: MichiTheme.typography.bodySize
                                         elide: Text.ElideMiddle
                                         Layout.fillWidth: true
-                                        Accessible.role: Accessible.Button
-
-                                        activeFocusOnTab: true
-
                                     }
 
                                     MichiButton {
@@ -167,10 +163,6 @@ Item {
                                     text: "No hay carpetas configuradas"
                                     color: MichiTheme.colors.textSecondary
                                     font.pixelSize: MichiTheme.typography.bodySize
-                            Accessible.role: Accessible.Button
-
-                            activeFocusOnTab: true
-
                                 }
                             }
                         }

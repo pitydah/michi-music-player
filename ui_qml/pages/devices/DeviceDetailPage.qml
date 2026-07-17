@@ -70,7 +70,6 @@ Item {
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-        activeFocusOnTab: true
         KeyNavigation.tab: backButton
         visible: root.state !== "UNAVAILABLE" && root.state !== "ERROR"
 
@@ -97,7 +96,7 @@ Item {
                 id: deviceInfoCard
                 width: parent.width
                 height: deviceInfoColumn.height + MichiTheme.spacing.xl * 2
-                radius: MichiTheme.radiusMd
+                radius: MichiTheme.radius.md
                 variant: "elevated"
 
                 Column {
@@ -187,34 +186,26 @@ Item {
                 id: actionRow
                 spacing: MichiTheme.spacing.sm
 
-                    Accessible.role: Accessible.Button
-
                 MichiButton {
                     id: syncButton
                     text: "Sincronizar"
                     variant: "primary"
                     onClicked: root.syncClicked()
-                    activeFocusOnTab: true
                     KeyNavigation.tab: authButton
                     KeyNavigation.backtab: profileEditor
                     Keys.onReturnPressed: clicked()
                     Keys.onSpacePressed: clicked()
                 }
-                    Accessible.role: Accessible.Button
-
 
                 MichiButton {
                     id: authButton
                     text: root.deviceAuthorized ? "Desautorizar" : "Autorizar"
                     variant: "secondary"
                     onClicked: root.deviceAuthorized ? root.unauthorizeClicked() : root.authorizeClicked()
-                    activeFocusOnTab: true
                     KeyNavigation.tab: trustButton
                     KeyNavigation.backtab: syncButton
                     Keys.onReturnPressed: clicked()
                     Keys.onSpacePressed: clicked()
-                    Accessible.role: Accessible.Button
-
                 }
 
                 MichiButton {
@@ -222,12 +213,9 @@ Item {
                     text: root.deviceTrusted ? "No confiar" : "Confiar"
                     variant: "ghost"
                     onClicked: root.deviceTrusted ? root.untrustClicked() : root.trustClicked()
-                    activeFocusOnTab: true
                     KeyNavigation.tab: profileEditButton
                     KeyNavigation.backtab: authButton
                     Keys.onReturnPressed: clicked()
-                    Accessible.role: Accessible.Button
-
                     Keys.onSpacePressed: clicked()
                 }
 
@@ -236,11 +224,8 @@ Item {
                     text: "Editar perfil"
                     variant: "ghost"
                     onClicked: root.editProfileClicked()
-                    activeFocusOnTab: true
                     KeyNavigation.tab: unpairButton
                     KeyNavigation.backtab: trustButton
-                    Accessible.role: Accessible.Button
-
                     Keys.onReturnPressed: clicked()
                     Keys.onSpacePressed: clicked()
                 }
@@ -250,7 +235,6 @@ Item {
                     text: "Desvincular"
                     variant: "danger"
                     onClicked: root.unpairClicked()
-                    activeFocusOnTab: true
                     KeyNavigation.tab: transferPanel
                     KeyNavigation.backtab: profileEditButton
                     Keys.onReturnPressed: clicked()
@@ -335,10 +319,6 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "No se pudo cargar la información del dispositivo."
                 color: MichiTheme.colors.textSecondary
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
                 font.pixelSize: MichiTheme.typography.bodySize
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
@@ -349,10 +329,6 @@ Item {
                 text: "Reintentar"
                 onClicked: {
                     state = "LOADING"
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
                     if (root.dv && typeof root.dv.loadDeviceDetail === "function") {
                         var r = root.dv.loadDeviceDetail(deviceKey)
                         state = r && r.ok ? "READY" : "ERROR"

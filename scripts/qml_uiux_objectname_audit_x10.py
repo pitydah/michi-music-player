@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import re
+import sys
 
 UI_QML = os.path.join(os.path.dirname(__file__), "..", "ui_qml")
 
@@ -126,6 +127,7 @@ def main():
             print(f"DUPLICATE: {d['file']}:{d['line']}  objectName=\"{d['objectName']}\" also in {d['also_in']}")
         for n in report["controls_without_objectName"]:
             print(f"NO_OBJECTNAME: {n['file']}:{n['line']}  {n['control']}")
+        sys.exit(1 if total else 0)
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ Item {
     id: root
 
     property string controlObjectName: ""
-    objectName: controlObjectName
+    objectName: root.controlObjectName
 
     property bool open: false
     property int currentIndex: -1

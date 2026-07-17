@@ -242,7 +242,7 @@ Item {
                 delegate: Rectangle {
                     width: parent.width; height: 44
                     color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-                    radius: MichiTheme.radiusSm
+                    radius: MichiTheme.radius.sm
                     activeFocusOnTab: true
                     KeyNavigation.tab: index < root._songs.length - 1
                         ? trackListView.itemAtIndex(index + 1)

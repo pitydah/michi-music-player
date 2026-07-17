@@ -49,8 +49,6 @@ Item {
         contentHeight: column.height + MichiTheme.spacing.xl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-        activeFocusOnTab: true
-
         Column {
             id: column
             width: parent.width
@@ -95,7 +93,6 @@ Item {
                 id: cardGrid
                 width: parent.width
                 spacing: MichiTheme.spacing.lg
-                activeFocusOnTab: true
                 KeyNavigation.tab: playbackCard
                 KeyNavigation.backtab: continueCard
 
@@ -265,7 +262,7 @@ Item {
 
                     MichiButton {
                         text: "Reanudar"
-                        variant: "accent"
+                        variant: "primary"
                         enabled: root.hb && root.hb.hasPlayback
                         onClicked: {
                             if (root.hb && root.hb.hasPlayback && typeof navigationBridge !== "undefined")

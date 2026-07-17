@@ -17,7 +17,7 @@ Item {
     ListView {
         Accessible.role: Accessible.List
 
-        Accessible.name: "ListView"
+        Accessible.name: "Línea de tiempo de álbumes"
 
         activeFocusOnTab: true
 

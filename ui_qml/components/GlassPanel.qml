@@ -24,7 +24,7 @@ Item {
         variant: root.variant
         hovered: root.hovered
         interactive: root.interactive
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
 
         Column {
             id: layout

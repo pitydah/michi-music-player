@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Dialogs
 import "../../theme"
 import "../../components"
+import "../../components/foundations"
 
 Item {
     id: root
@@ -21,6 +22,8 @@ Item {
     property string _selectedItems: ""
     property bool _multiSelect: false
 
+    MichiResponsive { id: responsive; availableWidth: root.width }
+
     function refresh() {
         if (root.qb) root.qb.refresh()
     }
@@ -29,32 +32,44 @@ Item {
         root.refresh()
     }
 
-    ColumnLayout {
+    RowLayout {
         anchors.fill: parent
-        anchors.margins: MichiTheme.spacing.sm
-        spacing: MichiTheme.spacing.sm
+        anchors.margins: responsive.pageMargin
+        spacing: MichiTheme.spacing.lg
 
-        QueueHeader {
-            Layout.fillWidth: true
-            qb: root.qb
-            notif: root.notif
-            nav: root.nav
-        }
-
-        QueueActions {
-            Layout.fillWidth: true
-            qb: root.qb
-            ps: root.ps
-            notif: root.notif
-        }
-
-        QueueListView {
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            qb: root.qb
-            ps: root.ps
-            nav: root.nav
-            notif: root.notif
+            spacing: MichiTheme.spacing.sm
+
+            QueueHeader {
+                Layout.fillWidth: true
+                qb: root.qb
+                notif: root.notif
+                nav: root.nav
+            }
+
+            QueueActions {
+                Layout.fillWidth: true
+                qb: root.qb
+                ps: root.ps
+                notif: root.notif
+            }
+
+            QueueListView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                qb: root.qb
+                ps: root.ps
+                nav: root.nav
+                notif: root.notif
+            }
+        }
+
+        Item {
+            Layout.fillHeight: true
+            Layout.preferredWidth: responsive.medium || responsive.wide ? Math.min(320, root.width * 0.3) : 0
+            visible: !responsive.compact
         }
     }
 

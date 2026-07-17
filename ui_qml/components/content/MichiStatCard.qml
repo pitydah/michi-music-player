@@ -26,7 +26,7 @@ FocusScope {
     Keys.onReturnPressed: root.clicked()
     Keys.onSpacePressed: root.clicked()
 
-    Rectangle { anchors.fill: parent; radius: MichiTheme.radiusMd; color: root.selected ? MichiTheme.colors.accentSelection : hover.hovered ? MichiTheme.colors.surfaceHover : MichiTheme.colors.surfaceCard; border.color: MichiTheme.colors.borderCard; border.width: MichiTheme.borderWidth }
+    Rectangle { anchors.fill: parent; radius: MichiTheme.radius.md; color: root.selected ? MichiTheme.colors.accentSelection : hover.hovered ? MichiTheme.colors.surfaceHover : MichiTheme.colors.surfaceCard; border.color: MichiTheme.colors.borderCard; border.width: MichiTheme.borderWidth }
     objectName: "michiStatCard"
     focus: true
     Column {
@@ -35,7 +35,7 @@ FocusScope {
         Text { width: parent.width; text: root.label; color: MichiTheme.colors.textPrimary; elide: Text.ElideRight }
         Text { width: parent.width; text: root.supportingText; color: MichiTheme.colors.textMuted; elide: Text.ElideRight; visible: text !== "" }
     }
-    MichiFocusRing { control: root; controlRadius: MichiTheme.radiusMd }
+    MichiFocusRing { control: root; controlRadius: MichiTheme.radius.md }
     HoverHandler { id: hover }
     TapHandler { onTapped: root.clicked(); onDoubleTapped: root.doubleClicked() }
     TapHandler { acceptedButtons: Qt.RightButton; onTapped: function(point) { root.contextRequested(point.position.x, point.position.y) } }

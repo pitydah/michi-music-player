@@ -139,7 +139,7 @@ Item {
             MichiButton {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "Ir a Inicio"
-                variant: "accent"
+                variant: "primary"
                 onClicked: {
                     if (typeof navigationBridge !== "undefined" && navigationBridge)
                         navigationBridge.navigate("home")

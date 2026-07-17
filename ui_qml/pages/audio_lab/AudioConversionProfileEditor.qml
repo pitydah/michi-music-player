@@ -111,7 +111,7 @@ Item {
                 model: root._presetProfiles
 
                 GlassMaterial {
-                    width: parent.width; height: 56; radius: MichiTheme.radiusSm; variant: "base"
+                    width: parent.width; height: 56; radius: MichiTheme.radius.sm; variant: "base"
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                         Text { width: parent.width * 0.20; text: modelData.name; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight }
@@ -134,7 +134,7 @@ Item {
             }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "base"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
 
@@ -153,7 +153,7 @@ Item {
                             placeholderText: "Nombre del perfil"
                             font.pixelSize: MichiTheme.typography.bodySize
                             color: MichiTheme.colors.textPrimary
-                            background: Rectangle { color: MichiTheme.colors.surfaceInput; radius: MichiTheme.radiusSm; border.width: parent.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth; border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard }
+                            background: Rectangle { color: MichiTheme.colors.surfaceInput; radius: MichiTheme.radius.sm; border.width: parent.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth; border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard }
                             onTextChanged: root._profileName = text
                         }
                     }

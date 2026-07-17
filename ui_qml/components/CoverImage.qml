@@ -9,7 +9,7 @@ Item {
     id: root
 
     property string coverKey: ""
-    property int coverRadius: MichiTheme.radiusXs
+    property int coverRadius: MichiTheme.radius.xs
     property bool showPlaceholder: true
 
     Rectangle {

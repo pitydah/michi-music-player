@@ -69,7 +69,7 @@ BaseDialog {
     focus: true
             Layout.fillWidth: true
             height: 36
-            radius: MichiTheme.radiusSm
+            radius: MichiTheme.radius.sm
             color: Qt.rgba(1, 0.44, 0.44, 0.08)
             border.width: 1
             border.color: Qt.rgba(1, 0.44, 0.44, 0.20)
@@ -132,7 +132,7 @@ BaseDialog {
             Accessible.description: "Escribe " + root.keyword + " para habilitar la confirmación"
 
             background: Rectangle {
-                radius: MichiTheme.radiusSm
+                radius: MichiTheme.radius.sm
                 color: MichiTheme.colors.surfaceInput
                 border.width: parent.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
                 border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard

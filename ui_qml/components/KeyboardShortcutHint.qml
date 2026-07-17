@@ -20,7 +20,7 @@ Rectangle {
 
     implicitHeight: row.implicitHeight + MichiTheme.spacing.xs * 2
     implicitWidth: row.implicitWidth + MichiTheme.spacing.sm * 2
-    radius: MichiTheme.radiusSm
+    radius: MichiTheme.radius.sm
     color: MichiTheme.colors.surfaceCard
 
     border.width: MichiTheme.borderWidth
@@ -46,7 +46,7 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             height: rowItem.implicitHeight + MichiTheme.spacing.xs
             width: rowItem.implicitWidth + MichiTheme.spacing.sm * 2
-            radius: MichiTheme.radiusXs
+            radius: MichiTheme.radius.xs
             color: MichiTheme.colors.surfaceSubtle
             border.width: MichiTheme.borderWidth
             border.color: MichiTheme.colors.borderInner

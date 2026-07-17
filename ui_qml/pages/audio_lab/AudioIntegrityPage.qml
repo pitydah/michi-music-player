@@ -86,7 +86,7 @@ Item {
             SectionHeader { text: "Tipos de verificación"; width: parent.width; objectName: "integrityTypesHeader"; Accessible.name: "Tipos de verificación" }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
+                width: parent.width; radius: MichiTheme.radius.md; variant: "base"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     Row {
@@ -187,7 +187,7 @@ Item {
             SectionHeader { text: "Resultados"; width: parent.width; objectName: "integrityResultsHeader"; Accessible.name: "Resultados" }
 
             GlassMaterial {
-                width: parent.width; radius: MichiTheme.radiusMd; variant: root._results.length > 0 ? "accent" : root._state === root.stateFailed ? "danger" : "status"
+                width: parent.width; radius: MichiTheme.radius.md; variant: root._results.length > 0 ? "accent" : root._state === root.stateFailed ? "danger" : "status"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     Text {
@@ -198,7 +198,7 @@ Item {
                     Repeater {
                         model: root._results
                         GlassMaterial {
-                            width: parent.width; height: 36; radius: MichiTheme.radiusSm; variant: modelData.valid ? "base" : "danger"
+                            width: parent.width; height: 36; radius: MichiTheme.radius.sm; variant: modelData.valid ? "base" : "danger"
                             Row {
                                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm
                                 Text {

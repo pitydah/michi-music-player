@@ -22,7 +22,7 @@ Rectangle {
     signal dismissed()
 
     implicitHeight: visible ? layout.implicitHeight + MichiTheme.spacing.sm * 2 : 0
-    radius: MichiTheme.radiusSm
+    radius: MichiTheme.radius.sm
     visible: message !== ""
 
 

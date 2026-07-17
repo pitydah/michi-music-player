@@ -50,7 +50,7 @@ Item {
         ListView {
             Accessible.role: Accessible.List
 
-            Accessible.name: "ListView"
+            Accessible.name: "Lista de géneros"
 
             activeFocusOnTab: true
 

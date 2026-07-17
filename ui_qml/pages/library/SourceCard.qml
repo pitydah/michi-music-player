@@ -28,7 +28,7 @@ Rectangle {
     signal scanRequested()
 
     width: parent.width; height: 64
-    radius: MichiTheme.radiusSm
+    radius: MichiTheme.radius.sm
     color: MichiTheme.colors.surfaceCard
     border.color: root.sourceEnabled ? "transparent" : MichiTheme.colors.borderSubtle
     border.width: root.sourceEnabled ? 0 : 1

@@ -90,7 +90,7 @@ Item {
                     Accessible.description: "Dirección IP o nombre de host del servidor"
 
                     background: Rectangle {
-                        radius: MichiTheme.radiusSm
+                        radius: MichiTheme.radius.sm
                         color: MichiTheme.colors.surfaceInput
                         border.width: parent.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
                         border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
@@ -112,7 +112,7 @@ Item {
                     Accessible.description: "Número de puerto"
 
                     background: Rectangle {
-                        radius: MichiTheme.radiusSm
+                        radius: MichiTheme.radius.sm
                         color: MichiTheme.colors.surfaceInput
                         border.width: parent.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
                         border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
@@ -133,7 +133,7 @@ Item {
                     Accessible.description: "Nombre opcional para el servidor"
 
                     background: Rectangle {
-                        radius: MichiTheme.radiusSm
+                        radius: MichiTheme.radius.sm
                         color: MichiTheme.colors.surfaceInput
                         border.width: parent.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
                         border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
@@ -154,7 +154,7 @@ Item {
                     Accessible.description: "Nombre de usuario para autenticación"
 
                     background: Rectangle {
-                        radius: MichiTheme.radiusSm
+                        radius: MichiTheme.radius.sm
                         color: MichiTheme.colors.surfaceInput
                         border.width: parent.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
                         border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
@@ -176,16 +176,12 @@ Item {
                     Accessible.description: "Contraseña para autenticación"
 
                     background: Rectangle {
-                        radius: MichiTheme.radiusSm
+                        radius: MichiTheme.radius.sm
                         color: MichiTheme.colors.surfaceInput
                         border.width: parent.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
                         border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
                     }
                     KeyNavigation.tab: connectBtn
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
                     KeyNavigation.backtab: userField
                 }
 

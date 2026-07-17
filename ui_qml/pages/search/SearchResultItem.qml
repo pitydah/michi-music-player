@@ -24,14 +24,14 @@ Item {
     implicitHeight: 44
 
     Rectangle {
-        anchors.fill: parent; radius: MichiTheme.radiusSm
+        anchors.fill: parent; radius: MichiTheme.radius.sm
         color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
 
         Row {
             anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm
 
             Rectangle {
-                width: 36; height: 36; radius: MichiTheme.radiusSm; anchors.verticalCenter: parent.verticalCenter
+                width: 36; height: 36; radius: MichiTheme.radius.sm; anchors.verticalCenter: parent.verticalCenter
                 color: MichiTheme.colors.accentFaint
                 Text {
                     anchors.centerIn: parent

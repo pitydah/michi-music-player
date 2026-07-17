@@ -34,10 +34,10 @@ Dialog {
     Accessible.description: "Completa los campos y presiona Guardar"
 
     enter: Transition {
-        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: MichiTheme.motionFast }
+        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: MichiTheme.motion.durationFast }
     }
     exit: Transition {
-        NumberAnimation { property: "opacity"; from: 1; to: 0; duration: MichiTheme.motionFast }
+        NumberAnimation { property: "opacity"; from: 1; to: 0; duration: MichiTheme.motion.durationFast }
     }
 
     onOpened: {

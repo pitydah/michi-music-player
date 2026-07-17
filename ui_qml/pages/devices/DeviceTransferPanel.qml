@@ -25,7 +25,7 @@ Item {
     GlassMaterial {
         width: parent.width
         height: column.height + MichiTheme.spacing.xl * 2
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         variant: "base"
 
         Column {
@@ -60,7 +60,7 @@ Item {
                         anchors.fill: parent
                         anchors.margins: MichiTheme.spacing.xs
                         color: MichiTheme.colors.surface
-                        radius: MichiTheme.radiusSm
+                        radius: MichiTheme.radius.sm
                         border.color: MichiTheme.colors.border
                         border.width: MichiTheme.borderWidth
 
@@ -135,10 +135,6 @@ Item {
                                         }
                                     }
                                 }
-                                    Accessible.role: Accessible.Button
-
-                                    activeFocusOnTab: true
-
 
                                 MichiButton {
                                     text: "Cancelar"
@@ -152,10 +148,6 @@ Item {
                                             root.dv.cancelTransfer(modelData.job_id || "")
                                         }
                                         root.cancelTransferClicked()
-                                    Accessible.role: Accessible.Button
-
-                                    activeFocusOnTab: true
-
                                     }
                                 }
 
@@ -182,10 +174,6 @@ Item {
                 font.pixelSize: MichiTheme.typography.bodySize
                 visible: root.transferJobs.length === 0
             }
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
 
             Row {
                 spacing: MichiTheme.spacing.sm
