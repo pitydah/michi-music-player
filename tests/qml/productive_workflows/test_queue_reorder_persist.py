@@ -33,3 +33,20 @@ class TestQueueReorderPersist:
     def test_queue_bridge_exists(self, bootstrap, bridges):
         qb = bridges.get("queue")
         assert qb is not None
+
+    def test_qtest_clear_queue_ui(self, nav, playback_bridge, root_window):
+        from PySide6.QtTest import QTest
+        from .conftest import find_qml_item, qtest_click_item
+        playback_bridge.enqueueSong("1")
+        playback_bridge.enqueueSong("2")
+        qh = find_qml_item(root_window, "queueHeader")
+        assert qh is not None, "queueHeader not found"
+        clear_btn = None
+        for child in qh.childItems():
+            text = child.property("text") if hasattr(child, 'property') else ""
+            if "Vaciar" in str(text) or "Clear" in str(text):
+                clear_btn = child
+                break
+        assert clear_btn is not None, "Clear button not found in queueHeader"
+        qtest_click_item(clear_btn, root_window)
+        QTest.qWait(50)
