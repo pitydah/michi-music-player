@@ -23,7 +23,7 @@ Item {
 
     MichiResponsive { id: responsive; availableWidth: root.width }
 
-    height: MichiTheme.nowPlayingHeight
+    height: 100
 
     Connections {
         target: root.ps
@@ -54,22 +54,22 @@ Item {
             anchors.fill: parent
             anchors.leftMargin: MichiTheme.spacing.md
             anchors.rightMargin: MichiTheme.spacing.md
-            spacing: 0
+            spacing: 2
 
-            // ── Row 1: Cover + Info + Transport (primary) ──
+            // ── Row 1: Cover + Info + Quality (64px) ──
             Item {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 54
-                Layout.topMargin: 6
+                Layout.preferredHeight: 64
+                Layout.topMargin: 4
 
                 RowLayout {
                     anchors.fill: parent
                     spacing: MichiTheme.spacing.md
 
-                    // Cover art
+                    // Cover art 64px (like legacy QtWidgets)
                     Rectangle {
-                        Layout.preferredWidth: 48
-                        Layout.preferredHeight: 48
+                        Layout.preferredWidth: 64
+                        Layout.preferredHeight: 64
                         radius: MichiTheme.radius.sm
                         color: MichiTheme.colors.surfaceCard
                         visible: root._hasTrack
@@ -79,15 +79,15 @@ Item {
                             anchors.fill: parent
                             source: root.ps && root.ps.coverUrl ? root.ps.coverUrl : ""
                             fillMode: Image.PreserveAspectCrop
-                            sourceSize.width: 48
-                            sourceSize.height: 48
+                            sourceSize.width: 64
+                            sourceSize.height: 64
                         }
 
                         Text {
                             anchors.centerIn: parent
                             text: "♪"
                             color: MichiTheme.colors.textMuted
-                            font.pixelSize: 20
+                            font.pixelSize: 24
                             visible: coverImage.source.toString() === "" || coverImage.status === Image.Error
                         }
                     }
@@ -116,54 +116,70 @@ Item {
                         }
                     }
 
-                    // Transport controls (primary)
-                    NowPlayingTransport {
-                        id: transport
+                    // Utility controls (EQ, output, quality) — right aligned
+                    RowLayout {
                         Layout.alignment: Qt.AlignVCenter
-                        isPlaying: root.ps ? root.ps.isPlaying : false
-                        shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
-                        repeatMode: root.ps ? root.ps.repeatMode : "none"
-                        playPauseSupported: root.ps ? root.ps.playPauseSupported : false
-                        previousSupported: root.ps ? root.ps.previousSupported : false
-                        nextSupported: root.ps ? root.ps.nextSupported : false
-                        shuffleSupported: root.ps ? root.ps.shuffleSupported : false
-                        repeatSupported: root.ps ? root.ps.repeatSupported : false
-                        onPlayClicked: { if (root.ps) root.ps.togglePlay() }
-                        onPrevClicked: { if (root.ps) root.ps.previous() }
-                        onNextClicked: { if (root.ps) root.ps.next() }
-                        onShuffleClicked: { if (root.ps) root.ps.toggleShuffle() }
-                        onRepeatClicked: { if (root.ps) root.ps.toggleRepeat() }
-                    }
+                        spacing: MichiTheme.spacing.xs
 
-                    // Quality badge
-                    NowPlayingQualityBadge {
-                        id: qualityBadge
-                        Layout.alignment: Qt.AlignVCenter
-                        visible: !responsive.compact && root._hasTrack
-                        available: root.ps ? root.ps.qualityInfoAvailable : false
-                        loading: root.ps ? root.ps.qualityLoading : false
-                        error: root.ps ? root.ps.qualityError !== "" : false
-                        sourceType: root.ps ? root.ps.sourceType : ""
-                        formatLabel: root.ps ? root.ps.formatLabel : ""
-                        qualityLabel: root.ps ? root.ps.qualityLabel : ""
-                        sampleRate: root.ps ? root.ps.sampleRate : ""
-                        bitDepth: root.ps ? root.ps.bitDepth : ""
-                        channels: root.ps ? root.ps.channels : ""
-                        bitrate: root.ps ? root.ps.bitrate : ""
-                        onClicked: {
-                            if (typeof navigationBridge !== "undefined")
-                                navigationBridge.navigate("playback")
+                        NowPlayingQualityBadge {
+                            id: qualityBadge
+                            visible: !responsive.compact && root._hasTrack
+                            available: root.ps ? root.ps.qualityInfoAvailable : false
+                            loading: root.ps ? root.ps.qualityLoading : false
+                            error: root.ps ? root.ps.qualityError !== "" : false
+                            sourceType: root.ps ? root.ps.sourceType : ""
+                            formatLabel: root.ps ? root.ps.formatLabel : ""
+                            qualityLabel: root.ps ? root.ps.qualityLabel : ""
+                            sampleRate: root.ps ? root.ps.sampleRate : ""
+                            bitDepth: root.ps ? root.ps.bitDepth : ""
+                            channels: root.ps ? root.ps.channels : ""
+                            bitrate: root.ps ? root.ps.bitrate : ""
+                            onClicked: {
+                                if (typeof navigationBridge !== "undefined")
+                                    navigationBridge.navigate("playback")
+                            }
+                        }
+
+                        NowPlayingUtilityControls {
+                            id: utilityCtrl
+                            visible: !responsive.compact
+                            eqSupported: typeof capabilityBridge !== "undefined" && capabilityBridge ? capabilityBridge.has("eq") : true
+                            transmitSupported: typeof capabilityBridge !== "undefined" && capabilityBridge ? capabilityBridge.has("transmit") : false
+                            onEqClicked: {
+                                if (typeof navigationBridge !== "undefined")
+                                    navigationBridge.navigate("equalizer")
+                            }
+                            onTransmitClicked: { }
+                            onOutputClicked: outputPopup.open()
+                            onMiniPlayerClicked: {
+                                if (typeof navigationBridge !== "undefined")
+                                    navigationBridge.navigate("playback")
+                            }
                         }
                     }
                 }
             }
 
-            // ── Row 2: Seek + Volume + Utilities (secondary) ──
+            // ── Row 2: Seek bar with timestamps (16px) ──
             RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 28
-                Layout.bottomMargin: 6
+                Layout.preferredHeight: 16
                 spacing: MichiTheme.spacing.sm
+
+                Text {
+                    Layout.preferredWidth: 36
+                    text: {
+                        if (!root.ps) return "--:--"
+                        var secs = Math.floor(root.ps.position || 0)
+                        var m = Math.floor(secs / 60)
+                        var s = Math.floor(secs % 60)
+                        return m + ":" + (s < 10 ? "0" : "") + s
+                    }
+                    color: MichiTheme.colors.textMeta
+                    font.pixelSize: MichiTheme.typography.captionSize
+                    horizontalAlignment: Text.AlignRight
+                    font.kerning: true
+                }
 
                 NowPlayingSeekBar {
                     id: seekBar
@@ -175,9 +191,56 @@ Item {
                     onSeekRequested: function(pos) { if (root.ps) root.ps.seek(pos) }
                 }
 
+                Text {
+                    Layout.preferredWidth: 36
+                    text: {
+                        if (!root.ps) return "--:--"
+                        var secs = Math.floor(root.ps.duration || 0)
+                        var m = Math.floor(secs / 60)
+                        var s = Math.floor(secs % 60)
+                        return m + ":" + (s < 10 ? "0" : "") + s
+                    }
+                    color: MichiTheme.colors.textMeta
+                    font.pixelSize: MichiTheme.typography.captionSize
+                }
+            }
+
+            // ── Row 3: Transport controls (centered, 36px) ──
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 36
+
+                NowPlayingTransport {
+                    id: transport
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.verticalCenter: parent.verticalCenter
+                    isPlaying: root.ps ? root.ps.isPlaying : false
+                    shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
+                    repeatMode: root.ps ? root.ps.repeatMode : "none"
+                    playPauseSupported: root.ps ? root.ps.playPauseSupported : false
+                    previousSupported: root.ps ? root.ps.previousSupported : false
+                    nextSupported: root.ps ? root.ps.nextSupported : false
+                    shuffleSupported: root.ps ? root.ps.shuffleSupported : false
+                    repeatSupported: root.ps ? root.ps.repeatSupported : false
+                    onPlayClicked: { if (root.ps) root.ps.togglePlay() }
+                    onPrevClicked: { if (root.ps) root.ps.previous() }
+                    onNextClicked: { if (root.ps) root.ps.next() }
+                    onShuffleClicked: { if (root.ps) root.ps.toggleShuffle() }
+                    onRepeatClicked: { if (root.ps) root.ps.toggleRepeat() }
+                }
+            }
+
+            // ── Row 4: Volume (left) + spacer + extra (20px) ──
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 20
+                Layout.bottomMargin: 2
+                spacing: MichiTheme.spacing.sm
+
                 NowPlayingVolume {
                     id: volumeCtrl
                     Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: 180
                     visible: !responsive.compact
                     volume: root.ps ? root.ps.volume : 80
                     muted: root.ps ? root.ps.muted : false
@@ -187,23 +250,7 @@ Item {
                     onMuteClicked: { if (root.ps) root.ps.toggleMute() }
                 }
 
-                NowPlayingUtilityControls {
-                    id: utilityCtrl
-                    Layout.alignment: Qt.AlignVCenter
-                    visible: !responsive.compact
-                    eqSupported: typeof capabilityBridge !== "undefined" && capabilityBridge ? capabilityBridge.has("eq") : true
-                    transmitSupported: typeof capabilityBridge !== "undefined" && capabilityBridge ? capabilityBridge.has("transmit") : false
-                    onEqClicked: {
-                        if (typeof navigationBridge !== "undefined")
-                            navigationBridge.navigate("equalizer")
-                    }
-                    onTransmitClicked: { }
-                    onOutputClicked: outputPopup.open()
-                    onMiniPlayerClicked: {
-                        if (typeof navigationBridge !== "undefined")
-                            navigationBridge.navigate("playback")
-                    }
-                }
+                Item { Layout.fillWidth: true; height: 1 }
             }
         }
     }
