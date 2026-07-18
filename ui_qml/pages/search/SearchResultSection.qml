@@ -76,7 +76,7 @@ Item {
             Text {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                text: qsTr("(%1").arg(root.resultCount + ")"
+                text: qsTr("(%1)").arg(root.resultCount)
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
                 visible: root.resultCount > 0 && !root.isLoading

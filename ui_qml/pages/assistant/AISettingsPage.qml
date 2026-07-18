@@ -184,7 +184,7 @@ Item {
                     spacing: MichiTheme.spacing.sm
 
                     Text {
-                        text: qsTr("Backend: %1").arg((root.ai ? root.ai.backendType : "—")
+                        text: qsTr("Backend: %1").arg(root.ai ? root.ai.backendType : "—")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                     }
