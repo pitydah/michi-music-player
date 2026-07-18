@@ -12,6 +12,7 @@ id: root
 
     property string iconSource: ""
     property string label: ""
+    property string text: ""  // alias for label
     property bool active: false
     property bool sidebarHovered: false
     property bool collapsed: false
@@ -75,7 +76,7 @@ id: root
             }
 
             Text {
-                text: root.label
+                text: root.text || root.label
                 color: root.active ? MichiTheme.colors.textPrimary : MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
                 font.weight: root.active ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
@@ -86,7 +87,7 @@ id: root
 
         ToolTip {
             visible: root.collapsed && ma.containsMouse
-            text: root.label
+            text: root.text || root.label
             delay: 600
         }
 

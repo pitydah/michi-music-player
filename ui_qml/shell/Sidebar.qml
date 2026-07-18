@@ -26,129 +26,54 @@ Item {
     SidebarMaterial {
         anchors.fill: parent
 
-        Column {
-            anchors.fill: parent; spacing: 0
+        Flickable {
+            anchors.fill: parent
+            contentHeight: contentColumn.height + MichiTheme.spacing.xxl
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
 
             Column {
-                width: parent.width; anchors.topMargin: MichiTheme.spacing.xl
-                spacing: MichiTheme.spacing.xs; topPadding: MichiTheme.spacing.xl; bottomPadding: MichiTheme.spacing.sm
+                id: contentColumn
+                width: parent.width; spacing: 0
 
-                Row { anchors.left: parent.left; anchors.leftMargin: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
-                    Image { source: "../../icons/app_icon.svg"; sourceSize.width: 28; sourceSize.height: 28; fillMode: Image.PreserveAspectFit }
-                    Column { spacing: 0; visible: !root.collapsed
-                        Text { text: "Michi"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightBold }
-                        Text { text: "Music Player"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
-                    }
-                }
-            }
+                Item { width: 1; height: MichiTheme.spacing.md }
 
-            Flickable {
-                id: scrollArea
-                width: parent.width
-                height: Math.min(contentHeight, parent.height - 180)
-                contentHeight: navColumn.height + MichiTheme.spacing.lg
-                clip: true
-                boundsBehavior: Flickable.StopAtBounds
-                interactive: contentHeight > height
+                // Escuchar
+                SidebarSection { text: collapsed ? "" : "ESCUCHAR"; collapsed: root.collapsed }
+                SidebarItem { text: "Inicio"; route: "home"; iconSource: "../../icons/sidebar/home.svg"; currentRoute: root.currentRoute; collapsed: root.collapsed; onClicked: root.routeRequested("home") }
+                SidebarItem { text: "Biblioteca"; route: "library"; iconSource: "../../icons/sidebar/library.svg"; currentRoute: root.currentRoute; collapsed: root.collapsed; onClicked: root.routeRequested("library") }
+                SidebarItem { text: "Descubrir"; route: "mix"; iconSource: "../../icons/sidebar/mix.svg"; currentRoute: root.currentRoute; collapsed: root.collapsed; onClicked: root.routeRequested("mix") }
+                SidebarItem { text: "Playlists"; route: "playlists"; iconSource: "../../icons/sidebar/playlists.svg"; currentRoute: root.currentRoute; collapsed: root.collapsed; onClicked: root.routeRequested("playlists") }
+                SidebarItem { text: "Radio"; route: "radio"; iconSource: "../../icons/sidebar/radio.svg"; currentRoute: root.currentRoute; collapsed: root.collapsed; onClicked: root.routeRequested("radio") }
 
-                Column {
-                    id: navColumn
-                    anchors.left: parent.left; anchors.right: parent.right
-                    topPadding: MichiTheme.spacing.sm; spacing: 0
+                Item { width: 1; height: MichiTheme.spacing.md }
 
-                    Repeater {
-                        model: root.deliveryMode ? deliveryModel : groupedModel
+                // Ecosistema Michi
+                SidebarSection { text: collapsed ? "" : "ECOSISTEMA"; collapsed: root.collapsed }
+                SidebarItem { text: "Servidores"; route: "connections"; iconSource: "../../icons/sidebar/connections.svg"; currentRoute: root.currentRoute; collapsed: root.collapsed; onClicked: root.routeRequested("connections") }
+                SidebarItem { text: "Sincronizar"; route: "devices"; iconSource: "../../icons/sidebar/devices.svg"; currentRoute: root.currentRoute; collapsed: root.collapsed; onClicked: root.routeRequested("devices") }
+                SidebarItem { text: "Audio en el hogar"; route: "home_audio"; iconSource: "../../icons/sidebar/home_audio.svg"; currentRoute: root.currentRoute; collapsed: root.collapsed; onClicked: root.routeRequested("home_audio") }
 
-                        Loader {
-                            width: parent.width
-                            sourceComponent: model.isSeparator ? separatorComp : itemComp
-                            property var modelData: model
-                        }
-                    }
-                }
-            }
+                Item { width: 1; height: MichiTheme.spacing.md }
 
-            Component {
-                id: separatorComp
-                Column {
-                    width: parent.width
-                    spacing: MichiTheme.spacing.xs
-                    visible: !root.collapsed
+                // Herramientas
+                SidebarSection { text: collapsed ? "" : "HERRAMIENTAS"; collapsed: root.collapsed }
+                SidebarItem { text: "Audio Lab"; route: "audio_lab"; iconSource: "../../icons/sidebar/audio_lab.svg"; currentRoute: root.currentRoute; collapsed: root.collapsed; onClicked: root.routeRequested("audio_lab") }
+                SidebarItem { text: "Metadatos"; route: "metadata.inspector"; iconSource: "../../icons/sidebar/metadata.svg"; currentRoute: root.currentRoute; collapsed: root.collapsed; onClicked: root.routeRequested("metadata.inspector") }
+                SidebarItem { text: "Library Doctor"; route: "library_doctor"; iconSource: "../../icons/sidebar/doctor.svg"; currentRoute: root.currentRoute; collapsed: root.collapsed; onClicked: root.routeRequested("library_doctor") }
+                SidebarItem { text: "Ecualizador"; route: "equalizer"; iconSource: "../../icons/sidebar/eq.svg"; currentRoute: root.currentRoute; collapsed: root.collapsed; onClicked: root.routeRequested("equalizer") }
+                SidebarItem { text: "Perfiles de salida"; route: "outputs"; iconSource: "../../icons/sidebar/outputs.svg"; currentRoute: root.currentRoute; collapsed: root.collapsed; onClicked: root.routeRequested("outputs") }
 
-                    Text {
-                        anchors.left: parent.left; anchors.leftMargin: MichiTheme.spacing.md
-                        text: modelData.label
-                        color: MichiTheme.colors.textMeta
-                        font.pixelSize: MichiTheme.typography.captionSize
-                        font.weight: MichiTheme.typography.weightMedium
-                        topPadding: MichiTheme.spacing.sm
-                    }
-                }
-            }
+                Item { width: 1; height: MichiTheme.spacing.md }
 
-            Component {
-                id: itemComp
-                SidebarItem {
-                    iconSource: Qt.resolvedUrl("../../" + modelData.iconSource)
-                    label: modelData.label
-                    active: root.currentRoute === modelData.route
-                    collapsed: root.collapsed
-                    onClicked: root.routeRequested(modelData.route)
-                    StatusBadge {
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.notificationCount > 0 ? modelData.notificationCount : ""
-                        kind: "info"
-                        visible: modelData.notificationCount > 0
-                    }
-                }
-            }
-
-            Item { height: MichiTheme.spacing.xl; width: 1 }
-
-            Item { id: collapseItem; width: parent.width; height: 40
-                Rectangle { id: collapseBg; anchors.centerIn: parent; width: 28; height: 28; radius: MichiTheme.radius.pill
-                    color: collapseBtn.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-                    border.width: collapseBtn.activeFocus ? MichiTheme.focusWidth : 0
-                    border.color: MichiTheme.colors.borderFocus
-                    Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
-                    Image { anchors.centerIn: parent; source: "../../icons/nav_back.svg"; sourceSize.width: 14; sourceSize.height: 14; rotation: root.collapsed ? 180 : 0; fillMode: Image.PreserveAspectFit }
-                    MouseArea { id: collapseBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root._userCollapsed = !root._userCollapsed }
-                }
-                Accessible.role: Accessible.Button
-                Accessible.name: root.collapsed ? "Expandir sidebar" : "Colapsar sidebar"
-                Accessible.onPressAction: root._userCollapsed = !root._userCollapsed
+                // Accesos globales
+                SidebarSection { text: collapsed ? "" : "ACCESOS"; collapsed: root.collapsed }
+                SidebarItem { text: "Buscar"; route: "search"; iconSource: "../../icons/sidebar/search.svg"; currentRoute: root.currentRoute; collapsed: root.collapsed; onClicked: root.routeRequested("search") }
+                SidebarItem { text: "Michi AI"; route: "assistant"; iconSource: "../../icons/sidebar/ai.svg"; currentRoute: root.currentRoute; collapsed: root.collapsed; onClicked: root.routeRequested("assistant") }
+                SidebarItem { text: "Cola"; route: "queue"; iconSource: "../../icons/sidebar/queue.svg"; currentRoute: root.currentRoute; collapsed: root.collapsed; onClicked: root.routeRequested("queue") }
+                SidebarItem { text: "Historial"; route: "history"; iconSource: "../../icons/sidebar/history.svg"; currentRoute: root.currentRoute; collapsed: root.collapsed; onClicked: root.routeRequested("history") }
+                SidebarItem { text: "Ajustes"; route: "settings"; iconSource: "../../icons/sidebar/settings.svg"; currentRoute: root.currentRoute; collapsed: root.collapsed; onClicked: root.routeRequested("settings") }
             }
         }
-    }
-
-    ListModel { id: groupedModel
-        ListElement { route: ""; iconSource: ""; label: "NAVEGACIÓN"; notificationCount: 0; isSeparator: true }
-        ListElement { route: "home"; iconSource: "icons/sidebar_home.svg"; label: "Inicio"; notificationCount: 0; isSeparator: false }
-        ListElement { route: "library"; iconSource: "icons/sidebar_library.svg"; label: "Biblioteca"; notificationCount: 0; isSeparator: false }
-        ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; label: "Reproducción"; notificationCount: 0; isSeparator: false }
-        ListElement { route: "mix"; iconSource: "icons/sidebar_mix.svg"; label: "Mix"; notificationCount: 0; isSeparator: false }
-        ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; label: "Playlists"; notificationCount: 0; isSeparator: false }
-
-        ListElement { route: ""; iconSource: ""; label: "RED Y DISPOSITIVOS"; notificationCount: 0; isSeparator: true }
-        ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio"; notificationCount: 0; isSeparator: false }
-        ListElement { route: "devices"; iconSource: "icons/sidebar_devices.svg"; label: "Dispositivos"; notificationCount: 0; isSeparator: false }
-        ListElement { route: "connections"; iconSource: "icons/sidebar_servers.svg"; label: "Conexiones"; notificationCount: 0; isSeparator: false }
-        ListElement { route: "home_audio"; iconSource: "icons/sidebar_home_audio.svg"; label: "Home Audio"; notificationCount: 0; isSeparator: false }
-
-        ListElement { route: ""; iconSource: ""; label: "HERRAMIENTAS"; notificationCount: 0; isSeparator: true }
-        ListElement { route: "audio_lab"; iconSource: "icons/sidebar_audio_lab.svg"; label: "Audio Lab"; notificationCount: 0; isSeparator: false }
-        ListElement { route: "assistant"; iconSource: "icons/sidebar_assistant.svg"; label: "Michi AI"; notificationCount: 0; isSeparator: false }
-    }
-
-    ListModel { id: deliveryModel
-        ListElement { route: ""; iconSource: ""; label: "NAVEGACIÓN"; notificationCount: 0; isSeparator: true }
-        ListElement { route: "home"; iconSource: "icons/sidebar_home.svg"; label: "Inicio"; notificationCount: 0; isSeparator: false }
-        ListElement { route: "library"; iconSource: "icons/sidebar_library.svg"; label: "Biblioteca"; notificationCount: 0; isSeparator: false }
-        ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; label: "Reproducción"; notificationCount: 0; isSeparator: false }
-        ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; label: "Playlists"; notificationCount: 0; isSeparator: false }
-        ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio"; notificationCount: 0; isSeparator: false }
-        ListElement { route: ""; iconSource: ""; label: "SISTEMA"; notificationCount: 0; isSeparator: true }
-        ListElement { route: "diagnostics"; iconSource: "icons/sidebar_identifier.svg"; label: "Diagnóstico"; notificationCount: 0; isSeparator: false }
     }
 }
