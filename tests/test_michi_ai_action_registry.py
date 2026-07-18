@@ -20,10 +20,10 @@ class TestMichiAIActionRegistry:
         from ui_qml_bridge.action_registry import ActionRegistry
         ar = ActionRegistry()
         ar.bind_default_handlers()
-        # Navigate actions should have service_name after bind
-        nav = [a for a in ar.actions if a["id"] == "navigate_home"]
-        if nav:
-            assert nav[0].get("service_name")
+        # Navigate actions should have a handler after bind (via _actions dict)
+        if hasattr(ar, '_actions') and 'navigate_home' in ar._actions:
+            a = ar._actions['navigate_home']
+            assert a.handler is not None, "navigate_home handler is None after bind"
 
     def test_michi_ai_uses_action_registry(self):
         """Verify Michi AI tool calls go through ActionRegistry."""
