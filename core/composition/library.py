@@ -27,7 +27,7 @@ def build(container: ServiceContainer) -> None:
     container.register("library_service", LibraryService(db=db, worker_manager=wm, library_query_service=lqs))
     container.register("playlist_service", PlaylistService(cf))
     container.register("history_query_service", HistoryQueryService(cf))
-    container.register("global_search_service", GlobalSearchService(cf))
+    container.register("global_search_service", GlobalSearchService(cf.db_path))
     container.register("metadata_service", MetadataService())
 
     try:
