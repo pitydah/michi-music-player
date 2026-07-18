@@ -18,6 +18,15 @@ Item {
     property string _editTitle: ""
     property string _editArtist: ""
     property string _editAlbum: ""
+    property string _editAlbumArtist: ""
+    property string _editGenre: ""
+    property string _editYear: ""
+    property string _editTrackNumber: ""
+    property string _editTrackTotal: ""
+    property string _editDiscNumber: ""
+    property string _editDiscTotal: ""
+    property string _editComposer: ""
+    property string _editBpm: ""
 
     function inspect(filepath) {
         if (root.md && typeof root.md.inspectTrack !== "undefined") {
@@ -27,10 +36,28 @@ Item {
     }
 
     function startEdit() {
+        var fields = root.md ? root.md.fields : []
         _editTitle = root.md ? root.md.trackTitle : ""
         _editArtist = root.md ? root.md.trackArtist : ""
         _editAlbum = root.md ? root.md.trackAlbum : ""
+        _editAlbumArtist = root._fieldValue(fields, "album_artist")
+        _editGenre = root._fieldValue(fields, "genre")
+        _editYear = root._fieldValue(fields, "year")
+        _editTrackNumber = root._fieldValue(fields, "track_number")
+        _editTrackTotal = root._fieldValue(fields, "track_total")
+        _editDiscNumber = root._fieldValue(fields, "disc_number")
+        _editDiscTotal = root._fieldValue(fields, "disc_total")
+        _editComposer = root._fieldValue(fields, "composer")
+        _editBpm = root._fieldValue(fields, "bpm")
         _editing = true
+    }
+
+    function _fieldValue(fields, key) {
+        for (var i = 0; i < fields.length; i++) {
+            if (fields[i].key === key)
+                return fields[i].value || ""
+        }
+        return ""
     }
 
     function cancelEdit() {
@@ -46,8 +73,20 @@ Item {
     Component.onCompleted: root.loadFromSelection()
 
     function doSave() {
-        if (root.md && typeof root.md.applyChanges !== "undefined") {
-            root.md.applyChanges(_editTitle, _editArtist, _editAlbum)
+        if (root.md && typeof root.md.setField !== "undefined") {
+            root.md.setField("title", _editTitle)
+            root.md.setField("artist", _editArtist)
+            root.md.setField("album", _editAlbum)
+            root.md.setField("album_artist", _editAlbumArtist)
+            root.md.setField("genre", _editGenre)
+            root.md.setField("year", _editYear)
+            root.md.setField("track_number", _editTrackNumber)
+            root.md.setField("track_total", _editTrackTotal)
+            root.md.setField("disc_number", _editDiscNumber)
+            root.md.setField("disc_total", _editDiscTotal)
+            root.md.setField("composer", _editComposer)
+            root.md.setField("bpm", _editBpm)
+            root.md.saveChanges()
             _editing = false
         }
     }
@@ -193,6 +232,38 @@ Item {
                         Text { text: "Álbum:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 60 }
                         TextField { id: editAlbum; text: root._editAlbum; width: parent.width - 70; onTextChanged: root._editAlbum = text }
                             focusPolicy: Qt.StrongFocus
+                    }
+                    Row { spacing: MichiTheme.spacing.sm; width: parent.width
+                        Text { text: "Album Artist:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        TextField { text: root._editAlbumArtist; width: parent.width - 110; onTextChanged: root._editAlbumArtist = text; focusPolicy: Qt.StrongFocus }
+                    }
+                    Row { spacing: MichiTheme.spacing.sm; width: parent.width
+                        Text { text: "Género:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        TextField { text: root._editGenre; width: parent.width - 110; onTextChanged: root._editGenre = text; focusPolicy: Qt.StrongFocus }
+                    }
+                    Row { spacing: MichiTheme.spacing.sm; width: parent.width
+                        Text { text: "Año:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        TextField { text: root._editYear; width: parent.width - 110; onTextChanged: root._editYear = text; focusPolicy: Qt.StrongFocus }
+                    }
+                    Row { spacing: MichiTheme.spacing.sm; width: parent.width
+                        Text { text: "# Pista:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        TextField { text: root._editTrackNumber; width: parent.width - 110; onTextChanged: root._editTrackNumber = text; focusPolicy: Qt.StrongFocus }
+                    }
+                    Row { spacing: MichiTheme.spacing.sm; width: parent.width
+                        Text { text: "Total pistas:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        TextField { text: root._editTrackTotal; width: parent.width - 110; onTextChanged: root._editTrackTotal = text; focusPolicy: Qt.StrongFocus }
+                    }
+                    Row { spacing: MichiTheme.spacing.sm; width: parent.width
+                        Text { text: "# Disco:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        TextField { text: root._editDiscNumber; width: parent.width - 110; onTextChanged: root._editDiscNumber = text; focusPolicy: Qt.StrongFocus }
+                    }
+                    Row { spacing: MichiTheme.spacing.sm; width: parent.width
+                        Text { text: "Compositor:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        TextField { text: root._editComposer; width: parent.width - 110; onTextChanged: root._editComposer = text; focusPolicy: Qt.StrongFocus }
+                    }
+                    Row { spacing: MichiTheme.spacing.sm; width: parent.width
+                        Text { text: "BPM:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        TextField { text: root._editBpm; width: parent.width - 110; onTextChanged: root._editBpm = text; focusPolicy: Qt.StrongFocus }
                     }
 
                     Row { spacing: MichiTheme.spacing.sm

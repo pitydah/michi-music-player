@@ -155,6 +155,31 @@ Item {
                 text: "Sugerencias"; width: parent.width
             }
 
+            Row {
+                spacing: MichiTheme.spacing.sm
+                visible: root.stb && root.stb.suggestions.length > 0
+
+                MichiButton {
+                    text: "Seleccionar todas"
+                    variant: "secondary"
+                    activeFocusOnTab: true
+                    onClicked: {
+                        if (root.stb && typeof root.stb.selectAll === "function")
+                            root.stb.selectAll()
+                    }
+                }
+
+                MichiButton {
+                    text: "Seleccionar por confianza"
+                    variant: "secondary"
+                    activeFocusOnTab: true
+                    onClicked: {
+                        if (root.stb && typeof root.stb.selectHighConfidence === "function")
+                            root.stb.selectHighConfidence()
+                    }
+                }
+            }
+
             Repeater {
                 model: root.stb ? root.stb.suggestions : []
 
@@ -162,18 +187,27 @@ Item {
                     width: parent.width; height: 48; radius: MichiTheme.radius.sm; variant: "base"
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
+                        CheckBox {
+                            id: sugCheck
+                            anchors.verticalCenter: parent.verticalCenter
+                            checked: modelData.selected || false
+                            onCheckedChanged: {
+                                if (root.stb && typeof root.stb.setSuggestionSelected === "function")
+                                    root.stb.setSuggestionSelected(modelData.id, checked)
+                            }
+                        }
                         Text {
-                            width: parent.width * 0.25; text: modelData.field || ""
+                            width: parent.width * 0.22; text: modelData.field || ""
                             color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize
                             font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
-                            width: parent.width * 0.30; text: modelData.current || "—"
+                            width: parent.width * 0.25; text: modelData.current || "—"
                             color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize
                             elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
-                            width: parent.width * 0.30; text: "→ " + (modelData.suggested || "")
+                            width: parent.width * 0.25; text: "→ " + (modelData.suggested || "")
                             color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.metaSize
                             elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
                         }
@@ -206,8 +240,8 @@ Item {
                             root._confirmApply = true
                         } else {
                             root._confirmApply = false
-                            if (root.stb && root.stb.applySuggestions && root.selectedFile) {
-                                var result = root.stb.applySuggestions(root.selectedFile)
+                            if (root.stb && typeof root.stb.applySelected === "function") {
+                                var result = root.stb.applySelected()
                                 if (typeof notificationBridge !== "undefined" && notificationBridge) {
                                     if (result && result.ok) {
                                         notificationBridge.showMessage("Sugerencias aplicadas correctamente", "success")

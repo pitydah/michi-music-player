@@ -26,6 +26,7 @@ ROUTES: dict[str, dict] = {
     "queue": {"title": "Cola", "source": "../pages/queue/QueuePage.qml", "category": "core", "status": "functional"},
     "playlists": {"title": "Playlists", "source": "../pages/playlists/PlaylistsPage.qml", "category": "core", "status": "functional"},
     "playlist_detail": {"title": "Playlist", "source": "../pages/playlists/PlaylistDetailPage.qml", "category": "detail", "status": "functional", "params": {"playlist_id": {"required": True, "type": "int"}}},
+    "smart_playlist_editor": {"title": "Smart Playlist", "source": "../pages/playlists/SmartPlaylistEditorPage.qml", "category": "detail", "status": "functional"},
     "history": {"title": "Historial", "source": "../pages/history/HistoryPage.qml", "category": "core", "status": "functional"},
     "mix": {"title": "Mix", "source": "../pages/mix/MixHubPage.qml", "category": "core", "status": "functional"},
     "mix_detail": {"title": "Mix", "source": "../pages/mix/MixDetailPage.qml", "category": "detail", "status": "functional", "params": {"mix_id": {"required": True, "type": "string"}}},

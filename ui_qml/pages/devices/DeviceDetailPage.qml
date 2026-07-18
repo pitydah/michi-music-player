@@ -40,12 +40,47 @@ Item {
     signal cancelTransferClicked()
 
 
+    Connections {
+        target: root
+        function onAuthorizeClicked() {
+            if (root.dv && typeof root.dv.authorizeDevice === "function") {
+                root.dv.authorizeDevice(root.deviceKey)
+            }
+        }
+        function onTrustClicked() {
+            if (root.dv && typeof root.dv.trustDevice === "function") {
+                root.dv.trustDevice(root.deviceKey)
+            }
+        }
+        function onSyncClicked() {
+            if (root.dv && typeof root.dv.startSync === "function") {
+                root.dv.startSync(root.deviceKey)
+            }
+        }
+        function onEditProfileClicked() {
+            if (typeof navigationBridge !== "undefined" && navigationBridge) {
+                navigationBridge.navigate("devices.profile_editor")
+            }
+        }
+    }
+
     onDeviceKeyChanged: {
         if (deviceKey) {
             state = "LOADING"
             if (root.dv && typeof root.dv.loadDeviceDetail === "function") {
                 var result = root.dv.loadDeviceDetail(deviceKey)
                 if (result && result.ok) {
+                    var d = result.detail || {}
+                    root.deviceLabel = d.label || ""
+                    root.deviceVendor = d.vendor || ""
+                    root.deviceModel = d.model || ""
+                    root.deviceProtocol = d.protocol || ""
+                    root.deviceMountPoint = d.mount_point || ""
+                    root.deviceAuthorized = !!d.authorized
+                    root.deviceTrusted = !!d.trusted
+                    root.deviceLastContact = d.last_contact || ""
+                    root.deviceStorage = d.storage || ({})
+                    root.deviceCapabilities = d.capabilities || ({})
                     state = "READY"
                 } else {
                     state = "ERROR"
@@ -289,7 +324,22 @@ Item {
                 Qt.callLater(function() {
                     if (root.dv && typeof root.dv.loadDeviceDetail === "function") {
                         var r = root.dv.loadDeviceDetail(deviceKey)
-                        state = r && r.ok ? "READY" : "ERROR"
+                        if (r && r.ok) {
+                            var d = r.detail || {}
+                            root.deviceLabel = d.label || ""
+                            root.deviceVendor = d.vendor || ""
+                            root.deviceModel = d.model || ""
+                            root.deviceProtocol = d.protocol || ""
+                            root.deviceMountPoint = d.mount_point || ""
+                            root.deviceAuthorized = !!d.authorized
+                            root.deviceTrusted = !!d.trusted
+                            root.deviceLastContact = d.last_contact || ""
+                            root.deviceStorage = d.storage || ({})
+                            root.deviceCapabilities = d.capabilities || ({})
+                            state = "READY"
+                        } else {
+                            state = "ERROR"
+                        }
                     }
                 })
             }
@@ -331,7 +381,22 @@ Item {
                     state = "LOADING"
                     if (root.dv && typeof root.dv.loadDeviceDetail === "function") {
                         var r = root.dv.loadDeviceDetail(deviceKey)
-                        state = r && r.ok ? "READY" : "ERROR"
+                        if (r && r.ok) {
+                            var d = r.detail || {}
+                            root.deviceLabel = d.label || ""
+                            root.deviceVendor = d.vendor || ""
+                            root.deviceModel = d.model || ""
+                            root.deviceProtocol = d.protocol || ""
+                            root.deviceMountPoint = d.mount_point || ""
+                            root.deviceAuthorized = !!d.authorized
+                            root.deviceTrusted = !!d.trusted
+                            root.deviceLastContact = d.last_contact || ""
+                            root.deviceStorage = d.storage || ({})
+                            root.deviceCapabilities = d.capabilities || ({})
+                            state = "READY"
+                        } else {
+                            state = "ERROR"
+                        }
                     }
                 }
             }

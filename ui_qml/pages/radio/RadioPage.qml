@@ -102,6 +102,17 @@ Item {
         sourceComponent: EmptyState { title: "Sin emisoras"; subtitle: "Agrega emisoras para empezar a escuchar" }
     }
 
+    RadioEditDialog {
+        id: editDialog
+        parent: root
+        anchors.centerIn: parent
+        modal: true
+        onClosed: {
+            if (root.rd && typeof root.rd.refresh === "function")
+                root.rd.refresh()
+        }
+    }
+
     CapabilityGuard {
         id: radioGuard
         anchors.fill: parent
@@ -173,6 +184,9 @@ Item {
                         }
                         onEditRequested: {
                             root._activeDetailId = index
+                            editDialog.stationData = modelData
+                            editDialog.radioBridge = root.rd
+                            editDialog.open()
                         }
                         onDeleteRequested: root.deleteStation(modelData.url)
                     }
@@ -214,6 +228,9 @@ Item {
                         }
                         onEditRequested: {
                             root._activeDetailId = index
+                            editDialog.stationData = modelData
+                            editDialog.radioBridge = root.rd
+                            editDialog.open()
                         }
                         onDeleteRequested: root.deleteStation(modelData.url)
                     }

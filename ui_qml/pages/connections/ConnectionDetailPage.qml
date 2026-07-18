@@ -11,6 +11,7 @@ Item {
     id: root
     focus: true
 
+    property string connectionId: ""
     property string serverName: ""
     property string serverHost: ""
     property int serverPort: 0
@@ -23,13 +24,9 @@ Item {
     property string protocol: "michi-link"
     property double lastContact: 0
     property bool compatible: false
+    property var conn: typeof connectionsBridge !== "undefined" ? connectionsBridge : null
 
     signal backClicked()
-    signal reconnectClicked()
-    signal disconnectClicked()
-    signal forgetServerClicked()
-    signal editClicked()
-    signal retryClicked()
 
 
 
@@ -44,7 +41,9 @@ Item {
         message: root.lastError
         details: "Servidor: " + root.serverName
         retryAvailable: root.state === "error"
-        onRetryRequested: root.retryClicked()
+        onRetryRequested: {
+            if (root.conn) root.conn.retry()
+        }
 
         readyContent: Flickable {
             anchors.fill: parent
@@ -143,7 +142,9 @@ Item {
                     width: parent.width
                     errorText: root.lastError
                     visible: root.lastError !== ""
-                    onRetryClicked: root.retryClicked()
+                    onRetryClicked: {
+                        if (root.conn) root.conn.retry()
+                    }
                     onDismissClicked: errorPanel.visible = false
                 }
 
@@ -151,19 +152,38 @@ Item {
                     spacing: MichiTheme.spacing.sm
 
                     MichiButton {
+                        id: testBtn
+                        text: "Probar conexión"
+                        variant: "secondary"
+                        onClicked: {
+                            if (root.conn && root.connectionId)
+                                root.conn.testConnection(root.connectionId)
+                        }
+                        KeyNavigation.tab: reconnectBtn
+                        KeyNavigation.backtab: errorPanel
+                    }
+
+                    MichiButton {
                         id: reconnectBtn
                         text: "Reconectar"
                         variant: "primary"
-                        onClicked: root.reconnectClicked()
+                        onClicked: {
+                            if (root.conn && root.connectionId)
+                                root.conn.reconnect(root.connectionId)
+                            else if (root.conn)
+                                root.conn.reconnect()
+                        }
                         KeyNavigation.tab: disconnectBtn
-                        KeyNavigation.backtab: errorPanel
+                        KeyNavigation.backtab: testBtn
                     }
 
                     MichiButton {
                         id: disconnectBtn
                         text: "Desconectar"
                         variant: "secondary"
-                        onClicked: root.disconnectClicked()
+                        onClicked: {
+                            if (root.conn) root.conn.disconnect()
+                        }
                         KeyNavigation.tab: editBtn
                         KeyNavigation.backtab: reconnectBtn
                     }
@@ -172,18 +192,44 @@ Item {
                         id: editBtn
                         text: "Editar"
                         variant: "ghost"
-                        onClicked: root.editClicked()
+                        onClicked: {
+                            if (root.conn && root.connectionId)
+                                root.conn.editServer(root.connectionId)
+                        }
                         KeyNavigation.tab: forgetBtn
                         KeyNavigation.backtab: disconnectBtn
                     }
 
                     MichiButton {
                         id: forgetBtn
-                        text: "Olvidar servidor"
+                        text: "Eliminar"
                         variant: "danger"
-                        onClicked: root.forgetServerClicked()
+                        onClicked: {
+                            if (root.conn && root.connectionId) {
+                                deleteConfirmDialog.open()
+                            }
+                        }
                         Accessible.description: "Elimina la configuración del servidor"
                         KeyNavigation.backtab: editBtn
+                    }
+
+                    QQC2.Dialog {
+                        id: deleteConfirmDialog
+                        title: "Eliminar servidor"
+                        standardButtons: QQC2.Dialog.Yes | QQC2.Dialog.No
+                        modal: true
+                        x: Math.round((root.width - width) / 2)
+                        y: Math.round((root.height - height) / 3)
+                        parent: root
+                        Text {
+                            text: "¿Eliminar " + root.serverName + "?"
+                            color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.bodySize
+                        }
+                        onAccepted: {
+                            if (root.conn && root.connectionId)
+                                root.conn.deleteServer(root.connectionId)
+                        }
                     }
                 }
             }

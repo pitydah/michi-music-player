@@ -345,6 +345,46 @@ class ConnectionsBridge(QObject):
                 return {"ok": False, "error": str(e)}
         return {"ok": True}
 
+    @Slot(str, result=dict)
+    def editServer(self, connection_id: str):
+        svc = self._connection_service
+        if svc is not None and hasattr(svc, 'edit_server'):
+            try:
+                result = svc.edit_server(connection_id)
+                self._reflect_from_service()
+                return result
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        return _method_unavailable("editServer")
+
+    @Slot(str, result=dict)
+    def deleteServer(self, connection_id: str):
+        svc = self._connection_service
+        if svc is not None and hasattr(svc, 'delete_server'):
+            try:
+                result = svc.delete_server(connection_id)
+                self._reflect_from_service()
+                return result
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        if svc is not None and hasattr(svc, 'forget'):
+            return self.forget()
+        return _method_unavailable("deleteServer")
+
+    @Slot(str, result=dict)
+    def testConnection(self, connection_id: str):
+        svc = self._connection_service
+        if svc is not None and hasattr(svc, 'test_connection'):
+            try:
+                result = svc.test_connection(connection_id)
+                self._reflect_from_service()
+                return result
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        if svc is not None and hasattr(svc, 'diagnose'):
+            return self.diagnose()
+        return _method_unavailable("testConnection")
+
     # ── Legacy slots (kept for backward compat) ──
 
     @Slot(result=dict)

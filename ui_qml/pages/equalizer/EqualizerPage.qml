@@ -99,6 +99,19 @@ Item {
                 }
             }
 
+            MichiSegmentedControl {
+                id: modeSelector
+                width: parent.width
+                implicitHeight: 36
+                model: ["Gráfico", "Paramétrico"]
+                currentIndex: root._viewMode === "parametric" ? 1 : 0
+                accessibleName: "Modo de ecualizador"
+                visible: root._cap("backendAvailable")
+                onActivated: function(index) {
+                    root._viewMode = index === 1 ? "parametric" : "graphic"
+                }
+            }
+
             EqualizerGraph {
                 id: graph
                 width: parent.width
@@ -139,6 +152,97 @@ Item {
                     enabled: root._cap("backendAvailable") && !(root.eq && root.eq.bitperfectConflict)
                     onBandGainChanged: function(idx, val) {
                         if (root.eq) root.eq.setGraphicBand(idx, val)
+                    }
+                }
+            }
+
+            Repeater {
+                model: root.eq && root._viewMode === "parametric" ? root.eq.parametricBands : []
+
+                Item {
+                    width: parent.width
+                    implicitHeight: paramRow.height + MichiTheme.spacing.sm
+
+                    Row {
+                        id: paramRow
+                        spacing: MichiTheme.spacing.sm
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+
+                        Text {
+                            text: "Banda " + (index + 1)
+                            color: MichiTheme.colors.textSecondary
+                            font.pixelSize: MichiTheme.typography.metaSize
+                            font.weight: MichiTheme.typography.weightMedium
+                            width: 60
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        ComboBox {
+                            id: typeCombo
+                            width: 100
+                            model: ["peaking", "low_shelf", "high_shelf", "low_pass", "high_pass", "notch"]
+                            currentIndex: {
+                                var t = modelData ? modelData.type : "peaking"
+                                for (var i = 0; i < typeCombo.model.length; i++) {
+                                    if (typeCombo.model[i] === t) return i
+                                }
+                                return 0
+                            }
+                            enabled: root._cap("backendAvailable") && !(root.eq && root.eq.bitperfectConflict)
+                            Accessible.role: Accessible.ComboBox
+                            Accessible.name: "Tipo de filtro banda " + (index + 1)
+                            onActivated: function(idx) {
+                                if (root.eq) {
+                                    var d = modelData || {}
+                                    root.eq.setParametricBand(index, typeCombo.model[idx], d.freq || 0, d.gain || 0, d.enabled || false)
+                                }
+                            }
+                        }
+
+                        Text {
+                            text: modelData ? Math.round(modelData.freq) + " Hz" : ""
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.metaSize
+                            width: 70
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        MichiSlider {
+                            id: gainSlider
+                            width: 100
+                            from: -24; to: 24
+                            value: modelData ? modelData.gain : 0
+                            stepSize: 0.5
+                            enabled: root._cap("backendAvailable") && !(root.eq && root.eq.bitperfectConflict)
+                            accessibleName: "Ganancia banda " + (index + 1)
+                            onMoved: {
+                                if (root.eq) {
+                                    var d = modelData || {}
+                                    root.eq.setParametricBand(index, d.type || "peaking", d.freq || 0, value, d.enabled || false)
+                                }
+                            }
+                        }
+
+                        Text {
+                            text: "Q: " + (modelData ? modelData.q.toFixed(1) : "0.7")
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.metaSize
+                            width: 40
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        CheckBox {
+                            checked: modelData ? modelData.enabled : false
+                            enabled: root._cap("backendAvailable") && !(root.eq && root.eq.bitperfectConflict)
+                            Accessible.name: "Habilitar banda " + (index + 1)
+                            onCheckedChanged: {
+                                if (root.eq) {
+                                    var d = modelData || {}
+                                    root.eq.setParametricBand(index, d.type || "peaking", d.freq || 0, d.gain || 0, checked)
+                                }
+                            }
+                        }
                     }
                 }
             }
