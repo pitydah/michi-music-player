@@ -109,7 +109,7 @@ Item {
             // Grid de 5 tarjetas principales
             GridLayout {
                 width: parent.width
-                columns: 2
+                columns: parent.width > 1200 ? 3 : (parent.width > 800 ? 2 : 1)
                 rowSpacing: MichiTheme.spacing.md
                 columnSpacing: MichiTheme.spacing.md
 
@@ -119,11 +119,11 @@ Item {
                     color: ma1.containsMouse ? MichiTheme.colors.surfaceCardHover : MichiTheme.colors.surfaceCard
                     border.width: 1; border.color: MichiTheme.colors.borderCard
                     ColumnLayout { anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
-                        Text { text: "🔍"; font.pixelSize: 28 }
+                        Text { text: "AN"; font.pixelSize: 20; color: MichiTheme.colors.accentBlue }
                         Text { text: "Diagnóstico"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
                         Text { text: "Analiza, verifica integridad y compara archivos"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
                     }
-                    MouseArea { id: ma1; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("diagnostics") }
+                    MouseArea { id: ma1; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("diagnostics"); Keys.onReturnPressed: clicked(); Keys.onSpacePressed: clicked() }
                 }
 
                 Rectangle {
@@ -132,11 +132,11 @@ Item {
                     color: ma2.containsMouse ? MichiTheme.colors.surfaceCardHover : MichiTheme.colors.surfaceCard
                     border.width: 1; border.color: MichiTheme.colors.borderCard
                     ColumnLayout { anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
-                        Text { text: "🆔"; font.pixelSize: 28 }
+                        Text { text: "ID"; font.pixelSize: 20; color: MichiTheme.colors.accentBlue }
                         Text { text: "Identificador de Audios"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
                         Text { text: "Identifica, corrige metadatos y carátulas"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
                     }
-                    MouseArea { id: ma2; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("identifier") }
+                    MouseArea { id: ma2; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("identifier"); Keys.onReturnPressed: clicked(); Keys.onSpacePressed: clicked() }
                 }
 
                 Rectangle {
@@ -145,11 +145,11 @@ Item {
                     color: ma3.containsMouse ? MichiTheme.colors.surfaceCardHover : MichiTheme.colors.surfaceCard
                     border.width: 1; border.color: MichiTheme.colors.borderCard
                     ColumnLayout { anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
-                        Text { text: "💾"; font.pixelSize: 28 }
+                        Text { text: "BK"; font.pixelSize: 20; color: MichiTheme.colors.accentBlue }
                         Text { text: "Respaldar"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
                         Text { text: "Convierte, normaliza, ripea y organiza"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
                     }
-                    MouseArea { id: ma3; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("backup") }
+                    MouseArea { id: ma3; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("backup"); Keys.onReturnPressed: clicked(); Keys.onSpacePressed: clicked() }
                 }
 
                 Rectangle {
@@ -158,11 +158,11 @@ Item {
                     color: ma4.containsMouse ? MichiTheme.colors.surfaceCardHover : MichiTheme.colors.surfaceCard
                     border.width: 1; border.color: MichiTheme.colors.borderCard
                     ColumnLayout { anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
-                        Text { text: "🎧"; font.pixelSize: 28 }
+                        Text { text: "OP"; font.pixelSize: 20; color: MichiTheme.colors.accentBlue }
                         Text { text: "Perfiles de Salida"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
                         Text { text: "Configura DAC, EQ y reproducción"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
                     }
-                    MouseArea { id: ma4; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("output_profiles") }
+                    MouseArea { id: ma4; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("output_profiles"); Keys.onReturnPressed: clicked(); Keys.onSpacePressed: clicked() }
                 }
 
                 Rectangle {
@@ -171,11 +171,11 @@ Item {
                     color: ma5.containsMouse ? MichiTheme.colors.surfaceCardHover : MichiTheme.colors.surfaceCard
                     border.width: 1; border.color: MichiTheme.colors.borderCard
                     ColumnLayout { anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
-                        Text { text: "🧠"; font.pixelSize: 28 }
+                        Text { text: "AI"; font.pixelSize: 20; color: MichiTheme.colors.accentBlue }
                         Text { text: "Inteligencia Local"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
                         Text { text: "Análisis acústico y automatización"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
                     }
-                    MouseArea { id: ma5; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("local_intelligence") }
+                    MouseArea { id: ma5; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("local_intelligence"); Keys.onReturnPressed: clicked(); Keys.onSpacePressed: clicked() }
                 }
             }
         }

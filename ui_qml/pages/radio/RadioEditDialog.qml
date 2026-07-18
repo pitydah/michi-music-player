@@ -32,10 +32,10 @@ Dialog {
         spacing: MichiTheme.spacing.md
         width: parent.width
 
-        SearchField { id: nameField; width: parent.width; placeholderText: "Nombre" }
-        SearchField { id: urlField; width: parent.width; placeholderText: "URL" }
-        SearchField { id: codecField; width: parent.width; placeholderText: "Codec" }
-        SearchField { id: countryField; width: parent.width; placeholderText: "País" }
+        MichiSearchField { id: nameField; width: parent.width; placeholderText: "Nombre" }
+        MichiSearchField { id: urlField; width: parent.width; placeholderText: "URL" }
+        MichiSearchField { id: codecField; width: parent.width; placeholderText: "Codec" }
+        MichiSearchField { id: countryField; width: parent.width; placeholderText: "País" }
 
         Row {
                 Accessible.role: Accessible.Button

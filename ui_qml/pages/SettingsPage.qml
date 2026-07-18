@@ -177,7 +177,7 @@ Item {
             ColumnLayout {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
 
-                SearchField {
+                MichiSearchField {
                     Accessible.role: Accessible.EditableText
 
                     id: searchFieldDesktop
@@ -356,7 +356,7 @@ Item {
             ColumnLayout {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
 
-                SearchField {
+                MichiSearchField {
                     Layout.fillWidth: true
                     placeholderText: "Buscar..."
                     onSearchTextChanged: root.searchCategories(text)
@@ -462,7 +462,7 @@ Item {
             }
         }
 
-        SearchField {
+        MichiSearchField {
             Layout.fillWidth: true; Layout.margins: MichiTheme.spacing.sm
             placeholderText: "Buscar..."
             visible: root.selectedCategory === null

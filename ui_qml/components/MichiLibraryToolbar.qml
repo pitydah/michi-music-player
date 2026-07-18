@@ -62,7 +62,7 @@ Item {
 
             Item { height: 1; width: parent.width * 0.1 }
 
-            SearchField {
+            MichiSearchField {
                 anchors.verticalCenter: parent.verticalCenter
                 placeholderText: "Buscar en biblioteca..."
                 implicitWidth: Math.min(200, parent.width * 0.2)

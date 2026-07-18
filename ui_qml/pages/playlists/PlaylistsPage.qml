@@ -131,7 +131,7 @@ Item {
                 }
             }
 
-            SearchField {
+            MichiSearchField {
                 id: playlistSearch
                 width: parent.width * 0.5
                 placeholderText: "Buscar playlists..."

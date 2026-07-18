@@ -90,7 +90,7 @@ Dialog {
                 font.weight: MichiTheme.typography.weightMedium
             }
 
-            SearchField {
+            MichiSearchField {
                 Accessible.role: Accessible.EditableText
 
                 id: nameField
@@ -114,7 +114,7 @@ Dialog {
 
                 Accessible.role: Accessible.EditableText
 
-            SearchField {
+            MichiSearchField {
                 id: urlField
                 width: parent.width
                 placeholderText: "https://stream.example.com/radio"
@@ -153,7 +153,7 @@ Dialog {
                     Accessible.role: Accessible.EditableText
 
 
-                SearchField {
+                MichiSearchField {
                     id: codecField
                     width: parent.width
                     placeholderText: "MP3, AAC, OGG..."
@@ -177,7 +177,7 @@ Dialog {
 
                 }
 
-                SearchField {
+                MichiSearchField {
                     id: countryField
                     width: parent.width
                     placeholderText: "Ej: US, UK, DE..."

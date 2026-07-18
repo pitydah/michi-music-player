@@ -3,11 +3,12 @@ import QtQuick.Controls
 import "../theme"
 
 Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Sidebar Item"
-    objectName: "sidebarItem"
-    focus: true
-    id: root
+Accessible.role: Accessible.Button
+Accessible.name: "Sidebar Item"
+objectName: "sidebarItem"
+activeFocusOnTab: true
+focus: true
+id: root
 
     property string iconSource: ""
     property string label: ""
@@ -16,6 +17,9 @@ Item {
     property bool collapsed: false
 
     signal clicked()
+
+    Keys.onReturnPressed: root.clicked()
+    Keys.onSpacePressed: root.clicked()
 
     implicitHeight: 40
     implicitWidth: 200

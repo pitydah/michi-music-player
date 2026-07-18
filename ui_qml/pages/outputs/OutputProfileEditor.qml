@@ -44,14 +44,14 @@ Item {
                 font.weight: MichiTheme.typography.weightSemiBold
             }
 
-            SearchField {
+            MichiSearchField {
                 id: nameField
                 width: parent.width
                 placeholderText: "Nombre del perfil"
                 text: root._isNew ? "" : (root.profileData.name || "")
             }
 
-            SearchField {
+            MichiSearchField {
                 id: descField
                 width: parent.width
                 placeholderText: "Descripción"

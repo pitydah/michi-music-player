@@ -140,7 +140,7 @@ Item {
             Item { Layout.fillWidth: true; height: 1 }
 
             // Búsqueda
-            SearchField {
+            MichiSearchField {
                 id: searchField
                 anchors.verticalCenter: parent.verticalCenter
                 placeholderText: "Buscar en Michi..."

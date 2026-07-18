@@ -50,7 +50,7 @@ Item {
             spacing: MichiTheme.spacing.sm
             width: parent.width
 
-            SearchField {
+            MichiSearchField {
                 Accessible.role: Accessible.EditableText
 
                 id: searchField

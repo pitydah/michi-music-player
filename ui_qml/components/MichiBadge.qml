@@ -1,6 +1,9 @@
 import QtQuick
 import "../theme"
 
+// @deprecated Use StatusBadge instead — MichiBadge is unused in pages/.
+// StatusBadge offers more kind variants (experimental, disconnected, active)
+// and is used across 100+ locations in pages/.
 Rectangle {
     id: root
 

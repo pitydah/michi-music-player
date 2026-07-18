@@ -63,7 +63,7 @@ Item {
             }
         }
 
-        SearchField {
+        MichiSearchField {
             id: searchInput
             anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
             anchors.rightMargin: MichiTheme.spacing.md
