@@ -16,6 +16,7 @@ Item {
     property var labService: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
     property var convBridge: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
     property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null
+    property var selectedFiles: []
 
     property int _state: 0
     property string _selectedFormat: "FLAC"
@@ -47,6 +48,23 @@ Item {
     readonly property int stateFailed: 5
 
     Component.onCompleted: root.pageState = "READY"
+
+    Connections {
+        target: root.labService
+        function onJobCompleted(jobId, jobType, result) {
+            if (jobId === root._jobId) {
+                root._state = root.stateCompleted
+                root._progress = 1.0
+                root._processedFiles = root._totalFiles
+            }
+        }
+        function onJobFailed(jobId, error) {
+            if (jobId === root._jobId) {
+                root._errorMessage = error
+                root._state = root.stateFailed
+            }
+        }
+    }
 
     property var _formatOptions: [
         { label: "FLAC", codec: "flac", lossless: true },
@@ -90,14 +108,30 @@ Item {
 
     function _startConversion() {
         if (!root._canConvert()) return
-        if (root.convBridge && root.convBridge.outputDir) {
-            root.convBridge.outputDir = root._outputDir
-            root.convBridge.collisionPolicy = root._collisionPolicy
+        var filepath = root.selectedFiles && root.selectedFiles.length > 0 ? root.selectedFiles[0] : ""
+        if (!filepath) {
+            root._errorMessage = "Selecciona archivos para convertir"
+            root._state = root.stateFailed
+            return
         }
-        if (root.convBridge && root.convBridge.startConversion) {
-            var result = root.convBridge.startConversion(root.selectedFiles && root.selectedFiles.length > 0 ? root.selectedFiles[0] : "")
-            if (result && result.ok) {
-                root._jobId = result.job_id || ""
+        var profile = {
+            "format": root._selectedFormat,
+            "codec": root._selectedCodec,
+            "bitrate": root._selectedBitrate,
+            "vbr_quality": root._selectedQuality,
+            "sample_rate": root._selectedSampleRate,
+            "bit_depth": root._selectedBitDepth,
+            "channels": root._selectedChannels,
+            "preserve_metadata": root._keepMetadata,
+            "preserve_artwork": root._keepArtwork,
+            "output_dir": root._outputDir,
+            "filename_template": root._namingTemplate,
+            "collision_policy": root._collisionPolicy
+        }
+        if (root.labService && root.labService.startConversion) {
+            var jobId = root.labService.startConversion(filepath, JSON.stringify(profile))
+            if (typeof jobId === "string" && jobId.length > 0) {
+                root._jobId = jobId
                 root._state = root.stateConverting
                 root._progress = 0.0
                 root._processedFiles = 0
@@ -105,14 +139,12 @@ Item {
                 root._elapsedTime = 0.0
                 root._eta = 0.0
             } else {
-                root._errorMessage = result && result.error ? result.error : "Error al iniciar conversión"
+                root._errorMessage = "Error al iniciar conversión"
                 root._state = root.stateFailed
             }
         } else {
-            if (root.convBridge === null) {
-                root._errorMessage = "Bridge de conversión no disponible"
-                root._state = root.stateFailed
-            }
+            root._errorMessage = "Bridge de conversión no disponible"
+            root._state = root.stateFailed
         }
     }
 
@@ -170,6 +202,8 @@ Item {
             }
 
             AudioInputSelection {
+                id: inputSelection
+                onFilesSelected: root.selectedFiles = filepaths
             }
 
             SectionHeader { text: "Formato destino"; width: parent.width; objectName: "formatHeader"; Accessible.name: "Formato destino" }

@@ -32,7 +32,7 @@ Item {
 
     Connections {
         target: root.labService
-        function onJobCompleted(jobId, result) {
+        function onJobCompleted(jobId, jobType, result) {
             if (jobId === root._currentJobId) {
                 root._analysisResult = result
                 root._state = root.stateCompleted
@@ -78,7 +78,20 @@ Item {
     }
 
     function _startCompare() {
-        root._compareMode = !root._compareMode
+        if (!root.labService || !root.labService.previewComparison) {
+            root._errorMessage = "Servicio de comparación no disponible"
+            root._state = root.stateFailed
+            return
+        }
+        if (!inputSelection.selectedFiles || inputSelection.selectedFiles.length < 2) {
+            root._errorMessage = "Selecciona al menos 2 archivos para comparar"
+            root._state = root.stateFailed
+            return
+        }
+        var fileA = inputSelection.selectedFiles[0]
+        var fileB = inputSelection.selectedFiles[1]
+        root._compareResult = root.labService.previewComparison(fileA, fileB)
+        root._compareMode = true
     }
 
     Flickable {

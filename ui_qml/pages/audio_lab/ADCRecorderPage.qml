@@ -59,12 +59,24 @@ Page {
     }
 
     function startLevelMeter() {
-        // Simulación de medidor de nivel (en producción, conectar a señal real del backend)
         levelTimer.start()
+    }
+
+    function pollRecordingLevel() {
+        if (!isRecording) return
+        var status = audioLabBridge.getRecordingStatus()
+        if (status && typeof status.level === "number") {
+            recordingLevel = status.level
+        }
     }
 
     function startRecording() {
         if (!selectedDevice) return
+
+        var dspFilters = []
+        if (applyRIAA.checked) dspFilters.push("riaa")
+        if (deClickerCheck.checked) dspFilters.push("declicker")
+        if (deHisserCheck.checked) dspFilters.push("dehisser")
 
         const result = audioLabBridge.startRecording(
             selectedDevice.device_id,
@@ -73,7 +85,7 @@ Page {
             44100,
             24,
             2,
-            applyRIAA.checked ? ["riaa"] : []
+            dspFilters
         )
 
         if (result.ok) {
@@ -116,9 +128,13 @@ Page {
         if (!isRecording) return
         
         const timestamp = recordingDuration
+        const label = `Pista ${markers.length + 1}`
+        
+        audioLabBridge.addMarker(label, timestamp)
+        
         markers.push({
             timestamp: timestamp,
-            label: `Pista ${markers.length + 1}`
+            label: label
         })
         
         notificationBridge.showInfo(`Marcador agregado en ${formatTime(timestamp)}`)
@@ -248,6 +264,17 @@ Page {
                         color: recordingLevel > -3 ? MichiTheme.error : MichiTheme.success
                         horizontalAlignment: Text.AlignHCenter
                     }
+
+                    Label {
+                        text: "(estimado)"
+                        font.pixelSize: 11
+                        color: MichiTheme.textMuted
+                        horizontalAlignment: Text.AlignHCenter
+                        visible: {
+                            var s = audioLabBridge.getRecordingStatus()
+                            !(s && typeof s.level === "number")
+                        }
+                    }
                 }
             }
 
@@ -361,11 +388,13 @@ Page {
 
                     // Filtros DSP
                     CheckBox {
+                        id: deClickerCheck
                         text: "Filtro De-Clicker (eliminar clicks y pops)"
                         checked: false
                     }
 
                     CheckBox {
+                        id: deHisserCheck
                         text: "Filtro De-Hisser (reducir ruido de cinta)"
                         checked: false
                     }
@@ -459,7 +488,7 @@ Page {
         }
     }
 
-    // Timer para simulación de nivel (reemplazar con señal real del backend)
+    // Timer para medidor de nivel — usa bridge cuando es real, simulado como fallback
     Timer {
         id: levelTimer
         interval: 100
@@ -468,8 +497,13 @@ Page {
 
         onTriggered: {
             if (isRecording && !isPaused) {
-                // Simular nivel de audio aleatorio
-                recordingLevel = Math.random() * 0.8 - 40 // Entre -40 y -8 dB
+                var status = audioLabBridge.getRecordingStatus()
+                if (status && typeof status.level === "number") {
+                    recordingLevel = status.level
+                } else {
+                    // Fallback simulado — marcar como estimado
+                    recordingLevel = Math.random() * 0.8 - 40
+                }
             } else {
                 recordingLevel = -60
             }

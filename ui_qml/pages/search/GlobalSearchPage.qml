@@ -38,6 +38,16 @@ Item {
         onScrollYChanged: pageState.save()
     }
 
+    Connections {
+        target: root.bridge
+        function onResultsChanged() {
+            if (root._searching) {
+                root._groupResultsFromBridge()
+                root._searching = false
+            }
+        }
+    }
+
     function search(text) {
         root._requestGen++
         var gen = root._requestGen
@@ -69,47 +79,17 @@ Item {
                 var result = root.bridge.search(text)
                 if (gen !== root._requestGen) return
                 if (result && result.ok) {
-                    var items = root.bridge.results || []
-                    var groups = {}
-                    for (var i = 0; i < items.length; i++) {
-                        var sec = items[i].section || "Otros"
-                        if (root._typeFilters) {
-                            var secKey = sec.toLowerCase()
-                            if (root._typeFilters[secKey] === false) continue
-                        }
-                        if (!groups[sec]) groups[sec] = []
-                        groups[sec].push(items[i])
-                    }
-                    var grouped = []
-                    var sectionOrder = ["Canciones", "Álbumes", "Artistas", "Playlists", "Carpetas", "Géneros", "Radio", "Dispositivos", "Servidores", "Acciones", "Ajustes", "Otros"]
-                    for (var si = 0; si < sectionOrder.length; si++) {
-                        if (groups[sectionOrder[si]]) {
-                            grouped.push({section: sectionOrder[si], items: groups[sectionOrder[si]]})
-                        }
-                    }
-                    for (var key in groups) {
-                        var found = false
-                        for (var fi = 0; fi < sectionOrder.length; fi++) {
-                            if (key === sectionOrder[fi]) { found = true; break }
-                        }
-                        if (!found) grouped.push({section: key, items: groups[key]})
-                    }
-                    root._groupedResults = grouped
-                    root._searching = false
-                    root._errorCode = ""
-                    root._errorMessage = ""
-                    if (text.trim() !== "" && grouped.length > 0) {
-                        var q = text.trim()
-                        if (root._recentQueries.indexOf(q) < 0) {
-                            root._recentQueries.unshift(q)
-                            if (root._recentQueries.length > 10) root._recentQueries.pop()
-                        }
+                    if (result.async) {
+                        root._activeRequestId = result.request_id
+                    } else {
+                        root._groupResultsFromBridge()
+                        root._searching = false
                     }
                 } else {
                     root._groupedResults = []
                     root._searching = false
-                    root._errorCode = root.bridge.errorCode || "SEARCH_FAILED"
-                    root._errorMessage = root.bridge.errorMessage || "La búsqueda falló"
+                    root._errorCode = result && result.error_code ? result.error_code : "SEARCH_FAILED"
+                    root._errorMessage = result && result.message ? result.message : "La búsqueda falló"
                 }
             } else {
                 root._groupedResults = []
@@ -118,6 +98,45 @@ Item {
                 root._errorMessage = "No hay puente de búsqueda disponible"
             }
         }, 300)
+    }
+
+    function _groupResultsFromBridge() {
+        if (!root.bridge) return
+        var items = root.bridge.results || []
+        var groups = {}
+        for (var i = 0; i < items.length; i++) {
+            var sec = items[i].section || "Otros"
+            if (root._typeFilters) {
+                var secKey = sec.toLowerCase()
+                if (root._typeFilters[secKey] === false) continue
+            }
+            if (!groups[sec]) groups[sec] = []
+            groups[sec].push(items[i])
+        }
+        var grouped = []
+        var sectionOrder = ["Canciones", "Álbumes", "Artistas", "Playlists", "Carpetas", "Géneros", "Radio", "Dispositivos", "Servidores", "Acciones", "Ajustes", "Otros"]
+        for (var si = 0; si < sectionOrder.length; si++) {
+            if (groups[sectionOrder[si]]) {
+                grouped.push({section: sectionOrder[si], items: groups[sectionOrder[si]]})
+            }
+        }
+        for (var key in groups) {
+            var found = false
+            for (var fi = 0; fi < sectionOrder.length; fi++) {
+                if (key === sectionOrder[fi]) { found = true; break }
+            }
+            if (!found) grouped.push({section: key, items: groups[key]})
+        }
+        root._groupedResults = grouped
+        root._errorCode = ""
+        root._errorMessage = ""
+        if (root._query.trim() !== "" && grouped.length > 0) {
+            var q = root._query.trim()
+            if (root._recentQueries.indexOf(q) < 0) {
+                root._recentQueries.unshift(q)
+                if (root._recentQueries.length > 10) root._recentQueries.pop()
+            }
+        }
     }
 
     function retry() {
@@ -328,8 +347,8 @@ Item {
                             bridge: root.bridge
                             activeFocusOnTab: true
                             onItemClicked: function(type, id, title, subtitle) {
-                                if (root.notif && typeof root.notif.showMessage === "function") {
-                                    root.notif.showMessage("Abriendo: " + title, "info")
+                                if (root.bridge && typeof root.bridge.executeResultAction === "function") {
+                                    root.bridge.executeResultAction(id, "navigate")
                                 }
                             }
                         }

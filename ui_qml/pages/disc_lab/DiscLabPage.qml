@@ -16,6 +16,9 @@ Item {
     enum State { LOADING, READY, EMPTY, ERROR, UNAVAILABLE }
     property int pageState: root.disc ? DiscLabPage.READY : DiscLabPage.UNAVAILABLE
     property string errorMessage: ""
+    property string ripFormat: "flac"
+    property string ripDestination: "/home/user/Music/CD Rips"
+    property bool canRip: root.disc && root.disc.status === "scanned" && ripFormat !== ""
 
     function refresh() {
         if (!root.disc) { root.pageState = DiscLabPage.UNAVAILABLE; return }
@@ -136,13 +139,55 @@ Item {
                     visible: text !== ""
                 }
 
+                Row {
+                    spacing: MichiTheme.spacing.sm
+                    width: parent.width
+
+                    ComboBox {
+                        id: formatSelector
+                        width: 120
+                        model: ["flac", "wav", "mp3", "ogg"]
+                        currentIndex: 0
+                        onCurrentIndexChanged: {
+                            ripFormat = model[currentIndex]
+                            if (root.disc) root.disc.setFormat(ripFormat)
+                        }
+                    }
+
+                    TextField {
+                        id: destField
+                        width: parent.width - formatSelector.width - browseBtn.width - MichiTheme.spacing.sm * 2
+                        text: root.ripDestination
+                        placeholderText: "Carpeta de destino"
+                        onTextChanged: {
+                            ripDestination = text
+                            if (root.disc) root.disc.setDestination(ripDestination)
+                        }
+                    }
+
+                    Button {
+                        id: browseBtn
+                        text: "..."
+                        onClicked: {
+                            // FolderDialog se abriría desde Qt Quick Dialogs
+                        }
+                    }
+                }
+
                 MichiButton {
                     Accessible.role: Accessible.Button
                     activeFocusOnTab: true
                     text: "Rip CD"
-                    variant: "ghost"
+                    variant: "primary"
                     width: parent.width
-                    enabled: false
+                    enabled: root.canRip
+                    onClicked: {
+                        if (root.disc) {
+                            root.disc.setFormat(ripFormat)
+                            root.disc.setDestination(ripDestination)
+                            root.disc.startExtraction()
+                        }
+                    }
                 }
 
                 GlassMaterial {

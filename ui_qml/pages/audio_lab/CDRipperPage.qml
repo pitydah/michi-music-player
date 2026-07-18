@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import "../../theme"
 import "../../components"
 import "../../components/audio_lab"
@@ -23,6 +24,9 @@ Page {
     property bool isLoading: false
     property bool isRipping: false
     property var tracksToRip: []
+    property string outputFolder: "/home/user/Music/CD Rips"
+    property string availableSpace: "—"
+    property real perTrackSizeMB: 0
 
     Component.onCompleted: {
         loadCDDevices()
@@ -45,6 +49,7 @@ Page {
         isLoading = true
         currentCDInfo = audioLabBridge.getCDInfo(device)
         isLoading = false
+        refreshSpaceInfo()
         
         if (currentCDInfo && currentCDInfo.ok) {
             statusMessage.text = `CD detectado: ${currentCDInfo.album_title || "Desconocido"}`
@@ -60,26 +65,34 @@ Page {
         isRipping = true
         const selectedTracks = tracksToRip.filter(t => t.selected)
         
-        // Mostrar diálogo de confirmación
         previewDialog.previewData = selectedTracks.map(t => ({
             original: `Pista ${t.track_number} (${t.title})`,
-            result: `${outputFolder.text}/${t.track_number.toString().padStart(2, '0')}-${t.title}.${formatSelector.currentText.toLowerCase()}`,
-            size: "~30 MB"
+            result: `${outputFolder}/${t.track_number.toString().padStart(2, '0')}-${t.title}.${formatSelector.currentText.toLowerCase()}`,
+            size: perTrackSizeMB > 0 ? `~${perTrackSizeMB.toFixed(0)} MB` : "—"
         }))
         
         previewDialog.spaceSufficient = true
-        previewDialog.requiredSpace = "~" + (selectedTracks.length * 30) + " MB"
-        previewDialog.availableSpace = "10 GB"
+        previewDialog.requiredSpace = perTrackSizeMB > 0 ? `~${(selectedTracks.length * perTrackSizeMB).toFixed(0)} MB` : "—"
+        previewDialog.availableSpace = availableSpace
         previewDialog.open()
     }
 
     function confirmRip() {
         const selectedTracks = tracksToRip.filter(t => t.selected)
         const format = formatSelector.currentText.toLowerCase()
+        let trackIndex = 0
         
-        for (let i = 0; i < selectedTracks.length; i++) {
-            const track = selectedTracks[i]
-            const outputPath = `${outputFolder.text}/${track.track_number.toString().padStart(2, '0')}-${track.title}.${format}`
+        function ripNext() {
+            if (trackIndex >= selectedTracks.length) {
+                isRipping = false
+                notificationBridge.showSuccess("Ripeo completado")
+                return
+            }
+            
+            const track = selectedTracks[trackIndex]
+            const outputPath = `${outputFolder}/${track.track_number.toString().padStart(2, '0')}-${track.title}.${format}`
+            
+            statusMessage.text = `Extrayendo pista ${track.track_number}/${selectedTracks.length}...`
             
             const result = audioLabBridge.ripCDTrack(
                 selectedDevice,
@@ -91,10 +104,23 @@ Page {
             if (!result.ok) {
                 notificationBridge.showError(`Error en pista ${track.track_number}: ${result.error}`)
             }
+            
+            trackIndex++
+            Qt.callLater(ripNext)
         }
         
-        isRipping = false
-        notificationBridge.showSuccess("Ripeo completado")
+        ripNext()
+    }
+
+    function refreshSpaceInfo() {
+        var info = audioLabBridge.getSpaceInfo ? audioLabBridge.getSpaceInfo() : null
+        if (info && info.ok) {
+            availableSpace = info.available
+            perTrackSizeMB = info.perTrackMB || 30
+        } else {
+            availableSpace = "—"
+            perTrackSizeMB = 0
+        }
     }
 
     ScrollView {
@@ -273,17 +299,16 @@ Page {
                         }
 
                         TextField {
-                            id: outputFolder
+                            id: outputFolderField
                             Layout.fillWidth: true
-                            text: "/home/user/Music/CD Rips"
+                            text: outputFolder
                             placeholderText: "Carpeta de destino"
+                            onTextChanged: outputFolder = text
                         }
 
                         Button {
                             text: "..."
-                            onClicked: {
-                                // Abrir selector de carpetas (implementar con FileDialog)
-                            }
+                            onClicked: folderDialog.open()
                         }
                     }
 
@@ -322,6 +347,16 @@ Page {
     AudioLabPreviewDialog {
         id: previewDialog
         onConfirmed: confirmRip()
+    }
+
+    // Selector de carpeta
+    FolderDialog {
+        id: folderDialog
+        currentFolder: StandardPaths.standardLocations(StandardPaths.MusicLocation)[0]
+        onAccepted: {
+            outputFolder = selectedFolder
+            outputFolderField.text = selectedFolder
+        }
     }
 
     // Overlay de carga

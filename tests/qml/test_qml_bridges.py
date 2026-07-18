@@ -14,7 +14,7 @@ from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 from ui_qml_bridge.metadata_bridge import MetadataBridge
 from ui_qml_bridge.radio_bridge import RadioBridge
 from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
-from ui_qml_bridge.settings_bridge import SettingsBridge
+from ui_qml_bridge.settings_bridge_v2 import SettingsBridgeV2 as SettingsBridge
 
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent / "ui_qml"
@@ -1428,12 +1428,12 @@ class TestEqBridge:
 
 class TestSettingsBridge:
     def test_settings_importable(self):
-        from ui_qml_bridge.settings_bridge import SettingsBridge
+        from ui_qml_bridge.settings_bridge_v2 import SettingsBridgeV2 as SettingsBridge
         bridge = SettingsBridge()
         assert len(bridge.sections) > 0
 
     def test_settings_output_profiles(self):
-        from ui_qml_bridge.settings_bridge import SettingsBridge
+        from ui_qml_bridge.settings_bridge_v2 import SettingsBridgeV2 as SettingsBridge
         bridge = SettingsBridge()
         profiles = bridge.outputProfiles
         assert len(profiles) > 0
@@ -1628,7 +1628,7 @@ class TestDiscLabBridge:
 
 class TestSettingsBridgeIntegration:
     def test_settings_bridge_importable(self):
-        from ui_qml_bridge.settings_bridge import SettingsBridge
+        from ui_qml_bridge.settings_bridge_v2 import SettingsBridgeV2 as SettingsBridge
         assert SettingsBridge is not None
 
     def test_settings_bridge_sections(self):

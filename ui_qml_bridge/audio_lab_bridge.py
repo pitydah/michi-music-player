@@ -161,14 +161,32 @@ class AudioLabBridge(QObject):
             return {"ok": False, "error_code": "PREVIEW_FAILED", "detail": str(e)}
 
     @Slot(str, str, result=str)
-    def startConversion(self, filepath: str, target_format: str = "flac"):
+    def startConversion(self, filepath: str, profile_json: str = "{}"):
         if not self._svc:
             return ""
         module = getattr(self._svc, "conversion", None)
         if not module:
             return ""
+        import json
+        try:
+            pd = json.loads(profile_json)
+        except Exception:
+            pd = {}
         from core.audio_lab.audio_conversion_service import ConversionProfile
-        profile = ConversionProfile(format=target_format.upper())
+        profile = ConversionProfile(
+            format=pd.get("format", "FLAC").upper(),
+            codec=pd.get("codec"),
+            bitrate=pd.get("bitrate"),
+            vbr_quality=pd.get("vbr_quality"),
+            sample_rate=pd.get("sample_rate"),
+            bit_depth=pd.get("bit_depth"),
+            channels=pd.get("channels"),
+            preserve_metadata=pd.get("preserve_metadata", True),
+            preserve_artwork=pd.get("preserve_artwork", True),
+            output_dir=pd.get("output_dir", ""),
+            filename_template=pd.get("filename_template", "{artist} - {title}"),
+            collision_policy=pd.get("collision_policy", "rename"),
+        )
         job_id = module.convert(filepath, profile)
         self._active_jobs[job_id] = {"type": "conversion", "filepath": filepath, "status": "running"}
         module.conversionCompleted.connect(
