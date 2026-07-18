@@ -15,23 +15,17 @@ Item {
     Accessible.name: "Inicio"
 
     property var hb: typeof homeBridge !== "undefined" ? homeBridge : null
-    property var cb: typeof connectionsBridge !== "undefined" ? connectionsBridge : null
-    property var jb: typeof jobBridge !== "undefined" ? jobBridge : null
+    property var nb: typeof navigationBridge !== "undefined" ? navigationBridge : null
 
-    enum State {
-        LOADING,
-        READY,
-        EMPTY,
-        ERROR
-    }
+    enum State { LOADING, READY, EMPTY, ERROR }
 
     property int homeState: HomePage.LOADING
     property string statusMessage: ""
 
-    function goToLibrary() {
-        if (typeof navigationBridge !== "undefined" && navigationBridge)
-            navigationBridge.navigate("library")
-    }
+    function goToLibrary() { if (root.nb) root.nb.navigate("library") }
+    function goToPlayback() { if (root.nb) root.nb.navigate("playback") }
+    function goToRoute(r) { if (root.nb) root.nb.navigate(r) }
+    function formatDuration(s) { if (!s) return ""; var m = Math.floor(s / 60); var sec = Math.floor(s % 60); return m + ":" + (sec < 10 ? "0" : "") + sec }
 
     function refresh() {
         if (root.hb && typeof root.hb.refresh !== "undefined") {
@@ -43,7 +37,6 @@ Item {
             root.statusMessage = "Servicio de inicio no disponible"
         }
     }
-
     Component.onCompleted: root.refresh()
 
     Flickable {
@@ -52,268 +45,118 @@ Item {
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-        activeFocusOnTab: true
 
         Column {
             id: column
             width: parent.width
             spacing: MichiTheme.spacing.lg
 
-            HomeHero {
-            }
+            HomeHero {}
 
             StatusBadge {
-                text: {
-                    if (root.homeState === HomePage.LOADING) return "Cargando..."
-                    if (root.homeState === HomePage.ERROR) return "Error"
-                    if (!root.hb) return "Servicio no disponible"
-                    return "Ready"
-                }
-                kind: {
-                    if (root.homeState === HomePage.ERROR || !root.hb) return "error"
-                    if (root.homeState === HomePage.LOADING) return "info"
-                    return "success"
-                }
+                text: root.homeState === HomePage.LOADING ? "Cargando..." : root.homeState === HomePage.ERROR ? "Error" : !root.hb ? "Servicio no disponible" : ""
+                kind: root.homeState === HomePage.ERROR || !root.hb ? "error" : root.homeState === HomePage.LOADING ? "info" : "success"
                 visible: root.homeState !== HomePage.READY || !root.hb
             }
 
+            // Continuar escuchando
             ContinueCard {
-                id: continueCard
                 width: parent.width
                 trackTitle: root.hb ? root.hb.currentTrackTitle : "—"
                 trackArtist: root.hb ? root.hb.currentArtist : "—"
                 hasPlayback: root.hb ? root.hb.hasPlayback : false
                 visible: root.hb ? root.hb.hasPlayback : false
                 activeFocusOnTab: true
-                KeyNavigation.tab: statusGrid
-                KeyNavigation.backtab: column
-                Keys.onReturnPressed: activate()
-                Keys.onSpacePressed: activate()
-                onActivate: {
-                    if (root.hb && root.hb.hasPlayback && typeof navigationBridge !== "undefined")
-                        navigationBridge.navigate("playback")
-                }
+                onActivate: root.goToPlayback()
             }
 
-            Row {
-                id: statusGrid
+            // Biblioteca
+            LibraryStatusCard {
+                id: libraryCard
                 width: parent.width
-                spacing: MichiTheme.spacing.lg
-                activeFocusOnTab: true
-                KeyNavigation.tab: actionRow
-                KeyNavigation.backtab: continueCard
-
-                LibraryStatusCard {
-                    id: libraryCard
-                    width: parent.width * 0.48
-                    albums: root.hb ? root.hb.libraryAlbums : 0
-                    artists: root.hb ? root.hb.libraryArtists : 0
-                    tracks: root.hb ? root.hb.libraryTracks : 0
-                    hasData: root.hb ? root.hb.libraryAlbums > 0 || root.hb.libraryTracks > 0 : false
-                    activeFocusOnTab: true
-                    Keys.onReturnPressed: root.goToLibrary()
-                    Keys.onSpacePressed: root.goToLibrary()
-                    onOpenLibrary: root.goToLibrary()
-                }
-
-                EcosystemCard {
-                    id: ecosystemCard
-                    width: parent.width * 0.48
-                    microServerState: root.cb ? root.cb.microServerState : "not_configured"
-                    activeFocusOnTab: true
-                    Keys.onReturnPressed: root.goToConnections()
-                    Keys.onSpacePressed: root.goToConnections()
-                    onOpenConnections: root.goToConnections()
-                    function goToConnections() {
-                        if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.navigate("connections")
-                    }
-                    onOpenHomeAudio: {
-                        if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.navigate("home_audio")
-                    }
-                }
+                albums: root.hb ? root.hb.libraryAlbums : 0
+                artists: root.hb ? root.hb.libraryArtists : 0
+                tracks: root.hb ? root.hb.libraryTracks : 0
+                hasData: root.hb ? root.hb.libraryAlbums > 0 || root.hb.libraryTracks > 0 : false
+                onOpenLibrary: root.goToLibrary()
             }
 
+            // Álbumes recientes / Favoritos / Mixes
             Row {
-                id: actionRow
                 width: parent.width
-                spacing: MichiTheme.spacing.lg
-                KeyNavigation.tab: microCard
-                KeyNavigation.backtab: statusGrid
+                spacing: MichiTheme.spacing.md
 
                 GlassCard {
-                    id: microCard
                     width: parent.width * 0.48
                     implicitHeight: 100
                     activeFocusOnTab: true
-
+                    Keys.onReturnPressed: root.goToRoute("library.recent")
                     Column {
-                        anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
-                        spacing: MichiTheme.spacing.xs
-
-                        Row {
-                            spacing: MichiTheme.spacing.sm
-                            Text {
-                                text: "Micro Server"
-                                color: MichiTheme.colors.textPrimary
-                                font.pixelSize: MichiTheme.typography.cardTitleSize
-                                font.weight: MichiTheme.typography.weightSemiBold
-                            }
-                            StatusBadge {
-                                text: root.cb && root.cb.microServerState === "connected" ? "Activo" : "Detenido"
-                                kind: root.cb && root.cb.microServerState === "connected" ? "success" : "disconnected"
-                            }
-                        }
-                        Text {
-                            text: root.cb && root.cb.microServerState === "connected"
-                                  ? "Comparte tu biblioteca en la red local"
-                                  : "No se detectó un servidor activo"
-                            color: MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.metaSize
-                            width: parent.width
-                            wrapMode: Text.WordWrap
-                        }
-                        Row {
-                            spacing: MichiTheme.spacing.sm
-                            visible: root.cb && root.cb.microServerState !== "connected"
-                            MichiButton {
-                                text: "Configurar"
-                                variant: "ghost"
-                                font.pixelSize: MichiTheme.typography.metaSize
-                                implicitHeight: 28
-                                onClicked: {
-                                    if (typeof navigationBridge !== "undefined")
-                                        navigationBridge.navigate("connections")
-                                }
-                            }
-                        }
+                        anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.xs
+                        Text { text: "Recién añadido"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                        Text { text: "Explora los últimos álbumes incorporados a tu biblioteca"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; width: parent.width; wrapMode: Text.WordWrap }
+                        MichiButton { text: "Ver"; variant: "ghost"; onClicked: root.goToRoute("library.recent") }
                     }
                 }
 
                 GlassCard {
-                    id: jobsCard
                     width: parent.width * 0.48
-                    implicitHeight: 80
+                    implicitHeight: 100
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: {
-                        if (typeof navigationBridge !== "undefined")
-                            navigationBridge.navigate("jobs")
-                    }
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
-                        spacing: MichiTheme.spacing.sm
-
-                        Text {
-                            text: "Trabajos activos"
-                            color: MichiTheme.colors.textPrimary
-                            font.pixelSize: MichiTheme.typography.cardTitleSize
-                            font.weight: MichiTheme.typography.weightSemiBold
-                        }
-
-                        Text {
-                            text: root.jb ? String(root.jb.activeCount) : "0"
-                            color: MichiTheme.colors.accentBlue
-                            font.pixelSize: MichiTheme.typography.heroTitleSize
-                            font.weight: MichiTheme.typography.weightBold
-                        }
-
-                        Item { Layout.fillWidth: true }
-
-                        MichiButton {
-                            objectName: "homeViewJobsButton"
-                            text: "Ver trabajos"
-                            variant: "ghost"
-                            onClicked: {
-                                if (typeof navigationBridge !== "undefined")
-                                    navigationBridge.navigate("jobs")
-                            }
-                        }
-                    }
-                }
-            }
-
-            GlassCard {
-                id: playbackCard
-                width: parent.width
-                implicitHeight: 60
-                visible: root.hb && root.hb.hasPlayback
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: MichiTheme.spacing.lg
-                    spacing: MichiTheme.spacing.sm
-
-                    CoverImage {
-                        width: 40
-                        height: 40
-                        coverRadius: MichiTheme.radiusSm
-                        coverKey: root.hb && root.hb.hasPlayback ? "NOWPLAYING" : ""
-                        visible: root.hb && root.hb.hasPlayback
-                    }
-
+                    Keys.onReturnPressed: root.goToRoute("library.favorites")
                     Column {
-                        Layout.fillWidth: true
-                        spacing: MichiTheme.spacing.xs
-
-                        Text {
-                            text: root.hb ? root.hb.currentTrackTitle : ""
-                            color: MichiTheme.colors.textPrimary
-                            font.pixelSize: MichiTheme.typography.bodySize
-                            font.weight: MichiTheme.typography.weightMedium
-                            elide: Text.ElideRight
-                            width: parent.width
-                        }
-
-                        Text {
-                            text: root.hb ? root.hb.currentArtist : ""
-                            color: MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.metaSize
-                            elide: Text.ElideRight
-                            width: parent.width
-                        }
-                    }
-
-                    StatusBadge {
-                        text: {
-                            var src = root.hb ? root.hb.backend : ""
-                            if (src === "gstreamer") return "Local"
-                            if (src === "mpd") return "MPD"
-                            if (src && src.indexOf("radio") >= 0) return "Radio"
-                            if (src && src.indexOf("subsonic") >= 0) return "Subsonic"
-                            return src || "—"
-                        }
-                        kind: root.hb && root.hb.hasPlayback ? "active" : "disconnected"
-                    }
-
-                    MichiButton {
-                        objectName: "homeResumeButton"
-                        text: "Reanudar"
-                        variant: "accent"
-                        enabled: root.hb && root.hb.hasPlayback
-                        onClicked: {
-                            if (root.hb && root.hb.hasPlayback && typeof navigationBridge !== "undefined")
-                                navigationBridge.navigate("playback")
-                        }
+                        anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.xs
+                        Text { text: "Favoritos"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                        Text { text: "Tus canciones marcadas como favoritas"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; width: parent.width; wrapMode: Text.WordWrap }
+                        MichiButton { text: "Ver"; variant: "ghost"; onClicked: root.goToRoute("library.favorites") }
                     }
                 }
             }
 
-            AssistantCard {
-                id: assistantCard
+            // Descubrir
+            Row {
                 width: parent.width
-                activeFocusOnTab: true
-                KeyNavigation.backtab: playbackCard
-                Keys.onReturnPressed: root.goToAssistant()
-                Keys.onSpacePressed: root.goToAssistant()
-                onOpenAssistant: root.goToAssistant()
-                function goToAssistant() {
-                    if (typeof navigationBridge !== "undefined" && navigationBridge)
-                        navigationBridge.navigate("assistant")
+                spacing: MichiTheme.spacing.md
+
+                GlassCard {
+                    width: parent.width * 0.48
+                    implicitHeight: 100
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: root.goToRoute("library.unplayed")
+                    Column {
+                        anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.xs
+                        Text { text: "Sin reproducir"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                        Text { text: "Descubre música que aún no has escuchado"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; width: parent.width; wrapMode: Text.WordWrap }
+                        MichiButton { text: "Explorar"; variant: "ghost"; onClicked: root.goToRoute("library.unplayed") }
+                    }
                 }
+
+                GlassCard {
+                    width: parent.width * 0.48
+                    implicitHeight: 100
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: root.goToRoute("mix")
+                    Column {
+                        anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.xs
+                        Text { text: "Mixes"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                        Text { text: "Listas inteligentes generadas para ti"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; width: parent.width; wrapMode: Text.WordWrap }
+                        MichiButton { text: "Ver mixes"; variant: "ghost"; onClicked: root.goToRoute("mix") }
+                    }
+                }
+            }
+
+            // Ecosistema (compacto)
+            EcosystemCard {
+                width: parent.width
+                microServerState: root.hb ? root.hb.ecosystemState || "not_configured" : "not_configured"
+                onOpenConnections: root.goToRoute("connections")
+                onOpenHomeAudio: root.goToRoute("home_audio")
+            }
+
+            // Michi AI (compacto)
+            AssistantCard {
+                width: parent.width
+                onOpenAssistant: root.goToRoute("assistant")
             }
 
             Text {
@@ -332,7 +175,7 @@ Item {
             spacing: MichiTheme.spacing.sm
             Repeater {
                 model: 3
-                MichiSkeleton { width: 320; height: 80 }
+                Skeleton { width: 320; height: 80 }
             }
         }
     }
@@ -345,19 +188,7 @@ Item {
         iconText: "♪"
         showAction: true
         actionText: "Añadir música"
-        onActionClicked: {
-            if (typeof navigationBridge !== "undefined")
-                navigationBridge.navigate("library.sources")
-        }
-    }
-
-    EmptyState {
-        anchors.centerIn: parent
-        anchors.verticalCenterOffset: 60
-        visible: root.homeState === HomePage.EMPTY
-        title: ""
-        subtitle: "También puedes explorar la radio o conectar servidores Subsonic."
-        iconText: ""
+        onActionClicked: root.goToRoute("library.sources")
     }
 
     ErrorState {
