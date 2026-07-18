@@ -9,6 +9,8 @@ Item {
     focus: true
     id: root
 
+    default property alias content: contentItem.data
+
     property string variant: "base"
     property bool hovered: false
     property bool interactive: false
@@ -17,6 +19,15 @@ Item {
     property alias backgroundColor: bgRect.color
     property alias borderColor: bgRect.border.color
     property alias borderWidth: bgRect.border.width
+
+    implicitWidth: contentItem.implicitWidth + MichiTheme.spacing.md * 2
+    implicitHeight: contentItem.implicitHeight + MichiTheme.spacing.md * 2
+
+    Item {
+        id: contentItem
+        anchors.fill: parent
+        anchors.margins: MichiTheme.spacing.md
+    }
 
     Item {
         anchors.fill: parent

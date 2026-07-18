@@ -108,7 +108,7 @@ Item {
             HeroMaterial {
                 id: playlistHero
                 width: parent.width
-                height: MichiTheme.typography.heroTitleSize * 5
+                height: 72
                 radius: MichiTheme.radius.lg
                 showGlow: true
                 Column {

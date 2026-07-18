@@ -94,7 +94,7 @@ Item {
 
                     Text {
                         text: "Cerrar"
-                        color: MichiTheme.colors.error
+                        color: MichiTheme.colors.textOnError
                         font.pixelSize: MichiTheme.typography.metaSize
                         MouseArea {
                             anchors.fill: parent
@@ -141,10 +141,10 @@ Item {
 
                     StatusBadge {
                         Layout.alignment: Qt.AlignHCenter
-                        text: root.ps && root.ps.isPlaying ? "Reproduciendo"
-                            : root.ps && root.ps.backendAvailable ? "Pausado" : "No disponible"
-                        kind: root.ps && root.ps.isPlaying ? "success"
-                            : root.ps && root.ps.backendAvailable ? "info" : "disconnected"
+                        text: !root.ps || !root._hasTrack ? "Sin reproducción"
+                            : root.ps.isPlaying ? "Reproduciendo" : "Pausado"
+                        kind: !root.ps || !root._hasTrack ? "disconnected"
+                            : root.ps.isPlaying ? "success" : "info"
                     }
 
                     NowPlayingProgress {

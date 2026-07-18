@@ -12,8 +12,10 @@ Rectangle {
     property string kind: "info"
     property bool pulse: false
 
+    property int maximumWidth: 200
+
     implicitHeight: 22
-    implicitWidth: text !== "" ? txt.implicitWidth + MichiTheme.spacing.md * 2 : 22
+    implicitWidth: Math.min(text !== "" ? txt.implicitWidth + MichiTheme.spacing.md * 2 : 22, root.maximumWidth)
     radius: MichiTheme.radius.pill
 
     color: {
@@ -49,5 +51,7 @@ Rectangle {
         font.pixelSize: MichiTheme.typography.badgeSize
         font.weight: MichiTheme.typography.weightMedium
         visible: text !== ""
+        elide: Text.ElideRight
+        maximumLineCount: 1
     }
 }

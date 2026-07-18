@@ -93,7 +93,31 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
-        sourceComponent: ErrorState { message: "Radio no disponible" }
+        sourceComponent: Component {
+            Rectangle {
+                anchors.centerIn: parent
+                width: 480
+                height: 320
+                radius: MichiTheme.radius.lg
+                color: MichiTheme.colors.surfaceCard
+                border.width: 1; border.color: MichiTheme.colors.borderCard
+
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: MichiTheme.spacing.md
+                    width: parent.width - MichiTheme.spacing.xl * 2
+
+                    Text { text: "RD"; font.pixelSize: 36; anchors.horizontalCenter: parent.horizontalCenter }
+                    Text { text: "Radio no disponible"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold; anchors.horizontalCenter: parent.horizontalCenter }
+                    Text { text: "Explora emisoras de todo el mundo, descubre nueva musica y guarda tus favoritas. Necesitas una suscripcion premium para acceder al catalogo completo de emisoras y transmision sin interrupciones."; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; width: parent.width }
+                    Row {
+                        anchors.horizontalCenter: parent.horizontalCenter; spacing: MichiTheme.spacing.sm
+                        MichiButton { text: "Configurar"; variant: "primary"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
+                        MichiButton { text: "Ver requisitos"; variant: "ghost"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
+                    }
+                }
+            }
+        }
     }
 
     Loader {

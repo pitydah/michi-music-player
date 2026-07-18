@@ -39,7 +39,31 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
-        sourceComponent: ErrorState { message: "Servicio de conexiones no disponible" }
+        sourceComponent: Component {
+            Rectangle {
+                anchors.centerIn: parent
+                width: 480
+                height: 320
+                radius: MichiTheme.radius.lg
+                color: MichiTheme.colors.surfaceCard
+                border.width: 1; border.color: MichiTheme.colors.borderCard
+
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: MichiTheme.spacing.md
+                    width: parent.width - MichiTheme.spacing.xl * 2
+
+                    Text { text: "CN"; font.pixelSize: 36; anchors.horizontalCenter: parent.horizontalCenter }
+                    Text { text: "Conexiones no disponibles"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold; anchors.horizontalCenter: parent.horizontalCenter }
+                    Text { text: "Conecta servidores Subsonic, Navidrome, Jellyfin y dispositivos para expandir tu ecosistema musical. Necesitas una suscripcion premium para habilitar conexiones con servidores externos y sincronizacion."; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; width: parent.width }
+                    Row {
+                        anchors.horizontalCenter: parent.horizontalCenter; spacing: MichiTheme.spacing.sm
+                        MichiButton { text: "Configurar"; variant: "primary"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
+                        MichiButton { text: "Ver requisitos"; variant: "ghost"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
+                    }
+                }
+            }
+        }
     }
 
     Loader {

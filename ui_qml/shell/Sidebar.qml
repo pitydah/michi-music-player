@@ -17,7 +17,7 @@ Item {
     signal routeRequested(string route)
 
     property bool _userCollapsed: false
-    readonly property bool _autoCollapsed: parent ? parent.width < 900 : false
+    readonly property bool _autoCollapsed: parent ? parent.width < 1050 : false
     property bool collapsed: _autoCollapsed || _userCollapsed
 
     width: collapsed ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
@@ -123,7 +123,7 @@ Item {
     }
 
     ListModel { id: groupedModel
-        ListElement { route: ""; iconSource: ""; label: "NAVEGACION"; notificationCount: 0; isSeparator: true }
+        ListElement { route: ""; iconSource: ""; label: "NAVEGACIÓN"; notificationCount: 0; isSeparator: true }
         ListElement { route: "home"; iconSource: "icons/sidebar_home.svg"; label: "Inicio"; notificationCount: 0; isSeparator: false }
         ListElement { route: "library"; iconSource: "icons/sidebar_library.svg"; label: "Biblioteca"; notificationCount: 0; isSeparator: false }
         ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; label: "Reproducción"; notificationCount: 0; isSeparator: false }
@@ -141,7 +141,7 @@ Item {
     }
 
     ListModel { id: deliveryModel
-        ListElement { route: ""; iconSource: ""; label: "NAVEGACION"; notificationCount: 0; isSeparator: true }
+        ListElement { route: ""; iconSource: ""; label: "NAVEGACIÓN"; notificationCount: 0; isSeparator: true }
         ListElement { route: "home"; iconSource: "icons/sidebar_home.svg"; label: "Inicio"; notificationCount: 0; isSeparator: false }
         ListElement { route: "library"; iconSource: "icons/sidebar_library.svg"; label: "Biblioteca"; notificationCount: 0; isSeparator: false }
         ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; label: "Reproducción"; notificationCount: 0; isSeparator: false }
