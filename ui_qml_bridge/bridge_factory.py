@@ -231,7 +231,7 @@ class BridgeFactory(QObject):
         if "mix" not in self._bridges:
             from ui_qml_bridge.mix_bridge import MixBridge
             self._bridges["mix"] = MixBridge(
-                mix_service=self._get("mix_query_service"),
+                mix_service=self._get("mix_service"),
                 job_service=self._get("job_service"),
                 action_registry=self._bridges.get("action_registry"),
                 navigation_bridge=self._bridges.get("navigation"),
@@ -642,7 +642,7 @@ class BridgeFactory(QObject):
 
         mix = factory._bridges.get("mix")
         if mix is not None:
-            assert mix._mix_svc is container.require("mix_query_service"), \
+            assert mix._mix_svc is container.require("mix_service"), \
                 "mix_bridge.mix_service identity mismatch"
 
         ai = factory._bridges.get("michi_ai")
