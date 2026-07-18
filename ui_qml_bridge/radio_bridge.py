@@ -161,6 +161,12 @@ class RadioBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    @Slot(str, result=dict)
+    def removeStation(self, station_id: str):
+        if not self._radio_svc:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        return self._radio_svc.delete_station(station_id)
+
     @Slot(int, str, str, str, str, result=dict)
     def editStation(self, station_id: int, name: str, url: str,
                     codec: str = "", country: str = ""):
