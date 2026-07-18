@@ -108,3 +108,24 @@ class TestLyricsService:
     def test_lyrics_bridge_has_signals(self):
         from ui_qml_bridge.lyrics_bridge import LyricsBridge
         assert hasattr(LyricsBridge, 'dataChanged')
+
+    def test_lyrics_edit_dialog_exists(self):
+        from pathlib import Path
+        dialog = Path("ui_qml/pages/lyrics/LyricsEditDialog.qml")
+        assert dialog.exists(), "LyricsEditDialog.qml not found"
+
+    def test_lyrics_page_opens_edit_dialog(self):
+        content = Path("ui_qml/pages/lyrics/LyricsPage.qml").read_text()
+        assert "editDialog" in content or "EditDialog" in content
+
+    def test_lyrics_bridge_has_save(self):
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        assert hasattr(LyricsBridge, 'saveLocalLyrics')
+
+    def test_lyrics_bridge_save_returns_dict(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        wm = MagicMock()
+        bridge = LyricsBridge(worker_manager=wm)
+        result = bridge.saveLocalLyrics("Test lyrics content")
+        assert isinstance(result, dict)
