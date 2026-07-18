@@ -19,12 +19,16 @@ Item {
     Component.onCompleted: {
         if (root.bridge && root.bridge.jobModel)
             root.jobListModel = root.bridge.jobModel
-        // Connect to job changes for notifications
+        // Connect to job changes for notifications (only on new failures)
         if (root.bridge && root.notif) {
+            var _lastFailed = 0
             root.bridge.jobsChanged.connect(function() {
                 var failed = root.bridge.failedCount
-                if (failed > 0 && root.notif.showMessage)
-                    root.notif.showMessage(failed + " trabajo(s) fallaron", "warning")
+                if (failed > _lastFailed && root.notif.showMessage) {
+                    var newFails = failed - _lastFailed
+                    root.notif.showMessage(newFails + " trabajo(s) fallaron", "warning")
+                }
+                _lastFailed = failed
             })
         }
     }
@@ -116,10 +120,12 @@ Item {
                     // Cancel button
                     MichiButton {
                         text: qsTr("Cancelar"); variant: "ghost"; implicitWidth: 70; implicitHeight: 28
-                        visible: model.status === "running" || model.status === "processing" || model.status === "queued"
+                        visible: (model.state || model.status) === "running" || (model.state || model.status) === "processing" || (model.state || model.status) === "queued"
                         onClicked: {
-                            if (root.bridge && model.id)
-                                root.bridge.cancelJob(model.id)
+                            if (root.bridge) {
+                                var jid = model.job_id !== undefined ? model.job_id : model.id
+                                root.bridge.cancelJob(jid)
+                            }
                         }
                         Accessible.name: "Cancelar trabajo"
                     }
@@ -127,10 +133,12 @@ Item {
                     // Retry button
                     MichiButton {
                         text: qsTr("Reintentar"); variant: "ghost"; implicitWidth: 70; implicitHeight: 28
-                        visible: model.status === "failed"
+                        visible: (model.state || model.status) === "failed"
                         onClicked: {
-                            if (root.bridge && model.id)
-                                root.bridge.retryJob(model.id)
+                            if (root.bridge) {
+                                var jid = model.job_id !== undefined ? model.job_id : model.id
+                                root.bridge.retryJob(jid)
+                            }
                         }
                         Accessible.name: "Reintentar trabajo"
                     }
