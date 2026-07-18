@@ -12,7 +12,7 @@ class EqualizerService:
         self._player = player_service
         self._presets: dict[str, dict] = {}
         self._enabled = False
-        self._bands: list[float] = [0.0] * 10
+        self._bands: list[float] = [0.0] * 31
         self._preamp: float = 0.0
 
     @property
@@ -59,7 +59,7 @@ class EqualizerService:
         preset = self._presets.get(name)
         if not preset:
             return {"ok": False, "error": "NOT_FOUND"}
-        self._bands = list(preset.get("bands", [0.0] * 10))
+        self._bands = list(preset.get("bands", [0.0] * 31))
         self._preamp = preset.get("preamp", 0.0)
         self._enabled = preset.get("enabled", False)
         self.set_bands(self._bands)
@@ -77,7 +77,7 @@ class EqualizerService:
         return {"ok": False, "error": "NOT_FOUND"}
 
     def reset(self):
-        self._bands = [0.0] * 10
+        self._bands = [0.0] * 31
         self._preamp = 0.0
         self._enabled = False
         if self._player and hasattr(self._player, 'set_eq_bypass'):

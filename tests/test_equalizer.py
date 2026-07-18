@@ -21,7 +21,7 @@ class TestEqualizer:
     def test_initial_state(self, eq):
         assert not eq.available
         assert not eq.enabled
-        assert eq.get_bands() == [0.0] * 10
+        assert eq.get_bands() == [0.0] * 31
         assert eq.get_preamp() == 0.0
 
     def test_set_bands(self, eq):
@@ -41,7 +41,7 @@ class TestEqualizer:
         assert not eq.enabled
 
     def test_save_load_preset(self, eq):
-        eq.set_bands([1.0] * 10)
+        eq.set_bands([1.0] * 31)
         eq.set_preamp(2.0)
         eq.set_enabled(True)
         eq.save_preset("Test Preset")
@@ -49,9 +49,9 @@ class TestEqualizer:
 
         # Reset and load
         eq.reset()
-        assert eq.get_bands() == [0.0] * 10
+        assert eq.get_bands() == [0.0] * 31
         eq.load_preset("Test Preset")
-        assert eq.get_bands() == [1.0] * 10
+        assert eq.get_bands() == [1.0] * 31
         assert eq.get_preamp() == 2.0
 
     def test_delete_preset(self, eq):
@@ -68,11 +68,11 @@ class TestEqualizer:
         assert not result["ok"]
 
     def test_reset(self, eq):
-        eq.set_bands([5.0] * 10)
+        eq.set_bands([5.0] * 31)
         eq.set_preamp(3.0)
         eq.set_enabled(True)
         eq.reset()
-        assert eq.get_bands() == [0.0] * 10
+        assert eq.get_bands() == [0.0] * 31
         assert eq.get_preamp() == 0.0
         assert not eq.enabled
 
