@@ -24,6 +24,7 @@ Item {
     property string _labelFolders: "Carpetas"
     property string _labelRefresh: "Refrescar"
     property string _albumViewMode: "modern"
+    property int _currentLibrarySection: 0
 
     MichiResponsive { id: responsive; availableWidth: root.width }
 
@@ -118,8 +119,8 @@ Item {
             width: parent.width
             title: "Biblioteca"
             filterModel: ["Canciones", "Álbumes", "Artistas", "Géneros"]
-            currentFilterIndex: navBar ? navBar.currentSectionIndex : 0
-            onFilterChanged: function(idx) { if (navBar) navBar.goToSection(idx) }
+            currentFilterIndex: root._currentLibrarySection
+            onFilterChanged: function(idx) { root._currentLibrarySection = idx; pageState.currentTab = idx }
             onSearchChanged: function(text) {
                 if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(text)
                 root._searchActive = text.length > 0
@@ -155,13 +156,13 @@ Item {
         StackLayout {
             id: stackContainer
             width: parent.width
-            height: parent.height - navBar.height - filterBar.height - statusHeader.height - selectionBar.height
-            currentIndex: pageState.hasSavedState() ? pageState.currentTab : navBar.currentTab
-            onCurrentIndexChanged: { if (activeFocus) pageState.currentTab = currentIndex }
+            height: parent.height - filterBar.height - statusHeader.height - selectionBar.height
+            currentIndex: root._currentLibrarySection
+            onCurrentIndexChanged: { root._currentLibrarySection = currentIndex; pageState.currentTab = currentIndex }
 
             FocusScope {
                 id: tracksFocusScope
-                focus: navBar.currentTab === 0
+                focus: root._currentLibrarySection === 0
 
                 LibraryTrackTable {
                     id: tracksView
@@ -180,7 +181,7 @@ Item {
 
             FocusScope {
                 id: albumsFocusScope
-                focus: navBar.currentTab === 1
+                focus: root._currentLibrarySection === 1
 
                 Loader {
                     id: albumViewLoader
@@ -210,7 +211,7 @@ Item {
 
             FocusScope {
                 id: artistsFocusScope
-                focus: navBar.currentTab === 2
+                focus: root._currentLibrarySection === 2
 
                 ArtistGridPage {
                     id: artistGrid
@@ -224,7 +225,7 @@ Item {
 
             FocusScope {
                 id: foldersFocusScope
-                focus: navBar.currentTab === 3
+                focus: root._currentLibrarySection === 3
 
                 FolderBrowserPage {
                     id: folderBrowser

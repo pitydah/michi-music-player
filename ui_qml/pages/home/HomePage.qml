@@ -78,6 +78,7 @@ Item {
                 trackTitle: root.hb ? root.hb.currentTrackTitle : "—"
                 trackArtist: root.hb ? root.hb.currentArtist : "—"
                 hasPlayback: root.hb ? root.hb.hasPlayback : false
+                visible: root.hb ? root.hb.hasPlayback : false
                 activeFocusOnTab: true
                 KeyNavigation.tab: statusGrid
                 KeyNavigation.backtab: column
