@@ -334,6 +334,13 @@ class BridgeFactory(QObject):
                 accessibility_bridge=self._bridges.get("accessibility"),
             )
 
+    def create_mobile_sync_bridge(self):
+        if "mobile_sync" not in self._bridges:
+            from ui_qml_bridge.mobile_sync_bridge import MobileSyncBridge
+            self._bridges["mobile_sync"] = MobileSyncBridge(
+                mobile_sync_service=self._get("mobile_sync_service"),
+            )
+
     def create_radio_bridge(self):
         if "radio" not in self._bridges:
             from ui_qml_bridge.radio_bridge import RadioBridge
@@ -557,6 +564,7 @@ class BridgeFactory(QObject):
         self.create_connections_bridge()
         self.create_home_audio_bridge()
         self.create_devices_bridge()
+        self.create_mobile_sync_bridge()
         self.create_radio_bridge()
         self.create_audio_lab_bridge()
         self.create_metadata_bridge()
