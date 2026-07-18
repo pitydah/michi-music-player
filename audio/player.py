@@ -35,6 +35,9 @@ class PlaybackState(Enum):
     STOPPED = 0
     PLAYING = 1
     PAUSED = 2
+    LOADING = 3
+    BUFFERING = 4
+    FAILED = 5
 
 
 @dataclass
