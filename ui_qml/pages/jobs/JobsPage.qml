@@ -13,11 +13,20 @@ Item {
     id: root
 
     property var bridge: typeof jobBridge !== "undefined" ? jobBridge : null
+    property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property var jobListModel: null
 
     Component.onCompleted: {
         if (root.bridge && root.bridge.jobModel)
             root.jobListModel = root.bridge.jobModel
+        // Connect to job changes for notifications
+        if (root.bridge && root.notif) {
+            root.bridge.jobsChanged.connect(function() {
+                var failed = root.bridge.failedCount
+                if (failed > 0 && root.notif.showMessage)
+                    root.notif.showMessage(failed + " trabajo(s) fallaron", "warning")
+            })
+        }
     }
 
     ColumnLayout {
