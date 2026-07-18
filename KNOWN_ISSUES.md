@@ -43,3 +43,11 @@
   NowPlaying, Inicio premium, library toolbar, reducedMotion, modo claro base
 - P0.1-P0.6: PipelineTransport, 9 tests verticales, 7 errores QML, capturas,
   28 pruebas suprimidas resueltas, 0 errores coleccion
+ 106 tests .skip legacy
+
+## Tests
+- `tests/qml/ai/test_michi_ai_keyboard.py` — 20 tests fallan en pytest estándar.
+  Requieren QQmlApplicationEngine + window visible. No es causado por cambios recientes.
+  Para ejecutarlos: usar `python main.py --qml` con interacción manual.
+- `tests/qml/ai/test_michi_ai_action_registry.py` — errores similares.
+  Requieren contexto QML completo. Preexistente.

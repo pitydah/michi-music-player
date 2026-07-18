@@ -21,15 +21,15 @@ Page {
         
         ColumnLayout {
             id: container
-            width: Math.max(parent.width, 800)
-            anchors.margins: 20
+            Layout.fillWidth: true
+            Layout.minimumWidth: 800
             spacing: 20
             
             Label {
                 Layout.fillWidth: true
                 text: "Configura cómo Michi entrega el audio a tus dispositivos: DACs, ecualización, ReplayGain y perfiles por dispositivo."
                 font.pixelSize: 14
-                color: MichiTheme.textSecondary
+                color: MichiTheme.colors.textSecondary
                 wrapMode: Text.Wrap
             }
             
@@ -82,14 +82,14 @@ Page {
                                     text: model.title
                                     font.pixelSize: 16
                                     font.bold: true
-                                    color: MichiTheme.textPrimary
+                                    color: MichiTheme.colors.textPrimary
                                 }
                                 Item { Layout.fillWidth: true }
                                 Rectangle {
                                     implicitWidth: statusLabel.implicitWidth + 10
                                     implicitHeight: 20
                                     radius: 4
-                                    color: MichiTheme.success
+                                    color: MichiTheme.colors.success
                                     Label {
                                         id: statusLabel
                                         anchors.centerIn: parent
@@ -105,20 +105,20 @@ Page {
                                 Layout.fillWidth: true
                                 text: model.description
                                 font.pixelSize: 13
-                                color: MichiTheme.textSecondary
+                                color: MichiTheme.colors.textSecondary
                                 wrapMode: Text.Wrap
                                 maximumLineCount: 2
                             }
                         }
                         
-                        Label { text: "›"; font.pixelSize: 28; color: MichiTheme.accent }
+                        Label { text: "›"; font.pixelSize: 28; color: MichiTheme.colors.accent }
                     }
                 }
             }
             
             GlassCard {
                 Layout.fillWidth: true
-                anchors.margins: 15
+                Layout.margins: 0
                 
                 ColumnLayout {
                     anchors.fill: parent
@@ -128,14 +128,14 @@ Page {
                         text: "ℹ️ Nota"
                         font.pixelSize: 14
                         font.bold: true
-                        color: MichiTheme.accent
+                        color: MichiTheme.colors.accent
                     }
                     
                     Label {
                         Layout.fillWidth: true
                         text: "Los perfiles de salida afectan solo la reproducción en tiempo real. No modifican los archivos de audio originales."
                         font.pixelSize: 13
-                        color: MichiTheme.textSecondary
+                        color: MichiTheme.colors.textSecondary
                         wrapMode: Text.Wrap
                     }
                 }

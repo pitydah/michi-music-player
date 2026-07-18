@@ -50,7 +50,7 @@ Item {
                     color: root.destructive ? MichiTheme.colors.error : MichiTheme.colors.accentBlue
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     anchors.verticalCenter: parent.verticalCenter
-                    Accessible.role: Accessible.Icon
+                    Accessible.role: Accessible.Graphic
                     Accessible.name: root.destructive ? "Acción destructiva" : "Ejecutar acción"
                 }
 
@@ -107,8 +107,6 @@ Item {
                 layoutDirection: Qt.RightToLeft
 
                 MichiButton {
-                    Accessible.role: Accessible.Button
-
                     id: confirmBtn
                     text: root.destructive ? "Sí, continuar" : "Confirmar"
                     variant: root.destructive ? "danger" : "primary"
@@ -116,8 +114,6 @@ Item {
                     Keys.onReturnPressed: onClicked()
                     onClicked: root.confirm()
                 }
-
-                    Accessible.role: Accessible.Button
 
                 MichiButton {
                     text: "Cancelar"

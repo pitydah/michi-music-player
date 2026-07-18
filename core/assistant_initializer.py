@@ -4,18 +4,13 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from michi_ai.v2 import AssistantCoreService
 from michi_ai.v2.context.context_assembler import ContextAssembler
 from michi_ai.v2.conversation.conversation_service import ConversationService
-from michi_ai.v2.core.response_composer import ResponseComposer
 from michi_ai.v2.intent.capability_resolver import CapabilityResolver
-from michi_ai.v2.intent.intent_router_v2 import IntentRouterV2
 from michi_ai.v2.plan.confirmation_policy_v2 import ConfirmationPolicyV2
 from michi_ai.v2.plan.plan_builder_v2 import PlanBuilderV2
 from michi_ai.v2.plan.plan_executor_v2 import PlanExecutorV2
 from michi_ai.v2.plan.plan_validator import PlanValidator
-from michi_ai.v2.provider.provider_router import ProviderRouter
-from michi_ai.v2.suggest.suggestion_engine_v2 import SuggestionEngineV2
 from michi_ai.v2.tools.register_builtin import register_builtin_tools
 from core.assistant_gateways import AssistantGateways
 from michi_ai.v2.tools.tool_registry_v2 import ToolRegistryV2
@@ -60,7 +55,7 @@ def _make_gateway(gateway_class_name: str, service: Any) -> Any:
 
 @dataclass(frozen=True)
 class AssistantComposition:
-    core_service: AssistantCoreService
+    core_service: Any  # AssistantCoreService or MichiAIEngine
     tool_registry: ToolRegistryV2
     capability_resolver: CapabilityResolver
     context_assembler: ContextAssembler
@@ -89,14 +84,18 @@ def create_assistant_composition(
     home_audio_service: Any = None,
     library_doctor_service: Any = None,
 ) -> AssistantComposition:
+    from core.ai_engine import MichiAIEngine
+    from core.ai.backend_selector import BackendSelector
+    from core.ai.model_manager import ModelManager
+
     tool_registry = ToolRegistryV2()
     capability_resolver = CapabilityResolver()
     context_assembler = ContextAssembler()
     conversation_service = ConversationService()
     confirmation_policy = ConfirmationPolicyV2()
-    plan_executor = PlanExecutorV2(tool_registry)
-    plan_validator = PlanValidator(tool_registry, capability_resolver)
-    plan_builder = PlanBuilderV2(tool_registry, capability_resolver)
+    PlanExecutorV2(tool_registry)
+    PlanValidator(tool_registry, capability_resolver)
+    PlanBuilderV2(tool_registry, capability_resolver)
 
     gateways = AssistantGateways(
         playback=ProductionPlaybackGateway(player_service),
@@ -123,22 +122,13 @@ def create_assistant_composition(
     )
 
     register_builtin_tools(tool_registry, gateways, capabilities=capability_resolver)
-    core = AssistantCoreService(
-        intent_router=IntentRouterV2(),
-        context_assembler=context_assembler,
-        tool_registry=tool_registry,
-        capability_resolver=capability_resolver,
-        plan_builder=plan_builder,
-        plan_validator=plan_validator,
-        plan_executor=plan_executor,
-        confirmation_policy=confirmation_policy,
-        provider_router=ProviderRouter(),
-        conversation_service=conversation_service,
-        suggestion_engine=SuggestionEngineV2(),
-        trace_recorder=TraceRecorder(),
-        response_composer=ResponseComposer(),
+
+    model_manager = ModelManager()
+    backend_selector = BackendSelector(model_manager=model_manager)
+    engine = MichiAIEngine(
+        tool_registry=None,
+        backend_selector=backend_selector,
     )
-    core.register_gateways(gateways.to_dict())
 
     svc_map = {
         "player_service": player_service,
@@ -150,15 +140,14 @@ def create_assistant_composition(
         "navigation_service": navigation_service,
     }
     register_all_context_providers(context_assembler, svc_map)
-    core.initialize()
 
     return AssistantComposition(
-        core_service=core,
+        core_service=engine,
         tool_registry=tool_registry,
         capability_resolver=capability_resolver,
         context_assembler=context_assembler,
         conversation_service=conversation_service,
         confirmation_policy=confirmation_policy,
-        trace_recorder=core.trace_recorder,
+        trace_recorder=TraceRecorder(),
         gateways=gateways,
     )

@@ -39,6 +39,7 @@ Item {
             "artist_detail": "../pages/library/ArtistDetailPage.qml",
             "home_audio": "../pages/home_audio/HomeAudioPage.qml",
             "assistant": "../pages/assistant/AssistantPage.qml",
+            "ai.settings": "../pages/assistant/AISettingsPage.qml",
             "library": "../pages/library/LibraryPage.qml",
             "audio_lab": "../pages/audio_lab/AudioLabOverviewPage.qml",
             "audio_lab.analysis": "../pages/audio_lab/AudioAnalysisPage.qml",

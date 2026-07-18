@@ -132,6 +132,7 @@ Item {
 
         ListElement { route: ""; iconSource: ""; label: "RED Y DISPOSITIVOS"; notificationCount: 0; isSeparator: true }
         ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "devices"; iconSource: "icons/sidebar_devices.svg"; label: "Dispositivos"; notificationCount: 0; isSeparator: false }
         ListElement { route: "connections"; iconSource: "icons/sidebar_servers.svg"; label: "Conexiones"; notificationCount: 0; isSeparator: false }
         ListElement { route: "home_audio"; iconSource: "icons/sidebar_home_audio.svg"; label: "Home Audio"; notificationCount: 0; isSeparator: false }
 

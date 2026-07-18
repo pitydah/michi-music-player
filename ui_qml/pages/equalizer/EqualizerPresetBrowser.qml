@@ -66,15 +66,11 @@ Item {
                 activeFocusOnTab: true
 
 
-            SearchField {
+            MichiSearchField {
                 id: nameField
                 width: parent.width * 0.6
                 placeholderText: "Nombre del preset"
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
-                onTextChangedByUser: root._customName = text
+                onSearchTextChanged: root._customName = text
             }
 
             MichiButton {

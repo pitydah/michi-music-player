@@ -47,10 +47,9 @@ Item {
                 font.pixelSize: MichiTheme.typography.bodySize
                 color: MichiTheme.colors.textMuted
                 visible: !root.loading
-                Accessible.role: Accessible.Icon
+                Accessible.role: Accessible.Graphic
                 Accessible.name: "Buscar"
                 Accessible.description: "Icono de búsqueda"
-                Accessible.ignored: false
             }
 
             QQC2.TextField {

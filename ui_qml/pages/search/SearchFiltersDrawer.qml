@@ -172,26 +172,18 @@ Drawer {
             font.pixelSize: MichiTheme.typography.bodySize
             font.weight: MichiTheme.typography.weightMedium
         }
-                Accessible.role: Accessible.EditableText
-
-                activeFocusOnTab: true
-
 
         Row {
             width: parent.width
             spacing: MichiTheme.spacing.sm
 
-            SearchField {
+            MichiSearchField {
                 id: yearFromField
                 width: parent.width * 0.45
                 placeholderText: "Desde"
                 text: root._yearFrom > 0 ? String(root._yearFrom) : ""
-                onTextChangedByUser: root._yearFrom = parseInt(text) || 0
+                onSearchTextChanged: root._yearFrom = parseInt(text) || 0
             }
-
-                Accessible.role: Accessible.EditableText
-
-                activeFocusOnTab: true
 
             Text {
                 text: "\u2013"
@@ -200,12 +192,12 @@ Drawer {
                 anchors.verticalCenter: parent.verticalCenter
             }
 
-            SearchField {
+            MichiSearchField {
                 id: yearToField
                 width: parent.width * 0.45
                 placeholderText: "Hasta"
                 text: root._yearTo > 0 ? String(root._yearTo) : ""
-                onTextChangedByUser: root._yearTo = parseInt(text) || 0
+                onSearchTextChanged: root._yearTo = parseInt(text) || 0
             }
         }
 
@@ -226,10 +218,6 @@ Drawer {
             width: parent.width
             spacing: MichiTheme.spacing.sm
 
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
             Repeater {
                 model: [
                     {key: "any", label: "Cualquiera"},
@@ -243,10 +231,6 @@ Drawer {
                     text: modelData.label
                     variant: root._qualityFilter === modelData.key ? "primary" : "ghost"
                     implicitHeight: 28
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
                     onClicked: root._qualityFilter = modelData.key
                 }
             }

@@ -72,6 +72,7 @@ ROUTES: dict[str, dict] = {
     "diagnostics.bitperfect": {"title": "Monitor Bit-Perfect", "source": "../pages/DiagnosticsPage.qml", "category": "system", "status": "functional"},
     "diagnostics.identifier": {"title": "Identificador de msica", "source": "../pages/DiagnosticsPage.qml", "category": "system", "status": "functional"},
     "ecosystem": {"title": "Ecosistema Michi", "source": "../pages/home/EcosystemCard.qml", "category": "core", "status": "functional"},
+    "ai.settings": {"title": "Configuración de Michi AI", "source": "../pages/assistant/AISettingsPage.qml", "category": "settings", "status": "functional"},
     "ai": {"title": "Michi AI", "source": "../pages/assistant/AssistantPage.qml", "category": "core", "status": "functional"},
     "assistant": {"title": "Michi AI", "source": "../pages/assistant/AssistantPage.qml", "category": "core", "status": "functional"},
     "disc_lab": {"title": "Disc Lab", "source": "../pages/disc_lab/DiscLabPage.qml", "category": "tools", "status": "experimental"},

@@ -63,9 +63,16 @@ Rectangle {
         }
 
         QQC2.ToolTip {
-            visible: root.hovered && root.description !== ""
+            visible: ma.containsMouse && root.description !== ""
             text: root.description || root.label + " (" + root.shortcut + ")"
             delay: 600
         }
+    }
+
+    MouseArea {
+        id: ma
+        anchors.fill: parent
+        hoverEnabled: true
+        acceptedButtons: Qt.NoButton
     }
 }

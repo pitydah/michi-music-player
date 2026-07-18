@@ -28,6 +28,11 @@ Item {
         boundsBehavior: Flickable.StopAtBounds
         activeFocusOnTab: true
 
+        ScrollBar.vertical: ScrollBar {
+            policy: ScrollBar.AsNeeded
+            width: 6
+        }
+
         Column {
             id: column
             width: parent.width
@@ -127,11 +132,6 @@ Item {
                 }
             }
         }
-    }
-
-    ScrollBar.vertical: ScrollBar {
-        policy: ScrollBar.AsNeeded
-        width: 6
     }
 
     onRequestScrollToBottom: {

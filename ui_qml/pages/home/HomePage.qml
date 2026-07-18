@@ -28,6 +28,11 @@ Item {
     property int homeState: HomePage.LOADING
     property string statusMessage: ""
 
+    function goToLibrary() {
+        if (typeof navigationBridge !== "undefined" && navigationBridge)
+            navigationBridge.navigate("library")
+    }
+
     function refresh() {
         if (root.hb && typeof root.hb.refresh !== "undefined") {
             root.hb.refresh()
@@ -46,7 +51,7 @@ Item {
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
-        boundsBehavior: Flickable.OverBounds
+        boundsBehavior: Flickable.StopAtBounds
         activeFocusOnTab: true
 
         Column {
@@ -109,10 +114,6 @@ Item {
                     Keys.onReturnPressed: root.goToLibrary()
                     Keys.onSpacePressed: root.goToLibrary()
                     onOpenLibrary: root.goToLibrary()
-                    function goToLibrary() {
-                        if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.navigate("library")
-                    }
                 }
 
                 EcosystemCard {

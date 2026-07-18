@@ -314,13 +314,13 @@ Item {
 
     Connections {
         target: root.ps
-        function onErrorChanged() {
+        onErrorChanged: function() {
             if (root.ps && root.ps.errorMessage) {
                 _errorText = root.ps.errorMessage
                 _showError = true
             }
         }
-        function onCommandStateChanged() {
+        onCommandStateChanged: function() {
             if (root.ps && root.ps.lastCommandError && root.ps.lastCommandMessage) {
                 _errorText = root.ps.lastCommandMessage
                 _showError = true

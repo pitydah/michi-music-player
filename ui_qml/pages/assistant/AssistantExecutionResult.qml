@@ -49,7 +49,7 @@ Item {
                     color: status === "success" ? MichiTheme.colors.success : status === "partial" ? MichiTheme.colors.warning : MichiTheme.colors.error
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     anchors.verticalCenter: parent.verticalCenter
-                    Accessible.role: Accessible.Icon
+                    Accessible.role: Accessible.Graphic
                     Accessible.name: status === "success" ? "Completado" : status === "partial" ? "Completado parcialmente" : "Error"
                 }
 
@@ -111,8 +111,6 @@ Item {
                 layoutDirection: Qt.RightToLeft
 
                 MichiButton {
-                    Accessible.role: Accessible.Button
-
                     text: status === "failure" ? "Reintentar" : "Deshacer"
                     variant: status === "failure" ? "primary" : "ghost"
                     visible: (status === "failure" || status === "partial")
@@ -123,8 +121,6 @@ Item {
                         else root.undo()
                     }
                 }
-
-                    Accessible.role: Accessible.Button
 
                 MichiButton {
                     text: "Cerrar"

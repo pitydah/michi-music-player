@@ -174,14 +174,11 @@ Item {
                     }
                 }
 
-                SearchField {
-                    Accessible.role: Accessible.EditableText
-
+                MichiSearchField {
                     id: radioSearch
                     width: parent.width
                     placeholderText: "Buscar emisoras..."
                     onSearchTextChanged: root.doSearch(text)
-                    activeFocusOnTab: true
                     KeyNavigation.tab: favoritesSection
                     KeyNavigation.backtab: flickable
                 }
@@ -289,33 +286,19 @@ Item {
                     visible: _showAddStation
 
                     Rectangle { width: parent.width; height: 1; color: MichiTheme.colors.borderSubtle }
-                        Accessible.role: Accessible.EditableText
 
-                        activeFocusOnTab: true
-
-
-                    SearchField {
-                        Accessible.role: Accessible.EditableText
-
-                        placeholderText: "Nombre"; width: parent.width; onTextChangedByUser: _newName = text
-                        activeFocusOnTab: true
+                    MichiSearchField {
+                        placeholderText: "Nombre"; width: parent.width; onSearchTextChanged: _newName = text
                     }
 
-                    SearchField {
-                        placeholderText: "URL del stream"; width: parent.width; onTextChangedByUser: _newUrl = text
-                        activeFocusOnTab: true
-                        Accessible.role: Accessible.EditableText
-
+                    MichiSearchField {
+                        placeholderText: "URL del stream"; width: parent.width; onSearchTextChanged: _newUrl = text
                     }
-                    SearchField {
-                        placeholderText: "Codec (MP3, AAC, ...)"; width: parent.width; onTextChangedByUser: _newCodec = text
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
+                    MichiSearchField {
+                        placeholderText: "Codec (MP3, AAC, ...)"; width: parent.width; onSearchTextChanged: _newCodec = text
                     }
-                    SearchField {
-                        placeholderText: "País"; width: parent.width; onTextChangedByUser: _newCountry = text
-                        activeFocusOnTab: true
+                    MichiSearchField {
+                        placeholderText: "País"; width: parent.width; onSearchTextChanged: _newCountry = text
                     }
                     MichiButton {
                         objectName: "addStationSubmitButton"

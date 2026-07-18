@@ -259,7 +259,13 @@ class AudioLabService(QObject):
             return False
     
     def _get_last_analysis_date(self) -> str | None:
-        """Obtiene la fecha del último análisis completado."""
-        # TODO: Implementar consulta real a la base de datos
-        # Por ahora retorna None (nunca analizado)
-        return None
+        if self._db is None:
+            return None
+        try:
+            conn = self._db.conn if hasattr(self._db, 'conn') else self._db
+            row = conn.execute(
+                "SELECT MAX(last_analysis_date) FROM audio_lab_results"
+            ).fetchone()
+            return row[0] if row and row[0] else None
+        except Exception:
+            return None

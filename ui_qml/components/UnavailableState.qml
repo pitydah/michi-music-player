@@ -36,7 +36,7 @@ Item {
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.heroTitleSize
             visible: true
-            Accessible.role: Accessible.Icon
+            Accessible.role: Accessible.Graphic
             Accessible.name: "No disponible"
         }
 
@@ -78,18 +78,10 @@ Item {
             visible: root.primaryActionText !== "" || root.secondaryActionText !== ""
 
             MichiButton {
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
                 text: root.primaryActionText
                 visible: text !== ""
                 onClicked: root.primaryActionRequested()
             }
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
 
             MichiButton {
                 text: root.secondaryActionText

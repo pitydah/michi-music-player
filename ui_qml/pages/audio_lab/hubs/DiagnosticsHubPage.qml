@@ -22,8 +22,8 @@ Page {
         
         ColumnLayout {
             id: container
-            width: Math.max(parent.width, 800)
-            anchors.margins: 20
+            Layout.fillWidth: true
+            Layout.minimumWidth: 800
             spacing: 20
             
             // Descripción del área
@@ -31,7 +31,7 @@ Page {
                 Layout.fillWidth: true
                 text: "Herramientas para analizar características técnicas, verificar integridad de archivos y comparar versiones diferentes del mismo audio."
                 font.pixelSize: 14
-                color: MichiTheme.textSecondary
+                color: MichiTheme.colors.textSecondary
                 wrapMode: Text.Wrap
             }
             
@@ -97,7 +97,7 @@ Page {
                                     text: model.title
                                     font.pixelSize: 16
                                     font.bold: true
-                                    color: MichiTheme.textPrimary
+                                    color: MichiTheme.colors.textPrimary
                                 }
                                 
                                 Item { Layout.fillWidth: true }
@@ -107,8 +107,8 @@ Page {
                                     implicitWidth: statusLabel.implicitWidth + 10
                                     implicitHeight: 20
                                     radius: 4
-                                    color: model.status === "available" ? MichiTheme.success : 
-                                           model.status === "experimental" ? MichiTheme.accent : "#888888"
+                                    color: model.status === "available" ? MichiTheme.colors.success : 
+                                           model.status === "experimental" ? MichiTheme.colors.accent : "#888888"
                                     
                                     Label {
                                         id: statusLabel
@@ -126,7 +126,7 @@ Page {
                                 Layout.fillWidth: true
                                 text: model.description
                                 font.pixelSize: 13
-                                color: MichiTheme.textSecondary
+                                color: MichiTheme.colors.textSecondary
                                 wrapMode: Text.Wrap
                                 maximumLineCount: 2
                                 elide: Text.ElideRight
@@ -137,7 +137,7 @@ Page {
                         Label {
                             text: "›"
                             font.pixelSize: 28
-                            color: MichiTheme.accent
+                            color: MichiTheme.colors.accent
                         }
                     }
                 }
@@ -146,7 +146,7 @@ Page {
             // Información adicional
             GlassCard {
                 Layout.fillWidth: true
-                anchors.margins: 15
+                Layout.margins: 0
                 
                 ColumnLayout {
                     anchors.fill: parent
@@ -156,14 +156,14 @@ Page {
                         text: "💡 Consejo"
                         font.pixelSize: 14
                         font.bold: true
-                        color: MichiTheme.accent
+                        color: MichiTheme.colors.accent
                     }
                     
                     Label {
                         Layout.fillWidth: true
                         text: "Usa la comparación A/B para decidir qué versión de un archivo conservar antes de eliminar duplicados. El análisis técnico te ayudará a identificar archivos de baja calidad."
                         font.pixelSize: 13
-                        color: MichiTheme.textSecondary
+                        color: MichiTheme.colors.textSecondary
                         wrapMode: Text.Wrap
                     }
                 }

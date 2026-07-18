@@ -75,7 +75,7 @@ Item {
                 // Breadcrumbs
                 Row {
                     id: breadcrumbRow
-                    anchors.verticalCenter: parent.verticalCenter
+                    Layout.alignment: Qt.AlignVCenter
                     spacing: MichiTheme.spacing.xs
                     visible: root.routeHistory.length > 0
                     width: 250
@@ -127,7 +127,7 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: responsive.compact ? MichiTheme.typography.bodySize : MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
-                    anchors.verticalCenter: parent.verticalCenter
+                    Layout.alignment: Qt.AlignVCenter
                     leftPadding: root.routeHistory.length > 0 ? 0 : MichiTheme.spacing.sm
                     visible: root.routeHistory.length === 0
                     elide: Text.ElideRight
@@ -142,7 +142,7 @@ Item {
             // Búsqueda
             MichiSearchField {
                 id: searchField
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
                 placeholderText: "Buscar en Michi..."
                 implicitWidth: responsive.compact ? Math.min(160, root.width * 0.2) : Math.min(280, root.width * 0.25)
                 objectName: "searchField"

@@ -61,7 +61,7 @@ Item {
             Text {
                 width: parent.width
                 text: root.destructive ? "⚠ Acción destructiva" : "Confirmar acción"
-                Accessible.role: Accessible.Icon
+                Accessible.role: Accessible.Graphic
                 Accessible.name: root.destructive ? "Advertencia: Acción destructiva" : "Confirmar acción"
                 color: root.destructive ? MichiTheme.colors.error : MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
@@ -114,16 +114,12 @@ Item {
                 layoutDirection: Qt.RightToLeft
 
                 MichiButton {
-                    Accessible.role: Accessible.Button
-
                     text: root.destructive ? "Eliminar" : "Confirmar"
                     variant: root.destructive ? "danger" : "primary"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     onClicked: root.confirmed()
                 }
-
-                    Accessible.role: Accessible.Button
 
                 MichiButton {
                     text: "Cancelar"

@@ -21,15 +21,15 @@ Page {
         
         ColumnLayout {
             id: container
-            width: Math.max(parent.width, 800)
-            anchors.margins: 20
+            Layout.fillWidth: true
+            Layout.minimumWidth: 800
             spacing: 20
             
             Label {
                 Layout.fillWidth: true
                 text: "Herramientas para identificar canciones desconocidas, corregir metadatos incorrectos y agregar carátulas y letras faltantes."
                 font.pixelSize: 14
-                color: MichiTheme.textSecondary
+                color: MichiTheme.colors.textSecondary
                 wrapMode: Text.Wrap
             }
             
@@ -90,14 +90,14 @@ Page {
                                     text: model.title
                                     font.pixelSize: 16
                                     font.bold: true
-                                    color: MichiTheme.textPrimary
+                                    color: MichiTheme.colors.textPrimary
                                 }
                                 Item { Layout.fillWidth: true }
                                 Rectangle {
                                     implicitWidth: statusLabel.implicitWidth + 10
                                     implicitHeight: 20
                                     radius: 4
-                                    color: model.status === "available" ? MichiTheme.success : "#888888"
+                                    color: model.status === "available" ? MichiTheme.colors.success : "#888888"
                                     Label {
                                         id: statusLabel
                                         anchors.centerIn: parent
@@ -113,13 +113,13 @@ Page {
                                 Layout.fillWidth: true
                                 text: model.description
                                 font.pixelSize: 13
-                                color: MichiTheme.textSecondary
+                                color: MichiTheme.colors.textSecondary
                                 wrapMode: Text.Wrap
                                 maximumLineCount: 2
                             }
                         }
                         
-                        Label { text: "›"; font.pixelSize: 28; color: MichiTheme.accent }
+                        Label { text: "›"; font.pixelSize: 28;                 color: MichiTheme.colors.accent }
                     }
                 }
             }

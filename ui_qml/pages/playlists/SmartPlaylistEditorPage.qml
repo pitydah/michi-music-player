@@ -310,7 +310,7 @@ Item {
                     text: "Limitar a:"
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
-                    anchors.verticalCenter: parent.verticalCenter
+                    Layout.alignment: Qt.AlignVCenter
                 }
                 SpinBox {
                     focusPolicy: Qt.StrongFocus
@@ -324,6 +324,7 @@ Item {
                     text: "(0 = sin límite)"
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.metaSize
+                    Layout.alignment: Qt.AlignVCenter
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Item { Layout.fillWidth: true }

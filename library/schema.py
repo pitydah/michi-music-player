@@ -434,8 +434,21 @@ class Schema:
             with contextlib.suppress(sqlite3.OperationalError):
                 conn.execute(idx)
 
+        # Create audio_lab_results table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS audio_lab_results (
+                filepath TEXT PRIMARY KEY,
+                last_analysis_date TEXT,
+                analysis_version INTEGER DEFAULT 1,
+                spectral_signature TEXT,
+                integrity_status TEXT,
+                quality_score REAL,
+                notes TEXT
+            )
+        """)
+
         # Track schema version
-        new_ver = 5  # Bump when adding new migrations
+        new_ver = 6  # Bump when adding new migrations
         old_ver = conn.execute("PRAGMA user_version").fetchone()[0]
         if old_ver < new_ver:
             conn.execute(f"PRAGMA user_version={new_ver}")

@@ -99,11 +99,11 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         property variant previousPosition: Qt.point(0, 0)
-                        onPressed: {
-                            previousPosition = Qt.point(mouse.x, mouse.y)
+                        onPressed: function(event) {
+                            previousPosition = Qt.point(event.x, event.y)
                         }
-                        onPositionChanged: {
-                            if (mouse.buttons & Qt.LeftButton) {
+                        onPositionChanged: function(event) {
+                            if (event.buttons & Qt.LeftButton) {
                                 var mainWindow = root.parent
                                 while (mainWindow && mainWindow.objectName !== "mainWindow")
                                     mainWindow = mainWindow.parent

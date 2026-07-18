@@ -279,6 +279,39 @@ class ActionRegistry(QObject):
                     action.handler = self._make_service_handler(svc, method)
                 action.service_name = svc
 
+        destructive_map = {
+            "track_delete_from_disk": ("library_bridge", "deleteFromDisk"),
+            "track_delete_from_library": ("library_bridge", "deleteFromLibrary"),
+            "track_exclude": ("library_bridge", "exclude"),
+            "track_find_duplicates": ("library_bridge", "findDuplicates"),
+            "track_relocate": ("library_bridge", "relocate"),
+            "track_send_to_device": ("devices_bridge", "sendToDevice"),
+        }
+        confirm_messages = {
+            "track_delete_from_disk": "¿Eliminar permanentemente del disco?",
+            "track_delete_from_library": "¿Eliminar de la biblioteca?",
+            "track_exclude": "¿Excluir de la biblioteca?",
+            "track_find_duplicates": "¿Buscar archivos duplicados?",
+            "track_relocate": "¿Reubicar archivo?",
+            "track_send_to_device": "¿Enviar a dispositivo?",
+        }
+        for aid, (svc, method) in destructive_map.items():
+            action = self._actions.get(aid)
+            if action:
+                action.handler = self._make_confirm_handler(
+                    confirm_messages.get(aid, "¿Confirmar acción?"),
+                    self._make_service_handler(svc, method),
+                )
+                action.service_name = svc
+
+    def _make_confirm_handler(self, msg: str, action_fn):
+        return lambda: (
+            self._container.confirmation_bridge.requestConfirmation(msg, action_fn)
+            if self._container and hasattr(self._container, 'confirmation_bridge')
+            and self._container.confirmation_bridge
+            else action_fn()
+        )
+
     def _init_defaults(self):
         defaults = [
             ("navigate_home", "Ir a Inicio", "navigation", "home"),
