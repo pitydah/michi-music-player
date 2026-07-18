@@ -1,5 +1,5 @@
 """Toast service — unified toast notification API for Michi Music Player.
-QML runtime delegates to NotificationBridge; QtWidgets runtime uses legacy toast.
+QML runtime delegates to NotificationBridge.
 """
 import logging
 

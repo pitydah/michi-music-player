@@ -356,8 +356,6 @@ class AlbumRepository:
             track_count=len(tracks),
         )
 
-
-# Legacy stubs for backward compatibility (QtWidgets path)
 def album_groups_to_cover_items(groups: list, cover_size: int = 200) -> list:
     return []
 
