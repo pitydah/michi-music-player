@@ -91,7 +91,7 @@ Rectangle {
         }
 
         Text {
-            text: "\u2715"
+            text: qsTr("\u2715")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.captionSize
             visible: root.dismissible

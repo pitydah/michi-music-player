@@ -51,7 +51,7 @@ Item {
 
             activeFocusOnTab: true
 
-            text: root._showCustom ? "Cancelar" : "Guardar como preset personalizado"
+            text: root._showCustom ? "Cancelar" : qsTr("Guardar como preset personalizado")
             variant: "ghost"
             visible: root.enabled
             onClicked: root._showCustom = !root._showCustom
@@ -69,12 +69,12 @@ Item {
             MichiSearchField {
                 id: nameField
                 width: parent.width * 0.6
-                placeholderText: "Nombre del preset"
+                placeholderText: qsTr("Nombre del preset")
                 onSearchTextChanged: root._customName = text
             }
 
             MichiButton {
-                text: "Guardar"
+                text: qsTr("Guardar")
                 variant: "primary"
                 enabled: root._customName.trim() !== ""
                 onClicked: {
@@ -106,13 +106,13 @@ Item {
 
 
             MichiButton {
-                text: "Importar preset"
+                text: qsTr("Importar preset")
                 variant: "ghost"
                 onClicked: importDialog.open()
             }
 
             MichiButton {
-                text: "Exportar preset"
+                text: qsTr("Exportar preset")
                 variant: "ghost"
                 enabled: root.eqBridge && root.eqBridge.currentPreset !== ""
                 onClicked: exportDialog.open()
@@ -121,7 +121,7 @@ Item {
 
         FileDialog {
             id: importDialog
-            title: "Importar preset EQ"
+            title: qsTr("Importar preset EQ")
             nameFilters: ["Archivos EQ (*.json)", "Todos (*)"]
             onAccepted: {
                 if (root.eqBridge) {
@@ -134,7 +134,7 @@ Item {
 
         FileDialog {
             id: exportDialog
-            title: "Exportar preset EQ"
+            title: qsTr("Exportar preset EQ")
             nameFilters: ["Archivos EQ (*.json)", "Todos (*)"]
             fileMode: FileDialog.SaveFile
             onAccepted: {

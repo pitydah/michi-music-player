@@ -21,7 +21,7 @@ Item {
         spacing: MichiTheme.spacing.sm
 
         MichiButton {
-            text: "Reproducir desde inicio"
+            text: qsTr("Reproducir desde inicio")
             variant: "ghost"
             onClicked: {
                 if (root.qb && root.ps) {
@@ -35,7 +35,7 @@ Item {
         Item { Layout.fillWidth: true }
 
         MichiButton {
-            text: "Deshacer"
+            text: qsTr("Deshacer")
             variant: "ghost"
             enabled: root.qb && root.qb.canUndo
             onClicked: {
@@ -48,7 +48,7 @@ Item {
         }
 
         MichiButton {
-            text: "Guardar como playlist"
+            text: qsTr("Guardar como playlist")
             variant: "ghost"
             onClicked: {
                 if (root.qb) {

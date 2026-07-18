@@ -37,24 +37,24 @@ Rectangle {
 
             MichiPageHeader {
                 width: parent.width
-                title: "Michi UI Foundations"
-                subtitle: "Galería aislada · " + responsive.density + " · " + responsive.columnCount + " columnas"
+                title: qsTr("Michi UI Foundations")
+                subtitle: qsTr("Galería aislada · ") + responsive.density + " · " + responsive.columnCount + " columnas"
             }
 
             MichiSection {
-                title: "Controles"
-                subtitle: "Normal, selected, disabled y focus-visible"
+                title: qsTr("Controles")
+                subtitle: qsTr("Normal, selected, disabled y focus-visible")
 
                 Row {
                     spacing: MichiTheme.spacing.sm
-                    MichiButton { text: "Primaria"; accessibleName: "Acción primaria" }
-                    MichiButton { text: "Secundaria"; variant: "ghost" }
-                    MichiButton { text: "Deshabilitada"; enabled: false }
+                    MichiButton { text: qsTr("Primaria"); accessibleName: "Acción primaria" }
+                    MichiButton { text: qsTr("Secundaria"); variant: "ghost" }
+                    MichiButton { text: qsTr("Deshabilitada"); enabled: false }
                     MichiIconButton { iconSource: "../../icons/warm_play.svg"; tooltipText: "Reproducir"; selected: true }
                 }
                 MichiSearchField {
                     width: Math.min(parent.width, 420)
-                    placeholderText: "Buscar solo en la galería"
+                    placeholderText: qsTr("Buscar solo en la galería")
                     accessibleName: "Buscar componentes"
                 }
                 MichiSlider { width: Math.min(parent.width, 420); value: 42; accessibleName: "Valor de ejemplo" }
@@ -68,33 +68,33 @@ Rectangle {
     }
 
     component StateGallery: MichiSection {
-        title: "Estados canónicos"
+        title: qsTr("Estados canónicos")
         MichiResponsiveGrid {
             width: parent.width
-            MichiLoadingState { message: "Operación asíncrona sin acceso a servicios"; reducedMotion: root.reducedMotion }
-            MichiEmptyState { title: "Biblioteca vacía"; message: "Añade contenido cuando el workflow funcional esté disponible." }
-            MichiErrorState { message: "Mensaje de error con detalles opcionales."; details: "Código público de ejemplo" }
-            MichiUnavailableState { message: "Backend no disponible; la acción permanece visible." }
+            MichiLoadingState { message: qsTr("Operación asíncrona sin acceso a servicios"); reducedMotion: root.reducedMotion }
+            MichiEmptyState { title: qsTr("Biblioteca vacía"); message: "Añade contenido cuando el workflow funcional esté disponible." }
+            MichiErrorState { message: qsTr("Mensaje de error con detalles opcionales."); details: "Código público de ejemplo" }
+            MichiUnavailableState { message: qsTr("Backend no disponible; la acción permanece visible.") }
         }
     }
 
     component ResponsiveGallery: MichiSection {
-        title: "Contenido musical"
-        subtitle: "Texto largo, sin portada y selección"
+        title: qsTr("Contenido musical")
+        subtitle: qsTr("Texto largo, sin portada y selección")
         MichiResponsiveGrid {
             width: parent.width
-            MichiStatCard { label: "Canciones indexadas"; value: "12 480"; supportingText: "Densidad cómoda" }
-            MichiAlbumTile { title: "Un título de álbum deliberadamente largo para validar elipsis"; artist: "Artista de ejemplo" }
-            MichiArtistTile { title: "Artista sin imagen"; subtitle: "24 álbumes"; selected: true }
-            MichiTrackRow { title: "Pista pública de ejemplo"; artist: "Michi"; album: "Galería"; duration: "4:12"; format: "FLAC"; current: true }
+            MichiStatCard { label: qsTr("Canciones indexadas"); value: "12 480"; supportingText: "Densidad cómoda" }
+            MichiAlbumTile { title: qsTr("Un título de álbum deliberadamente largo para validar elipsis"); artist: "Artista de ejemplo" }
+            MichiArtistTile { title: qsTr("Artista sin imagen"); subtitle: "24 álbumes"; selected: true }
+            MichiTrackRow { title: qsTr("Pista pública de ejemplo"); artist: "Michi"; album: "Galería"; duration: "4:12"; format: "FLAC"; current: true }
         }
     }
 
     component TypographyGallery: MichiSection {
-        title: "Tipografía"
-        Text { text: "Hero · " + MichiTheme.typography.heroTitleSize; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize }
-        Text { text: "Título de página"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.pageTitleSize }
-        Text { text: "Texto de cuerpo para lectura prolongada en escritorio."; color: MichiTheme.colors.textNormal; font.pixelSize: MichiTheme.typography.bodySize }
-        Text { text: "Caption y metadatos secundarios"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.captionSize }
+        title: qsTr("Tipografía")
+        Text { text: qsTr("Hero · ") + MichiTheme.typography.heroTitleSize; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize }
+        Text { text: qsTr("Título de página"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.pageTitleSize }
+        Text { text: qsTr("Texto de cuerpo para lectura prolongada en escritorio."); color: MichiTheme.colors.textNormal; font.pixelSize: MichiTheme.typography.bodySize }
+        Text { text: qsTr("Caption y metadatos secundarios"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.captionSize }
     }
 }

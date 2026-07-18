@@ -12,7 +12,7 @@ Page {
     id: page
     
     header: SectionHeader {
-        text: "Diagnóstico"
+        text: qsTr("Diagnóstico")
     }
     
     ScrollView {
@@ -29,7 +29,7 @@ Page {
             // Descripción del área
             Label {
                 Layout.fillWidth: true
-                text: "Herramientas para analizar características técnicas, verificar integridad de archivos y comparar versiones diferentes del mismo audio."
+                text: qsTr("Herramientas para analizar características técnicas, verificar integridad de archivos y comparar versiones diferentes del mismo audio.")
                 font.pixelSize: 14
                 color: MichiTheme.colors.textSecondary
                 wrapMode: Text.Wrap
@@ -40,7 +40,7 @@ Page {
                 model: [
                     { 
                         id: "analysis", 
-                        text: "Análisis Técnico", 
+                        text: qsTr("Análisis Técnico"), 
                         icon: "📊", 
                         description: "Obtén información técnica detallada: códec, bitrate, sample rate, duración",
                         route: "audio_lab.analysis",
@@ -48,7 +48,7 @@ Page {
                     },
                     { 
                         id: "integrity", 
-                        text: "Integridad de Archivos", 
+                        text: qsTr("Integridad de Archivos"), 
                         icon: "✓", 
                         description: "Verifica que los archivos no estén corruptos o truncados",
                         route: "audio_lab.integrity",
@@ -56,7 +56,7 @@ Page {
                     },
                     { 
                         id: "comparison", 
-                        text: "Comparación A/B", 
+                        text: qsTr("Comparación A/B"), 
                         icon: "⚖️", 
                         description: "Compara dos versiones del mismo audio escuchando diferencias",
                         route: "audio_lab.comparison",
@@ -135,7 +135,7 @@ Page {
                         
                         // Flecha de navegación
                         Label {
-                            text: "›"
+                            text: qsTr("›")
                             font.pixelSize: 28
                             color: MichiTheme.colors.accent
                         }
@@ -153,7 +153,7 @@ Page {
                     spacing: 10
                     
                     Label {
-                        text: "💡 Consejo"
+                        text: qsTr("💡 Consejo")
                         font.pixelSize: 14
                         font.bold: true
                         color: MichiTheme.colors.accent
@@ -161,7 +161,7 @@ Page {
                     
                     Label {
                         Layout.fillWidth: true
-                        text: "Usa la comparación A/B para decidir qué versión de un archivo conservar antes de eliminar duplicados. El análisis técnico te ayudará a identificar archivos de baja calidad."
+                        text: qsTr("Usa la comparación A/B para decidir qué versión de un archivo conservar antes de eliminar duplicados. El análisis técnico te ayudará a identificar archivos de baja calidad.")
                         font.pixelSize: 13
                         color: MichiTheme.colors.textSecondary
                         wrapMode: Text.Wrap

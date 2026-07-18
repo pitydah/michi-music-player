@@ -21,7 +21,7 @@ Dialog {
     signal exportCompleted(string path, int count)
     signal exportCancelled()
 
-    title: "Exportar historial"
+    title: qsTr("Exportar historial")
     modal: true
     x: (parent.width - width) / 2
     y: (parent.height - height) / 3
@@ -50,7 +50,7 @@ Dialog {
         width: parent ? parent.width : 360
 
         Text {
-            text: "Exportar historial de reproducción"
+            text: qsTr("Exportar historial de reproducción")
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.bodySize
             wrapMode: Text.WordWrap
@@ -62,7 +62,7 @@ Dialog {
             width: parent.width
 
             Text {
-                text: "Formato:"
+                text: qsTr("Formato:")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
                 anchors.verticalCenter: parent.verticalCenter
@@ -83,7 +83,7 @@ Dialog {
         }
 
         Text {
-            text: "Ruta de destino:"
+            text: qsTr("Ruta de destino:")
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.bodySize
             visible: !root._exporting
@@ -100,19 +100,19 @@ Dialog {
                 id: pathInput
 
                 width: parent.width - 80
-                placeholderText: "Selecciona ruta de destino..."
+                placeholderText: qsTr("Selecciona ruta de destino...")
                 readOnly: true
                 text: root._exportPath
             }
             MichiButton {
-                text: "Examinar"
+                text: qsTr("Examinar")
                 variant: "secondary"
                 onClicked: saveDialog.open()
             }
         }
 
         Text {
-            text: root._estimatedSize > 0 ? "Tamaño estimado: " + _formatSize(root._estimatedSize) : ""
+            text: root._estimatedSize > 0 ? "Tamaño estimado: qsTr(" + _formatSize(root._estimatedSize) : ")"
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
             visible: text !== "" && !root._exporting
@@ -161,7 +161,7 @@ Dialog {
 
             MichiButton {
                 id: exportActionBtn
-                text: root._exporting ? "Exportando..." : root._exportPath ? "Exportar" : "Seleccionar destino"
+                text: root._exporting ? "Exportando..." : root._exportPath ? "Exportar" : qsTr("Seleccionar destino")
                 variant: "primary"
                 enabled: !root._exporting && (root._exportPath !== "" || !root._exportPath)
                 activeFocusOnTab: true
@@ -197,7 +197,7 @@ Dialog {
             }
 
             MichiButton {
-                text: root._exporting ? "Cancelar" : "Cerrar"
+                text: root._exporting ? "Cancelar" : qsTr("Cerrar")
                 variant: "ghost"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()

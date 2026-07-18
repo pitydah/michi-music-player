@@ -31,11 +31,11 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.sm
 
-        SectionHeader { text: "Buscar emisoras"; width: parent.width }
+        SectionHeader { text: qsTr("Buscar emisoras"); width: parent.width }
 
         MichiSearchField {
             width: parent.width
-            placeholderText: "Nombre de emisora..."
+            placeholderText: qsTr("Nombre de emisora...")
             onSearchTextChanged: root._query = text
             onSearchSubmitted: root.search()
         }
@@ -44,18 +44,18 @@ Item {
             spacing: MichiTheme.spacing.sm
             MichiSearchField {
                 width: parent.width * 0.45
-                placeholderText: "País..."
+                placeholderText: qsTr("País...")
                 onSearchTextChanged: root._countryFilter = text
             }
             MichiSearchField {
                 width: parent.width * 0.45
-                placeholderText: "Etiqueta..."
+                placeholderText: qsTr("Etiqueta...")
                 onSearchTextChanged: root._tagFilter = text
             }
         }
 
         MichiButton {
-            text: "Buscar"
+            text: qsTr("Buscar")
             variant: "primary"
             onClicked: root.search()
         }

@@ -35,7 +35,7 @@ Item {
              : root._state === "ERROR" ? AsyncStateView.ERROR
              : root._state === "UNAVAILABLE" ? AsyncStateView.UNAVAILABLE
              : AsyncStateView.READY
-        title: root._state === "ERROR" ? "Error de configuración" : "Latencia no disponible"
+        title: root._state === "ERROR" ? "Error de configuración" : qsTr("Latencia no disponible")
         message: root._errorMessage || "El control de latencia solo está disponible con Snapcast"
         retryAvailable: root._state === "ERROR"
         onRetryRequested: { root._state = "READY"; root._errorMessage = "" }
@@ -60,7 +60,7 @@ Item {
                     MichiButton {
                         Accessible.role: Accessible.Button
 
-                        text: "Volver"
+                        text: qsTr("Volver")
                         variant: "ghost"
                         activeFocusOnTab: true
                         KeyNavigation.tab: latencyHeader
@@ -71,7 +71,7 @@ Item {
 
                     Text {
                         id: latencyHeader
-                        text: "Latencia — " + root.zoneName
+                        text: qsTr("Latencia — ") + root.zoneName
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.pageTitleSize
                         font.weight: MichiTheme.typography.weightSemiBold
@@ -80,7 +80,7 @@ Item {
                 }
 
                 Text {
-                    text: "Ajusta la latencia para sincronizar la reproducción entre zonas."
+                    text: qsTr("Ajusta la latencia para sincronizar la reproducción entre zonas.")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.bodySize
                     wrapMode: Text.WordWrap
@@ -90,7 +90,7 @@ Item {
                 GlassCard {
                     id: latencyCard
                     width: parent.width
-                    title: "Control de latencia"
+                    title: qsTr("Control de latencia")
                     variant: "base"
 
                     Column {
@@ -103,7 +103,7 @@ Item {
                             spacing: MichiTheme.spacing.sm
 
                             Text {
-                                text: "Latencia actual:"
+                                text: qsTr("Latencia actual:")
                                 color: MichiTheme.colors.textSecondary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 anchors.verticalCenter: parent.verticalCenter
@@ -158,7 +158,7 @@ Item {
 
                     MichiButton {
                         id: applyBtn
-                        text: "Aplicar"
+                        text: qsTr("Aplicar")
                         variant: "primary"
                         activeFocusOnTab: true
                         KeyNavigation.tab: resetBtn
@@ -182,7 +182,7 @@ Item {
 
                     MichiButton {
                         id: resetBtn
-                        text: "Restablecer"
+                        text: qsTr("Restablecer")
                         variant: "ghost"
                         activeFocusOnTab: true
                         KeyNavigation.backtab: applyBtn
@@ -197,7 +197,7 @@ Item {
 
                 StatusBadge {
                     visible: root.ha === null
-                    text: "Bridge no disponible"
+                    text: qsTr("Bridge no disponible")
                     kind: "disconnected"
                 }
             }

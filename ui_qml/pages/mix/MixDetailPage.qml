@@ -91,7 +91,7 @@ Item {
                 MichiButton {
                     Accessible.role: Accessible.Button
 
-                    text: "Volver"; variant: "ghost"
+                    text: qsTr("Volver"); variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.tab: detailPlayBtn
                     Keys.onReturnPressed: onClicked()
@@ -121,7 +121,7 @@ Item {
 
                 MichiButton {
                     id: detailPlayBtn
-                    text: "Reproducir"; variant: "primary"
+                    text: qsTr("Reproducir"); variant: "primary"
                     activeFocusOnTab: true
                     enabled: root._songs.length > 0
                     KeyNavigation.tab: detailEnqueueBtn
@@ -136,7 +136,7 @@ Item {
 
                 MichiButton {
                     id: detailEnqueueBtn
-                    text: "Agregar a cola"; variant: "secondary"
+                    text: qsTr("Agregar a cola"); variant: "secondary"
                     activeFocusOnTab: true
                     enabled: root._songs.length > 0
                     KeyNavigation.tab: detailRegenerateBtn
@@ -172,7 +172,7 @@ Item {
 
                 MichiButton {
                     id: detailSaveBtn
-                    text: "Guardar como playlist"; variant: "ghost"
+                    text: qsTr("Guardar como playlist"); variant: "ghost"
                     activeFocusOnTab: true
                     enabled: root._songs.length > 0
                     KeyNavigation.tab: detailExplainBtn
@@ -186,7 +186,7 @@ Item {
 
                 MichiButton {
                     id: detailExplainBtn
-                    text: "Explicar mix"; variant: "ghost"
+                    text: qsTr("Explicar mix"); variant: "ghost"
                     activeFocusOnTab: true
                     enabled: root._songs.length > 0
                     KeyNavigation.tab: detailCancelBtn
@@ -200,7 +200,7 @@ Item {
 
                 MichiButton {
                     id: detailCancelBtn
-                    text: "Cancelar generación"; variant: "danger"
+                    text: qsTr("Cancelar generación"); variant: "danger"
                     activeFocusOnTab: true
                     visible: root._generating
                     KeyNavigation.tab: trackListView
@@ -286,7 +286,7 @@ Item {
                         }
 
                         Text {
-                            width: 24; text: "P"; color: MichiTheme.colors.accentBlue
+                            width: 24; text: qsTr("P"); color: MichiTheme.colors.accentBlue
                             font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter
                             MouseArea {
                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -298,7 +298,7 @@ Item {
                         }
 
                         Text {
-                            width: 24; text: "+"; color: MichiTheme.colors.textMuted
+                            width: 24; text: qsTr("+"); color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.cardTitleSize; anchors.verticalCenter: parent.verticalCenter
                             MouseArea {
                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -338,17 +338,17 @@ Item {
     }
 
     Dialog {
-        id: saveDialog; title: "Guardar mix como playlist"
+        id: saveDialog; title: qsTr("Guardar mix como playlist")
         standardButtons: Dialog.Ok | Dialog.Cancel; modal: true
         x: (parent.width - width) / 2; y: (parent.height - height) / 3
 
         Column {
             spacing: MichiTheme.spacing.md
-            Text { text: "Nombre de la playlist:"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+            Text { text: qsTr("Nombre de la playlist:"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
             TextField {
                 focusPolicy: Qt.StrongFocus
                 id: saveName; width: 280; text: root._mixTitle
-                placeholderText: "Nombre de la playlist"
+                placeholderText: qsTr("Nombre de la playlist")
             }
         }
 

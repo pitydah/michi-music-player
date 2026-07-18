@@ -6,7 +6,7 @@ Item {
     focus: true
     id: root
 
-    property string message: "Cancelando..."
+    property string message: qsTr("Cancelando...")
     property string objectName: "cancellationState"
 
     Accessible.role: Accessible.Alert

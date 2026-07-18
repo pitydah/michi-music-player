@@ -31,7 +31,7 @@ Item {
 
         Text {
             anchors.centerIn: parent
-            text: "MP"
+            text: qsTr("MP")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.cardTitleSize
             font.weight: MichiTheme.typography.weightBold

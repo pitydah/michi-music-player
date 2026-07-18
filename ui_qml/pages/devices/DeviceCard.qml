@@ -46,7 +46,7 @@ Item {
                 color: root.paired ? MichiTheme.colors.badgeActiveBg : MichiTheme.colors.accentSurface
                 Text {
                     anchors.centerIn: parent
-                    text: root.deviceAlias ? root.deviceAlias.charAt(0).toUpperCase() : "?"
+                    text: root.deviceAlias ? root.deviceAlias.charAt(0).toUpperCase() : qsTr("?")
                     color: root.paired ? MichiTheme.colors.success : MichiTheme.colors.accentBlue
                     font.pixelSize: 18; font.weight: MichiTheme.typography.weightBold
                 }
@@ -68,7 +68,7 @@ Item {
 
             StatusBadge {
                 anchors.verticalCenter: parent.verticalCenter
-                text: root.paired ? "Vinculado" : "Detectado"
+                text: root.paired ? "Vinculado" : qsTr("Detectado")
                 kind: root.paired ? "success" : "info"
             }
         }

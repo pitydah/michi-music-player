@@ -184,7 +184,7 @@ Item {
                     activeFocusOnTab: true
 
                     Layout.fillWidth: true
-                    placeholderText: "Buscar ajustes..."
+                    placeholderText: qsTr("Buscar ajustes...")
                     onSearchTextChanged: root.searchCategories(text)
                 }
                     Accessible.role: Accessible.List
@@ -210,7 +210,7 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Label {
-                                text: ">"
+                                text: qsTr(">")
                                 visible: mouse.containsMouse || root.selectedCategoryId === modelData.id
                                 color: MichiTheme.colors.textSecondary
                             }
@@ -239,7 +239,7 @@ Item {
 
                 MichiButton {
                     Layout.fillWidth: true
-                    text: "Restaurar todo"
+                    text: qsTr("Restaurar todo")
                     variant: "danger"
                     visible: root.bridge !== null
                     onClicked: confirmResetDialog.open()
@@ -259,7 +259,7 @@ Item {
                 RowLayout {
                     Layout.fillWidth: true; spacing: MichiTheme.spacing.xs; visible: root.selectedCategory !== null
                     Label {
-                        text: "Ajustes"
+                        text: qsTr("Ajustes")
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.captionSize
                         MouseArea {
@@ -267,7 +267,7 @@ Item {
                             onClicked: root.back()
                         }
                     }
-                    Label { text: "/"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.captionSize; visible: root.selectedCategory !== null }
+                    Label { text: qsTr("/"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.captionSize; visible: root.selectedCategory !== null }
                     Label {
                         text: root.selectedCategory ? root.selectedCategory.title : ""
                         color: root.selectedSection ? MichiTheme.colors.textSecondary : MichiTheme.colors.textPrimary
@@ -279,7 +279,7 @@ Item {
                         }
                     }
                     Label {
-                        text: "/"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.captionSize
+                        text: qsTr("/"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.captionSize
                         visible: root.selectedSection !== null
                     }
                     Label {
@@ -294,7 +294,7 @@ Item {
                         }
                     }
                     Label {
-                        text: "/"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.captionSize
+                        text: qsTr("/"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.captionSize
                         visible: root.selectedEntry !== null
                     }
                     Label {
@@ -308,7 +308,7 @@ Item {
 
                 RowLayout {
                     Layout.fillWidth: true; visible: root.selectedCategory !== null
-                    MichiButton { text: "< Volver"; variant: "ghost"; onClicked: root.back(); Accessible.name: "Volver" }
+                    MichiButton { text: qsTr("< Volver"); variant: "ghost"; onClicked: root.back(); Accessible.name: "Volver" }
                     Label {
                         text: root.selectedEntry ? root.selectedEntry.label :
                               root.selectedSection ? root.selectedSection.title :
@@ -317,7 +317,7 @@ Item {
                         color: MichiTheme.colors.textPrimary; Layout.fillWidth: true
                     }
                     MichiButton {
-                        text: "Restaurar categoría"
+                        text: qsTr("Restaurar categoría")
                         variant: "ghost"
                         visible: root.selectedCategory !== null && root.selectedSection === null && root.selectedEntry === null
                         onClicked: root.resetCategory(root.selectedCategoryId)
@@ -358,7 +358,7 @@ Item {
 
                 MichiSearchField {
                     Layout.fillWidth: true
-                    placeholderText: "Buscar..."
+                    placeholderText: qsTr("Buscar...")
                     onSearchTextChanged: root.searchCategories(text)
                 }
 
@@ -379,7 +379,7 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Label {
-                                text: ">"
+                                text: qsTr(">")
                                 visible: mouse.containsMouse || root.selectedCategoryId === modelData.id
                                 color: MichiTheme.colors.textSecondary
                             }
@@ -405,7 +405,7 @@ Item {
 
                 RowLayout {
                     Layout.fillWidth: true; visible: root.selectedCategory !== null
-                    MichiButton { text: "< Volver"; variant: "ghost"; onClicked: root.back(); Accessible.name: "Volver" }
+                    MichiButton { text: qsTr("< Volver"); variant: "ghost"; onClicked: root.back(); Accessible.name: "Volver" }
                     Label {
                         text: root.selectedEntry ? root.selectedEntry.label :
                               root.selectedSection ? root.selectedSection.title :
@@ -443,7 +443,7 @@ Item {
         RowLayout {
             Layout.fillWidth: true; Layout.margins: MichiTheme.spacing.md
             MichiButton {
-                text: "< Volver"
+                text: qsTr("< Volver")
             Accessible.role: Accessible.EditableText
 
             activeFocusOnTab: true
@@ -455,7 +455,7 @@ Item {
             Label {
                 text: root.selectedEntry ? root.selectedEntry.label :
                       root.selectedSection ? root.selectedSection.title :
-                      root.selectedCategory ? root.selectedCategory.title : "Ajustes"
+                      root.selectedCategory ? root.selectedCategory.title : qsTr("Ajustes")
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 color: MichiTheme.colors.textPrimary; Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
@@ -464,7 +464,7 @@ Item {
 
         MichiSearchField {
             Layout.fillWidth: true; Layout.margins: MichiTheme.spacing.sm
-            placeholderText: "Buscar..."
+            placeholderText: qsTr("Buscar...")
             visible: root.selectedCategory === null
             onSearchTextChanged: root.searchCategories(text)
         }
@@ -491,7 +491,7 @@ Item {
         RowLayout {
             Layout.fillWidth: true; Layout.margins: MichiTheme.spacing.sm
             MichiButton {
-                text: "<"
+                text: qsTr("<")
                 variant: "ghost"
                 implicitWidth: 36
                 visible: root.selectedCategory !== null
@@ -500,7 +500,7 @@ Item {
             Label {
                 text: root.selectedEntry ? root.selectedEntry.label :
                       root.selectedSection ? root.selectedSection.title :
-                      root.selectedCategory ? root.selectedCategory.title : "Ajustes"
+                      root.selectedCategory ? root.selectedCategory.title : qsTr("Ajustes")
                 font.pixelSize: MichiTheme.typography.bodySize
                 color: MichiTheme.colors.textPrimary; Layout.fillWidth: true
                 elide: Text.ElideRight
@@ -632,25 +632,25 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: "Cargando ajustes" }
+        sourceComponent: LoadingState { title: qsTr("Cargando ajustes") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
-        sourceComponent: ErrorState { message: "Ajustes no disponibles" }
+        sourceComponent: ErrorState { message: qsTr("Ajustes no disponibles") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: "Sin opciones de configuración" }
+        sourceComponent: EmptyState { title: qsTr("Sin opciones de configuración") }
     }
 
     ConfirmActionDialog {
         id: confirmResetDialog
-        title: "Restaurar todos los ajustes"
-        message: "¿Estás seguro de que deseas restaurar todos los ajustes a sus valores por defecto? Esta acción no puede deshacerse."
+        title: qsTr("Restaurar todos los ajustes")
+        message: qsTr("¿Estás seguro de que deseas restaurar todos los ajustes a sus valores por defecto? Esta acción no puede deshacerse.")
         onConfirmed: root.resetAll()
     }
 }

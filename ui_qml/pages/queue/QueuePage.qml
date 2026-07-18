@@ -41,19 +41,19 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: "Cargando cola" }
+        sourceComponent: LoadingState { title: qsTr("Cargando cola") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
-        sourceComponent: ErrorState { message: "Servicio de cola no disponible" }
+        sourceComponent: ErrorState { message: qsTr("Servicio de cola no disponible") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: MichiBanner { message: "Cola vacía — agrega canciones para empezar a reproducir"; kind: "info"; dismissible: false }
+        sourceComponent: MichiBanner { message: qsTr("Cola vacía — agrega canciones para empezar a reproducir"); kind: "info"; dismissible: false }
     }
 
     RowLayout {

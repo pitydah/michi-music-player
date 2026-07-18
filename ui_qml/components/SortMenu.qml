@@ -5,7 +5,7 @@ import "../theme"
 QQC2.Popup {
     id: root
 
-    property string title: "Ordenar por"
+    property string title: qsTr("Ordenar por")
     property var options: []
     property string currentOption: ""
     property bool ascending: true
@@ -57,7 +57,7 @@ QQC2.Popup {
 
 
                 contentItem: Text {
-                    text: root.ascending ? "\u25B2 Asc" : "\u25BC Desc"
+                    text: root.ascending ? "\u25B2 Asc" : qsTr("\u25BC Desc")
                     color: MichiTheme.colors.accentBlue
                     font.pixelSize: MichiTheme.typography.captionSize
                     font.weight: MichiTheme.typography.weightMedium

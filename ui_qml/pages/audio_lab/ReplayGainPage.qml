@@ -107,27 +107,27 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Text {
-                text: "ReplayGain"
+                text: qsTr("ReplayGain")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
             }
 
             Text {
-                text: "Análisis de loudness, pico, ganancia track/album, escritura de etiquetas"
+                text: qsTr("Análisis de loudness, pico, ganancia track/album, escritura de etiquetas")
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
             }
 
             AudioInputSelection { id: inputSelection }
             AudioSelectionSummary { width: parent.width }
 
-            SectionHeader { text: "Modo de análisis"; width: parent.width; objectName: "rgModeHeader"; Accessible.name: "Modo de análisis" }
+            SectionHeader { text: qsTr("Modo de análisis"); width: parent.width; objectName: "rgModeHeader"; Accessible.name: "Modo de análisis" }
 
             Row {
                 spacing: MichiTheme.spacing.md
                 GlassCard {
                     width: (parent.width - MichiTheme.spacing.md) / 2; height: 70
-                    title: "Track"
-                    subtitle: "Ganancia por pista"
+                    title: qsTr("Track")
+                    subtitle: qsTr("Ganancia por pista")
                     variant: root._mode === "track" ? "accent" : "base"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
@@ -136,8 +136,8 @@ Item {
                 }
                 GlassCard {
                     width: (parent.width - MichiTheme.spacing.md) / 2; height: 70
-                    title: "Album"
-                    subtitle: "Ganancia uniforme por álbum"
+                    title: qsTr("Album")
+                    subtitle: qsTr("Ganancia uniforme por álbum")
                     variant: root._mode === "album" ? "accent" : "base"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
@@ -146,7 +146,7 @@ Item {
                 }
             }
 
-            SectionHeader { text: "Ajustes"; width: parent.width; objectName: "rgSettingsHeader"; Accessible.name: "Ajustes" }
+            SectionHeader { text: qsTr("Ajustes"); width: parent.width; objectName: "rgSettingsHeader"; Accessible.name: "Ajustes" }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md; variant: "base"
@@ -154,7 +154,7 @@ Item {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
 
                     Column { width: parent.width; spacing: MichiTheme.spacing.xs
-                        Text { text: "Preamp: " + root._preamp.toFixed(1) + " dB"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
+                        Text { text: qsTr("Preamp: ") + root._preamp.toFixed(1) + " dB"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
                         MichiSlider {
                             Accessible.role: Accessible.Slider
 
@@ -166,7 +166,7 @@ Item {
                     }
 
                     Column { width: parent.width; spacing: MichiTheme.spacing.xs
-                        Text { text: "Headroom: " + root._headroom.toFixed(1) + " dB"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
+                        Text { text: qsTr("Headroom: ") + root._headroom.toFixed(1) + " dB"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
                             Accessible.role: Accessible.Slider
 
                         MichiSlider {
@@ -179,14 +179,14 @@ Item {
                 }
             }
 
-            SectionHeader { text: "Acciones"; width: parent.width; objectName: "rgActionsHeader"; Accessible.name: "Acciones" }
+            SectionHeader { text: qsTr("Acciones"); width: parent.width; objectName: "rgActionsHeader"; Accessible.name: "Acciones" }
 
             Row {
                     Accessible.role: Accessible.Button
 
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
-                    text: root._state === root.stateAnalyzing ? "Analizando..." : "Analizar"
+                    text: root._state === root.stateAnalyzing ? "Analizando..." : qsTr("Analizar")
                     variant: "primary"
                     enabled: root._state !== root.stateAnalyzing && root._state !== root.stateApplying && inputSelection.selectedFiles.length > 0
                     activeFocusOnTab: true
@@ -197,7 +197,7 @@ Item {
                     onClicked: root._startAnalysis()
                 }
                 MichiButton {
-                    text: "Escribir etiquetas"
+                    text: qsTr("Escribir etiquetas")
                     variant: "secondary"
                     enabled: root._results !== null && root._state === root.stateCompleted
                     activeFocusOnTab: true
@@ -208,7 +208,7 @@ Item {
                     onClicked: root._applyTags()
                 }
                 MichiButton {
-                    text: "Eliminar etiquetas"
+                    text: qsTr("Eliminar etiquetas")
                     variant: "danger"
                     enabled: inputSelection.selectedFiles.length > 0
                     activeFocusOnTab: true
@@ -218,7 +218,7 @@ Item {
                 }
             }
 
-            SectionHeader { text: "Resultados"; width: parent.width; objectName: "rgResultsHeader"; Accessible.name: "Resultados" }
+            SectionHeader { text: qsTr("Resultados"); width: parent.width; objectName: "rgResultsHeader"; Accessible.name: "Resultados" }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md; variant: root._results ? "accent" : root._state === root.stateFailed ? "danger" : "status"
@@ -249,12 +249,12 @@ Item {
 
                 activeFocusOnTab: true
 
-                text: "Bridge no disponible"
+                text: qsTr("Bridge no disponible")
                 kind: "disconnected"
             }
 
             MichiButton {
-                text: "Volver"
+                text: qsTr("Volver")
                 variant: "ghost"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()

@@ -8,7 +8,7 @@ Item {
     property string controlObjectName: ""
     objectName: controlObjectName
 
-    property string placeholderText: "Buscar..."
+    property string placeholderText: qsTr("Buscar...")
     property string text: ""
     property bool loading: false
     property int debounceMs: 0
@@ -43,7 +43,7 @@ Item {
 
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: "\uD83D\uDD0D"
+                text: qsTr("\uD83D\uDD0D")
                 font.pixelSize: MichiTheme.typography.bodySize
                 color: MichiTheme.colors.textMuted
                 visible: !root.loading

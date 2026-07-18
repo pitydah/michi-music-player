@@ -47,7 +47,7 @@ Item {
         Column {
             id: column; width: parent.width; spacing: MichiTheme.spacing.lg
 
-            MichiButton { text: "← Volver"; variant: "ghost"; onClicked: root.backRequested() }
+            MichiButton { text: qsTr("← Volver"); variant: "ghost"; onClicked: root.backRequested() }
 
             Rectangle {
                 width: parent.width; height: 200
@@ -97,26 +97,26 @@ Item {
                         }
 
                         Text {
-                            text: "Canciones: " + (root.lib && root.lib.trackModel ? root.lib.trackModel.totalCount : 0)
+                            text: qsTr("Canciones: ") + (root.lib && root.lib.trackModel ? root.lib.trackModel.totalCount : 0)
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.metaSize
                         }
 
                         RowLayout {
                             spacing: MichiTheme.spacing.sm
-                            MichiButton { text: "Reproducir"; variant: "primary"; onClicked: { if (root.lib) root.lib.playAlbum(root.albumKey) } }
-                            MichiButton { text: "Mezclar"; variant: "ghost"; onClicked: {
+                            MichiButton { text: qsTr("Reproducir"); variant: "primary"; onClicked: { if (root.lib) root.lib.playAlbum(root.albumKey) } }
+                            MichiButton { text: qsTr("Mezclar"); variant: "ghost"; onClicked: {
                                 if (root.lib && root.lib.trackModel) {
                                     root.lib.trackModel.refreshForAlbum(root.albumKey)
                                 }
                             }}
-                            MichiButton { text: "Añadir a cola"; variant: "ghost"; onClicked: { if (root.lib) root.lib.enqueueAlbum(root.albumKey) } }
+                            MichiButton { text: qsTr("Añadir a cola"); variant: "ghost"; onClicked: { if (root.lib) root.lib.enqueueAlbum(root.albumKey) } }
                         }
                     }
                 }
             }
 
-            SectionHeader { text: "Canciones"; width: parent.width }
+            SectionHeader { text: qsTr("Canciones"); width: parent.width }
 
             ListView {
                 Accessible.role: Accessible.List

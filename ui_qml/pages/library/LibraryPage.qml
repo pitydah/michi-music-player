@@ -117,7 +117,7 @@ Item {
         MichiLibraryToolbar {
             id: toolbar
             width: parent.width
-            title: "Biblioteca"
+            title: qsTr("Biblioteca")
             filterModel: ["Canciones", "Álbumes", "Artistas", "Géneros"]
             currentFilterIndex: root._currentLibrarySection
             onFilterChanged: function(idx) { root._currentLibrarySection = idx; pageState.currentTab = idx }
@@ -264,8 +264,8 @@ Item {
         anchors.centerIn: parent
         active: libraryState === LibraryPage.NO_SOURCES
         sourceComponent: LibraryEmptyState {
-            title: "Sin fuentes"
-            message: "No hay fuentes de música configuradas. Agrega carpetas en Ajustes."
+            title: qsTr("Sin fuentes")
+            message: qsTr("No hay fuentes de música configuradas. Agrega carpetas en Ajustes.")
             actionText: "Configurar fuentes"
             onActionRequested: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("settings") }
         }
@@ -275,8 +275,8 @@ Item {
         anchors.centerIn: parent
         active: libraryState === LibraryPage.FILTERED_EMPTY
         sourceComponent: LibraryEmptyState {
-            title: "Sin resultados"
-            message: "No se encontraron elementos con los filtros actuales."
+            title: qsTr("Sin resultados")
+            message: qsTr("No se encontraron elementos con los filtros actuales.")
             actionText: "Limpiar filtros"
             onActionRequested: root.clearFilters()
         }
@@ -286,8 +286,8 @@ Item {
         anchors.centerIn: parent
         active: libraryState === LibraryPage.SOURCE_OFFLINE
         sourceComponent: LibraryEmptyState {
-            title: "Fuente no disponible"
-            message: "La fuente de biblioteca configurada no está disponible en este momento."
+            title: qsTr("Fuente no disponible")
+            message: qsTr("La fuente de biblioteca configurada no está disponible en este momento.")
             actionText: "Reintentar"
             onActionRequested: root.refreshData()
         }
@@ -297,8 +297,8 @@ Item {
         anchors.centerIn: parent
         active: libraryState === LibraryPage.QUERY_ERROR || libraryState === LibraryPage.DATABASE_ERROR
         sourceComponent: LibraryErrorState {
-            title: "Error de biblioteca"
-            message: root.lib ? root.lib.errorMessage : "Ocurrió un error al acceder a la biblioteca."
+            title: qsTr("Error de biblioteca")
+            message: root.lib ? root.lib.errorMessage : qsTr("Ocurrió un error al acceder a la biblioteca.")
             actionText: "Reintentar"
             onActionRequested: root.refreshData()
         }
@@ -307,7 +307,7 @@ Item {
     LoadingState {
         anchors.centerIn: parent
         visible: libraryState === LibraryPage.INITIALIZING || libraryState === LibraryPage.LOADING || libraryState === LibraryPage.SCANNING
-        title: "Cargando biblioteca"
+        title: qsTr("Cargando biblioteca")
     }
 
     Connections {

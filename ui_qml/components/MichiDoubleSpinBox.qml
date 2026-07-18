@@ -38,7 +38,7 @@ Item {
 
         MichiButton {
             objectName: "michiDoubleSpinBoxDecrement"
-            text: "-"
+            text: qsTr("-")
             implicitWidth: 32
             implicitHeight: parent.height
             variant: "ghost"
@@ -108,7 +108,7 @@ Item {
 
         MichiButton {
             objectName: "michiDoubleSpinBoxIncrement"
-            text: "+"
+            text: qsTr("+")
             implicitWidth: 32
             implicitHeight: parent.height
             variant: "ghost"

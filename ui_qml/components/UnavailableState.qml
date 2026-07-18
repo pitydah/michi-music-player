@@ -8,8 +8,8 @@ Item {
     focus: true
     id: root
 
-    property string title: "No disponible"
-    property string message: "Esta función no está disponible en este momento."
+    property string title: qsTr("No disponible")
+    property string message: qsTr("Esta función no está disponible en este momento.")
     property string details: ""
     property string iconText: ""
     property string primaryActionText: ""

@@ -105,7 +105,7 @@ Item {
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "Notificaciones"
+                        text: qsTr("Notificaciones")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.cardTitleSize
                         font.weight: MichiTheme.typography.weightSemiBold
@@ -113,7 +113,7 @@ Item {
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "(" + notificationModel.count + ")"
+                        text: qsTr("(") + notificationModel.count + ")"
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.secondarySize
                         visible: notificationModel.count > 0
@@ -176,14 +176,14 @@ Item {
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: "\u2709"
+                        text: qsTr("\u2709")
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: 32
                     }
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: "Sin notificaciones"
+                        text: qsTr("Sin notificaciones")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.sectionTitleSize
                         font.weight: MichiTheme.typography.weightMedium
@@ -192,7 +192,7 @@ Item {
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: parent.width
-                        text: "No hay notificaciones activas"
+                        text: qsTr("No hay notificaciones activas")
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize
                         horizontalAlignment: Text.AlignHCenter
@@ -201,7 +201,7 @@ Item {
 
                     MichiButton {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: "Cerrar"
+                        text: qsTr("Cerrar")
                         variant: "ghost"
                         onClicked: root.close()
                     }

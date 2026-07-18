@@ -31,20 +31,20 @@ Item {
             spacing: MichiTheme.spacing.sm
 
             Text {
-                text: "Compatibilidad de formatos"
+                text: qsTr("Compatibilidad de formatos")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
             }
 
             Text {
-                text: "Protocolo: " + (root.protocol || "Desconocido")
+                text: qsTr("Protocolo: ") + (root.protocol || "Desconocido")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
             }
 
             Text {
-                text: "Formatos soportados"
+                text: qsTr("Formatos soportados")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.cardTitleSize
                 font.weight: MichiTheme.typography.weightMedium
@@ -57,13 +57,13 @@ Item {
                 Repeater {
                     model: root.supportedFormats
                     StatusBadge {
-                        text: modelData; kind: "success"
+                        text: modelData; kind: qsTr("success")
                     }
                 }
             }
 
             Text {
-                text: "Formatos no soportados (solo audio)"
+                text: qsTr("Formatos no soportados (solo audio)")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.cardTitleSize
                 font.weight: MichiTheme.typography.weightMedium
@@ -76,7 +76,7 @@ Item {
                 Repeater {
                     model: root.unsupportedFormats
                     StatusBadge {
-                        text: modelData; kind: "disconnected"
+                        text: modelData; kind: qsTr("disconnected")
                     }
                 }
             }

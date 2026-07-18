@@ -52,7 +52,7 @@ BaseDialog {
 
             Layout.fillWidth: true
             visible: root.showDontAskAgain
-            text: "No volver a preguntar"
+            text: qsTr("No volver a preguntar")
             checked: root.dontAskAgain
             font.pixelSize: MichiTheme.typography.captionSize
             Accessible.role: Accessible.CheckBox

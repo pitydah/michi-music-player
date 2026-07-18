@@ -18,7 +18,7 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.sm
 
-        SectionHeader { text: "Diferencias"; width: parent.width }
+        SectionHeader { text: qsTr("Diferencias"); width: parent.width }
 
         GlassMaterial {
             width: parent.width; radius: MichiTheme.radius.md; variant: "base"
@@ -49,7 +49,7 @@ Item {
                             }
                             Text {
                                 width: parent.width * 0.30
-                                text: "→ " + (modelData.newValue || "")
+                                text: qsTr("→ ") + (modelData.newValue || "")
                                 color: MichiTheme.colors.accentBlue
                                 font.pixelSize: MichiTheme.typography.metaSize
                                 elide: Text.ElideRight

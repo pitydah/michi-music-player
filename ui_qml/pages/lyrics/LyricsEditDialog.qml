@@ -10,7 +10,7 @@ Dialog {
 
     property var lyricsBridge: null
 
-    title: "Editar letra"
+    title: qsTr("Editar letra")
     modal: true
     standardButtons: Dialog.Close
     width: Math.min(parent.width * 0.85, 600)
@@ -26,7 +26,7 @@ Dialog {
         height: parent.height
 
         Text {
-            text: "Edita la letra manualmente. Los cambios se guardarán localmente."
+            text: qsTr("Edita la letra manualmente. Los cambios se guardarán localmente.")
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.captionSize
             wrapMode: Text.WordWrap
@@ -49,7 +49,7 @@ Dialog {
                 id: editor
                 width: parent.width
                 text: root.lyricsBridge ? root.lyricsBridge.lyrics : ""
-                placeholderText: "Escribe la letra aquí..."
+                placeholderText: qsTr("Escribe la letra aquí...")
                 font.pixelSize: MichiTheme.typography.bodySize
                 color: MichiTheme.colors.textPrimary
                 wrapMode: Text.WordWrap
@@ -61,13 +61,13 @@ Dialog {
             anchors.horizontalCenter: parent.horizontalCenter
 
             Button {
-                text: "Cancelar"
+                text: qsTr("Cancelar")
                 flat: true
                 onClicked: root.close()
             }
 
             Button {
-                text: "Guardar"
+                text: qsTr("Guardar")
                 enabled: editor.text.trim() !== ""
                 onClicked: {
                     if (root.lyricsBridge && typeof root.lyricsBridge.saveLocalLyrics === "function") {

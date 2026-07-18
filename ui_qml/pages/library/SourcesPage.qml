@@ -40,7 +40,7 @@ Item {
                 anchors.leftMargin: MichiTheme.spacing.md; anchors.rightMargin: MichiTheme.spacing.md
 
                 Text {
-                    text: "Fuentes de biblioteca"
+                    text: qsTr("Fuentes de biblioteca")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -48,8 +48,8 @@ Item {
 
                 Item { Layout.fillWidth: true }
 
-                MichiButton { text: "Añadir fuente"; variant: "primary"; onClicked: addDialog.open() }
-                MichiButton { text: "Refrescar"; variant: "ghost"; onClicked: root.reload() }
+                MichiButton { text: qsTr("Añadir fuente"); variant: "primary"; onClicked: addDialog.open() }
+                MichiButton { text: qsTr("Refrescar"); variant: "ghost"; onClicked: root.reload() }
             }
         }
 
@@ -98,7 +98,7 @@ Item {
 
     FolderDialog {
         id: addDialog
-        title: "Seleccionar carpeta de música"
+        title: qsTr("Seleccionar carpeta de música")
         onAccepted: {
             var folderPath = selectedFolder.toLocalFile()
             if (root.lib && root.lib.addFolder) {
@@ -131,14 +131,14 @@ Item {
             padding: MichiTheme.spacing.lg
 
             Label {
-                text: "Eliminar fuente"
+                text: qsTr("Eliminar fuente")
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
                 color: MichiTheme.colors.textPrimary
             }
 
             Label {
-                text: "¿Eliminar esta fuente de la biblioteca?"
+                text: qsTr("¿Eliminar esta fuente de la biblioteca?")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.bodySize
                     wrapMode: Text.WordWrap
@@ -153,7 +153,7 @@ Item {
 
                     activeFocusOnTab: true
 
-                    text: "Sí"
+                    text: qsTr("Sí")
                     variant: "danger"
                     onClicked: {
                         if (root.lib && root.lib.removeSource) root.lib.removeSource(confirmDialog.sourceId)
@@ -162,7 +162,7 @@ Item {
                     }
                 }
                 MichiButton {
-                    text: "No"
+                    text: qsTr("No")
                     variant: "ghost"
                     onClicked: confirmDialog.close()
                 }

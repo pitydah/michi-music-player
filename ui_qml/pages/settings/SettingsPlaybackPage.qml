@@ -63,13 +63,13 @@ Item {
                 spacing: MichiTheme.spacing.md
 
                 PageHeader {
-                    title: "Reproducción"
-                    subtitle: "Volumen, transiciones y normalización"
+                    title: qsTr("Reproducción")
+                    subtitle: qsTr("Volumen, transiciones y normalización")
                 }
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Salida de audio"
+                    title: qsTr("Salida de audio")
                     interactive: false
 
                     ColumnLayout {
@@ -85,12 +85,12 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Dispositivo de salida"
+                                    text: qsTr("Dispositivo de salida")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                                 Label {
-                                    text: "Selecciona el dispositivo de audio"
+                                    text: qsTr("Selecciona el dispositivo de audio")
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
@@ -122,12 +122,12 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Perfil de audio"
+                                    text: qsTr("Perfil de audio")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                                 Label {
-                                    text: "Estándar, Hi-Fi, Bit-Perfect, DSD"
+                                    text: qsTr("Estándar, Hi-Fi, Bit-Perfect, DSD")
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
@@ -151,7 +151,7 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Volumen"
+                    title: qsTr("Volumen")
                     interactive: false
 
                     ColumnLayout {
@@ -167,7 +167,7 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Volumen predeterminado"
+                                    text: qsTr("Volumen predeterminado")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
@@ -202,7 +202,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Recordar volumen"
+                                text: qsTr("Recordar volumen")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -218,7 +218,7 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Transiciones"
+                    title: qsTr("Transiciones")
                     interactive: false
 
                         ColumnLayout {
@@ -230,7 +230,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Reproducción sin pausas (Gapless)"
+                                text: qsTr("Reproducción sin pausas (Gapless)")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -252,7 +252,7 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Crossfade"
+                                    text: qsTr("Crossfade")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
@@ -280,7 +280,7 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "ReplayGain"
+                    title: qsTr("ReplayGain")
                     interactive: false
 
                     ColumnLayout {
@@ -296,12 +296,12 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Dispositivo de salida"
+                                    text: qsTr("Dispositivo de salida")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                                 Label {
-                                    text: "Selecciona el dispositivo de audio"
+                                    text: qsTr("Selecciona el dispositivo de audio")
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
@@ -310,10 +310,10 @@ Item {
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
                                 model: ListModel {
-                                    ListElement { text: "Desactivado"; value: "off" }
-                                    ListElement { text: "Pista (Track)"; value: "track" }
-                                    ListElement { text: "Álbum (Album)"; value: "album" }
-                                    ListElement { text: "Automático"; value: "auto" }
+                                    ListElement { text: qsTr("Desactivado"); value: "off" }
+                                    ListElement { text: qsTr("Pista (Track)"); value: "track" }
+                                    ListElement { text: qsTr("Álbum (Album)"); value: "album" }
+                                    ListElement { text: qsTr("Automático"); value: "auto" }
                                 }
                                 textRole: "text"
                                 valueRole: "value"
@@ -331,7 +331,7 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Buffer"
+                    title: qsTr("Buffer")
                     interactive: false
 
                     ColumnLayout {
@@ -347,7 +347,7 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Tamaño de buffer"
+                                    text: qsTr("Tamaño de buffer")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }

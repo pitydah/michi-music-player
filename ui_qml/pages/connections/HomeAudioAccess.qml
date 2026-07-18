@@ -40,14 +40,14 @@ Item {
                 spacing: MichiTheme.spacing.xs
 
                 Text {
-                    text: "Home Audio"
+                    text: qsTr("Home Audio")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.cardTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                 }
 
                 Text {
-                    text: "Home Assistant y Michi Music Stream en tu hogar"
+                    text: qsTr("Home Assistant y Michi Music Stream en tu hogar")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.metaSize
                 }
@@ -59,7 +59,7 @@ Item {
                 activeFocusOnTab: true
 
                 anchors.verticalCenter: parent.verticalCenter
-                text: "Abrir"
+                text: qsTr("Abrir")
                 variant: "primary"
                 onClicked: root.openHomeAudio()
             }

@@ -19,7 +19,7 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.sm
 
-        SectionHeader { text: "Carátula"; width: parent.width }
+        SectionHeader { text: qsTr("Carátula"); width: parent.width }
 
         GlassMaterial {
             width: parent.width; radius: MichiTheme.radius.md; variant: "base"
@@ -35,12 +35,12 @@ Item {
                 Row {
                     spacing: MichiTheme.spacing.sm
                     MichiButton {
-                        text: "Elegir archivo"
+                        text: qsTr("Elegir archivo")
                         variant: "secondary"
                         onClicked: artworkFileDialog.open()
                     }
                     MichiButton {
-                        text: "Extraer carátula"
+                        text: qsTr("Extraer carátula")
                         variant: "ghost"
                         onClicked: {
                             if (root.mb && typeof root.mb.hasArtwork !== "undefined")
@@ -48,7 +48,7 @@ Item {
                         }
                     }
                     MichiButton {
-                        text: root._confirmRemove ? "Confirmar eliminar" : "Eliminar carátula"
+                        text: root._confirmRemove ? "Confirmar eliminar" : qsTr("Eliminar carátula")
                         variant: root._confirmRemove ? "danger" : "ghost"
                         onClicked: {
                             if (!root._confirmRemove) {
@@ -73,7 +73,7 @@ Item {
 
         FileDialog {
             id: artworkFileDialog
-            title: "Seleccionar imagen de carátula"
+            title: qsTr("Seleccionar imagen de carátula")
             nameFilters: ["Imágenes (*.png *.jpg *.jpeg *.webp)", "Todos los archivos (*)"]
             onAccepted: {
                 var path = artworkFileDialog.selectedFile.toString().replace("file://", "")

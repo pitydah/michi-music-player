@@ -44,7 +44,7 @@ Rectangle {
 
             Text {
                 anchors.centerIn: parent
-                text: root.sourceType === "local" ? "HD" : root.sourceType === "subsonic" ? "SV" : "SR"
+                text: root.sourceType === "local" ? "HD" : root.sourceType === "subsonic" ? "SV" : qsTr("SR")
                 color: root.sourceEnabled ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightBold
             }
@@ -94,15 +94,15 @@ Rectangle {
 
                 activeFocusOnTab: true
 
-                text: root.sourceEnabled ? "Desactivar" : "Activar"
+                text: root.sourceEnabled ? "Desactivar" : qsTr("Activar")
                 variant: "ghost"; height: 24
                 onClicked: root.toggleEnabled()
             }
 
             RowLayout { spacing: MichiTheme.spacing.xs
-                MichiButton { text: "Editar"; variant: "ghost"; height: 24; onClicked: root.editRequested() }
-                MichiButton { text: root.scanning ? "..." : "Escanear"; variant: "ghost"; height: 24; enabled: !root.scanning; onClicked: root.scanRequested() }
-                MichiButton { text: "Eliminar"; variant: "ghost"; height: 24; onClicked: root.removeRequested() }
+                MichiButton { text: qsTr("Editar"); variant: "ghost"; height: 24; onClicked: root.editRequested() }
+                MichiButton { text: root.scanning ? "..." : qsTr("Escanear"); variant: "ghost"; height: 24; enabled: !root.scanning; onClicked: root.scanRequested() }
+                MichiButton { text: qsTr("Eliminar"); variant: "ghost"; height: 24; onClicked: root.removeRequested() }
             }
         }
     }

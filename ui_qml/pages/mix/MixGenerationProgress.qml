@@ -41,7 +41,7 @@ Item {
             }
 
             Text {
-                text: "[X]"; color: MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.bodySize
+                text: qsTr("[X]"); color: MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.bodySize
                 anchors.verticalCenter: parent.verticalCenter; visible: root.cancellable
                 MouseArea {
                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor

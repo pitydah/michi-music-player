@@ -87,7 +87,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: "Cargando emisoras" }
+        sourceComponent: LoadingState { title: qsTr("Cargando emisoras") }
     }
 
     Loader {
@@ -107,13 +107,13 @@ Item {
                     spacing: MichiTheme.spacing.md
                     width: parent.width - MichiTheme.spacing.xl * 2
 
-                    Text { text: "RD"; font.pixelSize: 36; anchors.horizontalCenter: parent.horizontalCenter }
-                    Text { text: "Radio no disponible"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold; anchors.horizontalCenter: parent.horizontalCenter }
-                    Text { text: "Explora emisoras de todo el mundo, descubre nueva musica y guarda tus favoritas. Necesitas una suscripcion premium para acceder al catalogo completo de emisoras y transmision sin interrupciones."; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; width: parent.width }
+                    Text { text: qsTr("RD"); font.pixelSize: 36; anchors.horizontalCenter: parent.horizontalCenter }
+                    Text { text: qsTr("Radio no disponible"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold; anchors.horizontalCenter: parent.horizontalCenter }
+                    Text { text: qsTr("Explora emisoras de todo el mundo, descubre nueva musica y guarda tus favoritas. Necesitas una suscripcion premium para acceder al catalogo completo de emisoras y transmision sin interrupciones."); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; width: parent.width }
                     Row {
                         anchors.horizontalCenter: parent.horizontalCenter; spacing: MichiTheme.spacing.sm
-                        MichiButton { text: "Configurar"; variant: "primary"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
-                        MichiButton { text: "Ver requisitos"; variant: "ghost"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
+                        MichiButton { text: qsTr("Configurar"); variant: "primary"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
+                        MichiButton { text: qsTr("Ver requisitos"); variant: "ghost"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
                     }
                 }
             }
@@ -123,7 +123,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: "Sin emisoras"; subtitle: "Agrega emisoras para empezar a escuchar" }
+        sourceComponent: EmptyState { title: qsTr("Sin emisoras"); subtitle: "Agrega emisoras para empezar a escuchar" }
     }
 
     RadioEditDialog {
@@ -159,11 +159,11 @@ Item {
                     Column {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
                         Text {
-                            text: "Radio"; color: MichiTheme.colors.textPrimary
+                            text: qsTr("Radio"); color: MichiTheme.colors.textPrimary
                             font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold
                         }
                         Text {
-                            text: "Emisoras de todo el mundo."; color: MichiTheme.colors.textSecondary
+                            text: qsTr("Emisoras de todo el mundo."); color: MichiTheme.colors.textSecondary
                             font.pixelSize: MichiTheme.typography.bodySize; width: parent.width * 0.70; wrapMode: Text.WordWrap
                         }
                         StatusBadge {
@@ -177,7 +177,7 @@ Item {
                 MichiSearchField {
                     id: radioSearch
                     width: parent.width
-                    placeholderText: "Buscar emisoras..."
+                    placeholderText: qsTr("Buscar emisoras...")
                     onSearchTextChanged: root.doSearch(text)
                     KeyNavigation.tab: favoritesSection
                     KeyNavigation.backtab: flickable
@@ -185,7 +185,7 @@ Item {
 
                 SectionHeader {
                     id: favoritesSection
-                    text: "Favoritas"
+                    text: qsTr("Favoritas")
                     width: parent.width
                 }
 
@@ -214,7 +214,7 @@ Item {
                 }
 
                 Text {
-                    text: "No hay emisoras favoritas."
+                    text: qsTr("No hay emisoras favoritas.")
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width; wrapMode: Text.WordWrap
                     visible: root.rd && root.rd.favorites.length === 0
@@ -222,7 +222,7 @@ Item {
 
                 SectionHeader {
                     id: allStationsHeader
-                    text: "Todas las emisoras"
+                    text: qsTr("Todas las emisoras")
                     width: parent.width
                 }
 
@@ -269,7 +269,7 @@ Item {
                 MichiButton {
                     id: addStationBtn
                     objectName: "addStationToggleButton"
-                    text: _showAddStation ? "Cancelar" : "Añadir emisora"
+                    text: _showAddStation ? "Cancelar" : qsTr("Añadir emisora")
                     variant: "ghost"
                     anchors.horizontalCenter: parent.horizontalCenter
                     activeFocusOnTab: true
@@ -288,21 +288,21 @@ Item {
                     Rectangle { width: parent.width; height: 1; color: MichiTheme.colors.borderSubtle }
 
                     MichiSearchField {
-                        placeholderText: "Nombre"; width: parent.width; onSearchTextChanged: _newName = text
+                        placeholderText: qsTr("Nombre"); width: parent.width; onSearchTextChanged: _newName = text
                     }
 
                     MichiSearchField {
-                        placeholderText: "URL del stream"; width: parent.width; onSearchTextChanged: _newUrl = text
+                        placeholderText: qsTr("URL del stream"); width: parent.width; onSearchTextChanged: _newUrl = text
                     }
                     MichiSearchField {
-                        placeholderText: "Codec (MP3, AAC, ...)"; width: parent.width; onSearchTextChanged: _newCodec = text
+                        placeholderText: qsTr("Codec (MP3, AAC, ...)"); width: parent.width; onSearchTextChanged: _newCodec = text
                     }
                     MichiSearchField {
-                        placeholderText: "País"; width: parent.width; onSearchTextChanged: _newCountry = text
+                        placeholderText: qsTr("País"); width: parent.width; onSearchTextChanged: _newCountry = text
                     }
                     MichiButton {
                         objectName: "addStationSubmitButton"
-                        text: "Añadir"; variant: "primary"
+                        text: qsTr("Añadir"); variant: "primary"
                         anchors.horizontalCenter: parent.horizontalCenter
                         activeFocusOnTab: true
                         Keys.onReturnPressed: onClicked()
@@ -313,7 +313,7 @@ Item {
 
                 SectionHeader {
                     id: historySection
-                    text: "Historial reciente"
+                    text: qsTr("Historial reciente")
                     width: parent.width
                 }
                 Repeater {
@@ -329,7 +329,7 @@ Item {
 
                 StatusBadge {
                     id: radioStatusBadge
-                    text: "Radio QML — " + (root.rd && root.rd.stations ? root.rd.stations.length + " emisoras" : "0 emisoras")
+                    text: qsTr("Radio QML — ") + (root.rd && root.rd.stations ? root.rd.stations.length + " emisoras" : "0 emisoras")
                     kind: "info"
                 }
             }

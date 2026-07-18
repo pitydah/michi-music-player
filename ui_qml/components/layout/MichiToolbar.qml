@@ -18,7 +18,7 @@ FocusScope {
     activeFocusOnTab: true
 
     Accessible.role: Accessible.ToolBar
-    Accessible.name: title !== "" ? title : "Barra de herramientas"
+    Accessible.name: title !== "" ? title : qsTr("Barra de herramientas")
 
     MichiResponsive { id: responsive; availableWidth: root.width }
 

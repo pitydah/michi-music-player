@@ -91,14 +91,14 @@ Item {
                 }
 
                 MichiButton {
-                    text: "Cancelar"
+                    text: qsTr("Cancelar")
                     variant: "ghost"
                     visible: root.status === "queued" || root.status === "transferring"
                     onClicked: root.cancelClicked(root.jobId)
                 }
 
                 MichiButton {
-                    text: "Reintentar"
+                    text: qsTr("Reintentar")
                     variant: "ghost"
                     visible: root.status === "failed" || root.status === "cancelled"
                     onClicked: root.retryClicked(root.jobId)

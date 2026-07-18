@@ -81,7 +81,7 @@ BaseDialog {
                 spacing: MichiTheme.spacing.sm
 
                 Text {
-                    text: "\u26A0"
+                    text: qsTr("\u26A0")
                     color: MichiTheme.colors.error
                     font.pixelSize: MichiTheme.typography.cardTitleSize
                     Accessible.role: Accessible.Icon
@@ -91,7 +91,7 @@ BaseDialog {
 
                 Text {
                     Layout.fillWidth: true
-                    text: "Esta acción no se puede deshacer."
+                    text: qsTr("Esta acción no se puede deshacer.")
                     color: MichiTheme.colors.error
                     font.pixelSize: MichiTheme.typography.captionSize
                     font.weight: MichiTheme.typography.weightMedium
@@ -110,7 +110,7 @@ BaseDialog {
         }
 
         Text {
-            text: "Escribe \"" + root.keyword + "\" para habilitar la confirmación:"
+            text: qsTr("Escribe \")" + root.keyword + "\" para habilitar la confirmación:"
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.captionSize
             font.weight: MichiTheme.typography.weightMedium

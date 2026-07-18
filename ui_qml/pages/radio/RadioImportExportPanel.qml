@@ -18,7 +18,7 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.sm
 
-        SectionHeader { text: "Importar / Exportar"; width: parent.width }
+        SectionHeader { text: qsTr("Importar / Exportar"); width: parent.width }
 
         Row {
             spacing: MichiTheme.spacing.sm
@@ -28,7 +28,7 @@ Item {
 
                 activeFocusOnTab: true
 
-                text: "Importar OPML"
+                text: qsTr("Importar OPML")
                 variant: "ghost"
                 onClicked: importOpmlDialog.open()
             }
@@ -38,7 +38,7 @@ Item {
 
 
             MichiButton {
-                text: "Exportar OPML"
+                text: qsTr("Exportar OPML")
                 variant: "ghost"
                 onClicked: {
                     if (root.rd && typeof root.rd.exportOpml === "function") {
@@ -52,13 +52,13 @@ Item {
             }
 
             MichiButton {
-                text: "Importar JSON"
+                text: qsTr("Importar JSON")
                 variant: "ghost"
                 onClicked: importJsonDialog.open()
             }
 
             MichiButton {
-                text: "Exportar JSON"
+                text: qsTr("Exportar JSON")
                 variant: "ghost"
                 onClicked: {
                     if (root.rd && typeof root.rd.exportJson === "function") {
@@ -74,7 +74,7 @@ Item {
 
         FileDialog {
             id: importOpmlDialog
-            title: "Importar OPML"
+            title: qsTr("Importar OPML")
             nameFilters: ["OPML (*.opml *.xml)", "Todos (*)"]
             onAccepted: {
                 if (root.rd && typeof root.rd.importOpml === "function") {
@@ -89,7 +89,7 @@ Item {
 
         FileDialog {
             id: importJsonDialog
-            title: "Importar JSON"
+            title: qsTr("Importar JSON")
             nameFilters: ["JSON (*.json)", "Todos (*)"]
             onAccepted: {
                 if (root.rd && typeof root.rd.importJson === "function") {

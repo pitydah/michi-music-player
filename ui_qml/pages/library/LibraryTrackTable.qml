@@ -182,7 +182,7 @@ Item {
             visible: root.trackModel && root.trackModel.hasMore
 
             Text {
-                text: "Mostrando " + (root.trackModel ? root.trackModel.count : 0) + " de " + (root.trackModel ? root.trackModel.totalCount : 0)
+                text: qsTr("Mostrando ") + (root.trackModel ? root.trackModel.count : 0) + " de " + (root.trackModel ? root.trackModel.totalCount : 0)
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
                 anchors.verticalCenter: parent.verticalCenter
@@ -193,7 +193,7 @@ Item {
             }
 
             MichiButton {
-                text: "Cargar más"; variant: "ghost"; height: 24
+                text: qsTr("Cargar más"); variant: "ghost"; height: 24
                 onClicked: {
                     if (root.trackModel && root.trackModel.hasMore && !root._fetchingMore) {
                         root._fetchingMore = true
@@ -211,8 +211,8 @@ Item {
 
             LibraryEmptyState {
                 anchors.centerIn: parent
-                title: "Sin resultados"
-                message: "No se encontraron canciones con los filtros actuales."
+                title: qsTr("Sin resultados")
+                message: qsTr("No se encontraron canciones con los filtros actuales.")
                 actionText: "Limpiar filtros"
                 onActionRequested: { if (typeof libraryBridge !== "undefined") libraryBridge.clearFilters() }
             }

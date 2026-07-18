@@ -55,7 +55,7 @@ Item {
                 spacing: MichiTheme.spacing.xs
 
                 Text {
-                    text: "Continuar escuchando"
+                    text: qsTr("Continuar escuchando")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.cardTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -74,7 +74,7 @@ Item {
 
             MichiButton {
                 anchors.verticalCenter: parent.verticalCenter
-                text: root.hasPlayback ? "Reproducir" : "Sin reproducción"
+                text: root.hasPlayback ? "Reproducir" : qsTr("Sin reproducción")
                 variant: root.hasPlayback ? "accent" : "secondary"
                 enabled: root.hasPlayback
                 onClicked: root.activate()

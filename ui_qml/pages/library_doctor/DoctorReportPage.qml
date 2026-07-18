@@ -27,7 +27,7 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.sm
 
-        SectionHeader { text: "Reporte final"; width: parent.width }
+        SectionHeader { text: qsTr("Reporte final"); width: parent.width }
 
         GlassMaterial {
             width: parent.width
@@ -41,7 +41,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 Text {
-                    text: "Resumen de reparación"
+                    text: qsTr("Resumen de reparación")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.cardTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -52,15 +52,15 @@ Item {
                 Row {
                     spacing: MichiTheme.spacing.xl
                     Column { spacing: MichiTheme.spacing.xs
-                        Text { text: "Reparados"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+                        Text { text: qsTr("Reparados"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                         Text { text: String(root.fixedCount); color: MichiTheme.colors.success; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
                     }
                     Column { spacing: MichiTheme.spacing.xs
-                        Text { text: "Fallidos"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+                        Text { text: qsTr("Fallidos"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                         Text { text: String(root.failedCount); color: MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
                     }
                     Column { spacing: MichiTheme.spacing.xs
-                        Text { text: "Omitidos"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+                        Text { text: qsTr("Omitidos"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                         Text { text: String(root.skippedCount); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.sectionTitleSize }
                     }
                 }
@@ -68,7 +68,7 @@ Item {
                 Item { width: 1; height: MichiTheme.spacing.sm }
 
                 Text {
-                    text: "Detalle por archivo:"
+                    text: qsTr("Detalle por archivo:")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.bodySize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -107,7 +107,7 @@ Item {
 
                         activeFocusOnTab: true
 
-                        text: "Exportar reporte"
+                        text: qsTr("Exportar reporte")
                         variant: "primary"
                         onClicked: root.exportReport()
                     }
@@ -117,7 +117,7 @@ Item {
 
 
                     MichiButton {
-                        text: "Deshacer todo"
+                        text: qsTr("Deshacer todo")
                         variant: "danger"
                         enabled: root.fixedCount > 0
                         onClicked: root.undoAll()

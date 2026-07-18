@@ -32,7 +32,7 @@ Item {
             spacing: MichiTheme.spacing.sm
 
             Text {
-                text: "En conflicto: " + root.conflicts.join(", ")
+                text: qsTr("En conflicto: ") + root.conflicts.join(", ")
                 color: MichiTheme.colors.error
                 font.pixelSize: MichiTheme.typography.metaSize
                 visible: root.conflicts.length > 0
@@ -40,7 +40,7 @@ Item {
             }
 
             StatusBadge {
-                text: root.available ? (root.active ? "Activo" : "Inactivo") : "No disponible"
+                text: root.available ? (root.active ? "Activo" : qsTr("Inactivo")) : "No disponible"
                 kind: root.available ? (root.active ? "success" : "info") : "disconnected"
             }
         }

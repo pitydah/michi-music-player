@@ -20,7 +20,7 @@ Item {
     Column {
         anchors.fill: parent; spacing: MichiTheme.spacing.sm
 
-        SectionHeader { text: "Sugerencias"; width: parent.width }
+        SectionHeader { text: qsTr("Sugerencias"); width: parent.width }
 
         Flow {
             width: parent.width; spacing: MichiTheme.spacing.sm
@@ -33,7 +33,7 @@ Item {
 
                     activeFocusOnTab: true
 
-                    text: modelData; variant: "ghost"
+                    text: modelData; variant: qsTr("ghost")
                     onClicked: root.suggestionClicked(modelData)
                 }
             }

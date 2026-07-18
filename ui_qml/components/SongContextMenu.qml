@@ -34,10 +34,10 @@ Item {
 
         MenuSeparator {}
 
-        MichiButton { text: "Reproducir"; variant: "ghost"; width: parent.width; height: 32; onClicked: root.playClicked() }
-        MichiButton { text: "Añadir a la cola"; variant: "ghost"; width: parent.width; height: 32; onClicked: root.queueClicked() }
-        MichiButton { text: "Añadir a playlist"; variant: "ghost"; width: parent.width; height: 32; onClicked: root.addToPlaylistClicked() }
-        MichiButton { text: "Editar metadatos"; variant: "ghost"; width: parent.width; height: 32; onClicked: root.editMetadataClicked() }
-        MichiButton { text: "Mostrar en biblioteca"; variant: "ghost"; width: parent.width; height: 32; onClicked: root.showInLibraryClicked() }
+        MichiButton { text: qsTr("Reproducir"); variant: "ghost"; width: parent.width; height: 32; onClicked: root.playClicked() }
+        MichiButton { text: qsTr("Añadir a la cola"); variant: "ghost"; width: parent.width; height: 32; onClicked: root.queueClicked() }
+        MichiButton { text: qsTr("Añadir a playlist"); variant: "ghost"; width: parent.width; height: 32; onClicked: root.addToPlaylistClicked() }
+        MichiButton { text: qsTr("Editar metadatos"); variant: "ghost"; width: parent.width; height: 32; onClicked: root.editMetadataClicked() }
+        MichiButton { text: qsTr("Mostrar en biblioteca"); variant: "ghost"; width: parent.width; height: 32; onClicked: root.showInLibraryClicked() }
     }
 }

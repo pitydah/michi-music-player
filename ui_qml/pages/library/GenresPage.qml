@@ -37,7 +37,7 @@ Item {
                 anchors.leftMargin: MichiTheme.spacing.md; anchors.rightMargin: MichiTheme.spacing.md
 
                 Text {
-                    text: "Géneros"
+                    text: qsTr("Géneros")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -84,7 +84,7 @@ Item {
                         }
 
                         Text {
-                            text: "▶"
+                            text: qsTr("▶")
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.captionSize
                             Accessible.role: Accessible.Icon

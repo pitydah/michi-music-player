@@ -162,7 +162,7 @@ Rectangle {
 
             MichiButton {
                 id: cancelBtn
-                text: "Cancelar"
+                text: qsTr("Cancelar")
                 variant: "ghost"
                 visible: root.notification && root.notification.kind === "progress" && root.notification.job_id
                 onClicked: {

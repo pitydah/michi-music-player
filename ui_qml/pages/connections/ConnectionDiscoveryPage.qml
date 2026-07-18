@@ -31,7 +31,7 @@ Item {
              : root._state === "ERROR" ? AsyncStateView.ERROR
              : root._state === "EMPTY" ? AsyncStateView.EMPTY
              : AsyncStateView.READY
-        title: root._state === "ERROR" ? "Error de descubrimiento" : "Sin servidores detectados"
+        title: root._state === "ERROR" ? "Error de descubrimiento" : qsTr("Sin servidores detectados")
         message: root._errorMessage || "No se encontraron servidores en la red local"
         retryAvailable: root._state === "ERROR" || root._state === "EMPTY"
         onRetryRequested: root.startScan()
@@ -54,7 +54,7 @@ Item {
 
                     MichiButton {
                         Accessible.role: Accessible.Button
-                        text: "Volver"
+                        text: qsTr("Volver")
                         variant: "ghost"
                         activeFocusOnTab: true
                         KeyNavigation.tab: scanBtn
@@ -64,7 +64,7 @@ Item {
                     }
 
                     Text {
-                        text: "Descubrimiento de servidores"
+                        text: qsTr("Descubrimiento de servidores")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.pageTitleSize
                         font.weight: MichiTheme.typography.weightSemiBold
@@ -80,7 +80,7 @@ Item {
 
                     MichiButton {
                         id: scanBtn
-                        text: root._scanning ? "Escaneando..." : "Escanear red"
+                        text: root._scanning ? "Escaneando..." : qsTr("Escanear red")
                         variant: "primary"
                         enabled: !root._scanning
                         activeFocusOnTab: true
@@ -93,7 +93,7 @@ Item {
                 }
 
                 Text {
-                    text: "Servidores detectados:"
+                    text: qsTr("Servidores detectados:")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.bodySize
                     font.weight: MichiTheme.typography.weightMedium
@@ -125,7 +125,7 @@ Item {
 
 
                             MichiButton {
-                                text: "Vincular"
+                                text: qsTr("Vincular")
                                 variant: "primary"
                                 implicitHeight: 28
                                 onClicked: root.pairRequested(index)
@@ -137,7 +137,7 @@ Item {
                 }
 
                 Text {
-                    text: root._scanning ? "Escaneando la red..." : "No se encontraron servidores. Asegúrate de que el servidor esté encendido y en la misma red."
+                    text: root._scanning ? "Escaneando la red..." : qsTr("No se encontraron servidores. Asegúrate de que el servidor esté encendido y en la misma red.")
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width
@@ -147,7 +147,7 @@ Item {
 
                 StatusBadge {
                     visible: root.conn === null
-                    text: "Bridge no disponible"
+                    text: qsTr("Bridge no disponible")
                     kind: "disconnected"
                 }
             }

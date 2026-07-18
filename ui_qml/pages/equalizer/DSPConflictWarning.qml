@@ -24,7 +24,7 @@ Item {
             spacing: MichiTheme.spacing.sm
 
             Text {
-                text: "\u26A0"
+                text: qsTr("\u26A0")
                 color: MichiTheme.colors.warning
                 font.pixelSize: MichiTheme.typography.bodySize
                 anchors.verticalCenter: parent.verticalCenter

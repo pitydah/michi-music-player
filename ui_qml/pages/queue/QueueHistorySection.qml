@@ -24,7 +24,7 @@ Item {
             Layout.fillWidth: true
 
             Text {
-                text: "Historial"
+                text: qsTr("Historial")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
                 font.weight: MichiTheme.typography.weightMedium

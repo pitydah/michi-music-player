@@ -19,7 +19,7 @@ Item {
         width: parent.width; height: 100; radius: MichiTheme.radius.sm; variant: "base"
         Text {
             anchors.centerIn: parent
-            text: root.waveformData ? "Resumen de forma de onda disponible" : "Sin datos de forma de onda"
+            text: root.waveformData ? "Resumen de forma de onda disponible" : qsTr("Sin datos de forma de onda")
             color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize
         }
         Rectangle {

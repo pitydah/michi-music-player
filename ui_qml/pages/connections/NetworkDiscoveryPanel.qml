@@ -28,14 +28,14 @@ Item {
             spacing: MichiTheme.spacing.md
 
             Text {
-                text: "Descubrimiento en red"
+                text: qsTr("Descubrimiento en red")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
             }
 
             Text {
-                text: "Servidores Michi detectados en la red local"
+                text: qsTr("Servidores Michi detectados en la red local")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
                 visible: root.discoveredServers.length > 0
@@ -57,7 +57,7 @@ Item {
             }
 
             Text {
-                text: "No se encontraron servidores en la red. Asegúrate de que Michi Micro Server esté ejecutándose."
+                text: qsTr("No se encontraron servidores en la red. Asegúrate de que Michi Micro Server esté ejecutándose.")
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
                 visible: root.discoveredServers.length === 0

@@ -59,14 +59,14 @@ Item {
                 
 
                 PageHeader {
-                    title: "Accesibilidad"
-                    subtitle: "Audio, visión y preferencias de interacción"
+                    title: qsTr("Accesibilidad")
+                    subtitle: qsTr("Audio, visión y preferencias de interacción")
                 }
 
                 GlassCard {
                     id: audioCard
                     Layout.fillWidth: true
-                    title: "Audio"
+                    title: qsTr("Audio")
                     interactive: false
 
                     ColumnLayout {
@@ -78,7 +78,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Mono"
+                                text: qsTr("Mono")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -106,7 +106,7 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Balance"
+                                    text: qsTr("Balance")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
@@ -137,7 +137,7 @@ Item {
                 GlassCard {
                     id: visionCard
                     Layout.fillWidth: true
-                    title: "Visión"
+                    title: qsTr("Visión")
                     interactive: false
 
                     ColumnLayout {
@@ -153,7 +153,7 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Escala de fuente"
+                                    text: qsTr("Escala de fuente")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
@@ -184,7 +184,7 @@ Item {
                         RowLayout {
                             Layout.fillWidth: true
                                 Label {
-                                text: "Alto contraste"
+                                text: qsTr("Alto contraste")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -204,7 +204,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Movimiento reducido"
+                                text: qsTr("Movimiento reducido")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -223,7 +223,7 @@ Item {
                 GlassCard {
                     id: screenReaderCard
                     Layout.fillWidth: true
-                    title: "Lector de pantalla"
+                    title: qsTr("Lector de pantalla")
                     interactive: false
                                 ColumnLayout {
                         anchors.fill: parent
@@ -234,7 +234,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Soporte para lectores de pantalla"
+                                text: qsTr("Soporte para lectores de pantalla")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -254,7 +254,7 @@ Item {
                     id: announcementsCard
 
                     Layout.fillWidth: true
-                    title: "Anuncios"
+                    title: qsTr("Anuncios")
                     interactive: false
 
                     ColumnLayout {
@@ -266,7 +266,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Anuncios de notificaciones"
+                                text: qsTr("Anuncios de notificaciones")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -285,7 +285,7 @@ Item {
                         RowLayout {
                             Layout.fillWidth: true
                             Label {
-                                text: "Anuncios de errores"
+                                text: qsTr("Anuncios de errores")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -305,7 +305,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Anuncios de estado de reproducción"
+                                text: qsTr("Anuncios de estado de reproducción")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -324,7 +324,7 @@ Item {
                 GlassCard {
                     id: keyboardCard
                     Layout.fillWidth: true
-                    title: "Atajos de teclado"
+                    title: qsTr("Atajos de teclado")
                     interactive: false
 
                     ColumnLayout {
@@ -336,7 +336,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Mostrar indicadores de atajos"
+                                text: qsTr("Mostrar indicadores de atajos")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true

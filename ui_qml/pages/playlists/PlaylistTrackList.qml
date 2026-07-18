@@ -141,7 +141,7 @@ Item {
                     }
                     Text {
                         width: 24
-                        text: "▶"
+                        text: qsTr("▶")
                         color: MichiTheme.colors.accent
                         font.pixelSize: MichiTheme.typography.bodySize
                         anchors.verticalCenter: parent.verticalCenter
@@ -157,7 +157,7 @@ Item {
                     }
                     Text {
                         width: 16
-                        text: "↑"
+                        text: qsTr("↑")
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
                         anchors.verticalCenter: parent.verticalCenter
@@ -170,7 +170,7 @@ Item {
                     }
                     Text {
                         width: 16
-                        text: "↓"
+                        text: qsTr("↓")
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
                         anchors.verticalCenter: parent.verticalCenter
@@ -183,7 +183,7 @@ Item {
                     }
                     Text {
                         width: 24
-                        text: "[X]"
+                        text: qsTr("[X]")
                         color: MichiTheme.colors.error
                         font.pixelSize: MichiTheme.typography.metaSize
                         anchors.verticalCenter: parent.verticalCenter
@@ -209,32 +209,32 @@ Item {
                 Menu {
                     id: contextMenu
                     MenuItem {
-                        text: "Reproducir"
+                        text: qsTr("Reproducir")
                         enabled: !modelData.missing
                         onTriggered: root.playRequested(index)
                     }
                     MenuItem {
-                        text: "Ir al álbum"
+                        text: qsTr("Ir al álbum")
                         onTriggered: root.openAlbumRequested(modelData)
                     }
                     MenuItem {
-                        text: "Ir al artista"
+                        text: qsTr("Ir al artista")
                         onTriggered: root.openArtistRequested(modelData)
                     }
                     MenuSeparator {}
                     MenuItem {
-                        text: "Subir"
+                        text: qsTr("Subir")
                         enabled: index > 0
                         onTriggered: root.moveUpRequested(index)
                     }
                     MenuItem {
-                        text: "Bajar"
+                        text: qsTr("Bajar")
                         enabled: index < root.tracks.length - 1
                         onTriggered: root.moveDownRequested(index)
                     }
                     MenuSeparator {}
                     MenuItem {
-                        text: "Quitar de playlist"
+                        text: qsTr("Quitar de playlist")
                         onTriggered: {
                             var tid = modelData.track_id || 0
                             if (tid) root.removeRequested(tid, index)
@@ -246,7 +246,7 @@ Item {
             Text {
                 anchors.centerIn: parent
                 visible: trackList.count === 0
-                text: "Playlist vacía. Agrega canciones desde la biblioteca."
+                text: qsTr("Playlist vacía. Agrega canciones desde la biblioteca.")
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
             }

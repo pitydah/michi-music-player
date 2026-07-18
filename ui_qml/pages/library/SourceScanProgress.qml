@@ -34,7 +34,7 @@ Rectangle {
 
             RowLayout { spacing: MichiTheme.spacing.xs
                 Text {
-                    text: "Escaneando: " + root.sourceName
+                    text: qsTr("Escaneando: ") + root.sourceName
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                 }
@@ -58,6 +58,6 @@ Rectangle {
             }
         }
 
-        MichiButton { text: "Cancelar"; variant: "ghost"; height: 24 }
+        MichiButton { text: qsTr("Cancelar"); variant: "ghost"; height: 24 }
     }
 }

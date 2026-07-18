@@ -20,7 +20,7 @@ Item {
         spacing: 3
 
         Text {
-            text: "Información técnica"
+            text: qsTr("Información técnica")
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.metaSize
             font.weight: MichiTheme.typography.weightMedium
@@ -32,19 +32,19 @@ Item {
             rowSpacing: 2
             columnSpacing: MichiTheme.spacing.sm
 
-            Label { text: "Formato:"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+            Label { text: qsTr("Formato:"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
             Label { text: root.ps ? root.ps.formatLabel : ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize }
 
-            Label { text: "Sample Rate:"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+            Label { text: qsTr("Sample Rate:"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
             Label { text: root.ps ? root.ps.sampleRate : ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize }
 
-            Label { text: "Bit Depth:"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+            Label { text: qsTr("Bit Depth:"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
             Label { text: root.ps ? root.ps.bitDepth : ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize }
 
-            Label { text: "Canales:"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+            Label { text: qsTr("Canales:"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
             Label { text: root.ps ? root.ps.channels : ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize }
 
-            Label { text: "Bitrate:"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+            Label { text: qsTr("Bitrate:"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
             Label { text: root.ps ? root.ps.bitrate : ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize }
         }
     }

@@ -13,8 +13,8 @@ Item {
 
     property int selectedMode: 0
     property var modes: [
-        { title: "Home Assistant", subtitle: "Integración con asistentes del hogar", icon: "sidebar_servers" },
-        { title: "Michi Music Stream", subtitle: "Streaming local del ecosistema Michi", icon: "sidebar_audio_lab" }
+        { title: qsTr("Home Assistant"), subtitle: "Integración con asistentes del hogar", icon: "sidebar_servers" },
+        { title: qsTr("Michi Music Stream"), subtitle: "Streaming local del ecosistema Michi", icon: "sidebar_audio_lab" }
     ]
 
     signal modeSelected(int index)

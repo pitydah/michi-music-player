@@ -30,7 +30,7 @@ Item {
             spacing: MichiTheme.spacing.sm
 
             Text {
-                text: "Capacidades del servidor"
+                text: qsTr("Capacidades del servidor")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -52,7 +52,7 @@ Item {
                     }
 
                     StatusBadge {
-                        text: modelData.enabled ? "Disponible" : "No disponible"
+                        text: modelData.enabled ? "Disponible" : qsTr("No disponible")
                         kind: modelData.enabled ? "success" : "disconnected"
                     }
                 }

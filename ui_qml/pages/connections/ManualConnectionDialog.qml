@@ -66,7 +66,7 @@ Item {
                 spacing: MichiTheme.spacing.md
 
                 Text {
-                    text: "Conexión manual"
+                    text: qsTr("Conexión manual")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -78,7 +78,7 @@ Item {
                     activeFocusOnTab: true
                     width: parent.width
                     height: MichiTheme.rowHeightComfortable
-                    placeholderText: "Host o dirección IP"
+                    placeholderText: qsTr("Host o dirección IP")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                     text: root.dialogHost
@@ -103,7 +103,7 @@ Item {
                     id: portField
                     width: parent.width
                     height: MichiTheme.rowHeightComfortable
-                    placeholderText: "Puerto"
+                    placeholderText: qsTr("Puerto")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                     inputMethodHints: Qt.ImhDigitsOnly
@@ -125,7 +125,7 @@ Item {
                     id: aliasField
                     width: parent.width
                     height: MichiTheme.rowHeightComfortable
-                    placeholderText: "Alias (opcional)"
+                    placeholderText: qsTr("Alias (opcional)")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                     text: root.dialogAlias
@@ -146,7 +146,7 @@ Item {
                     id: userField
                     width: parent.width
                     height: MichiTheme.rowHeightComfortable
-                    placeholderText: "Usuario (opcional)"
+                    placeholderText: qsTr("Usuario (opcional)")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                     text: root.dialogUser
@@ -167,7 +167,7 @@ Item {
                     id: passwordField
                     width: parent.width
                     height: MichiTheme.rowHeightComfortable
-                    placeholderText: "Contraseña (opcional)"
+                    placeholderText: qsTr("Contraseña (opcional)")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                     echoMode: TextInput.Password
@@ -202,7 +202,7 @@ Item {
 
                         activeFocusOnTab: true
 
-                        text: "Conectar"
+                        text: qsTr("Conectar")
                         variant: "primary"
                         onClicked: {
                             if (root.dialogHost.trim() === "") {
@@ -220,7 +220,7 @@ Item {
 
                     MichiButton {
                         id: cancelBtn
-                        text: "Cancelar"
+                        text: qsTr("Cancelar")
                         variant: "ghost"
                         onClicked: {
                             root.open = false

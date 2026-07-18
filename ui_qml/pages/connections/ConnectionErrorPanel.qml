@@ -35,7 +35,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 Text {
-                    text: "Error de conexión"
+                    text: qsTr("Error de conexión")
                     color: MichiTheme.colors.error
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -54,13 +54,13 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 MichiButton {
-                    text: "Reintentar"
+                    text: qsTr("Reintentar")
                     variant: "primary"
                     onClicked: root.retryClicked()
                 }
 
                 MichiButton {
-                    text: "Descartar"
+                    text: qsTr("Descartar")
                     variant: "ghost"
                     onClicked: root.dismissClicked()
                 }

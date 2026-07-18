@@ -27,9 +27,9 @@ Item {
 
         Row {
             spacing: MichiTheme.spacing.sm
-            MichiButton { text: "Volver"; variant: "ghost"; onClicked: root.backRequested() }
+            MichiButton { text: qsTr("Volver"); variant: "ghost"; onClicked: root.backRequested() }
             Text {
-                text: "Editor de reglas Mix"; color: MichiTheme.colors.textPrimary
+                text: qsTr("Editor de reglas Mix"); color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
                 anchors.verticalCenter: parent.verticalCenter
             }
@@ -38,7 +38,7 @@ Item {
         Row {
             spacing: MichiTheme.spacing.md; width: parent.width
             Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
-                Text { text: "Campo"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+                Text { text: qsTr("Campo"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
                 ComboBox {
                     Accessible.role: Accessible.ComboBox
 
@@ -60,11 +60,11 @@ Item {
                     activeFocusOnTab: true
 
             Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
-                Text { text: "Valor"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+                Text { text: qsTr("Valor"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
                 TextField {
                     focusPolicy: Qt.StrongFocus
                     width: parent.width; text: root._ruleValue
-                    placeholderText: "Valor (ej: Rock, 80s, 5)"
+                    placeholderText: qsTr("Valor (ej: Rock, 80s, 5)")
                     onTextChanged: root._ruleValue = text
                 }
             }
@@ -79,7 +79,7 @@ Item {
         Row {
             spacing: MichiTheme.spacing.md; width: parent.width
             Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.30
-                Text { text: "Operador"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+                Text { text: qsTr("Operador"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
                 ComboBox {
                     focusPolicy: Qt.StrongFocus
                     width: parent.width
@@ -89,12 +89,12 @@ Item {
                 }
             }
             Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.30
-                Text { text: "Target canciones"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+                Text { text: qsTr("Target canciones"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
                 SpinBox { id: countSpin; from: 5; to: 200; value: root._targetCount; onValueChanged: root._targetCount = value }
                     focusPolicy: Qt.StrongFocus
             }
             Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.30
-                Text { text: "Máx por artista"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+                Text { text: qsTr("Máx por artista"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
                 SpinBox { id: artistSpin; from: 1; to: 50; value: root._artistLimit; onValueChanged: root._artistLimit = value }
                     focusPolicy: Qt.StrongFocus
             }
@@ -102,25 +102,25 @@ Item {
 
         Row {
             spacing: MichiTheme.spacing.md; width: parent.width
-            CheckBox { text: "Excluir recientes"; checked: root._excludeRecent; onCheckedChanged: root._excludeRecent = checked }
+            CheckBox { text: qsTr("Excluir recientes"); checked: root._excludeRecent; onCheckedChanged: root._excludeRecent = checked }
 
             Text {
-                text: "Seed (opcional)"; color: MichiTheme.colors.textPrimary
+                text: qsTr("Seed (opcional)"); color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter
             }
             TextField {
                 focusPolicy: Qt.StrongFocus
-                width: 120; text: root._seed; placeholderText: "seed"
+                width: 120; text: root._seed; placeholderText: qsTr("seed")
                 onTextChanged: root._seed = text
             }
         }
 
         MichiButton {
-            text: "Generar mix"; variant: "primary"
+            text: qsTr("Generar mix"); variant: "primary"
             onClicked: root.generateRequested(root._ruleField, root._ruleValue, root._ruleOperator,
                                                root._targetCount, root._artistLimit, root._excludeRecent, root._seed)
         }
 
-        StatusBadge { text: "Mix basado en reglas con seed determinista, sin duplicados, resultados parciales explícitos"; kind: "info" }
+        StatusBadge { text: qsTr("Mix basado en reglas con seed determinista, sin duplicados, resultados parciales explícitos"); kind: "info" }
     }
 }

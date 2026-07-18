@@ -53,14 +53,14 @@ Item {
                 width: parent.width; spacing: MichiTheme.spacing.sm
                 anchors.margins: MichiTheme.spacing.md
 
-                MichiButton { text: "← Volver"; variant: "ghost"; onClicked: root.backRequested() }
+                MichiButton { text: qsTr("← Volver"); variant: "ghost"; onClicked: root.backRequested() }
 
                 Rectangle {
                     width: MichiTheme.coverSizeSmall; height: MichiTheme.coverSizeSmall; radius: MichiTheme.radius.pill
                     color: MichiTheme.colors.surfaceCard
                     Text {
                         anchors.centerIn: parent
-                        text: root.artistName.length > 0 ? root.artistName.charAt(0).toUpperCase() : "?"
+                        text: root.artistName.length > 0 ? root.artistName.charAt(0).toUpperCase() : qsTr("?")
                         color: MichiTheme.colors.accentBlue
                         font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightBold
                     }
@@ -88,16 +88,16 @@ Item {
             RowLayout {
                 anchors.leftMargin: MichiTheme.spacing.md; anchors.rightMargin: MichiTheme.spacing.md
                 spacing: MichiTheme.spacing.sm
-                MichiButton { text: "Reproducir todo"; variant: "primary"; onClicked: { if (root.lib) root.lib.playArtist(root.artistName) } }
-                MichiButton { text: "Mezclar"; variant: "ghost" }
-                MichiButton { text: "Añadir a cola"; variant: "ghost"; onClicked: {
+                MichiButton { text: qsTr("Reproducir todo"); variant: "primary"; onClicked: { if (root.lib) root.lib.playArtist(root.artistName) } }
+                MichiButton { text: qsTr("Mezclar"); variant: "ghost" }
+                MichiButton { text: qsTr("Añadir a cola"); variant: "ghost"; onClicked: {
                     if (root.lib && root.lib.trackModel) {
                         root.lib.trackModel.refreshForArtist(root.artistName)
                     }
                 }}
             }
 
-            SectionHeader { text: "Álbumes"; width: parent.width }
+            SectionHeader { text: qsTr("Álbumes"); width: parent.width }
 
             ListView {
                 Accessible.role: Accessible.List
@@ -138,7 +138,7 @@ Item {
                 }
             }
 
-            SectionHeader { text: "Canciones"; width: parent.width }
+            SectionHeader { text: qsTr("Canciones"); width: parent.width }
 
             ListView {
                 focusPolicy: Qt.StrongFocus

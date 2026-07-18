@@ -25,11 +25,11 @@ Popup {
 
         Repeater {
             model: [
-                {label: "Reproducir", action: "play"},
-                {label: "Añadir a cola", action: "queue"},
-                {label: "Abrir en gestor archivos", action: "open"},
-                {label: "Reescanear", action: "rescan"},
-                {label: "Excluir de biblioteca", action: "exclude"},
+                {label: qsTr("Reproducir"), action: "play"},
+                {label: qsTr("Añadir a cola"), action: "queue"},
+                {label: qsTr("Abrir en gestor archivos"), action: "open"},
+                {label: qsTr("Reescanear"), action: "rescan"},
+                {label: qsTr("Excluir de biblioteca"), action: "exclude"},
             ]
 
             Rectangle {

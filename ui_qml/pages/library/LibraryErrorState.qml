@@ -11,8 +11,8 @@ Item {
     focus: true
     id: root
 
-    property string title: "Error al cargar la biblioteca"
-    property string message: "Ocurrió un problema al obtener los datos. Verifica tu conexión o la configuración de fuentes."
+    property string title: qsTr("Error al cargar la biblioteca")
+    property string message: qsTr("Ocurrió un problema al obtener los datos. Verifica tu conexión o la configuración de fuentes.")
     property string actionText: "Reintentar"
 
     signal actionRequested()
@@ -29,7 +29,7 @@ Item {
             opacity: MichiTheme.opacity.muted
             Text {
                 anchors.centerIn: parent
-                text: "!"
+                text: qsTr("!")
                 color: MichiTheme.colors.error
                 font.pixelSize: MichiTheme.typography.heroTitleSize
                 font.weight: MichiTheme.typography.weightBold

@@ -44,7 +44,7 @@ Item {
                 Accessible.role: Accessible.Button
 
                 id: backButton
-                text: "< Volver"
+                text: qsTr("< Volver")
                 variant: "ghost"
                 onClicked: root.backClicked()
                 activeFocusOnTab: true
@@ -56,7 +56,7 @@ Item {
 
             Text {
                 id: sectionTitle
-                text: "Vincular nuevo dispositivo"
+                text: qsTr("Vincular nuevo dispositivo")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -76,14 +76,14 @@ Item {
                     spacing: MichiTheme.spacing.md
 
                     Text {
-                        text: "Dispositivos detectados"
+                        text: qsTr("Dispositivos detectados")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.sectionTitleSize
                         font.weight: MichiTheme.typography.weightSemiBold
                     }
 
                     Text {
-                        text: "Busca dispositivos en la red o conéctalos manualmente."
+                        text: qsTr("Busca dispositivos en la red o conéctalos manualmente.")
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize
                         wrapMode: Text.WordWrap
@@ -91,7 +91,7 @@ Item {
                     }
 
                     MichiButton {
-                        text: "Escanear red"
+                        text: qsTr("Escanear red")
                         variant: "secondary"
                         onClicked: {
                             if (root.dv && typeof root.dv.discoverDevices === "function") {
@@ -151,7 +151,7 @@ Item {
 
                                 MichiButton {
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: "Vincular"
+                                    text: qsTr("Vincular")
                                     variant: "primary"
                                     onClicked: root.pairRequested(
                                         modelData.alias || modelData.name || "",
@@ -174,7 +174,7 @@ Item {
                     }
 
                     Text {
-                        text: "No se detectaron dispositivos."
+                        text: qsTr("No se detectaron dispositivos.")
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.bodySize
                         visible: root.dv && root.dv.discovered && root.dv.discovered.length === 0
@@ -196,7 +196,7 @@ Item {
                     spacing: MichiTheme.spacing.md
 
                     Text {
-                        text: "Conexión manual"
+                        text: qsTr("Conexión manual")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.sectionTitleSize
                         font.weight: MichiTheme.typography.weightSemiBold
@@ -211,7 +211,7 @@ Item {
                             spacing: MichiTheme.spacing.xs
 
                             Text {
-                                text: "Dirección IP"
+                                text: qsTr("Dirección IP")
                                 color: MichiTheme.colors.textSecondary
                                 font.pixelSize: MichiTheme.typography.metaSize
                             }
@@ -220,7 +220,7 @@ Item {
                                 focusPolicy: Qt.StrongFocus
                                 id: manualIpField
                                 width: parent.width
-                                placeholderText: "192.168.1.100"
+                                placeholderText: qsTr("192.168.1.100")
                                 activeFocusOnTab: true
                                 KeyNavigation.tab: manualPortField
                                 KeyNavigation.backtab: scanNetworkButton
@@ -232,7 +232,7 @@ Item {
                             spacing: MichiTheme.spacing.xs
 
                             Text {
-                                text: "Puerto"
+                                text: qsTr("Puerto")
                                 color: MichiTheme.colors.textSecondary
                                 font.pixelSize: MichiTheme.typography.metaSize
                             }
@@ -241,8 +241,8 @@ Item {
                                 focusPolicy: Qt.StrongFocus
                                 id: manualPortField
                                 width: parent.width
-                                placeholderText: "53318"
-                                text: "53318"
+                                placeholderText: qsTr("53318")
+                                text: qsTr("53318")
                                 activeFocusOnTab: true
                                 KeyNavigation.tab: manualAuthField
                                 KeyNavigation.backtab: manualIpField
@@ -254,7 +254,7 @@ Item {
                             spacing: MichiTheme.spacing.xs
 
                             Text {
-                                text: "Código de autorización"
+                                text: qsTr("Código de autorización")
                                 color: MichiTheme.colors.textSecondary
                                 font.pixelSize: MichiTheme.typography.metaSize
                             }
@@ -263,7 +263,7 @@ Item {
                                 focusPolicy: Qt.StrongFocus
                                 id: manualAuthField
                                 width: parent.width
-                                placeholderText: "Opcional"
+                                placeholderText: qsTr("Opcional")
                                 activeFocusOnTab: true
                                 KeyNavigation.tab: connectManualButton
                                 KeyNavigation.backtab: manualPortField
@@ -273,7 +273,7 @@ Item {
 
                     MichiButton {
                         id: connectManualButton
-                        text: "Conectar"
+                        text: qsTr("Conectar")
                         variant: "primary"
                         onClicked: {
                             if (root.dv && typeof root.dv.pairDevice === "function") {
@@ -311,7 +311,7 @@ Item {
                     spacing: MichiTheme.spacing.sm
 
                     Text {
-                        text: "Estado de vinculación"
+                        text: qsTr("Estado de vinculación")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.sectionTitleSize
                         font.weight: MichiTheme.typography.weightSemiBold
@@ -335,7 +335,7 @@ Item {
                         }
                     }
                     Text {
-                        text: root.discoveredDeviceName ? "Dispositivo: " + root.discoveredDeviceName : ""
+                        text: root.discoveredDeviceName ? "Dispositivo: qsTr(" + root.discoveredDeviceName : ")"
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize
                         visible: text !== ""
@@ -348,7 +348,7 @@ Item {
 
                 MichiButton {
                     id: cancelButton
-                    text: "Cancelar"
+                    text: qsTr("Cancelar")
                     variant: "ghost"
                     onClicked: root.cancelRequested()
                     activeFocusOnTab: true
@@ -359,7 +359,7 @@ Item {
                 }
 
                 MichiButton {
-                    text: "Finalizar"
+                    text: qsTr("Finalizar")
                     variant: "primary"
                     visible: root.pairingState === "paired"
                     onClicked: root.backClicked()
@@ -374,16 +374,16 @@ Item {
     LoadingState {
         id: loadingState
         anchors.centerIn: parent
-        title: "Buscando dispositivos"
-        message: "Escaneando la red local…"
+        title: qsTr("Buscando dispositivos")
+        message: qsTr("Escaneando la red local…")
         busy: true
         visible: root.pairingState === "loading"
     }
 
     UnavailableState {
         anchors.centerIn: parent
-        title: "Servicio no disponible"
-        message: "El servicio de dispositivos no está disponible."
+        title: qsTr("Servicio no disponible")
+        message: qsTr("El servicio de dispositivos no está disponible.")
         details: "Inicia el servidor de sincronización para descubrir dispositivos."
         primaryActionText: "Reintentar"
         secondaryActionText: "Volver"

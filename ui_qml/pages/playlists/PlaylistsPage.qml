@@ -116,13 +116,13 @@ Item {
                     anchors.margins: MichiTheme.spacing.xl
                     spacing: MichiTheme.spacing.sm
                     Text {
-                        text: "Playlists"
+                        text: qsTr("Playlists")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.heroTitleSize
                         font.weight: MichiTheme.typography.weightBold
                     }
                     Text {
-                        text: "Gestiona tus listas de reproducción."
+                        text: qsTr("Gestiona tus listas de reproducción.")
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize
                         width: parent.width * 0.70
@@ -134,7 +134,7 @@ Item {
             MichiSearchField {
                 id: playlistSearch
                 width: parent.width * 0.5
-                placeholderText: "Buscar playlists..."
+                placeholderText: qsTr("Buscar playlists...")
                 onSearchTextChanged: root._searchText = text
                 activeFocusOnTab: true
                 KeyNavigation.tab: createPlaylistBtn
@@ -149,7 +149,7 @@ Item {
                 MichiButton {
                     id: createPlaylistBtn
                     objectName: "createPlaylistButton"
-                    text: "+ Nueva playlist"
+                    text: qsTr("+ Nueva playlist")
                     variant: "primary"
                     activeFocusOnTab: true
                     KeyNavigation.tab: smartPlaylistBtn
@@ -161,7 +161,7 @@ Item {
                 MichiButton {
                     id: smartPlaylistBtn
                     objectName: "smartPlaylistButton"
-                    text: "Smart playlist"
+                    text: qsTr("Smart playlist")
                     variant: "secondary"
                     activeFocusOnTab: true
                     KeyNavigation.tab: importPlaylistBtn
@@ -173,7 +173,7 @@ Item {
                 MichiButton {
                     id: importPlaylistBtn
                     objectName: "importPlaylistButton"
-                    text: "Importar"
+                    text: qsTr("Importar")
                     variant: "secondary"
                     activeFocusOnTab: true
                     KeyNavigation.tab: selectPlaylistBtn
@@ -185,7 +185,7 @@ Item {
                 MichiButton {
                     id: selectPlaylistBtn
                     objectName: "selectPlaylistButton"
-                    text: "Seleccionar"
+                    text: qsTr("Seleccionar")
                     variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.tab: deletePlaylistBtn
@@ -198,7 +198,7 @@ Item {
                 MichiButton {
                     id: deletePlaylistBtn
                     objectName: "deletePlaylistButton"
-                    text: "Eliminar seleccionadas"
+                    text: qsTr("Eliminar seleccionadas")
                     variant: "danger"
                     visible: root._selectionMode && root._selectedPlaylists.length > 0
                     activeFocusOnTab: true
@@ -211,7 +211,7 @@ Item {
                 MichiButton {
                     id: refreshBtn
                     objectName: "refreshPlaylistsButton"
-                    text: "Refrescar"
+                    text: qsTr("Refrescar")
                     variant: "ghost"
                     visible: root._state !== "LOADING"
                     activeFocusOnTab: true
@@ -225,16 +225,16 @@ Item {
             LoadingState {
                 width: parent.width
                 visible: root._state === "LOADING"
-                title: "Cargando playlists"
-                message: "Obteniendo listas de reproducción..."
+                title: qsTr("Cargando playlists")
+                message: qsTr("Obteniendo listas de reproducción...")
             }
 
             EmptyState {
                 width: parent.width
                 visible: root._state === "EMPTY"
                 iconText: ""
-                title: "Sin playlists"
-                subtitle: "Crea tu primera lista de reproducción para empezar a organizar tu música."
+                title: qsTr("Sin playlists")
+                subtitle: qsTr("Crea tu primera lista de reproducción para empezar a organizar tu música.")
                 actionText: "Crear playlist"
                 showAction: true
                 onActionClicked: root.openEditor()
@@ -243,7 +243,7 @@ Item {
             ErrorState {
                 width: parent.width
                 visible: root._state === "ERROR"
-                title: "Error al cargar playlists"
+                title: qsTr("Error al cargar playlists")
                 message: !root.pl ? "El servicio de playlists no está disponible."
                                  : "No se pudieron cargar las playlists. Verifica la conexión."
                 showRetry: true
@@ -252,7 +252,7 @@ Item {
 
             SectionHeader {
                 id: yourPlaylistsHeader
-                text: "Tus playlists"
+                text: qsTr("Tus playlists")
                 width: parent.width
                 visible: root._state === "READY"
             }
@@ -370,7 +370,7 @@ Item {
 
     Dialog {
         id: confirmBatchDelete
-        title: "Eliminar playlists"
+        title: qsTr("Eliminar playlists")
         standardButtons: Dialog.Yes | Dialog.No
         modal: true
         visible: root._confirmBatchDelete
@@ -381,12 +381,12 @@ Item {
         Column {
             spacing: MichiTheme.spacing.md
             Text {
-                text: "¿Eliminar " + root._selectedPlaylists.length + " playlist(s) seleccionada(s)?"
+                text: qsTr("¿Eliminar ") + root._selectedPlaylists.length + " playlist(s) seleccionada(s)?"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
             }
             Text {
-                text: "Esta acción no se puede deshacer."
+                text: qsTr("Esta acción no se puede deshacer.")
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
             }

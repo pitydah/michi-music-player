@@ -77,7 +77,7 @@ Item {
                         spacing: MichiTheme.spacing.sm
 
                         Text {
-                            text: "Explicación del Mix"; color: MichiTheme.colors.textPrimary
+                            text: qsTr("Explicación del Mix"); color: MichiTheme.colors.textPrimary
                             font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold
                             anchors.verticalCenter: parent.verticalCenter
                         }
@@ -86,7 +86,7 @@ Item {
 
                         Text {
                             id: dismissBtn
-                            text: "[X] Cerrar"; color: MichiTheme.colors.textMuted
+                            text: qsTr("[X] Cerrar"); color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter
                             activeFocusOnTab: true
 
@@ -121,7 +121,7 @@ Item {
 
                         Column { spacing: MichiTheme.spacing.sm; width: parent.width
                             Text {
-                                text: "Parámetros del Mix"; color: MichiTheme.colors.textPrimary
+                                text: qsTr("Parámetros del Mix"); color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightMedium
                             }
 
@@ -170,7 +170,7 @@ Item {
 
                         Column { spacing: MichiTheme.spacing.sm; width: parent.width
                             Text {
-                                text: "Reglas aplicadas por canción"; color: MichiTheme.colors.textPrimary
+                                text: qsTr("Reglas aplicadas por canción"); color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightMedium
                                 visible: root._trackExplanations.length > 0
                             }

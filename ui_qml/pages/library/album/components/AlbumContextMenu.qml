@@ -17,19 +17,19 @@ Menu {
     signal detailsRequested(string albumKey)
 
     MenuItem {
-        text: "Reproducir"
+        text: qsTr("Reproducir")
         icon.source: ""
         onTriggered: root.playRequested(root.albumKey)
     }
 
     MenuItem {
-        text: "Reproducir siguiente"
+        text: qsTr("Reproducir siguiente")
         icon.source: ""
         onTriggered: root.playNextRequested(root.albumKey)
     }
 
     MenuItem {
-        text: "Añadir a la cola"
+        text: qsTr("Añadir a la cola")
         icon.source: ""
         onTriggered: root.enqueueRequested(root.albumKey)
     }
@@ -37,13 +37,13 @@ Menu {
     MenuSeparator {}
 
     MenuItem {
-        text: "Detalles del álbum"
+        text: qsTr("Detalles del álbum")
         icon.source: ""
         onTriggered: root.detailsRequested(root.albumKey)
     }
 
     MenuItem {
-        text: "Ir a la carpeta"
+        text: qsTr("Ir a la carpeta")
         icon.source: ""
         enabled: root.bridge !== null
         onTriggered: {

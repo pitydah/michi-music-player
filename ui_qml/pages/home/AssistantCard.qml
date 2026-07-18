@@ -39,14 +39,14 @@ Item {
                 spacing: MichiTheme.spacing.xs
 
                 Text {
-                    text: "Asistente Michi"
+                    text: qsTr("Asistente Michi")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.cardTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                 }
 
                 Text {
-                    text: "Pregunta sobre tu música, recibe sugerencias y controla tu biblioteca con IA."
+                    text: qsTr("Pregunta sobre tu música, recibe sugerencias y controla tu biblioteca con IA.")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.metaSize
                     width: parent.width
@@ -61,7 +61,7 @@ Item {
                 activeFocusOnTab: true
 
                 anchors.verticalCenter: parent.verticalCenter
-                text: "Abrir"
+                text: qsTr("Abrir")
                 variant: "ghost"
                 onClicked: root.openAssistant()
             }

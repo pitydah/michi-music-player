@@ -44,7 +44,7 @@ Item {
              : root.zoneState === "degraded" ? AsyncStateView.DEGRADED
              : AsyncStateView.READY
         title: root.zoneState === "error" ? "Error en zona" : root.zoneState === "degraded" ? "Funcionamiento degradado" : ""
-        message: root.zoneOnline ? "" : "La zona no está disponible en este momento"
+        message: root.zoneOnline ? "" : qsTr("La zona no está disponible en este momento")
         retryAvailable: root.zoneState === "error" || !root.zoneOnline
         onRetryRequested: root.reconnectClicked(root.zoneId)
 
@@ -67,7 +67,7 @@ Item {
                     id: backBtn
                     activeFocusOnTab: true
 
-                    text: "< Volver"
+                    text: qsTr("< Volver")
                     variant: "ghost"
                     onClicked: root.backClicked()
                     KeyNavigation.tab: zoneNameText
@@ -90,7 +90,7 @@ Item {
                     spacing: MichiTheme.spacing.sm
 
                     StatusBadge {
-                        text: root.zoneOnline ? "En línea" : "Desconectado"
+                        text: root.zoneOnline ? "En línea" : qsTr("Desconectado")
                         kind: root.zoneOnline ? "success" : "error"
                     }
 
@@ -106,7 +106,7 @@ Item {
                     }
 
                     StatusBadge {
-                        text: root.zoneMuted ? "Silenciado" : "Activo"
+                        text: root.zoneMuted ? "Silenciado" : qsTr("Activo")
                         kind: root.zoneMuted ? "warning" : "success"
                     }
                 }
@@ -125,7 +125,7 @@ Item {
 
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "Volumen"
+                            text: qsTr("Volumen")
                             color: MichiTheme.colors.textPrimary
                             font.pixelSize: MichiTheme.typography.bodySize
                             font.weight: MichiTheme.typography.weightMedium
@@ -169,7 +169,7 @@ Item {
                         MichiButton {
                             id: muteBtn
                             anchors.verticalCenter: parent.verticalCenter
-                            text: root.zoneMuted ? "Activar sonido" : "Silenciar"
+                            text: root.zoneMuted ? "Activar sonido" : qsTr("Silenciar")
                             variant: root.zoneMuted ? "secondary" : "ghost"
                             onClicked: {
                                 root.zoneMuted = !root.zoneMuted
@@ -193,15 +193,15 @@ Item {
                         spacing: MichiTheme.spacing.sm
 
                         Text {
-                            text: "Información de la zona"
+                            text: qsTr("Información de la zona")
                             color: MichiTheme.colors.textPrimary
                             font.pixelSize: MichiTheme.typography.sectionTitleSize
                             font.weight: MichiTheme.typography.weightSemiBold
                         }
 
-                        Text { text: "ID: " + root.zoneId; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: root.zoneId !== "" }
-                        Text { text: "Origen: " + (root.zoneSource || "Ninguno"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
-                        Text { text: "Latencia: " + root.zoneLatencyMs + " ms"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: root.zoneLatencyMs > 0 }
+                        Text { text: qsTr("ID: ") + root.zoneId; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: root.zoneId !== "" }
+                        Text { text: qsTr("Origen: ") + (root.zoneSource || "Ninguno"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                        Text { text: qsTr("Latencia: ") + root.zoneLatencyMs + " ms"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: root.zoneLatencyMs > 0 }
                         Text { text: root.zoneDevices.length + " dispositivo(s) en la zona"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
 
                         Repeater {
@@ -217,7 +217,7 @@ Item {
                                     elide: Text.ElideRight
                                 }
                                 StatusBadge {
-                                    text: modelData.connected ? "Conectado" : "Desconectado"
+                                    text: modelData.connected ? "Conectado" : qsTr("Desconectado")
                                     kind: modelData.connected ? "success" : "disconnected"
                                 }
                             }
@@ -239,7 +239,7 @@ Item {
 
                         activeFocusOnTab: true
 
-                        text: "Reconectar"
+                        text: qsTr("Reconectar")
                         variant: "primary"
                         onClicked: root.reconnectClicked(root.zoneId)
                         KeyNavigation.tab: groupBtn
@@ -252,7 +252,7 @@ Item {
 
                     MichiButton {
                         id: groupBtn
-                        text: "Agrupar"
+                        text: qsTr("Agrupar")
                         variant: "secondary"
                         onClicked: root.groupClicked(root.zoneId)
                         KeyNavigation.tab: ungroupBtn
@@ -265,7 +265,7 @@ Item {
 
                     MichiButton {
                         id: ungroupBtn
-                        text: "Desagrupar"
+                        text: qsTr("Desagrupar")
                         variant: "ghost"
                         onClicked: root.ungroupClicked(root.zoneId)
                         Accessible.role: Accessible.Button
@@ -278,7 +278,7 @@ Item {
 
                     MichiButton {
                         id: renameBtn
-                        text: "Renombrar"
+                        text: qsTr("Renombrar")
                         variant: "ghost"
                         onClicked: root.renameRequested(root.zoneId, "")
                         KeyNavigation.tab: deleteBtn
@@ -287,7 +287,7 @@ Item {
 
                     MichiButton {
                         id: deleteBtn
-                        text: "Eliminar zona"
+                        text: qsTr("Eliminar zona")
                         variant: "danger"
                         onClicked: root.deleteRequested(root.zoneId)
                         Accessible.description: "Elimina permanentemente la zona"
@@ -307,7 +307,7 @@ Item {
                 anchors.top: parent.top
                 anchors.right: parent.right
                 anchors.margins: MichiTheme.spacing.sm
-                text: "Funcionamiento degradado"
+                text: qsTr("Funcionamiento degradado")
                 color: MichiTheme.colors.warning
                 font.pixelSize: MichiTheme.typography.captionSize
                 font.weight: MichiTheme.typography.weightMedium

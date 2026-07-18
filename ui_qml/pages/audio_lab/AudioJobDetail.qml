@@ -41,7 +41,7 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Text {
-                text: "Detalle del trabajo"
+                text: qsTr("Detalle del trabajo")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
             }
@@ -60,16 +60,16 @@ Item {
                     Row {
                         width: parent.width; spacing: MichiTheme.spacing.xl
                         Column { spacing: MichiTheme.spacing.xs
-                            Text { text: "Estado"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+                            Text { text: qsTr("Estado"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                             Text { text: root.jobData ? root.jobData.state : ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium }
                         }
                         Column { spacing: MichiTheme.spacing.xs
-                            Text { text: "Progreso"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
-                            Text { text: root.jobData && root.jobData.progress ? Math.round(root.jobData.progress * 100) + "%" : "0%"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                            Text { text: qsTr("Progreso"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+                            Text { text: root.jobData && root.jobData.progress ? Math.round(root.jobData.progress * 100) + "%" : qsTr("0%"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
                         }
                         Column { spacing: MichiTheme.spacing.xs
-                            Text { text: "Duración"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
-                            Text { text: root.jobData && root.jobData.duration ? Math.round(root.jobData.duration) + "s" : "—"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                            Text { text: qsTr("Duración"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+                            Text { text: root.jobData && root.jobData.duration ? Math.round(root.jobData.duration) + "s" : qsTr("—"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
                         }
                     }
 
@@ -84,7 +84,7 @@ Item {
                     }
 
                     Text {
-                        text: "Error: " + (root.jobData ? (root.jobData.error_code || "") : "")
+                        text: qsTr("Error: ") + (root.jobData ? (root.jobData.error_code || "") : "")
                         color: MichiTheme.colors.error
                         font.pixelSize: MichiTheme.typography.metaSize
                         visible: root.jobData && root.jobData.state === "failed"
@@ -99,7 +99,7 @@ Item {
                         visible: text !== ""
                     }
 
-                    SectionHeader { text: "Archivos"; width: parent.width; objectName: "jobFilesHeader"; Accessible.name: "Archivos" }
+                    SectionHeader { text: qsTr("Archivos"); width: parent.width; objectName: "jobFilesHeader"; Accessible.name: "Archivos" }
 
                     Repeater {
                         model: root.jobData && root.jobData.files ? root.jobData.files : []
@@ -127,7 +127,7 @@ Item {
 
                         spacing: MichiTheme.spacing.sm
                         MichiButton {
-                            text: "Cancelar"
+                            text: qsTr("Cancelar")
                             variant: "danger"
                             enabled: root.jobData && (root.jobData.state === "running" || root.jobData.state === "queued")
                             activeFocusOnTab: true
@@ -138,7 +138,7 @@ Item {
                             onClicked: root._cancelJob()
                         }
                         MichiButton {
-                            text: "Reintentar"
+                            text: qsTr("Reintentar")
                             variant: "secondary"
                             enabled: root.jobData && (root.jobData.state === "failed" || root.jobData.state === "cancelled")
                             activeFocusOnTab: true
@@ -149,7 +149,7 @@ Item {
                             onClicked: root._retryJob()
                         }
                         MichiButton {
-                            text: "Volver"
+                            text: qsTr("Volver")
                             variant: "ghost"
                             activeFocusOnTab: true
                             Keys.onReturnPressed: onClicked()

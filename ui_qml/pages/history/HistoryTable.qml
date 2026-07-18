@@ -120,7 +120,7 @@ Item {
                 }
                 Text {
                     width: 24
-                    text: "▶"
+                    text: qsTr("▶")
                     color: MichiTheme.colors.accent
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
@@ -137,7 +137,7 @@ Item {
                 }
                 Text {
                     width: 24
-                    text: "☰"
+                    text: qsTr("☰")
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
@@ -152,7 +152,7 @@ Item {
                 }
                 Text {
                     width: 24
-                    text: "[X]"
+                    text: qsTr("[X]")
                     color: MichiTheme.colors.error
                     font.pixelSize: MichiTheme.typography.metaSize
                     anchors.verticalCenter: parent.verticalCenter
@@ -176,30 +176,30 @@ Item {
             Menu {
                 id: contextMenu
                 MenuItem {
-                    text: "Reproducir"
+                    text: qsTr("Reproducir")
 
                     onTriggered: root.playRequested(
                         model.trackId || modelData.track_id || model.track_id || 0,
                         model.title || modelData.title || "")
                 }
                 MenuItem {
-                    text: "Añadir a la cola"
+                    text: qsTr("Añadir a la cola")
                     onTriggered: root.addToQueueRequested(
                         model.trackId || modelData.track_id || model.track_id || 0)
                 }
                 MenuItem {
-                    text: "Abrir pista"
+                    text: qsTr("Abrir pista")
                     onTriggered: root.openTrackRequested(
                         model.trackId || modelData.track_id || model.track_id || 0)
                 }
                 MenuItem {
-                    text: "Abrir álbum"
+                    text: qsTr("Abrir álbum")
                     onTriggered: root.openAlbumRequested(
                         model.trackId || modelData.track_id || model.track_id || 0)
                 }
                 MenuSeparator {}
                 MenuItem {
-                    text: "Eliminar"
+                    text: qsTr("Eliminar")
                     onTriggered: root.removeRequested(
                         model.trackId || modelData.track_id || model.track_id || 0)
                 }
@@ -209,7 +209,7 @@ Item {
         Text {
             anchors.centerIn: parent
             visible: tableView.count === 0
-            text: "No hay registros de historial"
+            text: qsTr("No hay registros de historial")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.bodySize
         }

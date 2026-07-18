@@ -28,13 +28,13 @@ Item {
         Column {
             anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
 
-            SectionHeader { text: "Explicación del mix"; width: parent.width }
+            SectionHeader { text: qsTr("Explicación del mix"); width: parent.width }
 
             Repeater {
                 model: root._reasons
                 delegate: Row {
                     spacing: MichiTheme.spacing.sm; width: parent.width
-                    Text { text: "•"; color: MichiTheme.colors.accent; font.pixelSize: MichiTheme.typography.bodySize }
+                    Text { text: qsTr("•"); color: MichiTheme.colors.accent; font.pixelSize: MichiTheme.typography.bodySize }
                     Text {
                         text: modelData; color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize; wrapMode: Text.WordWrap; width: parent.width - 20
@@ -45,15 +45,15 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.lg; visible: root._totalCandidates > 0
                 Text {
-                    text: "Candidatos: " + root._totalCandidates; color: MichiTheme.colors.textMuted
+                    text: qsTr("Candidatos: ") + root._totalCandidates; color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.metaSize
                 }
                 Text {
-                    text: "Duplicados removidos: " + root._duplicatesRemoved; color: MichiTheme.colors.textMuted
+                    text: qsTr("Duplicados removidos: ") + root._duplicatesRemoved; color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.metaSize; visible: root._duplicatesRemoved > 0
                 }
                 Text {
-                    text: "Límite artista: " + root._artistLimited; color: MichiTheme.colors.textMuted
+                    text: qsTr("Límite artista: ") + root._artistLimited; color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.metaSize; visible: root._artistLimited > 0
                 }
             }

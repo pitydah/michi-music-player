@@ -28,9 +28,9 @@ Item {
         anchors.margins: MichiTheme.spacing.xl
 
         RowLayout { spacing: MichiTheme.spacing.sm
-            MichiButton { text: "← Volver"; variant: "ghost"; onClicked: root.backRequested() }
+            MichiButton { text: qsTr("← Volver"); variant: "ghost"; onClicked: root.backRequested() }
             Text {
-                text: "Compositor: " + root.composer
+                text: qsTr("Compositor: ") + root.composer
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.heroTitleSize
                 font.weight: MichiTheme.typography.weightBold
@@ -38,8 +38,8 @@ Item {
         }
 
         RowLayout { spacing: MichiTheme.spacing.sm
-            MichiButton { text: "Reproducir todo"; variant: "primary" }
-            MichiButton { text: "Mezclar"; variant: "ghost" }
+            MichiButton { text: qsTr("Reproducir todo"); variant: "primary" }
+            MichiButton { text: qsTr("Mezclar"); variant: "ghost" }
         }
 
         ListView {

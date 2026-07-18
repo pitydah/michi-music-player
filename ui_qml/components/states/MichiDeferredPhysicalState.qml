@@ -8,8 +8,8 @@ Item {
     focus: true
     id: root
 
-    property string title: "Requiere hardware físico"
-    property string message: "Esta funcionalidad necesita hardware físico especializado que no está presente."
+    property string title: qsTr("Requiere hardware físico")
+    property string message: qsTr("Esta funcionalidad necesita hardware físico especializado que no está presente.")
     property string details: ""
     property string iconText: "\u2699"
 

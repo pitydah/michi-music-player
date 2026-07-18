@@ -45,7 +45,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 Text {
-                    text: status === "success" ? "✓" : status === "partial" ? "⚠" : "✗"
+                    text: status === "success" ? "✓" : status === "partial" ? "⚠" : qsTr("✗")
                     color: status === "success" ? MichiTheme.colors.success : status === "partial" ? MichiTheme.colors.warning : MichiTheme.colors.error
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     anchors.verticalCenter: parent.verticalCenter
@@ -54,7 +54,7 @@ Item {
                 }
 
                 Text {
-                    text: status === "success" ? "Completado" : status === "partial" ? "Completado parcialmente" : "Error"
+                    text: status === "success" ? "Completado" : status === "partial" ? "Completado parcialmente" : qsTr("Error")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.cardTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -88,7 +88,7 @@ Item {
                     anchors.left: parent.left
                     anchors.leftMargin: MichiTheme.spacing.sm
                     anchors.verticalCenter: parent.verticalCenter
-                    text: root.detailsExpanded ? "Ocultar detalles" : "Ver detalles"
+                    text: root.detailsExpanded ? "Ocultar detalles" : qsTr("Ver detalles")
                     color: MichiTheme.colors.accentBlue
                     font.pixelSize: MichiTheme.typography.captionSize
                     font.weight: MichiTheme.typography.weightMedium
@@ -111,7 +111,7 @@ Item {
                 layoutDirection: Qt.RightToLeft
 
                 MichiButton {
-                    text: status === "failure" ? "Reintentar" : "Deshacer"
+                    text: status === "failure" ? "Reintentar" : qsTr("Deshacer")
                     variant: status === "failure" ? "primary" : "ghost"
                     visible: (status === "failure" || status === "partial")
                     activeFocusOnTab: true
@@ -123,7 +123,7 @@ Item {
                 }
 
                 MichiButton {
-                    text: "Cerrar"
+                    text: qsTr("Cerrar")
                     variant: "ghost"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()

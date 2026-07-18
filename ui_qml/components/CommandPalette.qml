@@ -160,7 +160,7 @@ Item {
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "Buscar comando…"
+                        text: qsTr("Buscar comando…")
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.bodySize
                         visible: parent.text === "" && !parent.activeFocus
@@ -260,7 +260,7 @@ Item {
                         anchors.right: parent.right
                         anchors.rightMargin: MichiTheme.spacing.sm
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "No disponible"
+                        text: qsTr("No disponible")
                         color: MichiTheme.colors.error
                         font.pixelSize: MichiTheme.typography.metaSize
                         visible: modelData._unavailable

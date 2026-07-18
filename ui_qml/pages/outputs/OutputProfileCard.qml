@@ -62,13 +62,13 @@ Item {
                 }
 
                 StatusBadge {
-                    text: "Bit-Perfect"
+                    text: qsTr("Bit-Perfect")
                     kind: "success"
                     visible: root.profileData && root.profileData.bitperfect
                 }
 
                 StatusBadge {
-                    text: "DSD"
+                    text: qsTr("DSD")
                     kind: "experimental"
                     visible: root.profileData && root.profileData.dsd_mode && root.profileData.dsd_mode !== ""
                 }
@@ -80,7 +80,7 @@ Item {
 
                     activeFocusOnTab: true
 
-                    text: "Editar"
+                    text: qsTr("Editar")
                     variant: "ghost"
                     onClicked: root.editRequested()
                 }
@@ -90,7 +90,7 @@ Item {
 
 
                 MichiButton {
-                    text: "Duplicar"
+                    text: qsTr("Duplicar")
                     variant: "ghost"
                     Accessible.role: Accessible.Button
 
@@ -100,7 +100,7 @@ Item {
                 }
 
                 MichiButton {
-                    text: "Eliminar"
+                    text: qsTr("Eliminar")
                     variant: "danger"
                     onClicked: root.deleteRequested()
                 }

@@ -16,7 +16,7 @@ Item {
 
         Text {
             Layout.alignment: Qt.AlignHCenter
-            text: "Cola vacía"
+            text: qsTr("Cola vacía")
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.bodySize
             font.weight: MichiTheme.typography.weightMedium
@@ -24,7 +24,7 @@ Item {
 
         Text {
             Layout.alignment: Qt.AlignHCenter
-            text: "Agrega canciones desde la Biblioteca, Álbumes o Artistas"
+            text: qsTr("Agrega canciones desde la Biblioteca, Álbumes o Artistas")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
         }

@@ -74,8 +74,8 @@ Item {
                 
 
                 PageHeader {
-                    title: "Acerca de"
-                    subtitle: "Información de Michi Music Player"
+                    title: qsTr("Acerca de")
+                    subtitle: qsTr("Información de Michi Music Player")
                 }
 
                 GlassCard {
@@ -90,20 +90,20 @@ Item {
                         spacing: MichiTheme.spacing.sm
 
                         Label {
-                            text: "Michi Music Player"
+                            text: qsTr("Michi Music Player")
                             color: MichiTheme.colors.textPrimary
                             font.pixelSize: MichiTheme.typography.pageTitleSize
                             font.weight: MichiTheme.typography.weightBold
                         }
 
                         Label {
-                            text: "Versión " + root.appVersion
+                            text: qsTr("Versión ") + root.appVersion
                             color: MichiTheme.colors.textSecondary
                             font.pixelSize: MichiTheme.typography.cardTitleSize
                         }
 
                         Label {
-                            text: "Reproductor de música premium para Linux/KDE con GStreamer, CoverFlow 3D y gestión avanzada de metadatos."
+                            text: qsTr("Reproductor de música premium para Linux/KDE con GStreamer, CoverFlow 3D y gestión avanzada de metadatos.")
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.bodySize
                             wrapMode: Text.WordWrap
@@ -112,20 +112,20 @@ Item {
                         }
 
                         Label {
-                            text: "Stack: Python " + root.pythonVersion + " · PySide6 " + root.qtVersion + " · GStreamer " + root.gstreamerVersion
+                            text: qsTr("Stack: Python ") + root.pythonVersion + " · PySide6 " + root.qtVersion + " · GStreamer " + root.gstreamerVersion
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.captionSize
                             
                         }
 
                         Label {
-                            text: "Licencia: GPL-3.0-or-later (derivado de Miro Player)"
+                            text: qsTr("Licencia: GPL-3.0-or-later (derivado de Miro Player)")
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.captionSize
                         }
 
                         Label {
-                            text: "Autor: Cristian · © 2026 Michi Music Player"
+                            text: qsTr("Autor: Cristian · © 2026 Michi Music Player")
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.captionSize
                         }
@@ -135,7 +135,7 @@ Item {
                 GlassCard {
                     id: linksCard
                     Layout.fillWidth: true
-                    title: "Enlaces"
+                    title: qsTr("Enlaces")
                     interactive: false
 
                     ColumnLayout {
@@ -148,7 +148,7 @@ Item {
 
                             activeFocusOnTab: true
 
-                            text: "Página principal"
+                            text: qsTr("Página principal")
                             variant: "ghost"
                             Layout.fillWidth: true
                             onClicked: root._openUrl("https://michi-music-player.org")
@@ -157,7 +157,7 @@ Item {
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
 
                         MichiButton {
-                            text: "GitHub"
+                            text: qsTr("GitHub")
                             variant: "ghost"
                             Layout.fillWidth: true
                             onClicked: root._openUrl("https://github.com/pitydah/michi-music-player")
@@ -166,7 +166,7 @@ Item {
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
 
                         MichiButton {
-                            text: "Reportar un problema"
+                            text: qsTr("Reportar un problema")
                             variant: "ghost"
                             Layout.fillWidth: true
                             Accessible.role: Accessible.Button
@@ -179,7 +179,7 @@ Item {
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
 
                         MichiButton {
-                            text: "Ver NOTICE (créditos)"
+                            text: qsTr("Ver NOTICE (créditos)")
                             variant: "ghost"
                             Layout.fillWidth: true
                             onClicked: root._openUrl("https://github.com/pitydah/michi-music-player/blob/main/NOTICE")
@@ -190,7 +190,7 @@ Item {
                 GlassCard {
                     id: updatesCard
                     Layout.fillWidth: true
-                    title: "Actualizaciones"
+                    title: qsTr("Actualizaciones")
                     interactive: false
 
                     ColumnLayout {
@@ -199,7 +199,7 @@ Item {
                         spacing: MichiTheme.spacing.md
 
                         MichiButton {
-                            text: "Buscar actualizaciones"
+                            text: qsTr("Buscar actualizaciones")
                             variant: "primary"
                             Layout.fillWidth: true
                             onClicked: root._checkForUpdates()
@@ -210,7 +210,7 @@ Item {
                 GlassCard {
                     id: systemInfoCard
                     Layout.fillWidth: true
-                    title: "Información del sistema"
+                    title: qsTr("Información del sistema")
                     interactive: false
 
                     ColumnLayout {
@@ -222,7 +222,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.sm
                             Label {
-                                text: "Sistema operativo"
+                                text: qsTr("Sistema operativo")
                                 color: MichiTheme.colors.textSecondary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.preferredWidth: 160
@@ -241,7 +241,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.sm
                             Label {
-                                text: "Python"
+                                text: qsTr("Python")
                                 color: MichiTheme.colors.textSecondary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.preferredWidth: 160
@@ -260,7 +260,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.sm
                             Label {
-                                text: "Qt / PySide6"
+                                text: qsTr("Qt / PySide6")
                                 color: MichiTheme.colors.textSecondary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.preferredWidth: 160
@@ -279,7 +279,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.sm
                             Label {
-                                text: "GStreamer"
+                                text: qsTr("GStreamer")
                                 color: MichiTheme.colors.textSecondary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.preferredWidth: 160
@@ -297,7 +297,7 @@ Item {
                 GlassCard {
                     id: dependenciesCard
                     Layout.fillWidth: true
-                    title: "Dependencias principales"
+                    title: qsTr("Dependencias principales")
                     interactive: false
 
                     ColumnLayout {
@@ -318,7 +318,7 @@ Item {
                             ]
 
                             Label {
-                                text: "• " + modelData
+                                text: qsTr("• ") + modelData
                                 color: MichiTheme.colors.textMuted
                                 font.pixelSize: MichiTheme.typography.captionSize
                                 

@@ -27,12 +27,12 @@ Item {
     property string _validationError: ""
 
     property var _formatOptions: [
-        { label: "FLAC", codec: "flac", lossless: true },
-        { label: "MP3", codec: "libmp3lame", lossless: false },
-        { label: "OGG Vorbis", codec: "libvorbis", lossless: false },
-        { label: "Opus", codec: "libopus", lossless: false },
-        { label: "WAV", codec: "pcm_s16le", lossless: true },
-        { label: "AAC", codec: "aac", lossless: false },
+        { label: qsTr("FLAC"), codec: "flac", lossless: true },
+        { label: qsTr("MP3"), codec: "libmp3lame", lossless: false },
+        { label: qsTr("OGG Vorbis"), codec: "libvorbis", lossless: false },
+        { label: qsTr("Opus"), codec: "libopus", lossless: false },
+        { label: qsTr("WAV"), codec: "pcm_s16le", lossless: true },
+        { label: qsTr("AAC"), codec: "aac", lossless: false },
     ]
 
     property var _sampleRateOptions: [8000, 11025, 16000, 22050, 44100, 48000, 88200, 96000, 192000]
@@ -98,17 +98,17 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Text {
-                text: root._editing ? "Editar perfil: " + root._profileName : "Perfiles de conversión"
+                text: root._editing ? "Editar perfil: qsTr(" + root._profileName : ")Perfiles de conversión"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
             }
 
             Text {
-                text: "Portable MP3, Portable AAC, Efficient Opus, Lossless FLAC, Archival FLAC, PCM WAV"
+                text: qsTr("Portable MP3, Portable AAC, Efficient Opus, Lossless FLAC, Archival FLAC, PCM WAV")
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
             }
 
-            SectionHeader { text: "Perfiles predefinidos"; width: parent.width; objectName: "presetsHeader"; Accessible.name: "Perfiles predefinidos" }
+            SectionHeader { text: qsTr("Perfiles predefinidos"); width: parent.width; objectName: "presetsHeader"; Accessible.name: "Perfiles predefinidos" }
 
             Repeater {
                 model: root._presetProfiles
@@ -119,15 +119,15 @@ Item {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                         Text { width: parent.width * 0.20; text: modelData.name; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight }
                         Text { width: parent.width * 0.12; text: modelData.format; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
-                        Text { width: parent.width * 0.12; text: modelData.bitrate > 0 ? modelData.bitrate + "k" : "—"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
+                        Text { width: parent.width * 0.12; text: modelData.bitrate > 0 ? modelData.bitrate + "k" : qsTr("—"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
                         Text { width: parent.width * 0.15; text: modelData.sr + " Hz"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
                         Text { width: parent.width * 0.10; text: modelData.depth + " bit"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
-                        MichiButton { width: 60; height: 28; text: "Usar"; variant: "primary"; anchors.verticalCenter: parent.verticalCenter; objectName: "usePresetBtn_" + index; Accessible.name: "Usar " + modelData.name; activeFocusOnTab: true; Keys.onReturnPressed: onClicked(); Keys.onSpacePressed: onClicked(); onClicked: root._loadProfile(modelData) }
+                        MichiButton { width: 60; height: 28; text: qsTr("Usar"); variant: "primary"; anchors.verticalCenter: parent.verticalCenter; objectName: "usePresetBtn_" + index; Accessible.name: "Usar " + modelData.name; activeFocusOnTab: true; Keys.onReturnPressed: onClicked(); Keys.onSpacePressed: onClicked(); onClicked: root._loadProfile(modelData) }
                     }
                 }
             }
 
-            SectionHeader { text: "Editor de perfil personalizado"; width: parent.width; objectName: "editorHeader"; Accessible.name: "Editor de perfil" }
+            SectionHeader { text: qsTr("Editor de perfil personalizado"); width: parent.width; objectName: "editorHeader"; Accessible.name: "Editor de perfil" }
 
             InlineError {
                 message: root._validationError
@@ -143,7 +143,7 @@ Item {
 
                     Row {
                         spacing: MichiTheme.spacing.md; width: parent.width
-                        Text { text: "Nombre:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        Text { text: qsTr("Nombre:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         TextField {
                             Accessible.role: Accessible.EditableText
 
@@ -153,7 +153,7 @@ Item {
 
                             focusPolicy: Qt.StrongFocus
                             width: parent.width - 100; text: root._profileName
-                            placeholderText: "Nombre del perfil"
+                            placeholderText: qsTr("Nombre del perfil")
                             font.pixelSize: MichiTheme.typography.bodySize
                             color: MichiTheme.colors.textPrimary
                             background: Rectangle { color: MichiTheme.colors.surfaceInput; radius: MichiTheme.radius.sm; border.width: parent.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth; border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard }
@@ -167,7 +167,7 @@ Item {
                             Accessible.name: "ComboBox"
 
                         spacing: MichiTheme.spacing.md; width: parent.width
-                        Text { text: "Formato:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        Text { text: qsTr("Formato:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
                             model: root._formatOptions
@@ -189,7 +189,7 @@ Item {
 
                     Row {
                         spacing: MichiTheme.spacing.md; width: parent.width
-                        Text { text: "Bitrate:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        Text { text: qsTr("Bitrate:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
                             model: root._bitrateOptions
@@ -205,7 +205,7 @@ Item {
 
                     Row {
                         spacing: MichiTheme.spacing.md; width: parent.width
-                        Text { text: "Sample rate:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        Text { text: qsTr("Sample rate:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
                             model: root._sampleRateOptions
@@ -221,7 +221,7 @@ Item {
 
                     Row {
                         spacing: MichiTheme.spacing.md; width: parent.width
-                        Text { text: "Bit depth:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        Text { text: qsTr("Bit depth:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
                             Accessible.role: Accessible.ComboBox
 
@@ -237,7 +237,7 @@ Item {
 
                     Row {
                         spacing: MichiTheme.spacing.md; width: parent.width
-                        Text { text: "Canales:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        Text { text: qsTr("Canales:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                     Accessible.role: Accessible.Button
 
                         ComboBox {
@@ -254,7 +254,7 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
-                    text: "Guardar perfil"
+                    text: qsTr("Guardar perfil")
                     Accessible.role: Accessible.Button
 
                     variant: "primary"
@@ -265,7 +265,7 @@ Item {
                     onClicked: root._saveProfile()
                 }
                 MichiButton {
-                    text: "Eliminar perfil"
+                    text: qsTr("Eliminar perfil")
                     variant: "danger"
                     enabled: root._editing
                     activeFocusOnTab: true
@@ -274,7 +274,7 @@ Item {
                     onClicked: root._deleteProfile()
                 }
                 MichiButton {
-                    text: "Cancelar"
+                    text: qsTr("Cancelar")
                     variant: "ghost"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()

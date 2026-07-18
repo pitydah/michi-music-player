@@ -26,9 +26,9 @@ Item {
             anchors.leftMargin: MichiTheme.spacing.md; anchors.rightMargin: MichiTheme.spacing.md
             spacing: MichiTheme.spacing.sm
 
-            StatusBadge { text: root.songCount + " canciones"; kind: "info"; visible: root.songCount > 0 }
-            StatusBadge { text: root.albumCount + " álbumes"; kind: "info"; visible: root.albumCount > 0 }
-            StatusBadge { text: root.artistCount + " artistas"; kind: "info"; visible: root.artistCount > 0 }
+            StatusBadge { text: root.songCount + " canciones"; kind: qsTr("info"); visible: root.songCount > 0 }
+            StatusBadge { text: root.albumCount + " álbumes"; kind: qsTr("info"); visible: root.albumCount > 0 }
+            StatusBadge { text: root.artistCount + " artistas"; kind: qsTr("info"); visible: root.artistCount > 0 }
 
             Item { Layout.fillWidth: true }
 

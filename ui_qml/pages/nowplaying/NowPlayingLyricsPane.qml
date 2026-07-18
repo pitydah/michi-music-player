@@ -15,7 +15,7 @@ Item {
         spacing: MichiTheme.spacing.sm
 
         Text {
-            text: "Letra"
+            text: qsTr("Letra")
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.bodySize
             font.weight: MichiTheme.typography.weightMedium
@@ -24,7 +24,7 @@ Item {
         Text {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            text: "Letra no disponible"
+            text: qsTr("Letra no disponible")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
             font.italic: true

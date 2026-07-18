@@ -12,7 +12,7 @@ Item {
     property bool partiallyChecked: false
     property bool loading: false
     property string text: ""
-    property string accessibleName: root.text !== "" ? root.text : "Casilla"
+    property string accessibleName: root.text !== "" ? root.text : qsTr("Casilla")
     property string accessibleDescription: ""
 
     signal toggled(bool checked)
@@ -70,7 +70,7 @@ Item {
 
         Text {
             anchors.centerIn: parent
-            text: root.partiallyChecked ? "\u2014" : "\u2713"
+            text: root.partiallyChecked ? "\u2014" : qsTr("\u2713")
             color: root.checked || root.partiallyChecked ? MichiTheme.colors.textOnAccent : "transparent"
             font.pixelSize: MichiTheme.typography.bodySize
             font.weight: MichiTheme.typography.weightBold

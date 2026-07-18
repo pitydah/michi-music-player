@@ -17,7 +17,7 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.sm
 
-        SectionHeader { text: "Escaneo"; width: parent.width }
+        SectionHeader { text: qsTr("Escaneo"); width: parent.width }
 
         GlassMaterial {
             width: parent.width; radius: MichiTheme.radius.md; variant: "base"
@@ -25,7 +25,7 @@ Item {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
 
                 Text {
-                    text: "Inicia un escaneo completo de la biblioteca para detectar problemas."
+                    text: qsTr("Inicia un escaneo completo de la biblioteca para detectar problemas.")
                     color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize
                     wrapMode: Text.WordWrap; width: parent.width
                 }
@@ -34,7 +34,7 @@ Item {
                     spacing: MichiTheme.spacing.sm
                     MichiButton {
                         objectName: "scanLibraryButton"
-                        text: root.doc && root.doc.status === "scanning" ? "Escaneando..." : "Escanear biblioteca"
+                        text: root.doc && root.doc.status === "scanning" ? "Escaneando..." : qsTr("Escanear biblioteca")
                         variant: "primary"
                         onClicked: {
                             if (root.doc && typeof root.doc.scan !== "undefined")
@@ -43,7 +43,7 @@ Item {
                     }
                     MichiButton {
                         objectName: "cancelScanButton"
-                        text: "Cancelar escaneo"
+                        text: qsTr("Cancelar escaneo")
                         variant: "ghost"
                         visible: root.doc && root.doc.status === "scanning"
                         onClicked: {
@@ -55,8 +55,8 @@ Item {
 
                 Row {
                     spacing: MichiTheme.spacing.sm; visible: root.doc && root.doc.status === "done"
-                    Text { text: "Filtrar:"; color: MichiTheme.colors.textSecondary; anchors.verticalCenter: parent.verticalCenter }
-                    TextField { id: filterField; width: 200; placeholderText: "Tipo de issue..." }
+                    Text { text: qsTr("Filtrar:"); color: MichiTheme.colors.textSecondary; anchors.verticalCenter: parent.verticalCenter }
+                    TextField { id: filterField; width: 200; placeholderText: qsTr("Tipo de issue...") }
                         focusPolicy: Qt.StrongFocus
                 }
             }

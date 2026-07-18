@@ -8,7 +8,7 @@ MichiEmptyState {
     property alias subtitle: root.message
     property bool showProgress: true
 
-    title: "Cargando..."
+    title: qsTr("Cargando...")
     busy: root.showProgress
     iconName: ""
 }

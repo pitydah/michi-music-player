@@ -198,7 +198,7 @@ Item {
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "Cargando..."
+                text: qsTr("Cargando...")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
                 font.weight: MichiTheme.typography.weightMedium
@@ -223,7 +223,7 @@ Item {
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "Error de carga"
+                text: qsTr("Error de carga")
                 color: MichiTheme.colors.error
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightBold
@@ -240,7 +240,7 @@ Item {
 
             MichiButton {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "Reintentar"
+                text: qsTr("Reintentar")
                 variant: "primary"
                 onClicked: pageStack.loadRoute(pageStack.currentRoute)
             }
@@ -265,7 +265,7 @@ Item {
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "Error fatal"
+                text: qsTr("Error fatal")
                 color: MichiTheme.colors.error
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightBold
@@ -282,7 +282,7 @@ Item {
 
             MichiButton {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "Reintentar"
+                text: qsTr("Reintentar")
                 variant: "primary"
                 onClicked: root.dismissFatal()
             }
@@ -331,7 +331,7 @@ Item {
 
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "Soltar archivos para añadir a la biblioteca"
+                    text: qsTr("Soltar archivos para añadir a la biblioteca")
                     color: MichiTheme.colors.accentBlue
                     font.pixelSize: MichiTheme.typography.bodySize
                     font.weight: MichiTheme.typography.weightMedium

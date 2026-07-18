@@ -71,13 +71,13 @@ Item {
                 spacing: MichiTheme.spacing.lg
 
                 PageHeader {
-                    title: "Audio avanzado"
-                    subtitle: "Dispositivos, calidad y motor de audio"
+                    title: qsTr("Audio avanzado")
+                    subtitle: qsTr("Dispositivos, calidad y motor de audio")
                 }
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Dispositivo de salida"
+                    title: qsTr("Dispositivo de salida")
                     interactive: false
 
                     ColumnLayout {
@@ -93,12 +93,12 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Dispositivo de salida"
+                                    text: qsTr("Dispositivo de salida")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                                 Label {
-                                    text: "Dispositivo de audio seleccionado"
+                                    text: qsTr("Dispositivo de audio seleccionado")
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
@@ -124,7 +124,7 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Calidad de audio"
+                    title: qsTr("Calidad de audio")
                     interactive: false
 
                     ColumnLayout {
@@ -140,12 +140,12 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Frecuencia de muestreo"
+                                    text: qsTr("Frecuencia de muestreo")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                                 Label {
-                                    text: "Sample rate de salida"
+                                    text: qsTr("Sample rate de salida")
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
@@ -175,12 +175,12 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Profundidad de bits"
+                                    text: qsTr("Profundidad de bits")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                                 Label {
-                                    text: "Bit depth de salida"
+                                    text: qsTr("Bit depth de salida")
                                 }
                             }
 
@@ -208,7 +208,7 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Tamaño de buffer"
+                                    text: qsTr("Tamaño de buffer")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
@@ -243,13 +243,13 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Calidad de resample"
+                                    text: qsTr("Calidad de resample")
 
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                                 Label {
-                                    text: "Calidad del conversor de frecuencia de muestreo"
+                                    text: qsTr("Calidad del conversor de frecuencia de muestreo")
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
@@ -258,10 +258,10 @@ Item {
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
                                 model: ListModel {
-                                    ListElement { text: "Baja"; value: "low" }
-                                    ListElement { text: "Media"; value: "medium" }
-                                    ListElement { text: "Alta"; value: "high" }
-                                    ListElement { text: "Máxima"; value: "best" }
+                                    ListElement { text: qsTr("Baja"); value: "low" }
+                                    ListElement { text: qsTr("Media"); value: "medium" }
+                                    ListElement { text: qsTr("Alta"); value: "high" }
+                                    ListElement { text: qsTr("Máxima"); value: "best" }
                                 }
                                 textRole: "text"
                                 valueRole: "value"
@@ -279,7 +279,7 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Normalización"
+                    title: qsTr("Normalización")
                     interactive: false
 
                     ColumnLayout {
@@ -291,7 +291,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Normalización de volumen"
+                                text: qsTr("Normalización de volumen")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -307,7 +307,7 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Opciones avanzadas"
+                    title: qsTr("Opciones avanzadas")
                     interactive: false
 
                     ColumnLayout {
@@ -319,7 +319,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Modo experto"
+                                text: qsTr("Modo experto")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -347,7 +347,7 @@ Item {
                             visible: root.expertMode
 
                             Label {
-                                text: "Configuración avanzada del motor de audio"
+                                text: qsTr("Configuración avanzada del motor de audio")
                                 color: MichiTheme.colors.textSecondary
                                 font.pixelSize: MichiTheme.typography.captionSize
                             }
@@ -356,7 +356,7 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.md
                                 Label {
-                                    text: "Permitir resample"
+                                    text: qsTr("Permitir resample")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                     Layout.fillWidth: true
@@ -374,7 +374,7 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.md
                                 Label {
-                                    text: "Fallback automático"
+                                    text: qsTr("Fallback automático")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                     Layout.fillWidth: true
@@ -391,7 +391,7 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Diagnóstico"
+                    title: qsTr("Diagnóstico")
                     interactive: false
 
                     ColumnLayout {
@@ -401,7 +401,7 @@ Item {
 
                         MichiButton {
                             objectName: "runAudioDiagnosticsButton"
-                            text: "Ejecutar diagnóstico de audio"
+                            text: qsTr("Ejecutar diagnóstico de audio")
                             variant: "primary"
                             Layout.fillWidth: true
                             onClicked: root._runDiagnostics()

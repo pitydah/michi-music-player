@@ -14,11 +14,11 @@ RowLayout {
 
     Repeater {
         model: [
-            {icon: "view-list", tooltip: "Lista"},
-            {icon: "view-grid", tooltip: "Cuadrícula"},
-            {icon: "view-coverflow", tooltip: "CoverFlow"},
-            {icon: "view-details", tooltip: "Detalles"},
-            {icon: "view-tree", tooltip: "Árbol"}
+            {icon: qsTr("view-list"), tooltip: "Lista"},
+            {icon: qsTr("view-grid"), tooltip: "Cuadrícula"},
+            {icon: qsTr("view-coverflow"), tooltip: "CoverFlow"},
+            {icon: qsTr("view-details"), tooltip: "Detalles"},
+            {icon: qsTr("view-tree"), tooltip: "Árbol"}
         ]
         Rectangle {
     Accessible.role: Accessible.Pane

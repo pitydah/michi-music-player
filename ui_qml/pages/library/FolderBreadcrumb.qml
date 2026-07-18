@@ -26,7 +26,7 @@ Item {
             spacing: MichiTheme.spacing.xs
 
             Text {
-                text: "BL"
+                text: qsTr("BL")
                 color: MichiTheme.colors.accentBlue
                 font.pixelSize: MichiTheme.typography.captionSize
                 font.weight: MichiTheme.typography.weightBold
@@ -39,7 +39,7 @@ Item {
                     spacing: MichiTheme.spacing.xs
 
                     Text {
-                        text: "/"
+                        text: qsTr("/")
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.bodySize
                     }

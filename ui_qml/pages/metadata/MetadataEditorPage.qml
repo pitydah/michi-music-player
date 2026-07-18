@@ -41,7 +41,7 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Text {
-                text: "Editor de metadatos"
+                text: qsTr("Editor de metadatos")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -54,12 +54,12 @@ Item {
 
                     activeFocusOnTab: true
 
-                    text: "Edición individual"
+                    text: qsTr("Edición individual")
                     variant: root._mode === "single" ? "primary" : "ghost"
                     onClicked: { root._mode = "single"; root.loadFromSelection() }
                 }
                 MichiButton {
-                    text: "Edición por lotes"
+                    text: qsTr("Edición por lotes")
                     variant: root._mode === "batch" ? "primary" : "ghost"
                     onClicked: { root._mode = "batch" }
                 }

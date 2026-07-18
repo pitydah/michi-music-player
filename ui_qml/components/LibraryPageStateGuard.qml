@@ -47,7 +47,7 @@ Item {
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "\u26A0 Error"
+                text: qsTr("\u26A0 Error")
                 color: MichiTheme.colors.error
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 Accessible.role: Accessible.Icon

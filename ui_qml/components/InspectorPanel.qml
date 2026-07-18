@@ -30,7 +30,7 @@ Item {
             }
 
             Text {
-                text: root.ready ? "Inspector activo" : "Inspector no disponible en modo experimental"
+                text: root.ready ? "Inspector activo" : qsTr("Inspector no disponible en modo experimental")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
                 visible: true

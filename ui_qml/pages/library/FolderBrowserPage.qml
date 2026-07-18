@@ -45,11 +45,11 @@ Item {
                 anchors.fill: parent
                 anchors.leftMargin: MichiTheme.spacing.md; anchors.rightMargin: MichiTheme.spacing.md
 
-                MichiButton { text: "↑ Subir"; variant: "ghost"; enabled: root._breadcrumbs.length > 1
+                MichiButton { text: qsTr("↑ Subir"); variant: "ghost"; enabled: root._breadcrumbs.length > 1
                     onClicked: { if (root._breadcrumbs.length > 1) { root._breadcrumbs.pop(); root._currentPath = root._breadcrumbs[root._breadcrumbs.length - 1]; reload() } }
                 }
                 Item { Layout.fillWidth: true }
-                MichiButton { text: "Escanear carpeta"; variant: "ghost"; onClicked: { if (root.bridge && root.bridge.addFolder) root.bridge.addFolder(root._currentPath) } }
+                MichiButton { text: qsTr("Escanear carpeta"); variant: "ghost"; onClicked: { if (root.bridge && root.bridge.addFolder) root.bridge.addFolder(root._currentPath) } }
             }
         }
 

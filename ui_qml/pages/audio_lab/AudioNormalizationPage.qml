@@ -96,20 +96,20 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Text {
-                text: "Normalización"
+                text: qsTr("Normalización")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
             }
 
             Text {
-                text: "Ajuste de loudness (LUFS), pico real, umbral de puerta."
+                text: qsTr("Ajuste de loudness (LUFS), pico real, umbral de puerta.")
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
             }
 
             AudioInputSelection { id: inputSelection }
             AudioSelectionSummary { width: parent.width }
 
-            SectionHeader { text: "Parámetros de normalización"; width: parent.width }
+            SectionHeader { text: qsTr("Parámetros de normalización"); width: parent.width }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md; variant: "base"
@@ -117,7 +117,7 @@ Item {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
 
                     Column { width: parent.width; spacing: MichiTheme.spacing.xs
-                        Text { text: "Nivel objetivo (LUFS): " + root._targetLufs.toFixed(1); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
+                        Text { text: qsTr("Nivel objetivo (LUFS): ") + root._targetLufs.toFixed(1); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
                         MichiSlider {
                             width: parent.width; from: -30; to: -5; value: root._targetLufs; stepSize: 0.5
                             activeFocusOnTab: true
@@ -126,7 +126,7 @@ Item {
                     }
 
                     Column { width: parent.width; spacing: MichiTheme.spacing.xs
-                        Text { text: "Límite de pico real (dBTP): " + root._truePeakLimit.toFixed(1); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
+                        Text { text: qsTr("Límite de pico real (dBTP): ") + root._truePeakLimit.toFixed(1); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
                         MichiSlider {
                             width: parent.width; from: -6; to: 0; value: root._truePeakLimit; stepSize: 0.1
                             activeFocusOnTab: true
@@ -135,7 +135,7 @@ Item {
                     }
 
                     Column { width: parent.width; spacing: MichiTheme.spacing.xs
-                        Text { text: "Umbral de puerta (dB): " + root._gateThreshold.toFixed(1); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
+                        Text { text: qsTr("Umbral de puerta (dB): ") + root._gateThreshold.toFixed(1); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
                         MichiSlider {
                             width: parent.width; from: -100; to: -30; value: root._gateThreshold; stepSize: 1
                             activeFocusOnTab: true
@@ -145,33 +145,33 @@ Item {
                 }
             }
 
-            SectionHeader { text: "Acciones"; width: parent.width }
+            SectionHeader { text: qsTr("Acciones"); width: parent.width }
 
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
-                    text: "Medir loudness"
+                    text: qsTr("Medir loudness")
                     variant: "primary"
                     enabled: inputSelection.selectedFiles.length > 0 && root._state !== root.statePreviewing && root._state !== root.stateApplying
                     activeFocusOnTab: true
                     onClicked: root._measureLoudness()
                 }
                 MichiButton {
-                    text: "Aplicar normalización"
+                    text: qsTr("Aplicar normalización")
                     variant: "primary"
                     enabled: root._state === root.stateCompleted && root._previewResult !== null
                     activeFocusOnTab: true
                     onClicked: root._applyNormalization()
                 }
                 MichiButton {
-                    text: "Volver"
+                    text: qsTr("Volver")
                     variant: "ghost"
                     activeFocusOnTab: true
                     onClicked: { if (root.nav) root.nav.back() }
                 }
             }
 
-            SectionHeader { text: "Resultados"; width: parent.width }
+            SectionHeader { text: qsTr("Resultados"); width: parent.width }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md
@@ -192,7 +192,7 @@ Item {
 
             StatusBadge {
                 visible: root.labService === null
-                text: "Bridge no disponible"
+                text: qsTr("Bridge no disponible")
                 kind: "disconnected"
             }
         }

@@ -26,7 +26,7 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.sm
 
-        SectionHeader { text: "Vista previa de reparación"; width: parent.width }
+        SectionHeader { text: qsTr("Vista previa de reparación"); width: parent.width }
 
         GlassMaterial {
             width: parent.width
@@ -67,7 +67,7 @@ Item {
                         width: parent.width; height: 24
                         visible: modelData.selected
                         Text {
-                            text: "→ " + (modelData.type || "") + ": " + (modelData.detail || "")
+                            text: qsTr("→ ") + (modelData.type || "") + ": " + (modelData.detail || "")
                             color: MichiTheme.colors.accentBlue
                             font.pixelSize: MichiTheme.typography.metaSize
                             elide: Text.ElideRight
@@ -99,7 +99,7 @@ Item {
 
 
                     MichiButton {
-                        text: root._running ? "Procesando..." : "Confirmar reparación"
+                        text: root._running ? "Procesando..." : qsTr("Confirmar reparación")
                         variant: "danger"
                         enabled: !root._running
                         onClicked: {
@@ -109,7 +109,7 @@ Item {
                     }
 
                     MichiButton {
-                        text: "Cancelar"
+                        text: qsTr("Cancelar")
                         variant: "ghost"
                         enabled: !root._running
                         onClicked: {

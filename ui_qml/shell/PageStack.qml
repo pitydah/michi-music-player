@@ -203,7 +203,7 @@ Item {
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "Error de ruta"
+                text: qsTr("Error de ruta")
                 color: MichiTheme.colors.error
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightBold
@@ -220,7 +220,7 @@ Item {
 
             MichiButton {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "Ir a Inicio"
+                text: qsTr("Ir a Inicio")
                 variant: "primary"
                 onClicked: {
                     if (typeof navigationBridge !== "undefined" && navigationBridge)

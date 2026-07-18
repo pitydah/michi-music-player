@@ -23,7 +23,7 @@ Item {
         spacing: MichiTheme.spacing.xs
 
         Text {
-            text: "Cola (" + (root.playbackState ? root.playbackState.queue.length : 0) + ")"
+            text: qsTr("Cola (") + (root.playbackState ? root.playbackState.queue.length : 0) + ")"
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.metaSize
             font.weight: MichiTheme.typography.weightMedium
@@ -46,7 +46,7 @@ Item {
         }
 
         Text {
-            text: "Sin canciones en cola"
+            text: qsTr("Sin canciones en cola")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
             leftPadding: MichiTheme.spacing.md
@@ -54,7 +54,7 @@ Item {
         }
 
         Text {
-            text: "Historial (" + (root.playbackState ? root.playbackState.history.length : 0) + ")"
+            text: qsTr("Historial (") + (root.playbackState ? root.playbackState.history.length : 0) + ")"
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.metaSize
             font.weight: MichiTheme.typography.weightMedium

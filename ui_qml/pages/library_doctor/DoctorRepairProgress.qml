@@ -39,7 +39,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 Text {
-                    text: "Reparando problemas..."
+                    text: qsTr("Reparando problemas...")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -64,7 +64,7 @@ Item {
                 }
 
                 StatusBadge {
-                    text: root._cancelling ? "Cancelando..." : "Reparación en curso"
+                    text: root._cancelling ? "Cancelando..." : qsTr("Reparación en curso")
                     kind: "warning"
                 }
 
@@ -76,7 +76,7 @@ Item {
 
 
                     MichiButton {
-                        text: root._cancelling ? "Cancelando..." : "Cancelar"
+                        text: root._cancelling ? "Cancelando..." : qsTr("Cancelar")
                         variant: "ghost"
                         enabled: !root._cancelling
                         onClicked: {
@@ -86,7 +86,7 @@ Item {
                     }
 
                     MichiButton {
-                        text: "Reintentar fallidos"
+                        text: qsTr("Reintentar fallidos")
                         variant: "primary"
                         enabled: false
                         visible: false

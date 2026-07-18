@@ -103,7 +103,7 @@ Item {
                             }
 
                             Text {
-                                text: "/"
+                                text: qsTr("/")
                                 color: MichiTheme.colors.textMeta
                                 font.pixelSize: MichiTheme.typography.secondarySize
                                 height: parent.height
@@ -143,7 +143,7 @@ Item {
             MichiSearchField {
                 id: searchField
                 Layout.alignment: Qt.AlignVCenter
-                placeholderText: "Buscar en Michi..."
+                placeholderText: qsTr("Buscar en Michi...")
                 implicitWidth: responsive.compact ? Math.min(160, root.width * 0.2) : Math.min(280, root.width * 0.25)
                 objectName: "searchField"
                 Accessible.name: "Buscar en Michi"

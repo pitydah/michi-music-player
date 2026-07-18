@@ -117,7 +117,7 @@ Item {
                 Accessible.role: Accessible.Button
 
                 id: backButton
-                text: "< Volver"
+                text: qsTr("< Volver")
                 variant: "ghost"
                 onClicked: root.backClicked()
                 activeFocusOnTab: true
@@ -155,21 +155,21 @@ Item {
                     }
 
                     Text {
-                        text: "Protocolo: " + root.deviceProtocol
+                        text: qsTr("Protocolo: ") + root.deviceProtocol
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.metaSize
                         visible: root.deviceProtocol !== ""
                     }
 
                     Text {
-                        text: "Punto de montaje: " + root.deviceMountPoint
+                        text: qsTr("Punto de montaje: ") + root.deviceMountPoint
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.metaSize
                         visible: root.deviceMountPoint !== ""
                     }
 
                     Text {
-                        text: "Último contacto: " + root.deviceLastContact
+                        text: qsTr("Último contacto: ") + root.deviceLastContact
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
                         visible: root.deviceLastContact !== ""
@@ -178,11 +178,11 @@ Item {
                     Row {
                         spacing: MichiTheme.spacing.sm
                         StatusBadge {
-                            text: root.deviceAuthorized ? "Autorizado" : "No autorizado"
+                            text: root.deviceAuthorized ? "Autorizado" : qsTr("No autorizado")
                             kind: root.deviceAuthorized ? "success" : "disconnected"
                         }
                         StatusBadge {
-                            text: root.deviceTrusted ? "Confiado" : "No confiado"
+                            text: root.deviceTrusted ? "Confiado" : qsTr("No confiado")
                             kind: root.deviceTrusted ? "success" : "disconnected"
                         }
                     }
@@ -223,7 +223,7 @@ Item {
 
                 MichiButton {
                     id: syncButton
-                    text: "Sincronizar"
+                    text: qsTr("Sincronizar")
                     variant: "primary"
                     onClicked: root.syncClicked()
                     KeyNavigation.tab: authButton
@@ -234,7 +234,7 @@ Item {
 
                 MichiButton {
                     id: authButton
-                    text: root.deviceAuthorized ? "Desautorizar" : "Autorizar"
+                    text: root.deviceAuthorized ? "Desautorizar" : qsTr("Autorizar")
                     variant: "secondary"
                     onClicked: root.deviceAuthorized ? root.unauthorizeClicked() : root.authorizeClicked()
                     KeyNavigation.tab: trustButton
@@ -245,7 +245,7 @@ Item {
 
                 MichiButton {
                     id: trustButton
-                    text: root.deviceTrusted ? "No confiar" : "Confiar"
+                    text: root.deviceTrusted ? "No confiar" : qsTr("Confiar")
                     variant: "ghost"
                     onClicked: root.deviceTrusted ? root.untrustClicked() : root.trustClicked()
                     KeyNavigation.tab: profileEditButton
@@ -256,7 +256,7 @@ Item {
 
                 MichiButton {
                     id: profileEditButton
-                    text: "Editar perfil"
+                    text: qsTr("Editar perfil")
                     variant: "ghost"
                     onClicked: root.editProfileClicked()
                     KeyNavigation.tab: unpairButton
@@ -267,7 +267,7 @@ Item {
 
                 MichiButton {
                     id: unpairButton
-                    text: "Desvincular"
+                    text: qsTr("Desvincular")
                     variant: "danger"
                     onClicked: root.unpairClicked()
                     KeyNavigation.tab: transferPanel
@@ -302,8 +302,8 @@ Item {
     LoadingState {
         id: loadingState
         anchors.centerIn: parent
-        title: "Cargando dispositivo"
-        message: "Obteniendo información del dispositivo…"
+        title: qsTr("Cargando dispositivo")
+        message: qsTr("Obteniendo información del dispositivo…")
         busy: true
         visible: root.state === "LOADING" || root.state === "INITIALIZING"
     }
@@ -311,8 +311,8 @@ Item {
     UnavailableState {
         id: unavailableState
         anchors.centerIn: parent
-        title: "Servicio no disponible"
-        message: "El servicio de dispositivos no está disponible. Conecta un dispositivo o inicia el servidor de sincronización."
+        title: qsTr("Servicio no disponible")
+        message: qsTr("El servicio de dispositivos no está disponible. Conecta un dispositivo o inicia el servidor de sincronización.")
         details: "Los detalles del dispositivo requieren el servicio de sincronización."
         primaryActionText: "Reintentar"
         secondaryActionText: "Volver"
@@ -359,7 +359,7 @@ Item {
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "Error"
+                text: qsTr("Error")
                 color: MichiTheme.colors.error
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -367,7 +367,7 @@ Item {
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "No se pudo cargar la información del dispositivo."
+                text: qsTr("No se pudo cargar la información del dispositivo.")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
                 horizontalAlignment: Text.AlignHCenter
@@ -376,7 +376,7 @@ Item {
 
             MichiButton {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "Reintentar"
+                text: qsTr("Reintentar")
                 onClicked: {
                     state = "LOADING"
                     if (root.dv && typeof root.dv.loadDeviceDetail === "function") {
@@ -403,7 +403,7 @@ Item {
 
             MichiButton {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "Volver"
+                text: qsTr("Volver")
                 variant: "ghost"
                 onClicked: root.backClicked()
             }

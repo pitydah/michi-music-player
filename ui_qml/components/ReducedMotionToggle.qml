@@ -26,7 +26,7 @@ Item {
         spacing: MichiTheme.spacing.sm
 
         Text {
-            text: "Reducir movimiento"
+            text: qsTr("Reducir movimiento")
             color: MichiTheme.colors.textNormal
             font.pixelSize: MichiTheme.typography.bodySize
         }

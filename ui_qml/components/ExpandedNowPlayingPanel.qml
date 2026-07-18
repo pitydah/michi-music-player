@@ -59,14 +59,14 @@ Item {
                         width: parent.width - 116
 
                         Text {
-                            text: root._hasTrack && root.ps ? root.ps.trackTitle : "Sin reproducción"
+                            text: root._hasTrack && root.ps ? root.ps.trackTitle : qsTr("Sin reproducción")
                             color: root._hasTrack ? MichiTheme.colors.textPrimary : MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.sectionTitleSize
                             font.weight: MichiTheme.typography.weightSemiBold; elide: Text.ElideRight; width: parent.width
                         }
 
                         Text {
-                            text: root._hasTrack && root.ps ? root.ps.trackArtist : "Selecciona una canción"
+                            text: root._hasTrack && root.ps ? root.ps.trackArtist : qsTr("Selecciona una canción")
                             color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize
                             elide: Text.ElideRight; width: parent.width; visible: text !== ""
                         }

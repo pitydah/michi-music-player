@@ -61,7 +61,7 @@ Item {
             }
 
             Text {
-                text: "▶"; color: MichiTheme.colors.accent; anchors.verticalCenter: parent.verticalCenter
+                text: qsTr("▶"); color: MichiTheme.colors.accent; anchors.verticalCenter: parent.verticalCenter
                 font.pixelSize: MichiTheme.typography.bodySize; width: 24
                 visible: root.resultType === "track"
                 Accessible.role: Accessible.Button

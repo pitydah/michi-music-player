@@ -27,7 +27,7 @@ Item {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
 
                 Text {
-                    text: root.doc && root.doc.status === "scanning" ? "Escaneando biblioteca..." : "Reparando problemas..."
+                    text: root.doc && root.doc.status === "scanning" ? "Escaneando biblioteca..." : qsTr("Reparando problemas...")
                     color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
                     font.weight: MichiTheme.typography.weightSemiBold
                 }

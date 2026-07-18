@@ -21,7 +21,7 @@ Dialog {
     signal saved()
     signal cancelled()
 
-    title: "Smart playlist"
+    title: qsTr("Smart playlist")
     standardButtons: Dialog.Ok | Dialog.Cancel
     modal: true
     x: (parent.width - width) / 2; y: (parent.height - height) / 3
@@ -47,28 +47,28 @@ Dialog {
             anchors.horizontalCenter: parent.horizontalCenter
 
             Text {
-                text: "Nombre"; color: MichiTheme.colors.textPrimary
+                text: qsTr("Nombre"); color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
             }
             TextField {
                 focusPolicy: Qt.StrongFocus
                 id: nameInput; width: parent.width; text: root.playlistName
-                placeholderText: "Nombre de la smart playlist"
+                placeholderText: qsTr("Nombre de la smart playlist")
             }
 
 
             Text {
-                text: "Coincidir"; color: MichiTheme.colors.textPrimary
+                text: qsTr("Coincidir"); color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
             }
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
-                    text: "Todas"; variant: root.matchMode === "all" ? "primary" : "secondary"
+                    text: qsTr("Todas"); variant: root.matchMode === "all" ? "primary" : "secondary"
                     onClicked: root.matchMode = "all"
                 }
                 MichiButton {
-                    text: "Cualquiera"; variant: root.matchMode === "any" ? "primary" : "secondary"
+                    text: qsTr("Cualquiera"); variant: root.matchMode === "any" ? "primary" : "secondary"
                     onClicked: root.matchMode = "any"
                 }
             }
@@ -76,11 +76,11 @@ Dialog {
             Row {
                 spacing: MichiTheme.spacing.sm; width: parent.width
                 Text {
-                    text: "Reglas"; color: MichiTheme.colors.textPrimary
+                    text: qsTr("Reglas"); color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
                 }
-                MichiButton { text: "+ Regla"; variant: "ghost"; onClicked: root.addRule() }
+                MichiButton { text: qsTr("+ Regla"); variant: "ghost"; onClicked: root.addRule() }
             }
 
             Repeater {
@@ -113,11 +113,11 @@ Dialog {
                     TextField {
                         focusPolicy: Qt.StrongFocus
                         width: 80; text: modelData.value || ""
-                        placeholderText: "Valor"
+                        placeholderText: qsTr("Valor")
                         onTextChanged: root.rules[index].value = text
                     }
                     Text {
-                        text: "[X]"; color: MichiTheme.colors.error
+                        text: qsTr("[X]"); color: MichiTheme.colors.error
                         font.pixelSize: MichiTheme.typography.bodySize
                         anchors.verticalCenter: parent.verticalCenter
                         MouseArea {
@@ -129,7 +129,7 @@ Dialog {
             }
 
             Text {
-                text: "Limitar a"; color: MichiTheme.colors.textPrimary
+                text: qsTr("Limitar a"); color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize; visible: root.limitCount > 0
             }
             SpinBox {
@@ -140,7 +140,7 @@ Dialog {
             }
 
             Text {
-                text: "Ordenar por"; color: MichiTheme.colors.textPrimary
+                text: qsTr("Ordenar por"); color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
             }
             ComboBox {

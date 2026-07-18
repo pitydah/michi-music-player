@@ -11,7 +11,7 @@ Item {
     property var model: []
     property int currentIndex: -1
     property string currentText: ""
-    property string placeholderText: "Seleccionar..."
+    property string placeholderText: qsTr("Seleccionar...")
     property bool loading: false
     property bool popupOpen: false
     property string textRole: ""
@@ -78,7 +78,7 @@ Item {
             anchors.right: parent.right
             anchors.rightMargin: MichiTheme.spacing.sm
             anchors.verticalCenter: parent.verticalCenter
-            text: "\u25BE"
+            text: qsTr("\u25BE")
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.captionSize
         }

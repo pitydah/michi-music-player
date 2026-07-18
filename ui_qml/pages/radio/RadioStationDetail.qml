@@ -45,7 +45,7 @@ Item {
             }
 
             MichiButton {
-                text: root._isFav ? "\u2605" : "\u2606"
+                text: root._isFav ? "\u2605" : qsTr("\u2606")
                 variant: "ghost"
                 implicitWidth: 32; implicitHeight: 32
                 tooltipText: root._isFav ? "Quitar de favoritos" : "Añadir a favoritos"
@@ -55,7 +55,7 @@ Item {
             }
 
             MichiButton {
-                text: "\u270E"
+                text: qsTr("\u270E")
                 variant: "ghost"
                 implicitWidth: 32; implicitHeight: 32
                 tooltipText: "Editar"
@@ -66,7 +66,7 @@ Item {
             }
 
             MichiButton {
-                text: "\u2716"
+                text: qsTr("\u2716")
                 variant: "danger"
                 implicitWidth: 32; implicitHeight: 32
                 tooltipText: "Eliminar"

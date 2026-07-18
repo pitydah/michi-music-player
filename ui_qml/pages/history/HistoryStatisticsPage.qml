@@ -21,7 +21,7 @@ Drawer {
     signal playTrackRequested(string trackId)
     signal navigateToTrackRequested(string trackId)
 
-    // title: "Estadísticas" (Drawer doesn't have title)
+    // title: qsTr("Estadísticas") (Drawer doesn't have title)
     width: Math.min(parent ? parent.width * 0.85 : 480, 560)
     height: parent ? parent.height : 600
     edge: Qt.RightEdge
@@ -86,7 +86,7 @@ Drawer {
                 spacing: MichiTheme.spacing.md
 
                 Text {
-                    text: "Estadísticas"
+                    text: qsTr("Estadísticas")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -99,7 +99,7 @@ Drawer {
                     Accessible.role: Accessible.Button
 
                     id: exportStatsBtn
-                    text: "Exportar"
+                    text: qsTr("Exportar")
                     variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.tab: closeStatsBtn
@@ -113,7 +113,7 @@ Drawer {
 
                 MichiButton {
                     id: closeStatsBtn
-                    text: "Cerrar"
+                    text: qsTr("Cerrar")
                     variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.backtab: exportStatsBtn
@@ -127,15 +127,15 @@ Drawer {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: parent.width
                 visible: root._state === "LOADING"
-                title: "Cargando estadísticas"
-                message: "Obteniendo datos del historial..."
+                title: qsTr("Cargando estadísticas")
+                message: qsTr("Obteniendo datos del historial...")
             }
 
             ErrorState {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: parent.width
                 visible: root._state === "ERROR"
-                title: "Error al cargar estadísticas"
+                title: qsTr("Error al cargar estadísticas")
                 message: !root.bridge ? "El servicio de estadísticas no está disponible."
                                       : "No se pudieron cargar los datos."
                 showRetry: true
@@ -149,7 +149,7 @@ Drawer {
             }
 
             SectionHeader {
-                text: "Tiempo de escucha"
+                text: qsTr("Tiempo de escucha")
                 width: parent.width
                 visible: root._state === "READY"
             }
@@ -163,7 +163,7 @@ Drawer {
                     width: (parent.width - MichiTheme.spacing.md * 3) / 4
                     height: 80
                     title: root._listeningTimeToday
-                    subtitle: "Hoy"
+                    subtitle: qsTr("Hoy")
                     KeyNavigation.tab: listeningTimeWeekCard
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -173,7 +173,7 @@ Drawer {
                     width: (parent.width - MichiTheme.spacing.md * 3) / 4
                     height: 80
                     title: root._listeningTimeWeek
-                    subtitle: "Esta semana"
+                    subtitle: qsTr("Esta semana")
                     KeyNavigation.tab: listeningTimeMonthCard
                     KeyNavigation.backtab: listeningTimeTodayCard
                     Keys.onReturnPressed: onClicked()
@@ -184,7 +184,7 @@ Drawer {
                     width: (parent.width - MichiTheme.spacing.md * 3) / 4
                     height: 80
                     title: root._listeningTimeMonth
-                    subtitle: "Este mes"
+                    subtitle: qsTr("Este mes")
                     KeyNavigation.tab: listeningTimeAllCard
                     KeyNavigation.backtab: listeningTimeWeekCard
                     Keys.onReturnPressed: onClicked()
@@ -195,7 +195,7 @@ Drawer {
                     width: (parent.width - MichiTheme.spacing.md * 3) / 4
                     height: 80
                     title: root._listeningTimeAll
-                    subtitle: "Total"
+                    subtitle: qsTr("Total")
                     KeyNavigation.backtab: listeningTimeMonthCard
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -203,7 +203,7 @@ Drawer {
             }
 
             SectionHeader {
-                text: "Más reproducidas"
+                text: qsTr("Más reproducidas")
                 width: parent.width
                 showChevron: true
                 visible: root._state === "READY"
@@ -272,7 +272,7 @@ Drawer {
                         MichiButton {
                             width: MichiTheme.minimumInteractiveSize
                             height: MichiTheme.minimumInteractiveSize
-                            text: "▶"
+                            text: qsTr("▶")
                             variant: "ghost"
                             anchors.verticalCenter: parent.verticalCenter
                             visible: mouseArea.containsMouse
@@ -308,7 +308,7 @@ Drawer {
             }
 
             SectionHeader {
-                text: "Álbumes más reproducidos"
+                text: qsTr("Álbumes más reproducidos")
                 width: parent.width
                 showChevron: true
                 visible: root._state === "READY"
@@ -380,7 +380,7 @@ Drawer {
             }
 
             SectionHeader {
-                text: "Artistas más reproducidos"
+                text: qsTr("Artistas más reproducidos")
                 width: parent.width
                 showChevron: true
                 visible: root._state === "READY"
@@ -444,7 +444,7 @@ Drawer {
             }
 
             SectionHeader {
-                text: "Distribución por género"
+                text: qsTr("Distribución por género")
                 width: parent.width
                 showChevron: true
                 visible: root._state === "READY"

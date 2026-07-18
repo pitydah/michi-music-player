@@ -65,7 +65,7 @@ Item {
                 spacing: MichiTheme.spacing.lg
 
                 Text {
-                    text: "Vincular servidor"
+                    text: qsTr("Vincular servidor")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -123,7 +123,7 @@ Item {
 
                     MichiButton {
                         id: confirmBtn
-                        text: root.pairingStatus === "paired" ? "Cerrar" : "Confirmar"
+                        text: root.pairingStatus === "paired" ? "Cerrar" : qsTr("Confirmar")
                         variant: "primary"
                         onClicked: {
                             root.open = false
@@ -142,7 +142,7 @@ Item {
 
                     MichiButton {
                         id: rejectBtn
-                        text: "Cancelar"
+                        text: qsTr("Cancelar")
                         variant: "ghost"
                         onClicked: {
                             root.open = false
@@ -160,7 +160,7 @@ Item {
 
                     MichiButton {
                         id: retryBtn
-                        text: "Reintentar"
+                        text: qsTr("Reintentar")
                         variant: "secondary"
                         visible: root.pairingStatus === "failed"
                         onClicked: {

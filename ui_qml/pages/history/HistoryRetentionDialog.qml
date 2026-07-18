@@ -20,7 +20,7 @@ Dialog {
     signal retentionApplied(int deletedCount)
     signal retentionCancelled()
 
-    title: "Política de retención"
+    title: qsTr("Política de retención")
     modal: true
     x: (parent.width - width) / 2
     y: (parent.height - height) / 3
@@ -47,7 +47,7 @@ Dialog {
         width: parent ? parent.width : 360
 
         Text {
-            text: "Configurar retención del historial de reproducción"
+            text: qsTr("Configurar retención del historial de reproducción")
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.bodySize
             wrapMode: Text.WordWrap
@@ -57,7 +57,7 @@ Dialog {
         RowLayout {
             Layout.fillWidth: true
             Text {
-                text: "Mantener registros de:"
+                text: qsTr("Mantener registros de:")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
             }
@@ -69,12 +69,12 @@ Dialog {
                 id: daysCombo
                 Layout.preferredWidth: 140
                 model: [
-                    {text: "30 días", value: 30},
-                    {text: "60 días", value: 60},
-                    {text: "90 días", value: 90},
-                    {text: "180 días", value: 180},
-                    {text: "365 días", value: 365},
-                    {text: "Siempre", value: -1}
+                    {text: qsTr("30 días"), value: 30},
+                    {text: qsTr("60 días"), value: 60},
+                    {text: qsTr("90 días"), value: 90},
+                    {text: qsTr("180 días"), value: 180},
+                    {text: qsTr("365 días"), value: 365},
+                    {text: qsTr("Siempre"), value: -1}
                 ]
                 textRole: "text"
                 valueRole: "value"
@@ -93,7 +93,7 @@ Dialog {
         RowLayout {
             Layout.fillWidth: true
             Text {
-                text: "Máximo de entradas:"
+                text: qsTr("Máximo de entradas:")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
             }
@@ -107,7 +107,7 @@ Dialog {
                 onValueChanged: root._maxEntries = value
             }
             Text {
-                text: "(0 = sin límite)"
+                text: qsTr("(0 = sin límite)")
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
                 anchors.verticalCenter: parent.verticalCenter
@@ -119,7 +119,7 @@ Dialog {
             CheckBox {
                 id: autoCleanCheck
                 checked: root._autoClean
-                text: "Limpiar automáticamente"
+                text: qsTr("Limpiar automáticamente")
                 onCheckedChanged: root._autoClean = checked
             }
         }
@@ -132,14 +132,14 @@ Dialog {
         }
 
         Text {
-            text: "Estado actual:"
+            text: qsTr("Estado actual:")
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.bodySize
             font.weight: MichiTheme.typography.weightMedium
         }
 
         Text {
-            text: "Entradas: " + root._currentCount
+            text: qsTr("Entradas: ") + root._currentCount
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.metaSize
         }
@@ -172,7 +172,7 @@ Dialog {
             spacing: MichiTheme.spacing.sm
 
             MichiButton {
-                text: "Cancelar"
+                text: qsTr("Cancelar")
                 variant: "ghost"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
@@ -181,7 +181,7 @@ Dialog {
             }
 
             MichiButton {
-                text: "Guardar"
+                text: qsTr("Guardar")
                 variant: "primary"
                 enabled: !root._applying
                 activeFocusOnTab: true

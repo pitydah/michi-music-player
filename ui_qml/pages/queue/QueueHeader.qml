@@ -20,7 +20,7 @@ Item {
         spacing: MichiTheme.spacing.md
 
         Text {
-            text: "Cola de reproducción"
+            text: qsTr("Cola de reproducción")
             font.pixelSize: MichiTheme.typography.sectionTitleSize
             color: MichiTheme.colors.textPrimary
             font.weight: MichiTheme.typography.weightSemiBold
@@ -37,7 +37,7 @@ Item {
 
         MichiButton {
             objectName: "clearQueueButton"
-            text: "Vaciar"
+            text: qsTr("Vaciar")
             variant: "danger"
             visible: root.qb && root.qb.queueCount > 0
             onClicked: {
@@ -50,7 +50,7 @@ Item {
 
         MichiButton {
             objectName: "saveQueueButton"
-            text: "Guardar como playlist"
+            text: qsTr("Guardar como playlist")
             variant: "ghost"
             visible: root.qb && root.qb.queueCount > 0
             onClicked: saveDialog.open()
@@ -59,7 +59,7 @@ Item {
 
     Dialog {
         id: saveDialog
-        title: "Guardar cola como playlist"
+        title: qsTr("Guardar cola como playlist")
         standardButtons: Dialog.Ok | Dialog.Cancel
         modal: true
         x: (parent.width - width) / 2
@@ -70,7 +70,7 @@ Item {
             focusPolicy: Qt.StrongFocus
             id: playlistName
             width: parent.width
-            placeholderText: "Nombre de la playlist"
+            placeholderText: qsTr("Nombre de la playlist")
         }
 
         onAccepted: {

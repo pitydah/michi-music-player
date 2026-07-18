@@ -12,7 +12,7 @@ Page {
     id: page
 
     header: SectionHeader {
-        text: "Grabación ADC (Vinilo/Cassette)"
+        text: qsTr("Grabación ADC (Vinilo/Cassette)")
 
         // onBackClicked eliminado (no existe en SectionHeader)
     }
@@ -167,7 +167,7 @@ Page {
                     spacing: 10
 
                     Label {
-                        text: "Dispositivo de Entrada"
+                        text: qsTr("Dispositivo de Entrada")
                         font.bold: true
                         font.pixelSize: 14
                     }
@@ -186,7 +186,7 @@ Page {
 
                     Label {
                         visible: audioDevices.length === 0
-                        text: "⚠️ Conecta un tocadiscos USB o interfaz de audio"
+                        text: qsTr("⚠️ Conecta un tocadiscos USB o interfaz de audio")
                         color: MichiTheme.warning
                         font.pixelSize: 12
                         wrapMode: Text.Wrap
@@ -204,7 +204,7 @@ Page {
                     spacing: 15
 
                     Label {
-                        text: "Nivel de Entrada"
+                        text: qsTr("Nivel de Entrada")
                         font.bold: true
                         font.pixelSize: 14
                         horizontalAlignment: Text.AlignHCenter
@@ -242,7 +242,7 @@ Page {
                         Layout.fillWidth: true
 
                         Label {
-                            text: "-60 dB"
+                            text: qsTr("-60 dB")
                             font.pixelSize: 10
                             color: MichiTheme.textSecondary
                         }
@@ -250,7 +250,7 @@ Page {
                         Item { Layout.fillWidth: true }
 
                         Label {
-                            text: "0 dB"
+                            text: qsTr("0 dB")
                             font.pixelSize: 10
                             color: MichiTheme.textSecondary
                         }
@@ -266,7 +266,7 @@ Page {
                     }
 
                     Label {
-                        text: "(estimado)"
+                        text: qsTr("(estimado)")
                         font.pixelSize: 11
                         color: MichiTheme.textMuted
                         horizontalAlignment: Text.AlignHCenter
@@ -307,7 +307,7 @@ Page {
                             width: 70
                             height: 70
                             radius: 35
-                            text: isRecording ? "⬛" : "🔴"
+                            text: isRecording ? "⬛" : qsTr("🔴")
                             font.pixelSize: 24
                             highlighted: !isRecording
                             enabled: audioDevices.length > 0
@@ -326,7 +326,7 @@ Page {
                             width: 60
                             height: 60
                             radius: 30
-                            text: isPaused ? "▶️" : "⏸️"
+                            text: isPaused ? "▶️" : qsTr("⏸️")
                             font.pixelSize: 20
                             enabled: isRecording
 
@@ -338,7 +338,7 @@ Page {
                             width: 60
                             height: 60
                             radius: 30
-                            text: "🏷️"
+                            text: qsTr("🏷️")
                             font.pixelSize: 20
                             enabled: isRecording
 
@@ -350,7 +350,7 @@ Page {
                     Label {
                         id: statusMessage
                         Layout.fillWidth: true
-                        text: "Listo para grabar"
+                        text: qsTr("Listo para grabar")
                         horizontalAlignment: Text.AlignHCenter
                         font.pixelSize: 14
                         color: MichiTheme.textSecondary
@@ -368,7 +368,7 @@ Page {
                     spacing: 15
 
                     Label {
-                        text: "Configuración"
+                        text: qsTr("Configuración")
                         font.bold: true
                         font.pixelSize: 14
                     }
@@ -376,26 +376,26 @@ Page {
                     // Ecualización RIAA
                     CheckBox {
                         id: applyRIAA
-                        text: "Aplicar ecualización RIAA (para tocadiscos sin preamp)"
+                        text: qsTr("Aplicar ecualización RIAA (para tocadiscos sin preamp)")
                         checked: selectedDevice && selectedDevice.is_turntable
                     }
 
                     ToolTip {
                         visible: applyRIAA.hovered
-                        text: "La ecualización RIAA corrige la respuesta de frecuencia estándar de vinilos. Actívala si tu tocadiscos no tiene preamplificador incorporado."
+                        text: qsTr("La ecualización RIAA corrige la respuesta de frecuencia estándar de vinilos. Actívala si tu tocadiscos no tiene preamplificador incorporado.")
                         delay: 500
                     }
 
                     // Filtros DSP
                     CheckBox {
                         id: deClickerCheck
-                        text: "Filtro De-Clicker (eliminar clicks y pops)"
+                        text: qsTr("Filtro De-Clicker (eliminar clicks y pops)")
                         checked: false
                     }
 
                     CheckBox {
                         id: deHisserCheck
-                        text: "Filtro De-Hisser (reducir ruido de cinta)"
+                        text: qsTr("Filtro De-Hisser (reducir ruido de cinta)")
                         checked: false
                     }
 
@@ -404,7 +404,7 @@ Page {
                         Layout.fillWidth: true
 
                         Label {
-                            text: "Guardar en:"
+                            text: qsTr("Guardar en:")
                             width: 100
                         }
 
@@ -415,7 +415,7 @@ Page {
                         }
 
                         Button {
-                            text: "..."
+                            text: qsTr("...")
                             onClicked: {
                                 // Abrir selector de carpetas
                             }
@@ -442,7 +442,7 @@ Page {
                         }
                         Item { Layout.fillWidth: true }
                         Label {
-                            text: "Se usarán para dividir pistas automáticamente"
+                            text: qsTr("Se usarán para dividir pistas automáticamente")
                             font.pixelSize: 11
                             color: MichiTheme.textSecondary
                         }
@@ -473,14 +473,14 @@ Page {
 
             // Badge experimental
             StatusBadge {
-                text: "Experimental"
+                text: qsTr("Experimental")
                 kind: "warning"
                 Layout.alignment: Qt.AlignHCenter
             }
 
             Label {
                 Layout.fillWidth: true
-                text: "Consejo: Para mejores resultados, graba a 24-bit/96kHz si tu dispositivo lo soporta. Aplica RIAA solo si tu tocadiscos no tiene preamplificador."
+                text: qsTr("Consejo: Para mejores resultados, graba a 24-bit/96kHz si tu dispositivo lo soporta. Aplica RIAA solo si tu tocadiscos no tiene preamplificador.")
                 font.pixelSize: 12
                 color: MichiTheme.textSecondary
                 wrapMode: Text.Wrap

@@ -56,14 +56,14 @@ Item {
 
 
                 MichiButton {
-                    text: "Volver"; variant: "ghost"
+                    text: qsTr("Volver"); variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.tab: playAllBtn
                     onClicked: root.backRequested()
                 }
 
                 Text {
-                    text: "Mix — " + root._songs.length + " canciones"; color: MichiTheme.colors.textPrimary
+                    text: qsTr("Mix — ") + root._songs.length + " canciones"; color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -76,7 +76,7 @@ Item {
 
                 MichiButton {
                     id: playAllBtn
-                    text: "Reproducir todo"; variant: "primary"
+                    text: qsTr("Reproducir todo"); variant: "primary"
                     activeFocusOnTab: true
                     KeyNavigation.tab: enqueueAllBtn
                     KeyNavigation.backtab: resultBackBtn
@@ -88,7 +88,7 @@ Item {
 
                 MichiButton {
                     id: enqueueAllBtn
-                    text: "Agregar a cola"; variant: "secondary"
+                    text: qsTr("Agregar a cola"); variant: "secondary"
                     activeFocusOnTab: true
                     KeyNavigation.tab: saveAsPlaylistBtn
                     KeyNavigation.backtab: playAllBtn
@@ -100,7 +100,7 @@ Item {
 
                 MichiButton {
                     id: saveAsPlaylistBtn
-                    text: "Guardar como playlist"; variant: "ghost"
+                    text: qsTr("Guardar como playlist"); variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.tab: regenerateBtn
                     KeyNavigation.backtab: enqueueAllBtn
@@ -110,7 +110,7 @@ Item {
 
                 MichiButton {
                     id: regenerateBtn
-                    text: "Regenerar"; variant: "ghost"
+                    text: qsTr("Regenerar"); variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.tab: trackList
                     KeyNavigation.backtab: saveAsPlaylistBtn
@@ -172,7 +172,7 @@ Item {
                 }
 
                 Text {
-                    width: 24; text: "P"; color: MichiTheme.colors.accentBlue
+                    width: 24; text: qsTr("P"); color: MichiTheme.colors.accentBlue
                     font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -181,7 +181,7 @@ Item {
                 }
 
                 Text {
-                    width: 24; text: "+"; color: MichiTheme.colors.textMuted
+                    width: 24; text: qsTr("+"); color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.cardTitleSize; anchors.verticalCenter: parent.verticalCenter
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -205,7 +205,7 @@ Item {
 
         Text {
             anchors.centerIn: parent; visible: root._songs.length === 0
-            text: "No hay canciones en este mix"
+            text: qsTr("No hay canciones en este mix")
             color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
         }
     }
@@ -213,13 +213,13 @@ Item {
     LoadingState {
         anchors.centerIn: parent
         visible: root._loading
-        title: "Cargando mix..."
+        title: qsTr("Cargando mix...")
     }
 
     ErrorState {
         anchors.centerIn: parent
         visible: root._errorMessage !== ""
-        title: "Error"
+        title: qsTr("Error")
         message: root._errorMessage
         showRetry: true
         onRetryRequested: root.regenerateRequested()
@@ -229,7 +229,7 @@ Item {
         anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
         anchors.margins: MichiTheme.spacing.md
         visible: root.mx === null
-        text: "Bridge no disponible"
+        text: qsTr("Bridge no disponible")
         kind: "disconnected"
     }
 }

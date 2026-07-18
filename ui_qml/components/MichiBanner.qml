@@ -85,7 +85,7 @@ Rectangle {
 
             Text {
                 anchors.centerIn: parent
-                text: "✕"
+                text: qsTr("✕")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: 12
             }

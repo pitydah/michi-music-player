@@ -20,7 +20,7 @@ Dialog {
     signal saved(int id, string name)
     signal cancelled()
 
-    title: playlistId >= 0 ? "Editar playlist" : "Nueva playlist"
+    title: playlistId >= 0 ? "Editar playlist" : qsTr("Nueva playlist")
     modal: true
     x: (parent.width - width) / 2
     y: (parent.height - height) / 3
@@ -44,7 +44,7 @@ Dialog {
         width: parent ? parent.width : 360
 
         Text {
-            text: "Nombre *"
+            text: qsTr("Nombre *")
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.bodySize
         }
@@ -54,14 +54,14 @@ Dialog {
             id: nameInput
             width: parent.width
             text: root.playlistName
-            placeholderText: "Nombre de la playlist"
+            placeholderText: qsTr("Nombre de la playlist")
             activeFocusOnTab: true
             onTextChanged: { root._hasChanges = true; root._validationError = "" }
             Keys.onReturnPressed: root.accept()
         }
 
         Text {
-            text: "Descripción (opcional)"
+            text: qsTr("Descripción (opcional)")
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.bodySize
             Accessible.role: Accessible.EditableText
@@ -73,13 +73,13 @@ Dialog {
             width: parent.width
             height: 80
             text: root.playlistDescription
-            placeholderText: "Descripción de la playlist"
+            placeholderText: qsTr("Descripción de la playlist")
             activeFocusOnTab: true
             onTextChanged: root._hasChanges = true
         }
 
         Text {
-            text: "Carátula (opcional)"
+            text: qsTr("Carátula (opcional)")
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.bodySize
         }
@@ -94,12 +94,12 @@ Dialog {
                 activeFocusOnTab: true
 
                 width: parent.width - 80
-                placeholderText: "Ruta de imagen o álbum"
+                placeholderText: qsTr("Ruta de imagen o álbum")
                 text: root._coverPath
                 readOnly: true
             }
             MichiButton {
-                text: "Examinar"
+                text: qsTr("Examinar")
                 variant: "secondary"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
@@ -123,7 +123,7 @@ Dialog {
             layoutDirection: Qt.RightToLeft
 
             MichiButton {
-                text: root._saving ? "Guardando..." : "Guardar"
+                text: root._saving ? "Guardando..." : qsTr("Guardar")
                 variant: "primary"
                 enabled: !root._saving
                 activeFocusOnTab: true
@@ -154,7 +154,7 @@ Dialog {
             }
 
             MichiButton {
-                text: "Cancelar"
+                text: qsTr("Cancelar")
                 variant: "ghost"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
@@ -166,7 +166,7 @@ Dialog {
 
     FileDialog {
         id: coverDialog
-        title: "Seleccionar carátula"
+        title: qsTr("Seleccionar carátula")
         nameFilters: ["Images (*.png *.jpg *.jpeg *.webp)", "All files (*)"]
         onAccepted: {
             root._coverPath = selectedFile.toString().replace("file://", "")

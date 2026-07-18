@@ -60,7 +60,7 @@ Item {
                         width: parent.width - 200
 
                         Text {
-                            text: "Album destacado"
+                            text: qsTr("Album destacado")
                             color: MichiTheme.colors.accentBlue
                             font.pixelSize: MichiTheme.typography.badgeSize
                             font.weight: MichiTheme.typography.weightSemiBold
@@ -105,7 +105,7 @@ Item {
                         RowLayout {
                             spacing: MichiTheme.spacing.sm
                             MichiButton {
-                                text: "Reproducir"
+                                text: qsTr("Reproducir")
                                 variant: "primary"
                                 onClicked: {
                                     if (root.bridge && root.bridge.playAlbum && root.albumModel && root.albumModel.count > 0) {
@@ -114,7 +114,7 @@ Item {
                                 }
                             }
                             MichiButton {
-                                text: "Detalles"
+                                text: qsTr("Detalles")
                                 variant: "ghost"
                                 onClicked: {
                                     if (root.albumModel && root.albumModel.count > 0) {
@@ -129,7 +129,7 @@ Item {
             }
 
             SectionHeader {
-                text: "Recientes"
+                text: qsTr("Recientes")
                 width: parent.width
             }
 
@@ -186,7 +186,7 @@ Item {
             }
 
             SectionHeader {
-                text: "Hi-Res"
+                text: qsTr("Hi-Res")
                 width: parent.width
             }
 
@@ -256,7 +256,7 @@ Item {
             }
 
             SectionHeader {
-                text: "Todos los albumes"
+                text: qsTr("Todos los albumes")
                 width: parent.width
             }
 

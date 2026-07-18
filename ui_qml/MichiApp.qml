@@ -39,7 +39,7 @@ Item {
             anchors.centerIn: parent
             color: MichiTheme.colors.accent
             font.pixelSize: 18
-            text: "Inicializando Michi Music Player QML..."
+            text: qsTr("Inicializando Michi Music Player QML...")
         }
     }
 }

@@ -25,10 +25,10 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            Label { text: "Fuentes de biblioteca"; font.pixelSize: MichiTheme.typography.sectionTitleSize; color: MichiTheme.colors.textPrimary }
+            Label { text: qsTr("Fuentes de biblioteca"); font.pixelSize: MichiTheme.typography.sectionTitleSize; color: MichiTheme.colors.textPrimary }
             Item { Layout.fillWidth: true }
-            MichiButton { text: "Añadir fuente"; variant: "primary"; onClicked: addDialog.open() }
-            MichiButton { text: "Refrescar"; variant: "ghost"; onClicked: root.refresh() }
+            MichiButton { text: qsTr("Añadir fuente"); variant: "primary"; onClicked: addDialog.open() }
+            MichiButton { text: qsTr("Refrescar"); variant: "ghost"; onClicked: root.refresh() }
         }
 
         ListView {
@@ -62,7 +62,7 @@ Item {
                         Layout.fillWidth: true
                         spacing: MichiTheme.spacing.xxs
                         Label { text: modelData.path || ""; font.pixelSize: MichiTheme.typography.bodySize; color: MichiTheme.colors.textPrimary; font.weight: MichiTheme.typography.weightMedium; elide: Text.ElideMiddle }
-                        Label { text: modelData.available ? "Disponible" : "No disponible"; font.pixelSize: MichiTheme.typography.captionSize; color: modelData.available ? MichiTheme.colors.accentGreen : MichiTheme.colors.textMuted }
+                        Label { text: modelData.available ? "Disponible" : qsTr("No disponible"); font.pixelSize: MichiTheme.typography.captionSize; color: modelData.available ? MichiTheme.colors.accentGreen : MichiTheme.colors.textMuted }
                         Label { text: modelData.file_count + " archivos"; visible: modelData.file_count > 0; font.pixelSize: MichiTheme.typography.captionSize; color: MichiTheme.colors.textSecondary }
                     }
 
@@ -73,20 +73,20 @@ Item {
                         }
                     }
 
-                    MichiButton { text: "Escanear"; variant: "ghost"; enabled: modelData.available; onClicked: { if (root.bridge) root.bridge.scanSource(modelData.path) } }
-                    MichiButton { text: "Eliminar"; variant: "danger"; onClicked: { if (root.bridge) root.bridge.removeSource(modelData.path); root.refresh() } }
+                    MichiButton { text: qsTr("Escanear"); variant: "ghost"; enabled: modelData.available; onClicked: { if (root.bridge) root.bridge.scanSource(modelData.path) } }
+                    MichiButton { text: qsTr("Eliminar"); variant: "danger"; onClicked: { if (root.bridge) root.bridge.removeSource(modelData.path); root.refresh() } }
                 }
             }
 
             Item { anchors.centerIn: parent; visible: sourceList.count === 0
-                Label { text: "No hay fuentes configuradas"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                Label { text: qsTr("No hay fuentes configuradas"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
             }
         }
     }
 
     FolderDialog {
         id: addDialog
-        title: "Seleccionar carpeta"
+        title: qsTr("Seleccionar carpeta")
         onAccepted: {
             var folderPath = folder.toString().replace("file://", "")
             if (root.bridge && folderPath) {

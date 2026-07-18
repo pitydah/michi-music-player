@@ -62,21 +62,21 @@ Item {
         }
 
         UnavailableState {
-            title: "Perfiles de salida no disponibles"
-            message: "El bridge de perfiles de salida no está disponible."
+            title: qsTr("Perfiles de salida no disponibles")
+            message: qsTr("El bridge de perfiles de salida no está disponible.")
         }
 
         LoadingState {
-            title: "Cargando perfiles..."
+            title: qsTr("Cargando perfiles...")
         }
 
         EmptyState {
-            title: "Sin perfiles"
-            subtitle: "No hay perfiles de salida configurados. Agrega uno para comenzar."
+            title: qsTr("Sin perfiles")
+            subtitle: qsTr("No hay perfiles de salida configurados. Agrega uno para comenzar.")
         }
 
         ErrorState {
-            title: "Error al cargar perfiles"
+            title: qsTr("Error al cargar perfiles")
             showRetry: true
             onRetryRequested: root.refresh()
         }
@@ -93,7 +93,7 @@ Item {
                 spacing: MichiTheme.spacing.lg
 
                 Text {
-                    text: "Perfiles de salida"
+                    text: qsTr("Perfiles de salida")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -103,7 +103,7 @@ Item {
                     spacing: MichiTheme.spacing.sm
                     MichiButton {
                         objectName: "createProfileButton"
-                        text: "Crear perfil"
+                        text: qsTr("Crear perfil")
                         variant: "primary"
                         onClicked: {
                             root._editProfile = null

@@ -8,8 +8,8 @@ import "../../../../components"
 Item {
     id: root
 
-    property string title: "Sin álbumes"
-    property string message: "No hay álbumes en tu biblioteca. Agrega música para comenzar."
+    property string title: qsTr("Sin álbumes")
+    property string message: qsTr("No hay álbumes en tu biblioteca. Agrega música para comenzar.")
     property string actionText: ""
     signal actionRequested()
 

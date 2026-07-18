@@ -11,7 +11,7 @@ Page {
     id: page
     
     header: SectionHeader {
-        text: "Identificador de Audios"
+        text: qsTr("Identificador de Audios")
     }
     
     ScrollView {
@@ -27,7 +27,7 @@ Page {
             
             Label {
                 Layout.fillWidth: true
-                text: "Herramientas para identificar canciones desconocidas, corregir metadatos incorrectos y agregar carátulas y letras faltantes."
+                text: qsTr("Herramientas para identificar canciones desconocidas, corregir metadatos incorrectos y agregar carátulas y letras faltantes.")
                 font.pixelSize: 14
                 color: MichiTheme.colors.textSecondary
                 wrapMode: Text.Wrap
@@ -37,7 +37,7 @@ Page {
                 model: [
                     { 
                         id: "fingerprint", 
-                        text: "Fingerprint Acústico", 
+                        text: qsTr("Fingerprint Acústico"), 
                         icon: "🆔", 
                         description: "Identifica canciones usando huella acústica (AcoustID)",
                         route: "audio_lab.fingerprint",
@@ -45,7 +45,7 @@ Page {
                     },
                     { 
                         id: "metadata", 
-                        text: "Editor de Metadatos", 
+                        text: qsTr("Editor de Metadatos"), 
                         icon: "📝", 
                         description: "Edita tags ID3: título, artista, álbum, género, año",
                         route: "audio_lab.metadata",
@@ -53,7 +53,7 @@ Page {
                     },
                     { 
                         id: "covers", 
-                        text: "Carátulas", 
+                        text: qsTr("Carátulas"), 
                         icon: "🖼️", 
                         description: "Busca y agrega carátulas desde MusicBrainz y otras fuentes",
                         route: "audio_lab.covers",
@@ -61,7 +61,7 @@ Page {
                     },
                     { 
                         id: "lyrics", 
-                        text: "Letras", 
+                        text: qsTr("Letras"), 
                         icon: "🎵", 
                         description: "Busca y sincroniza letras de canciones",
                         route: "audio_lab.lyrics",
@@ -101,7 +101,7 @@ Page {
                                     Label {
                                         id: statusLabel
                                         anchors.centerIn: parent
-                                        text: model.status === "available" ? "Listo" : "Parcial"
+                                        text: model.status === "available" ? "Listo" : qsTr("Parcial")
                                         font.pixelSize: 11
                                         font.bold: true
                                         color: "#ffffff"
@@ -119,7 +119,7 @@ Page {
                             }
                         }
                         
-                        Label { text: "›"; font.pixelSize: 28;                 color: MichiTheme.colors.accent }
+                        Label { text: qsTr("›"); font.pixelSize: 28;                 color: MichiTheme.colors.accent }
                     }
                 }
             }

@@ -10,8 +10,8 @@ Item {
     focus: true
     id: root
 
-    property string title: "Error"
-    property string message: "Ocurrió un error inesperado."
+    property string title: qsTr("Error")
+    property string message: qsTr("Ocurrió un error inesperado.")
     property string details: ""
     property string errorCode: ""
     property string errorSource: ""
@@ -38,7 +38,7 @@ Item {
 
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: "!"
+            text: qsTr("!")
             color: MichiTheme.colors.error
             font.pixelSize: MichiTheme.typography.heroTitleSize
             font.weight: MichiTheme.typography.weightBold
@@ -99,7 +99,7 @@ Item {
 
             Text {
                 width: parent.width
-                text: root.errorSource ? "Origen: " + root.errorSource : ""
+                text: root.errorSource ? "Origen: qsTr(" + root.errorSource : ")"
                 color: MichiTheme.colors.textMeta
                 font.pixelSize: MichiTheme.typography.captionSize
                 wrapMode: Text.WordWrap
@@ -108,7 +108,7 @@ Item {
 
             Text {
                 width: parent.width
-                text: root.errorCode ? "Código: " + root.errorCode : ""
+                text: root.errorCode ? "Código: qsTr(" + root.errorCode : ")"
                 color: MichiTheme.colors.textMeta
                 font.pixelSize: MichiTheme.typography.captionSize
                 wrapMode: Text.WordWrap
@@ -155,7 +155,7 @@ Item {
             }
 
             MichiButton {
-                text: "Reintentar"
+                text: qsTr("Reintentar")
                 variant: "primary"
                 visible: root.showRetry && root.primaryActionText === ""
                 onClicked: root.retryRequested()

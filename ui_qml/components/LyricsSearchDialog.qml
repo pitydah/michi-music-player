@@ -9,7 +9,7 @@ Dialog {
 
     property var lyricsBridge: null
 
-    title: "Buscar letra"
+    title: qsTr("Buscar letra")
     modal: true
     standardButtons: Dialog.Close
     width: Math.min(parent.width * 0.8, 500)
@@ -32,7 +32,7 @@ Dialog {
             focusPolicy: Qt.StrongFocus
             id: queryField
             width: parent.width
-            placeholderText: "Artista — Canción"
+            placeholderText: qsTr("Artista — Canción")
             onAccepted: {
                 if (text.trim()) {
                     root.lyricsBridge.searchManual(text.trim())
@@ -58,13 +58,13 @@ Dialog {
             anchors.horizontalCenter: parent.horizontalCenter
 
             Button {
-                text: "Cancelar"
+                text: qsTr("Cancelar")
                 flat: true
                 onClicked: root.close()
             }
 
             Button {
-                text: "Buscar"
+                text: qsTr("Buscar")
                 enabled: queryField.text.trim() !== ""
                 onClicked: {
                     root.lyricsBridge.searchManual(queryField.text.trim())
@@ -74,7 +74,7 @@ Dialog {
         }
 
         Text {
-            text: "Usa el formato: Artista — Canción"
+            text: qsTr("Usa el formato: Artista — Canción")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.captionSize
             anchors.horizontalCenter: parent.horizontalCenter

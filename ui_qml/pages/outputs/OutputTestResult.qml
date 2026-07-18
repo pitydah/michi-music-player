@@ -27,7 +27,7 @@ Item {
             spacing: MichiTheme.spacing.sm
 
             Text {
-                text: root.testing ? "Probando perfil..." : (root.testResult ? (root.testResult.ok ? "Prueba exitosa" : "Prueba fallida") : "")
+                text: root.testing ? "Probando perfil..." : (root.testResult ? (root.testResult.ok ? "Prueba exitosa" : qsTr("Prueba fallida")) : "")
                 color: root.testing ? MichiTheme.colors.textMuted : (root.testResult && root.testResult.ok ? MichiTheme.colors.success : MichiTheme.colors.error)
                 font.pixelSize: MichiTheme.typography.bodySize
                 font.weight: MichiTheme.typography.weightMedium
@@ -48,7 +48,7 @@ Item {
                 visible: root.testResult && !root.testResult.ok && root.testResult.details
 
                 Text {
-                    text: "Detalles: " + (root.testResult.details || "")
+                    text: qsTr("Detalles: ") + (root.testResult.details || "")
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.metaSize
                 }

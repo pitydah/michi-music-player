@@ -8,7 +8,7 @@ Rectangle {
     focus: true
     id: root
 
-    property string title: "Cargando"
+    property string title: qsTr("Cargando")
     property string message: ""
     property string iconName: ""
     property string primaryActionText: ""

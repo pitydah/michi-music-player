@@ -29,14 +29,14 @@ Item {
             spacing: MichiTheme.spacing.sm
 
             MichiButton {
-                text: root.scanning ? "Buscando..." : "Buscar servidores"
+                text: root.scanning ? "Buscando..." : qsTr("Buscar servidores")
                 variant: "primary"
                 enabled: !root.scanning
                 onClicked: root.scanRequested()
             }
 
             MichiButton {
-                text: "Agregar manualmente"
+                text: qsTr("Agregar manualmente")
                 variant: "ghost"
                 onClicked: root.addManualClicked()
             }
@@ -54,7 +54,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 Text {
-                    text: "Servidores detectados"
+                    text: qsTr("Servidores detectados")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -76,7 +76,7 @@ Item {
                 }
 
                 Text {
-                    text: root.scanning ? "Escaneando la red..." : "No se encontraron servidores."
+                    text: root.scanning ? "Escaneando la red..." : qsTr("No se encontraron servidores.")
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.bodySize
                     visible: root.discoveredServers.length === 0 && !root.scanning

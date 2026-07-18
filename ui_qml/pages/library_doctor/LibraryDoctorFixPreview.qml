@@ -18,7 +18,7 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.sm
 
-        SectionHeader { text: "Reparación"; width: parent.width }
+        SectionHeader { text: qsTr("Reparación"); width: parent.width }
 
         GlassMaterial {
             width: parent.width; radius: MichiTheme.radius.md; variant: "base"
@@ -26,13 +26,13 @@ Item {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
 
                 Text {
-                    text: "Vista previa de reparaciones"
+                    text: qsTr("Vista previa de reparaciones")
                     color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                 }
 
                 Text {
-                    text: "Selecciona los problemas a reparar y revisa los cambios antes de aplicarlos."
+                    text: qsTr("Selecciona los problemas a reparar y revisa los cambios antes de aplicarlos.")
                     color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize
                     wrapMode: Text.WordWrap; width: parent.width
                 }
@@ -40,12 +40,12 @@ Item {
                 Row {
                     spacing: MichiTheme.spacing.sm
                     MichiButton {
-                        text: "Seleccionar todos"
+                        text: qsTr("Seleccionar todos")
                         variant: "ghost"
                         onClicked: { if (root.doc) root.doc.selectAll() }
                     }
                     MichiButton {
-                        text: "Deseleccionar todos"
+                        text: qsTr("Deseleccionar todos")
                         variant: "ghost"
                         onClicked: { if (root.doc) root.doc.selectNone() }
                     }
@@ -58,7 +58,7 @@ Item {
                         width: parent.width; height: 24
                         visible: modelData.selected
                         Text {
-                            text: "→ " + (modelData.type || "") + ": " + (modelData.detail || "")
+                            text: qsTr("→ ") + (modelData.type || "") + ": " + (modelData.detail || "")
                             color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.metaSize
                             elide: Text.ElideRight; width: parent.width
                         }
@@ -66,7 +66,7 @@ Item {
                 }
 
                 Text {
-                    text: root.doc && root.doc._selected_ids ? "Seleccionados: " + root.doc._selected_ids.length : ""
+                    text: root.doc && root.doc._selected_ids ? "Seleccionados: qsTr(" + root.doc._selected_ids.length : ")"
                     color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize
                     visible: text !== ""
                 }
@@ -78,7 +78,7 @@ Item {
                 Row {
                     spacing: MichiTheme.spacing.sm
                     MichiButton {
-                        text: root._confirmRepair ? "Confirmar reparación" : "Ejecutar reparación (dry-run)"
+                        text: root._confirmRepair ? "Confirmar reparación" : qsTr("Ejecutar reparación (dry-run)")
                         variant: root._confirmRepair ? "danger" : "primary"
                         enabled: root.doc && root.doc._selected_ids && root.doc._selected_ids.length > 0
                         onClicked: {
@@ -92,7 +92,7 @@ Item {
                         }
                     }
                     MichiButton {
-                        text: "Cancelar"
+                        text: qsTr("Cancelar")
                         variant: "ghost"
                         visible: root._confirmRepair
                         onClicked: root._confirmRepair = false

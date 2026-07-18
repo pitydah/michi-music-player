@@ -68,7 +68,7 @@ Item {
             anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
             anchors.rightMargin: MichiTheme.spacing.md
             width: responsive.compact ? 140 : 200; height: 28
-            placeholderText: "Buscar en biblioteca..."
+            placeholderText: qsTr("Buscar en biblioteca...")
             onSearchTextChanged: {
                 root.searchText = text
                 root.searchTextUpdated(text)

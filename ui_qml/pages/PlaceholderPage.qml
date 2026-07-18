@@ -63,7 +63,7 @@ Item {
 
         StatusBadge {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: "No disponible"
+            text: qsTr("No disponible")
             kind: "warning"
         }
 
@@ -74,7 +74,7 @@ Item {
             MichiButton {
                 Accessible.role: Accessible.Button
                 activeFocusOnTab: true
-                text: "Volver"
+                text: qsTr("Volver")
                 variant: "ghost"
                 KeyNavigation.tab: openClassicBtn
                 onClicked: {
@@ -87,7 +87,7 @@ Item {
 
             MichiButton {
                 id: openClassicBtn
-                text: "Ir al inicio"
+                text: qsTr("Ir al inicio")
                 variant: "secondary"
                 KeyNavigation.backtab: parent.children[0]
                 onClicked: {

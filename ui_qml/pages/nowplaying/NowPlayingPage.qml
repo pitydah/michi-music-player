@@ -35,19 +35,19 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: "Cargando reproducción" }
+        sourceComponent: LoadingState { title: qsTr("Cargando reproducción") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
-        sourceComponent: ErrorState { message: "Reproducción no disponible" }
+        sourceComponent: ErrorState { message: qsTr("Reproducción no disponible") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: "Sin reproducción activa" }
+        sourceComponent: EmptyState { title: qsTr("Sin reproducción activa") }
     }
 
     Flickable {
@@ -93,7 +93,7 @@ Item {
                     }
 
                     Text {
-                        text: "Cerrar"
+                        text: qsTr("Cerrar")
                         color: MichiTheme.colors.textOnError
                         font.pixelSize: MichiTheme.typography.metaSize
                         MouseArea {
@@ -133,10 +133,10 @@ Item {
                         spacing: MichiTheme.spacing.xs
                         visible: root.ps && root.ps.qualityInfoAvailable
 
-                        StatusBadge { text: root.ps ? root.ps.formatLabel : ""; kind: "info"; visible: text !== "" }
-                        StatusBadge { text: root.ps ? root.ps.sampleRate : ""; kind: "info"; visible: text !== "" }
-                        StatusBadge { text: root.ps ? root.ps.bitDepth : ""; kind: "info"; visible: text !== "" }
-                        StatusBadge { text: root.ps ? root.ps.bitrate : ""; kind: "info"; visible: text !== "" }
+                        StatusBadge { text: root.ps ? root.ps.formatLabel : ""; kind: qsTr("info"); visible: text !== "" }
+                        StatusBadge { text: root.ps ? root.ps.sampleRate : ""; kind: qsTr("info"); visible: text !== "" }
+                        StatusBadge { text: root.ps ? root.ps.bitDepth : ""; kind: qsTr("info"); visible: text !== "" }
+                        StatusBadge { text: root.ps ? root.ps.bitrate : ""; kind: qsTr("info"); visible: text !== "" }
                     }
 
                     StatusBadge {
@@ -176,7 +176,7 @@ Item {
                         spacing: MichiTheme.spacing.sm
 
                         Text {
-                            text: "Vol."
+                            text: qsTr("Vol.")
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.metaSize
                         }
@@ -195,8 +195,8 @@ Item {
                         spacing: MichiTheme.spacing.sm
                         visible: root._hasTrack
 
-                        MichiButton { text: "Letra"; variant: "ghost"; onClicked: { root.nav && root.nav.navigate("lyrics") } }
-                        MichiButton { text: "Cola"; variant: "ghost"; onClicked: { root.nav && root.nav.navigate("queue") } }
+                        MichiButton { text: qsTr("Letra"); variant: "ghost"; onClicked: { root.nav && root.nav.navigate("lyrics") } }
+                        MichiButton { text: qsTr("Cola"); variant: "ghost"; onClicked: { root.nav && root.nav.navigate("queue") } }
                     }
 
                     Rectangle {
@@ -208,7 +208,7 @@ Item {
 
                     Text {
                         Layout.fillWidth: true
-                        text: "Información técnica"
+                        text: qsTr("Información técnica")
                         color: MichiTheme.colors.textMeta
                         font.pixelSize: MichiTheme.typography.captionSize
                         font.weight: MichiTheme.typography.weightMedium
@@ -223,7 +223,7 @@ Item {
 
                     Text {
                         Layout.fillWidth: true
-                        text: "Salida de audio"
+                        text: qsTr("Salida de audio")
                         color: MichiTheme.colors.textMeta
                         font.pixelSize: MichiTheme.typography.captionSize
                         font.weight: MichiTheme.typography.weightMedium

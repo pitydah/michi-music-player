@@ -32,14 +32,14 @@ Item {
             spacing: MichiTheme.spacing.md
 
             Text {
-                text: "Control de latencia"
+                text: qsTr("Control de latencia")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
             }
 
             Text {
-                text: "Latencia actual: " + root.currentLatencyMs + " ms"
+                text: qsTr("Latencia actual: ") + root.currentLatencyMs + " ms"
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
             }

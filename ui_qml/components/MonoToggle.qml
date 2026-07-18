@@ -26,7 +26,7 @@ Item {
         spacing: MichiTheme.spacing.sm
 
         Text {
-            text: "Mono"
+            text: qsTr("Mono")
             color: MichiTheme.colors.textNormal
             font.pixelSize: MichiTheme.typography.bodySize
         }

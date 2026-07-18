@@ -53,7 +53,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 Text {
-                    text: "Editor de metadatos"
+                    text: qsTr("Editor de metadatos")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -81,7 +81,7 @@ Item {
 
                     activeFocusOnTab: true
 
-                    text: "Edición individual"
+                    text: qsTr("Edición individual")
                     variant: root._mode === "single" ? "primary" : "ghost"
                     onClicked: {
                         root._mode = "single"
@@ -92,7 +92,7 @@ Item {
                     }
                 }
                 MichiButton {
-                    text: "Edición por lotes"
+                    text: qsTr("Edición por lotes")
                     variant: root._mode === "batch" ? "primary" : "ghost"
                     onClicked: { root._mode = "batch" }
                 }
@@ -109,7 +109,7 @@ Item {
             }
 
             Text {
-                text: root.mb && root.mb.errorMessage ? "Error: " + root.mb.errorMessage : ""
+                text: root.mb && root.mb.errorMessage ? "Error: qsTr(" + root.mb.errorMessage : ")"
                 color: MichiTheme.colors.error
                 font.pixelSize: MichiTheme.typography.bodySize
                 visible: text !== ""

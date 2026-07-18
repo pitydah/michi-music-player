@@ -98,13 +98,13 @@ Item {
                 spacing: MichiTheme.spacing.lg
 
                 PageHeader {
-                    title: "Biblioteca"
-                    subtitle: "Carpetas, escaneo y mantenimiento"
+                    title: qsTr("Biblioteca")
+                    subtitle: qsTr("Carpetas, escaneo y mantenimiento")
                 }
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Carpetas de música"
+                    title: qsTr("Carpetas de música")
                     interactive: false
 
                     ColumnLayout {
@@ -147,7 +147,7 @@ Item {
                                     }
 
                                     MichiButton {
-                                        text: "Eliminar"
+                                        text: qsTr("Eliminar")
                                         variant: "danger"
                                         implicitWidth: 80
                                         onClicked: root._removeFolder(modelData)
@@ -160,7 +160,7 @@ Item {
                                 anchors.centerIn: parent
                                 visible: foldersList.count === 0
                                 Label {
-                                    text: "No hay carpetas configuradas"
+                                    text: qsTr("No hay carpetas configuradas")
                                     color: MichiTheme.colors.textSecondary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
@@ -168,7 +168,7 @@ Item {
                         }
 
                         MichiButton {
-                            text: "Añadir carpeta de música"
+                            text: qsTr("Añadir carpeta de música")
                             variant: "primary"
                             Layout.fillWidth: true
                             onClicked: folderDialog.open()
@@ -178,7 +178,7 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Escaneo"
+                    title: qsTr("Escaneo")
                     interactive: false
 
                     ColumnLayout {
@@ -190,7 +190,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Vigilar cambios en carpetas"
+                                text: qsTr("Vigilar cambios en carpetas")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -207,7 +207,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Escanear al iniciar"
+                                text: qsTr("Escanear al iniciar")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -229,12 +229,12 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Modo de indexación"
+                                    text: qsTr("Modo de indexación")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                                 Label {
-                                    text: "Rápido solo analiza cambios, completo reindexa todo"
+                                    text: qsTr("Rápido solo analiza cambios, completo reindexa todo")
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
@@ -243,8 +243,8 @@ Item {
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
                                 model: ListModel {
-                                    ListElement { text: "Rápido"; value: "quick" }
-                                    ListElement { text: "Completo"; value: "full" }
+                                    ListElement { text: qsTr("Rápido"); value: "quick" }
+                                    ListElement { text: qsTr("Completo"); value: "full" }
                                 }
                                 textRole: "text"
                                 valueRole: "value"
@@ -262,7 +262,7 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Carátulas"
+                    title: qsTr("Carátulas")
                     interactive: false
 
                     ColumnLayout {
@@ -278,12 +278,12 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Extracción de carátulas"
+                                    text: qsTr("Extracción de carátulas")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                                 Label {
-                                    text: "Prioridad para obtener carátulas"
+                                    text: qsTr("Prioridad para obtener carátulas")
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
@@ -292,9 +292,9 @@ Item {
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
                                 model: ListModel {
-                                    ListElement { text: "Incrustada"; value: "embedded" }
-                                    ListElement { text: "Archivo externo"; value: "external" }
-                                    ListElement { text: "Preferir incrustada"; value: "prefer_embedded" }
+                                    ListElement { text: qsTr("Incrustada"); value: "embedded" }
+                                    ListElement { text: qsTr("Archivo externo"); value: "external" }
+                                    ListElement { text: qsTr("Preferir incrustada"); value: "prefer_embedded" }
                                 }
                                 textRole: "text"
                                 valueRole: "value"
@@ -312,7 +312,7 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Enriquecimiento de metadatos"
+                    title: qsTr("Enriquecimiento de metadatos")
                     interactive: false
 
                     ColumnLayout {
@@ -324,7 +324,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Enriquecimiento automático"
+                                text: qsTr("Enriquecimiento automático")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -341,7 +341,7 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Mantenimiento"
+                    title: qsTr("Mantenimiento")
                     interactive: false
 
                     ColumnLayout {
@@ -350,7 +350,7 @@ Item {
                         spacing: MichiTheme.spacing.md
 
                         MichiButton {
-                            text: "Reescanear biblioteca"
+                            text: qsTr("Reescanear biblioteca")
                             variant: "primary"
                             Layout.fillWidth: true
                             onClicked: root._rescanLibrary()
@@ -359,7 +359,7 @@ Item {
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
 
                         MichiButton {
-                            text: "Limpiar y reescanear biblioteca"
+                            text: qsTr("Limpiar y reescanear biblioteca")
                             variant: "danger"
                             Layout.fillWidth: true
                             onClicked: confirmRescan.open()
@@ -373,7 +373,7 @@ Item {
     }
 
     FolderDialog {
-        title: "Seleccionar carpeta de música"
+        title: qsTr("Seleccionar carpeta de música")
         onAccepted: {
             var folderPath = folder.toString().replace("file://", "")
             if (folderPath) root._addFolder(folderPath)
@@ -381,8 +381,8 @@ Item {
     }
 
     ConfirmActionDialog {
-        title: "Limpiar y reescanear biblioteca"
-        message: "¿Estás seguro? Esta acción eliminará la base de datos actual y reescaneará todas las carpetas desde cero. Esta operación no puede deshacerse."
+        title: qsTr("Limpiar y reescanear biblioteca")
+        message: qsTr("¿Estás seguro? Esta acción eliminará la base de datos actual y reescaneará todas las carpetas desde cero. Esta operación no puede deshacerse.")
         danger: true
         onConfirmed: root._clearAndRescan()
     }

@@ -12,7 +12,7 @@ Dialog {
     property var stationData: null
     property int _stationId: root.stationData ? root.stationData.id || 0 : 0
 
-    title: "Editar emisora"
+    title: qsTr("Editar emisora")
     modal: true
     standardButtons: Dialog.Close
     width: Math.min(parent.width * 0.8, 450)
@@ -32,10 +32,10 @@ Dialog {
         spacing: MichiTheme.spacing.md
         width: parent.width
 
-        MichiSearchField { id: nameField; width: parent.width; placeholderText: "Nombre" }
-        MichiSearchField { id: urlField; width: parent.width; placeholderText: "URL" }
-        MichiSearchField { id: codecField; width: parent.width; placeholderText: "Codec" }
-        MichiSearchField { id: countryField; width: parent.width; placeholderText: "País" }
+        MichiSearchField { id: nameField; width: parent.width; placeholderText: qsTr("Nombre") }
+        MichiSearchField { id: urlField; width: parent.width; placeholderText: qsTr("URL") }
+        MichiSearchField { id: codecField; width: parent.width; placeholderText: qsTr("Codec") }
+        MichiSearchField { id: countryField; width: parent.width; placeholderText: qsTr("País") }
 
         Row {
                 Accessible.role: Accessible.Button
@@ -44,13 +44,13 @@ Dialog {
             anchors.horizontalCenter: parent.horizontalCenter
 
             Button {
-                text: "Cancelar"
+                text: qsTr("Cancelar")
                 flat: true
                 onClicked: root.close()
             }
 
             Button {
-                text: "Guardar"
+                text: qsTr("Guardar")
                 enabled: nameField.text.trim() !== "" && urlField.text.trim() !== ""
                 onClicked: {
                     if (root.radioBridge && typeof root.radioBridge.editStation === "function") {

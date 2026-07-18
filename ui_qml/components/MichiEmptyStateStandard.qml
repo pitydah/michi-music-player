@@ -4,7 +4,7 @@ import "../theme"
 Column {
     id: root
 
-    property string title: "Sin contenido"
+    property string title: qsTr("Sin contenido")
     property string message: ""
     property string actionText: ""
     property string secondaryActionText: ""

@@ -37,7 +37,7 @@ Item {
             spacing: MichiTheme.spacing.md
 
             Text {
-                text: "Ecosistema Michi"
+                text: qsTr("Ecosistema Michi")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -61,11 +61,11 @@ Item {
                         }
                     }
                 }
-                StatusBadge { text: "Ecosistema"; kind: "info" }
+                StatusBadge { text: qsTr("Ecosistema"); kind: "info" }
             }
 
             Text {
-                text: "Michi Micro Server — Servidor musical doméstico del ecosistema Michi"
+                text: qsTr("Michi Micro Server — Servidor musical doméstico del ecosistema Michi")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
                 width: parent.width
@@ -79,12 +79,12 @@ Item {
 
                     activeFocusOnTab: true
 
-                    text: "Ver servidores"
+                    text: qsTr("Ver servidores")
                     variant: "primary"
                     onClicked: root.openConnections()
                 }
                 MichiButton {
-                    text: "Home Audio"
+                    text: qsTr("Home Audio")
                     variant: "secondary"
                     onClicked: root.openHomeAudio()
                 }

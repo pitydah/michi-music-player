@@ -44,7 +44,7 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Text {
-                text: "Configurar servidor"
+                text: qsTr("Configurar servidor")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -59,10 +59,10 @@ Item {
                     id: step0
                     spacing: MichiTheme.spacing.md
 
-                    Text { text: "Elige cómo conectar:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                    Text { text: qsTr("Elige cómo conectar:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
 
                     MichiButton {
-                        text: "Buscar en red"
+                        text: qsTr("Buscar en red")
                         variant: "primary"
                         onClicked: {
                             root.step = 1
@@ -76,7 +76,7 @@ Item {
 
                     MichiButton {
                         id: manualBtn
-                        text: "Configurar manualmente"
+                        text: qsTr("Configurar manualmente")
                         variant: "ghost"
                         onClicked: root.step = 2
                         KeyNavigation.tab: cancelBtn0
@@ -87,7 +87,7 @@ Item {
 
                     MichiButton {
                         id: cancelBtn0
-                        text: "Cancelar"
+                        text: qsTr("Cancelar")
                         variant: "ghost"
                         onClicked: root.cancelRequested()
                         KeyNavigation.backtab: manualBtn
@@ -100,14 +100,14 @@ Item {
                     id: step1
                     spacing: MichiTheme.spacing.md
 
-                    Text { text: "Servidor detectado:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                    Text { text: qsTr("Servidor detectado:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
                     Text { text: root.discoveredHost + ":" + root.discoveredPort; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "wizardDiscoveredHost" }
 
                     QQC2.TextField {
                         id: aliasField1
                         width: parent.width
                         height: MichiTheme.rowHeightComfortable
-                        placeholderText: "Alias (opcional)"
+                        placeholderText: qsTr("Alias (opcional)")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         onTextChanged: root.serverAlias = text
@@ -128,7 +128,7 @@ Item {
 
                         MichiButton {
                             id: connectBtn1
-                            text: "Conectar"
+                            text: qsTr("Conectar")
                             variant: "primary"
                             onClicked: root.connectRequested(root.discoveredHost, root.discoveredPort, root.serverAlias, "", "")
                             KeyNavigation.tab: manualBtn1
@@ -139,7 +139,7 @@ Item {
 
                         MichiButton {
                             id: manualBtn1
-                            text: "Configurar manualmente"
+                            text: qsTr("Configurar manualmente")
                             variant: "ghost"
                             onClicked: root.step = 2
                             KeyNavigation.tab: backToStep0
@@ -150,7 +150,7 @@ Item {
 
                         MichiButton {
                             id: backToStep0
-                            text: "Atrás"
+                            text: qsTr("Atrás")
                             variant: "ghost"
                             onClicked: root.step = 0
                             KeyNavigation.tab: cancelBtn1
@@ -161,7 +161,7 @@ Item {
 
                         MichiButton {
                             id: cancelBtn1
-                            text: "Cancelar"
+                            text: qsTr("Cancelar")
                             variant: "ghost"
                             onClicked: root.cancelRequested()
                             KeyNavigation.backtab: backToStep0
@@ -175,14 +175,14 @@ Item {
                     id: step2
                     spacing: MichiTheme.spacing.md
 
-                    Text { text: "Conexión manual"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                    Text { text: qsTr("Conexión manual"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
 
                     QQC2.TextField {
                         id: hostField
                         width: parent.width
                         height: MichiTheme.rowHeightComfortable
                         Accessible.name: "Host o dirección IP"
-                        placeholderText: "Host o dirección IP"
+                        placeholderText: qsTr("Host o dirección IP")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         onTextChanged: {
@@ -206,11 +206,11 @@ Item {
                         width: parent.width
                         Accessible.name: "Puerto"
                         height: MichiTheme.rowHeightComfortable
-                        placeholderText: "Puerto"
+                        placeholderText: qsTr("Puerto")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         inputMethodHints: Qt.ImhDigitsOnly
-                        text: "53318"
+                        text: qsTr("53318")
                         onTextChanged: {
                             root.manualPort = parseInt(text) || 53318
                             root.validationError = ""
@@ -232,7 +232,7 @@ Item {
                         Accessible.name: "Alias (opcional)"
                         width: parent.width
                         height: MichiTheme.rowHeightComfortable
-                        placeholderText: "Alias (opcional)"
+                        placeholderText: qsTr("Alias (opcional)")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         onTextChanged: root.serverAlias = text
@@ -249,7 +249,7 @@ Item {
                     }
 
                     Text {
-                        text: "Autenticación (opcional)"
+                        text: qsTr("Autenticación (opcional)")
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.metaSize
                         font.weight: MichiTheme.typography.weightMedium
@@ -259,7 +259,7 @@ Item {
                         id: userField
                         width: parent.width
                         height: MichiTheme.rowHeightComfortable
-                        placeholderText: "Usuario"
+                        placeholderText: qsTr("Usuario")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         onTextChanged: root.authUser = text
@@ -279,7 +279,7 @@ Item {
                         id: passwordField
                         width: parent.width
                         height: MichiTheme.rowHeightComfortable
-                        placeholderText: "Contraseña"
+                        placeholderText: qsTr("Contraseña")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         echoMode: TextInput.Password
@@ -315,7 +315,7 @@ Item {
 
                         MichiButton {
                             id: testBtn
-                            text: root.testing ? "Probando..." : "Probar conexión"
+                            text: root.testing ? "Probando..." : qsTr("Probar conexión")
                             variant: "secondary"
                             enabled: !root.testing && root.manualHost !== ""
                             onClicked: {
@@ -333,7 +333,7 @@ Item {
 
                         MichiButton {
                             id: connectBtn2
-                            text: "Conectar"
+                            text: qsTr("Conectar")
                             variant: "primary"
                             enabled: root.manualHost !== ""
                             onClicked: {
@@ -351,7 +351,7 @@ Item {
 
                         MichiButton {
                             id: backToStep1
-                            text: "Atrás"
+                            text: qsTr("Atrás")
                             variant: "ghost"
                             onClicked: root.step = 1
                             KeyNavigation.tab: cancelBtn2
@@ -362,7 +362,7 @@ Item {
 
                         MichiButton {
                             id: cancelBtn2
-                            text: "Cancelar"
+                            text: qsTr("Cancelar")
                             variant: "ghost"
                             onClicked: root.cancelRequested()
                             KeyNavigation.backtab: backToStep1

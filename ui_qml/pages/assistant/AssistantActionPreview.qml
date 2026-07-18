@@ -46,7 +46,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 Text {
-                    text: root.destructive ? "⚠" : "▶"
+                    text: root.destructive ? "⚠" : qsTr("▶")
                     color: root.destructive ? MichiTheme.colors.error : MichiTheme.colors.accentBlue
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     anchors.verticalCenter: parent.verticalCenter
@@ -108,7 +108,7 @@ Item {
 
                 MichiButton {
                     id: confirmBtn
-                    text: root.destructive ? "Sí, continuar" : "Confirmar"
+                    text: root.destructive ? "Sí, continuar" : qsTr("Confirmar")
                     variant: root.destructive ? "danger" : "primary"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
@@ -116,7 +116,7 @@ Item {
                 }
 
                 MichiButton {
-                    text: "Cancelar"
+                    text: qsTr("Cancelar")
                     variant: "ghost"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()

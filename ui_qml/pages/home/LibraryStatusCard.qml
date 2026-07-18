@@ -39,7 +39,7 @@ Item {
             spacing: MichiTheme.spacing.md
 
             Text {
-                text: "Biblioteca"
+                text: qsTr("Biblioteca")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -55,7 +55,7 @@ Item {
 
                 activeFocusOnTab: true
 
-                text: "Explorar biblioteca"
+                text: qsTr("Explorar biblioteca")
                 variant: "secondary"
                 onClicked: root.openLibrary()
             }
@@ -75,7 +75,7 @@ Item {
                     font.weight: MichiTheme.typography.weightBold
                 }
                 Text {
-                    text: "Álbumes"
+                    text: qsTr("Álbumes")
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.metaSize
                 }
@@ -89,7 +89,7 @@ Item {
                     font.weight: MichiTheme.typography.weightBold
                 }
                 Text {
-                    text: "Artistas"
+                    text: qsTr("Artistas")
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.metaSize
                 }
@@ -103,7 +103,7 @@ Item {
                     font.weight: MichiTheme.typography.weightBold
                 }
                 Text {
-                    text: "Canciones"
+                    text: qsTr("Canciones")
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.metaSize
                 }
@@ -114,7 +114,7 @@ Item {
     Component {
         id: emptyComponent
         Text {
-            text: "Biblioteca no indexada. Agrega carpetas con música para comenzar."
+            text: qsTr("Biblioteca no indexada. Agrega carpetas con música para comenzar.")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.bodySize
             width: parent.width

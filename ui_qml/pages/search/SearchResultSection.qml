@@ -76,7 +76,7 @@ Item {
             Text {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                text: "(" + root.resultCount + ")"
+                text: qsTr("(") + root.resultCount + ")"
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
                 visible: root.resultCount > 0 && !root.isLoading
@@ -95,7 +95,7 @@ Item {
         Component {
             id: loadingComp
             LoadingState {
-                title: "Buscando..."
+                title: qsTr("Buscando...")
                 message: ""
                 width: parent.width
             }
@@ -105,7 +105,7 @@ Item {
             id: emptyComp
             EmptyState {
                 title: ""
-                subtitle: "Sin resultados"
+                subtitle: qsTr("Sin resultados")
                 width: parent.width
             }
         }

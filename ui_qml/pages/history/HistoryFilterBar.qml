@@ -57,7 +57,7 @@ Item {
                 activeFocusOnTab: true
 
                 width: 200
-                placeholderText: "Buscar en historial..."
+                placeholderText: qsTr("Buscar en historial...")
                 onSearchTextChanged: { root.searchText = text; root.filtersChanged() }
             }
 
@@ -65,7 +65,7 @@ Item {
                 focusPolicy: Qt.StrongFocus
                 id: artistField
                 width: 140
-                placeholderText: "Artista"
+                placeholderText: qsTr("Artista")
                 activeFocusOnTab: true
                 onTextChanged: { root.artistFilter = text.trim(); root.filtersChanged() }
                 Keys.onEscapePressed: { text = ""; root.artistFilter = ""; root.filtersChanged() }
@@ -77,7 +77,7 @@ Item {
                 id: albumField
                 activeFocusOnTab: true
                 width: 140
-                placeholderText: "Álbum"
+                placeholderText: qsTr("Álbum")
                 onTextChanged: { root.albumFilter = text.trim(); root.filtersChanged() }
                 Keys.onEscapePressed: { text = ""; root.albumFilter = ""; root.filtersChanged() }
             }
@@ -86,13 +86,13 @@ Item {
                 Accessible.name: "Filtrar por dispositivo"
                 id: deviceField
                 width: 120
-                placeholderText: "Dispositivo"
+                placeholderText: qsTr("Dispositivo")
                 onTextChanged: { root.deviceFilter = text.trim(); root.filtersChanged() }
                 Keys.onEscapePressed: { text = ""; root.deviceFilter = ""; root.filtersChanged() }
             }
 
             MichiButton {
-                text: "Limpiar filtros"
+                text: qsTr("Limpiar filtros")
                 variant: "ghost"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
@@ -105,14 +105,14 @@ Item {
             spacing: MichiTheme.spacing.sm
             CheckBox {
                 id: dateRangeCheck
-                text: "Rango de fecha"
+                text: qsTr("Rango de fecha")
                 onCheckedChanged: {
                     root.dateRangeEnabled = checked
                     root.filtersChanged()
                 }
             }
             Label {
-                text: "Desde:"
+                text: qsTr("Desde:")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.metaSize
                 anchors.verticalCenter: parent.verticalCenter
@@ -124,7 +124,7 @@ Item {
                 id: fromDateField
                 activeFocusOnTab: true
                 width: 140
-                placeholderText: "YYYY-MM-DD"
+                placeholderText: qsTr("YYYY-MM-DD")
                 visible: root.dateRangeEnabled
                 onTextChanged: {
                     var d = Date.fromLocaleString(Qt.locale(), text, "yyyy-MM-dd")
@@ -134,7 +134,7 @@ Item {
                 Keys.onEscapePressed: { text = ""; root.filtersChanged() }
             }
             Label {
-                text: "Hasta:"
+                text: qsTr("Hasta:")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.metaSize
                 anchors.verticalCenter: parent.verticalCenter
@@ -144,7 +144,7 @@ Item {
                 focusPolicy: Qt.StrongFocus
                 id: toDateField
                 width: 140
-                placeholderText: "YYYY-MM-DD"
+                placeholderText: qsTr("YYYY-MM-DD")
                 visible: root.dateRangeEnabled
                 onTextChanged: {
                     var d = Date.fromLocaleString(Qt.locale(), text, "yyyy-MM-dd")

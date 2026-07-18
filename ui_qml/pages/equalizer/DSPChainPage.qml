@@ -29,7 +29,7 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Text {
-                text: "Cadena DSP"
+                text: qsTr("Cadena DSP")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -37,7 +37,7 @@ Item {
 
             DSPModuleCard {
                 width: parent.width
-                title: "Ecualizador"
+                title: qsTr("Ecualizador")
                 active: root.eq && !root.eq.bypass && root.eq.backendAvailable
                 conflicts: root.eq && root.eq.bitperfectConflict ? ["Bit-perfect"] : []
                 available: root.eq && root.eq.backendAvailable
@@ -52,7 +52,7 @@ Item {
 
             DSPModuleCard {
                 width: parent.width
-                title: "ReplayGain"
+                title: qsTr("ReplayGain")
                 active: false
                 conflicts: []
                 available: true
@@ -67,7 +67,7 @@ Item {
 
             DSPModuleCard {
                 width: parent.width
-                title: "Espectro"
+                title: qsTr("Espectro")
                 active: false
                 conflicts: []
                 available: true
@@ -92,8 +92,8 @@ Item {
                 width: parent.width; radius: MichiTheme.radius.md; variant: "status"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
-                    StatusBadge { text: "La cadena DSP depende del perfil activo"; kind: "info" }
-                    StatusBadge { text: "Backend: " + (root.eq && root.eq.backendAvailable ? "conectado" : "no disponible"); kind: root.eq && root.eq.backendAvailable ? "success" : "disconnected" }
+                    StatusBadge { text: qsTr("La cadena DSP depende del perfil activo"); kind: "info" }
+                    StatusBadge { text: qsTr("Backend: ") + (root.eq && root.eq.backendAvailable ? "conectado" : "no disponible"); kind: root.eq && root.eq.backendAvailable ? "success" : "disconnected" }
                 }
             }
         }

@@ -44,7 +44,7 @@ Menu {
     }
 
     MenuItem {
-        text: "Reproducir"
+        text: qsTr("Reproducir")
         onTriggered: {
             var ids = root._selectedIds()
             if (ids.length > 0 && root.bridge && root.bridge.playTrackById)
@@ -53,7 +53,7 @@ Menu {
     }
 
     MenuItem {
-        text: "Reproducir siguiente"
+        text: qsTr("Reproducir siguiente")
         onTriggered: {
             var ids = root._selectedIds()
             if (ids.length > 0 && root.bridge && root.bridge.playNextTrackById)
@@ -62,7 +62,7 @@ Menu {
     }
 
     MenuItem {
-        text: "Añadir a la cola"
+        text: qsTr("Añadir a la cola")
         onTriggered: {
             var ids = root._selectedIds()
             for (var i = 0; i < ids.length; i++) {
@@ -73,7 +73,7 @@ Menu {
     }
 
     MenuItem {
-        text: "Reemplazar cola"
+        text: qsTr("Reemplazar cola")
         onTriggered: {
 
             var ids = root._selectedIds()
@@ -90,7 +90,7 @@ Menu {
     MenuSeparator {}
 
     MenuItem {
-        text: "Favorito"
+        text: qsTr("Favorito")
         onTriggered: {
 
             var ids = root._selectedIds()
@@ -103,7 +103,7 @@ Menu {
 
     MenuItem {
 
-        text: "Añadir a playlist..."
+        text: qsTr("Añadir a playlist...")
         onTriggered: {
             if (typeof navigationBridge !== "undefined")
                 navigationBridge.navigate("playlists")
@@ -113,7 +113,7 @@ Menu {
     MenuSeparator {}
 
     MenuItem {
-        text: "Ir al álbum"
+        text: qsTr("Ir al álbum")
         onTriggered: {
             var ids = root._selectedIds()
             if (ids.length > 0) {
@@ -126,7 +126,7 @@ Menu {
     }
 
     MenuItem {
-        text: "Ir al artista"
+        text: qsTr("Ir al artista")
         onTriggered: {
             var ids = root._selectedIds()
             if (ids.length > 0) {
@@ -143,7 +143,7 @@ Menu {
 
     MenuItem {
 
-        text: "Mostrar en carpeta"
+        text: qsTr("Mostrar en carpeta")
         onTriggered: {
             var ids = root._selectedIds()
             if (ids.length > 0 && root.bridge && root.bridge.revealTrackById)
@@ -153,7 +153,7 @@ Menu {
 
 
     MenuItem {
-        text: "Editar metadatos"
+        text: qsTr("Editar metadatos")
         onTriggered: {
             var ids = root._selectedIds()
 
@@ -166,7 +166,7 @@ Menu {
     }
 
     MenuItem {
-        text: "Audio Lab"
+        text: qsTr("Audio Lab")
         onTriggered: {
             if (typeof navigationBridge !== "undefined")
                 navigationBridge.navigate("audio_lab")
@@ -174,7 +174,7 @@ Menu {
     }
 
     MenuItem {
-        text: "Verificar integridad"
+        text: qsTr("Verificar integridad")
         onTriggered: {
             if (typeof navigationBridge !== "undefined")
                 navigationBridge.navigate("library_doctor")
@@ -182,7 +182,7 @@ Menu {
     }
 
     MenuItem {
-        text: "Enviar a dispositivo"
+        text: qsTr("Enviar a dispositivo")
         onTriggered: {
             if (typeof navigationBridge !== "undefined")
                 navigationBridge.navigate("devices")
@@ -192,7 +192,7 @@ Menu {
     MenuSeparator {}
 
     MenuItem {
-        text: "Propiedades"
+        text: qsTr("Propiedades")
         onTriggered: {
             if (typeof navigationBridge !== "undefined")
                 navigationBridge.navigate("metadata_inspector")
@@ -200,7 +200,7 @@ Menu {
     }
 
     MenuItem {
-        text: "Eliminar de biblioteca"
+        text: qsTr("Eliminar de biblioteca")
         onTriggered: {
             var ids = root._selectedIds()
             for (var i = 0; i < ids.length; i++) {

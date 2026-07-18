@@ -9,7 +9,7 @@ Rectangle {
     focus: true
     id: root
 
-    property string title: "Cancelando\u2026"
+    property string title: qsTr("Cancelando\u2026")
     property string message: ""
     property bool active: false
     property bool reducedMotion: false

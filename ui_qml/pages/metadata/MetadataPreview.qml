@@ -17,7 +17,7 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.sm
 
-        SectionHeader { text: "Vista previa"; width: parent.width }
+        SectionHeader { text: qsTr("Vista previa"); width: parent.width }
 
         GlassMaterial {
             width: parent.width; radius: MichiTheme.radius.md; variant: "base"
@@ -25,20 +25,20 @@ Item {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
 
                 Text {
-                    text: root.mb && root.mb.trackTitle ? "Título: " + root.mb.trackTitle : "Sin datos"
+                    text: root.mb && root.mb.trackTitle ? "Título: qsTr(" + root.mb.trackTitle : ")Sin datos"
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                 }
 
                 Text {
-                    text: root.mb && root.mb.trackArtist ? "Artista: " + root.mb.trackArtist : ""
+                    text: root.mb && root.mb.trackArtist ? "Artista: qsTr(" + root.mb.trackArtist : ")"
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.bodySize
                     visible: text !== ""
                 }
 
                 Text {
-                    text: root.mb && root.mb.trackAlbum ? "Álbum: " + root.mb.trackAlbum : ""
+                    text: root.mb && root.mb.trackAlbum ? "Álbum: qsTr(" + root.mb.trackAlbum : ")"
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.bodySize
                     visible: text !== ""

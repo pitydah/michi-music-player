@@ -56,7 +56,7 @@ Item {
         }
 
         Text {
-            text: "No disponible con este backend"
+            text: qsTr("No disponible con este backend")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
             anchors.verticalCenter: parent.verticalCenter

@@ -11,7 +11,7 @@ Page {
     id: page
     
     header: SectionHeader {
-        text: "Perfiles de Salida"
+        text: qsTr("Perfiles de Salida")
     }
     
     ScrollView {
@@ -27,7 +27,7 @@ Page {
             
             Label {
                 Layout.fillWidth: true
-                text: "Configura cómo Michi entrega el audio a tus dispositivos: DACs, ecualización, ReplayGain y perfiles por dispositivo."
+                text: qsTr("Configura cómo Michi entrega el audio a tus dispositivos: DACs, ecualización, ReplayGain y perfiles por dispositivo.")
                 font.pixelSize: 14
                 color: MichiTheme.colors.textSecondary
                 wrapMode: Text.Wrap
@@ -37,7 +37,7 @@ Page {
                 model: [
                     { 
                         id: "device_config", 
-                        text: "Configuración de Dispositivo", 
+                        text: qsTr("Configuración de Dispositivo"), 
                         icon: "🎧", 
                         description: "Selecciona dispositivo de salida, sample rate y bit depth",
                         route: "audio_lab.device_config",
@@ -45,7 +45,7 @@ Page {
                     },
                     { 
                         id: "replaygain", 
-                        text: "ReplayGain", 
+                        text: qsTr("ReplayGain"), 
                         icon: "⚖️", 
                         description: "Configura normalización de volumen por pista o álbum",
                         route: "audio_lab.replaygain",
@@ -53,7 +53,7 @@ Page {
                     },
                     { 
                         id: "eq_dsp", 
-                        text: "Ecualizador y DSP", 
+                        text: qsTr("Ecualizador y DSP"), 
                         icon: "🎚️", 
                         description: "Ajusta ecualización gráfica y efectos de procesamiento",
                         route: "audio_lab.eq",
@@ -93,7 +93,7 @@ Page {
                                     Label {
                                         id: statusLabel
                                         anchors.centerIn: parent
-                                        text: "Listo"
+                                        text: qsTr("Listo")
                                         font.pixelSize: 11
                                         font.bold: true
                                         color: "#ffffff"
@@ -111,7 +111,7 @@ Page {
                             }
                         }
                         
-                        Label { text: "›"; font.pixelSize: 28; color: MichiTheme.colors.accent }
+                        Label { text: qsTr("›"); font.pixelSize: 28; color: MichiTheme.colors.accent }
                     }
                 }
             }
@@ -125,7 +125,7 @@ Page {
                     spacing: 10
                     
                     Label {
-                        text: "ℹ️ Nota"
+                        text: qsTr("ℹ️ Nota")
                         font.pixelSize: 14
                         font.bold: true
                         color: MichiTheme.colors.accent
@@ -133,7 +133,7 @@ Page {
                     
                     Label {
                         Layout.fillWidth: true
-                        text: "Los perfiles de salida afectan solo la reproducción en tiempo real. No modifican los archivos de audio originales."
+                        text: qsTr("Los perfiles de salida afectan solo la reproducción en tiempo real. No modifican los archivos de audio originales.")
                         font.pixelSize: 13
                         color: MichiTheme.colors.textSecondary
                         wrapMode: Text.Wrap

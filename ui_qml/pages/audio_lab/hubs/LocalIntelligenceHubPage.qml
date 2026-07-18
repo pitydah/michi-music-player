@@ -11,7 +11,7 @@ Page {
     id: page
     
     header: SectionHeader {
-        text: "Inteligencia Local"
+        text: qsTr("Inteligencia Local")
     }
     
     ScrollView {
@@ -27,7 +27,7 @@ Page {
             
             Label {
                 Layout.fillWidth: true
-                text: "Características avanzadas que analizan tu biblioteca para encontrar canciones similares, generar radios locales y crear mixes inteligentes."
+                text: qsTr("Características avanzadas que analizan tu biblioteca para encontrar canciones similares, generar radios locales y crear mixes inteligentes.")
                 font.pixelSize: 14
                 color: MichiTheme.colors.textSecondary
                 wrapMode: Text.Wrap
@@ -37,7 +37,7 @@ Page {
                 model: [
                     { 
                         id: "acoustic_features", 
-                        text: "Características Acústicas", 
+                        text: qsTr("Características Acústicas"), 
                         icon: "📈", 
                         description: "Analiza BPM, tonalidad, energía y otras características",
                         route: "audio_lab.acoustic_features",
@@ -45,7 +45,7 @@ Page {
                     },
                     { 
                         id: "similar_songs", 
-                        text: "Canciones Similares", 
+                        text: qsTr("Canciones Similares"), 
                         icon: "🎯", 
                         description: "Encuentra canciones similares basadas en características acústicas",
                         route: "audio_lab.similar_songs",
@@ -53,7 +53,7 @@ Page {
                     },
                     { 
                         id: "local_radio", 
-                        text: "Radio Local", 
+                        text: qsTr("Radio Local"), 
                         icon: "📻", 
                         description: "Genera una cola dinámica desde tu colección local",
                         route: "audio_lab.local_radio",
@@ -61,7 +61,7 @@ Page {
                     },
                     { 
                         id: "smart_mix", 
-                        text: "Smart Mix", 
+                        text: qsTr("Smart Mix"), 
                         icon: "🎵", 
                         description: "Crea mezclas automáticas basadas en preferencias y contexto",
                         route: "mix.hub",
@@ -121,7 +121,7 @@ Page {
                             }
                         }
                         
-                        Label { text: "›"; font.pixelSize: 28; color: MichiTheme.colors.accent }
+                        Label { text: qsTr("›"); font.pixelSize: 28; color: MichiTheme.colors.accent }
                     }
                 }
             }
@@ -135,7 +135,7 @@ Page {
                     spacing: 10
                     
                     Label {
-                        text: "⚠️ Experimental"
+                        text: qsTr("⚠️ Experimental")
                         font.pixelSize: 14
                         font.bold: true
                         color: MichiTheme.colors.accent
@@ -143,7 +143,7 @@ Page {
                     
                     Label {
                         Layout.fillWidth: true
-                        text: "Las funciones de análisis acústico requieren librerías adicionales (librosa). Algunos resultados pueden variar según la calidad del análisis."
+                        text: qsTr("Las funciones de análisis acústico requieren librerías adicionales (librosa). Algunos resultados pueden variar según la calidad del análisis.")
                         font.pixelSize: 13
                         color: MichiTheme.colors.textSecondary
                         wrapMode: Text.Wrap

@@ -11,7 +11,7 @@ Item {
     property bool loading: false
     property string text: ""
     property string group: ""
-    property string accessibleName: root.text !== "" ? root.text : "Opci\u00F3n"
+    property string accessibleName: root.text !== "" ? root.text : qsTr("Opci\u00F3n")
     property string accessibleDescription: ""
 
     signal toggled(bool checked)

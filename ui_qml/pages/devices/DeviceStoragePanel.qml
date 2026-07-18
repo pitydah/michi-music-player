@@ -33,14 +33,14 @@ Item {
             spacing: MichiTheme.spacing.sm
 
             Text {
-                text: "Almacenamiento"
+                text: qsTr("Almacenamiento")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
             }
 
             Text {
-                text: root.mountPoint ? "Punto de montaje: " + root.mountPoint : "Sin dispositivo montado"
+                text: root.mountPoint ? "Punto de montaje: qsTr(" + root.mountPoint : ")Sin dispositivo montado"
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
             }
@@ -51,21 +51,21 @@ Item {
                 columnSpacing: MichiTheme.spacing.md
                 rowSpacing: MichiTheme.spacing.sm
 
-                Text { text: "Total:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                Text { text: qsTr("Total:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
                 Text {
-                    text: root.storageInfo.totalBytes ? formatBytes(root.storageInfo.totalBytes) : "-"
+                    text: root.storageInfo.totalBytes ? formatBytes(root.storageInfo.totalBytes) : qsTr("-")
                     color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
                 }
 
-                Text { text: "Libre:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                Text { text: qsTr("Libre:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
                 Text {
-                    text: root.storageInfo.freeBytes ? formatBytes(root.storageInfo.freeBytes) : "-"
+                    text: root.storageInfo.freeBytes ? formatBytes(root.storageInfo.freeBytes) : qsTr("-")
                     color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
                 }
 
-                Text { text: "Usado:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                Text { text: qsTr("Usado:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
                 Text {
-                    text: root.storageInfo.usedBytes ? formatBytes(root.storageInfo.usedBytes) : "-"
+                    text: root.storageInfo.usedBytes ? formatBytes(root.storageInfo.usedBytes) : qsTr("-")
                     color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
                 }
             }
@@ -91,7 +91,7 @@ Item {
             }
 
             Text {
-                text: "Formatos compatibles"
+                text: qsTr("Formatos compatibles")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.cardTitleSize
                 font.weight: MichiTheme.typography.weightMedium
@@ -114,7 +114,7 @@ Item {
             }
 
             Text {
-                text: "Formatos de video no soportados (solo audio)"
+                text: qsTr("Formatos de video no soportados (solo audio)")
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.captionSize
                 visible: true
@@ -124,7 +124,7 @@ Item {
             MichiButton {
                 Accessible.role: Accessible.Button
 
-                text: "Expulsar dispositivo"
+                text: qsTr("Expulsar dispositivo")
                 variant: "secondary"
                 visible: root.mountPoint !== ""
                 onClicked: {

@@ -32,9 +32,9 @@ Item {
             anchors.margins: MichiTheme.spacing.xl
 
             RowLayout { spacing: MichiTheme.spacing.sm
-                MichiButton { text: "\u2190 Volver"; variant: "ghost"; onClicked: root.backRequested() }
+                MichiButton { text: qsTr("\u2190 Volver"); variant: "ghost"; onClicked: root.backRequested() }
                 Text {
-                    text: "G\u00e9nero: " + root.genre
+                    text: qsTr("G\u00e9nero: ") + root.genre
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.heroTitleSize
                     font.weight: MichiTheme.typography.weightBold
@@ -42,12 +42,12 @@ Item {
             }
 
             RowLayout { spacing: MichiTheme.spacing.sm
-                MichiButton { text: "Reproducir todo"; variant: "primary"; onClicked: { if (root.lib && root.lib.playAllFiltered) root.lib.playAllFiltered() } }
-                MichiButton { text: "Mezclar"; variant: "ghost" }
-                MichiButton { text: "A\u00f1adir a cola"; variant: "ghost" }
+                MichiButton { text: qsTr("Reproducir todo"); variant: "primary"; onClicked: { if (root.lib && root.lib.playAllFiltered) root.lib.playAllFiltered() } }
+                MichiButton { text: qsTr("Mezclar"); variant: "ghost" }
+                MichiButton { text: qsTr("A\u00f1adir a cola"); variant: "ghost" }
             }
 
-            SectionHeader { text: "Canciones en " + root.genre; width: parent.width }
+            SectionHeader { text: qsTr("Canciones en ") + root.genre; width: parent.width }
 
             ListView {
                 Accessible.role: Accessible.List

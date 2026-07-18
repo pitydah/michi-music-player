@@ -40,13 +40,13 @@ Item {
 
         LoadingState {
             anchors.fill: parent
-            title: "Cargando Disc Lab..."
+            title: qsTr("Cargando Disc Lab...")
             visible: root.pageState === DiscLabPage.LOADING
         }
 
         ErrorState {
             anchors.fill: parent
-            title: "Error"
+            title: qsTr("Error")
             message: root.errorMessage
             showRetry: true
             onRetryRequested: root.refresh()
@@ -55,15 +55,15 @@ Item {
 
         UnavailableState {
             anchors.fill: parent
-            title: "Disc Lab no disponible"
-            message: "No se detectó unidad de disco o el servicio no está activo."
+            title: qsTr("Disc Lab no disponible")
+            message: qsTr("No se detectó unidad de disco o el servicio no está activo.")
             visible: root.pageState === DiscLabPage.UNAVAILABLE
         }
 
         EmptyState {
             anchors.fill: parent
-            title: "Sin disco"
-            subtitle: "Inserta un disco o conecta una unidad externa."
+            title: qsTr("Sin disco")
+            subtitle: qsTr("Inserta un disco o conecta una unidad externa.")
             visible: root.pageState === DiscLabPage.EMPTY
         }
 
@@ -80,7 +80,7 @@ Item {
                 spacing: MichiTheme.spacing.lg
 
                 Text {
-                    text: "Disc Lab"
+                    text: qsTr("Disc Lab")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -90,16 +90,16 @@ Item {
                     width: parent.width; height: 140; radius: MichiTheme.radius.lg; showGlow: true
                     Column {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
-                        Text { text: "Laboratorio de discos"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
-                        Text { text: "Detección, análisis y ripping de CD/DVD."; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; width: parent.width * 0.80; wrapMode: Text.WordWrap }
+                        Text { text: qsTr("Laboratorio de discos"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
+                        Text { text: qsTr("Detección, análisis y ripping de CD/DVD."); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; width: parent.width * 0.80; wrapMode: Text.WordWrap }
                     }
                 }
 
                 Row {
                     spacing: MichiTheme.spacing.sm
-                    Text { text: "Unidad:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+                    Text { text: qsTr("Unidad:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
                     StatusBadge {
-                        text: root.disc ? root.disc.status : "unavailable"
+                        text: root.disc ? root.disc.status : qsTr("unavailable")
                         kind: root.disc && root.disc.status === "ready" ? "success" :
                               root.disc && root.disc.status === "scanning" ? "warning" :
                               root.disc && root.disc.status === "scanned" ? "success" : "disconnected"
@@ -114,11 +114,11 @@ Item {
 
                 Row {
                     spacing: MichiTheme.spacing.sm
-                    MichiButton { text: "Detectar unidad"; variant: "primary"; onClicked: { if (root.disc) root.disc.refresh() } }
-                    MichiButton { text: "Escanear disco"; variant: "secondary"; enabled: root.disc && root.disc.status === "ready"; onClicked: { if (root.disc) root.disc.scanDisc() } }
+                    MichiButton { text: qsTr("Detectar unidad"); variant: "primary"; onClicked: { if (root.disc) root.disc.refresh() } }
+                    MichiButton { text: qsTr("Escanear disco"); variant: "secondary"; enabled: root.disc && root.disc.status === "ready"; onClicked: { if (root.disc) root.disc.scanDisc() } }
                 }
 
-                SectionHeader { text: "Pistas detectadas"; width: parent.width }
+                SectionHeader { text: qsTr("Pistas detectadas"); width: parent.width }
 
                 Repeater {
                     model: root.disc ? root.disc.tracks : []
@@ -134,7 +134,7 @@ Item {
                 }
 
                 Text {
-                    text: root.disc && root.disc.tracks.length === 0 ? (root.disc && root.disc.status === "unavailable" ? "Servicio de discos no disponible." : "Escanea un disco para ver sus pistas.") : ""
+                    text: root.disc && root.disc.tracks.length === 0 ? (root.disc && root.disc.status === "unavailable" ? "Servicio de discos no disponible." : qsTr("Escanea un disco para ver sus pistas.")) : ""
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                     visible: text !== ""
                 }
@@ -158,7 +158,7 @@ Item {
                         id: destField
                         width: parent.width - formatSelector.width - browseBtn.width - MichiTheme.spacing.sm * 2
                         text: root.ripDestination
-                        placeholderText: "Carpeta de destino"
+                        placeholderText: qsTr("Carpeta de destino")
                         onTextChanged: {
                             ripDestination = text
                             if (root.disc) root.disc.setDestination(ripDestination)
@@ -167,7 +167,7 @@ Item {
 
                     Button {
                         id: browseBtn
-                        text: "..."
+                        text: qsTr("...")
                         onClicked: {
                             // FolderDialog se abriría desde Qt Quick Dialogs
                         }
@@ -177,7 +177,7 @@ Item {
                 MichiButton {
                     Accessible.role: Accessible.Button
                     activeFocusOnTab: true
-                    text: "Rip CD"
+                    text: qsTr("Rip CD")
                     variant: "primary"
                     width: parent.width
                     enabled: root.canRip
@@ -194,8 +194,8 @@ Item {
                     width: parent.width; radius: MichiTheme.radius.md; variant: "status"
                     Column {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
-                        StatusBadge { text: "Contractual — Sin unidad física no se declara verificado"; kind: "info" }
-                        StatusBadge { text: "Experimental — Sin ripping automático"; kind: "experimental" }
+                        StatusBadge { text: qsTr("Contractual — Sin unidad física no se declara verificado"); kind: "info" }
+                        StatusBadge { text: qsTr("Experimental — Sin ripping automático"); kind: "experimental" }
                     }
                 }
             }

@@ -43,7 +43,7 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Text {
-                text: "Smart Tagging"
+                text: qsTr("Smart Tagging")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -54,12 +54,12 @@ Item {
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
                     Text {
-                        text: "Etiquetado inteligente"
+                        text: qsTr("Etiquetado inteligente")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold
                     }
                     Text {
-                        text: "Sugerencias automáticas de metadatos para tu biblioteca."
+                        text: qsTr("Sugerencias automáticas de metadatos para tu biblioteca.")
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize; width: parent.width * 0.70; wrapMode: Text.WordWrap
                     }
@@ -68,8 +68,8 @@ Item {
 
             GlassCard {
                 width: parent.width; height: 70
-                title: root.selectedFile ? "Archivo seleccionado" : (root.sel && root.sel.hasSelection && root.sel.selectedSource === "track_id" ? "Canción desde Biblioteca" : "Analizar archivo")
-                subtitle: root.selectedFile ? root.selectedFile.split("/").pop() : (root.sel && root.sel.hasSelection && root.sel.selectedTitle ? root.sel.selectedTitle : "Selecciona un archivo de audio")
+                title: root.selectedFile ? "Archivo seleccionado" : (root.sel && root.sel.hasSelection && root.sel.selectedSource === "track_id" ? "Canción desde Biblioteca" : qsTr("Analizar archivo"))
+                subtitle: root.selectedFile ? root.selectedFile.split("/").pop() : (root.sel && root.sel.hasSelection && root.sel.selectedTitle ? root.sel.selectedTitle : qsTr("Selecciona un archivo de audio"))
                 variant: root.selectedFile || (root.sel && root.sel.hasSelection) ? "accent" : "base"
                 onClicked: fileDialog.open()
             }
@@ -79,7 +79,7 @@ Item {
 
                 MichiButton {
                     objectName: "selectFileButton"
-                    text: root.sel && root.sel.hasSelection && root.sel.selectedSource === "track_id" ? "Usar canción seleccionada" : "Seleccionar archivo"
+                    text: root.sel && root.sel.hasSelection && root.sel.selectedSource === "track_id" ? "Usar canción seleccionada" : qsTr("Seleccionar archivo")
                     variant: "primary"
                     activeFocusOnTab: true
                     KeyNavigation.tab: scanBtn
@@ -97,7 +97,7 @@ Item {
                 MichiButton {
                     id: scanBtn
                     objectName: "scanFileButton"
-                    text: root.stb && root.stb.status === "scanning" ? "Escaneando..." : "Escanear"
+                    text: root.stb && root.stb.status === "scanning" ? "Escaneando..." : qsTr("Escanear")
                     variant: "secondary"
                     enabled: root.selectedFile !== "" && (root.stb ? root.stb.status !== "scanning" : true)
                     Accessible.description: root.selectedFile ? "" : "Debes seleccionar un archivo de audio antes de escanear"
@@ -120,7 +120,7 @@ Item {
                 MichiButton {
                     id: clearBtn
                     objectName: "clearFileButton"
-                    text: "Limpiar"
+                    text: qsTr("Limpiar")
                     variant: "ghost"
                     visible: root.selectedFile !== ""
                     activeFocusOnTab: true
@@ -152,7 +152,7 @@ Item {
 
             SectionHeader {
                 id: suggestionSection
-                text: "Sugerencias"; width: parent.width
+                text: qsTr("Sugerencias"); width: parent.width
             }
 
             Row {
@@ -160,7 +160,7 @@ Item {
                 visible: root.stb && root.stb.suggestions.length > 0
 
                 MichiButton {
-                    text: "Seleccionar todas"
+                    text: qsTr("Seleccionar todas")
                     variant: "secondary"
                     activeFocusOnTab: true
                     onClicked: {
@@ -170,7 +170,7 @@ Item {
                 }
 
                 MichiButton {
-                    text: "Seleccionar por confianza"
+                    text: qsTr("Seleccionar por confianza")
                     variant: "secondary"
                     activeFocusOnTab: true
                     onClicked: {
@@ -207,7 +207,7 @@ Item {
                             elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
-                            width: parent.width * 0.25; text: "→ " + (modelData.suggested || "")
+                            width: parent.width * 0.25; text: qsTr("→ ") + (modelData.suggested || "")
                             color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.metaSize
                             elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
                         }
@@ -216,7 +216,7 @@ Item {
             }
 
             Text {
-                text: "No hay sugerencias. Escanea un archivo para comenzar."
+                text: qsTr("No hay sugerencias. Escanea un archivo para comenzar.")
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 visible: root.stb && root.stb.suggestions.length === 0
             }
@@ -226,7 +226,7 @@ Item {
 
                 MichiButton {
                     objectName: "applySuggestionsButton"
-                    text: root._confirmApply ? "Confirmar aplicar sugerencias" : "Aplicar sugerencias"
+                    text: root._confirmApply ? "Confirmar aplicar sugerencias" : qsTr("Aplicar sugerencias")
                     variant: root._confirmApply ? "danger" : "primary"
                     visible: root.stb && root.stb.suggestions.length > 0
                     Accessible.description: root._confirmApply ? "Esta acción modificará los metadatos del archivo" : ""
@@ -257,7 +257,7 @@ Item {
                 MichiButton {
                     id: cancelApplyBtn
                     objectName: "cancelApplyButton"
-                    text: "Cancelar"
+                    text: qsTr("Cancelar")
                     variant: "ghost"
                     visible: root._confirmApply
                     activeFocusOnTab: true
@@ -272,8 +272,8 @@ Item {
                 width: parent.width; radius: MichiTheme.radius.md; variant: "status"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
-                    StatusBadge { text: "Interfaz clásica disponible"; kind: "info" }
-                    StatusBadge { text: "Experimental"; kind: "experimental" }
+                    StatusBadge { text: qsTr("Interfaz clásica disponible"); kind: "info" }
+                    StatusBadge { text: qsTr("Experimental"); kind: "experimental" }
                 }
             }
         }
@@ -281,7 +281,7 @@ Item {
 
     FileDialog {
         id: fileDialog
-        title: "Seleccionar archivo de audio"
+        title: qsTr("Seleccionar archivo de audio")
         nameFilters: ["Archivos de audio (*.mp3 *.flac *.wav *.ogg *.m4a *.opus *.wma)", "Todos los archivos (*)"]
         onAccepted: {
             root.selectedFile = fileDialog.selectedFile.toString().replace("file://", "")

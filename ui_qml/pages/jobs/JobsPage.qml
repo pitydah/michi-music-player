@@ -35,14 +35,14 @@ Item {
         // Header
         RowLayout {
             Layout.fillWidth: true
-            Text { text: "Centro de trabajos"; font.pixelSize: MichiTheme.typography.pageTitleSize; color: MichiTheme.colors.textPrimary; font.weight: MichiTheme.typography.weightSemiBold }
+            Text { text: qsTr("Centro de trabajos"); font.pixelSize: MichiTheme.typography.pageTitleSize; color: MichiTheme.colors.textPrimary; font.weight: MichiTheme.typography.weightSemiBold }
             Item { Layout.fillWidth: true }
             Text { text: root.bridge ? root.bridge.activeCount + " activos" : ""; color: MichiTheme.colors.textSecondary; visible: root.bridge && root.bridge.activeCount > 0 }
-            MichiButton { text: "Limpiar completados"; variant: "ghost"; onClicked: { if (root.bridge) root.bridge.clearCompleted() } }
+            MichiButton { text: qsTr("Limpiar completados"); variant: "ghost"; onClicked: { if (root.bridge) root.bridge.clearCompleted() } }
         }
 
         Text {
-            text: "Trabajos en segundo plano: conversiones, análisis, sincronización y escaneo."
+            text: qsTr("Trabajos en segundo plano: conversiones, análisis, sincronización y escaneo.")
             color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize
             Layout.fillWidth: true; wrapMode: Text.WordWrap
         }
@@ -113,7 +113,7 @@ Item {
 
                     // Cancel button
                     MichiButton {
-                        text: "Cancelar"; variant: "ghost"; implicitWidth: 70; implicitHeight: 28
+                        text: qsTr("Cancelar"); variant: "ghost"; implicitWidth: 70; implicitHeight: 28
                         visible: model.status === "running" || model.status === "processing" || model.status === "queued"
                         onClicked: {
                             if (root.bridge && model.id)
@@ -124,7 +124,7 @@ Item {
 
                     // Retry button
                     MichiButton {
-                        text: "Reintentar"; variant: "ghost"; implicitWidth: 70; implicitHeight: 28
+                        text: qsTr("Reintentar"); variant: "ghost"; implicitWidth: 70; implicitHeight: 28
                         visible: model.status === "failed"
                         onClicked: {
                             if (root.bridge && model.id)
@@ -142,8 +142,8 @@ Item {
             visible: jobList.count === 0
             Column {
                 anchors.centerIn: parent; spacing: MichiTheme.spacing.md
-                Text { text: "No hay trabajos activos"; anchors.horizontalCenter: parent.horizontalCenter; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize }
-                Text { text: "Los trabajos de conversión, análisis y sincronización aparecerán aquí."; anchors.horizontalCenter: parent.horizontalCenter; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; width: 300; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter }
+                Text { text: qsTr("No hay trabajos activos"); anchors.horizontalCenter: parent.horizontalCenter; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize }
+                Text { text: qsTr("Los trabajos de conversión, análisis y sincronización aparecerán aquí."); anchors.horizontalCenter: parent.horizontalCenter; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; width: 300; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter }
             }
         }
     }

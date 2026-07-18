@@ -30,7 +30,7 @@ Item {
             spacing: MichiTheme.spacing.md
 
             Text {
-                text: "Editor de grupos"
+                text: qsTr("Editor de grupos")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -46,11 +46,11 @@ Item {
                 focusPolicy: Qt.StrongFocus
                 id: groupNameField
                 width: parent.width
-                placeholderText: "Nombre del grupo"
+                placeholderText: qsTr("Nombre del grupo")
             }
 
             Text {
-                text: "Selecciona zonas para agrupar:"
+                text: qsTr("Selecciona zonas para agrupar:")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
             }
@@ -98,7 +98,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 MichiButton {
-                    text: "Crear grupo"
+                    text: qsTr("Crear grupo")
                     variant: "primary"
                     Accessible.role: Accessible.Button
 
@@ -109,7 +109,7 @@ Item {
                 }
 
                 MichiButton {
-                    text: "Cancelar"
+                    text: qsTr("Cancelar")
                     variant: "ghost"
                     onClicked: root.groupCancelled()
                 }

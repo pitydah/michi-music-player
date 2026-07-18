@@ -20,7 +20,7 @@ Item {
             Layout.fillWidth: true
 
             Text {
-                text: "Cola"
+                text: qsTr("Cola")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
                 font.weight: MichiTheme.typography.weightMedium
@@ -35,7 +35,7 @@ Item {
             }
 
             MichiButton {
-                text: "Ver todo"
+                text: qsTr("Ver todo")
                 variant: "ghost"
                 onClicked: { root.nav && root.nav.navigate("queue") }
             }
@@ -82,7 +82,7 @@ Item {
 
         Text {
             Layout.alignment: Qt.AlignCenter
-            text: "Cola vacía"
+            text: qsTr("Cola vacía")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
             visible: !root.ps || !root.ps.queue || root.ps.queue.length === 0

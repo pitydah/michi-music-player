@@ -9,8 +9,8 @@ Item {
     focus: true
     id: root
 
-    property string title: "Confirmar acción"
-    property string message: "¿Estás seguro?"
+    property string title: qsTr("Confirmar acción")
+    property string message: qsTr("¿Estás seguro?")
     property string confirmText: "Confirmar"
     property string cancelText: "Cancelar"
     property bool danger: false

@@ -140,7 +140,7 @@ Item {
 
                 Text {
                     anchors.centerIn: parent
-                    text: "1"
+                    text: qsTr("1")
                     color: MichiTheme.colors.textOnAccent
                     font.pixelSize: MichiTheme.typography.badgeSize
                     font.weight: MichiTheme.typography.weightBold

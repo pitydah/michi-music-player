@@ -285,7 +285,7 @@ Rectangle {
                 Accessible.role: Accessible.EditableText; Accessible.name: "Ruta de archivo"
             }
             MichiButton {
-                text: "..."
+                text: qsTr("...")
                 implicitWidth: 32
                 onClicked: fileDialog.open()
                 Accessible.name: "Seleccionar archivo"
@@ -307,7 +307,7 @@ Rectangle {
                 Accessible.role: Accessible.EditableText; Accessible.name: "Ruta de carpeta"
             }
             MichiButton {
-                text: "..."
+                text: qsTr("...")
                 implicitWidth: 32
                 onClicked: folderDialog.open()
                 Accessible.name: "Seleccionar carpeta"

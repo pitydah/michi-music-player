@@ -18,7 +18,7 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.sm
 
-        SectionHeader { text: "Detalle del problema"; width: parent.width }
+        SectionHeader { text: qsTr("Detalle del problema"); width: parent.width }
 
         GlassMaterial {
             width: parent.width; radius: MichiTheme.radius.md; variant: "base"
@@ -39,7 +39,7 @@ Item {
                 }
 
                 Text {
-                    text: root._selectedIssue && root._selectedIssue.filepath ? "Archivo: " + root._selectedIssue.filepath : ""
+                    text: root._selectedIssue && root._selectedIssue.filepath ? "Archivo: qsTr(" + root._selectedIssue.filepath : ")"
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize
                     visible: text !== ""
                 }

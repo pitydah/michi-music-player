@@ -25,7 +25,7 @@ Item {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
 
                 Text {
-                    text: "Escribiendo metadatos..."
+                    text: qsTr("Escribiendo metadatos...")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                 }
@@ -39,12 +39,12 @@ Item {
                     indeterminate: true
                 }
 
-                StatusBadge { text: "No cierres la aplicación durante la escritura"; kind: "warning" }
+                StatusBadge { text: qsTr("No cierres la aplicación durante la escritura"); kind: "warning" }
             }
         }
 
         StatusBadge {
-            text: root.mb && root.mb.errorMessage ? "Error: " + root.mb.errorMessage : ""
+            text: root.mb && root.mb.errorMessage ? "Error: qsTr(" + root.mb.errorMessage : ")"
             kind: "error"
             visible: text !== ""
         }

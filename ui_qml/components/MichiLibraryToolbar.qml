@@ -5,7 +5,7 @@ import "."
 Item {
     id: root
 
-    property string title: "Biblioteca"
+    property string title: qsTr("Biblioteca")
     property var filterModel: []
     property int currentFilterIndex: 0
     property string searchText: ""
@@ -64,7 +64,7 @@ Item {
 
             MichiSearchField {
                 anchors.verticalCenter: parent.verticalCenter
-                placeholderText: "Buscar en biblioteca..."
+                placeholderText: qsTr("Buscar en biblioteca...")
                 implicitWidth: Math.min(200, parent.width * 0.2)
                 visible: !root.selectionActive
                 onTextChanged: root.searchChanged(text)
@@ -101,19 +101,19 @@ Item {
                 visible: root.selectionActive
 
                 MichiButton {
-                    text: "Reproducir"
+                    text: qsTr("Reproducir")
                     variant: "primary"
                     onClicked: root.selectionActionRequested("play")
                 }
 
                 MichiButton {
-                    text: "Añadir a cola"
+                    text: qsTr("Añadir a cola")
                     variant: "ghost"
                     onClicked: root.selectionActionRequested("queue")
                 }
 
                 MichiButton {
-                    text: "Cancelar"
+                    text: qsTr("Cancelar")
                     variant: "ghost"
                     onClicked: root.selectionActionRequested("cancel")
                 }

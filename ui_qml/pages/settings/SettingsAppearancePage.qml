@@ -62,14 +62,14 @@ Item {
                 
 
                 PageHeader {
-                    title: "Apariencia"
-                    subtitle: "Tema, colores y disposición visual"
+                    title: qsTr("Apariencia")
+                    subtitle: qsTr("Tema, colores y disposición visual")
                 }
 
                 GlassCard {
                     id: colorsCard
                     Layout.fillWidth: true
-                    title: "Colores"
+                    title: qsTr("Colores")
                     interactive: false
 
                     ColumnLayout {
@@ -85,12 +85,12 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Color de acento"
+                                    text: qsTr("Color de acento")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                                 Label {
-                                    text: "Color principal para elementos interactivos"
+                                    text: qsTr("Color principal para elementos interactivos")
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
@@ -132,7 +132,7 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Apariencia"
+                    title: qsTr("Apariencia")
                     interactive: false
 
                     ColumnLayout {
@@ -148,12 +148,12 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Modo oscuro"
+                                    text: qsTr("Modo oscuro")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                                 Label {
-                                    text: "Alternar entre tema oscuro y claro"
+                                    text: qsTr("Alternar entre tema oscuro y claro")
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
@@ -178,7 +178,7 @@ Item {
                 GlassCard {
                     id: typographyCard
                     Layout.fillWidth: true
-                    title: "Tipografía"
+                    title: qsTr("Tipografía")
                     interactive: false
 
                     ColumnLayout {
@@ -194,7 +194,7 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Escala de fuente"
+                                    text: qsTr("Escala de fuente")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
@@ -230,7 +230,7 @@ Item {
                 GlassCard {
                     id: visualCard
                     Layout.fillWidth: true
-                    title: "Preferencias visuales"
+                    title: qsTr("Preferencias visuales")
                     interactive: false
 
                     ColumnLayout {
@@ -242,7 +242,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Movimiento reducido"
+                                text: qsTr("Movimiento reducido")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -262,7 +262,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Transparencia reducida"
+                                text: qsTr("Transparencia reducida")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -282,7 +282,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Modo compacto"
+                                text: qsTr("Modo compacto")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -302,7 +302,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Carátula como fondo"
+                                text: qsTr("Carátula como fondo")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -321,7 +321,7 @@ Item {
                 GlassCard {
                     id: menuCard
                     Layout.fillWidth: true
-                    title: "Barra de menú"
+                    title: qsTr("Barra de menú")
                     interactive: false
 
                     ColumnLayout {
@@ -333,7 +333,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Mostrar barra de menú"
+                                text: qsTr("Mostrar barra de menú")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true

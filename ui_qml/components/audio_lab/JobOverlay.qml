@@ -18,7 +18,7 @@ Rectangle {
     z: 1000
     
     property bool active: false
-    property var jobs: [] // [{id: "...", title: "...", progress: 0.5, status: "running"}]
+    property var jobs: [] // [{id: qsTr("..."), title: "...", progress: 0.5, status: "running"}]
     
     signal jobCancelled(string jobId)
     signal closeRequested()
@@ -58,7 +58,7 @@ Rectangle {
                 spacing: 10
                 
                 Label {
-                    text: "Trabajos en Progreso"
+                    text: qsTr("Trabajos en Progreso")
                     font.pixelSize: 18
                     font.bold: true
                     color: MichiTheme.textPrimary
@@ -68,7 +68,7 @@ Rectangle {
                 
                 // Botón cerrar
                 Button {
-                    text: "✕"
+                    text: qsTr("✕")
                     palette.buttonText: MichiTheme.textSecondary
                     palette.button: "transparent"
                     
@@ -212,7 +212,7 @@ Rectangle {
                                 // Botón cancelar (solo si está en ejecución)
                                 Button {
                                     visible: model.status === "running"
-                                    text: "Cancelar"
+                                    text: qsTr("Cancelar")
                                     palette.buttonText: MichiTheme.error
                                     palette.button: "transparent"
                                     
@@ -225,7 +225,7 @@ Rectangle {
                     // Estado vacío
                     Label {
                         visible: root.jobs.length === 0
-                        text: "No hay trabajos activos"
+                        text: qsTr("No hay trabajos activos")
                         font.pixelSize: 14
                         color: MichiTheme.textSecondary
                         horizontalAlignment: Text.AlignHCenter

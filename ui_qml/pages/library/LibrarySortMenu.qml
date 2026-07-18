@@ -9,16 +9,16 @@ Popup {
 
     property var bridge: null
     property var model: [
-        {key: "title", label: "Título"},
-        {key: "artist", label: "Artista"},
-        {key: "album", label: "Álbum"},
-        {key: "year", label: "Año"},
-        {key: "duration", label: "Duración"},
-        {key: "genre", label: "Género"},
-        {key: "track_number", label: "Nº pista"},
-        {key: "date_added", label: "Fecha añadido"},
-        {key: "play_count", label: "Reproducciones"},
-        {key: "last_played", label: "Última reproducción"},
+        {key: qsTr("title"), label: "Título"},
+        {key: qsTr("artist"), label: "Artista"},
+        {key: qsTr("album"), label: "Álbum"},
+        {key: qsTr("year"), label: "Año"},
+        {key: qsTr("duration"), label: "Duración"},
+        {key: qsTr("genre"), label: "Género"},
+        {key: qsTr("track_number"), label: "Nº pista"},
+        {key: qsTr("date_added"), label: "Fecha añadido"},
+        {key: qsTr("play_count"), label: "Reproducciones"},
+        {key: qsTr("last_played"), label: "Última reproducción"},
     ]
 
     width: 200; height: Math.min(400, model.length * 32)
@@ -46,7 +46,7 @@ Popup {
                 Text {
                     anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                     anchors.rightMargin: MichiTheme.spacing.sm
-                    text: root.bridge && root.bridge.activeSortKey === modelData.key ? (root.bridge.activeSortAscending ? "asc" : "desc") : ""
+                    text: root.bridge && root.bridge.activeSortKey === modelData.key ? (root.bridge.activeSortAscending ? "asc" : qsTr("desc")) : ""
                     color: MichiTheme.colors.accentBlue
                     font.pixelSize: MichiTheme.typography.metaSize
                 }

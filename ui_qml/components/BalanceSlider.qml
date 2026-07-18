@@ -27,7 +27,7 @@ Item {
         spacing: MichiTheme.spacing.sm
 
         Text {
-            text: "L"
+            text: qsTr("L")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.captionSize
             font.weight: MichiTheme.typography.weightMedium
@@ -58,7 +58,7 @@ Item {
         }
 
         Text {
-            text: "R"
+            text: qsTr("R")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.captionSize
             font.weight: MichiTheme.typography.weightMedium

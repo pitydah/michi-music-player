@@ -59,14 +59,14 @@ Popup {
 
         Repeater {
             model: [
-                {label: "Reproducir", action: "play"},
-                {label: "Añadir a cola", action: "queue"},
-                {label: "Añadir a playlist", action: "addPlaylist"},
-                {label: "Ir al álbum", action: "goAlbum"},
-                {label: "Ir al artista", action: "goArtist"},
-                {label: "Editar metadatos", action: "editMeta"},
-                {label: "Mostrar en carpeta", action: "showFolder"},
-                {label: "Propiedades", action: "properties"},
+                {label: qsTr("Reproducir"), action: "play"},
+                {label: qsTr("Añadir a cola"), action: "queue"},
+                {label: qsTr("Añadir a playlist"), action: "addPlaylist"},
+                {label: qsTr("Ir al álbum"), action: "goAlbum"},
+                {label: qsTr("Ir al artista"), action: "goArtist"},
+                {label: qsTr("Editar metadatos"), action: "editMeta"},
+                {label: qsTr("Mostrar en carpeta"), action: "showFolder"},
+                {label: qsTr("Propiedades"), action: "properties"},
             ]
 
             Item {

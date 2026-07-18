@@ -107,12 +107,12 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Text {
-                text: "Análisis técnico"
+                text: qsTr("Análisis técnico")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
             }
             Text {
-                text: "Formato, codec, bitrate, sample rate, bit depth, canales, encoder, tags, loudness, peak"
+                text: qsTr("Formato, codec, bitrate, sample rate, bit depth, canales, encoder, tags, loudness, peak")
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
             }
@@ -121,14 +121,14 @@ Item {
 
             AudioSelectionSummary { width: parent.width }
 
-            SectionHeader { text: "Acciones"; width: parent.width; objectName: "analysisActionsHeader"; Accessible.name: "Acciones" }
+            SectionHeader { text: qsTr("Acciones"); width: parent.width; objectName: "analysisActionsHeader"; Accessible.name: "Acciones" }
 
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
                     Accessible.role: Accessible.Button
 
-                    text: root._state === root.stateAnalyzing ? "Analizando..." : "Analizar selección"
+                    text: root._state === root.stateAnalyzing ? "Analizando..." : qsTr("Analizar selección")
                     variant: "primary"
                     enabled: root._state !== root.stateAnalyzing && root._state !== root.stateCancelling && root.labService !== null && inputSelection.selectedFiles.length > 0
                     activeFocusOnTab: true
@@ -139,7 +139,7 @@ Item {
                     Accessible.role: Accessible.Button
 
                 MichiButton {
-                    text: "Cancelar"
+                    text: qsTr("Cancelar")
                     variant: "danger"
                     visible: root._state === root.stateAnalyzing
                     activeFocusOnTab: true
@@ -150,7 +150,7 @@ Item {
 
                 }
                 MichiButton {
-                    text: root._compareMode ? "Salir de comparación" : "Comparar con otro archivo"
+                    text: root._compareMode ? "Salir de comparación" : qsTr("Comparar con otro archivo")
                     variant: "secondary"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
@@ -160,7 +160,7 @@ Item {
                     onClicked: root._startCompare()
                 }
                 MichiButton {
-                    text: "Volver"
+                    text: qsTr("Volver")
                     variant: "ghost"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
@@ -169,7 +169,7 @@ Item {
                 }
             }
 
-            SectionHeader { text: "Resultado del análisis"; width: parent.width; objectName: "analysisResultsHeader"; Accessible.name: "Resultados" }
+            SectionHeader { text: qsTr("Resultado del análisis"); width: parent.width; objectName: "analysisResultsHeader"; Accessible.name: "Resultados" }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md; variant: root._state === root.stateCompleted ? "accent" : root._state === root.stateFailed ? "danger" : "base"
@@ -177,7 +177,7 @@ Item {
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     Text {
-                        text: root._analysisResult ? "Análisis completado" : "Error: " + root._errorMessage
+                        text: root._analysisResult ? "Análisis completado" : qsTr("Error: ") + root._errorMessage
                         color: root._analysisResult ? MichiTheme.colors.success : MichiTheme.colors.error
                         font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold
                     }
@@ -199,7 +199,7 @@ Item {
                 height: 80
                 Text {
                     anchors.centerIn: parent
-                    text: root._state === root.stateAnalyzing ? "Analizando..." : "Selecciona archivos para analizar"
+                    text: root._state === root.stateAnalyzing ? "Analizando..." : qsTr("Selecciona archivos para analizar")
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 }
             }
@@ -221,7 +221,7 @@ Item {
 
             StatusBadge {
                 visible: root.labService === null
-                text: "Bridge no disponible"
+                text: qsTr("Bridge no disponible")
                 kind: "disconnected"
             }
         }

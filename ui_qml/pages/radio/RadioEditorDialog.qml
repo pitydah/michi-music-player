@@ -20,7 +20,7 @@ Dialog {
     signal saved(int stationId, string name, string url, string codec, string country)
     signal cancelled()
 
-    title: root._isEdit ? "Editar emisora" : "Añadir emisora"
+    title: root._isEdit ? "Editar emisora" : qsTr("Añadir emisora")
     modal: true
     closePolicy: Popup.CloseOnEscape
     width: Math.min(parent.width * 0.8, 480)
@@ -84,7 +84,7 @@ Dialog {
             spacing: MichiTheme.spacing.xs
 
             Text {
-                text: "Nombre *"
+                text: qsTr("Nombre *")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.metaSize
                 font.weight: MichiTheme.typography.weightMedium
@@ -95,7 +95,7 @@ Dialog {
 
                 id: nameField
                 width: parent.width
-                placeholderText: "Ej: Jazz FM"
+                placeholderText: qsTr("Ej: Jazz FM")
                 activeFocusOnTab: true
                 Keys.onEscapePressed: root.close()
             }
@@ -106,7 +106,7 @@ Dialog {
             spacing: MichiTheme.spacing.xs
 
             Text {
-                text: "URL *"
+                text: qsTr("URL *")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.metaSize
                 font.weight: MichiTheme.typography.weightMedium
@@ -145,7 +145,7 @@ Dialog {
                 spacing: MichiTheme.spacing.xs
 
                 Text {
-                    text: "Códec"
+                    text: qsTr("Códec")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.metaSize
                     font.weight: MichiTheme.typography.weightMedium
@@ -156,7 +156,7 @@ Dialog {
                 MichiSearchField {
                     id: codecField
                     width: parent.width
-                    placeholderText: "MP3, AAC, OGG..."
+                    placeholderText: qsTr("MP3, AAC, OGG...")
                     activeFocusOnTab: true
                     Keys.onEscapePressed: root.close()
                 }
@@ -167,7 +167,7 @@ Dialog {
                 spacing: MichiTheme.spacing.xs
 
                 Text {
-                    text: "País"
+                    text: qsTr("País")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.metaSize
                     font.weight: MichiTheme.typography.weightMedium
@@ -180,7 +180,7 @@ Dialog {
                 MichiSearchField {
                     id: countryField
                     width: parent.width
-                    placeholderText: "Ej: US, UK, DE..."
+                    placeholderText: qsTr("Ej: US, UK, DE...")
                     activeFocusOnTab: true
                     Keys.onEscapePressed: root.close()
                 }
@@ -215,7 +215,7 @@ Dialog {
             spacing: MichiTheme.spacing.sm
 
             MichiButton {
-                text: "Probar conexión"
+                text: qsTr("Probar conexión")
                 variant: "ghost"
                 enabled: urlField.text.trim().match(/^https?:\/\//) !== null && !root._testingConnection
                 activeFocusOnTab: true
@@ -232,7 +232,7 @@ Dialog {
             Item { width: parent.width - 220; height: 1 }
 
             MichiButton {
-                text: "Cancelar"
+                text: qsTr("Cancelar")
                 variant: "ghost"
                 activeFocusOnTab: true
                 Keys.onEscapePressed: root.close()
@@ -245,7 +245,7 @@ Dialog {
             }
 
             MichiButton {
-                text: "Guardar"
+                text: qsTr("Guardar")
                 variant: "primary"
                 enabled: nameField.text.trim() !== "" && urlField.text.trim() !== ""
                 activeFocusOnTab: true

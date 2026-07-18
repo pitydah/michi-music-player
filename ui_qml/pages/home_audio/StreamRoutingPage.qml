@@ -26,8 +26,8 @@ Item {
         id: asyncView
         anchors.fill: parent
         state: root.zones.length === 0 ? AsyncStateView.EMPTY : AsyncStateView.READY
-        title: "Sin zonas"
-        message: "No hay zonas disponibles para asignar streams."
+        title: qsTr("Sin zonas")
+        message: qsTr("No hay zonas disponibles para asignar streams.")
 
         readyContent: Flickable {
             anchors.fill: parent
@@ -47,7 +47,7 @@ Item {
 
                     activeFocusOnTab: true
 
-                    text: "< Volver"
+                    text: qsTr("< Volver")
                     variant: "ghost"
                     onClicked: root.backClicked()
                     Keys.onReturnPressed: root.backClicked()
@@ -55,20 +55,20 @@ Item {
                 }
 
                 Text {
-                    text: "Enrutamiento de stream"
+                    text: qsTr("Enrutamiento de stream")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                 }
 
                 Text {
-                    text: "Stream activo: " + (root.activeStreamName || "Ninguno")
+                    text: qsTr("Stream activo: ") + (root.activeStreamName || "Ninguno")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.bodySize
                 }
 
                 Text {
-                    text: "Asigna un stream a cada zona:"
+                    text: qsTr("Asigna un stream a cada zona:")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.bodySize
                 }
@@ -103,7 +103,7 @@ Item {
                                 }
 
                                 Text {
-                                    text: "Stream: " + (modelData.streamId === root.activeStreamId ? root.activeStreamName || "Stream activo" : (modelData.streamId || "Ninguno"))
+                                    text: qsTr("Stream: ") + (modelData.streamId === root.activeStreamId ? root.activeStreamName || "Stream activo" : (modelData.streamId || "Ninguno"))
                                     color: MichiTheme.colors.textSecondary
                                     font.pixelSize: MichiTheme.typography.metaSize
                                 }
@@ -111,7 +111,7 @@ Item {
 
                             StatusBadge {
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: modelData.streamId === root.activeStreamId ? "Stream activo" : "Stream alterno"
+                                text: modelData.streamId === root.activeStreamId ? "Stream activo" : qsTr("Stream alterno")
                                 kind: modelData.streamId === root.activeStreamId ? "success" : "disconnected"
                             }
                                 Accessible.role: Accessible.Button
@@ -121,7 +121,7 @@ Item {
 
                             MichiButton {
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: "Cambiar stream"
+                                text: qsTr("Cambiar stream")
                                 variant: "ghost"
                                 onClicked: root.streamAssigned(modelData.id || "", root.activeStreamId)
                             }

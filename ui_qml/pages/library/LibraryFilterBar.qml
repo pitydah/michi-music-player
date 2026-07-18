@@ -26,12 +26,12 @@ Item {
         spacing: MichiTheme.spacing.xs
         visible: true
 
-        FilterChip { objectName: "filterChipTodos"; text: "Todos"; selected: !root.lib || root.lib.activeFormatFilter === ""; onClicked: root.formatFilterChanged("") }
-        FilterChip { objectName: "filterChipFlac"; text: "FLAC"; selected: root.lib && root.lib.activeFormatFilter === "flac"; onClicked: root.formatFilterChanged("flac") }
-        FilterChip { objectName: "filterChipMp3"; text: "MP3"; selected: root.lib && root.lib.activeFormatFilter === "mp3"; onClicked: root.formatFilterChanged("mp3") }
-        FilterChip { objectName: "filterChipWav"; text: "WAV"; selected: root.lib && root.lib.activeFormatFilter === "wav"; onClicked: root.formatFilterChanged("wav") }
-        FilterChip { objectName: "filterChipDsd"; text: "DSD"; selected: root.lib && root.lib.activeFormatFilter === "dsd"; onClicked: root.formatFilterChanged("dsd") }
-        FilterChip { objectName: "filterChipFavorites"; text: "Favoritos"; selected: false; onClicked: { if (root.lib) root.lib.setFavoritesFilter() } }
-        FilterChip { objectName: "filterChipUnplayed"; text: "No reproducidos"; selected: false; onClicked: { if (root.lib) root.lib.setUnplayedFilter() } }
+        FilterChip { objectName: qsTr("filterChipTodos"); text: "Todos"; selected: !root.lib || root.lib.activeFormatFilter === ""; onClicked: root.formatFilterChanged("") }
+        FilterChip { objectName: qsTr("filterChipFlac"); text: "FLAC"; selected: root.lib && root.lib.activeFormatFilter === "flac"; onClicked: root.formatFilterChanged("flac") }
+        FilterChip { objectName: qsTr("filterChipMp3"); text: "MP3"; selected: root.lib && root.lib.activeFormatFilter === "mp3"; onClicked: root.formatFilterChanged("mp3") }
+        FilterChip { objectName: qsTr("filterChipWav"); text: "WAV"; selected: root.lib && root.lib.activeFormatFilter === "wav"; onClicked: root.formatFilterChanged("wav") }
+        FilterChip { objectName: qsTr("filterChipDsd"); text: "DSD"; selected: root.lib && root.lib.activeFormatFilter === "dsd"; onClicked: root.formatFilterChanged("dsd") }
+        FilterChip { objectName: qsTr("filterChipFavorites"); text: "Favoritos"; selected: false; onClicked: { if (root.lib) root.lib.setFavoritesFilter() } }
+        FilterChip { objectName: qsTr("filterChipUnplayed"); text: "No reproducidos"; selected: false; onClicked: { if (root.lib) root.lib.setUnplayedFilter() } }
     }
 }

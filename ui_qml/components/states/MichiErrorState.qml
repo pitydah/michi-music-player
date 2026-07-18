@@ -1,7 +1,7 @@
 import QtQuick
 
 MichiEmptyState {
-    title: "No se pudo completar la operación"
+    title: qsTr("No se pudo completar la operación")
     iconName: "error"
     primaryActionText: "Reintentar"
     Accessible.name: title

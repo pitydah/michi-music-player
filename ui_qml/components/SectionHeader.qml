@@ -29,7 +29,7 @@ Item {
         }
 
         Text {
-            text: "›"
+            text: qsTr("›")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.sectionTitleSize
             visible: root.showChevron

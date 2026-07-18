@@ -20,7 +20,7 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.sm
 
-        SectionHeader { text: "Campos de metadatos"; width: parent.width }
+        SectionHeader { text: qsTr("Campos de metadatos"); width: parent.width }
 
         GlassMaterial {
             width: parent.width; radius: MichiTheme.radius.md; variant: "base"

@@ -30,14 +30,14 @@ Item {
             spacing: MichiTheme.spacing.md
 
             Text {
-                text: "Transferir reproducción"
+                text: qsTr("Transferir reproducción")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
             }
 
             Text {
-                text: "Selecciona la zona destino para transferir la reproducción actual:"
+                text: qsTr("Selecciona la zona destino para transferir la reproducción actual:")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
                 wrapMode: Text.WordWrap
@@ -88,7 +88,7 @@ Item {
 
                 activeFocusOnTab: true
 
-                text: "Cancelar"
+                text: qsTr("Cancelar")
                 variant: "ghost"
                 onClicked: root.cancelRequested()
             }

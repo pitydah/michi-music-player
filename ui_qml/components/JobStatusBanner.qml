@@ -34,7 +34,7 @@ Rectangle {
             color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.captionSize
         }
         Label {
-            text: "(ver Jobs)"; color: MichiTheme.colors.accentBlue
+            text: qsTr("(ver Jobs)"); color: MichiTheme.colors.accentBlue
             font.pixelSize: MichiTheme.typography.captionSize; font.underline: true
         }
     }

@@ -14,7 +14,7 @@ Page {
     id: page
 
     header: SectionHeader {
-        text: "Ripeo de CD"
+        text: qsTr("Ripeo de CD")
         // onBackClicked eliminado
     }
 
@@ -144,7 +144,7 @@ Page {
                     spacing: 10
 
                     Label {
-                        text: "Unidad de CD"
+                        text: qsTr("Unidad de CD")
                         font.bold: true
                         font.pixelSize: 14
                     }
@@ -164,7 +164,7 @@ Page {
 
                     Label {
                         visible: cdDevices.length === 0
-                        text: "⚠️ No se detectaron unidades de CD"
+                        text: qsTr("⚠️ No se detectaron unidades de CD")
                         color: MichiTheme.warning
                         font.pixelSize: 12
                     }
@@ -213,13 +213,13 @@ Page {
 
                     RowLayout {
                         Label {
-                            text: "Seleccionar pistas"
+                            text: qsTr("Seleccionar pistas")
                             font.bold: true
                             font.pixelSize: 14
                         }
                         Item { Layout.fillWidth: true }
                         CheckBox {
-                            text: "Todas"
+                            text: qsTr("Todas")
                             checked: tracksToRip.every(t => t.selected)
                             onToggled: {
                                 tracksToRip.forEach(t => t.selected = checked)
@@ -267,7 +267,7 @@ Page {
                     spacing: 15
 
                     Label {
-                        text: "Configuración"
+                        text: qsTr("Configuración")
                         font.bold: true
                         font.pixelSize: 14
                     }
@@ -277,7 +277,7 @@ Page {
                         Layout.fillWidth: true
 
                         Label {
-                            text: "Formato:"
+                            text: qsTr("Formato:")
                             width: 100
                         }
 
@@ -294,7 +294,7 @@ Page {
                         Layout.fillWidth: true
 
                         Label {
-                            text: "Guardar en:"
+                            text: qsTr("Guardar en:")
                             width: 100
                         }
 
@@ -302,19 +302,19 @@ Page {
                             id: outputFolderField
                             Layout.fillWidth: true
                             text: outputFolder
-                            placeholderText: "Carpeta de destino"
+                            placeholderText: qsTr("Carpeta de destino")
                             onTextChanged: outputFolder = text
                         }
 
                         Button {
-                            text: "..."
+                            text: qsTr("...")
                             onClicked: folderDialog.open()
                         }
                     }
 
                     // Modo seguro
                     CheckBox {
-                        text: "Modo seguro (relectura automática de errores)"
+                        text: qsTr("Modo seguro (relectura automática de errores)")
                         checked: true
                     }
                 }
@@ -324,7 +324,7 @@ Page {
             Button {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 50
-                text: isRipping ? "Extrayendo..." : "Extraer Pistas Seleccionadas"
+                text: isRipping ? "Extrayendo..." : qsTr("Extraer Pistas Seleccionadas")
                 enabled: selectedDevice && tracksToRip.some(t => t.selected) && !isRipping
                 highlighted: true
 
@@ -335,7 +335,7 @@ Page {
             Label {
                 id: statusMessage
                 Layout.fillWidth: true
-                text: "Selecciona una unidad de CD para comenzar"
+                text: qsTr("Selecciona una unidad de CD para comenzar")
                 color: MichiTheme.textSecondary
                 horizontalAlignment: Text.AlignHCenter
                 font.pixelSize: 12

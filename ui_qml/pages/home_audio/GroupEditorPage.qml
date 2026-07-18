@@ -43,8 +43,8 @@ Item {
         id: asyncView
         anchors.fill: parent
         state: root.availableZones.length === 0 ? AsyncStateView.EMPTY : AsyncStateView.READY
-        title: "Sin zonas disponibles"
-        message: "No hay zonas disponibles para agrupar. Conecta dispositivos primero."
+        title: qsTr("Sin zonas disponibles")
+        message: qsTr("No hay zonas disponibles para agrupar. Conecta dispositivos primero.")
         iconName: "group"
 
         readyContent: Flickable {
@@ -66,7 +66,7 @@ Item {
                     id: backBtn
                     activeFocusOnTab: true
 
-                    text: "< Volver"
+                    text: qsTr("< Volver")
                     variant: "ghost"
                     onClicked: root.groupCancelled()
                     Keys.onReturnPressed: root.groupCancelled()
@@ -74,7 +74,7 @@ Item {
                 }
 
                 Text {
-                    text: root.editMode ? "Editar grupo" : "Crear grupo"
+                    text: root.editMode ? "Editar grupo" : qsTr("Crear grupo")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -90,7 +90,7 @@ Item {
                     id: groupNameField
                     width: parent.width
                     height: MichiTheme.rowHeightComfortable
-                    placeholderText: "Nombre del grupo"
+                    placeholderText: qsTr("Nombre del grupo")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                     text: root.groupName
@@ -208,7 +208,7 @@ Item {
 
                     MichiButton {
                         id: createBtn
-                        text: root.editMode ? "Guardar cambios" : "Crear grupo"
+                        text: root.editMode ? "Guardar cambios" : qsTr("Crear grupo")
                         variant: "primary"
                         enabled: root.groupName.trim() !== "" && root.selectedZoneIds.length >= 2
                         onClicked: {
@@ -231,7 +231,7 @@ Item {
 
                     MichiButton {
                         id: cancelBtn
-                        text: "Cancelar"
+                        text: qsTr("Cancelar")
                         variant: "ghost"
                         onClicked: root.groupCancelled()
                         KeyNavigation.backtab: createBtn

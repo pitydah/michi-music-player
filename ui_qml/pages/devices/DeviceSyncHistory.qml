@@ -36,7 +36,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 Text {
-                    text: "Historial de sincronización"
+                    text: qsTr("Historial de sincronización")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -48,7 +48,7 @@ Item {
 
                     activeFocusOnTab: true
 
-                    text: "Limpiar"
+                    text: qsTr("Limpiar")
                     variant: "ghost"
                     onClicked: root.clearHistoryClicked()
                 }
@@ -112,7 +112,7 @@ Item {
                             }
 
                             Text {
-                                text: modelData.direction === "to_device" ? "→ Dispositivo" : "← Dispositivo"
+                                text: modelData.direction === "to_device" ? "→ Dispositivo" : qsTr("← Dispositivo")
                                 color: MichiTheme.colors.textMuted
                                 font.pixelSize: MichiTheme.typography.metaSize
                             }

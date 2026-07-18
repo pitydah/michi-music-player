@@ -1,8 +1,8 @@
 import QtQuick
 
 MichiEmptyState {
-    title: "Cargando"
-    message: "Espera mientras se prepara el contenido."
+    title: qsTr("Cargando")
+    message: qsTr("Espera mientras se prepara el contenido.")
     iconName: "refresh"
     busy: true
     Accessible.name: title

@@ -17,7 +17,7 @@ Rectangle {
 
     Text {
         anchors.centerIn: parent
-        text: "\u2665"
+        text: qsTr("\u2665")
         color: MichiTheme.colors.textOnError
         font.pixelSize: MichiTheme.typography.badgeSize
         font.weight: MichiTheme.typography.weightBold

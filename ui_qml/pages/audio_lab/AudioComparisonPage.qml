@@ -69,29 +69,29 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Text {
-                text: "Comparación de audio"
+                text: qsTr("Comparación de audio")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
             }
 
             Text {
-                text: "Compara variantes por formato, codec, bitrate, sample rate, bit depth, canales, tamaño, loudness, pico"
+                text: qsTr("Compara variantes por formato, codec, bitrate, sample rate, bit depth, canales, tamaño, loudness, pico")
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
             }
 
-            SectionHeader { text: "Archivo A"; width: parent.width; objectName: "fileAHeader"; Accessible.name: "Archivo A" }
+            SectionHeader { text: qsTr("Archivo A"); width: parent.width; objectName: "fileAHeader"; Accessible.name: "Archivo A" }
 
             AudioInputSelection {
                 onFilesSelected: { root._fileA = filepaths && filepaths.length > 0 ? filepaths[0] : null; root._comparisonResult = null; root._state = root.stateIdle }
             }
 
-            SectionHeader { text: "Archivo B"; width: parent.width; objectName: "fileBHeader"; Accessible.name: "Archivo B" }
+            SectionHeader { text: qsTr("Archivo B"); width: parent.width; objectName: "fileBHeader"; Accessible.name: "Archivo B" }
 
             AudioInputSelection {
                 onFilesSelected: { root._fileB = filepaths && filepaths.length > 0 ? filepaths[0] : null; root._comparisonResult = null; root._state = root.stateIdle }
             }
 
-            SectionHeader { text: "Dimensiones de comparación"; width: parent.width; objectName: "comparisonDimsHeader"; Accessible.name: "Dimensiones" }
+            SectionHeader { text: qsTr("Dimensiones de comparación"); width: parent.width; objectName: "comparisonDimsHeader"; Accessible.name: "Dimensiones" }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md; variant: root._comparisonResult ? "accent" : "base"
@@ -101,19 +101,19 @@ Item {
                         model: root._comparisonResult && root._comparisonResult.dimensions
                                ? root._comparisonResult.dimensions
                                : [
-                                   { label: "Formato", identical: false }, { label: "Codec", identical: false },
-                                   { label: "Bitrate", identical: false }, { label: "Sample Rate", identical: false },
-                                   { label: "Bit Depth", identical: false }, { label: "Canales", identical: false },
-                                   { label: "Tamaño", identical: false }, { label: "Loudness", identical: false },
-                                   { label: "Peak", identical: false }, { label: "Metadata", identical: false },
-                                   { label: "Hash", identical: false }, { label: "Integridad", identical: false },
+                                   { label: qsTr("Formato"), identical: false }, { label: "Codec", identical: false },
+                                   { label: qsTr("Bitrate"), identical: false }, { label: "Sample Rate", identical: false },
+                                   { label: qsTr("Bit Depth"), identical: false }, { label: "Canales", identical: false },
+                                   { label: qsTr("Tamaño"), identical: false }, { label: "Loudness", identical: false },
+                                   { label: qsTr("Peak"), identical: false }, { label: "Metadata", identical: false },
+                                   { label: qsTr("Hash"), identical: false }, { label: "Integridad", identical: false },
                                ]
                         Row {
                             spacing: MichiTheme.spacing.sm; height: 28
                             Text { text: modelData.label || ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; width: 120; anchors.verticalCenter: parent.verticalCenter }
-                            Text { text: root._comparisonResult ? (modelData.identical ? "✓ Igual" : "✗ Diferente") : "—"; color: modelData.identical ? MichiTheme.colors.success : root._comparisonResult ? MichiTheme.colors.error : MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize; width: 100; anchors.verticalCenter: parent.verticalCenter }
+                            Text { text: root._comparisonResult ? (modelData.identical ? "✓ Igual" : qsTr("✗ Diferente")) : "—"; color: modelData.identical ? MichiTheme.colors.success : root._comparisonResult ? MichiTheme.colors.error : MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize; width: 100; anchors.verticalCenter: parent.verticalCenter }
                             Text { text: root._comparisonResult ? "vs" : ""; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize; width: 30; anchors.verticalCenter: parent.verticalCenter }
-                            Text { text: root._comparisonResult ? (modelData.identical ? "" : "Diferente") : ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter; width: 100; elide: Text.ElideRight }
+                            Text { text: root._comparisonResult ? (modelData.identical ? "" : qsTr("Diferente")) : ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter; width: 100; elide: Text.ElideRight }
                         }
                     }
                 }
@@ -123,7 +123,7 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
-                    text: "Comparar"
+                    text: qsTr("Comparar")
                     variant: "primary"
                     enabled: root._fileA !== null && root._fileB !== null && root._state !== root.stateComparing
                     activeFocusOnTab: true
@@ -133,7 +133,7 @@ Item {
                 }
 
                 MichiButton {
-                    text: "Intercambiar A/B"
+                    text: qsTr("Intercambiar A/B")
                     variant: "secondary"
                     enabled: root._fileA !== null && root._fileB !== null
                     activeFocusOnTab: true
@@ -142,7 +142,7 @@ Item {
                     onClicked: root._swapFiles()
                 }
                 MichiButton {
-                    text: "Volver"
+                    text: qsTr("Volver")
                     variant: "ghost"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
@@ -153,7 +153,7 @@ Item {
 
             StatusBadge {
                 visible: root.labService === null
-                text: "Bridge no disponible"
+                text: qsTr("Bridge no disponible")
                 kind: "disconnected"
             }
         }

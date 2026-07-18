@@ -10,7 +10,7 @@ Item {
     focus: true
     id: root
 
-    property string placeholderText: "Buscar..."
+    property string placeholderText: qsTr("Buscar...")
     property alias text: searchInput.text
     property bool fieldFocused: false
     property string accessibleName: placeholderText

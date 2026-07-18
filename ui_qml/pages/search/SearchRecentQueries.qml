@@ -23,8 +23,8 @@ Item {
 
         Row {
             width: parent.width
-            SectionHeader { text: "Búsquedas recientes"; width: parent.width - 80 }
-            MichiButton { text: "Limpiar"; variant: "ghost"; onClicked: root.clearRecent() }
+            SectionHeader { text: qsTr("Búsquedas recientes"); width: parent.width - 80 }
+            MichiButton { text: qsTr("Limpiar"); variant: "ghost"; onClicked: root.clearRecent() }
         }
 
         Repeater {

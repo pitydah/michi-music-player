@@ -34,14 +34,14 @@ Item {
                     spacing: MichiTheme.spacing.xs
 
                     Text {
-                        text: "Michi Music Stream"
+                        text: qsTr("Michi Music Stream")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.sectionTitleSize
                         font.weight: MichiTheme.typography.weightSemiBold
                     }
 
                     Text {
-                        text: "Sistema propio del ecosistema Michi para transmitir música a receptores y equipos de audio dentro de la red local."
+                        text: qsTr("Sistema propio del ecosistema Michi para transmitir música a receptores y equipos de audio dentro de la red local.")
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize
                         width: parent.width - 100
@@ -49,12 +49,12 @@ Item {
                     }
                 }
 
-                StatusBadge { text: "Concepto"; kind: "experimental" }
+                StatusBadge { text: qsTr("Concepto"); kind: "experimental" }
             }
         }
 
         Text {
-            text: "Componentes del sistema"
+            text: qsTr("Componentes del sistema")
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.sectionTitleSize
             font.weight: MichiTheme.typography.weightSemiBold
@@ -68,12 +68,12 @@ Item {
 
             Repeater {
                 model: [
-                    { title: "Receptores Michi", desc: "Dispositivos de audio en red" },
-                    { title: "Salas y zonas", desc: "Agrupación de receptores" },
-                    { title: "Transmisión local", desc: "Streaming sin servidor externo" },
-                    { title: "Sincronización multiroom", desc: "Audio sincronizado en todas las salas" },
-                    { title: "Diagnóstico de latencia", desc: "Medición de delay en la red" },
-                    { title: "Protocolo Michi Stream", desc: "Capa de transporte del ecosistema" }
+                    { title: qsTr("Receptores Michi"), desc: "Dispositivos de audio en red" },
+                    { title: qsTr("Salas y zonas"), desc: "Agrupación de receptores" },
+                    { title: qsTr("Transmisión local"), desc: "Streaming sin servidor externo" },
+                    { title: qsTr("Sincronización multiroom"), desc: "Audio sincronizado en todas las salas" },
+                    { title: qsTr("Diagnóstico de latencia"), desc: "Medición de delay en la red" },
+                    { title: qsTr("Protocolo Michi Stream"), desc: "Capa de transporte del ecosistema" }
                 ]
 
                 GlassCard {

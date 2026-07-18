@@ -56,7 +56,7 @@ Drawer {
             spacing: MichiTheme.spacing.sm
 
             Text {
-                text: "Filtros"
+                text: qsTr("Filtros")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -71,7 +71,7 @@ Drawer {
 
                 activeFocusOnTab: true
 
-                text: "Cerrar"
+                text: qsTr("Cerrar")
                 variant: "ghost"
                 anchors.verticalCenter: parent.verticalCenter
                 onClicked: root.close()
@@ -86,7 +86,7 @@ Drawer {
         }
 
         Text {
-            text: "Tipo de resultado"
+            text: qsTr("Tipo de resultado")
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.bodySize
             font.weight: MichiTheme.typography.weightMedium
@@ -98,17 +98,17 @@ Drawer {
 
             Repeater {
                 model: [
-                    {key: "track", label: "Canciones"},
-                    {key: "album", label: "Álbumes"},
-                    {key: "artist", label: "Artistas"},
-                    {key: "playlist", label: "Playlists"},
-                    {key: "folder", label: "Carpetas"},
-                    {key: "genre", label: "Géneros"},
-                    {key: "radio", label: "Radio"},
-                    {key: "device", label: "Dispositivos"},
-                    {key: "server", label: "Servidores"},
-                    {key: "action", label: "Acciones"},
-                    {key: "setting", label: "Ajustes"},
+                    {key: qsTr("track"), label: "Canciones"},
+                    {key: qsTr("album"), label: "Álbumes"},
+                    {key: qsTr("artist"), label: "Artistas"},
+                    {key: qsTr("playlist"), label: "Playlists"},
+                    {key: qsTr("folder"), label: "Carpetas"},
+                    {key: qsTr("genre"), label: "Géneros"},
+                    {key: qsTr("radio"), label: "Radio"},
+                    {key: qsTr("device"), label: "Dispositivos"},
+                    {key: qsTr("server"), label: "Servidores"},
+                    {key: qsTr("action"), label: "Acciones"},
+                    {key: qsTr("setting"), label: "Ajustes"},
                 ]
 
                 Row {
@@ -141,7 +141,7 @@ Drawer {
 
                             Text {
                                 anchors.centerIn: parent
-                                text: "\u2713"
+                                text: qsTr("\u2713")
                                 color: MichiTheme.colors.textOnAccent
                                 font.pixelSize: MichiTheme.typography.metaSize
                                 visible: typeCheck.checked
@@ -167,7 +167,7 @@ Drawer {
         }
 
         Text {
-            text: "Rango de año"
+            text: qsTr("Rango de año")
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.bodySize
             font.weight: MichiTheme.typography.weightMedium
@@ -180,13 +180,13 @@ Drawer {
             MichiSearchField {
                 id: yearFromField
                 width: parent.width * 0.45
-                placeholderText: "Desde"
+                placeholderText: qsTr("Desde")
                 text: root._yearFrom > 0 ? String(root._yearFrom) : ""
                 onSearchTextChanged: root._yearFrom = parseInt(text) || 0
             }
 
             Text {
-                text: "\u2013"
+                text: qsTr("\u2013")
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
                 anchors.verticalCenter: parent.verticalCenter
@@ -195,7 +195,7 @@ Drawer {
             MichiSearchField {
                 id: yearToField
                 width: parent.width * 0.45
-                placeholderText: "Hasta"
+                placeholderText: qsTr("Hasta")
                 text: root._yearTo > 0 ? String(root._yearTo) : ""
                 onSearchTextChanged: root._yearTo = parseInt(text) || 0
             }
@@ -208,7 +208,7 @@ Drawer {
         }
 
         Text {
-            text: "Calidad"
+            text: qsTr("Calidad")
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.bodySize
             font.weight: MichiTheme.typography.weightMedium
@@ -220,11 +220,11 @@ Drawer {
 
             Repeater {
                 model: [
-                    {key: "any", label: "Cualquiera"},
-                    {key: "low", label: "Baja"},
-                    {key: "standard", label: "Estándar"},
-                    {key: "high", label: "Alta"},
-                    {key: "lossless", label: "Lossless"},
+                    {key: qsTr("any"), label: "Cualquiera"},
+                    {key: qsTr("low"), label: "Baja"},
+                    {key: qsTr("standard"), label: "Estándar"},
+                    {key: qsTr("high"), label: "Alta"},
+                    {key: qsTr("lossless"), label: "Lossless"},
                 ]
 
                 MichiButton {
@@ -243,7 +243,7 @@ Drawer {
             spacing: MichiTheme.spacing.sm
 
             MichiButton {
-                text: "Aplicar filtros"
+                text: qsTr("Aplicar filtros")
                 variant: "primary"
                 onClicked: {
                     root.filtersApplied(root._typeFilters, root._yearFrom, root._yearTo, root._qualityFilter)
@@ -252,7 +252,7 @@ Drawer {
             }
 
             MichiButton {
-                text: "Restablecer"
+                text: qsTr("Restablecer")
                 variant: "ghost"
                 onClicked: {
                     root._typeFilters = {

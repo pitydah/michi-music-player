@@ -67,7 +67,7 @@ Item {
 
                     activeFocusOnTab: true
 
-                    text: "Configurar"
+                    text: qsTr("Configurar")
                     variant: "ghost"
                     onClicked: root.configureClicked()
                 }

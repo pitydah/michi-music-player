@@ -16,7 +16,7 @@ Item {
 
     visible: root.results !== null && root.results.length > 0
 
-    SectionHeader { text: "Resultados"; width: parent.width }
+    SectionHeader { text: qsTr("Resultados"); width: parent.width }
 
     Repeater {
         model: root.results || []
@@ -33,10 +33,10 @@ Item {
 
     Row {
         spacing: MichiTheme.spacing.sm
-        MichiButton { text: "Abrir en biblioteca"; variant: "secondary" }
-        MichiButton { text: "Reproducir"; variant: "primary" }
-        MichiButton { text: "Agregar a cola"; variant: "secondary" }
-        MichiButton { text: "Crear playlist"; variant: "secondary" }
-        MichiButton { text: "Abrir ubicación"; variant: "ghost" }
+        MichiButton { text: qsTr("Abrir en biblioteca"); variant: "secondary" }
+        MichiButton { text: qsTr("Reproducir"); variant: "primary" }
+        MichiButton { text: qsTr("Agregar a cola"); variant: "secondary" }
+        MichiButton { text: qsTr("Crear playlist"); variant: "secondary" }
+        MichiButton { text: qsTr("Abrir ubicación"); variant: "ghost" }
     }
 }

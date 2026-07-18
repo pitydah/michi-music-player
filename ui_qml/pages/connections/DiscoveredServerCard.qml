@@ -75,7 +75,7 @@ Item {
 
                     activeFocusOnTab: true
 
-                    text: "Conectar"
+                    text: qsTr("Conectar")
                     variant: "primary"
                     onClicked: root.connectClicked()
                 }

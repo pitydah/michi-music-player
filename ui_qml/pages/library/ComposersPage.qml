@@ -34,7 +34,7 @@ Item {
             Text {
                 anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
                 anchors.leftMargin: MichiTheme.spacing.md
-                text: "Compositores"
+                text: qsTr("Compositores")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold

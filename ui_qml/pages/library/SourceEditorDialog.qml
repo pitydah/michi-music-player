@@ -15,7 +15,7 @@ Dialog {
     property int sourceId: 0
     property var bridge: null
 
-    title: "Editar fuente"
+    title: qsTr("Editar fuente")
     width: 400
     height: 300
     modal: true
@@ -26,7 +26,7 @@ Dialog {
         spacing: MichiTheme.spacing.md
 
         Text {
-            text: "Nombre"
+            text: qsTr("Nombre")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
         }
@@ -35,13 +35,13 @@ Dialog {
             focusPolicy: Qt.StrongFocus
             id: nameField
             Layout.fillWidth: true
-            placeholderText: "Nombre de la fuente"
+            placeholderText: qsTr("Nombre de la fuente")
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.bodySize
         }
 
         Text {
-            text: "Ruta"
+            text: qsTr("Ruta")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
         }
@@ -54,12 +54,12 @@ Dialog {
                 focusPolicy: Qt.StrongFocus
                 id: pathField
                 Layout.fillWidth: true
-                placeholderText: "/ruta/a/música"
+                placeholderText: qsTr("/ruta/a/música")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
             }
 
-            MichiButton { text: "Buscar"; variant: "ghost"; onClicked: folderDialog.open() }
+            MichiButton { text: qsTr("Buscar"); variant: "ghost"; onClicked: folderDialog.open() }
         }
 
         FolderDialog {
@@ -68,11 +68,11 @@ Dialog {
         }
 
         RowLayout { spacing: MichiTheme.spacing.sm
-            CheckBox { id: watchCheck; text: "Watch mode (vigilancia automática)" }
+            CheckBox { id: watchCheck; text: qsTr("Watch mode (vigilancia automática)") }
         }
 
         RowLayout { spacing: MichiTheme.spacing.sm
-            Text { text: "Prioridad"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+            Text { text: qsTr("Prioridad"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
             SpinBox { id: prioritySpin; from: 0; to: 100; value: 50 }
                 focusPolicy: Qt.StrongFocus
         }

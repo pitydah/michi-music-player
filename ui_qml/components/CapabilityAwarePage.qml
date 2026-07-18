@@ -68,8 +68,8 @@ Item {
 
         LoadingState {
             anchors.centerIn: parent
-            title: "Verificando capacidades"
-            message: "Comprobando servicios requeridos..."
+            title: qsTr("Verificando capacidades")
+            message: qsTr("Comprobando servicios requeridos...")
         }
     }
 
@@ -86,8 +86,8 @@ Item {
         UnavailableState {
             anchors.centerIn: parent
             width: Math.min(implicitWidth + MichiTheme.spacing.xl * 2, parent.width * 0.85)
-            title: "Funcionalidad no disponible"
-            message: "Esta página requiere servicios que no están disponibles en este momento."
+            title: qsTr("Funcionalidad no disponible")
+            message: qsTr("Esta página requiere servicios que no están disponibles en este momento.")
             details: root.requiredCapabilities.length > 0
                 ? "Capacidades requeridas: " + root.requiredCapabilities.join(", ")
                 : ""

@@ -56,7 +56,7 @@ Dialog {
                 
                 Label {
                     anchors.centerIn: parent
-                    text: root.spaceSufficient ? "✓" : "⚠"
+                    text: root.spaceSufficient ? "✓" : qsTr("⚠")
                     font.pixelSize: 18
                     color: "#ffffff"
                 }
@@ -67,7 +67,7 @@ Dialog {
                 spacing: 2
                 
                 Label {
-                    text: root.spaceSufficient ? "Espacio suficiente" : "⚠ Espacio insuficiente"
+                    text: root.spaceSufficient ? "Espacio suficiente" : qsTr("⚠ Espacio insuficiente")
                     font.pixelSize: 14
                     font.bold: true
                     color: root.spaceSufficient ? MichiTheme.success : MichiTheme.error
@@ -90,7 +90,7 @@ Dialog {
         
         // Título de vista previa
         Label {
-            text: "Vista Previa de Cambios"
+            text: qsTr("Vista Previa de Cambios")
             font.pixelSize: 14
             font.bold: true
             color: MichiTheme.textPrimary
@@ -132,7 +132,7 @@ Dialog {
                         
                         // Flecha
                         Label {
-                            text: "→"
+                            text: qsTr("→")
                             font.pixelSize: 16
                             color: MichiTheme.accent
                         }
@@ -167,7 +167,7 @@ Dialog {
             spacing: 12
             
             Button {
-                text: "Cancelar"
+                text: qsTr("Cancelar")
                 palette.buttonText: MichiTheme.textPrimary
                 palette.button: "#3a3a3a"
                 
@@ -178,7 +178,7 @@ Dialog {
             }
             
             Button {
-                text: "Confirmar y Ejecutar"
+                text: qsTr("Confirmar y Ejecutar")
                 enabled: root.spaceSufficient
                 highlighted: true
                 

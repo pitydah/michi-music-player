@@ -58,7 +58,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             Text {
                                 anchors.centerIn: parent
-                                text: "FD"
+                                text: qsTr("FD")
                                 color: MichiTheme.colors.textMuted
                                 font.pixelSize: MichiTheme.typography.badgeSize
                                 font.weight: MichiTheme.typography.weightBold
@@ -91,11 +91,11 @@ Item {
             Item { width: parent.width; height: 180; visible: root.folders.length === 0
                 Column { anchors.centerIn: parent; spacing: MichiTheme.spacing.lg
                     Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 48; height: 48; radius: MichiTheme.radius.lg; color: MichiTheme.colors.accentSurface
-                        Text { anchors.centerIn: parent; text: "FD"; color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightBold; opacity: MichiTheme.opacity.hover } }
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "No hay carpetas"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightMedium }
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Configura carpetas de música desde Ajustes."; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap }
+                        Text { anchors.centerIn: parent; text: qsTr("FD"); color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightBold; opacity: MichiTheme.opacity.hover } }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: qsTr("No hay carpetas"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightMedium }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: qsTr("Configura carpetas de música desde Ajustes."); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap }
                     Row { anchors.horizontalCenter: parent.horizontalCenter; spacing: MichiTheme.spacing.sm
-                        MichiButton { text: "Ajustes"; variant: "primary"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
+                        MichiButton { text: qsTr("Ajustes"); variant: "primary"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
                     }
                 }
             }

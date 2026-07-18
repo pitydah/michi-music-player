@@ -67,12 +67,12 @@ Item {
     }
 
     property var _formatOptions: [
-        { label: "FLAC", codec: "flac", lossless: true },
-        { label: "MP3", codec: "libmp3lame", lossless: false },
-        { label: "OGG Vorbis", codec: "libvorbis", lossless: false },
-        { label: "Opus", codec: "libopus", lossless: false },
-        { label: "WAV", codec: "pcm_s16le", lossless: true },
-        { label: "AAC", codec: "aac", lossless: false },
+        { label: qsTr("FLAC"), codec: "flac", lossless: true },
+        { label: qsTr("MP3"), codec: "libmp3lame", lossless: false },
+        { label: qsTr("OGG Vorbis"), codec: "libvorbis", lossless: false },
+        { label: qsTr("Opus"), codec: "libopus", lossless: false },
+        { label: qsTr("WAV"), codec: "pcm_s16le", lossless: true },
+        { label: qsTr("AAC"), codec: "aac", lossless: false },
     ]
 
     property var _bitrateOptions: [128, 192, 256, 320]
@@ -191,13 +191,13 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Text {
-                text: "Conversión de audio"
+                text: qsTr("Conversión de audio")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
             }
 
             Text {
-                text: "Formatos: FLAC, MP3, AAC, Opus, Ogg Vorbis, WAV. Solo audio, sin video."
+                text: qsTr("Formatos: FLAC, MP3, AAC, Opus, Ogg Vorbis, WAV. Solo audio, sin video.")
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
             }
 
@@ -206,7 +206,7 @@ Item {
                 onFilesSelected: root.selectedFiles = filepaths
             }
 
-            SectionHeader { text: "Formato destino"; width: parent.width; objectName: "formatHeader"; Accessible.name: "Formato destino" }
+            SectionHeader { text: qsTr("Formato destino"); width: parent.width; objectName: "formatHeader"; Accessible.name: "Formato destino" }
 
             ComboBox {
                 Accessible.role: Accessible.ComboBox
@@ -233,14 +233,14 @@ Item {
                 }
             }
 
-            SectionHeader { text: "Opciones de codificación"; width: parent.width; objectName: "codecOptionsHeader"; Accessible.name: "Opciones de codificación" }
+            SectionHeader { text: qsTr("Opciones de codificación"); width: parent.width; objectName: "codecOptionsHeader"; Accessible.name: "Opciones de codificación" }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md; variant: "base"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
 
-                    Text { text: "Codec: " + root._selectedCodec; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; objectName: "codecLabel" }
+                    Text { text: qsTr("Codec: ") + root._selectedCodec; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; objectName: "codecLabel" }
 
                     Row {
                         spacing: MichiTheme.spacing.md; width: parent.width
@@ -248,7 +248,7 @@ Item {
 
                             Accessible.name: "ComboBox"
 
-                        Text { text: "Bitrate:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 80 }
+                        Text { text: qsTr("Bitrate:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 80 }
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
                             model: root._bitrateOptions
@@ -264,7 +264,7 @@ Item {
 
 
                     Column { width: parent.width; spacing: MichiTheme.spacing.xs
-                        Text { text: "Calidad VBR (0-10): " + root._selectedQuality.toFixed(1); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
+                        Text { text: qsTr("Calidad VBR (0-10): ") + root._selectedQuality.toFixed(1); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
                         MichiSlider {
                             width: parent.width
                             from: 0; to: 10; value: root._selectedQuality; stepSize: 0.5
@@ -281,7 +281,7 @@ Item {
 
                     Row {
                         spacing: MichiTheme.spacing.md; width: parent.width
-                        Text { text: "Sample rate:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        Text { text: qsTr("Sample rate:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
                             model: root._sampleRateOptions
@@ -298,7 +298,7 @@ Item {
 
                     Row {
                         spacing: MichiTheme.spacing.md; width: parent.width
-                        Text { text: "Bit depth:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        Text { text: qsTr("Bit depth:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
                             model: root._bitDepthOptions
@@ -315,7 +315,7 @@ Item {
 
                     Row {
                         spacing: MichiTheme.spacing.md; width: parent.width
-                        Text { text: "Canales:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        Text { text: qsTr("Canales:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
                             model: root._channelsOptions
@@ -336,7 +336,7 @@ Item {
                 }
             }
 
-            SectionHeader { text: "Metadatos y carátula"; width: parent.width; objectName: "metadataHeader"; Accessible.name: "Metadatos y carátula" }
+            SectionHeader { text: qsTr("Metadatos y carátula"); width: parent.width; objectName: "metadataHeader"; Accessible.name: "Metadatos y carátula" }
 
             GlassMaterial {
                             Accessible.role: Accessible.CheckBox
@@ -354,7 +354,7 @@ Item {
                         spacing: MichiTheme.spacing.sm
                         CheckBox {
                             checked: root._keepMetadata
-                            text: "Conservar metadatos"
+                            text: qsTr("Conservar metadatos")
                             activeFocusOnTab: true
                             Keys.onReturnPressed: toggle()
                             Keys.onSpacePressed: toggle()
@@ -369,7 +369,7 @@ Item {
                             Accessible.name: "Campo de texto"
 
                             checked: root._keepArtwork
-                            text: "Conservar carátula"
+                            text: qsTr("Conservar carátula")
                             activeFocusOnTab: true
                             Keys.onReturnPressed: toggle()
                             Keys.onSpacePressed: toggle()
@@ -383,7 +383,7 @@ Item {
                 }
             }
 
-            SectionHeader { text: "Opciones de salida"; width: parent.width; objectName: "outputHeader"; Accessible.name: "Opciones de salida" }
+            SectionHeader { text: qsTr("Opciones de salida"); width: parent.width; objectName: "outputHeader"; Accessible.name: "Opciones de salida" }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md; variant: "base"
@@ -391,7 +391,7 @@ Item {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
                     Row {
                         spacing: MichiTheme.spacing.md; width: parent.width
-                        Text { text: "Carpeta:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 80 }
+                        Text { text: qsTr("Carpeta:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 80 }
                         TextField {
                             Accessible.role: Accessible.EditableText
 
@@ -402,14 +402,14 @@ Item {
                             focusPolicy: Qt.StrongFocus
                             width: parent.width - 160
                             text: root._outputDir
-                            placeholderText: "Seleccionar carpeta de salida"
+                            placeholderText: qsTr("Seleccionar carpeta de salida")
                             font.pixelSize: MichiTheme.typography.bodySize
                             color: MichiTheme.colors.textPrimary
                             background: Rectangle { color: MichiTheme.colors.surfaceInput; radius: MichiTheme.radius.sm; border.width: parent.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth; border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard }
                             onTextChanged: root._outputDir = text
                         }
                         MichiButton {
-                            text: "..."; variant: "ghost"; implicitWidth: 36
+                            text: qsTr("..."); variant: "ghost"; implicitWidth: 36
                             Accessible.role: Accessible.ComboBox
 
                             Accessible.name: "ComboBox"
@@ -426,7 +426,7 @@ Item {
 
                     Row {
                         spacing: MichiTheme.spacing.md; width: parent.width
-                        Text { text: "Naming:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 80 }
+                        Text { text: qsTr("Naming:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 80 }
                         TextField {
                             focusPolicy: Qt.StrongFocus
                             width: parent.width - 80
@@ -440,7 +440,7 @@ Item {
 
                     Row {
                         spacing: MichiTheme.spacing.md; width: parent.width
-                        Text { text: "Colisiones:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        Text { text: qsTr("Colisiones:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
                     Accessible.role: Accessible.Button
 
@@ -459,7 +459,7 @@ Item {
                 }
             }
 
-            SectionHeader { text: "Previsualización"; width: parent.width; objectName: "previewHeader"; Accessible.name: "Previsualización" }
+            SectionHeader { text: qsTr("Previsualización"); width: parent.width; objectName: "previewHeader"; Accessible.name: "Previsualización" }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md; variant: root._previewResult ? "accent" : "status"
@@ -477,7 +477,7 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
-                    text: "Previsualizar"
+                    text: qsTr("Previsualizar")
                     variant: "secondary"
                     enabled: root._canConvert()
                     activeFocusOnTab: true
@@ -486,7 +486,7 @@ Item {
                     onClicked: root._previewConversion()
                 }
                 MichiButton {
-                    text: root._state === root.stateConverting ? "Cancelar" : "Convertir"
+                    text: root._state === root.stateConverting ? "Cancelar" : qsTr("Convertir")
                     variant: root._state === root.stateConverting ? "danger" : "primary"
                     enabled: root._state === root.stateConverting || (root._state !== root.stateCancelling && root._state !== root.stateCompleted && root._canConvert())
                     activeFocusOnTab: true
@@ -504,7 +504,7 @@ Item {
                         activeFocusOnTab: true
 
                 MichiButton {
-                    text: "Reintentar"
+                    text: qsTr("Reintentar")
                     variant: "secondary"
                     visible: root._state === root.stateFailed
                     activeFocusOnTab: true
@@ -513,7 +513,7 @@ Item {
                     onClicked: root._retryConversion()
                 }
                 MichiButton {
-                    text: "Volver"
+                    text: qsTr("Volver")
                     variant: "ghost"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
@@ -563,7 +563,7 @@ Item {
 
             StatusBadge {
                 visible: root.convBridge === null
-                text: "Bridge de conversión no disponible"
+                text: qsTr("Bridge de conversión no disponible")
                 kind: "disconnected"
             }
         }

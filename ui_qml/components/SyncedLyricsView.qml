@@ -106,7 +106,7 @@ Item {
         Row {
             anchors.centerIn: parent; spacing: MichiTheme.spacing.xs
             Text {
-                text: root.autoScroll ? "\u25C0\u25B6" : "\u25B6\u25C0"
+                text: root.autoScroll ? "\u25C0\u25B6" : qsTr("\u25B6\u25C0")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.captionSize
                 Accessible.role: Accessible.Icon
@@ -114,7 +114,7 @@ Item {
                 Accessible.description: "Haz clic para cambiar modo de desplazamiento"
             }
             Text {
-                text: root.autoScroll ? "Auto" : "Manual"
+                text: root.autoScroll ? "Auto" : qsTr("Manual")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.captionSize
             }

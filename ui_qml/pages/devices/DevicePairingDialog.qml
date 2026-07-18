@@ -35,14 +35,14 @@ Item {
             spacing: MichiTheme.spacing.md
 
             Text {
-                text: "Vincular dispositivo"
+                text: qsTr("Vincular dispositivo")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
             }
 
             Text {
-                text: "Se ha detectado un nuevo dispositivo. ¿Deseas vincularlo?"
+                text: qsTr("Se ha detectado un nuevo dispositivo. ¿Deseas vincularlo?")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
                 wrapMode: Text.WordWrap
@@ -51,7 +51,7 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                Text { text: "Nombre:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "pairingDialogNameLabel" }
+                Text { text: qsTr("Nombre:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "pairingDialogNameLabel" }
                 TextField {
                     Accessible.name: "Nombre del dispositivo"
                     activeFocusOnTab: true
@@ -64,15 +64,15 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                Text { text: "Tipo:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "pairingDialogTypeLabel" }
-                Text { text: root.detectedDeviceType || "Desconocido"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "pairingDialogTypeValue" }
+                Text { text: qsTr("Tipo:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "pairingDialogTypeLabel" }
+                Text { text: root.detectedDeviceType || "Desconocido"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; objectName: qsTr("pairingDialogTypeValue") }
             }
 
             Row {
                 spacing: MichiTheme.spacing.sm
 
                 MichiButton {
-                    text: "Vincular"
+                    text: qsTr("Vincular")
                     Accessible.role: Accessible.Button
 
                     activeFocusOnTab: true
@@ -82,7 +82,7 @@ Item {
                 }
 
                 MichiButton {
-                    text: "Cancelar"
+                    text: qsTr("Cancelar")
                     variant: "ghost"
                     onClicked: root.cancelRequested()
                 }

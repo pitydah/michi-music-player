@@ -10,7 +10,7 @@ Item {
     property bool checked: false
     property bool loading: false
     property string text: ""
-    property string accessibleName: root.text !== "" ? root.text : "Interruptor"
+    property string accessibleName: root.text !== "" ? root.text : qsTr("Interruptor")
     property string accessibleDescription: ""
 
     signal toggled(bool checked)

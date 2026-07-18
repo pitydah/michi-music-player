@@ -83,7 +83,7 @@ Item {
 
                     Text {
                         anchors.centerIn: parent
-                        text: "\u25E2"
+                        text: qsTr("\u25E2")
                         color: MichiTheme.colors.accent
                         font.pixelSize: 28
                         Accessible.role: Accessible.Icon
@@ -130,7 +130,7 @@ Item {
                     visible: root.stationData && (root.stationData.codec || "")
 
                     Text {
-                        text: "Códec"
+                        text: qsTr("Códec")
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
                     }
@@ -148,7 +148,7 @@ Item {
                     visible: root.stationData && (root.stationData.country || "")
 
                     Text {
-                        text: "País"
+                        text: qsTr("País")
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
                     }
@@ -166,7 +166,7 @@ Item {
                     visible: root.stationData && root.stationData.tags && root.stationData.tags.length > 0
 
                     Text {
-                        text: "Géneros"
+                        text: qsTr("Géneros")
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
                     }
@@ -274,7 +274,7 @@ Item {
 
 
             MichiButton {
-                text: root._isPlaying ? "Detener" : "Reproducir"
+                text: root._isPlaying ? "Detener" : qsTr("Reproducir")
                 variant: root._isPlaying ? "ghost" : "primary"
                 activeFocusOnTab: true
                 iconText: root._isPlaying ? "" : ""
@@ -287,13 +287,13 @@ Item {
                     spacing: MichiTheme.spacing.xs
                     anchors.centerIn: parent
                     Text {
-                        text: root._isPlaying ? "\u25A0" : "\u25B6"
+                        text: root._isPlaying ? "\u25A0" : qsTr("\u25B6")
                         color: parent.parent.parent.enabled ? MichiTheme.colors.textOnAccent : MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.bodySize
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
-                        text: root._isPlaying ? " Detener" : " Reproducir"
+                        text: root._isPlaying ? " Detener" : qsTr(" Reproducir")
                         color: parent.parent.parent.enabled ? MichiTheme.colors.textOnAccent : MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.bodySize
                         font.weight: MichiTheme.typography.weightMedium
@@ -303,7 +303,7 @@ Item {
             }
 
             MichiButton {
-                text: root._isFav ? "\u2605" : "\u2606"
+                text: root._isFav ? "\u2605" : qsTr("\u2606")
                 variant: "ghost"
                 activeFocusOnTab: true
                 onClicked: {
@@ -318,7 +318,7 @@ Item {
             }
 
             MichiButton {
-                text: "Editar"
+                text: qsTr("Editar")
                 variant: "ghost"
                 activeFocusOnTab: true
                 visible: true
@@ -329,7 +329,7 @@ Item {
             }
 
             MichiButton {
-                text: "\u2716"
+                text: qsTr("\u2716")
                 variant: "danger"
                 activeFocusOnTab: true
                 Accessible.name: "Eliminar emisora"
@@ -340,7 +340,7 @@ Item {
             }
 
                 MichiButton {
-                    text: "Reintentar"
+                    text: qsTr("Reintentar")
                     variant: "ghost"
                     visible: root._state === "FAILED"
                     activeFocusOnTab: true

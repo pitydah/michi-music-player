@@ -22,40 +22,40 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.sm
 
-        SectionHeader { text: "Capacidades del backend"; width: parent.width }
+        SectionHeader { text: qsTr("Capacidades del backend"); width: parent.width }
 
         Row {
             spacing: MichiTheme.spacing.sm
-            Text { text: "EQ:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+            Text { text: qsTr("EQ:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
             StatusBadge {
-                text: root.profileData && root.profileData.allows_eq !== false ? "Soportado" : "No soportado"
+                text: root.profileData && root.profileData.allows_eq !== false ? "Soportado" : qsTr("No soportado")
                 kind: root.profileData && root.profileData.allows_eq !== false ? "success" : "disconnected"
             }
         }
 
         Row {
             spacing: MichiTheme.spacing.sm
-            Text { text: "ReplayGain:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+            Text { text: qsTr("ReplayGain:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
             StatusBadge {
-                text: root.profileData && root.profileData.allows_replaygain !== false ? "Soportado" : "No soportado"
+                text: root.profileData && root.profileData.allows_replaygain !== false ? "Soportado" : qsTr("No soportado")
                 kind: root.profileData && root.profileData.allows_replaygain !== false ? "success" : "disconnected"
             }
         }
 
         Row {
             spacing: MichiTheme.spacing.sm
-            Text { text: "Transmisión:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+            Text { text: qsTr("Transmisión:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
             StatusBadge {
-                text: root.profileData && root.profileData.allows_transmit !== false ? "Soportado" : "No soportado"
+                text: root.profileData && root.profileData.allows_transmit !== false ? "Soportado" : qsTr("No soportado")
                 kind: root.profileData && root.profileData.allows_transmit !== false ? "success" : "disconnected"
             }
         }
 
         Row {
             spacing: MichiTheme.spacing.sm
-            Text { text: "DSD:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+            Text { text: qsTr("DSD:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
             Text {
-                text: root.profileData && root.profileData.dsd_mode ? root.profileData.dsd_mode : "No"
+                text: root.profileData && root.profileData.dsd_mode ? root.profileData.dsd_mode : qsTr("No")
                 color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
             }
         }

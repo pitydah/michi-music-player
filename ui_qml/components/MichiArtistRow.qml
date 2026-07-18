@@ -68,7 +68,7 @@ Item {
 
                 Text {
                     anchors.centerIn: parent
-                    text: root.name.length > 0 ? root.name.charAt(0).toUpperCase() : "?"
+                    text: root.name.length > 0 ? root.name.charAt(0).toUpperCase() : qsTr("?")
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: root.avatarSize * 0.4
                     font.weight: MichiTheme.typography.weightBold
@@ -92,7 +92,7 @@ Item {
 
             Text {
                 width: parent.width
-                text: root.albumCount > 0 ? root.albumCount + (root.albumCount === 1 ? " álbum" : " álbumes") : ""
+                text: root.albumCount > 0 ? root.albumCount + (root.albumCount === 1 ? " álbum" : qsTr(" álbumes")) : ""
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.secondarySize
                 visible: text !== ""
@@ -102,7 +102,7 @@ Item {
         Text {
             id: countText
             anchors.verticalCenter: parent.verticalCenter
-            text: root.trackCount > 0 ? root.trackCount + (root.trackCount === 1 ? " tema" : " temas") : ""
+            text: root.trackCount > 0 ? root.trackCount + (root.trackCount === 1 ? " tema" : qsTr(" temas")) : ""
             color: MichiTheme.colors.textMeta
             font.pixelSize: MichiTheme.typography.secondarySize
             visible: text !== ""

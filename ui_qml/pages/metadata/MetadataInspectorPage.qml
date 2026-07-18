@@ -104,7 +104,7 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Text {
-                text: "Inspector de metadatos"
+                text: qsTr("Inspector de metadatos")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -129,7 +129,7 @@ Item {
                 width: 48; height: 48; radius: MichiTheme.radius.md
                 color: MichiTheme.colors.accentSurface
                 Text {
-                    anchors.centerIn: parent; text: "MI"
+                    anchors.centerIn: parent; text: qsTr("MI")
                     color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.cardTitleSize
                     font.weight: MichiTheme.typography.weightBold; font.letterSpacing: MichiTheme.spacing.xxs; opacity: MichiTheme.opacity.pressed
                 }
@@ -137,13 +137,13 @@ Item {
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "Selecciona una canción"
+                text: qsTr("Selecciona una canción")
                 color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightMedium
             }
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "Selecciona una canción en la Biblioteca para inspeccionar sus metadatos."
+                text: qsTr("Selecciona una canción en la Biblioteca para inspeccionar sus metadatos.")
                 color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter
             }
         }
@@ -159,7 +159,7 @@ Item {
                 width: parent.width; height: 120; radius: MichiTheme.radius.md; variant: "base"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
-                    Text { text: root.md ? root.md.trackTitle : "—"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                    Text { text: root.md ? root.md.trackTitle : qsTr("—"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
                     Text { text: root.md ? root.md.trackArtist : ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: text !== "" }
                     Text { text: root.md ? root.md.trackAlbum : ""; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; visible: text !== "" }
                 }
@@ -172,7 +172,7 @@ Item {
 
                     Row {
                         width: parent.width; spacing: MichiTheme.spacing.sm
-                        Text { text: "Metadatos"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                        Text { text: qsTr("Metadatos"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
 
                         Item { Layout.fillWidth: true; width: 1; height: 1 }
 
@@ -181,7 +181,7 @@ Item {
 
                             activeFocusOnTab: true
 
-                            text: root._editing ? "Cancelar" : "Editar"
+                            text: root._editing ? "Cancelar" : qsTr("Editar")
                             variant: "ghost"
                             onClicked: root._editing ? root.cancelEdit() : root.startEdit()
                         }
@@ -216,78 +216,78 @@ Item {
                 visible: root._editing
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
-                    Text { text: "Editar metadatos"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                    Text { text: qsTr("Editar metadatos"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
 
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
-                        Text { text: "Título:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 60 }
+                        Text { text: qsTr("Título:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 60 }
                         TextField { id: editTitle; text: root._editTitle; width: parent.width - 70; onTextChanged: root._editTitle = text
                             Accessible.role: Accessible.EditableText; Accessible.name: "Título"; Accessible.description: "Editar título de la canción"
                             focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
-                        Text { text: "Artista:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 60 }
+                        Text { text: qsTr("Artista:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 60 }
                         TextField { id: editArtist; text: root._editArtist; width: parent.width - 70; onTextChanged: root._editArtist = text
                             Accessible.role: Accessible.EditableText; Accessible.name: "Artista"; Accessible.description: "Editar nombre del artista"
                             focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
-                        Text { text: "Álbum:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 60 }
+                        Text { text: qsTr("Álbum:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 60 }
                         TextField { id: editAlbum; text: root._editAlbum; width: parent.width - 70; onTextChanged: root._editAlbum = text
                             Accessible.role: Accessible.EditableText; Accessible.name: "Álbum"; Accessible.description: "Editar nombre del álbum"
                             focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
-                        Text { text: "Album Artist:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        Text { text: qsTr("Album Artist:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         TextField { text: root._editAlbumArtist; width: parent.width - 110; onTextChanged: root._editAlbumArtist = text
                             Accessible.role: Accessible.EditableText; Accessible.name: "Album Artist"; Accessible.description: "Editar artista del álbum"
                             focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
-                        Text { text: "Género:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        Text { text: qsTr("Género:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         TextField { text: root._editGenre; width: parent.width - 110; onTextChanged: root._editGenre = text
                             Accessible.role: Accessible.EditableText; Accessible.name: "Género"; Accessible.description: "Editar género musical"
                             focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
-                        Text { text: "Año:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        Text { text: qsTr("Año:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         TextField { text: root._editYear; width: parent.width - 110; onTextChanged: root._editYear = text
                             Accessible.role: Accessible.EditableText; Accessible.name: "Año"; Accessible.description: "Editar año de publicación"
                             focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
-                        Text { text: "# Pista:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        Text { text: qsTr("# Pista:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         TextField { text: root._editTrackNumber; width: parent.width - 110; onTextChanged: root._editTrackNumber = text
                             Accessible.role: Accessible.EditableText; Accessible.name: "Número de pista"
                             focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
-                        Text { text: "Total pistas:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        Text { text: qsTr("Total pistas:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         TextField { text: root._editTrackTotal; width: parent.width - 110; onTextChanged: root._editTrackTotal = text
                             Accessible.role: Accessible.EditableText; Accessible.name: "Total pistas"
                             focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
-                        Text { text: "# Disco:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        Text { text: qsTr("# Disco:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         TextField { text: root._editDiscNumber; width: parent.width - 110; onTextChanged: root._editDiscNumber = text
                             Accessible.role: Accessible.EditableText; Accessible.name: "Número de disco"
                             focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
-                        Text { text: "Compositor:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        Text { text: qsTr("Compositor:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         TextField { text: root._editComposer; width: parent.width - 110; onTextChanged: root._editComposer = text
                             Accessible.role: Accessible.EditableText; Accessible.name: "Compositor"
                             focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
-                        Text { text: "BPM:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                        Text { text: qsTr("BPM:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         TextField { text: root._editBpm; width: parent.width - 110; onTextChanged: root._editBpm = text
                             Accessible.role: Accessible.EditableText; Accessible.name: "BPM"; Accessible.description: "Pulsaciones por minuto"
                             focusPolicy: Qt.StrongFocus }
                     }
 
                     Row { spacing: MichiTheme.spacing.sm
-                        MichiButton { text: "Guardar"; variant: "primary"; onClicked: root.doSave() }
-                        MichiButton { text: "Cancelar"; variant: "ghost"; onClicked: root.cancelEdit() }
+                        MichiButton { text: qsTr("Guardar"); variant: "primary"; onClicked: root.doSave() }
+                        MichiButton { text: qsTr("Cancelar"); variant: "ghost"; onClicked: root.cancelEdit() }
                     }
                 }
             }
@@ -296,10 +296,10 @@ Item {
                 width: parent.width; radius: MichiTheme.radius.md; variant: "base"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
-                    Text { text: "Acciones"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                    Text { text: qsTr("Acciones"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
 
                     Text {
-                        text: root.md && root.md.errorMessage ? "Error: " + root.md.errorMessage : ""
+                        text: root.md && root.md.errorMessage ? "Error: qsTr(" + root.md.errorMessage : ")"
                         color: MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.bodySize; visible: text !== ""
                     }
                         Accessible.role: Accessible.Button
@@ -308,7 +308,7 @@ Item {
 
 
                     MichiButton {
-                        text: "Sugerir etiquetas (Smart Tagging)"
+                        text: qsTr("Sugerir etiquetas (Smart Tagging)")
                         variant: "ghost"
                         onClicked: {
                             if (typeof navigationBridge !== "undefined" && navigationBridge)
@@ -318,7 +318,7 @@ Item {
                 }
             }
 
-            StatusBadge { text: "Edición experimental — guarda cambios directamente en el archivo"; kind: "info" }
+            StatusBadge { text: qsTr("Edición experimental — guarda cambios directamente en el archivo"); kind: "info" }
         }
     }
 }

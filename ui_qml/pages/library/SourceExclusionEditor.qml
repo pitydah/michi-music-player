@@ -15,7 +15,7 @@ Dialog {
     property var bridge: null
     property var _exclusions: []
 
-    title: "Exclusiones de fuente"
+    title: qsTr("Exclusiones de fuente")
     width: 500
     height: 400
     modal: true
@@ -30,7 +30,7 @@ Dialog {
         spacing: MichiTheme.spacing.md
 
         Text {
-            text: "Patrones excluidos del escaneo"
+            text: qsTr("Patrones excluidos del escaneo")
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.sectionTitleSize
             font.weight: MichiTheme.typography.weightSemiBold
@@ -51,7 +51,7 @@ Dialog {
                         font.pixelSize: MichiTheme.typography.bodySize
                         Layout.fillWidth: true
                     }
-                    MichiButton { text: "Eliminar"; variant: "ghost"; height: 24
+                    MichiButton { text: qsTr("Eliminar"); variant: "ghost"; height: 24
                         onClicked: {
                             if (root.bridge && root.bridge.removeExclusion) {
                                 root.bridge.removeExclusion(modelData.id || modelData.pattern)
@@ -67,10 +67,10 @@ Dialog {
                 focusPolicy: Qt.StrongFocus
                 id: patternField
                 Layout.fillWidth: true
-                placeholderText: "*.tmp, *.log, node_modules/..."
+                placeholderText: qsTr("*.tmp, *.log, node_modules/...")
                 color: MichiTheme.colors.textPrimary
             }
-            MichiButton { text: "Añadir exclusión"; variant: "primary"
+            MichiButton { text: qsTr("Añadir exclusión"); variant: "primary"
                 onClicked: {
                     if (patternField.text && root.bridge && root.bridge.addExclusion) {
                         root.bridge.addExclusion(patternField.text)

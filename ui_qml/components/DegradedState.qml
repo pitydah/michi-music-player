@@ -8,8 +8,8 @@ Item {
     focus: true
     id: root
 
-    property string title: "Servicio degradado"
-    property string message: "Algunas funciones pueden no estar disponibles."
+    property string title: qsTr("Servicio degradado")
+    property string message: qsTr("Algunas funciones pueden no estar disponibles.")
     property var affectedFeatures: []
     property bool dismissible: true
     property string objectName: "degradedState"
@@ -46,7 +46,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 Text {
-                    text: "\u26A0"
+                    text: qsTr("\u26A0")
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     color: MichiTheme.colors.warning
                     Accessible.role: Accessible.Icon
@@ -77,7 +77,7 @@ Item {
                 delegate: Row {
                     spacing: MichiTheme.spacing.xs
                     Text {
-                        text: "\u2022"
+                        text: qsTr("\u2022")
                         color: MichiTheme.colors.warning
                         font.pixelSize: MichiTheme.typography.bodySize
                     }
@@ -97,7 +97,7 @@ Item {
 
                 activeFocusOnTab: true
 
-                text: "Entendido"
+                text: qsTr("Entendido")
                 variant: "ghost"
                 visible: root.dismissible
                 onClicked: root.dismissed()

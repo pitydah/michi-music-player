@@ -59,7 +59,7 @@ Item {
 
             Text {
                 anchors.centerIn: parent
-                text: "♫"
+                text: qsTr("♫")
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: 16
             }

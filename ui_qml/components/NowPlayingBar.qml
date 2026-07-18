@@ -85,7 +85,7 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: "♪"
+                            text: qsTr("♪")
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: 24
                             visible: coverImage.source.toString() === "" || coverImage.status === Image.Error
@@ -100,7 +100,7 @@ Item {
 
                         Text {
                             width: parent.width
-                            text: root.ps && root.ps.title ? root.ps.title : "Sin reproducción"
+                            text: root.ps && root.ps.title ? root.ps.title : qsTr("Sin reproducción")
                             color: root.ps && root.ps.title ? MichiTheme.colors.textPrimary : MichiTheme.colors.textSecondary
                             font.pixelSize: MichiTheme.typography.bodySize
                             font.weight: MichiTheme.typography.weightSemiBold
@@ -277,7 +277,7 @@ Item {
             spacing: MichiTheme.spacing.sm
 
             Text {
-                text: "Salida de audio"
+                text: qsTr("Salida de audio")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
                 font.weight: MichiTheme.typography.weightSemiBold

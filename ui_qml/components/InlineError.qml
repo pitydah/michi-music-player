@@ -56,7 +56,7 @@ Rectangle {
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            text: "\u26A0"
+            text: qsTr("\u26A0")
             color: MichiTheme.colors.error
             font.pixelSize: MichiTheme.typography.bodySize
             Accessible.role: Accessible.Icon

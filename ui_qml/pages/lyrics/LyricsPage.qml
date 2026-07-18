@@ -40,21 +40,21 @@ Item {
         }
 
         UnavailableState {
-            title: "Servicio de letras no disponible"
-            message: "Conecta un reproductor para buscar letras."
+            title: qsTr("Servicio de letras no disponible")
+            message: qsTr("Conecta un reproductor para buscar letras.")
         }
 
         LoadingState {
-            title: "Buscando letra..."
+            title: qsTr("Buscando letra...")
         }
 
         EmptyState {
-            title: "Letra no encontrada"
-            subtitle: "Prueba con una búsqueda manual."
+            title: qsTr("Letra no encontrada")
+            subtitle: qsTr("Prueba con una búsqueda manual.")
         }
 
         ErrorState {
-            title: "Error al buscar letra"
+            title: qsTr("Error al buscar letra")
             message: root.lb ? (root.lb.errorMessage || "") : ""
             showRetry: true
             onRetryRequested: { if (root.lb) root.lb.searchCurrentTrack() }
@@ -72,7 +72,7 @@ Item {
                 width: parent.width; spacing: MichiTheme.spacing.sm
 
                 Text {
-                    text: "Letra"
+                    text: qsTr("Letra")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -81,7 +81,7 @@ Item {
                 Item { width: 1; height: 1; Layout.fillWidth: true }
 
                 StatusBadge {
-                    text: root.lb ? root.lb.status : "idle"
+                    text: root.lb ? root.lb.status : qsTr("idle")
                     kind: root.lb && root.lb.status === "done" ? "success" :
                           root.lb && root.lb.status === "searching" ? "warning" :
                           root.lb && root.lb.status === "error" ? "error" :
@@ -98,7 +98,7 @@ Item {
                     visible: text !== ""
                 }
                 Text {
-                    text: root.lb && root.lb.source ? "Fuente: " + root.lb.source : ""
+                    text: root.lb && root.lb.source ? "Fuente: qsTr(" + root.lb.source : ")"
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.captionSize
                     visible: text !== ""
@@ -114,7 +114,7 @@ Item {
 
                     activeFocusOnTab: true
 
-                    text: "Buscar otra versión"
+                    text: qsTr("Buscar otra versión")
                     variant: "ghost"
                     onClicked: searchDialog.open()
                 }
@@ -124,7 +124,7 @@ Item {
 
 
                 MichiButton {
-                    text: root.showSynced ? "Ver texto plano" : "Ver sincronizada"
+                    text: root.showSynced ? "Ver texto plano" : qsTr("Ver sincronizada")
                     variant: "ghost"
                     visible: root.lb && root.lb.hasSyncedLyrics
                     Accessible.role: Accessible.Button
@@ -135,7 +135,7 @@ Item {
                 }
 
                 MichiButton {
-                    text: "Editar letra"
+                    text: qsTr("Editar letra")
                     variant: "ghost"
                     onClicked: editDialog.open()
                 }
@@ -146,7 +146,7 @@ Item {
                 height: Math.max(300, parent.height - y - MichiTheme.spacing.xl)
 
                 Text {
-                    text: "Buscando letra..."
+                    text: qsTr("Buscando letra...")
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.centerIn: parent
@@ -154,7 +154,7 @@ Item {
                 }
 
                 Text {
-                    text: "Letra no encontrada"
+                    text: qsTr("Letra no encontrada")
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.centerIn: parent
@@ -162,7 +162,7 @@ Item {
                 }
 
                 Text {
-                    text: root.lb && root.lb.status === "error" ? "Error: " + (root.lb.errorMessage || "") : ""
+                    text: root.lb && root.lb.status === "error" ? "Error: qsTr(" + (root.lb.errorMessage || ")") : ""
                     color: MichiTheme.colors.error
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.centerIn: parent
@@ -202,7 +202,7 @@ Item {
                     activeFocusOnTab: true
 
                 Text {
-                    text: "Offset (ms):"
+                    text: qsTr("Offset (ms):")
                     color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -226,7 +226,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 visible: root.lb && root.lb.status === "not_found"
                 MichiButton {
-                    text: "Buscar manualmente"
+                    text: qsTr("Buscar manualmente")
                     variant: "primary"
                     onClicked: searchDialog.open()
                 }

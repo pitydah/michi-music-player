@@ -34,13 +34,13 @@ Item {
             Row {
                 width: parent.width; spacing: MichiTheme.spacing.sm
                 Text {
-                    text: "Servidor Sync"
+                    text: qsTr("Servidor Sync")
                     color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                 }
                 StatusBadge {
                     id: serverStatusBadge
-                    text: root.serverActive ? "Activo" : "Inactivo"
+                    text: root.serverActive ? "Activo" : qsTr("Inactivo")
                     kind: root.serverActive ? "active" : "disconnected"
                 }
             }
@@ -58,7 +58,7 @@ Item {
                 id: toggleServerButton
                 activeFocusOnTab: true
 
-                text: root.serverActive ? "Detener servidor" : "Iniciar servidor"
+                text: root.serverActive ? "Detener servidor" : qsTr("Iniciar servidor")
                 variant: root.serverActive ? "secondary" : "primary"
                 onClicked: root.serverActive ? root.stopServer() : root.startServer()
             }

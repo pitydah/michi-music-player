@@ -28,14 +28,14 @@ Item {
     LoadingState {
         visible: root.isLoading
         anchors.centerIn: parent
-        message: "Cargando Audio Lab..."
+        message: qsTr("Cargando Audio Lab...")
     }
 
     // Estado de error
     ErrorState {
         visible: !root.isLoading && (root.labService === null || root.overviewData === null)
         anchors.centerIn: parent
-        message: root.labService === null ? "Bridge de Audio Lab no disponible" : "No se pudieron cargar los datos"
+        message: root.labService === null ? "Bridge de Audio Lab no disponible" : qsTr("No se pudieron cargar los datos")
         onRetryRequested: {
             root.isLoading = true
             if (root.labService && root.labService.getOverviewData) {
@@ -62,7 +62,7 @@ Item {
 
             Text {
                 width: parent.width
-                text: "Herramientas profesionales para analizar, identificar, preservar y configurar tu audio"
+                text: qsTr("Herramientas profesionales para analizar, identificar, preservar y configurar tu audio")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
                 wrapMode: Text.WordWrap
@@ -75,18 +75,18 @@ Item {
 
                 StatusBadge {
                     kind: root.labService && root.labService.serviceAvailable ? "success" : "warning"
-                    text: root.labService && root.labService.serviceAvailable ? "Audio Lab disponible" : "Audio Lab no disponible"
+                    text: root.labService && root.labService.serviceAvailable ? "Audio Lab disponible" : qsTr("Audio Lab no disponible")
                 }
 
                 StatusBadge {
                     id: ffmpegBadge
                     kind: root.overviewData && root.overviewData.dependencies && root.overviewData.dependencies.ffmpeg ? "success" : "warning"
-                    text: root.overviewData && root.overviewData.dependencies && root.overviewData.dependencies.ffmpeg ? "FFmpeg disponible" : "FFmpeg no disponible"
+                    text: root.overviewData && root.overviewData.dependencies && root.overviewData.dependencies.ffmpeg ? "FFmpeg disponible" : qsTr("FFmpeg no disponible")
                 }
 
                 StatusBadge {
                     kind: root.overviewData && root.overviewData.dependencies && root.overviewData.dependencies.replaygain ? "success" : "warning"
-                    text: root.overviewData && root.overviewData.dependencies && root.overviewData.dependencies.replaygain ? "ReplayGain disponible" : "ReplayGain no disponible"
+                    text: root.overviewData && root.overviewData.dependencies && root.overviewData.dependencies.replaygain ? "ReplayGain disponible" : qsTr("ReplayGain no disponible")
                 }
 
                 Item { width: 1; height: 1; Layout.fillWidth: true }
@@ -114,9 +114,9 @@ Item {
                     color: ma1.containsMouse ? MichiTheme.colors.surfaceCardHover : MichiTheme.colors.surfaceCard
                     border.width: 1; border.color: MichiTheme.colors.borderCard
                     ColumnLayout { anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
-                        Text { text: "AN"; font.pixelSize: 20; color: MichiTheme.colors.accentBlue }
-                        Text { text: "Diagnóstico"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
-                        Text { text: "Analiza, verifica integridad y compara archivos"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
+                        Text { text: qsTr("AN"); font.pixelSize: 20; color: MichiTheme.colors.accentBlue }
+                        Text { text: qsTr("Diagnóstico"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                        Text { text: qsTr("Analiza, verifica integridad y compara archivos"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
                     }
                     MouseArea { id: ma1; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("diagnostics"); Keys.onReturnPressed: clicked(); Keys.onSpacePressed: clicked() }
                 }
@@ -127,9 +127,9 @@ Item {
                     color: ma2.containsMouse ? MichiTheme.colors.surfaceCardHover : MichiTheme.colors.surfaceCard
                     border.width: 1; border.color: MichiTheme.colors.borderCard
                     ColumnLayout { anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
-                        Text { text: "ID"; font.pixelSize: 20; color: MichiTheme.colors.accentBlue }
-                        Text { text: "Identificador de Audios"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
-                        Text { text: "Identifica, corrige metadatos y carátulas"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
+                        Text { text: qsTr("ID"); font.pixelSize: 20; color: MichiTheme.colors.accentBlue }
+                        Text { text: qsTr("Identificador de Audios"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                        Text { text: qsTr("Identifica, corrige metadatos y carátulas"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
                     }
                     MouseArea { id: ma2; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("identifier"); Keys.onReturnPressed: clicked(); Keys.onSpacePressed: clicked() }
                 }
@@ -140,9 +140,9 @@ Item {
                     color: ma3.containsMouse ? MichiTheme.colors.surfaceCardHover : MichiTheme.colors.surfaceCard
                     border.width: 1; border.color: MichiTheme.colors.borderCard
                     ColumnLayout { anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
-                        Text { text: "BK"; font.pixelSize: 20; color: MichiTheme.colors.accentBlue }
-                        Text { text: "Digitalización"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
-                        Text { text: "Ripea CD, captura vinilos y casetes"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
+                        Text { text: qsTr("BK"); font.pixelSize: 20; color: MichiTheme.colors.accentBlue }
+                        Text { text: qsTr("Digitalización"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                        Text { text: qsTr("Ripea CD, captura vinilos y casetes"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
                     }
                     MouseArea { id: ma3; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("backup"); Keys.onReturnPressed: clicked(); Keys.onSpacePressed: clicked() }
                 }
@@ -153,9 +153,9 @@ Item {
                     color: ma4.containsMouse ? MichiTheme.colors.surfaceCardHover : MichiTheme.colors.surfaceCard
                     border.width: 1; border.color: MichiTheme.colors.borderCard
                     ColumnLayout { anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
-                        Text { text: "OP"; font.pixelSize: 20; color: MichiTheme.colors.accentBlue }
-                        Text { text: "Perfiles de Salida"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
-                        Text { text: "Configura DAC, EQ y reproducción"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
+                        Text { text: qsTr("OP"); font.pixelSize: 20; color: MichiTheme.colors.accentBlue }
+                        Text { text: qsTr("Perfiles de Salida"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                        Text { text: qsTr("Configura DAC, EQ y reproducción"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
                     }
                     MouseArea { id: ma4; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("output_profiles"); Keys.onReturnPressed: clicked(); Keys.onSpacePressed: clicked() }
                 }
@@ -166,9 +166,9 @@ Item {
                     color: ma5.containsMouse ? MichiTheme.colors.surfaceCardHover : MichiTheme.colors.surfaceCard
                     border.width: 1; border.color: MichiTheme.colors.borderCard
                     ColumnLayout { anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
-                        Text { text: "AI"; font.pixelSize: 20; color: MichiTheme.colors.accentBlue }
-                        Text { text: "Inteligencia Local"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
-                        Text { text: "Análisis acústico y automatización"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
+                        Text { text: qsTr("AI"); font.pixelSize: 20; color: MichiTheme.colors.accentBlue }
+                        Text { text: qsTr("Inteligencia Local"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                        Text { text: qsTr("Análisis acústico y automatización"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.secondarySize; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
                     }
                     MouseArea { id: ma5; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.areaSelected("local_intelligence"); Keys.onReturnPressed: clicked(); Keys.onSpacePressed: clicked() }
                 }

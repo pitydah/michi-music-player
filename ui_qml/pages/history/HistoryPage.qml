@@ -179,7 +179,7 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             Label {
-                text: "Historial"
+                text: qsTr("Historial")
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 color: MichiTheme.colors.textPrimary
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -193,7 +193,7 @@ Item {
             }
             MichiButton {
                 id: statsBtn
-                text: "Estadísticas"
+                text: qsTr("Estadísticas")
                 variant: "ghost"
                 activeFocusOnTab: true
                 KeyNavigation.tab: viewToggleBtn
@@ -205,7 +205,7 @@ Item {
 
             MichiButton {
                 id: viewToggleBtn
-                text: root._viewMode === "timeline" ? "Vista tabla" : "Vista línea"
+                text: root._viewMode === "timeline" ? "Vista tabla" : qsTr("Vista línea")
                 variant: "ghost"
                 activeFocusOnTab: true
                 KeyNavigation.tab: retentionBtn
@@ -216,7 +216,7 @@ Item {
             }
             MichiButton {
                 id: retentionBtn
-                text: "Retención"
+                text: qsTr("Retención")
                 variant: "ghost"
                 activeFocusOnTab: true
                 KeyNavigation.tab: clearFilteredBtn
@@ -227,7 +227,7 @@ Item {
             }
             MichiButton {
                 id: clearFilteredBtn
-                text: "Limpiar filtrados"
+                text: qsTr("Limpiar filtrados")
                 variant: "danger"
                 visible: root._filtered
                 activeFocusOnTab: true
@@ -239,7 +239,7 @@ Item {
             }
             MichiButton {
                 id: clearAllBtn
-                text: "Limpiar todo"
+                text: qsTr("Limpiar todo")
                 variant: "danger"
                 activeFocusOnTab: true
                 KeyNavigation.tab: exportBtn
@@ -250,7 +250,7 @@ Item {
             }
             MichiButton {
                 id: exportBtn
-                text: "Exportar"
+                text: qsTr("Exportar")
                 variant: "ghost"
                 activeFocusOnTab: true
                 KeyNavigation.backtab: clearAllBtn
@@ -292,15 +292,15 @@ Item {
             LoadingState {
                 anchors.centerIn: parent
                 visible: root._state === "LOADING"
-                title: "Cargando historial"
-                message: "Obteniendo registros de reproducción..."
+                title: qsTr("Cargando historial")
+                message: qsTr("Obteniendo registros de reproducción...")
             }
 
             EmptyState {
                 anchors.centerIn: parent
                 visible: root._state === "EMPTY"
                 iconText: ""
-                title: "Sin historial"
+                title: qsTr("Sin historial")
                 subtitle: root._filtered ? "No hay registros que coincidan con los filtros actuales."
                                           : "Aún no hay registros de reproducción. Reproduce música para empezar."
                 actionText: root._filtered ? "Limpiar filtros" : ""
@@ -311,7 +311,7 @@ Item {
             ErrorState {
                 anchors.centerIn: parent
                 visible: root._state === "ERROR"
-                title: "Error al cargar historial"
+                title: qsTr("Error al cargar historial")
                 message: !root.bridge ? "El servicio de historial no está disponible."
                                       : "No se pudieron cargar los registros. Verifica la conexión e intenta de nuevo."
                 showRetry: true
@@ -356,7 +356,7 @@ Item {
             visible: root._state === "READY" && root._totalCount > root._pageSize
 
             MichiButton {
-                text: "Anterior"
+                text: qsTr("Anterior")
                 variant: "ghost"
                 enabled: root._currentPage > 0
                 activeFocusOnTab: true
@@ -368,7 +368,7 @@ Item {
             Item { Layout.fillWidth: true }
 
             Text {
-                text: "Página " + (root._currentPage + 1) + " de " +
+                text: qsTr("Página ") + (root._currentPage + 1) + " de " +
                       Math.max(1, Math.ceil(root._totalCount / root._pageSize))
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.metaSize
@@ -378,7 +378,7 @@ Item {
             Item { Layout.fillWidth: true }
 
             MichiButton {
-                text: "Siguiente"
+                text: qsTr("Siguiente")
                 variant: "ghost"
                 enabled: (root._currentPage + 1) * root._pageSize < root._totalCount
                 activeFocusOnTab: true
@@ -425,14 +425,14 @@ Item {
 
     Dialog {
         id: confirmClearDialog
-        title: "Limpiar historial"
+        title: qsTr("Limpiar historial")
         standardButtons: Dialog.Yes | Dialog.No
         modal: true
         x: (parent.width - width) / 2
         y: (parent.height - height) / 3
         closePolicy: Popup.CloseOnEscape
         Text {
-            text: "¿Eliminar todo el historial de reproducción? Esta acción no se puede deshacer."
+            text: qsTr("¿Eliminar todo el historial de reproducción? Esta acción no se puede deshacer.")
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.bodySize
             wrapMode: Text.WordWrap

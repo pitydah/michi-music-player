@@ -35,19 +35,19 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: "Cargando Home Audio" }
+        sourceComponent: LoadingState { title: qsTr("Cargando Home Audio") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
-        sourceComponent: ErrorState { message: "Home Audio no disponible" }
+        sourceComponent: ErrorState { message: qsTr("Home Audio no disponible") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: "Sin dispositivos Home Audio"; subtitle: "Configura dispositivos desde Conexiones" }
+        sourceComponent: EmptyState { title: qsTr("Sin dispositivos Home Audio"); subtitle: "Configura dispositivos desde Conexiones" }
     }
 
     CapabilityGuard {
@@ -71,7 +71,7 @@ Item {
                 spacing: MichiTheme.spacing.lg
 
                 Text {
-                    text: "Home Audio"
+                    text: qsTr("Home Audio")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -125,7 +125,7 @@ Item {
 
                     SectionHeader {
                         id: zonesHeader
-                        text: "Zonas"
+                        text: qsTr("Zonas")
                         width: parent.width - 160
                         KeyNavigation.tab: zoneRepeater
                         KeyNavigation.backtab: streamPanel
@@ -137,7 +137,7 @@ Item {
                         id: createGroupBtn
                         activeFocusOnTab: true
 
-                        text: "Crear grupo"
+                        text: qsTr("Crear grupo")
                         variant: "primary"
                         visible: root.ha && root.ha.zonesSupported
                         onClicked: {
@@ -186,7 +186,7 @@ Item {
 
                 SectionHeader {
                     id: devicesHeader
-                    text: "Dispositivos"
+                    text: qsTr("Dispositivos")
                     width: parent.width
                 }
 
@@ -206,7 +206,7 @@ Item {
                 }
 
                 Text {
-                    text: "No hay dispositivos Home Audio configurados."
+                    text: qsTr("No hay dispositivos Home Audio configurados.")
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width
                     visible: root.ha && root.ha.devices.length === 0
@@ -215,8 +215,8 @@ Item {
                 GlassCard {
                     id: diagCard
                     width: parent.width; height: 80
-                    title: "Diagnóstico de red"
-                    subtitle: "Mide latencia y calidad de conexión entre dispositivos."
+                    title: qsTr("Diagnóstico de red")
+                    subtitle: qsTr("Mide latencia y calidad de conexión entre dispositivos.")
                     variant: "base"
                     activeFocusOnTab: true
                     KeyNavigation.tab: statusBadge
@@ -227,7 +227,7 @@ Item {
 
                 StatusBadge {
                     id: statusBadge
-                    text: "Multiroom"
+                    text: qsTr("Multiroom")
                     kind: "experimental"
                     KeyNavigation.backtab: diagCard
                 }

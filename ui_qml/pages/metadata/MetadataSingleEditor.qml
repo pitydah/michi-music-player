@@ -23,20 +23,20 @@ Item {
 
         GlassCard {
             width: parent.width
-            title: "Archivo"
-            subtitle: root.selectedFile ? root.selectedFile.split("/").pop() : "Ninguno"
+            title: qsTr("Archivo")
+            subtitle: root.selectedFile ? root.selectedFile.split("/").pop() : qsTr("Ninguno")
             variant: root.selectedFile ? "accent" : "base"
         }
 
         Row {
             spacing: MichiTheme.spacing.sm
             MichiButton {
-                text: root._editing ? "Cancelar edición" : "Editar campos"
+                text: root._editing ? "Cancelar edición" : qsTr("Editar campos")
                 variant: root._editing ? "ghost" : "primary"
                 onClicked: root._editing = !root._editing
             }
             MichiButton {
-                text: root.editing ? "Guardar cambios" : "Guardar"
+                text: root.editing ? "Guardar cambios" : qsTr("Guardar")
                 variant: "secondary"
                 visible: root._editing
                 onClicked: {
@@ -46,7 +46,7 @@ Item {
                 }
             }
             MichiButton {
-                text: "Refrescar"
+                text: qsTr("Refrescar")
                 variant: "ghost"
                 onClicked: { if (root.mb) root.mb.refresh() }
             }

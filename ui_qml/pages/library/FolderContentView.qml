@@ -34,7 +34,7 @@ Item {
             color: MichiTheme.colors.surfaceCard
             Text {
                 anchors.centerIn: parent
-                text: root.currentPath ? "Contenido: " + root.currentPath : "Selecciona una carpeta"
+                text: root.currentPath ? "Contenido: qsTr(" + root.currentPath : ")Selecciona una carpeta"
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
             }
@@ -91,7 +91,7 @@ Item {
                 visible: root._tracks.length === 0 && root.currentPath !== ""
                 Text {
                     anchors.centerIn: parent
-                    text: "Sin canciones en esta carpeta"
+                    text: qsTr("Sin canciones en esta carpeta")
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.bodySize
                 }
@@ -103,10 +103,10 @@ Item {
             leftPadding: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
             visible: root._tracks.length > 0
 
-            MichiButton { text: "Reproducir carpeta"; variant: "primary"; height: 24
+            MichiButton { text: qsTr("Reproducir carpeta"); variant: "primary"; height: 24
                 onClicked: { if (root.bridge) root.bridge.playFolder(root.currentPath) }
             }
-            MichiButton { text: "Añadir a cola"; variant: "ghost"; height: 24
+            MichiButton { text: qsTr("Añadir a cola"); variant: "ghost"; height: 24
                 onClicked: { if (root.bridge && root.bridge.enqueueSong) {
                     for (var i = 0; i < root._tracks.length; i++) {
                         if (root._tracks[i].filepath) root.bridge.enqueueSong(root._tracks[i].filepath)

@@ -14,7 +14,7 @@ TextField {
 
     property var bridge: null
 
-    placeholderText: "Buscar canciones, álbumes, artistas..."
+    placeholderText: qsTr("Buscar canciones, álbumes, artistas...")
     width: 240
     onTextChanged: {
         if (root.bridge && typeof root.bridge.search !== "undefined")

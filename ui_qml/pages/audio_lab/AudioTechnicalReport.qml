@@ -19,7 +19,7 @@ Item {
         width: parent.width; radius: MichiTheme.radius.md; variant: "base"
         Column {
             anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
-            Text { text: "Reporte técnico"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+            Text { text: qsTr("Reporte técnico"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
             Repeater {
                 model: root.analysisResult ? Object.keys(root.analysisResult) : []
                 Row {

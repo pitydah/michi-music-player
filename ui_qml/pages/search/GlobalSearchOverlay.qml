@@ -120,7 +120,7 @@ Item {
 
                     id: searchField
                     width: parent.width - 80
-                    placeholderText: "Búsqueda rápida (Ctrl+F)..."
+                    placeholderText: qsTr("Búsqueda rápida (Ctrl+F)...")
                     Accessible.description: "Escribe para buscar, muestra máximo 3 resultados por sección"
                     onSearchTextChanged: root.search(text)
                     activeFocusOnTab: true
@@ -137,7 +137,7 @@ Item {
                     activeFocusOnTab: true
 
                 MichiButton {
-                    text: "Cerrar"
+                    text: qsTr("Cerrar")
                     variant: "ghost"
                     anchors.verticalCenter: parent.verticalCenter
                     Keys.onEscapePressed: root.closeRequested()
@@ -154,14 +154,14 @@ Item {
 
             Text {
                 visible: root._searching
-                text: "Buscando..."
+                text: qsTr("Buscando...")
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
             }
 
             Text {
                 visible: !root._searching && root._query !== "" && root._results.length === 0
-                text: "Sin resultados para \"" + root._query + "\""
+                text: qsTr("Sin resultados para \")" + root._query + "\""
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
             }
@@ -207,7 +207,7 @@ Item {
             }
 
             MichiButton {
-                text: "Abrir búsqueda completa \u2192"
+                text: qsTr("Abrir búsqueda completa \u2192")
                 variant: "ghost"
                 anchors.horizontalCenter: parent.horizontalCenter
                 visible: root._results.length > 0

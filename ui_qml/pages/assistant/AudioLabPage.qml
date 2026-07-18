@@ -38,12 +38,12 @@ Item {
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
                     Text {
-                        text: "Audio Lab"
+                        text: qsTr("Audio Lab")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold
                     }
                     Text {
-                        text: "Herramientas de análisis, conversión y diagnóstico para tu biblioteca musical."
+                        text: qsTr("Herramientas de análisis, conversión y diagnóstico para tu biblioteca musical.")
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize; width: parent.width * 0.70; wrapMode: Text.WordWrap
                     }
@@ -52,8 +52,8 @@ Item {
 
             GlassCard {
                 width: parent.width; height: 80
-                title: "Inspector de metadatos"
-                subtitle: "Revisa campos, carátulas y consistencia de una pista."
+                title: qsTr("Inspector de metadatos")
+                subtitle: qsTr("Revisa campos, carátulas y consistencia de una pista.")
                 variant: "primary"
                 onClicked: {
                     if (typeof navigationBridge !== "undefined" && navigationBridge)
@@ -61,28 +61,28 @@ Item {
                 }
             }
 
-            SectionHeader { text: "Estado de la biblioteca"; width: parent.width }
+            SectionHeader { text: qsTr("Estado de la biblioteca"); width: parent.width }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md; variant: "base"
                 Row {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.xl
                     Column { spacing: MichiTheme.spacing.xs
-                        Text { text: root.alab ? root.alab.totalTracks : "—"; color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
-                        Text { text: "Canciones"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+                        Text { text: root.alab ? root.alab.totalTracks : qsTr("—"); color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
+                        Text { text: qsTr("Canciones"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                     }
                     Column { spacing: MichiTheme.spacing.xs
-                        Text { text: root.alab ? root.alab.missingMetadata : "—"; color: root.alab && root.alab.missingMetadata > 0 ? MichiTheme.colors.warning : MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
-                        Text { text: "Sin metadata"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+                        Text { text: root.alab ? root.alab.missingMetadata : qsTr("—"); color: root.alab && root.alab.missingMetadata > 0 ? MichiTheme.colors.warning : MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
+                        Text { text: qsTr("Sin metadata"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                     }
                     Column { spacing: MichiTheme.spacing.xs
-                        Text { text: root.alab ? root.alab.missingCovers : "—"; color: root.alab && root.alab.missingCovers > 0 ? MichiTheme.colors.warning : MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
-                        Text { text: "Sin carátula"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+                        Text { text: root.alab ? root.alab.missingCovers : qsTr("—"); color: root.alab && root.alab.missingCovers > 0 ? MichiTheme.colors.warning : MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
+                        Text { text: qsTr("Sin carátula"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                     }
                 }
             }
 
-            SectionHeader { text: "Herramientas"; width: parent.width }
+            SectionHeader { text: qsTr("Herramientas"); width: parent.width }
 
             Grid {
                 width: parent.width; columns: 2; columnSpacing: MichiTheme.spacing.md; rowSpacing: MichiTheme.spacing.md
@@ -103,49 +103,49 @@ Item {
                 }
             }
 
-            SectionHeader { text: "Herramientas QML"; width: parent.width }
+            SectionHeader { text: qsTr("Herramientas QML"); width: parent.width }
 
             Grid {
                 width: parent.width; columns: 2; columnSpacing: MichiTheme.spacing.md; rowSpacing: MichiTheme.spacing.md
 
                 GlassCard {
                     width: (parent.width - MichiTheme.spacing.md) / 2; height: 80
-                    title: "Smart Tagging"; subtitle: "Sugerencias de metadatos"
+                    title: qsTr("Smart Tagging"); subtitle: "Sugerencias de metadatos"
                     variant: "primary"
                     onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("smart_tagging") }
-                    StatusBadge { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: MichiTheme.spacing.sm; text: "Funcional"; kind: "success" }
+                    StatusBadge { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: MichiTheme.spacing.sm; text: qsTr("Funcional"); kind: "success" }
                 }
 
                 GlassCard {
                     width: (parent.width - MichiTheme.spacing.md) / 2; height: 80
-                    title: "Ecualizador"; subtitle: "Ajuste de frecuencias"
+                    title: qsTr("Ecualizador"); subtitle: "Ajuste de frecuencias"
                     variant: "base"
                     onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("eq") }
-                    StatusBadge { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: MichiTheme.spacing.sm; text: "Funcional"; kind: "success" }
+                    StatusBadge { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: MichiTheme.spacing.sm; text: qsTr("Funcional"); kind: "success" }
                 }
 
                 GlassCard {
                     width: (parent.width - MichiTheme.spacing.md) / 2; height: 80
-                    title: "Library Doctor"; subtitle: "Diagnóstico de biblioteca"
+                    title: qsTr("Library Doctor"); subtitle: "Diagnóstico de biblioteca"
                     variant: "base"
                     onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("library_doctor") }
-                    StatusBadge { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: MichiTheme.spacing.sm; text: "Funcional"; kind: "success" }
+                    StatusBadge { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: MichiTheme.spacing.sm; text: qsTr("Funcional"); kind: "success" }
                 }
 
                 GlassCard {
                     width: (parent.width - MichiTheme.spacing.md) / 2; height: 80
-                    title: "Disc Lab"; subtitle: "Laboratorio de discos"
+                    title: qsTr("Disc Lab"); subtitle: "Laboratorio de discos"
                     variant: "base"
                     onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("disc_lab") }
-                    StatusBadge { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: MichiTheme.spacing.sm; text: "Experimental"; kind: "experimental" }
+                    StatusBadge { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: MichiTheme.spacing.sm; text: qsTr("Experimental"); kind: "experimental" }
                 }
 
                 GlassCard {
                     width: (parent.width - MichiTheme.spacing.md) / 2; height: 80
-                    title: "Inspector metadata"; subtitle: "Edición de campos"
+                    title: qsTr("Inspector metadata"); subtitle: "Edición de campos"
                     variant: "primary"
                     onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("metadata_inspector") }
-                    StatusBadge { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: MichiTheme.spacing.sm; text: "Funcional"; kind: "success" }
+                    StatusBadge { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: MichiTheme.spacing.sm; text: qsTr("Funcional"); kind: "success" }
                 }
             }
 
@@ -153,8 +153,8 @@ Item {
                 width: parent.width; radius: MichiTheme.radius.md; variant: "status"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
-                    StatusBadge { text: "Solo lectura"; kind: "info" }
-                    StatusBadge { text: "Interfaz clásica disponible"; kind: "disconnected" }
+                    StatusBadge { text: qsTr("Solo lectura"); kind: "info" }
+                    StatusBadge { text: qsTr("Interfaz clásica disponible"); kind: "disconnected" }
                 }
             }
         }

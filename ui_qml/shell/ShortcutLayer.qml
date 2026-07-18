@@ -80,19 +80,19 @@ Item {
             spacing: MichiTheme.spacing.xs
 
             Text {
-                text: "Atajos de teclado"
+                text: qsTr("Atajos de teclado")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.secondarySize
                 font.weight: MichiTheme.typography.weightSemiBold
                 leftPadding: MichiTheme.spacing.xs
             }
 
-            KeyboardShortcutHint { label: "Paleta de comandos"; shortcut: "Ctrl+K"; shortcutSize: MichiTheme.typography.captionSize }
-            KeyboardShortcutHint { label: "Ir a Biblioteca"; shortcut: "Ctrl+L"; shortcutSize: MichiTheme.typography.captionSize }
-            KeyboardShortcutHint { label: "Ir a Ajustes"; shortcut: "Ctrl+,"; shortcutSize: MichiTheme.typography.captionSize }
-            KeyboardShortcutHint { label: "Recargar"; shortcut: "Ctrl+R"; shortcutSize: MichiTheme.typography.captionSize }
-            KeyboardShortcutHint { label: "Cerrar paleta"; shortcut: "Esc"; shortcutSize: MichiTheme.typography.captionSize }
-            KeyboardShortcutHint { label: "Pausa/Reproducir"; shortcut: "Espacio"; shortcutSize: MichiTheme.typography.captionSize }
+            KeyboardShortcutHint { label: qsTr("Paleta de comandos"); shortcut: "Ctrl+K"; shortcutSize: MichiTheme.typography.captionSize }
+            KeyboardShortcutHint { label: qsTr("Ir a Biblioteca"); shortcut: "Ctrl+L"; shortcutSize: MichiTheme.typography.captionSize }
+            KeyboardShortcutHint { label: qsTr("Ir a Ajustes"); shortcut: "Ctrl+,"; shortcutSize: MichiTheme.typography.captionSize }
+            KeyboardShortcutHint { label: qsTr("Recargar"); shortcut: "Ctrl+R"; shortcutSize: MichiTheme.typography.captionSize }
+            KeyboardShortcutHint { label: qsTr("Cerrar paleta"); shortcut: "Esc"; shortcutSize: MichiTheme.typography.captionSize }
+            KeyboardShortcutHint { label: qsTr("Pausa/Reproducir"); shortcut: "Espacio"; shortcutSize: MichiTheme.typography.captionSize }
         }
     }
 

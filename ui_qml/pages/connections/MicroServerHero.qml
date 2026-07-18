@@ -29,14 +29,14 @@ Item {
             spacing: MichiTheme.spacing.md
 
             Text {
-                text: "Michi Micro Server"
+                text: qsTr("Michi Micro Server")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.heroTitleSize
                 font.weight: MichiTheme.typography.weightBold
             }
 
             Text {
-                text: "Servidor musical doméstico del ecosistema Michi."
+                text: qsTr("Servidor musical doméstico del ecosistema Michi.")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
                 width: parent.width * 0.60
@@ -45,8 +45,8 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                StatusBadge { text: "Ecosistema Michi"; kind: "info" }
-                StatusBadge { text: "Rust - Streaming - Biblioteca central"; kind: "info" }
+                StatusBadge { text: qsTr("Ecosistema Michi"); kind: "info" }
+                StatusBadge { text: qsTr("Rust - Streaming - Biblioteca central"); kind: "info" }
             }
 
             Row {
@@ -73,13 +73,13 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
                     objectName: "discoverServerButton"
-                    text: "Buscar Michi Micro Server"
+                    text: qsTr("Buscar Michi Micro Server")
                     variant: "primary"
                     onClicked: root.scanClicked()
                 }
                 MichiButton {
                     objectName: "manualAddServerButton"
-                    text: "Agregar manualmente"
+                    text: qsTr("Agregar manualmente")
                     variant: "ghost"
                     onClicked: root.manualAddClicked()
                 }

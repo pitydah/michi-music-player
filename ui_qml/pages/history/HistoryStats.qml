@@ -27,19 +27,19 @@ Item {
 
         GlassCard {
             width: (parent.width - MichiTheme.spacing.md * 3) / 4; height: 100
-            title: root.totalCount.toString(); subtitle: "Total reproducciones"
+            title: root.totalCount.toString(); subtitle: qsTr("Total reproducciones")
         }
         GlassCard {
             width: (parent.width - MichiTheme.spacing.md * 3) / 4; height: 100
-            title: root.uniqueTracks.toString(); subtitle: "Pistas únicas"
+            title: root.uniqueTracks.toString(); subtitle: qsTr("Pistas únicas")
         }
         GlassCard {
             width: (parent.width - MichiTheme.spacing.md * 3) / 4; height: 100
-            title: root.uniqueArtists.toString(); subtitle: "Artistas"
+            title: root.uniqueArtists.toString(); subtitle: qsTr("Artistas")
         }
         GlassCard {
             width: (parent.width - MichiTheme.spacing.md * 3) / 4; height: 100
-            title: root.topArtist || "—"; subtitle: "Artista principal"
+            title: root.topArtist || "—"; subtitle: qsTr("Artista principal")
         }
     }
 }

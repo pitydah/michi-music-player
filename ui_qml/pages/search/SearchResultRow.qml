@@ -122,7 +122,7 @@ Item {
             }
 
             Text {
-                text: "\u25B6"
+                text: qsTr("\u25B6")
                 color: MichiTheme.colors.accent
                 anchors.verticalCenter: parent.verticalCenter
                 font.pixelSize: MichiTheme.typography.bodySize

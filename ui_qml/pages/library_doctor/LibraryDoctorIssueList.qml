@@ -18,7 +18,7 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.sm
 
-        SectionHeader { text: "Problemas detectados"; width: parent.width }
+        SectionHeader { text: qsTr("Problemas detectados"); width: parent.width }
 
         Repeater {
             model: root.doc ? root.doc.issues : []

@@ -38,7 +38,7 @@ Item {
                     spacing: MichiTheme.spacing.xs
 
                     Text {
-                        text: model.isExpandable ? (model.expanded ? "▼" : "▶") : " "
+                        text: model.isExpandable ? (model.expanded ? "▼" : qsTr("▶")) : " "
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.badgeSize
                         width: 16
@@ -51,7 +51,7 @@ Item {
                         color: MichiTheme.colors.borderInner
                         Text {
                             anchors.centerIn: parent
-                            text: "FD"
+                            text: qsTr("FD")
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.badgeSize
                             font.weight: MichiTheme.typography.weightBold

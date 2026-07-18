@@ -33,7 +33,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: "Cargando conexiones" }
+        sourceComponent: LoadingState { title: qsTr("Cargando conexiones") }
     }
 
     Loader {
@@ -53,13 +53,13 @@ Item {
                     spacing: MichiTheme.spacing.md
                     width: parent.width - MichiTheme.spacing.xl * 2
 
-                    Text { text: "CN"; font.pixelSize: 36; anchors.horizontalCenter: parent.horizontalCenter }
-                    Text { text: "Conexiones no disponibles"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold; anchors.horizontalCenter: parent.horizontalCenter }
-                    Text { text: "Conecta servidores Subsonic, Navidrome, Jellyfin y dispositivos para expandir tu ecosistema musical. Necesitas una suscripcion premium para habilitar conexiones con servidores externos y sincronizacion."; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; width: parent.width }
+                    Text { text: qsTr("CN"); font.pixelSize: 36; anchors.horizontalCenter: parent.horizontalCenter }
+                    Text { text: qsTr("Conexiones no disponibles"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold; anchors.horizontalCenter: parent.horizontalCenter }
+                    Text { text: qsTr("Conecta servidores Subsonic, Navidrome, Jellyfin y dispositivos para expandir tu ecosistema musical. Necesitas una suscripcion premium para habilitar conexiones con servidores externos y sincronizacion."); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; width: parent.width }
                     Row {
                         anchors.horizontalCenter: parent.horizontalCenter; spacing: MichiTheme.spacing.sm
-                        MichiButton { text: "Configurar"; variant: "primary"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
-                        MichiButton { text: "Ver requisitos"; variant: "ghost"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
+                        MichiButton { text: qsTr("Configurar"); variant: "primary"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
+                        MichiButton { text: qsTr("Ver requisitos"); variant: "ghost"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
                     }
                 }
             }
@@ -69,7 +69,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: MichiBanner { message: "Sin conexiones — configura servidores para conectar tu ecosistema"; kind: "info"; dismissible: false }
+        sourceComponent: MichiBanner { message: qsTr("Sin conexiones — configura servidores para conectar tu ecosistema"); kind: "info"; dismissible: false }
     }
 
     CapabilityGuard {
@@ -92,7 +92,7 @@ Item {
                 spacing: MichiTheme.spacing.md
 
                 Text {
-                    text: "Servidores y conexiones"
+                    text: qsTr("Servidores y conexiones")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -117,7 +117,7 @@ Item {
 
                 SectionHeader {
                     id: externalHeader
-                    text: "Servidores externos"
+                    text: qsTr("Servidores externos")
                     width: parent.width
                 }
 
@@ -143,7 +143,7 @@ Item {
                     }
 
                     Text {
-                        text: "No hay servidores externos configurados."
+                        text: qsTr("No hay servidores externos configurados.")
                         color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize
                         width: parent.width; wrapMode: Text.WordWrap
                         visible: parent.children.length === 0

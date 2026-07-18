@@ -9,8 +9,8 @@ Item {
     focus: true
     id: root
 
-    property string title: "Acción destructiva"
-    property string message: "Esta acción no se puede deshacer."
+    property string title: qsTr("Acción destructiva")
+    property string message: qsTr("Esta acción no se puede deshacer.")
     property string confirmText: "Eliminar"
     property string cancelText: "Cancelar"
     property string keyword: "ELIMINAR"

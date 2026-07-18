@@ -62,7 +62,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 StatusBadge {
-                    text: root.receiverState === "connected" ? "Activo" : "Inactivo"
+                    text: root.receiverState === "connected" ? "Activo" : qsTr("Inactivo")
                     kind: root.receiverState === "connected" ? "active" : "disconnected"
                 }
 
@@ -71,7 +71,7 @@ Item {
 
                     activeFocusOnTab: true
 
-                    text: "Configurar"
+                    text: qsTr("Configurar")
                     variant: "ghost"
                     onClicked: root.configureClicked()
                 }

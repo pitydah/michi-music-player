@@ -91,16 +91,16 @@ Item {
         Accessible.name: "Opciones de lista"
 
         MenuItem {
-            text: "Reproducir"
+            text: qsTr("Reproducir")
             onTriggered: root.contextMenuRequested("shuffle")
         }
         MenuItem {
-            text: "Duplicar"
+            text: qsTr("Duplicar")
             onTriggered: root.contextMenuRequested("duplicate")
         }
         MenuSeparator {}
         MenuItem {
-            text: "Eliminar"
+            text: qsTr("Eliminar")
             onTriggered: root.contextMenuRequested("delete")
         }
     }

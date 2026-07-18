@@ -114,7 +114,7 @@ Item {
                 }
 
                 StatusBadge {
-                    text: root.compatible ? "Compatible" : "Versión antigua"
+                    text: root.compatible ? "Compatible" : qsTr("Versión antigua")
                     kind: root.compatible ? "success" : "warning"
                     visible: root.serverVersion !== ""
                 }
@@ -124,13 +124,13 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 MichiButton {
-                    text: root.state === "connected" ? "Desconectar" : "Conectar"
+                    text: root.state === "connected" ? "Desconectar" : qsTr("Conectar")
                     variant: root.state === "connected" ? "secondary" : "primary"
                     onClicked: root.state === "connected" ? root.disconnectClicked() : root.connectClicked()
                 }
 
                 MichiButton {
-                    text: "Configurar"
+                    text: qsTr("Configurar")
                     variant: "ghost"
                     onClicked: root.configureClicked()
                 }

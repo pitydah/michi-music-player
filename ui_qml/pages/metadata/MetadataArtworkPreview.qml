@@ -36,7 +36,7 @@ Item {
                 spacing: MichiTheme.spacing.xs
 
                 Text {
-                    text: "Carátula"
+                    text: qsTr("Carátula")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                     font.weight: MichiTheme.typography.weightSemiBold

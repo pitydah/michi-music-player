@@ -80,19 +80,19 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: "Cargando asistente" }
+        sourceComponent: LoadingState { title: qsTr("Cargando asistente") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
-        sourceComponent: ErrorState { message: "Asistente no disponible" }
+        sourceComponent: ErrorState { message: qsTr("Asistente no disponible") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: "Asistente sin datos"; subtitle: "Configura el asistente en Ajustes" }
+        sourceComponent: EmptyState { title: qsTr("Asistente sin datos"); subtitle: "Configura el asistente en Ajustes" }
     }
 
     Flickable {
@@ -134,13 +134,13 @@ Item {
                         }
 
                         StatusBadge {
-                            text: root.ai ? (root._aiStatus === "idle" ? "Listo" : root._aiStatus) : "No disponible"
+                            text: root.ai ? (root._aiStatus === "idle" ? "Listo" : root._aiStatus) : qsTr("No disponible")
                             kind: root.ai ? (root._aiStatus === "idle" || root._aiStatus === "completed" ? "success" : root._aiStatus === "failed" || root._aiStatus === "unavailable" ? "error" : root._aiStatus === "executing" ? "active" : "info") : "disconnected"
                             anchors.verticalCenter: parent.verticalCenter
                         }
 
                         StatusBadge {
-                            text: "Experimental"
+                            text: qsTr("Experimental")
                             kind: "experimental"
                             anchors.verticalCenter: parent.verticalCenter
                         }
@@ -168,7 +168,7 @@ Item {
 
             SectionHeader {
                 id: suggestionsHeader
-                text: "Sugerencias"
+                text: qsTr("Sugerencias")
                 width: parent.width
             }
 

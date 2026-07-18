@@ -54,7 +54,7 @@ Item {
 
             StatusBadge {
                 anchors.verticalCenter: parent.verticalCenter
-                text: root.zoneStatus === "playing" ? "Reproduciendo" : "En espera"
+                text: root.zoneStatus === "playing" ? "Reproduciendo" : qsTr("En espera")
                 kind: root.zoneStatus === "playing" ? "active" : "disconnected"
             }
         }

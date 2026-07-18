@@ -93,9 +93,9 @@ Item {
                     Keys.onReturnPressed: root.goToRoute("library.recent")
                     Column {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.xs
-                        Text { text: "Recién añadido"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
-                        Text { text: "Explora los últimos álbumes incorporados a tu biblioteca"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; width: parent.width; wrapMode: Text.WordWrap }
-                        MichiButton { text: "Ver"; variant: "ghost"; onClicked: root.goToRoute("library.recent") }
+                        Text { text: qsTr("Recién añadido"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                        Text { text: qsTr("Explora los últimos álbumes incorporados a tu biblioteca"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; width: parent.width; wrapMode: Text.WordWrap }
+                        MichiButton { text: qsTr("Ver"); variant: "ghost"; onClicked: root.goToRoute("library.recent") }
                     }
                 }
 
@@ -106,9 +106,9 @@ Item {
                     Keys.onReturnPressed: root.goToRoute("library.favorites")
                     Column {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.xs
-                        Text { text: "Favoritos"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
-                        Text { text: "Tus canciones marcadas como favoritas"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; width: parent.width; wrapMode: Text.WordWrap }
-                        MichiButton { text: "Ver"; variant: "ghost"; onClicked: root.goToRoute("library.favorites") }
+                        Text { text: qsTr("Favoritos"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                        Text { text: qsTr("Tus canciones marcadas como favoritas"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; width: parent.width; wrapMode: Text.WordWrap }
+                        MichiButton { text: qsTr("Ver"); variant: "ghost"; onClicked: root.goToRoute("library.favorites") }
                     }
                 }
             }
@@ -125,9 +125,9 @@ Item {
                     Keys.onReturnPressed: root.goToRoute("library.unplayed")
                     Column {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.xs
-                        Text { text: "Sin reproducir"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
-                        Text { text: "Descubre música que aún no has escuchado"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; width: parent.width; wrapMode: Text.WordWrap }
-                        MichiButton { text: "Explorar"; variant: "ghost"; onClicked: root.goToRoute("library.unplayed") }
+                        Text { text: qsTr("Sin reproducir"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                        Text { text: qsTr("Descubre música que aún no has escuchado"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; width: parent.width; wrapMode: Text.WordWrap }
+                        MichiButton { text: qsTr("Explorar"); variant: "ghost"; onClicked: root.goToRoute("library.unplayed") }
                     }
                 }
 
@@ -138,9 +138,9 @@ Item {
                     Keys.onReturnPressed: root.goToRoute("mix")
                     Column {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.xs
-                        Text { text: "Mixes"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
-                        Text { text: "Listas inteligentes generadas para ti"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; width: parent.width; wrapMode: Text.WordWrap }
-                        MichiButton { text: "Ver mixes"; variant: "ghost"; onClicked: root.goToRoute("mix") }
+                        Text { text: qsTr("Mixes"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                        Text { text: qsTr("Listas inteligentes generadas para ti"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; width: parent.width; wrapMode: Text.WordWrap }
+                        MichiButton { text: qsTr("Ver mixes"); variant: "ghost"; onClicked: root.goToRoute("mix") }
                     }
                 }
             }
@@ -183,8 +183,8 @@ Item {
     EmptyState {
         anchors.centerIn: parent
         visible: root.homeState === HomePage.EMPTY
-        title: "Tu biblioteca está vacía"
-        subtitle: "Añade una carpeta de música o conecta Michi Micro Server para comenzar."
+        title: qsTr("Tu biblioteca está vacía")
+        subtitle: qsTr("Añade una carpeta de música o conecta Michi Micro Server para comenzar.")
         iconText: "♪"
         showAction: true
         actionText: "Añadir música"
@@ -194,7 +194,7 @@ Item {
     ErrorState {
         anchors.centerIn: parent
         visible: root.homeState === HomePage.ERROR
-        title: "Error al cargar inicio"
+        title: qsTr("Error al cargar inicio")
         message: root.statusMessage
         showRetry: true
         onRetryRequested: root.refresh()

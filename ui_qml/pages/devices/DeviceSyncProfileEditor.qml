@@ -52,7 +52,7 @@ Item {
             spacing: MichiTheme.spacing.md
 
             Text {
-                text: "Perfil de sincronización"
+                text: qsTr("Perfil de sincronización")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -64,11 +64,11 @@ Item {
                 focusPolicy: Qt.StrongFocus
                 id: profileNameField
                 width: parent.width
-                placeholderText: "Nombre del perfil"
+                placeholderText: qsTr("Nombre del perfil")
                 text: root.profileName
                 onTextChanged: root.profileName = text
             }
-            Text { text: "Política de transcodificación"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "transcodePolicyLabel" }
+            Text { text: qsTr("Política de transcodificación"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "transcodePolicyLabel" }
             ComboBox {
                 focusPolicy: Qt.StrongFocus
                 Accessible.name: "Política de transcodificación"
@@ -79,7 +79,7 @@ Item {
                 onCurrentTextChanged: root.transcodePolicy = currentText
             }
 
-            Text { text: "Política de colisión"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "collisionPolicyLabel" }
+            Text { text: qsTr("Política de colisión"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "collisionPolicyLabel" }
             ComboBox {
                 Accessible.name: "Política de colisión"
                 focusPolicy: Qt.StrongFocus
@@ -94,7 +94,7 @@ Item {
                 focusPolicy: Qt.StrongFocus
                 id: musicDirField
                 width: parent.width
-                placeholderText: "Directorio de música"
+                placeholderText: qsTr("Directorio de música")
                 text: root.musicDirectory
                 onTextChanged: root.musicDirectory = text
             }
@@ -102,32 +102,32 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 CheckBox { id: syncPlaylistsCb; checked: root.syncPlaylists; onCheckedChanged: root.syncPlaylists = checked; objectName: "syncPlaylistsCheckBox"; Accessible.name: "Sincronizar listas de reproducción" }
-                Text { text: "Sincronizar listas de reproducción"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: qsTr("Sincronizar listas de reproducción"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
             }
 
             Row {
                 spacing: MichiTheme.spacing.sm
                 CheckBox { id: syncSelectionCb; checked: root.syncSelection; onCheckedChanged: root.syncSelection = checked; objectName: "syncSelectionCheckBox"; Accessible.name: "Sincronizar selección actual" }
-                Text { text: "Sincronizar selección actual"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: qsTr("Sincronizar selección actual"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
             }
 
             Row {
                 spacing: MichiTheme.spacing.sm
                 CheckBox { id: fullSyncCb; checked: root.fullSync; onCheckedChanged: root.fullSync = checked; enabled: !incrementalSyncCb.checked; objectName: "fullSyncCheckBox"; Accessible.name: "Sincronización completa" }
-                Text { text: "Sincronización completa"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: qsTr("Sincronización completa"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
             }
 
             Row {
                 spacing: MichiTheme.spacing.sm
                 CheckBox { id: incrementalSyncCb; checked: root.incrementalSync; onCheckedChanged: root.incrementalSync = checked; enabled: !fullSyncCb.checked; objectName: "incrementalSyncCheckBox"; Accessible.name: "Sincronización incremental" }
-                Text { text: "Sincronización incremental"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: qsTr("Sincronización incremental"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
             }
 
             Row {
                 spacing: MichiTheme.spacing.sm
 
                 MichiButton {
-                    text: "Guardar perfil"
+                    text: qsTr("Guardar perfil")
                     variant: "primary"
                     onClicked: {
                         root.profileSaved(root.deviceKey, {
@@ -144,7 +144,7 @@ Item {
                 }
 
                 MichiButton {
-                    text: "Restablecer"
+                    text: qsTr("Restablecer")
                     variant: "ghost"
                     onClicked: root.profileReset(root.deviceKey)
                 }

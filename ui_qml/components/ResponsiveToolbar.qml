@@ -17,7 +17,7 @@ FocusScope {
     objectName: "ResponsiveToolbar"
 
     Accessible.role: Accessible.ToolBar
-    Accessible.name: title !== "" ? title : "Barra de herramientas"
+    Accessible.name: title !== "" ? title : qsTr("Barra de herramientas")
 
     implicitHeight: root.compactMode ? childrenColumn.implicitHeight : MichiTheme.toolbarHeight
     activeFocusOnTab: true

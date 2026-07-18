@@ -89,7 +89,7 @@ Item {
                     root._groupedResults = []
                     root._searching = false
                     root._errorCode = result && result.error_code ? result.error_code : "SEARCH_FAILED"
-                    root._errorMessage = result && result.message ? result.message : "La búsqueda falló"
+                    root._errorMessage = result && result.message ? result.message : qsTr("La búsqueda falló")
                 }
             } else {
                 root._groupedResults = []
@@ -205,7 +205,7 @@ Item {
                         spacing: MichiTheme.spacing.sm
 
                         Text {
-                            text: "Búsqueda global"
+                            text: qsTr("Búsqueda global")
                             color: MichiTheme.colors.textPrimary
                             font.pixelSize: MichiTheme.typography.heroTitleSize
                             font.weight: MichiTheme.typography.weightBold
@@ -219,7 +219,7 @@ Item {
 
                             activeFocusOnTab: true
 
-                            text: "Filtros"
+                            text: qsTr("Filtros")
                             variant: "ghost"
                             anchors.verticalCenter: parent.verticalCenter
                             iconText: "\u2630"
@@ -232,7 +232,7 @@ Item {
 
 
                         MichiButton {
-                            text: "Limpiar"
+                            text: qsTr("Limpiar")
                             variant: "ghost"
                             anchors.verticalCenter: parent.verticalCenter
                             visible: root._query !== ""
@@ -248,7 +248,7 @@ Item {
                     SearchField {
                         id: globalSearchInput
                         width: parent.width * 0.7
-                        placeholderText: "Canciones, álbumes, artistas, playlists..."
+                        placeholderText: qsTr("Canciones, álbumes, artistas, playlists...")
                         Accessible.description: "Escribe para buscar en toda la biblioteca"
                         onSearchTextChanged: root.search(text)
                         activeFocusOnTab: true
@@ -292,7 +292,7 @@ Item {
             Text {
                 id: searchingText
                 visible: root._searching
-                text: "Buscando..."
+                text: qsTr("Buscando...")
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
             }
@@ -301,7 +301,7 @@ Item {
                 id: errorState
                 width: parent.width
                 visible: root._errorCode !== "" && !root._searching
-                title: "Error de búsqueda"
+                title: qsTr("Error de búsqueda")
                 message: root._errorMessage
                 errorCode: root._errorCode
                 showRetry: true
@@ -311,7 +311,7 @@ Item {
             Text {
                 id: noResultsText
                 visible: !root._searching && root._errorCode === "" && root._query !== "" && root._groupedResults.length === 0
-                text: "Sin resultados para \"" + root._query + "\""
+                text: qsTr("Sin resultados para \")" + root._query + "\""
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
             }

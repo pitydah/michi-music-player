@@ -63,7 +63,7 @@ Rectangle {
                     spacing: MichiTheme.spacing.sm
 
                     Text {
-                        text: root.notification ? (root.notification.title || root.notification.text || "Progreso") : "Progreso"
+                        text: root.notification ? (root.notification.title || root.notification.text || "Progreso") : qsTr("Progreso")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.cardTitleSize
                         font.weight: MichiTheme.typography.weightMedium
@@ -144,7 +144,7 @@ Rectangle {
             spacing: MichiTheme.spacing.sm
 
             Text {
-                text: "Restante: " + estimatedRemaining()
+                text: qsTr("Restante: ") + estimatedRemaining()
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
                 visible: root.notification && root.notification.progress !== undefined && root.notification.progress > 0 && root.notification.progress < 100
@@ -158,7 +158,7 @@ Rectangle {
 
             MichiButton {
                 id: cancelBtn
-                text: "Cancelar"
+                text: qsTr("Cancelar")
                 variant: "ghost"
                 implicitHeight: 28
                 visible: root.notification && root.notification.job_id

@@ -6,7 +6,7 @@ import ".."
 Item {
     id: root
 
-    property string title: "Sin contenido"
+    property string title: qsTr("Sin contenido")
     property string message: ""
     property string iconName: "library"
     property string primaryActionText: ""

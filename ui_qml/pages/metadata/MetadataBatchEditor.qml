@@ -20,7 +20,7 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.lg
 
-        SectionHeader { text: "Edición por lotes"; width: parent.width }
+        SectionHeader { text: qsTr("Edición por lotes"); width: parent.width }
 
         GlassMaterial {
             width: parent.width; radius: MichiTheme.radius.md; variant: "base"
@@ -34,21 +34,21 @@ Item {
             width: parent.width; radius: MichiTheme.radius.md; variant: "primary"
             Column {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
-                Text { text: "Buscar y reemplazar"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                Text { text: qsTr("Buscar y reemplazar"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
 
                 Row { spacing: MichiTheme.spacing.sm; width: parent.width
-                    Text { text: "Campo:"; color: MichiTheme.colors.textSecondary; anchors.verticalCenter: parent.verticalCenter; width: 60 }
-                    TextField { id: searchField; width: parent.width - 70; placeholderText: "artist, title, album..." }
+                    Text { text: qsTr("Campo:"); color: MichiTheme.colors.textSecondary; anchors.verticalCenter: parent.verticalCenter; width: 60 }
+                    TextField { id: searchField; width: parent.width - 70; placeholderText: qsTr("artist, title, album...") }
                         focusPolicy: Qt.StrongFocus
                 }
                 Row { spacing: MichiTheme.spacing.sm; width: parent.width
-                    Text { text: "Buscar:"; color: MichiTheme.colors.textSecondary; anchors.verticalCenter: parent.verticalCenter; width: 60 }
-                    TextField { id: searchText; width: parent.width - 70; placeholderText: "Valor a buscar..." }
+                    Text { text: qsTr("Buscar:"); color: MichiTheme.colors.textSecondary; anchors.verticalCenter: parent.verticalCenter; width: 60 }
+                    TextField { id: searchText; width: parent.width - 70; placeholderText: qsTr("Valor a buscar...") }
                         focusPolicy: Qt.StrongFocus
                 }
                 Row { spacing: MichiTheme.spacing.sm; width: parent.width
-                    Text { text: "Reemplazar:"; color: MichiTheme.colors.textSecondary; anchors.verticalCenter: parent.verticalCenter; width: 60 }
-                    TextField { id: replaceText; width: parent.width - 70; placeholderText: "Valor nuevo..." }
+                    Text { text: qsTr("Reemplazar:"); color: MichiTheme.colors.textSecondary; anchors.verticalCenter: parent.verticalCenter; width: 60 }
+                    TextField { id: replaceText; width: parent.width - 70; placeholderText: qsTr("Valor nuevo...") }
                         focusPolicy: Qt.StrongFocus
                 }
                 MichiButton {
@@ -56,7 +56,7 @@ Item {
 
                     activeFocusOnTab: true
 
-                    text: "Ejecutar búsqueda y reemplazo"
+                    text: qsTr("Ejecutar búsqueda y reemplazo")
                     variant: "secondary"
                     onClicked: {
                         if (root.mb && searchText.text && replaceText.text && searchField.text)
@@ -70,22 +70,22 @@ Item {
             width: parent.width; radius: MichiTheme.radius.md; variant: "base"
             Column {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
-                Text { text: "Numeración"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                Text { text: qsTr("Numeración"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
 
                 Row { spacing: MichiTheme.spacing.sm; width: parent.width
-                    Text { text: "Inicio:"; color: MichiTheme.colors.textSecondary; anchors.verticalCenter: parent.verticalCenter }
+                    Text { text: qsTr("Inicio:"); color: MichiTheme.colors.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                     SpinBox { id: numberingStart; from: 1; to: 999; value: 1 }
                         focusPolicy: Qt.StrongFocus
-                    MichiButton { text: "Numerar pistas"; variant: "secondary"; onClicked: {
+                    MichiButton { text: qsTr("Numerar pistas"); variant: "secondary"; onClicked: {
                         if (root.mb) root.mb.batchSetField(root.selectedFiles, "track_number", String(numberingStart.value))
                     } }
                 }
 
                 Row { spacing: MichiTheme.spacing.sm; width: parent.width
-                    Text { text: "Disco inicio:"; color: MichiTheme.colors.textSecondary; anchors.verticalCenter: parent.verticalCenter }
+                    Text { text: qsTr("Disco inicio:"); color: MichiTheme.colors.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                     SpinBox { id: discStart; from: 1; to: 99; value: 1 }
                         focusPolicy: Qt.StrongFocus
-                    MichiButton { text: "Numerar discos"; variant: "secondary"; onClicked: {
+                    MichiButton { text: qsTr("Numerar discos"); variant: "secondary"; onClicked: {
                         if (root.mb) root.mb.batchSetField(root.selectedFiles, "disc_number", String(discStart.value))
                     } }
                 }
@@ -103,7 +103,7 @@ Item {
 
             spacing: MichiTheme.spacing.sm
             MichiButton {
-                text: root._confirmApply ? "Confirmar aplicar lotes" : "Aplicar cambios"
+                text: root._confirmApply ? "Confirmar aplicar lotes" : qsTr("Aplicar cambios")
                 variant: root._confirmApply ? "danger" : "primary"
                 onClicked: {
                     if (!root._confirmApply) {
@@ -114,7 +114,7 @@ Item {
                 }
             }
             MichiButton {
-                text: "Cancelar"
+                text: qsTr("Cancelar")
                 variant: "ghost"
                 visible: root._confirmApply
                 onClicked: root._confirmApply = false

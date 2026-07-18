@@ -23,7 +23,7 @@ Dialog {
     signal importCompleted(string name, int count)
     signal importCancelled()
 
-    title: "Importar playlist"
+    title: qsTr("Importar playlist")
     modal: true
     x: (parent.width - width) / 2
     y: (parent.height - height) / 3
@@ -52,7 +52,7 @@ Dialog {
         width: parent ? parent.width : 380
 
         Text {
-            text: "Selecciona un archivo de lista de reproducción"
+            text: qsTr("Selecciona un archivo de lista de reproducción")
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.bodySize
             wrapMode: Text.WordWrap
@@ -60,7 +60,7 @@ Dialog {
         }
 
         Text {
-            text: "Formatos compatibles: M3U, M3U8, PLS, XSPF"
+            text: qsTr("Formatos compatibles: M3U, M3U8, PLS, XSPF")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
             wrapMode: Text.WordWrap
@@ -78,14 +78,14 @@ Dialog {
                 focusPolicy: Qt.StrongFocus
                 id: pathInput
                 width: parent.width - 80
-                placeholderText: "Ruta del archivo (.m3u, .pls, .xspf)"
+                placeholderText: qsTr("Ruta del archivo (.m3u, .pls, .xspf)")
                 readOnly: true
                 Accessible.role: Accessible.Button
 
                 text: root._importPath
             }
             MichiButton {
-                text: "Examinar"
+                text: qsTr("Examinar")
                 variant: "secondary"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
@@ -130,24 +130,24 @@ Dialog {
             }
 
             Text {
-                text: "Vista previa:"
+                text: qsTr("Vista previa:")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
                 font.weight: MichiTheme.typography.weightMedium
             }
 
             Text {
-                text: "Total entradas: " + root._totalEntries
+                text: qsTr("Total entradas: ") + root._totalEntries
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.metaSize
             }
             Text {
-                text: "Válidas: " + root._validEntries
+                text: qsTr("Válidas: ") + root._validEntries
                 color: MichiTheme.colors.success
                 font.pixelSize: MichiTheme.typography.metaSize
             }
             Text {
-                text: "Faltantes: " + root._missingEntries
+                text: qsTr("Faltantes: ") + root._missingEntries
                 color: root._missingEntries > 0 ? MichiTheme.colors.warning : MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
             }
@@ -189,7 +189,7 @@ Dialog {
             layoutDirection: Qt.RightToLeft
 
             MichiButton {
-                text: root._importing ? "Importando..." : "Importar"
+                text: root._importing ? "Importando..." : qsTr("Importar")
                 variant: "primary"
                 enabled: !root._importing && root._importPath !== "" && root._validEntries > 0
                 activeFocusOnTab: true
@@ -222,7 +222,7 @@ Dialog {
             }
 
             MichiButton {
-                text: root._importing ? "Cancelar" : "Cerrar"
+                text: root._importing ? "Cancelar" : qsTr("Cerrar")
                 variant: "ghost"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()

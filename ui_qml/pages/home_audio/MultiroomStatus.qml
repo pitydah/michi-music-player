@@ -32,19 +32,19 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 Text {
-                    text: "Estado multiroom"
+                    text: qsTr("Estado multiroom")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                 }
                 StatusBadge {
-                    text: root.syncActive ? "Sincronizado" : "Sin sincronizar"
+                    text: root.syncActive ? "Sincronizado" : qsTr("Sin sincronizar")
                     kind: root.syncActive ? "success" : "disconnected"
                 }
             }
 
             Text {
-                text: root.zoneDevices.length > 0 ? root.zoneDevices.length + " dispositivo(s) en la zona" : "Sin dispositivos en esta zona"
+                text: root.zoneDevices.length > 0 ? root.zoneDevices.length + " dispositivo(s) en la zona" : qsTr("Sin dispositivos en esta zona")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
             }
@@ -65,7 +65,7 @@ Item {
                     }
 
                     StatusBadge {
-                        text: modelData.connected ? "Conectado" : "Desconectado"
+                        text: modelData.connected ? "Conectado" : qsTr("Desconectado")
                         kind: modelData.connected ? "success" : "disconnected"
                     }
                 }

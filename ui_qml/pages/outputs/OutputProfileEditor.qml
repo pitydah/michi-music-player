@@ -38,7 +38,7 @@ Item {
             spacing: MichiTheme.spacing.sm
 
             Text {
-                text: root._isNew ? "Crear perfil" : "Editar perfil"
+                text: root._isNew ? "Crear perfil" : qsTr("Editar perfil")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -47,20 +47,20 @@ Item {
             MichiSearchField {
                 id: nameField
                 width: parent.width
-                placeholderText: "Nombre del perfil"
+                placeholderText: qsTr("Nombre del perfil")
                 text: root._isNew ? "" : (root.profileData.name || "")
             }
 
             MichiSearchField {
                 id: descField
                 width: parent.width
-                placeholderText: "Descripción"
+                placeholderText: qsTr("Descripción")
                 text: root._isNew ? "" : (root.profileData.description || "")
             }
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                Text { text: "Backend:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: qsTr("Backend:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
                 ComboBox {
                     focusPolicy: Qt.StrongFocus
                     id: backendCombo
@@ -77,7 +77,7 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                Text { text: "Frecuencia:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: qsTr("Frecuencia:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
                 ComboBox {
                     focusPolicy: Qt.StrongFocus
                     Accessible.role: Accessible.ComboBox
@@ -94,7 +94,7 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                Text { text: "Bits:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: qsTr("Bits:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
                 ComboBox {
                     focusPolicy: Qt.StrongFocus
                     id: bitDepthCombo
@@ -105,7 +105,7 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                Text { text: "Canales:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: qsTr("Canales:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
                 ComboBox {
                     focusPolicy: Qt.StrongFocus
                     id: channelsCombo
@@ -116,7 +116,7 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                Text { text: "Exclusivo:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: qsTr("Exclusivo:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
                 CheckBox {
                     id: exclusiveCheck
                     checked: !root._isNew && root.profileData.exclusive_mode
@@ -125,7 +125,7 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                Text { text: "Bit-perfect:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: qsTr("Bit-perfect:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
                 CheckBox {
                     id: bitperfectCheck
                     checked: !root._isNew && root.profileData.bitperfect
@@ -135,7 +135,7 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
-                    text: "Guardar"
+                    text: qsTr("Guardar")
                     variant: "primary"
                     enabled: nameField.text.trim() !== ""
                     onClicked: {
@@ -166,7 +166,7 @@ Item {
                 }
 
                 MichiButton {
-                    text: "Cancelar"
+                    text: qsTr("Cancelar")
                     variant: "ghost"
                     onClicked: root.close()
                 }

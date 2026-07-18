@@ -27,19 +27,19 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: "Cargando diagnóstico" }
+        sourceComponent: LoadingState { title: qsTr("Cargando diagnóstico") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
-        sourceComponent: ErrorState { message: "Diagnóstico no disponible" }
+        sourceComponent: ErrorState { message: qsTr("Diagnóstico no disponible") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: "Sin datos de diagnóstico" }
+        sourceComponent: EmptyState { title: qsTr("Sin datos de diagnóstico") }
     }
 
     Flickable {
@@ -56,7 +56,7 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Text {
-                text: "Diagnóstico"
+                text: qsTr("Diagnóstico")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -70,7 +70,7 @@ Item {
                     variant: modelData.ok ? "base" : "danger"
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
-                        Text { width: 30; text: modelData.ok ? "[OK]" : "[--]"; color: modelData.ok ? MichiTheme.colors.success : MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
+                        Text { width: 30; text: modelData.ok ? "[OK]" : qsTr("[--]"); color: modelData.ok ? MichiTheme.colors.success : MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
                         Text { width: parent.width * 0.35; text: modelData.key || ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight }
                         Text { width: parent.width * 0.50; text: modelData.value || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight }
                     }
@@ -79,14 +79,14 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                MichiButton { objectName: "refreshDiagnosticsButton"; text: "Refrescar"; variant: "primary"; onClicked: { if (root.diag) root.diag.refresh() } }
-                MichiButton { objectName: "copyDiagnosticsButton"; text: "Copiar diagnóstico"; variant: "ghost"; onClicked: { if (root.diag) root.diag.copyDiagnostics() } }
+                MichiButton { objectName: qsTr("refreshDiagnosticsButton"); text: "Refrescar"; variant: "primary"; onClicked: { if (root.diag) root.diag.refresh() } }
+                MichiButton { objectName: qsTr("copyDiagnosticsButton"); text: "Copiar diagnóstico"; variant: "ghost"; onClicked: { if (root.diag) root.diag.copyDiagnostics() } }
             }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md; variant: "status"
                 Column { anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
-                    StatusBadge { text: "Para depuración técnica"; kind: "info" }
+                    StatusBadge { text: qsTr("Para depuración técnica"); kind: "info" }
                 }
             }
         }

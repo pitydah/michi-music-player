@@ -85,13 +85,13 @@ Item {
                 Layout.bottomMargin: MichiTheme.spacing.xl
 
                 PageHeader {
-                    title: "General"
-                    subtitle: "Idioma, comportamiento y preferencias de ventana"
+                    title: qsTr("General")
+                    subtitle: qsTr("Idioma, comportamiento y preferencias de ventana")
                 }
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Idioma"
+                    title: qsTr("Idioma")
                     interactive: false
 
                     ColumnLayout {
@@ -107,12 +107,12 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Idioma de la interfaz"
+                                    text: qsTr("Idioma de la interfaz")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                                 Label {
-                                    text: "Requiere reiniciar la aplicación"
+                                    text: qsTr("Requiere reiniciar la aplicación")
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
@@ -124,12 +124,12 @@ Item {
                                 activeFocusOnTab: true
                                 focusPolicy: Qt.StrongFocus
                                 model: ListModel {
-                                    ListElement { text: "Español"; value: "es" }
-                                    ListElement { text: "English"; value: "en" }
-                                    ListElement { text: "Français"; value: "fr" }
-                                    ListElement { text: "Deutsch"; value: "de" }
-                                    ListElement { text: "Português"; value: "pt" }
-                                    ListElement { text: "Italiano"; value: "it" }
+                                    ListElement { text: qsTr("Español"); value: "es" }
+                                    ListElement { text: qsTr("English"); value: "en" }
+                                    ListElement { text: qsTr("Français"); value: "fr" }
+                                    ListElement { text: qsTr("Deutsch"); value: "de" }
+                                    ListElement { text: qsTr("Português"); value: "pt" }
+                                    ListElement { text: qsTr("Italiano"); value: "it" }
                                 }
                                 textRole: "text"
                                 valueRole: "value"
@@ -148,7 +148,7 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Tema"
+                    title: qsTr("Tema")
                     interactive: false
 
                     ColumnLayout {
@@ -164,12 +164,12 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Modo de tema"
+                                    text: qsTr("Modo de tema")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                                 Label {
-                                    text: "Sistema, claro u oscuro"
+                                    text: qsTr("Sistema, claro u oscuro")
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
@@ -179,9 +179,9 @@ Item {
                                 focusPolicy: Qt.StrongFocus
                                 Accessible.name: "Modo de tema"
                                 model: ListModel {
-                                    ListElement { text: "Sistema"; value: "system" }
-                                    ListElement { text: "Claro"; value: "light" }
-                                    ListElement { text: "Oscuro"; value: "dark" }
+                                    ListElement { text: qsTr("Sistema"); value: "system" }
+                                    ListElement { text: qsTr("Claro"); value: "light" }
+                                    ListElement { text: qsTr("Oscuro"); value: "dark" }
                                 }
                                 textRole: "text"
                                 valueRole: "value"
@@ -199,7 +199,7 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Comportamiento de ventana"
+                    title: qsTr("Comportamiento de ventana")
                     interactive: false
 
                     ColumnLayout {
@@ -211,7 +211,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Cerrar a la bandeja"
+                                text: qsTr("Cerrar a la bandeja")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -229,7 +229,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Iniciar minimizado"
+                                text: qsTr("Iniciar minimizado")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -247,7 +247,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Recordar sesión"
+                                text: qsTr("Recordar sesión")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -266,7 +266,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Confirmar salida"
+                                text: qsTr("Confirmar salida")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -281,7 +281,7 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Actualizaciones"
+                    title: qsTr("Actualizaciones")
                     interactive: false
 
                     ColumnLayout {
@@ -293,7 +293,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
-                                text: "Buscar actualizaciones automáticamente"
+                                text: qsTr("Buscar actualizaciones automáticamente")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -309,7 +309,7 @@ Item {
 
                         MichiButton {
                             objectName: "checkUpdatesButton"
-                            text: "Buscar actualizaciones ahora"
+                            text: qsTr("Buscar actualizaciones ahora")
                             variant: "ghost"
                             Layout.fillWidth: true
                             onClicked: root._checkForUpdates()
@@ -319,7 +319,7 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
-                    title: "Caché"
+                    title: qsTr("Caché")
                     interactive: false
 
                     ColumnLayout {
@@ -335,12 +335,12 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
-                                    text: "Tamaño de caché"
+                                    text: qsTr("Tamaño de caché")
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                                 Label {
-                                    text: root.loadingCache ? "Calculando..." : (root.cacheSize > 0 ? root.cacheSize.toFixed(1) + " MB" : "0 MB")
+                                    text: root.loadingCache ? "Calculando..." : (root.cacheSize > 0 ? root.cacheSize.toFixed(1) + " MB" : qsTr("0 MB"))
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
@@ -348,7 +348,7 @@ Item {
 
                             MichiButton {
                                 objectName: "clearCacheButton"
-                                text: "Limpiar caché"
+                                text: qsTr("Limpiar caché")
                                 variant: "danger"
                                 enabled: root.cacheSize > 0 && !root.loadingCache
                                 onClicked: confirmClearCache.open()
@@ -363,8 +363,8 @@ Item {
     }
 
     ConfirmActionDialog {
-        title: "Limpiar caché"
-        message: "¿Estás seguro de que deseas limpiar la caché? Los datos se volverán a descargar según sea necesario."
+        title: qsTr("Limpiar caché")
+        message: qsTr("¿Estás seguro de que deseas limpiar la caché? Los datos se volverán a descargar según sea necesario.")
         danger: true
         onConfirmed: root._clearCache()
     }

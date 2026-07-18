@@ -12,7 +12,7 @@ GlassCard {
     id: root
     
     property string icon: "🔍"
-    property string title: "Área"
+    property string title: qsTr("Área")
     property string description: "Descripción del área"
     property string areaStatus: "available" // available, partial, experimental, missing_dependency
     property int toolsCount: 0
@@ -122,14 +122,14 @@ GlassCard {
             spacing: 5
             
             Label {
-                text: "Explorar"
+                text: qsTr("Explorar")
                 font.pixelSize: 12
                 font.bold: true
                 color: root.statusColor
             }
             
             Label {
-                text: "›"
+                text: qsTr("›")
                 font.pixelSize: 20
                 color: root.statusColor
             }

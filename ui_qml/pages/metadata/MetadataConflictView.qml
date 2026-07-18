@@ -18,7 +18,7 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.sm
 
-        SectionHeader { text: "Conflictos"; width: parent.width }
+        SectionHeader { text: qsTr("Conflictos"); width: parent.width }
 
         GlassMaterial {
             width: parent.width; radius: MichiTheme.radius.md; variant: "base"
@@ -39,7 +39,7 @@ Item {
                                 font.weight: MichiTheme.typography.weightMedium
                             }
                             Text {
-                                text: "Valores diferentes entre archivos"
+                                text: qsTr("Valores diferentes entre archivos")
                                 color: MichiTheme.colors.warning
                                 font.pixelSize: MichiTheme.typography.metaSize
                             }

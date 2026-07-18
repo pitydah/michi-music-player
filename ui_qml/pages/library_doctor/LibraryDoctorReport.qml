@@ -17,7 +17,7 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.sm
 
-        SectionHeader { text: "Reporte"; width: parent.width }
+        SectionHeader { text: qsTr("Reporte"); width: parent.width }
 
         GlassMaterial {
             width: parent.width; radius: MichiTheme.radius.md; variant: "base"
@@ -27,7 +27,7 @@ Item {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
 
                 Text {
-                    text: "Resumen del diagnóstico"
+                    text: qsTr("Resumen del diagnóstico")
                     color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                 }
@@ -35,30 +35,30 @@ Item {
                 Item { width: 1; height: MichiTheme.spacing.sm }
 
                 Text {
-                    text: "Total revisados: " + (root.doc ? root.doc.totalChecked : 0)
+                    text: qsTr("Total revisados: ") + (root.doc ? root.doc.totalChecked : 0)
                     color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
                 }
 
                 Text {
-                    text: "Problemas encontrados: " + (root.doc ? root.doc.issueCount : 0)
+                    text: qsTr("Problemas encontrados: ") + (root.doc ? root.doc.issueCount : 0)
                     color: root.doc && root.doc.issueCount > 0 ? MichiTheme.colors.warning : MichiTheme.colors.success
                     font.pixelSize: MichiTheme.typography.bodySize
                 }
 
                 Text {
-                    text: root.doc ? "Archivos faltantes: " + root.doc.missingFileCount : ""
+                    text: root.doc ? "Archivos faltantes: qsTr(" + root.doc.missingFileCount : ")"
                     color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize
                     visible: text !== ""
                 }
 
                 Text {
-                    text: root.doc ? "Metadatos incompletos: " + root.doc.missingMetadataCount : ""
+                    text: root.doc ? "Metadatos incompletos: qsTr(" + root.doc.missingMetadataCount : ")"
                     color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize
                     visible: text !== ""
                 }
 
                 Text {
-                    text: root.doc ? "Saludables: " + root.doc.healthyCount : ""
+                    text: root.doc ? "Saludables: qsTr(" + root.doc.healthyCount : ")"
                     color: MichiTheme.colors.success; font.pixelSize: MichiTheme.typography.bodySize
                     visible: text !== ""
                 }
@@ -72,12 +72,12 @@ Item {
 
                         activeFocusOnTab: true
 
-                        text: "Volver a escanear"
+                        text: qsTr("Volver a escanear")
                         variant: "secondary"
                         onClicked: { if (root.doc && typeof root.doc.scan !== "undefined") root.doc.scan() }
                     }
                     MichiButton {
-                        text: "Exportar reporte"
+                        text: qsTr("Exportar reporte")
                         variant: "ghost"
                         onClicked: {
                             if (typeof notificationBridge !== "undefined" && notificationBridge)

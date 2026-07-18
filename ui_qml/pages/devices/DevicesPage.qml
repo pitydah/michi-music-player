@@ -41,19 +41,19 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: "Cargando dispositivos" }
+        sourceComponent: LoadingState { title: qsTr("Cargando dispositivos") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
-        sourceComponent: ErrorState { message: "Servicio de dispositivos no disponible" }
+        sourceComponent: ErrorState { message: qsTr("Servicio de dispositivos no disponible") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: "Sin dispositivos"; subtitle: "Configura dispositivos desde Conexiones" }
+        sourceComponent: EmptyState { title: qsTr("Sin dispositivos"); subtitle: "Configura dispositivos desde Conexiones" }
     }
 
     CapabilityGuard {
@@ -76,7 +76,7 @@ Item {
                 spacing: MichiTheme.spacing.md
 
                 Text {
-                    text: "Dispositivos y sincronización"
+                    text: qsTr("Dispositivos y sincronización")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -105,7 +105,7 @@ Item {
 
                 SectionHeader {
                     id: pairedHeader
-                    text: "Dispositivos emparejados"
+                    text: qsTr("Dispositivos emparejados")
                     width: parent.width
                 }
 
@@ -132,7 +132,7 @@ Item {
                 }
 
                 Text {
-                    text: "No hay dispositivos emparejados."
+                    text: qsTr("No hay dispositivos emparejados.")
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width
                     visible: root.devicesBridge && root.devicesBridge.pairedDevices.length === 0
@@ -140,7 +140,7 @@ Item {
 
                 SectionHeader {
                     id: networkHeader
-                    text: "Pares detectados en red"
+                    text: qsTr("Pares detectados en red")
                     width: parent.width
                 }
 
@@ -169,7 +169,7 @@ Item {
                 }
 
                 Text {
-                    text: "No se detectaron pares en la red."
+                    text: qsTr("No se detectaron pares en la red.")
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width
                     visible: root.devicesBridge && root.devicesBridge.peers.length === 0

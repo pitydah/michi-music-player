@@ -72,8 +72,8 @@ Item {
             active: root.checking
             sourceComponent: Component {
                 LoadingState {
-                    title: "Verificando disponibilidad"
-                    message: "Comprobando " + root.capabilityName + "..."
+                    title: qsTr("Verificando disponibilidad")
+                    message: qsTr("Comprobando ") + root.capabilityName + "..."
                 }
             }
         }
@@ -88,7 +88,7 @@ Item {
             anchors.centerIn: parent
             width: Math.min(implicitWidth + MichiTheme.spacing.xl * 2, parent.width * 0.85)
             title: root.capabilityName + " no disponible"
-            message: "Esta funcionalidad requiere servicios adicionales que no están activos."
+            message: qsTr("Esta funcionalidad requiere servicios adicionales que no están activos.")
             iconText: "\u26A0"
         }
     }

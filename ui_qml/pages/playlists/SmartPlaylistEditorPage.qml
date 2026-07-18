@@ -104,7 +104,7 @@ Item {
                 MichiButton {
                     Accessible.role: Accessible.Button
 
-                    text: "Volver"
+                    text: qsTr("Volver")
                     variant: "ghost"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
@@ -113,7 +113,7 @@ Item {
                 }
                 Item { Layout.fillWidth: true }
                 Text {
-                    text: "Smart playlist"
+                    text: qsTr("Smart playlist")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -128,7 +128,7 @@ Item {
             }
 
             Text {
-                text: "Nombre"
+                text: qsTr("Nombre")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
             }
@@ -138,12 +138,12 @@ Item {
                 id: nameInput
                 width: parent.width * 0.5
                 text: root.playlistName
-                placeholderText: "Nombre de la smart playlist"
+                placeholderText: qsTr("Nombre de la smart playlist")
                 activeFocusOnTab: true
             }
 
             Text {
-                text: "Modo de coincidencia"
+                text: qsTr("Modo de coincidencia")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
             }
@@ -151,7 +151,7 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
-                    text: "Todas las condiciones"
+                    text: qsTr("Todas las condiciones")
                     variant: root.matchMode === "all" ? "primary" : "secondary"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
@@ -161,7 +161,7 @@ Item {
                     onClicked: root.matchMode = "all"
                 }
                 MichiButton {
-                    text: "Cualquier condición"
+                    text: qsTr("Cualquier condición")
                     variant: root.matchMode === "any" ? "primary" : "secondary"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
@@ -171,7 +171,7 @@ Item {
             }
 
             SectionHeader {
-                text: "Grupos de reglas"
+                text: qsTr("Grupos de reglas")
                 width: parent.width
             }
 
@@ -195,7 +195,7 @@ Item {
                         RowLayout {
                             width: parent.width
                             Text {
-                                text: "Grupo " + (index + 1)
+                                text: qsTr("Grupo ") + (index + 1)
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 font.weight: MichiTheme.typography.weightMedium
@@ -219,7 +219,7 @@ Item {
                                 }
                             }
                             MichiButton {
-                                text: "X"
+                                text: qsTr("X")
                                 variant: "ghost"
                                 onClicked: root.removeRuleGroup(index)
                             }
@@ -261,7 +261,7 @@ Item {
                                     focusPolicy: Qt.StrongFocus
                                     Layout.fillWidth: true
                                     text: modelData.value || ""
-                                    placeholderText: "Valor"
+                                    placeholderText: qsTr("Valor")
                                     onTextChanged: {
                                         var groups = root.ruleGroups.slice()
                                         groups[model.index].rules[modelIndex].value = text
@@ -269,7 +269,7 @@ Item {
                                     }
                                 }
                                 MichiButton {
-                                    text: "X"
+                                    text: qsTr("X")
                                     variant: "ghost"
                                     onClicked: root.removeRule(model.index, modelIndex)
                                 }
@@ -277,7 +277,7 @@ Item {
                         }
 
                         MichiButton {
-                            text: "+ Añadir regla"
+                            text: qsTr("+ Añadir regla")
                             variant: "ghost"
                             activeFocusOnTab: true
                             Keys.onReturnPressed: onClicked()
@@ -289,7 +289,7 @@ Item {
             }
 
             MichiButton {
-                text: "+ Añadir grupo de reglas"
+                text: qsTr("+ Añadir grupo de reglas")
                 variant: "ghost"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
@@ -298,7 +298,7 @@ Item {
             }
 
             Text {
-                text: "Opciones adicionales"
+                text: qsTr("Opciones adicionales")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
                 font.weight: MichiTheme.typography.weightMedium
@@ -307,7 +307,7 @@ Item {
             RowLayout {
                 width: parent.width
                 Text {
-                    text: "Limitar a:"
+                    text: qsTr("Limitar a:")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                     Layout.alignment: Qt.AlignVCenter
@@ -321,7 +321,7 @@ Item {
                     onValueChanged: root.limitCount = value
                 }
                 Text {
-                    text: "(0 = sin límite)"
+                    text: qsTr("(0 = sin límite)")
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.metaSize
                     Layout.alignment: Qt.AlignVCenter
@@ -330,7 +330,7 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 Text {
-                    text: "Ordenar por:"
+                    text: qsTr("Ordenar por:")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
@@ -351,7 +351,7 @@ Item {
             RowLayout {
                 width: parent.width
                 MichiButton {
-                    text: "Previsualizar (" + root._previewCount + " resultados)"
+                    text: qsTr("Previsualizar (") + root._previewCount + " resultados)"
                     variant: "secondary"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
@@ -360,7 +360,7 @@ Item {
                 }
                 Item { Layout.fillWidth: true }
                 MichiButton {
-                    text: root._saving ? "Guardando..." : "Guardar smart playlist"
+                    text: root._saving ? "Guardando..." : qsTr("Guardar smart playlist")
                     variant: "primary"
                     enabled: !root._saving && nameInput.text.trim() !== ""
                     activeFocusOnTab: true

@@ -22,7 +22,7 @@ Item {
         spacing: 4
 
         Text {
-            text: "Salida"
+            text: qsTr("Salida")
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.metaSize
             font.weight: MichiTheme.typography.weightMedium
@@ -33,7 +33,7 @@ Item {
             width: parent.width
             model: root.outputBridge ? root.outputBridge.profiles : []
             textRole: "name"
-            placeholderText: "Seleccionar salida..."
+            placeholderText: qsTr("Seleccionar salida...")
             currentIndex: _findActiveIndex()
             accessibleName: "Selector de perfil de salida"
             visible: root.outputBridge && root.outputBridge.profiles.length > 0

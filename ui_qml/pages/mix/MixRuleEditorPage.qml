@@ -79,14 +79,14 @@ Item {
                 MichiButton {
                     Accessible.role: Accessible.Button
 
-                    text: "Volver"; variant: "ghost"
+                    text: qsTr("Volver"); variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.tab: logicCombo
                     onClicked: root.backRequested()
                 }
 
                 Text {
-                    text: "Editor de reglas Mix"; color: MichiTheme.colors.textPrimary
+                    text: qsTr("Editor de reglas Mix"); color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -101,7 +101,7 @@ Item {
             }
 
             Text {
-                text: "Define reglas para generar un mix personalizado. Puedes combinar múltiples reglas con lógica AND/OR."
+                text: qsTr("Define reglas para generar un mix personalizado. Puedes combinar múltiples reglas con lógica AND/OR.")
                 color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize
                 wrapMode: Text.WordWrap; width: parent.width * 0.7
             }
@@ -111,7 +111,7 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 Text {
-                    text: "Lógica entre reglas:"; color: MichiTheme.colors.textPrimary
+                    text: qsTr("Lógica entre reglas:"); color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter
                 }
 
@@ -123,8 +123,8 @@ Item {
                     focusPolicy: Qt.StrongFocus
                     id: logicCombo; width: 120
                     model: [
-                        { text: "AND (todas)", value: true },
-                        { text: "OR (cualquiera)", value: false }
+                        { text: qsTr("AND (todas)"), value: true },
+                        { text: qsTr("OR (cualquiera)"), value: false }
                     ]
                     textRole: "text"; valueRole: "value"
                     currentIndex: 0
@@ -142,7 +142,7 @@ Item {
 
                 MichiButton {
                     id: addRuleBtn
-                    text: "+ Agregar regla"; variant: "secondary"
+                    text: qsTr("+ Agregar regla"); variant: "secondary"
                     activeFocusOnTab: true
                     KeyNavigation.tab: rulesList
                     KeyNavigation.backtab: logicCombo
@@ -220,7 +220,7 @@ Item {
                                 TextField {
                                     focusPolicy: Qt.StrongFocus
                                     width: 120; text: modelData.value || ""
-                                    placeholderText: "Valor"
+                                    placeholderText: qsTr("Valor")
                                     onTextChanged: modelData.value = text
                                     activeFocusOnTab: true
                                 }
@@ -229,7 +229,7 @@ Item {
 
                         MichiButton {
                             id: removeBtn
-                            text: "X"; variant: "ghost"
+                            text: qsTr("X"); variant: "ghost"
                             width: 36; height: 36
                         Accessible.role: Accessible.Button
 
@@ -251,7 +251,7 @@ Item {
 
                     MichiButton {
                         id: previewBtn
-                        text: "Vista previa"; variant: "secondary"
+                        text: qsTr("Vista previa"); variant: "secondary"
                         activeFocusOnTab: true
                         KeyNavigation.tab: applyBtn
                         KeyNavigation.backtab: rulesList
@@ -261,7 +261,7 @@ Item {
 
                     MichiButton {
                         id: applyBtn
-                        text: "Aplicar y generar mix"; variant: "primary"
+                        text: qsTr("Aplicar y generar mix"); variant: "primary"
                         activeFocusOnTab: true
                         KeyNavigation.tab: previewBtn
                         KeyNavigation.backtab: previewBtn
@@ -274,7 +274,7 @@ Item {
                 }
 
                 Text {
-                    text: root._previewCount > 0 ? "Candidatos estimados: " + root._previewCount : ""
+                    text: root._previewCount > 0 ? "Candidatos estimados: qsTr(" + root._previewCount : ")"
                     color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize
                     visible: root._previewCount > 0
                 }
@@ -282,7 +282,7 @@ Item {
 
             StatusBadge {
                 visible: root.mx === null
-                text: "Bridge no disponible — funcionalidad limitada"
+                text: qsTr("Bridge no disponible — funcionalidad limitada")
                 kind: "disconnected"
             }
         }

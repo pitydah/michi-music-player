@@ -45,7 +45,7 @@ Item {
                 anchors.rightMargin: MichiTheme.spacing.md
 
                 Text {
-                    text: root.groupByDecade ? "Agrupado por década" : "Agrupado por año"
+                    text: root.groupByDecade ? "Agrupado por década" : qsTr("Agrupado por año")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.metaSize
                 }
@@ -53,7 +53,7 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 MichiButton {
-                    text: root.groupByDecade ? "Año" : "Década"
+                    text: root.groupByDecade ? "Año" : qsTr("Década")
                     variant: "ghost"
                     implicitHeight: 24
                     onClicked: root.groupByDecade = !root.groupByDecade

@@ -44,7 +44,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: "Cargando Mix" }
+        sourceComponent: LoadingState { title: qsTr("Cargando Mix") }
     }
 
     Loader {
@@ -64,13 +64,13 @@ Item {
                     spacing: MichiTheme.spacing.md
                     width: parent.width - MichiTheme.spacing.xl * 2
 
-                    Text { text: "MX"; font.pixelSize: 36; anchors.horizontalCenter: parent.horizontalCenter }
-                    Text { text: "Mix no disponible"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold; anchors.horizontalCenter: parent.horizontalCenter }
-                    Text { text: "Los mixes personalizados combinan canciones de tu biblioteca segun genero, estado de animo y preferencias. Necesitas una suscripcion premium para acceder a recomendaciones inteligentes y mixes automaticos."; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; width: parent.width }
+                    Text { text: qsTr("MX"); font.pixelSize: 36; anchors.horizontalCenter: parent.horizontalCenter }
+                    Text { text: qsTr("Mix no disponible"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold; anchors.horizontalCenter: parent.horizontalCenter }
+                    Text { text: qsTr("Los mixes personalizados combinan canciones de tu biblioteca segun genero, estado de animo y preferencias. Necesitas una suscripcion premium para acceder a recomendaciones inteligentes y mixes automaticos."); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; width: parent.width }
                     Row {
                         anchors.horizontalCenter: parent.horizontalCenter; spacing: MichiTheme.spacing.sm
-                        MichiButton { text: "Configurar"; variant: "primary"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
-                        MichiButton { text: "Ver requisitos"; variant: "ghost"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
+                        MichiButton { text: qsTr("Configurar"); variant: "primary"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
+                        MichiButton { text: qsTr("Ver requisitos"); variant: "ghost"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
                     }
                 }
             }
@@ -81,7 +81,7 @@ Item {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
         sourceComponent: MichiBanner { 
-            message: "No hay mixes disponibles — explora tu biblioteca para comenzar"
+            message: qsTr("No hay mixes disponibles — explora tu biblioteca para comenzar")
             kind: "info"
             dismissible: false
             actionText: "Ir a biblioteca"
@@ -114,11 +114,11 @@ Item {
                     Column {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
                         Text {
-                            text: "Mix"; color: MichiTheme.colors.textPrimary
+                            text: qsTr("Mix"); color: MichiTheme.colors.textPrimary
                             font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold
                         }
                         Text {
-                            text: "Descubre, revive y explora tu música desde nuevas perspectivas."
+                            text: qsTr("Descubre, revive y explora tu música desde nuevas perspectivas.")
                             color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize
                             width: parent.width * 0.70; wrapMode: Text.WordWrap
                         }
@@ -127,7 +127,7 @@ Item {
 
                 SectionHeader {
                     id: yourMixesHeader
-                    text: "Tus mixes"
+                    text: qsTr("Tus mixes")
                     width: parent.width
                 }
 
@@ -153,14 +153,14 @@ Item {
 
                 SectionHeader {
                     id: smartMixesHeader
-                    text: "Smart Mixes personalizados"
+                    text: qsTr("Smart Mixes personalizados")
                     width: parent.width
                 }
 
                 MichiBanner {
                     id: smartMixInfo
                     width: parent.width
-                    message: "Crea mixes basados en reglas: artista, género, década, año, carpeta, calidad."
+                    message: qsTr("Crea mixes basados en reglas: artista, género, década, año, carpeta, calidad.")
                     kind: "info"
                     dismissible: true
                 }
@@ -172,7 +172,7 @@ Item {
                         Accessible.role: Accessible.Button
 
                         id: mixArtistBtn
-                        text: "+ Mix por artista"; variant: "secondary"
+                        text: qsTr("+ Mix por artista"); variant: "secondary"
                         activeFocusOnTab: true
                         KeyNavigation.tab: mixGenreBtn
                         KeyNavigation.backtab: smartMixInfo
@@ -183,7 +183,7 @@ Item {
 
                     MichiButton {
                         id: mixGenreBtn
-                        text: "+ Mix por género"; variant: "secondary"
+                        text: qsTr("+ Mix por género"); variant: "secondary"
                         activeFocusOnTab: true
                         KeyNavigation.tab: mixDecadeBtn
                         KeyNavigation.backtab: mixArtistBtn
@@ -193,7 +193,7 @@ Item {
                     }
                     MichiButton {
                         id: mixDecadeBtn
-                        text: "+ Mix por década"; variant: "secondary"
+                        text: qsTr("+ Mix por década"); variant: "secondary"
                         activeFocusOnTab: true
                         KeyNavigation.tab: mixAdvancedBtn
                         KeyNavigation.backtab: mixGenreBtn
@@ -203,7 +203,7 @@ Item {
                     }
                     MichiButton {
                         id: mixAdvancedBtn
-                        text: "Reglas avanzadas"; variant: "ghost"
+                        text: qsTr("Reglas avanzadas"); variant: "ghost"
                         activeFocusOnTab: true
                         KeyNavigation.backtab: mixDecadeBtn
                         Keys.onReturnPressed: onClicked()
@@ -217,7 +217,7 @@ Item {
 
                 StatusBadge {
                     visible: root.mx === null
-                    text: "Bridge no disponible"
+                    text: qsTr("Bridge no disponible")
                     kind: "disconnected"
                 }
             }

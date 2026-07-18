@@ -12,7 +12,7 @@ Page {
     id: page
     
     header: SectionHeader {
-        text: "Respaldar"
+        text: qsTr("Respaldar")
     }
     
     ScrollView {
@@ -29,7 +29,7 @@ Page {
             // Descripción del área
             Label {
                 Layout.fillWidth: true
-                text: "Herramientas para preservar tu colección musical: convierte formatos, normaliza volumen, extrae CDs de audio y digitaliza vinilos o cassettes."
+                text: qsTr("Herramientas para preservar tu colección musical: convierte formatos, normaliza volumen, extrae CDs de audio y digitaliza vinilos o cassettes.")
                 font.pixelSize: 14
                 color: MichiTheme.colors.textSecondary
                 wrapMode: Text.Wrap
@@ -40,7 +40,7 @@ Page {
                 model: [
                     { 
                         id: "conversion", 
-                        text: "Conversión de Formatos", 
+                        text: qsTr("Conversión de Formatos"), 
                         icon: "🔄", 
                         description: "Convierte entre FLAC, MP3, AAC, Opus, WAV preservando metadatos",
                         route: "audio_lab.conversion",
@@ -48,7 +48,7 @@ Page {
                     },
                     { 
                         id: "normalization", 
-                        text: "Normalización", 
+                        text: qsTr("Normalización"), 
                         icon: "⚖️", 
                         description: "Ajusta el volumen usando ReplayGain (no destructivo) o normalización destructiva",
                         route: "audio_lab.normalization",
@@ -56,7 +56,7 @@ Page {
                     },
                     { 
                         id: "cd_ripping", 
-                        text: "Ripeo de CD", 
+                        text: qsTr("Ripeo de CD"), 
                         icon: "💿", 
                         description: "Extrae pistas de CDs de audio con verificación de seguridad",
                         route: "audio_lab.cd_rip",
@@ -64,7 +64,7 @@ Page {
                     },
                     { 
                         id: "adc_recording", 
-                        text: "Grabación ADC (Vinilo/Cassette)", 
+                        text: qsTr("Grabación ADC (Vinilo/Cassette)"), 
                         icon: "🎙️", 
                         description: "Digitaliza vinilos y cassettes desde tocadiscos USB con ecualización RIAA",
                         route: "audio_lab.adc_record",
@@ -72,7 +72,7 @@ Page {
                     },
                     { 
                         id: "organization", 
-                        text: "Organización de Archivos", 
+                        text: qsTr("Organización de Archivos"), 
                         icon: "📂", 
                         description: "Reorganiza tu biblioteca con estructuras de carpetas personalizadas",
                         route: "audio_lab.organize",
@@ -150,7 +150,7 @@ Page {
                         
                         // Flecha de navegación
                         Label {
-                            text: "›"
+                            text: qsTr("›")
                             font.pixelSize: 28
                             color: MichiTheme.colors.accent
                         }
@@ -168,7 +168,7 @@ Page {
                     spacing: 10
                     
                     Label {
-                        text: "⚠️ Importante"
+                        text: qsTr("⚠️ Importante")
                         font.pixelSize: 14
                         font.bold: true
                         color: MichiTheme.colors.warning
@@ -176,7 +176,7 @@ Page {
                     
                     Label {
                         Layout.fillWidth: true
-                        text: "Las operaciones de conversión y normalización destructiva crean copias nuevas. Los archivos originales nunca se modifican ni eliminan automáticamente. Siempre verifica el espacio en disco antes de comenzar."
+                        text: qsTr("Las operaciones de conversión y normalización destructiva crean copias nuevas. Los archivos originales nunca se modifican ni eliminan automáticamente. Siempre verifica el espacio en disco antes de comenzar.")
                         font.pixelSize: 13
                         color: MichiTheme.colors.textSecondary
                         wrapMode: Text.Wrap

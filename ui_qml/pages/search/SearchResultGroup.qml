@@ -45,7 +45,7 @@ Item {
                         elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
-                        width: 24; text: "▶"; color: MichiTheme.colors.accent
+                        width: 24; text: qsTr("▶"); color: MichiTheme.colors.accent
                         font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter
                         visible: modelData.type === "track"
                         Accessible.role: Accessible.Button

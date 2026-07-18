@@ -18,13 +18,13 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.md
 
-        SectionHeader { text: "Archivo de referencia"; width: parent.width; objectName: "compareRefHeader"; Accessible.name: "Archivo de referencia" }
+        SectionHeader { text: qsTr("Archivo de referencia"); width: parent.width; objectName: "compareRefHeader"; Accessible.name: "Archivo de referencia" }
 
         AudioInputSelection {
             id: refInput
         }
 
-        SectionHeader { text: "Archivo a comparar"; width: parent.width; objectName: "compareTargetHeader"; Accessible.name: "Archivo a comparar" }
+        SectionHeader { text: qsTr("Archivo a comparar"); width: parent.width; objectName: "compareTargetHeader"; Accessible.name: "Archivo a comparar" }
 
         AudioInputSelection {
             id: targetInput
@@ -33,7 +33,7 @@ Item {
         MichiButton {
             Accessible.role: Accessible.Button
 
-            text: "Iniciar comparación"
+            text: qsTr("Iniciar comparación")
             variant: "primary"
             enabled: refInput.selectedFiles.length > 0 && targetInput.selectedFiles.length > 0
             activeFocusOnTab: true

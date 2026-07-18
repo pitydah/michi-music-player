@@ -33,16 +33,16 @@ Rectangle {
 
         Repeater {
             model: responsive.compact ? [
-                {label: "Título", key: "title", width: 0.40},
-                {label: "Artista", key: "artist", width: 0.30},
-                {label: "Álbum", key: "album", width: 0.30},
+                {label: qsTr("Título"), key: "title", width: 0.40},
+                {label: qsTr("Artista"), key: "artist", width: 0.30},
+                {label: qsTr("Álbum"), key: "album", width: 0.30},
             ] : [
-                {label: "Título", key: "title", width: 0.28},
-                {label: "Artista", key: "artist", width: 0.22},
-                {label: "Álbum", key: "album", width: 0.22},
-                {label: "Cal.", key: "", width: 40},
-                {label: "Año", key: "year", width: 40, right: true},
-                {label: "Dur.", key: "duration", width: 48, right: true},
+                {label: qsTr("Título"), key: "title", width: 0.28},
+                {label: qsTr("Artista"), key: "artist", width: 0.22},
+                {label: qsTr("Álbum"), key: "album", width: 0.22},
+                {label: qsTr("Cal."), key: "", width: 40},
+                {label: qsTr("Año"), key: "year", width: 40, right: true},
+                {label: qsTr("Dur."), key: "duration", width: 48, right: true},
             ]
 
             Rectangle {

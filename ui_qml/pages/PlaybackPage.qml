@@ -35,19 +35,19 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: "Cargando reproducción" }
+        sourceComponent: LoadingState { title: qsTr("Cargando reproducción") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
-        sourceComponent: ErrorState { message: "Servicio de reproducción no disponible" }
+        sourceComponent: ErrorState { message: qsTr("Servicio de reproducción no disponible") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: "Sin reproducción activa" }
+        sourceComponent: EmptyState { title: qsTr("Sin reproducción activa") }
     }
 
     Flickable {
@@ -88,7 +88,7 @@ Item {
 
                     Text {
                         anchors.centerIn: parent
-                        text: "♫"
+                        text: qsTr("♫")
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: 48
                         visible: parent.source === "" || parent.status === Image.Error
@@ -99,7 +99,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignHCenter
                     Layout.maximumWidth: 400
-                    text: root._hasTrack && root.ps ? root.ps.trackTitle : "Sin reproducción"
+                    text: root._hasTrack && root.ps ? root.ps.trackTitle : qsTr("Sin reproducción")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -136,10 +136,10 @@ Item {
                     spacing: MichiTheme.spacing.xs
                     visible: root.ps && root.ps.qualityInfoAvailable
 
-                    StatusBadge { text: root.ps ? root.ps.formatLabel : ""; kind: "info"; visible: text !== "" }
-                    StatusBadge { text: root.ps ? root.ps.sampleRate : ""; kind: "info"; visible: text !== "" }
-                    StatusBadge { text: root.ps ? root.ps.bitDepth : ""; kind: "info"; visible: text !== "" }
-                    StatusBadge { text: root.ps ? root.ps.bitrate : ""; kind: "info"; visible: text !== "" }
+                    StatusBadge { text: root.ps ? root.ps.formatLabel : ""; kind: qsTr("info"); visible: text !== "" }
+                    StatusBadge { text: root.ps ? root.ps.sampleRate : ""; kind: qsTr("info"); visible: text !== "" }
+                    StatusBadge { text: root.ps ? root.ps.bitDepth : ""; kind: qsTr("info"); visible: text !== "" }
+                    StatusBadge { text: root.ps ? root.ps.bitrate : ""; kind: qsTr("info"); visible: text !== "" }
                 }
 
                 StatusBadge {
@@ -178,7 +178,7 @@ Item {
                     spacing: MichiTheme.spacing.sm
 
                     Text {
-                        text: "Vol."
+                        text: qsTr("Vol.")
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
                     }
@@ -197,8 +197,8 @@ Item {
                     spacing: MichiTheme.spacing.sm
                     visible: root._hasTrack
 
-                    MichiButton { text: "Letra"; variant: "ghost"; onClicked: { if (root.nav) root.nav.navigate("lyrics") } }
-                    MichiButton { text: "Metadata"; variant: "ghost"; onClicked: { if (root.nav) root.nav.navigate("metadata_inspector") } }
+                    MichiButton { text: qsTr("Letra"); variant: "ghost"; onClicked: { if (root.nav) root.nav.navigate("lyrics") } }
+                    MichiButton { text: qsTr("Metadata"); variant: "ghost"; onClicked: { if (root.nav) root.nav.navigate("metadata_inspector") } }
                 }
             }
 
@@ -209,7 +209,7 @@ Item {
                 visible: root._hasTrack
 
                 Text {
-                    text: "Cola de reproducción"
+                    text: qsTr("Cola de reproducción")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -259,7 +259,7 @@ Item {
                 }
 
                 Text {
-                    text: "Historial reciente"
+                    text: qsTr("Historial reciente")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold

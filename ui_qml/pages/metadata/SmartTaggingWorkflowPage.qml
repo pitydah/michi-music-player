@@ -30,7 +30,7 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Text {
-                text: "Smart Tagging"
+                text: qsTr("Smart Tagging")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -40,15 +40,15 @@ Item {
                 width: parent.width; height: 100; radius: MichiTheme.radius.lg; showGlow: true
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
-                    Text { text: "Etiquetado inteligente"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
-                    Text { text: "Analiza, sugiere y aplica metadatos con control total."; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; width: parent.width * 0.80; wrapMode: Text.WordWrap }
+                    Text { text: qsTr("Etiquetado inteligente"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
+                    Text { text: qsTr("Analiza, sugiere y aplica metadatos con control total."); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; width: parent.width * 0.80; wrapMode: Text.WordWrap }
                 }
             }
 
             GlassCard {
                 width: parent.width; height: 70
-                title: root._selectedFile ? "Archivo seleccionado" : "Seleccionar archivo"
-                subtitle: root._selectedFile ? root._selectedFile.split("/").pop() : "Elige un archivo de audio"
+                title: root._selectedFile ? "Archivo seleccionado" : qsTr("Seleccionar archivo")
+                subtitle: root._selectedFile ? root._selectedFile.split("/").pop() : qsTr("Elige un archivo de audio")
                 variant: root._selectedFile ? "accent" : "base"
                 onClicked: fileDialog.open()
             }
@@ -60,7 +60,7 @@ Item {
 
                     activeFocusOnTab: true
 
-                    text: "Analizar"
+                    text: qsTr("Analizar")
                     variant: "primary"
                     enabled: root._selectedFile !== "" && (root.stb ? root.stb.status !== "scanning" : true)
                     onClicked: {
@@ -69,7 +69,7 @@ Item {
                     }
                 }
                 MichiButton {
-                    text: root.stb && root.stb.status === "scanning" ? "Cancelar" : "Limpiar"
+                    text: root.stb && root.stb.status === "scanning" ? "Cancelar" : qsTr("Limpiar")
                     variant: "ghost"
                     onClicked: {
                         if (root.stb && root.stb.status === "scanning" && typeof root.stb.cancelScan !== "undefined")
@@ -101,7 +101,7 @@ Item {
                 visible: root.stb && root.stb.status === "scanning"
             }
 
-            SectionHeader { text: "Sugerencias"; width: parent.width }
+            SectionHeader { text: qsTr("Sugerencias"); width: parent.width }
 
             Repeater {
                 model: root.stb ? root.stb.suggestions : []
@@ -129,18 +129,18 @@ Item {
                         Column {
                             width: parent.width * 0.30; anchors.verticalCenter: parent.verticalCenter
                             Text { text: modelData.field || ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium }
-                            Text { text: "Confianza: " + Math.round((modelData.confidence || 0) * 100) + "%"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+                            Text { text: qsTr("Confianza: ") + Math.round((modelData.confidence || 0) * 100) + "%"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                         }
 
                         Column {
                             width: parent.width * 0.25; anchors.verticalCenter: parent.verticalCenter
-                            Text { text: "Actual:"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+                            Text { text: qsTr("Actual:"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                             Text { text: modelData.current || "—"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize; elide: Text.ElideRight }
                         }
 
                         Column {
                             width: parent.width * 0.25; anchors.verticalCenter: parent.verticalCenter
-                            Text { text: "Sugerido:"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+                            Text { text: qsTr("Sugerido:"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                             Text { text: modelData.suggested || ""; color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.metaSize; elide: Text.ElideRight }
                         }
                     }
@@ -166,12 +166,12 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 visible: root.stb && root.stb.suggestions.length > 0
                 MichiButton {
-                    text: "Seleccionar alta confianza"
+                    text: qsTr("Seleccionar alta confianza")
                     variant: "ghost"
                     onClicked: { if (root.stb) root.stb.selectHighConfidence() }
                 }
                 MichiButton {
-                    text: "Seleccionar todos"
+                    text: qsTr("Seleccionar todos")
                     variant: "ghost"
                     onClicked: { if (root.stb) root.stb.selectAll() }
                 }
@@ -180,7 +180,7 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
-                    text: root._confirmApply ? "Confirmar aplicar" : "Aplicar seleccionados"
+                    text: root._confirmApply ? "Confirmar aplicar" : qsTr("Aplicar seleccionados")
                     variant: root._confirmApply ? "danger" : "primary"
                     visible: root.stb && root.stb.suggestions.length > 0
                     Accessible.role: Accessible.Button
@@ -199,7 +199,7 @@ Item {
                     }
                 }
                 MichiButton {
-                    text: "Cancelar"
+                    text: qsTr("Cancelar")
                     variant: "ghost"
                     visible: root._confirmApply
                     onClicked: root._confirmApply = false
@@ -210,8 +210,8 @@ Item {
                 width: parent.width; radius: MichiTheme.radius.md; variant: "status"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
-                    StatusBadge { text: "No se auto-aceptan sugerencias de baja confianza"; kind: "info" }
-                    StatusBadge { text: "Experimental"; kind: "experimental" }
+                    StatusBadge { text: qsTr("No se auto-aceptan sugerencias de baja confianza"); kind: "info" }
+                    StatusBadge { text: qsTr("Experimental"); kind: "experimental" }
                 }
             }
         }
@@ -219,7 +219,7 @@ Item {
 
     FileDialog {
         id: fileDialog
-        title: "Seleccionar archivo de audio"
+        title: qsTr("Seleccionar archivo de audio")
         nameFilters: ["Archivos de audio (*.mp3 *.flac *.wav *.ogg *.m4a *.opus *.wma)", "Todos los archivos (*)"]
         onAccepted: {
             root._selectedFile = fileDialog.selectedFile.toString().replace("file://", "")

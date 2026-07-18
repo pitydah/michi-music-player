@@ -24,7 +24,7 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.sm
 
-        SectionHeader { text: "Problemas detectados"; width: parent.width }
+        SectionHeader { text: qsTr("Problemas detectados"); width: parent.width }
 
         Row {
             spacing: MichiTheme.spacing.sm
@@ -35,7 +35,7 @@ Item {
 
                 activeFocusOnTab: true
 
-                text: "Seleccionar todos"
+                text: qsTr("Seleccionar todos")
                 variant: "ghost"
                 onClicked: {
                     if (root.doc && typeof root.doc.selectAll !== "undefined")
@@ -48,7 +48,7 @@ Item {
 
 
             MichiButton {
-                text: "Deseleccionar todos"
+                text: qsTr("Deseleccionar todos")
                 variant: "ghost"
                 onClicked: {
                     if (root.doc && typeof root.doc.selectNone !== "undefined")

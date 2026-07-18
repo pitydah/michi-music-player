@@ -192,7 +192,7 @@ Item {
                 width: parent.width
 
                 MichiButton {
-                    text: "Volver"
+                    text: qsTr("Volver")
                     variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.tab: playAllBtn
@@ -233,7 +233,7 @@ Item {
                         font.pixelSize: MichiTheme.typography.bodySize
                     }
                     Text {
-                        text: root._duration.length > 0 ? "Duración: " + root._duration : ""
+                        text: root._duration.length > 0 ? "Duración: qsTr(" + root._duration : ")"
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
                         visible: text !== ""
@@ -252,14 +252,14 @@ Item {
             LoadingState {
                 width: parent.width
                 visible: root._state === "LOADING"
-                title: "Cargando playlist"
+                title: qsTr("Cargando playlist")
             }
 
             EmptyState {
                 width: parent.width
                 visible: root._state === "EMPTY"
-                title: "Playlist vacía"
-                subtitle: "Agrega canciones desde la biblioteca."
+                title: qsTr("Playlist vacía")
+                subtitle: qsTr("Agrega canciones desde la biblioteca.")
                 actionText: "Agregar canciones"
                 showAction: true
                 onActionClicked: root.addTracks()
@@ -268,7 +268,7 @@ Item {
             ErrorState {
                 width: parent.width
                 visible: root._state === "ERROR"
-                title: "Error al cargar"
+                title: qsTr("Error al cargar")
                 message: root._errorMsg || "No se pudo cargar la playlist."
                 showRetry: true
                 onRetryRequested: root.refresh()
@@ -280,7 +280,7 @@ Item {
 
                 MichiButton {
                     id: playAllBtn
-                    text: "Reproducir todo"
+                    text: qsTr("Reproducir todo")
                     variant: "primary"
                     activeFocusOnTab: true
                     KeyNavigation.tab: shuffleBtn
@@ -290,7 +290,7 @@ Item {
                 }
                 MichiButton {
                     id: shuffleBtn
-                    text: "Aleatorio"
+                    text: qsTr("Aleatorio")
                     variant: "secondary"
                     activeFocusOnTab: true
                     KeyNavigation.tab: addTracksBtn
@@ -301,7 +301,7 @@ Item {
                 }
                 MichiButton {
                     id: addTracksBtn
-                    text: "+ Agregar canciones"
+                    text: qsTr("+ Agregar canciones")
                     variant: "secondary"
                     activeFocusOnTab: true
                     KeyNavigation.tab: renameBtn
@@ -312,7 +312,7 @@ Item {
                 }
                 MichiButton {
                     id: renameBtn
-                    text: "Renombrar"
+                    text: qsTr("Renombrar")
                     variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.tab: duplicateBtn
@@ -323,7 +323,7 @@ Item {
                 }
                 MichiButton {
                     id: duplicateBtn
-                    text: "Duplicar"
+                    text: qsTr("Duplicar")
                     variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.tab: exportBtn
@@ -334,7 +334,7 @@ Item {
                 }
                 MichiButton {
                     id: exportBtn
-                    text: "Exportar M3U"
+                    text: qsTr("Exportar M3U")
                     variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.tab: selectToggleBtn
@@ -345,7 +345,7 @@ Item {
                 }
                 MichiButton {
                     id: selectToggleBtn
-                    text: root._selectionMode ? "Cancelar selección" : "Seleccionar"
+                    text: root._selectionMode ? "Cancelar selección" : qsTr("Seleccionar")
                     variant: "ghost"
                     highlighted: root._selectionMode
                     activeFocusOnTab: true
@@ -357,7 +357,7 @@ Item {
                 }
                 MichiButton {
                     id: batchRemoveBtn
-                    text: "Quitar seleccionadas (" + root._selectedTracks.length + ")"
+                    text: qsTr("Quitar seleccionadas (") + root._selectedTracks.length + ")"
                     variant: "danger"
                     visible: root._selectionMode && root._selectedTracks.length > 0
                     activeFocusOnTab: true
@@ -369,7 +369,7 @@ Item {
                 }
                 MichiButton {
                     id: deleteBtn
-                    text: root._confirmDelete ? "Confirmar eliminar" : "Eliminar playlist"
+                    text: root._confirmDelete ? "Confirmar eliminar" : qsTr("Eliminar playlist")
                     variant: root._confirmDelete ? "danger" : "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.backtab: batchRemoveBtn
@@ -381,7 +381,7 @@ Item {
                     }
                 }
                 MichiButton {
-                    text: "Cancelar"
+                    text: qsTr("Cancelar")
                     variant: "ghost"
                     visible: root._confirmDelete
                     activeFocusOnTab: true
@@ -425,7 +425,7 @@ Item {
 
     Dialog {
         id: renameDialog
-        title: "Renombrar playlist"
+        title: qsTr("Renombrar playlist")
         standardButtons: Dialog.Ok | Dialog.Cancel
         modal: true
         x: (parent.width - width) / 2
@@ -437,7 +437,7 @@ Item {
             width: 300
 
             Text {
-                text: "Nuevo nombre:"
+                text: qsTr("Nuevo nombre:")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
             }

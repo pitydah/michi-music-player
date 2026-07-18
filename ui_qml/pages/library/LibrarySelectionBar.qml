@@ -41,11 +41,11 @@ Rectangle {
 
         Item { Layout.fillWidth: true }
 
-        MichiButton { text: "Reproducir"; variant: "ghost"; onClicked: root.actionRequested("track_play_now", root.selectedIds) }
-        MichiButton { text: "Añadir a cola"; variant: "ghost"; onClicked: root.actionRequested("track_add_to_queue", root.selectedIds) }
-        MichiButton { text: "Añadir a playlist"; variant: "ghost"; onClicked: root.actionRequested("track_add_to_playlist", root.selectedIds) }
-        MichiButton { text: "Favorito"; variant: "ghost"; onClicked: root.actionRequested("track_favorite", root.selectedIds) }
-        MichiButton { text: "Deseleccionar"; variant: "ghost"; onClicked: { root.selectedIds = []; root.selectedCount = 0; root.selectionCleared(); root.visible = false } }
+        MichiButton { text: qsTr("Reproducir"); variant: "ghost"; onClicked: root.actionRequested("track_play_now", root.selectedIds) }
+        MichiButton { text: qsTr("Añadir a cola"); variant: "ghost"; onClicked: root.actionRequested("track_add_to_queue", root.selectedIds) }
+        MichiButton { text: qsTr("Añadir a playlist"); variant: "ghost"; onClicked: root.actionRequested("track_add_to_playlist", root.selectedIds) }
+        MichiButton { text: qsTr("Favorito"); variant: "ghost"; onClicked: root.actionRequested("track_favorite", root.selectedIds) }
+        MichiButton { text: qsTr("Deseleccionar"); variant: "ghost"; onClicked: { root.selectedIds = []; root.selectedCount = 0; root.selectionCleared(); root.visible = false } }
     }
 
     function clearSelection() {

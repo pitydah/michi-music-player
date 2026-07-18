@@ -33,13 +33,13 @@ Item {
                 anchors.fill: parent; anchors.leftMargin: MichiTheme.spacing.md
 
                 Text {
-                    text: "Archivos faltantes"
+                    text: qsTr("Archivos faltantes")
                     color: MichiTheme.colors.error
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                 }
                 Item { Layout.fillWidth: true }
-                MichiButton { text: "Refrescar"; variant: "ghost"; onClicked: root.reload() }
+                MichiButton { text: qsTr("Refrescar"); variant: "ghost"; onClicked: root.reload() }
             }
         }
 

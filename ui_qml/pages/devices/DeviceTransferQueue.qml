@@ -29,7 +29,7 @@ Item {
             spacing: MichiTheme.spacing.sm
 
             Text {
-                text: "Cola de transferencia"
+                text: qsTr("Cola de transferencia")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold

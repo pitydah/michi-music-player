@@ -18,7 +18,7 @@ Item {
         spacing: MichiTheme.spacing.sm
 
         Text {
-            text: "Reproducción"
+            text: qsTr("Reproducción")
             font.pixelSize: MichiTheme.typography.sectionTitleSize
             color: MichiTheme.colors.textPrimary
             font.weight: MichiTheme.typography.weightSemiBold

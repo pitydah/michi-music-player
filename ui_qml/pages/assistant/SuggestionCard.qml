@@ -71,7 +71,7 @@ Item {
                 activeFocusOnTab: true
 
                 anchors.verticalCenter: parent.verticalCenter
-                text: "Abrir"
+                text: qsTr("Abrir")
                 variant: "ghost"
                 onClicked: root.actionTriggered()
             }

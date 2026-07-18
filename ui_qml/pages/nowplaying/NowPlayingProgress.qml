@@ -32,7 +32,7 @@ Item {
             spacing: MichiTheme.spacing.xs
 
             Text {
-                text: root.ps ? formatTime(root.ps.position) : "0:00"
+                text: root.ps ? formatTime(root.ps.position) : qsTr("0:00")
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
             }
@@ -40,7 +40,7 @@ Item {
             Item { width: 1; height: 1 }
 
             Text {
-                text: root.ps ? formatTime(root.ps.duration) : "0:00"
+                text: root.ps ? formatTime(root.ps.duration) : qsTr("0:00")
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
                 horizontalAlignment: Text.AlignRight

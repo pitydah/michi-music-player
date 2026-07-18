@@ -30,19 +30,19 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: "Cargando Library Doctor" }
+        sourceComponent: LoadingState { title: qsTr("Cargando Library Doctor") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
-        sourceComponent: ErrorState { message: "Library Doctor no disponible" }
+        sourceComponent: ErrorState { message: qsTr("Library Doctor no disponible") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: "Sin datos de biblioteca" }
+        sourceComponent: EmptyState { title: qsTr("Sin datos de biblioteca") }
     }
 
     Flickable {
@@ -59,7 +59,7 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Text {
-                text: "Library Doctor"
+                text: qsTr("Library Doctor")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -102,14 +102,14 @@ Item {
 
                     activeFocusOnTab: true
 
-                    text: "Exportar reporte"
+                    text: qsTr("Exportar reporte")
                     variant: "ghost"
                     onClicked: exportDialog.open()
                 }
 
                 FileDialog {
                     id: exportDialog
-                    title: "Exportar reporte"
+                    title: qsTr("Exportar reporte")
                     fileMode: FileDialog.SaveFile
                     nameFilters: ["JSON (*.json)", "CSV (*.csv)"]
                     defaultSuffix: "json"
@@ -133,7 +133,7 @@ Item {
                     }
                 }
                 MichiButton {
-                    text: "Refrescar biblioteca"
+                    text: qsTr("Refrescar biblioteca")
                     variant: "ghost"
                     onClicked: {
                         if (root.doc && typeof root.doc.refresh !== "undefined")

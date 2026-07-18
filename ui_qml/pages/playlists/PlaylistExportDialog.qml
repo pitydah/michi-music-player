@@ -21,7 +21,7 @@ Dialog {
     signal exportCompleted(string path, int count)
     signal exportCancelled()
 
-    title: "Exportar playlist"
+    title: qsTr("Exportar playlist")
     modal: true
     x: (parent.width - width) / 2
     y: (parent.height - height) / 3
@@ -36,7 +36,7 @@ Dialog {
         width: parent ? parent.width : 360
 
         Text {
-            text: "Exportar \"" + root.playlistName + "\" como M3U"
+            text: qsTr("Exportar \")" + root.playlistName + "\" como M3U"
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.bodySize
             wrapMode: Text.WordWrap
@@ -44,7 +44,7 @@ Dialog {
         }
 
         Text {
-            text: "Selecciona la ruta de destino para el archivo .m3u"
+            text: qsTr("Selecciona la ruta de destino para el archivo .m3u")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
             wrapMode: Text.WordWrap
@@ -63,14 +63,14 @@ Dialog {
                 focusPolicy: Qt.StrongFocus
                 id: pathInput
                 width: parent.width - 80
-                placeholderText: "Destino del archivo .m3u"
+                placeholderText: qsTr("Destino del archivo .m3u")
                 text: root._exportPath
                 Accessible.role: Accessible.Button
 
                 readOnly: true
             }
             MichiButton {
-                text: "Examinar"
+                text: qsTr("Examinar")
                 variant: "secondary"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
@@ -118,7 +118,7 @@ Dialog {
             layoutDirection: Qt.RightToLeft
 
             MichiButton {
-                text: root._exporting ? "Exportando..." : "Exportar"
+                text: root._exporting ? "Exportando..." : qsTr("Exportar")
                 variant: "primary"
                 enabled: !root._exporting && root._exportPath !== ""
                 activeFocusOnTab: true
@@ -150,7 +150,7 @@ Dialog {
             }
 
             MichiButton {
-                text: root._exporting ? "Cancelar" : "Cerrar"
+                text: root._exporting ? "Cancelar" : qsTr("Cerrar")
                 variant: "ghost"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()

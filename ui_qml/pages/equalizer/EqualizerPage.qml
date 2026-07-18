@@ -35,7 +35,7 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Text {
-                text: "Ecualizador"
+                text: qsTr("Ecualizador")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -45,7 +45,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 Text {
-                    text: "Ecualizador"
+                    text: qsTr("Ecualizador")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
@@ -61,7 +61,7 @@ Item {
                 }
 
                 StatusBadge {
-                    text: "Bit-perfect bloquea EQ"
+                    text: qsTr("Bit-perfect bloquea EQ")
                     kind: "error"
                     visible: root.eq && root.eq.bitperfectConflict
                 }
@@ -73,7 +73,7 @@ Item {
 
                 MichiButton {
                     objectName: "eqBypassButton"
-                    text: root.eq && root.eq.bypass ? "Activar EQ" : "Bypass EQ"
+                    text: root.eq && root.eq.bypass ? "Activar EQ" : qsTr("Bypass EQ")
                     variant: root.eq && root.eq.bypass ? "primary" : "danger"
                     enabled: root._cap("backendAvailable")
                     onClicked: {
@@ -87,7 +87,7 @@ Item {
 
                 MichiButton {
                     objectName: "eqResetButton"
-                    text: "Restablecer"
+                    text: qsTr("Restablecer")
                     variant: "ghost"
                     enabled: root._cap("backendAvailable")
                     onClicked: {
@@ -123,7 +123,7 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 Text {
-                    text: "Preamp: " + (root.eq ? root.eq.preamp.toFixed(1) : "0.0") + " dB"
+                    text: qsTr("Preamp: ") + (root.eq ? root.eq.preamp.toFixed(1) : "0.0") + " dB"
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
@@ -139,7 +139,7 @@ Item {
                 }
             }
 
-            SectionHeader { text: "Bandas"; width: parent.width }
+            SectionHeader { text: qsTr("Bandas"); width: parent.width }
 
             Repeater {
                 model: root.eq && root._viewMode === "graphic" ? root.eq.graphicBands : []
@@ -170,7 +170,7 @@ Item {
                         anchors.right: parent.right
 
                         Text {
-                            text: "Banda " + (index + 1)
+                            text: qsTr("Banda ") + (index + 1)
                             color: MichiTheme.colors.textSecondary
                             font.pixelSize: MichiTheme.typography.metaSize
                             font.weight: MichiTheme.typography.weightMedium
@@ -225,7 +225,7 @@ Item {
                         }
 
                         Text {
-                            text: "Q: " + (modelData ? modelData.q.toFixed(1) : "0.7")
+                            text: qsTr("Q: ") + (modelData ? modelData.q.toFixed(1) : "0.7")
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.metaSize
                             width: 40
@@ -247,7 +247,7 @@ Item {
                 }
             }
 
-            SectionHeader { text: "Presets"; width: parent.width }
+            SectionHeader { text: qsTr("Presets"); width: parent.width }
 
             EqualizerPresetBrowser {
                 width: parent.width
@@ -260,8 +260,8 @@ Item {
                 width: parent.width; radius: MichiTheme.radius.md; variant: "status"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
-                    StatusBadge { text: "Controles no disponibles marcados"; kind: "info" }
-                    StatusBadge { text: root._cap("backendAvailable") ? "Backend conectado" : "Backend no disponible — solo vista"; kind: root._cap("backendAvailable") ? "success" : "disconnected" }
+                    StatusBadge { text: qsTr("Controles no disponibles marcados"); kind: "info" }
+                    StatusBadge { text: root._cap("backendAvailable") ? "Backend conectado" : qsTr("Backend no disponible — solo vista"); kind: root._cap("backendAvailable") ? "success" : "disconnected" }
                 }
             }
         }

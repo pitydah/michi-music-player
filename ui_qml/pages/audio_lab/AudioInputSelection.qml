@@ -72,7 +72,7 @@ Item {
 
     FileDialog {
         id: fileDialog
-        title: "Seleccionar archivos de audio"
+        title: qsTr("Seleccionar archivos de audio")
         fileMode: FileDialog.OpenFiles
         nameFilters: ["Archivos de audio (*.flac *.wav *.mp3 *.ogg *.opus *.m4a *.aac *.wma *.aiff *.dsf *.dff)"]
         onAccepted: {
@@ -110,7 +110,7 @@ Item {
         spacing: MichiTheme.spacing.md
 
         Text {
-            text: "Selección de entrada"
+            text: qsTr("Selección de entrada")
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold
         }
@@ -118,7 +118,7 @@ Item {
         Row {
             spacing: MichiTheme.spacing.sm
             MichiButton {
-                text: "Desde biblioteca"
+                text: qsTr("Desde biblioteca")
                 variant: "secondary"
                 activeFocusOnTab: true
                 onClicked: {
@@ -127,13 +127,13 @@ Item {
                 }
             }
             MichiButton {
-                text: "Seleccionar archivos"
+                text: qsTr("Seleccionar archivos")
                 variant: "secondary"
                 activeFocusOnTab: true
                 onClicked: fileDialog.open()
             }
             MichiButton {
-                text: "Pegar ruta"
+                text: qsTr("Pegar ruta")
                 variant: "ghost"
                 activeFocusOnTab: true
                 onClicked: {
@@ -151,7 +151,7 @@ Item {
             height: 60
             Text {
                 anchors.centerIn: parent
-                text: "Arrastra archivos aquí o usa los botones de selección"
+                text: qsTr("Arrastra archivos aquí o usa los botones de selección")
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
             }
@@ -164,7 +164,7 @@ Item {
             Row {
                 anchors.centerIn: parent; spacing: MichiTheme.spacing.sm
                 BusyIndicator { running: true; width: 20; height: 20 }
-                Text { text: "Cargando metadatos..."; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                Text { text: qsTr("Cargando metadatos..."); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
             }
         }
 
@@ -178,7 +178,7 @@ Item {
                     color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium
                 }
                 Text {
-                    text: "Tamaño total: " + (root.totalSize > 1048576 ? (root.totalSize / 1048576).toFixed(1) + " MB" : (root.totalSize / 1024).toFixed(1) + " KB")
+                    text: qsTr("Tamaño total: ") + (root.totalSize > 1048576 ? (root.totalSize / 1048576).toFixed(1) + " MB" : (root.totalSize / 1024).toFixed(1) + " KB")
                     color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; visible: root.totalSize > 0
                 }
                 Row {
@@ -208,7 +208,7 @@ Item {
                         elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
                     }
                     MichiButton {
-                        text: "x"; variant: "ghost"; implicitWidth: 32; implicitHeight: 24
+                        text: qsTr("x"); variant: "ghost"; implicitWidth: 32; implicitHeight: 24
                         activeFocusOnTab: true
                         onClicked: root.removeFile(index)
                     }
@@ -217,7 +217,7 @@ Item {
         }
 
         MichiButton {
-            text: "Limpiar selección"
+            text: qsTr("Limpiar selección")
             variant: "ghost"
             visible: root.state === root.stateHasFiles
             activeFocusOnTab: true

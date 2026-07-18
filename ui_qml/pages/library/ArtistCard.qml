@@ -34,7 +34,7 @@ Rectangle {
 
             Text {
                 anchors.centerIn: parent
-                text: artistName.length > 0 ? artistName.charAt(0).toUpperCase() : "?"
+                text: artistName.length > 0 ? artistName.charAt(0).toUpperCase() : qsTr("?")
                 color: MichiTheme.colors.accentBlue
                 font.pixelSize: MichiTheme.typography.displaySize
                 font.weight: MichiTheme.typography.weightBold

@@ -60,7 +60,7 @@ Item {
 
             Text {
                 width: parent.width
-                text: root.destructive ? "⚠ Acción destructiva" : "Confirmar acción"
+                text: root.destructive ? "⚠ Acción destructiva" : qsTr("Confirmar acción")
                 Accessible.role: Accessible.Graphic
                 Accessible.name: root.destructive ? "Advertencia: Acción destructiva" : "Confirmar acción"
                 color: root.destructive ? MichiTheme.colors.error : MichiTheme.colors.textPrimary
@@ -102,7 +102,7 @@ Item {
 
             Text {
                 width: parent.width
-                text: "¿Estás seguro?"
+                text: qsTr("¿Estás seguro?")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -114,7 +114,7 @@ Item {
                 layoutDirection: Qt.RightToLeft
 
                 MichiButton {
-                    text: root.destructive ? "Eliminar" : "Confirmar"
+                    text: root.destructive ? "Eliminar" : qsTr("Confirmar")
                     variant: root.destructive ? "danger" : "primary"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
@@ -122,7 +122,7 @@ Item {
                 }
 
                 MichiButton {
-                    text: "Cancelar"
+                    text: qsTr("Cancelar")
                     variant: "ghost"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()

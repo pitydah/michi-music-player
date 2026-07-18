@@ -29,19 +29,19 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: "Cargando ecualizador" }
+        sourceComponent: LoadingState { title: qsTr("Cargando ecualizador") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
-        sourceComponent: ErrorState { message: "Ecualizador no disponible" }
+        sourceComponent: ErrorState { message: qsTr("Ecualizador no disponible") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: "Sin presets de ecualización" }
+        sourceComponent: EmptyState { title: qsTr("Sin presets de ecualización") }
     }
 
     Flickable {
@@ -58,21 +58,21 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Text {
-                text: "Ecualizador"
+                text: qsTr("Ecualizador")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
             }
 
             StatusBadge {
-                text: root.eq && root.eq.backendAvailable ? "DSP conectado" : "DSP no disponible"
+                text: root.eq && root.eq.backendAvailable ? "DSP conectado" : qsTr("DSP no disponible")
                 kind: root.eq && root.eq.backendAvailable ? "success" : "disconnected"
             }
 
             Row {
                 spacing: MichiTheme.spacing.sm
                 Text {
-                    text: "Bypass"
+                    text: qsTr("Bypass")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
@@ -82,7 +82,7 @@ Item {
 
                     activeFocusOnTab: true
 
-                    text: root.eq && root.eq.bypass ? "Activado" : "Desactivado"
+                    text: root.eq && root.eq.bypass ? "Activado" : qsTr("Desactivado")
                     variant: root.eq && root.eq.bypass ? "danger" : "primary"
                     enabled: root.eq ? root.eq.backendAvailable : false
                     onClicked: {
@@ -94,15 +94,15 @@ Item {
 
             GlassCard {
                 width: parent.width; height: 80
-                title: "Preamplificador"
-                subtitle: "Ganancia: " + (root.eq ? root.eq.preamp.toFixed(1) : "0.0") + " dB"
+                title: qsTr("Preamplificador")
+                subtitle: qsTr("Ganancia: ") + (root.eq ? root.eq.preamp.toFixed(1) : "0.0") + " dB"
                 variant: "base"
                 onClicked: {
                     if (root.eq) root.eq.setPreamp(root.eq.preamp === 0.0 ? -6.0 : 0.0)
                 }
             }
 
-            SectionHeader { text: "Presets"; width: parent.width }
+            SectionHeader { text: qsTr("Presets"); width: parent.width }
 
             Repeater {
                 model: root.eq ? root.eq.presets : []
@@ -125,8 +125,8 @@ Item {
                 width: parent.width; radius: MichiTheme.radius.md; variant: "status"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
-                    StatusBadge { text: "Interfaz clásica disponible"; kind: "info" }
-                    StatusBadge { text: "Ecualizador avanzado"; kind: "info" }
+                    StatusBadge { text: qsTr("Interfaz clásica disponible"); kind: "info" }
+                    StatusBadge { text: qsTr("Ecualizador avanzado"); kind: "info" }
                 }
             }
         }

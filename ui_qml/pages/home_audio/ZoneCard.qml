@@ -71,7 +71,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
 
                     StatusBadge {
-                        text: root.zoneStatus === "playing" ? "Reproduciendo" : "En espera"
+                        text: root.zoneStatus === "playing" ? "Reproduciendo" : qsTr("En espera")
                         kind: root.zoneStatus === "playing" ? "active" : "disconnected"
                     }
                 }
@@ -85,13 +85,13 @@ Item {
 
                     activeFocusOnTab: true
 
-                    text: root.isMuted ? "Activar sonido" : "Silenciar"
+                    text: root.isMuted ? "Activar sonido" : qsTr("Silenciar")
                     variant: root.isMuted ? "secondary" : "ghost"
                     onClicked: root.zoneMuteToggled()
                 }
 
                 Text {
-                    text: "Vol: " + root.volume + "%"
+                    text: qsTr("Vol: ") + root.volume + "%"
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.metaSize
                     anchors.verticalCenter: parent.verticalCenter

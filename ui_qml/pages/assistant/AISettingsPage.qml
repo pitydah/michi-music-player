@@ -34,11 +34,11 @@ Item {
             width: parent.width
             spacing: MichiTheme.spacing.lg
 
-            SectionHeader { text: "Asistente Michi AI"; width: parent.width }
+            SectionHeader { text: qsTr("Asistente Michi AI"); width: parent.width }
 
             Text {
                 width: parent.width
-                text: "Selecciona el backend del asistente. Michi Calico está siempre disponible sin descargas adicionales."
+                text: qsTr("Selecciona el backend del asistente. Michi Calico está siempre disponible sin descargas adicionales.")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
                 wrapMode: Text.WordWrap
@@ -86,9 +86,9 @@ Item {
                                 spacing: MichiTheme.spacing.sm
                                 visible: model.size !== "0 MB"
 
-                                StatusBadge { text: model.size; kind: "info" }
-                                StatusBadge { text: model.ram; kind: "info" }
-                                StatusBadge { text: model.cpu; kind: "info" }
+                                StatusBadge { text: model.size; kind: qsTr("info") }
+                                StatusBadge { text: model.ram; kind: qsTr("info") }
+                                StatusBadge { text: model.cpu; kind: qsTr("info") }
                             }
                         }
 
@@ -143,7 +143,7 @@ Item {
                         }
 
                         MichiButton {
-                            text: "Cancelar"
+                            text: qsTr("Cancelar")
                             variant: "ghost"
                             implicitHeight: 24
                             font.pixelSize: MichiTheme.typography.metaSize
@@ -167,7 +167,7 @@ Item {
             }
 
             Text {
-                text: "Estado del backend activo"
+                text: qsTr("Estado del backend activo")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
@@ -184,13 +184,13 @@ Item {
                     spacing: MichiTheme.spacing.sm
 
                     Text {
-                        text: "Backend: " + (root.ai ? root.ai.backendType : "—")
+                        text: qsTr("Backend: ") + (root.ai ? root.ai.backendType : "—")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                     }
 
                     Text {
-                        text: "Estado: " + (root.ai ? root.ai.modelStatus : "—")
+                        text: qsTr("Estado: ") + (root.ai ? root.ai.modelStatus : "—")
                         color: root.ai && root.ai.modelStatus === "loaded" ? MichiTheme.colors.success :
                                root.ai && root.ai.modelStatus === "downloading" ? MichiTheme.colors.warning :
                                MichiTheme.colors.textSecondary
@@ -198,7 +198,7 @@ Item {
                     }
 
                     Text {
-                        text: "RAM en uso: " + (root.ai ? root.ai.ramUsageMb + " MB" : "—")
+                        text: qsTr("RAM en uso: ") + (root.ai ? root.ai.ramUsageMb + " MB" : "—")
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize
                         visible: root.ai && root.ai.ramUsageMb > 0
@@ -215,13 +215,13 @@ Item {
                         visible: root.ai && root.ai.modelStatus === "loaded"
 
                         MichiButton {
-                            text: "Liberar memoria"
+                            text: qsTr("Liberar memoria")
                             variant: "ghost"
                             onClicked: { if (root.ai) root.ai.unloadModel() }
                         }
 
                         MichiButton {
-                            text: "Probar backend"
+                            text: qsTr("Probar backend")
                             variant: "secondary"
                             onClicked: {
                                 if (root.ai) {
@@ -235,7 +235,7 @@ Item {
             }
 
             MichiButton {
-                text: "Volver"
+                text: qsTr("Volver")
                 variant: "ghost"
                 anchors.horizontalCenter: parent.horizontalCenter
                 onClicked: root.goBack()

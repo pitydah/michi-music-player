@@ -89,7 +89,7 @@ Item {
                 }
 
                 Text {
-                    text: "▶"
+                    text: qsTr("▶")
                     color: MichiTheme.colors.accent
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
@@ -106,7 +106,7 @@ Item {
                     }
                 }
                 Text {
-                    text: "☰"
+                    text: qsTr("☰")
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
@@ -133,29 +133,29 @@ Item {
             Menu {
                 id: contextMenu
                 MenuItem {
-                    text: "Reproducir"
+                    text: qsTr("Reproducir")
                     onTriggered: root.playRequested(
                         model.trackId || modelData.track_id || model.track_id || 0,
                         model.title || modelData.title || "")
                 }
                 MenuItem {
-                    text: "Añadir a la cola"
+                    text: qsTr("Añadir a la cola")
                     onTriggered: root.addToQueueRequested(
                         model.trackId || modelData.track_id || model.track_id || 0)
                 }
                 MenuItem {
-                    text: "Abrir pista"
+                    text: qsTr("Abrir pista")
                     onTriggered: root.openTrackRequested(
                         model.trackId || modelData.track_id || model.track_id || 0)
                 }
                 MenuItem {
-                    text: "Abrir álbum"
+                    text: qsTr("Abrir álbum")
                     onTriggered: root.openAlbumRequested(
                         model.trackId || modelData.track_id || model.track_id || 0)
                 }
                 MenuSeparator {}
                 MenuItem {
-                    text: "Eliminar evento"
+                    text: qsTr("Eliminar evento")
                     onTriggered: root.removeRequested(
                         model.id || modelData.id || model.eventId || modelData.event_id || 0,
                         model.trackId || modelData.track_id || model.track_id || 0)
@@ -166,7 +166,7 @@ Item {
         Text {
             anchors.centerIn: parent
             visible: timelineView.count === 0
-            text: "Sin historial de reproducción"
+            text: qsTr("Sin historial de reproducción")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.bodySize
         }

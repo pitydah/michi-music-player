@@ -35,14 +35,14 @@ Item {
             spacing: MichiTheme.spacing.sm
 
             Text {
-                text: "Transferencias"
+                text: qsTr("Transferencias")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
             }
 
             Text {
-                text: "Estado: " + (root.dv ? (root.dv.transferActive ? "Activo" : "Inactivo") : "No disponible")
+                text: qsTr("Estado: ") + (root.dv ? (root.dv.transferActive ? "Activo" : "Inactivo") : "No disponible")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.metaSize
                 visible: root.deviceKey !== ""
@@ -137,7 +137,7 @@ Item {
                                 }
 
                                 MichiButton {
-                                    text: "Cancelar"
+                                    text: qsTr("Cancelar")
                                     variant: "ghost"
                                     visible: {
                                         var s = modelData.status || modelData.state || ""
@@ -152,7 +152,7 @@ Item {
                                 }
 
                                 MichiButton {
-                                    text: "Reintentar"
+                                    text: qsTr("Reintentar")
                                     variant: "ghost"
                                     visible: {
                                         var s = modelData.status || modelData.state || ""
@@ -180,7 +180,7 @@ Item {
                 visible: root.deviceKey !== ""
 
                 MichiButton {
-                    text: "Iniciar transferencia"
+                    text: qsTr("Iniciar transferencia")
                     Accessible.role: Accessible.Button
 
                     variant: "primary"
@@ -191,7 +191,7 @@ Item {
                 }
 
                 MichiButton {
-                    text: "Cancelar todo"
+                    text: qsTr("Cancelar todo")
                     variant: "ghost"
                     visible: root.transferJobs.length > 0
                     onClicked: root.cancelTransferClicked()

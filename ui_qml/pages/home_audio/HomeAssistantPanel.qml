@@ -34,7 +34,7 @@ Item {
                 spacing: MichiTheme.spacing.md
 
                 Text {
-                    text: "Home Assistant"
+                    text: qsTr("Home Assistant")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -57,19 +57,19 @@ Item {
 
                         activeFocusOnTab: true
 
-                        text: root.state === "not_configured" ? "Configurar Home Assistant" : "Abrir Home Assistant"
+                        text: root.state === "not_configured" ? "Configurar Home Assistant" : qsTr("Abrir Home Assistant")
                         variant: "primary"
                         onClicked: root.configureClicked()
                     }
                     MichiButton {
-                        text: "Diagnóstico"
+                        text: qsTr("Diagnóstico")
                         variant: "ghost"
                         onClicked: root.openDiagnostics()
                     }
                 }
 
                 StatusBadge {
-                    text: root.state === "not_configured" ? "No configurado" : "Conectado"
+                    text: root.state === "not_configured" ? "No configurado" : qsTr("Conectado")
                     kind: root.state === "not_configured" ? "disconnected" : "success"
                 }
             }

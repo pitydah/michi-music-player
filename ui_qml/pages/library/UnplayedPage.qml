@@ -32,13 +32,13 @@ Item {
             RowLayout {
                 anchors.fill: parent; anchors.leftMargin: MichiTheme.spacing.md
                 Text {
-                    text: "No reproducidos"
+                    text: qsTr("No reproducidos")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                 }
                 Item { Layout.fillWidth: true }
-                MichiButton { text: "Refrescar"; variant: "ghost"; onClicked: root.reload() }
+                MichiButton { text: qsTr("Refrescar"); variant: "ghost"; onClicked: root.reload() }
             }
         }
 

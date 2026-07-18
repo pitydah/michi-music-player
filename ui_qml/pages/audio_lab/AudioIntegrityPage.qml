@@ -73,20 +73,20 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Text {
-                text: "Integridad de audio"
+                text: qsTr("Integridad de audio")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
             }
 
             Text {
-                text: "Validación de formato, cabeceras, metadatos, detección de corrupción y duplicados"
+                text: qsTr("Validación de formato, cabeceras, metadatos, detección de corrupción y duplicados")
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
             }
 
             AudioInputSelection { id: inputSelection }
             AudioSelectionSummary { width: parent.width }
 
-            SectionHeader { text: "Tipos de verificación"; width: parent.width; objectName: "integrityTypesHeader"; Accessible.name: "Tipos de verificación" }
+            SectionHeader { text: qsTr("Tipos de verificación"); width: parent.width; objectName: "integrityTypesHeader"; Accessible.name: "Tipos de verificación" }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md; variant: "base"
@@ -101,7 +101,7 @@ Item {
 
                             Accessible.checked: root.checked
 
-                            checked: root._checkFormat; text: "Validación de formato"
+                            checked: root._checkFormat; text: qsTr("Validación de formato")
                             activeFocusOnTab: true
                             Keys.onReturnPressed: toggle()
                             Keys.onSpacePressed: toggle()
@@ -117,7 +117,7 @@ Item {
                     Row {
                         spacing: MichiTheme.spacing.sm
                         CheckBox {
-                            checked: root._checkMetadata; text: "Integridad de metadatos"
+                            checked: root._checkMetadata; text: qsTr("Integridad de metadatos")
                             activeFocusOnTab: true
                             Keys.onReturnPressed: toggle()
                             Keys.onSpacePressed: toggle()
@@ -133,7 +133,7 @@ Item {
                     Row {
                         spacing: MichiTheme.spacing.sm
                         CheckBox {
-                            checked: root._checkHeader; text: "Cabeceras y estructura"
+                            checked: root._checkHeader; text: qsTr("Cabeceras y estructura")
                             activeFocusOnTab: true
                             Keys.onReturnPressed: toggle()
                             Keys.onSpacePressed: toggle()
@@ -143,12 +143,12 @@ Item {
                 }
             }
 
-            SectionHeader { text: "Acciones"; width: parent.width; objectName: "integrityActionsHeader"; Accessible.name: "Acciones" }
+            SectionHeader { text: qsTr("Acciones"); width: parent.width; objectName: "integrityActionsHeader"; Accessible.name: "Acciones" }
 
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
-                    text: "Verificar integridad"
+                    text: qsTr("Verificar integridad")
                     variant: "primary"
                     enabled: inputSelection.selectedFiles.length > 0 && root._state !== root.stateChecking
                     activeFocusOnTab: true
@@ -157,7 +157,7 @@ Item {
                     onClicked: root._startCheck(false)
                 }
                 MichiButton {
-                    text: "Verificación rápida"
+                    text: qsTr("Verificación rápida")
                     variant: "secondary"
                     enabled: inputSelection.selectedFiles.length > 0 && root._state !== root.stateChecking
                     activeFocusOnTab: true
@@ -166,7 +166,7 @@ Item {
                     onClicked: root._startCheck(true)
                 }
                 MichiButton {
-                    text: "Volver"
+                    text: qsTr("Volver")
                     variant: "ghost"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
@@ -175,14 +175,14 @@ Item {
                 }
             }
 
-            SectionHeader { text: "Resultados"; width: parent.width; objectName: "integrityResultsHeader"; Accessible.name: "Resultados" }
+            SectionHeader { text: qsTr("Resultados"); width: parent.width; objectName: "integrityResultsHeader"; Accessible.name: "Resultados" }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md; variant: root._results.length > 0 ? "accent" : root._state === root.stateFailed ? "danger" : "status"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     Text {
-                        text: root._results.length > 0 ? root._results.length + " archivo(s) verificado(s)" : "Selecciona archivos para verificar integridad"
+                        text: root._results.length > 0 ? root._results.length + " archivo(s) verificado(s)" : qsTr("Selecciona archivos para verificar integridad")
                         color: root._results.length > 0 ? MichiTheme.colors.success : root._state === root.stateFailed ? MichiTheme.colors.error : MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.bodySize
                     }
@@ -202,7 +202,7 @@ Item {
                                     elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
                                 }
                                 Text {
-                                    width: parent.width * 0.15; text: modelData.valid ? "Válido" : "Inválido"
+                                    width: parent.width * 0.15; text: modelData.valid ? "Válido" : qsTr("Inválido")
                                     color: modelData.valid ? MichiTheme.colors.success : MichiTheme.colors.error
                                     font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter
                                 }
@@ -213,7 +213,7 @@ Item {
                                     elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
                                 }
                                 MichiButton {
-                                    text: "Reparar"
+                                    text: qsTr("Reparar")
                                     variant: "ghost"; implicitWidth: 50; implicitHeight: 24
                                     visible: !modelData.valid && modelData.repairable
                                     activeFocusOnTab: true
@@ -230,7 +230,7 @@ Item {
 
             StatusBadge {
                 visible: root.labService === null
-                text: "Bridge no disponible"
+                text: qsTr("Bridge no disponible")
                 kind: "disconnected"
             }
         }

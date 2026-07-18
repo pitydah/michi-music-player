@@ -8,7 +8,7 @@ Window {
     visible: true
     width: 1440
     height: 900
-    title: "Michi Music Player"
+    title: qsTr("Michi Music Player")
     color: MichiTheme.colors.bgApp
     minimumWidth: 1024
     minimumHeight: 640

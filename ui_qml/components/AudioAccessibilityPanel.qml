@@ -27,7 +27,7 @@ Item {
         spacing: MichiTheme.spacing.md
 
         Text {
-            text: "Accesibilidad de audio"
+            text: qsTr("Accesibilidad de audio")
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.sectionTitleSize
             font.weight: MichiTheme.typography.weightSemiBold

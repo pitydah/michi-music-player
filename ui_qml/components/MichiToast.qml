@@ -78,7 +78,7 @@ Item {
             QQC2.Button {
                 id: closeBtn
                 anchors.verticalCenter: parent.verticalCenter
-                text: "✕"
+                text: qsTr("✕")
                 flat: true
                 font.pixelSize: 12
                 implicitWidth: 24

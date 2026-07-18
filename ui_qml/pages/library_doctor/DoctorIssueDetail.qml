@@ -24,7 +24,7 @@ Item {
         width: parent.width
         spacing: MichiTheme.spacing.sm
 
-        SectionHeader { text: "Detalle del problema"; width: parent.width }
+        SectionHeader { text: qsTr("Detalle del problema"); width: parent.width }
 
         Rectangle {
             width: parent.width
@@ -82,7 +82,7 @@ Item {
 
                         activeFocusOnTab: true
 
-                        text: "Aceptar corrección"
+                        text: qsTr("Aceptar corrección")
                         variant: "primary"
                         onClicked: {
                             if (root.issueData)
@@ -95,7 +95,7 @@ Item {
 
 
                     MichiButton {
-                        text: "Rechazar"
+                        text: qsTr("Rechazar")
                         variant: "ghost"
                         onClicked: {
                             if (root.issueData)

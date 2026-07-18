@@ -159,10 +159,10 @@ Item {
             leftPadding: MichiTheme.spacing.md
             visible: (root.trackModel && root.trackModel.hasMore) || (root.bridge && root.bridge.hasMoreSongs && !root.trackModel)
             Text {
-                text: "Mostrando " + (root.trackModel ? root.trackModel.count : root.songs.length) + " de " + (root.trackModel ? root.trackModel.totalCount : (root.bridge ? root.bridge.visibleCount : 0))
+                text: qsTr("Mostrando ") + (root.trackModel ? root.trackModel.count : root.songs.length) + " de " + (root.trackModel ? root.trackModel.totalCount : (root.bridge ? root.bridge.visibleCount : 0))
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter
             }
-            MichiButton { text: "Cargar más"; variant: "ghost"; height: 24; onClicked: {
+            MichiButton { text: qsTr("Cargar más"); variant: "ghost"; height: 24; onClicked: {
                 if (root.trackModel && root.trackModel.hasMore && !root._fetchingMore) {
                     root._fetchingMore = true; root.trackModel.fetchMore(); root._fetchingMore = false
                 } else if (root.bridge && typeof root.bridge.loadNextPage !== "undefined") {
@@ -175,11 +175,11 @@ Item {
             Column { anchors.centerIn: parent; spacing: MichiTheme.spacing.lg
                 Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 48; height: 48; radius: MichiTheme.radius.md; color: MichiTheme.colors.accentSurface
                     Text { anchors.centerIn: parent;                 text: ""; color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightBold; opacity: MichiTheme.opacity.hover } }
-                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Biblioteca vacía"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightMedium }
-                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Agrega carpetas con música o refresca la biblioteca."; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap }
+                Text { anchors.horizontalCenter: parent.horizontalCenter; text: qsTr("Biblioteca vacía"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightMedium }
+                Text { anchors.horizontalCenter: parent.horizontalCenter; text: qsTr("Agrega carpetas con música o refresca la biblioteca."); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap }
                 Row { anchors.horizontalCenter: parent.horizontalCenter; spacing: MichiTheme.spacing.sm
-                    MichiButton { text: "Refrescar"; variant: "primary"; onClicked: { if (root.bridge && typeof root.bridge.refresh !== "undefined") root.bridge.refresh() } }
-                    MichiButton { text: "Ajustes"; variant: "ghost"; onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("settings") } }
+                    MichiButton { text: qsTr("Refrescar"); variant: "primary"; onClicked: { if (root.bridge && typeof root.bridge.refresh !== "undefined") root.bridge.refresh() } }
+                    MichiButton { text: qsTr("Ajustes"); variant: "ghost"; onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("settings") } }
                 }
             }
         }

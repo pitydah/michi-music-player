@@ -59,7 +59,7 @@ Item {
 
                 MichiButton {
                     Accessible.role: Accessible.Button
-                    text: "< Volver"
+                    text: qsTr("< Volver")
                     variant: "ghost"
                     onClicked: root.backClicked()
                     KeyNavigation.tab: serverNameText
@@ -80,7 +80,7 @@ Item {
                 GlassCard {
                     id: statusCard
                     width: parent.width
-                    title: "Estado de conexión"
+                    title: qsTr("Estado de conexión")
                     variant: "base"
 
                     Column {
@@ -91,7 +91,7 @@ Item {
                         Row {
                             spacing: MichiTheme.spacing.sm
                             width: parent.width
-                            Text { text: "Estado:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                            Text { text: qsTr("Estado:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
                             StatusBadge {
                                 text: {
                                     switch (root.state) {
@@ -116,15 +116,15 @@ Item {
                             }
                         }
 
-                        Text { text: "Host: " + root.serverHost + ":" + root.serverPort; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
-                        Text { text: "Protocolo: " + root.protocol; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: root.protocol !== "" }
-                        Text { text: "Versión: " + root.serverVersion; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: root.serverVersion !== "" }
-                        Text { text: "Contrato: " + root.contract; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: root.contract !== "" }
-                        Text { text: "Latencia: " + root.latencyMs + " ms"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: root.latencyMs > 0 }
-                        Text { text: "Último contacto: " + (root.lastContact > 0 ? new Date(root.lastContact * 1000).toLocaleString() : "Nunca"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: root.lastContact > 0 }
+                        Text { text: qsTr("Host: ") + root.serverHost + ":" + root.serverPort; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                        Text { text: qsTr("Protocolo: ") + root.protocol; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: root.protocol !== "" }
+                        Text { text: qsTr("Versión: ") + root.serverVersion; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: root.serverVersion !== "" }
+                        Text { text: qsTr("Contrato: ") + root.contract; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: root.contract !== "" }
+                        Text { text: qsTr("Latencia: ") + root.latencyMs + " ms"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: root.latencyMs > 0 }
+                        Text { text: qsTr("Último contacto: ") + (root.lastContact > 0 ? new Date(root.lastContact * 1000).toLocaleString() : "Nunca"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: root.lastContact > 0 }
 
                         StatusBadge {
-                            text: root.compatible ? "Compatible" : "Versión incompatible"
+                            text: root.compatible ? "Compatible" : qsTr("Versión incompatible")
                             kind: root.compatible ? "success" : "warning"
                             visible: root.serverVersion !== ""
                         }
@@ -153,7 +153,7 @@ Item {
 
                     MichiButton {
                         id: testBtn
-                        text: "Probar conexión"
+                        text: qsTr("Probar conexión")
                         variant: "secondary"
                         onClicked: {
                             if (root.conn && root.connectionId)
@@ -165,7 +165,7 @@ Item {
 
                     MichiButton {
                         id: reconnectBtn
-                        text: "Reconectar"
+                        text: qsTr("Reconectar")
                         variant: "primary"
                         onClicked: {
                             if (root.conn && root.connectionId)
@@ -179,7 +179,7 @@ Item {
 
                     MichiButton {
                         id: disconnectBtn
-                        text: "Desconectar"
+                        text: qsTr("Desconectar")
                         variant: "secondary"
                         onClicked: {
                             if (root.conn) root.conn.disconnect()
@@ -190,7 +190,7 @@ Item {
 
                     MichiButton {
                         id: editBtn
-                        text: "Editar"
+                        text: qsTr("Editar")
                         variant: "ghost"
                         onClicked: {
                             if (root.conn && root.connectionId)
@@ -202,7 +202,7 @@ Item {
 
                     MichiButton {
                         id: forgetBtn
-                        text: "Eliminar"
+                        text: qsTr("Eliminar")
                         variant: "danger"
                         onClicked: {
                             if (root.conn && root.connectionId) {
@@ -215,14 +215,14 @@ Item {
 
                     QQC2.Dialog {
                         id: deleteConfirmDialog
-                        title: "Eliminar servidor"
+                        title: qsTr("Eliminar servidor")
                         standardButtons: QQC2.Dialog.Yes | QQC2.Dialog.No
                         modal: true
                         x: Math.round((root.width - width) / 2)
                         y: Math.round((root.height - height) / 3)
                         parent: root
                         Text {
-                            text: "¿Eliminar " + root.serverName + "?"
+                            text: qsTr("¿Eliminar ") + root.serverName + "?"
                             color: MichiTheme.colors.textPrimary
                             font.pixelSize: MichiTheme.typography.bodySize
                         }

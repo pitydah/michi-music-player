@@ -21,7 +21,7 @@ Dialog {
     signal importCompleted(int count)
     signal importCancelled()
 
-    title: "Importar emisoras"
+    title: qsTr("Importar emisoras")
     modal: true
     closePolicy: Popup.CloseOnEscape
     width: Math.min(parent.width * 0.7, 500)
@@ -51,7 +51,7 @@ Dialog {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             anchors.leftMargin: MichiTheme.spacing.md
-            text: "Importar emisoras"
+            text: qsTr("Importar emisoras")
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.sectionTitleSize
             font.weight: MichiTheme.typography.weightSemiBold
@@ -97,7 +97,7 @@ Dialog {
             MichiButton {
                 Accessible.role: Accessible.Button
 
-                text: "Seleccionar archivo"
+                text: qsTr("Seleccionar archivo")
                 variant: "primary"
                 activeFocusOnTab: true
                 onClicked: filePickerDialog.open()
@@ -113,7 +113,7 @@ Dialog {
         }
 
         Text {
-            text: "Formatos soportados: M3U, PLS, XSPF"
+            text: qsTr("Formatos soportados: M3U, PLS, XSPF")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
             visible: root._importedStations.length === 0
@@ -137,7 +137,7 @@ Dialog {
         }
 
         Text {
-            text: "Selecciona las emisoras a importar:"
+            text: qsTr("Selecciona las emisoras a importar:")
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.bodySize
             visible: root._importedStations.length > 0
@@ -199,7 +199,7 @@ Dialog {
 
                             Text {
                                 anchors.centerIn: parent
-                                text: "\u2713"
+                                text: qsTr("\u2713")
                                 color: MichiTheme.colors.textOnAccent
                                 font.pixelSize: MichiTheme.typography.metaSize
                                 visible: stationCheck.checked
@@ -254,7 +254,7 @@ Dialog {
                 activeFocusOnTab: true
 
             Text {
-                text: "Importando... " + root._importProgress + "/" + root._importTotal
+                text: qsTr("Importando... ") + root._importProgress + "/" + root._importTotal
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
                 anchors.verticalCenter: parent.verticalCenter
@@ -282,7 +282,7 @@ Dialog {
             spacing: MichiTheme.spacing.sm
 
             MichiButton {
-                text: "Seleccionar todo"
+                text: qsTr("Seleccionar todo")
                 variant: "ghost"
                 visible: root._importedStations.length > 0 && !root._importing
                 Accessible.role: Accessible.Button
@@ -301,7 +301,7 @@ Dialog {
                 Accessible.role: Accessible.Button
 
             MichiButton {
-                text: "Cancelar"
+                text: qsTr("Cancelar")
                 variant: "ghost"
                 activeFocusOnTab: true
                 enabled: !root._importing
@@ -313,7 +313,7 @@ Dialog {
             }
 
             MichiButton {
-                text: "Importar"
+                text: qsTr("Importar")
                 variant: "primary"
                 enabled: root._selectedStations.length > 0 && !root._importing
                 activeFocusOnTab: true
@@ -326,7 +326,7 @@ Dialog {
 
     FileDialog {
         id: filePickerDialog
-        title: "Seleccionar archivo de emisoras"
+        title: qsTr("Seleccionar archivo de emisoras")
         nameFilters: [
             "Formatos de emisoras (*.m3u *.pls *.xspf)",
             "M3U (*.m3u)",

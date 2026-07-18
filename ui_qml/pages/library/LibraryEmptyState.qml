@@ -11,8 +11,8 @@ Item {
     focus: true
     id: root
 
-    property string title: "Biblioteca vacía"
-    property string message: "Agrega carpetas con música o refresca la biblioteca."
+    property string title: qsTr("Biblioteca vacía")
+    property string message: qsTr("Agrega carpetas con música o refresca la biblioteca.")
     property string actionText: "Refrescar"
 
     signal actionRequested()
@@ -28,7 +28,7 @@ Item {
             color: MichiTheme.colors.accentSurface
             Text {
                 anchors.centerIn: parent
-                text: "BL"
+                text: qsTr("BL")
                 color: MichiTheme.colors.accentBlue
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightBold
@@ -57,8 +57,8 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: MichiTheme.spacing.sm
 
-            MichiButton { objectName: "emptyStateActionButton"; text: root.actionText; variant: "primary"; onClicked: root.actionRequested() }
-            MichiButton { text: "Ajustes"; variant: "ghost"; onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("settings") } }
+            MichiButton { objectName: qsTr("emptyStateActionButton"); text: root.actionText; variant: "primary"; onClicked: root.actionRequested() }
+            MichiButton { text: qsTr("Ajustes"); variant: "ghost"; onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("settings") } }
         }
     }
 }

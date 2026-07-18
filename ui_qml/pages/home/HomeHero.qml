@@ -29,14 +29,14 @@ Item {
                 spacing: MichiTheme.spacing.md
 
                 Text {
-                    text: "Centro Michi"
+                    text: qsTr("Centro Michi")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.heroTitleSize
                     font.weight: MichiTheme.typography.weightBold
                 }
 
                 Text {
-                    text: "Tu ecosistema musical. Biblioteca, servidores, Home Audio y asistente en un solo lugar."
+                    text: qsTr("Tu ecosistema musical. Biblioteca, servidores, Home Audio y asistente en un solo lugar.")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width
@@ -49,7 +49,7 @@ Item {
 
                     MichiButton {
                         Accessible.role: Accessible.Button
-                        text: "Continuar escuchando"
+                        text: qsTr("Continuar escuchando")
                         variant: "primary"
                         onClicked: {
                             if (typeof navigationBridge !== "undefined" && navigationBridge)
@@ -58,7 +58,7 @@ Item {
                     }
 
                     MichiButton {
-                        text: "Explorar"
+                        text: qsTr("Explorar")
                         variant: "ghost"
                         onClicked: {
                             if (typeof navigationBridge !== "undefined" && navigationBridge)
