@@ -260,7 +260,8 @@ class TestSafeFileOpsDBIntegration:
                 result = ops.execute_move(plan)
                 # Physical move happened, DB failed
                 if result.rollback_performed:
-                    assert os.path.exists(old_dir) or not os.path.exists(new_dir)
+                    assert os.path.exists(old_dir), f"Old dir should exist after rollback: {old_dir}"
+                    assert not os.path.exists(new_dir), f"New dir should not exist after rollback: {new_dir}"
 
             conn.close()
 

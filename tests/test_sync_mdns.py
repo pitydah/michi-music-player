@@ -170,7 +170,9 @@ class TestDiscoveryNoBlockingWithoutNetwork:
 
         ds.start()
 
-        assert ds._running is False or not ds._thread
+        assert ds._running is False, f"Discovery should stop on error, got _running={ds._running}"
+        if ds._thread:
+            assert not ds._thread.is_alive(), "Discovery thread should not be alive after stop"
         assert len(errors) > 0
         assert "No network" in errors[0]
 

@@ -152,8 +152,6 @@ def test_e2e_single_engine(wav_path):
         bootstrap.start()
         engine = bootstrap.container.get("playback_service")._engine
         assert hasattr(engine, "_transport")
-        assert not hasattr(engine, "_backend") or not isinstance(
-            getattr(engine, "_backend", None), type(engine)
-        )
+        assert not hasattr(engine, "_backend"), "Engine should not use _backend architecture"
     finally:
         bootstrap.shutdown()
