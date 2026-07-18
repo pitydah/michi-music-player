@@ -1,8 +1,7 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import MichiTheme
-import MichiComponents
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "../../theme"
 import "../../components"
 
 /**
@@ -13,9 +12,9 @@ Page {
     id: page
 
     header: SectionHeader {
-        title: "Grabación ADC (Vinilo/Cassette)"
-        subtitle: "Digitaliza tu colección de vinilos y cassettes desde tocadiscos USB"
-        onBackClicked: pageStack.pop()
+        text: "Grabación ADC (Vinilo/Cassette)"
+
+        // onBackClicked eliminado (no existe en SectionHeader)
     }
 
     property var audioDevices: []
@@ -129,13 +128,13 @@ Page {
         ColumnLayout {
             id: container
             width: Math.max(parent.width, 800)
-            padding: 20
+    anchors.margins: 20
             spacing: 20
 
             // Selector de dispositivo
             GlassCard {
                 Layout.fillWidth: true
-                padding: 15
+    anchors.margins: 15
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -172,7 +171,7 @@ Page {
             // Medidor de nivel VU
             GlassCard {
                 Layout.fillWidth: true
-                padding: 20
+    anchors.margins: 20
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -245,7 +244,7 @@ Page {
             // Controles de grabación
             GlassCard {
                 Layout.fillWidth: true
-                padding: 20
+    anchors.margins: 20
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -325,7 +324,7 @@ Page {
             // Configuración
             GlassCard {
                 Layout.fillWidth: true
-                padding: 15
+    anchors.margins: 15
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -389,7 +388,7 @@ Page {
             // Lista de marcadores
             GlassCard {
                 Layout.fillWidth: true
-                padding: 15
+    anchors.margins: 15
                 visible: markers.length > 0
 
                 ColumnLayout {
@@ -436,7 +435,7 @@ Page {
             // Badge experimental
             StatusBadge {
                 text: "Experimental"
-                type: "warning"
+                kind: "warning"
                 Layout.alignment: Qt.AlignHCenter
             }
 

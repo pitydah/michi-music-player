@@ -1,9 +1,9 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import MichiTheme
-import MichiComponents
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "../../theme"
 import "../../components"
+import "../../components/audio_lab"
 
 /**
  * Página de Ripeo de CD - Extrae pistas de CDs de audio
@@ -13,9 +13,8 @@ Page {
     id: page
 
     header: SectionHeader {
-        title: "Ripeo de CD"
-        subtitle: "Extrae pistas de CDs de audio con verificación de seguridad"
-        onBackClicked: pageStack.pop()
+        text: "Ripeo de CD"
+        // onBackClicked eliminado
     }
 
     property var cdDevices: []
@@ -49,7 +48,7 @@ Page {
         
         if (currentCDInfo && currentCDInfo.ok) {
             statusMessage.text = `CD detectado: ${currentCDInfo.album_title || "Desconocido"}`
-            tracksToRip = currentCDInfo.tracks.map(t => ({...t, selected: true}))
+            tracksToRip = currentCDInfo.tracks.map(function(t) { return {title: t.title, artist: t.artist, duration: t.duration, selected: true} })
         } else {
             statusMessage.text = "No se pudo leer el CD o no hay uno insertado."
         }
@@ -106,13 +105,13 @@ Page {
         ColumnLayout {
             id: container
             width: Math.max(parent.width, 800)
-            padding: 20
+            anchors.margins: 20
             spacing: 20
 
             // Selector de dispositivo
             GlassCard {
                 Layout.fillWidth: true
-                padding: 15
+                anchors.margins: 15
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -149,7 +148,7 @@ Page {
             // Información del CD
             GlassCard {
                 Layout.fillWidth: true
-                padding: 15
+                anchors.margins: 15
                 visible: currentCDInfo && currentCDInfo.ok
 
                 ColumnLayout {
@@ -179,7 +178,7 @@ Page {
             // Lista de pistas
             GlassCard {
                 Layout.fillWidth: true
-                padding: 15
+                anchors.margins: 15
                 visible: currentCDInfo && currentCDInfo.ok
 
                 ColumnLayout {
@@ -235,7 +234,7 @@ Page {
             // Configuración de salida
             GlassCard {
                 Layout.fillWidth: true
-                padding: 15
+                anchors.margins: 15
 
                 ColumnLayout {
                     anchors.fill: parent

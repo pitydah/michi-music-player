@@ -53,6 +53,8 @@ class NavigationBridge(QObject):
                 self._navigate_internal(route, params)
 
     def _route_matches_capability(self, route: str) -> bool:
+        if not self._capabilities:
+            return True
         for pattern, cap in CAPABILITY_MAP.items():
             if pattern.endswith(".*"):
                 prefix = pattern[:-2]
