@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shutil
+import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -179,11 +181,37 @@ class AudioConversionService(QObject):
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             job.process = proc
             try:
-                stdout, stderr = proc.communicate(timeout=3600)
-                if proc.returncode != 0:
+                duration = None
+                progress_re = re.compile(r'time=(\d+):(\d+):(\d+)\.(\d+)')
+                for stderr_line in proc.stderr:
                     if job.cancelled:
+                        proc.terminate()
+                        proc.wait(timeout=5)
                         return {"ok": False, "error": "CANCELLED"}
-                    return {"ok": False, "error": stderr[:500] or "Conversion failed"}
+
+                    # Parse duration for progress calculation
+                    if duration is None:
+                        dm = re.search(r'Duration: (\d+):(\d+):(\d+)\.(\d+)', stderr_line)
+                        if dm:
+                            duration = int(dm.group(1)) * 3600 + int(dm.group(2)) * 60 \
+                                       + int(dm.group(3)) + int(dm.group(4)) / 100
+
+                    # Parse current time for progress
+                    m = progress_re.search(stderr_line)
+                    if m:
+                        current = int(m.group(1)) * 3600 + int(m.group(2)) * 60 \
+                                  + int(m.group(3)) + int(m.group(4)) / 100
+                        if duration and duration > 0:
+                            pct = min(current / duration * 100, 99.9)
+                            if pct - job.progress >= 1.0:
+                                job.progress = round(pct, 1)
+                                self.conversionProgress.emit(job.id, job.progress)
+
+                proc.wait()
+                if proc.returncode != 0 and not job.cancelled:
+                    return {"ok": False, "error": f"ffmpeg exited with code {proc.returncode}"}
+                if job.cancelled:
+                    return {"ok": False, "error": "CANCELLED"}
             except subprocess.TimeoutExpired:
                 proc.kill()
                 proc.wait()
