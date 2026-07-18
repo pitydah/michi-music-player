@@ -147,7 +147,7 @@ class TestLyricsService:
         bridge._np_bridge.currentFilePath = str(audio)
 
         result = bridge.saveLocalLyrics("Line 1\nLine 2\nLine 3")
-        assert result.get("ok", result.get("error", "")) or True
+        assert result.get("ok", result.get("error", ""))
 
     def test_lyrics_lrclib_result_to_document(self):
         """Verify LrcLibClient.LyricsResult can map to canonical LyricsDocument."""

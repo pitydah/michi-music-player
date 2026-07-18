@@ -31,7 +31,7 @@ class TestHistoryService:
         svc = HistoryQueryService(db)
         try:
             result = svc.clear_all()
-            assert result.get("ok") or True
+            assert result.get("ok") is not None
         except Exception:
             pass
 

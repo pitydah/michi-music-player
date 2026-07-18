@@ -43,7 +43,7 @@ class TestSettingsIntegration:
         coord = c.get("settings_coordinator")
         # Try setting a boolean key to a string
         result = coord.execute("appearance/theme", True)
-        assert result["ok"] or not result["ok"]  # either way it should not crash
+        assert isinstance(result.get("ok"), bool)
 
     def test_coordinator_rollback(self):
         from core.composition.infrastructure import build as infra
@@ -60,7 +60,7 @@ class TestSettingsIntegration:
         # Rollback via revert
         if hasattr(coord, 'revert'):
             result = coord.revert("appearance/theme")
-            assert result.get("ok") or True
+            assert result.get("ok")
 
     def test_persistence_across_restart(self):
         """Settings survive coordinator recreation."""

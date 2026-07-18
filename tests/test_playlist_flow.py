@@ -90,7 +90,7 @@ class TestPlaylistService:
         pid = result.get("playlist_id")
         if pid:
             del_result = svc.delete_playlist(pid)
-            assert del_result.get("ok") or True  # may fail gracefully without real DB
+            assert del_result.get("ok")  # may fail gracefully without real DB
 
     def test_rename_playlist(self, db):
         from core.playlist_service import PlaylistService

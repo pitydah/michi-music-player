@@ -80,7 +80,7 @@ class TestUmsSync:
         from core.sync.transfer_backends import FilesystemBackend
         backend = FilesystemBackend()
         available = backend.is_available()
-        assert available or not available
+        assert isinstance(available, bool)
 
     def test_copy_file(self, ums_device):
         from core.sync.transfer_backends import FilesystemBackend
@@ -88,14 +88,14 @@ class TestUmsSync:
         src = str(ums_device / "Music" / "song_0.flac")
         dst = str(ums_device / "Music" / "song_copy.flac")
         result = backend.copy_file(src, dst)
-        assert result or not result
+        assert result is not None
 
     def test_copy_manifest(self, ums_device):
         from core.sync.transfer_backends import FilesystemBackend
         backend = FilesystemBackend()
         manifest = {"files": [{"source": "/test/a.flac", "dest": "Music/a.flac"}]}
         result = backend.copy_manifest_to(manifest, str(ums_device))
-        assert result or not result
+        assert result is not None
 
     def test_transfer_integrity(self, ums_device):
         src = ums_device / "Music" / "song_0.flac"

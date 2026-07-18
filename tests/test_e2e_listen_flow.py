@@ -96,4 +96,4 @@ class TestE2EListenFlow:
         qs = QueueService()
         qs.add({"filepath": "/test/song.flac", "title": "Test"})
         state = qs.save_state(position=45.0)
-        assert state.get("ok") or True
+        assert state.get("ok")

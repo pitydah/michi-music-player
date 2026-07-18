@@ -59,7 +59,7 @@ class TestGlobalSearchBasic:
 
     def test_search_empty_query(self, svc):
         result = svc.search("")
-        assert result.get("ok") or True
+        assert result.get("ok")
 
     def test_search_cancel(self, svc):
         svc.cancel("test")

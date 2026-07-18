@@ -23,7 +23,7 @@ class TestMichiAIActionRegistry:
         # Navigate actions should have service_name after bind
         nav = [a for a in ar.actions if a["id"] == "navigate_home"]
         if nav:
-            assert nav[0].get("service_name") or True
+            assert nav[0].get("service_name")
 
     def test_michi_ai_uses_action_registry(self):
         """Verify Michi AI tool calls go through ActionRegistry."""

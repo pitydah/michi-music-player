@@ -65,7 +65,7 @@ class TestJobService:
         job_svc.start_job(jid)
         job_svc.cancel_job(jid)
         result = job_svc.retry_job(jid)
-        assert result or True  # may fail gracefully
+        assert result  # may fail gracefully
 
     def test_cleanup_old_jobs(self, job_svc):
         for i in range(3):
@@ -82,6 +82,6 @@ class TestJobService:
         jid = job_svc.create_job("type", "Pause Test")
         job_svc.start_job(jid)
         pause_ok = job_svc.pause_job(jid)
-        assert pause_ok or True
+        assert pause_ok
         resume_ok = job_svc.resume_job(jid)
-        assert resume_ok or True
+        assert resume_ok
