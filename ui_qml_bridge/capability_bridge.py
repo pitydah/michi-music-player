@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 
-from PySide6.QtCore import QObject, Signal, Property
+from PySide6.QtCore import QObject, Signal, Property, Slot
 
 logger = logging.getLogger(__name__)
 
@@ -56,10 +56,9 @@ class CapabilityBridge(QObject):
     def capabilities(self):
         return dict(self._caps)
 
+    @Slot(str, result=bool)
     def has(self, name: str) -> bool:
         val = self._caps.get(name, "unavailable")
-        if val == "available":
-            return True
         return val == "available"
 
     def _check_fts5(self, container) -> bool:

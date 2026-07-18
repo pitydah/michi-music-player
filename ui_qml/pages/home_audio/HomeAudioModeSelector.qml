@@ -63,7 +63,7 @@ Item {
 
                             Image {
                                 anchors.centerIn: parent
-                                source: Qt.resolvedUrl("../../icons/" + modelData.icon + ".svg")
+                                source: Qt.resolvedUrl("../../../icons/" + modelData.icon + ".svg")
                                 sourceSize.width: 22; sourceSize.height: 22
                                 fillMode: Image.PreserveAspectFit
                             }

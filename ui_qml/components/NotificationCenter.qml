@@ -15,6 +15,8 @@ Item {
     signal dismissAllRequested()
     signal notificationActivated(string notificationId)
 
+    ListModel { id: notificationModel }
+
     Accessible.role: Accessible.Pane
     Accessible.name: "Centro de notificaciones"
     Accessible.description: "Lista de notificaciones activas"
@@ -360,7 +362,7 @@ Item {
 
     Connections {
         target: root.bridge
-        function onNotificationReceived(data) {
+        function onNotificationChanged() {
             root.refresh()
             if (!root._open) {
                 _open = true
