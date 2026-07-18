@@ -133,11 +133,11 @@ Item {
         ListElement { route: ""; iconSource: ""; label: "RED Y DISPOSITIVOS"; notificationCount: 0; isSeparator: true }
         ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio"; notificationCount: 0; isSeparator: false }
         ListElement { route: "connections"; iconSource: "icons/sidebar_servers.svg"; label: "Conexiones"; notificationCount: 0; isSeparator: false }
-        ListElement { route: "home_audio"; iconSource: "icons/sidebar_home_audio.svg"; label: "Audio del Hogar"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "home_audio"; iconSource: "icons/sidebar_home_audio.svg"; label: "Home Audio"; notificationCount: 0; isSeparator: false }
 
         ListElement { route: ""; iconSource: ""; label: "HERRAMIENTAS"; notificationCount: 0; isSeparator: true }
         ListElement { route: "audio_lab"; iconSource: "icons/sidebar_audio_lab.svg"; label: "Audio Lab"; notificationCount: 0; isSeparator: false }
-        ListElement { route: "assistant"; iconSource: "icons/sidebar_assistant.svg"; label: "Michi IA"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "assistant"; iconSource: "icons/sidebar_assistant.svg"; label: "Michi AI"; notificationCount: 0; isSeparator: false }
     }
 
     ListModel { id: deliveryModel
@@ -148,7 +148,6 @@ Item {
         ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; label: "Playlists"; notificationCount: 0; isSeparator: false }
         ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio"; notificationCount: 0; isSeparator: false }
         ListElement { route: ""; iconSource: ""; label: "SISTEMA"; notificationCount: 0; isSeparator: true }
-        ListElement { route: "settings"; iconSource: "icons/sidebar_home.svg"; label: "Ajustes"; notificationCount: 0; isSeparator: false }
         ListElement { route: "diagnostics"; iconSource: "icons/sidebar_identifier.svg"; label: "Diagnóstico"; notificationCount: 0; isSeparator: false }
     }
 }

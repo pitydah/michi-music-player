@@ -23,7 +23,7 @@ Item {
     signal repeatClicked()
 
     implicitHeight: 54
-    implicitWidth: childrenRect.width
+    implicitWidth: Math.max(240, column.implicitWidth)
 
     Row {
         anchors.centerIn: parent

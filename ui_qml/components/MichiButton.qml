@@ -34,7 +34,7 @@ QQC2.Button {
     Accessible.description: root.accessibleDescription
 
     font.pixelSize: MichiTheme.typography.buttonSize
-    font.weight: root.variant === "primary" || root.variant === "danger" || root.variant === "success"
+    font.weight: root.variant === "primary" || root.variant === "danger" || root.variant === "success" || root.variant === "accent"
                  ? MichiTheme.typography.weightSemiBold
                  : MichiTheme.typography.weightMedium
 
@@ -45,6 +45,7 @@ QQC2.Button {
             if (root.down) return MichiTheme.colors.surfacePressed
             if (root.hovered) return MichiTheme.colors.surfaceHover
             if (root.variant === "primary") return MichiTheme.colors.accentBlue
+            if (root.variant === "accent") return MichiTheme.colors.accentBlue
             if (root.variant === "danger") return MichiTheme.colors.error
             if (root.variant === "success") return MichiTheme.colors.success
             if (root.variant === "ghost") return "transparent"

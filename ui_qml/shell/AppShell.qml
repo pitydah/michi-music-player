@@ -94,6 +94,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 56
                     pageTitle: "Inicio"
+                    mainWindow: mainWindow
 
                     MouseArea {
                         anchors.fill: parent

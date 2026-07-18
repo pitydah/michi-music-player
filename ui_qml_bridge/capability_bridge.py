@@ -12,6 +12,31 @@ from PySide6.QtCore import QObject, Signal, Property, Slot
 logger = logging.getLogger(__name__)
 
 
+CAPABILITY_LABELS = {
+    "connections_michilink": "Michi Link",
+    "home_audio": "Home Audio",
+    "snapcast": "Snapcast",
+    "devices_sync": "Sincronización de dispositivos",
+    "radio": "Radio",
+    "playlists": "Playlists",
+    "eq": "Ecualizador",
+    "settings": "Ajustes",
+    "audio_lab": "Audio Lab",
+    "metadata": "Editor de metadatos",
+    "smart_tagging": "Smart Tagging",
+    "disc_lab": "Disc Lab",
+    "library_doctor": "Library Doctor",
+    "diagnostics": "Diagnóstico",
+    "michi_ai": "Michi AI",
+    "library": "Biblioteca",
+    "playback": "Reproducción",
+    "mix": "Mix",
+    "lyrics": "Letras",
+    "notifications": "Notificaciones",
+    "global_search": "Búsqueda global",
+}
+
+
 CAPABILITY_STATE_KEYS = {
     "library", "playback", "nowplaying", "mix", "lyrics",
     "connections_michilink", "home_audio", "snapcast",
@@ -60,6 +85,10 @@ class CapabilityBridge(QObject):
     def has(self, name: str) -> bool:
         val = self._caps.get(name, "unavailable")
         return val == "available"
+
+    @Slot(str, result=str)
+    def label(self, name: str) -> str:
+        return CAPABILITY_LABELS.get(name, name)
 
     def _check_fts5(self, container) -> bool:
         return bool(container and container.contains("global_search_service"))
