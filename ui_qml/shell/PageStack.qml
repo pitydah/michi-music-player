@@ -75,6 +75,7 @@ Item {
             "output_profiles": "../pages/outputs/OutputProfilesPage.qml",
             "smart_tagging": "../pages/SmartTaggingPage.qml",
             "diagnostics": "../pages/DiagnosticsPage.qml",
+            "devices.profile_editor": "../pages/devices/DeviceSyncProfileEditor.qml",
             "zone_detail": "../pages/home_audio/ZoneDetailPage.qml",
             "stream_routing": "../pages/home_audio/StreamRoutingPage.qml",
             "latency": "../pages/home_audio/LatencyPage.qml",

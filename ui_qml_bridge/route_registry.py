@@ -55,6 +55,8 @@ ROUTES: dict[str, dict] = {
     "devices.list": {"title": "Dispositivos", "source": "../pages/devices/DevicesPage.qml", "category": "core", "status": "functional"},
     "devices.detail": {"title": "Dispositivo", "source": "../pages/devices/DeviceDetailPage.qml", "category": "detail", "status": "functional", "params": {"device_id": {"required": True, "type": "string"}}},
     "devices.pairing": {"title": "Vincular dispositivo", "source": "../pages/devices/DevicePairingPage.qml", "category": "detail", "status": "functional"},
+    "devices.profile_editor": {"title": "Editor de perfil", "source": "../pages/devices/DeviceSyncProfileEditor.qml", "category": "detail", "status": "functional"},
+    "devices": {"title": "Dispositivos", "source": "../pages/devices/DevicesPage.qml", "category": "core", "status": "functional"},
     "connections": {"title": "Conexiones", "source": "../pages/connections/ConnectionsPage.qml", "category": "core", "status": "functional"},
     "connections.detail": {"title": "Conexión", "source": "../pages/connections/ConnectionDetailPage.qml", "category": "detail", "status": "functional", "params": {"connection_id": {"required": True, "type": "string"}}},
     "home_audio": {"title": "Home Audio", "source": "../pages/home_audio/HomeAudioPage.qml", "category": "core", "status": "functional"},
