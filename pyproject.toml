@@ -55,6 +55,7 @@ audio-analysis = [
 kde = []     # system deps only: python3-gi, gstreamer1.0-plugins-*
 home_audio = []  # system deps: avahi-utils
 sync = []    # no extra pip deps required
+mobile = ["qrcode[pil]"]
 all = [
     "pytest>=7",
     "pytest-qt>=4",

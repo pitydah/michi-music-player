@@ -5,6 +5,8 @@ import logging
 import os
 import sys
 
+from PySide6.QtCore import QTranslator
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [QML] %(levelname)s: %(message)s")
 logger = logging.getLogger("michi.qml_app")
 
@@ -24,6 +26,18 @@ def run_qml() -> int:
     app.setOrganizationName("Michi")
 
     from core.application_bootstrap import ApplicationBootstrap
+
+    # Load translation
+    translator = QTranslator()
+    from core.settings_manager import SETTINGS
+    locale = SETTINGS.value("appearance/language", "es")
+    qm_path = os.path.join(os.path.dirname(__file__), "..", "translations", f"michi_{locale}.qm")
+    if os.path.exists(qm_path):
+        if translator.load(qm_path):
+            app.installTranslator(translator)
+            logger.info("Loaded translation: %s", qm_path)
+        else:
+            logger.warning("Failed to load translation: %s", qm_path)
 
     engine = QQmlApplicationEngine()
     engine.addImportPath(os.path.join(os.path.dirname(__file__), "..", "ui_qml"))
