@@ -150,6 +150,12 @@ class LyricsDocument:
             ln.text.strip() for ln in self.lines
         )
 
+    def apply_offset(self, offset_ms: int) -> None:
+        for line in self.lines:
+            line.start_ms = max(0, line.start_ms + offset_ms)
+            line.end_ms = max(0, line.end_ms + offset_ms)
+        self.offset_ms += offset_ms
+
 
 @dataclass
 class LyricsOperationResult:
