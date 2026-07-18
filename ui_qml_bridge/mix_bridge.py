@@ -280,6 +280,24 @@ class MixBridge(QObject):
             return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
         return self._mix_svc.preview_rules(rules_json, limit=10)
 
+    @Slot(str, result=dict)
+    def loadRules(self, mix_id: str):
+        if self._mix_svc is None:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        return self._mix_svc.load_rules(mix_id)
+
+    @Slot(result=dict)
+    def listRules(self):
+        if self._mix_svc is None:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE", "mixes": []}
+        return self._mix_svc.list_rules()
+
+    @Slot(str, result=dict)
+    def deleteRules(self, mix_id: str):
+        if self._mix_svc is None:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        return self._mix_svc.delete_rules(mix_id)
+
     @Slot(result=dict)
     def reset(self):
         self._current_mix_id = ""

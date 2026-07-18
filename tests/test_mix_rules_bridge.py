@@ -30,6 +30,7 @@ class TestMixRulesBridge:
             {"title": "Rock Song", "genre": "Rock", "year": 2020},
             {"title": "Jazz Song", "genre": "Jazz", "year": 2019},
         ]
+        svc._rule_engine._lqs = svc._library_query
         rules = json.dumps({
             "groups": [{
                 "logic": "AND",

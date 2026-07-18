@@ -6,7 +6,9 @@ import json
 import logging
 from typing import Any
 
-from core.mix_rules import MixRuleEngine, MixDefinition, MixRuleGroup, MixRule
+from core.mix_rules import MixRuleEngine
+from core.mix.repository import MixRepository
+from core.mix_rules import MixRuleEngine, MixDefinition as MixEngineDef, MixRuleGroup, MixRule
 
 logger = logging.getLogger("michi.mix_service")
 
@@ -21,6 +23,7 @@ class MixService:
         self._library_query = library_query_service
         self._playlist_service = playlist_service
         self._rule_engine = MixRuleEngine(library_query_service)
+        self._repo = MixRepository(db) if db else None
         self._cancelled = False
 
     @property
@@ -41,32 +44,61 @@ class MixService:
     def save_rules(self, mix_id: str, rules_json: str) -> dict:
         try:
             data = json.loads(rules_json)
-            definition = MixDefinition(
-                name=data.get("name", mix_id),
-                groups=[MixRuleGroup(rules=[MixRule(**r) for r in g.get("rules", [])],
-                                     logic=g.get("logic", "AND"))
-                        for g in data.get("groups", [])],
-                limit=data.get("limit", 30),
-                sort_by=data.get("sort_by", "random"),
-                seed=data.get("seed", 0),
-            )
+            from core.mix_rules import MixRuleGroup, MixRule
+            definition = type('', (), {})()
+            definition.name = data.get("name", mix_id)
+            definition.groups = [MixRuleGroup(
+                rules=[MixRule(**r) for r in g.get("rules", [])],
+                logic=g.get("logic", "AND"))
+                for g in data.get("groups", [])]
+            definition.limit = data.get("limit", 30)
+            definition.sort_by = data.get("sort_by", "random")
+            definition.seed = data.get("seed", 0)
             new_id = self._rule_engine.generate_id(definition)
-            return {"ok": True, "mix_id": new_id, "definition": {
-                "name": definition.name, "limit": definition.limit,
-                "sort_by": definition.sort_by, "seed": definition.seed,
-                "groups": [{"logic": g.logic,
-                            "rules": [{"field": r.field, "operator": r.operator,
-                                       "value": r.value, "logic": r.logic}
-                                      for r in g.rules]}
-                           for g in definition.groups],
-            }}
+
+            if self._repo:
+                persisted = PersistedMix(
+                    mix_id=new_id, name=definition.name, rules_json=rules_json,
+                    limit=definition.limit, sort_by=definition.sort_by, seed=definition.seed,
+                )
+                self._repo.save(persisted)
+
+            return {"ok": True, "mix_id": new_id}
         except Exception as e:
             return {"ok": False, "error": str(e)}
+
+    def load_rules(self, mix_id: str) -> dict:
+        if not self._repo:
+            return {"ok": False, "error": "REPOSITORY_UNAVAILABLE"}
+        definition = self._repo.load(mix_id)
+        if not definition:
+            return {"ok": False, "error": "NOT_FOUND"}
+        return {
+            "ok": True, "mix_id": definition.mix_id, "name": definition.name,
+            "rules_json": definition.rules_json, "limit": definition.limit,
+            "sort_by": definition.sort_by, "seed": definition.seed,
+            "created_at": definition.created_at, "updated_at": definition.updated_at,
+            "play_count": definition.play_count,
+        }
+
+    def list_rules(self) -> dict:
+        if not self._repo:
+            return {"ok": False, "error": "REPOSITORY_UNAVAILABLE", "mixes": []}
+        mixes = self._repo.list_all()
+        return {"ok": True, "mixes": [{
+            "mix_id": m.mix_id, "name": m.name,
+            "updated_at": m.updated_at, "play_count": m.play_count,
+        } for m in mixes]}
+
+    def delete_rules(self, mix_id: str) -> dict:
+        if not self._repo:
+            return {"ok": False, "error": "REPOSITORY_UNAVAILABLE"}
+        return self._repo.delete(mix_id)
 
     def preview_rules(self, rules_json: str, limit: int = 10) -> dict:
         try:
             data = json.loads(rules_json)
-            definition = MixDefinition(
+            definition = MixEngineDef(
                 name=data.get("name", "preview"),
                 groups=[MixRuleGroup(rules=[MixRule(**r) for r in g.get("rules", [])],
                                      logic=g.get("logic", "AND"))
