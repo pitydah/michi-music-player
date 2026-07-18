@@ -60,16 +60,11 @@ Item {
             width: parent.width
             spacing: MichiTheme.spacing.lg
 
-            SectionHeader {
-                width: parent.width
-                text: "Audio Lab"
-            }
-
             Text {
                 width: parent.width
                 text: "Herramientas profesionales para analizar, identificar, preservar y configurar tu audio"
-                color: MichiTheme.colors.textMuted
-                font.pixelSize: MichiTheme.typography.metaSize
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
                 wrapMode: Text.WordWrap
             }
 

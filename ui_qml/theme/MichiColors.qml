@@ -53,12 +53,12 @@ QtObject {
     readonly property color borderError: "#F87171"
 
     // ── Texto ──
-    readonly property color textPrimary: lightMode ? "#1A1D26" : "#F0F2F8"
+    readonly property color textPrimary: lightMode ? "#1A1D26" : "#F2F5FA"
     readonly property color textNormal: lightMode ? "#3A3D46" : "#D0D4E0"
-    readonly property color textSecondary: lightMode ? "#707880" : "#9098A8"
-    readonly property color textTertiary: lightMode ? "#9098A0" : "#606878"
-    readonly property color textMuted: textTertiary
-    readonly property color textMeta: lightMode ? "#A0A8B0" : "#485068"
+    readonly property color textSecondary: lightMode ? "#707880" : "#A9B4C7"
+    readonly property color textTertiary: lightMode ? "#9098A0" : "#78869D"
+    readonly property color textMuted: lightMode ? "#A0A8B0" : "#566176"
+    readonly property color textMeta: lightMode ? "#B0B8C0" : "#485068"
     readonly property color textOnAccent: lightMode ? "#FFFFFF" : bgBase
     readonly property color textOnError: lightMode ? "#FFFFFF" : bgBase
     readonly property color textOnSuccess: lightMode ? "#FFFFFF" : bgBase

@@ -324,11 +324,6 @@ Item {
                 visible: text !== ""
             }
 
-            StatusBadge {
-                id: playlistStatusBadge
-                text: "Playlists completas — transacciones, importación, exportación"
-                kind: "info"
-            }
         }
     }
 
