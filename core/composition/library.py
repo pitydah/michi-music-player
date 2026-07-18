@@ -31,6 +31,12 @@ def build(container: ServiceContainer) -> None:
     container.register("metadata_service", MetadataService())
 
     try:
+        from core.library_doctor_service import LibraryDoctorService
+        container.register("library_doctor_service", LibraryDoctorService(db))
+    except Exception:
+        container.register("library_doctor_service", None)
+
+    try:
         sts = SmartTaggingService(worker_manager=wm, library_query_service=lqs)
         container.register("smart_tagging_service", sts)
     except Exception:
