@@ -249,7 +249,7 @@ class DiscLabBridge(QObject):
         plan = {
             "tracks": len(self._tracks),
             "format": self._extraction_format,
-            "destination": self._destination,
+            "destination": self._extraction_dest,
             "estimated_size_mb": len(self._tracks) * 50,
         }
         return {"ok": True, "plan": plan}

@@ -78,6 +78,8 @@ ROUTES: dict[str, dict] = {
     "audio_lab.backup": {"title": "Respaldar", "source": "../pages/audio_lab/hubs/BackupHubPage.qml", "category": "tools", "status": "functional"},
     "audio_lab.output_profiles": {"title": "Perfiles de Salida", "source": "../pages/audio_lab/hubs/OutputProfilesHubPage.qml", "category": "tools", "status": "functional"},
     "audio_lab.local_intelligence": {"title": "Inteligencia Local", "source": "../pages/audio_lab/hubs/LocalIntelligenceHubPage.qml", "category": "tools", "status": "functional"},
+    "audio_lab.cd_ripper": {"title": "Ripeo de CD", "source": "../pages/audio_lab/CDRipperPage.qml", "category": "tools", "status": "experimental"},
+    "audio_lab.adc_recorder": {"title": "Grabacin ADC", "source": "../pages/audio_lab/ADCRecorderPage.qml", "category": "tools", "status": "experimental"},
     "playback": {"title": "Reproduccin", "source": "../pages/PlaybackPage.qml", "category": "core", "status": "functional"},
     "library": {"title": "Biblioteca", "source": "../pages/library/LibraryPage.qml", "category": "core", "status": "functional"},
     "settings": {"title": "Ajustes", "source": "../pages/SettingsPage.qml", "category": "settings", "status": "functional"},

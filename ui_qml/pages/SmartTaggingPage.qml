@@ -206,8 +206,16 @@ Item {
                             root._confirmApply = true
                         } else {
                             root._confirmApply = false
-                            if (typeof notificationBridge !== "undefined" && notificationBridge)
-                                notificationBridge.showMessage("Sugerencias aplicadas (simulado)", "success")
+                            if (root.stb && root.stb.applySuggestions && root.selectedFile) {
+                                var result = root.stb.applySuggestions(root.selectedFile)
+                                if (typeof notificationBridge !== "undefined" && notificationBridge) {
+                                    if (result && result.ok) {
+                                        notificationBridge.showMessage("Sugerencias aplicadas correctamente", "success")
+                                    } else {
+                                        notificationBridge.showMessage("Error al aplicar sugerencias: " + (result && result.error ? result.error : "desconocido"), "error")
+                                    }
+                                }
+                            }
                         }
                     }
                 }

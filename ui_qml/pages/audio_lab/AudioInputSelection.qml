@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import "../../theme"
 import "../../components"
 import "../../materials"
@@ -24,7 +25,6 @@ Item {
 
     signal filesSelected(var filepaths)
     signal filesCleared()
-
 
     readonly property int stateEmpty: 0
     readonly property int stateHasFiles: 1
@@ -70,6 +70,41 @@ Item {
         _updateFileInfo(files)
     }
 
+    FileDialog {
+        id: fileDialog
+        title: "Seleccionar archivos de audio"
+        fileMode: FileDialog.OpenFiles
+        nameFilters: ["Archivos de audio (*.flac *.wav *.mp3 *.ogg *.opus *.m4a *.aac *.wma *.aiff *.dsf *.dff)"]
+        onAccepted: {
+            var paths = []
+            for (var i = 0; i < selectedFiles.length; i++) {
+                paths.push(selectedFiles[i])
+            }
+            _updateFileInfo(paths)
+        }
+    }
+
+    DropArea {
+        anchors.fill: parent
+        keys: ["text/uri-list"]
+
+        onEntered: function(drag) {
+            drag.accept(Qt.CopyAction)
+        }
+
+        onDropped: function(drop) {
+            if (drop.hasUrls) {
+                var paths = []
+                for (var i = 0; i < drop.urls.length; i++) {
+                    var localPath = drop.urls[i].toLocalFile()
+                    if (localPath) paths.push(localPath)
+                }
+                if (paths.length > 0) _updateFileInfo(paths)
+                drop.accept()
+            }
+        }
+    }
+
     Column {
         width: parent.width
         spacing: MichiTheme.spacing.md
@@ -83,39 +118,30 @@ Item {
         Row {
             spacing: MichiTheme.spacing.sm
             MichiButton {
-                Accessible.role: Accessible.Button
-
                 text: "Desde biblioteca"
                 variant: "secondary"
                 activeFocusOnTab: true
-                Keys.onReturnPressed: onClicked()
-                Keys.onSpacePressed: onClicked()
                 onClicked: {
                     if (typeof navigationBridge !== "undefined")
                         navigationBridge.navigate("library")
                 }
             }
-                Accessible.role: Accessible.Button
-
             MichiButton {
                 text: "Seleccionar archivos"
                 variant: "secondary"
                 activeFocusOnTab: true
-                Keys.onReturnPressed: onClicked()
-                Keys.onSpacePressed: onClicked()
-                onClicked: {
-                    if (root.libBridge && root.libBridge.selectFiles)
-                        root.libBridge.selectFiles()
-                }
-                Accessible.role: Accessible.Button
-
+                onClicked: fileDialog.open()
             }
             MichiButton {
                 text: "Pegar ruta"
                 variant: "ghost"
                 activeFocusOnTab: true
-                Keys.onReturnPressed: onClicked()
-                Keys.onSpacePressed: onClicked()
+                onClicked: {
+                    var text = Qt.clipboard().text()
+                    if (text && text.length > 0) {
+                        _updateFileInfo([text])
+                    }
+                }
             }
         }
 
@@ -138,7 +164,7 @@ Item {
             Row {
                 anchors.centerIn: parent; spacing: MichiTheme.spacing.sm
                 BusyIndicator { running: true; width: 20; height: 20 }
-                Text { text: "Cargando metadatos..."; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: "Cargando metadatos..."; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
             }
         }
 
@@ -179,20 +205,14 @@ Item {
                         width: parent.width - 60
                         text: typeof modelData === "string" ? modelData : modelData.name || modelData.filepath || ""
                         color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize
-                        Accessible.role: Accessible.Button
-
                         elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
                     }
                     MichiButton {
                         text: "x"; variant: "ghost"; implicitWidth: 32; implicitHeight: 24
                         activeFocusOnTab: true
-                        Keys.onReturnPressed: onClicked()
-                        Keys.onSpacePressed: onClicked()
                         onClicked: root.removeFile(index)
                     }
                 }
-            Accessible.role: Accessible.Button
-
             }
         }
 
@@ -201,8 +221,6 @@ Item {
             variant: "ghost"
             visible: root.state === root.stateHasFiles
             activeFocusOnTab: true
-            Keys.onReturnPressed: onClicked()
-            Keys.onSpacePressed: onClicked()
             onClicked: root.clearFiles()
         }
     }

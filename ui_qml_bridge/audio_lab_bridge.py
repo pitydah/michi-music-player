@@ -30,6 +30,11 @@ class AudioLabBridge(QObject):
         self._active_jobs: dict[str, dict] = {}
         self._cached_audio_devices: list | None = None
         self._cached_cd_drives: list | None = None
+        try:
+            from core.audio_lab.adc_recorder_service import ADCRecorderService
+            self._adc_recorder = ADCRecorderService()
+        except Exception:
+            self._adc_recorder = None
 
     @Property(bool, notify=dataChanged)
     def serviceAvailable(self):
@@ -610,26 +615,19 @@ class AudioLabBridge(QObject):
                        sample_rate: int = 44100, bit_depth: int = 16, channels: int = 2, 
                        dsp_filters: list = None) -> dict:
         """Inicia grabación desde dispositivo ADC."""
-        if not self._svc:
+        if not self._svc or not self._adc_recorder:
             return {'ok': False, 'error': 'Service unavailable'}
         try:
-            from core.audio_lab.adc_recorder_service import ADCRecorderService, AudioDevice
-            recorder = ADCRecorderService()
-            
-            # Crear dispositivo desde ID
-            devices = recorder.detect_devices()
+            from core.audio_lab.adc_recorder_service import AudioDevice
+            devices = self._adc_recorder.detect_devices()
             device = next((d for d in devices if d.device_id == device_id), None)
             if not device:
                 return {'ok': False, 'error': 'Device not found'}
             
-            result = recorder.start_recording(
-                device=device,
-                output_path=output_path,
-                format=format,
-                sample_rate=sample_rate,
-                bit_depth=bit_depth,
-                channels=channels,
-                apply_dsp=dsp_filters or []
+            result = self._adc_recorder.start_recording(
+                device=device, output_path=output_path, format=format,
+                sample_rate=sample_rate, bit_depth=bit_depth,
+                channels=channels, apply_dsp=dsp_filters or []
             )
             return {'ok': result['success'], **result}
         except Exception as e:
@@ -639,12 +637,10 @@ class AudioLabBridge(QObject):
     @Slot(result=dict)
     def pauseRecording(self) -> dict:
         """Pausa la grabación actual."""
-        if not self._svc:
+        if not self._svc or not self._adc_recorder:
             return {'ok': False, 'error': 'Service unavailable'}
         try:
-            from core.audio_lab.adc_recorder_service import ADCRecorderService
-            recorder = ADCRecorderService()
-            recorder.pause_recording()
+            self._adc_recorder.pause_recording()
             return {'ok': True}
         except Exception as e:
             logger.error(f"Error pausing recording: {e}")
@@ -653,12 +649,10 @@ class AudioLabBridge(QObject):
     @Slot(result=dict)
     def resumeRecording(self) -> dict:
         """Reanuda la grabación pausada."""
-        if not self._svc:
+        if not self._svc or not self._adc_recorder:
             return {'ok': False, 'error': 'Service unavailable'}
         try:
-            from core.audio_lab.adc_recorder_service import ADCRecorderService
-            recorder = ADCRecorderService()
-            recorder.resume_recording()
+            self._adc_recorder.resume_recording()
             return {'ok': True}
         except Exception as e:
             logger.error(f"Error resuming recording: {e}")
@@ -667,12 +661,10 @@ class AudioLabBridge(QObject):
     @Slot(result=dict)
     def stopRecording(self) -> dict:
         """Detiene la grabación actual."""
-        if not self._svc:
+        if not self._svc or not self._adc_recorder:
             return {'ok': False, 'error': 'Service unavailable'}
         try:
-            from core.audio_lab.adc_recorder_service import ADCRecorderService
-            recorder = ADCRecorderService()
-            recorder.stop_recording()
+            self._adc_recorder.stop_recording()
             return {'ok': True}
         except Exception as e:
             logger.error(f"Error stopping recording: {e}")
@@ -681,12 +673,10 @@ class AudioLabBridge(QObject):
     @Slot(str, float, result=dict)
     def addMarker(self, label: str = "", timestamp: float = None) -> dict:
         """Agrega un marcador en la grabación actual."""
-        if not self._svc:
+        if not self._svc or not self._adc_recorder:
             return {'ok': False, 'error': 'Service unavailable'}
         try:
-            from core.audio_lab.adc_recorder_service import ADCRecorderService
-            recorder = ADCRecorderService()
-            result = recorder.add_marker(timestamp=timestamp, label=label)
+            result = self._adc_recorder.add_marker(timestamp=timestamp, label=label)
             return {'ok': result['success'], **result}
         except Exception as e:
             logger.error(f"Error adding marker: {e}")
@@ -695,12 +685,10 @@ class AudioLabBridge(QObject):
     @Slot(str, str, result=dict)
     def splitByMarkers(self, input_file: str, output_dir: str) -> dict:
         """Divide grabación por marcadores."""
-        if not self._svc:
+        if not self._svc or not self._adc_recorder:
             return {'ok': False, 'error': 'Service unavailable'}
         try:
-            from core.audio_lab.adc_recorder_service import ADCRecorderService
-            recorder = ADCRecorderService()
-            result = recorder.split_by_markers(input_file, output_dir)
+            result = self._adc_recorder.split_by_markers(input_file, output_dir)
             return {'ok': result['success'], **result}
         except Exception as e:
             logger.error(f"Error splitting by markers: {e}")
@@ -709,12 +697,10 @@ class AudioLabBridge(QObject):
     @Slot(result=dict)
     def getRecordingStatus(self) -> dict:
         """Obtiene estado de la grabación actual."""
-        if not self._svc:
+        if not self._adc_recorder:
             return {'active': False}
         try:
-            from core.audio_lab.adc_recorder_service import ADCRecorderService
-            recorder = ADCRecorderService()
-            return recorder.get_recording_status()
+            return self._adc_recorder.get_recording_status()
         except Exception as e:
             logger.error(f"Error getting recording status: {e}")
             return {'active': False, 'error': str(e)}

@@ -20,6 +20,7 @@ Item {
     property var _compareResult: null
     property string _errorMessage: ""
     property bool _compareMode: false
+    property string _currentJobId: ""
 
     readonly property int stateIdle: 0
     readonly property int stateAnalyzing: 1
@@ -28,6 +29,22 @@ Item {
     readonly property int stateFailed: 4
 
     Component.onCompleted: root.pageState = "READY"
+
+    Connections {
+        target: root.labService
+        function onJobCompleted(jobId, result) {
+            if (jobId === root._currentJobId) {
+                root._analysisResult = result
+                root._state = root.stateCompleted
+            }
+        }
+        function onJobFailed(jobId, error) {
+            if (jobId === root._currentJobId) {
+                root._errorMessage = error
+                root._state = root.stateFailed
+            }
+        }
+    }
 
     function _startAnalysis() {
         if (!root.labService || !root.labService.startAnalysis) {
@@ -43,23 +60,20 @@ Item {
         root._state = root.stateAnalyzing
         root._errorMessage = ""
         var filepath = inputSelection.selectedFiles[0]
-        var result = root.labService.startAnalysis(filepath)
-        if (result && result.status === "unsupported") {
-            root._analysisResult = null
-            root._errorMessage = result.explanation || "Backend no disponible"
-            root._state = root.stateFailed
-        } else if (result && result.error) {
-            root._analysisResult = null
-            root._errorMessage = result.error
-            root._state = root.stateFailed
+        var jobId = root.labService.startAnalysis(filepath)
+        if (typeof jobId === "string" && jobId.length > 0) {
+            root._currentJobId = jobId
         } else {
-            root._analysisResult = result
-            root._state = root.stateCompleted
+            root._errorMessage = "Error al iniciar análisis"
+            root._state = root.stateFailed
         }
     }
 
     function _cancelAnalysis() {
-        root._state = root.stateCancelling
+        if (root._currentJobId && root.labService && root.labService.cancelJob) {
+            root._state = root.stateCancelling
+            root.labService.cancelJob(root._currentJobId)
+        }
         root._state = root.stateIdle
     }
 

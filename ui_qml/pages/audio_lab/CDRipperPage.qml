@@ -48,7 +48,7 @@ Page {
         
         if (currentCDInfo && currentCDInfo.ok) {
             statusMessage.text = `CD detectado: ${currentCDInfo.album_title || "Desconocido"}`
-            tracksToRip = currentCDInfo.tracks.map(function(t) { return {title: t.title, artist: t.artist, duration: t.duration, selected: true} })
+            tracksToRip = currentCDInfo.tracks.map(function(t) { return {track_number: t.track_number, title: t.title, artist: t.artist, duration: t.duration, selected: true} })
         } else {
             statusMessage.text = "No se pudo leer el CD o no hay uno insertado."
         }
