@@ -144,24 +144,49 @@ Item {
                 GlassCard {
                     id: microCard
                     width: parent.width * 0.48
-                    implicitHeight: 80
+                    implicitHeight: 100
                     activeFocusOnTab: true
 
-                    RowLayout {
+                    Column {
                         anchors.fill: parent
                         anchors.margins: MichiTheme.spacing.lg
-                        spacing: MichiTheme.spacing.sm
+                        spacing: MichiTheme.spacing.xs
 
-                        Text {
-                            text: "Micro Server"
-                            color: MichiTheme.colors.textPrimary
-                            font.pixelSize: MichiTheme.typography.cardTitleSize
-                            font.weight: MichiTheme.typography.weightSemiBold
+                        Row {
+                            spacing: MichiTheme.spacing.sm
+                            Text {
+                                text: "Micro Server"
+                                color: MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.cardTitleSize
+                                font.weight: MichiTheme.typography.weightSemiBold
+                            }
+                            StatusBadge {
+                                text: root.cb && root.cb.microServerState === "connected" ? "Activo" : "Detenido"
+                                kind: root.cb && root.cb.microServerState === "connected" ? "success" : "disconnected"
+                            }
                         }
-
-                        StatusBadge {
-                            text: root.cb && root.cb.microServerState === "connected" ? "Activo" : "Detenido"
-                            kind: root.cb && root.cb.microServerState === "connected" ? "success" : "disconnected"
+                        Text {
+                            text: root.cb && root.cb.microServerState === "connected"
+                                  ? "Comparte tu biblioteca en la red local"
+                                  : "No se detectó un servidor activo"
+                            color: MichiTheme.colors.textSecondary
+                            font.pixelSize: MichiTheme.typography.metaSize
+                            width: parent.width
+                            wrapMode: Text.WordWrap
+                        }
+                        Row {
+                            spacing: MichiTheme.spacing.sm
+                            visible: root.cb && root.cb.microServerState !== "connected"
+                            MichiButton {
+                                text: "Configurar"
+                                variant: "ghost"
+                                font.pixelSize: MichiTheme.typography.metaSize
+                                implicitHeight: 28
+                                onClicked: {
+                                    if (typeof navigationBridge !== "undefined")
+                                        navigationBridge.navigate("connections")
+                                }
+                            }
                         }
                     }
                 }

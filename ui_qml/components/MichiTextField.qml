@@ -24,7 +24,7 @@ Item {
     signal textEdited(string newText)
 
 
-    implicitHeight: fieldBackground.height + (root.label !== "" ? labelText.height + MichiTheme.spacing.xs : 0)
+    implicitHeight: fieldBackground.height + (root.label !== "" ? labelText.height + MichiTheme.spacing.xs : 0) + (bottomText.visible ? bottomText.height + MichiTheme.spacing.xxs : 0)
     implicitWidth: 260
 
     Accessible.name: root.accessibleName
