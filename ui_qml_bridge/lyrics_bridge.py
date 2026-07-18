@@ -320,6 +320,15 @@ class LyricsBridge(QObject):
         self._status = "done"
         self._source = "local"
         self.dataChanged.emit()
+        audio_path = getattr(self._np_bridge, "currentFilePath", "") or ""
+        if audio_path:
+            try:
+                from core.lyrics.lyrics_storage_service import save_sidecar
+                ext = ".lrc" if "[" in text and "]" in text else ".txt"
+                result = save_sidecar(audio_path, text, extension=ext)
+                return {**result, "source": "local"}
+            except Exception as exc:
+                logger.warning("saveLocalLyrics: sidecar write failed: %s", exc)
         return {"ok": True, "source": "local"}
 
     def getActiveLine(self, position_ms: float) -> int | None:

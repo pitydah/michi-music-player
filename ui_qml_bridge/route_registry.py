@@ -49,7 +49,7 @@ ROUTES: dict[str, dict] = {
     "metadata.batch": {"title": "Edicin por lotes", "source": "../pages/metadata/MetadataBatchEditor.qml", "category": "tools", "status": "functional"},
     "tagging": {"title": "Smart Tagging", "source": "../pages/SmartTaggingPage.qml", "category": "tools", "status": "functional"},
     "library_doctor": {"title": "Library Doctor", "source": "../pages/library_doctor/LibraryDoctorPage.qml", "category": "tools", "status": "functional"},
-    "equalizer": {"title": "Ecualizador", "source": "../pages/EqPage.qml", "category": "tools", "status": "functional"},
+    "equalizer": {"title": "Ecualizador", "source": "../pages/equalizer/EqualizerPage.qml", "category": "tools", "status": "functional"},
     "outputs": {"title": "Perfiles de salida", "source": "../pages/outputs/OutputProfilesPage.qml", "category": "settings", "status": "functional"},
     "devices.list": {"title": "Dispositivos", "source": "../pages/devices/DevicesPage.qml", "category": "core", "status": "functional"},
     "devices.detail": {"title": "Dispositivo", "source": "../pages/devices/DeviceDetailPage.qml", "category": "detail", "status": "functional", "params": {"device_id": {"required": True, "type": "string"}}},

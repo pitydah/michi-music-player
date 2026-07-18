@@ -365,6 +365,42 @@ class LibraryDoctorBridge(QObject):
         self.dataChanged.emit()
         return {"ok": True, "cancelled": True}
 
+    @Slot(str, str, result=dict)
+    def exportReport(self, filepath: str, format: str) -> dict:
+        if not self._issues:
+            return {"ok": False, "error": "NO_DATA", "message": "No hay datos de escaneo para exportar"}
+
+        path = Path(filepath)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if format == "json":
+                import json
+                data = {
+                    "total_checked": self._total_checked,
+                    "issue_count": self._issue_count,
+                    "issues": self._issues,
+                }
+                path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+            elif format == "csv":
+                import csv
+                with path.open("w", newline="", encoding="utf-8") as f:
+                    writer = csv.DictWriter(f, fieldnames=["id", "type", "filepath", "detail", "track_id"])
+                    writer.writeheader()
+                    for iss in self._issues:
+                        writer.writerow({
+                            "id": iss.get("id"),
+                            "type": iss.get("type", ""),
+                            "filepath": iss.get("filepath", ""),
+                            "detail": iss.get("detail", ""),
+                            "track_id": iss.get("track_id", ""),
+                        })
+            else:
+                return {"ok": False, "error": "INVALID_FORMAT", "message": f"Formato no soportado: {format}"}
+            return {"ok": True, "path": str(path)}
+        except Exception as e:
+            logger.exception("Failed to export report")
+            return {"ok": False, "error": "EXPORT_FAILED", "message": str(e)}
+
     @Slot()
     def refresh(self):
         self.dataChanged.emit()

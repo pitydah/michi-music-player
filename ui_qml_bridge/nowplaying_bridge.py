@@ -458,6 +458,10 @@ class NowPlayingBridge(QObject):
     def shuffleEnabled(self):
         return self._shuffle_enabled
 
+    @Property(str, notify=stateChanged)
+    def currentFilePath(self):
+        return self._current_path()
+
     # ── Quality / Source info ──
 
     def _detect_source_type(self, filepath: str) -> str:

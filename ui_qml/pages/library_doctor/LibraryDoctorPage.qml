@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import "../../theme"
 import "../../components"
 import "../../materials"
@@ -103,9 +104,32 @@ Item {
 
                     text: "Exportar reporte"
                     variant: "ghost"
-                    onClicked: {
-                        if (typeof notificationBridge !== "undefined" && notificationBridge)
-                            notificationBridge.showMessage("Reporte exportado", "success")
+                    onClicked: exportDialog.open()
+                }
+
+                FileDialog {
+                    id: exportDialog
+                    title: "Exportar reporte"
+                    fileMode: FileDialog.SaveFile
+                    nameFilters: ["JSON (*.json)", "CSV (*.csv)"]
+                    defaultSuffix: "json"
+                    currentFile: "library_doctor_report.json"
+                    onAccepted: {
+                        var filePath = exportDialog.selectedFile.toString()
+                        if (filePath.startsWith("file://"))
+                            filePath = filePath.slice(7)
+                        var fmt = "json"
+                        if (filePath.endsWith(".csv"))
+                            fmt = "csv"
+                        if (root.doc && typeof root.doc.exportReport !== "undefined") {
+                            var result = root.doc.exportReport(filePath, fmt)
+                            if (typeof notificationBridge !== "undefined" && notificationBridge) {
+                                if (result.ok)
+                                    notificationBridge.showMessage("Reporte exportado a " + filePath, "success")
+                                else
+                                    notificationBridge.showMessage(result.message || "Error al exportar", "error")
+                            }
+                        }
                     }
                 }
                 MichiButton {
