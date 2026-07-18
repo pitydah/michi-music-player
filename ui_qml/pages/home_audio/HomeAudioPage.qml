@@ -107,7 +107,7 @@ Item {
                     MichiMusicStreamPanel {
                         id: streamPanel
                         width: parent.width
-                        streamState: root.ha ? root.ha.streamState : "concept"
+                        streamState: root.ha ? (root.ha.streamState || "concept") : "concept"
                         activeFocusOnTab: true
                         KeyNavigation.backtab: haPanel
                         Keys.onReturnPressed: activate()

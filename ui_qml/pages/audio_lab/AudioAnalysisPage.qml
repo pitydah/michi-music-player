@@ -30,7 +30,7 @@ Item {
     Component.onCompleted: root.pageState = "READY"
 
     function _startAnalysis() {
-        if (!root.labService || !root.labService.analyzeFile) {
+        if (!root.labService || !root.labService.startAnalysis) {
             root._errorMessage = "Servicio de análisis no disponible"
             root._state = root.stateFailed
             return
@@ -42,10 +42,8 @@ Item {
         }
         root._state = root.stateAnalyzing
         root._errorMessage = ""
-        var filepath = typeof inputSelection.selectedFiles[0] === "string"
-            ? inputSelection.selectedFiles[0]
-            : inputSelection.selectedFiles[0].filepath || ""
-        var result = root.labService.analyzeFile(filepath)
+        var filepath = inputSelection.selectedFiles[0]
+        var result = root.labService.startAnalysis(filepath)
         if (result && result.status === "unsupported") {
             root._analysisResult = null
             root._errorMessage = result.explanation || "Backend no disponible"

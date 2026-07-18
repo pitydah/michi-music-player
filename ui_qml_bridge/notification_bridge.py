@@ -129,6 +129,7 @@ class NotificationBridge(QObject):
     def dismiss(self, notification_id: str = ""):
         if notification_id:
             self._persistent_map.pop(notification_id, None)
+            self._queue = [n for n in self._queue if n.get("id") != notification_id]
             if self._notification_service:
                 self._notification_service.dismiss(notification_id)
         if not notification_id or (self._current and str(self._current.get("id", "")) == notification_id):

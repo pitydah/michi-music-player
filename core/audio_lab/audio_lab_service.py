@@ -109,12 +109,12 @@ class AudioLabService(QObject):
     def capability_map(self) -> dict[str, bool]:
         return {
             "probe": self._probe_service is not None,
-            "analysis": self._analysis_service is not None,
-            "conversion": self._conversion_service is not None,
-            "normalization": self._normalization_service is not None,
-            "replaygain": self._replaygain_service is not None,
+            "analysis": self._analysis_service is not None and self._check_ffmpeg(),
+            "conversion": self._conversion_service is not None and self._check_ffmpeg(),
+            "normalization": self._normalization_service is not None and self._check_ffmpeg(),
+            "replaygain": self._replaygain_service is not None and self._check_ffmpeg(),
             "integrity": self._integrity_service is not None,
-            "comparison": self._comparison_service is not None,
+            "comparison": self._comparison_service is not None and self._check_ffmpeg(),
             "batch": self._batch_service is not None,
             "profiles": self._profile_service is not None,
         }

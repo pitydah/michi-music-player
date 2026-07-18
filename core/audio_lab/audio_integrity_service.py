@@ -121,15 +121,22 @@ class AudioIntegrityService(QObject):
             issues.append({"type": "UNREADABLE", "detail": str(e)})
         return issues
 
-    def _compute_checksum(self, filepath: str, blocks: int = 64) -> str:
+    def _compute_checksum(self, filepath: str, blocks: int = 0) -> str:
         try:
             h = hashlib.sha256()
             with open(filepath, "rb") as f:
-                for _ in range(blocks):
-                    chunk = f.read(65536)
-                    if not chunk:
-                        break
-                    h.update(chunk)
+                if blocks > 0:
+                    for _ in range(blocks):
+                        chunk = f.read(65536)
+                        if not chunk:
+                            break
+                        h.update(chunk)
+                else:
+                    while True:
+                        chunk = f.read(65536)
+                        if not chunk:
+                            break
+                        h.update(chunk)
             return h.hexdigest()
         except Exception:
             return ""

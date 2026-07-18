@@ -21,7 +21,9 @@ from core.worker_manager import WorkerManager
 
 logger = logging.getLogger("michi.audio_lab.conversion")
 
-AUDIO_ONLY_FORMATS = {"FLAC", "WAV", "AIFF", "MP3", "AAC", "Opus", "Vorbis", "ALAC"}
+AUDIO_ONLY_FORMATS = {"flac", "wav", "aiff", "mp3", "aac", "opus", "vorbis", "alac"}
+FORMAT_NAME_MAP = {"flac": "FLAC", "wav": "WAV", "aiff": "AIFF", "mp3": "MP3",
+                   "aac": "AAC", "opus": "Opus", "vorbis": "Vorbis", "alac": "ALAC"}
 
 
 @dataclass
@@ -92,7 +94,8 @@ class AudioConversionService(QObject):
     def preview(self, source: str, profile: ConversionProfile) -> dict[str, Any]:
         if not source or not os.path.isfile(source):
             return {"ok": False, "error": "SOURCE_NOT_FOUND"}
-        if profile.format not in AUDIO_ONLY_FORMATS:
+        fmt = profile.format.lower().strip()
+        if fmt not in AUDIO_ONLY_FORMATS:
             return {"ok": False, "error": f"UNSUPPORTED_FORMAT:{profile.format}"}
         src_path = Path(source)
         estimated_size = src_path.stat().st_size * self._size_ratio(profile.format)

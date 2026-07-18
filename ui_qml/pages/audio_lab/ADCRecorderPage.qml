@@ -27,8 +27,9 @@ Page {
     property string outputPath: "/home/user/Music/Vinyl Rips"
 
     Component.onCompleted: {
-        loadAudioDevices()
-        startLevelMeter()
+        // Cargar dispositivos asincrónicamente para no bloquear la UI
+        Qt.callLater(loadAudioDevices)
+        Qt.callLater(startLevelMeter)
     }
 
     function loadAudioDevices() {
