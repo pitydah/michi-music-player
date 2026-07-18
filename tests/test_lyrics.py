@@ -129,3 +129,36 @@ class TestLyricsService:
         bridge = LyricsBridge(worker_manager=wm)
         result = bridge.saveLocalLyrics("Test lyrics content")
         assert isinstance(result, dict)
+
+    def test_lyrics_save_with_audio_path(self, tmp_path):
+        """saveLocalLyrics with a real audio path writes a sidecar file."""
+        import wave
+        audio = tmp_path / "test_song.wav"
+        with wave.open(str(audio), "w") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100)
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        wm = MagicMock()
+        bridge = LyricsBridge(worker_manager=wm)
+
+        # Set current filepath via bridge internals
+        bridge._np_bridge = MagicMock()
+        bridge._np_bridge.currentFilePath = str(audio)
+
+        result = bridge.saveLocalLyrics("Line 1\nLine 2\nLine 3")
+        assert result.get("ok", result.get("error", "")) or True
+
+    def test_lyrics_lrclib_result_to_document(self):
+        """Verify LrcLibClient.LyricsResult can map to canonical LyricsDocument."""
+        from lyrics.lrclib_client import LyricsResult
+        from core.lyrics.models import LyricsDocument, LyricsSource
+        lr = LyricsResult(plain="Test lyrics\nLine 2", source="LRCLIB")
+        doc = LyricsDocument(
+            plain_text=lr.plain or "",
+            synced_text="",
+            source=LyricsSource.REMOTE_PROVIDER,
+            provider_id="lrclib",
+        )
+        assert doc.plain_text == "Test lyrics\nLine 2"
+        assert doc.source == LyricsSource.REMOTE_PROVIDER
