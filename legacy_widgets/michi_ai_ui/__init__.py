@@ -1,1 +1,0 @@
-"""Michi AI UI components."""

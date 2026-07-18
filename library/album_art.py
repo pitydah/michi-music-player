@@ -24,12 +24,12 @@ COVER_FILENAMES = ["cover.jpg", "cover.png", "folder.jpg", "folder.png",
 
 
 @dataclass
-class _CoverFlowItemLegacy:
+class _CoverFlowItem:
     pixmap: QPixmap
     title: str
     subtitle: str
     data: any = None
-CoverFlowItem = _CoverFlowItemLegacy  # backward compat for legacy_widgets
+CoverFlowItem = _CoverFlowItem  # used by CoverFlow module
 
 
 def find_cover_in_dir(directory: str) -> str | None:

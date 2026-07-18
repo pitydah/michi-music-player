@@ -1,106 +1,63 @@
-"""Dependency Center — detecta herramientas externas requeridas por Audio Lab.
-
-Uso:
-    check = check_dependencies()
-    check["ffmpeg"]["available"]  # True/False
-    check["ffmpeg"]["path"]       # /usr/bin/ffmpeg o None
-"""
+"""External tool detection — checks if system tools are installed for audio processing."""
 
 from __future__ import annotations
 
 import shutil
-from typing import Any
+from dataclasses import dataclass
 
-_DEPENDENCIES: list[dict[str, Any]] = [
-    {
-        "name": "ffmpeg",
-        "cmd": "ffmpeg",
-        "label": "FFmpeg",
-        "required_for": ["FLAC spectral", "conversión a ALAC", "exportación vinilo"],
-        "optional": True,
-    },
-    {
-        "name": "flac",
-        "cmd": "flac",
-        "label": "FLAC CLI",
-        "required_for": ["conversión a FLAC"],
-        "optional": True,
-    },
-    {
-        "name": "lame",
-        "cmd": "lame",
-        "label": "LAME MP3",
-        "required_for": ["conversión a MP3"],
-        "optional": True,
-    },
-    {
-        "name": "opusenc",
-        "cmd": "opusenc",
-        "label": "Opus encoder",
-        "required_for": ["conversión a Opus"],
-        "optional": True,
-    },
-    {
-        "name": "cdparanoia",
-        "cmd": "cdparanoia",
-        "label": "cdparanoia",
-        "required_for": ["ripeo de CD"],
-        "optional": True,
-    },
-    {
-        "name": "abcde",
-        "cmd": "abcde",
-        "label": "ABCDE",
-        "required_for": ["ripeo de CD automático"],
-        "optional": True,
-    },
-    {
-        "name": "fpcalc",
-        "cmd": "fpcalc",
-        "label": "fpcalc (Chromaprint)",
-        "required_for": ["fingerprinting acústico"],
-        "optional": True,
-    },
+
+@dataclass
+class ExternalToolStatus:
+    name: str
+    available: bool
+    path: str
+    required: bool
+    recommended_for: str
+    install_hint: str
+
+
+_TOOLS_TO_CHECK = [
+    ("whipper", False, "Modo Preciso", "sudo pacman -S whipper"),
+    ("cdparanoia", False, "Modo Seguro", "sudo pacman -S cdparanoia"),
+    ("udisksctl", False, "Montaje de ISO", "sudo pacman -S udisks2"),
+    ("7z", False, "Extracción de ISO (alternativo)", "sudo pacman -S p7zip"),
+    ("ffmpeg", False, "Conversión de formatos", "sudo pacman -S ffmpeg"),
+    ("flac", False, "Codificacion FLAC", "sudo pacman -S flac"),
+    ("lame", False, "Codificacion MP3", "sudo pacman -S lame"),
+    ("opusenc", False, "Codificacion Opus", "sudo pacman -S opus-tools"),
+    ("metaflac", False, "Etiquetas FLAC", "sudo pacman -S flac"),
+    ("fpcalc", False, "Identificacion acustica", "sudo pacman -S chromaprint"),
 ]
 
 
-def check_dependencies() -> dict[str, dict]:
-    """Check all known dependencies and return availability."""
-    result: dict[str, dict] = {}
-    for dep in _DEPENDENCIES:
-        path = shutil.which(dep["cmd"])
-        result[dep["name"]] = {
-            "name": dep["name"],
-            "label": dep["label"],
-            "available": path is not None,
-            "path": path,
-            "required_for": dep["required_for"],
-            "optional": dep["optional"],
-        }
+def check_all_tools() -> dict[str, ExternalToolStatus]:
+    result = {}
+    for name, required, recommended_for, install_hint in _TOOLS_TO_CHECK:
+        path = shutil.which(name)
+        result[name] = ExternalToolStatus(
+            name=name,
+            available=path is not None,
+            path=path or "",
+            required=required,
+            recommended_for=recommended_for,
+            install_hint=install_hint,
+        )
     return result
 
 
-def check_tools(*names: str) -> dict[str, bool]:
-    """Quick check for specific tools. Returns {name: available}."""
-    return {n: shutil.which(n) is not None for n in names}
+def tool_available(name: str) -> bool:
+    return shutil.which(name) is not None
 
 
-def missing_for(format_name: str) -> list[str]:
-    """Return list of missing tools required for a given format."""
-    tool_map = {
-        "flac": "flac",
-        "mp3": "lame",
-        "opus": "opusenc",
-        "alac": "ffmpeg",
+def get_tool_diagnostics() -> dict:
+    tools = check_all_tools()
+    available_count = sum(1 for t in tools.values() if t.available)
+    return {
+        "tools": {name: {"available": t.available, "path": t.path}
+                  for name, t in tools.items()},
+        "available_count": available_count,
+        "total_checked": len(tools),
+        "all_critical_available": all(
+            t.available for t in tools.values() if t.required
+        ),
     }
-    tool = tool_map.get(format_name)
-    if tool and not shutil.which(tool):
-        return [tool]
-    return []
-
-
-def format_needs_tool(format_name: str) -> str | None:
-    """Return the tool name needed for a format, or None if WAV (no tool)."""
-    if format_name == "wav":
-        return None
-    return {"flac": "flac", "mp3": "lame", "opus": "opusenc", "alac": "ffmpeg"}.get(format_name)

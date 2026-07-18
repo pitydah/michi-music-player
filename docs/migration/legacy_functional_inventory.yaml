@@ -1,0 +1,1945 @@
+schema_version: 1
+repository:
+  project: michi-music-player
+  frontend_target: qml_only
+  legacy_framework: PySide6.QtWidgets
+legacy_runtime:
+  launchers:
+  - path: michi/widgets_app.py
+    status: stubbed
+    note: Stub replacement — prints message, returns 2. Original file archived in
+      branch archive/qtwidgets-final.
+  fallback_paths: []
+  qtwidgets_importers:
+  - path: library/album_art.py
+    line: 32
+    import: CoverFlowItem = _CoverFlowItemLegacy
+    status: broken_import
+    note: References deleted module. Must be updated before legacy_widgets removal.
+  qapplication_creators:
+  - path: michi/widgets_app.py
+    line: 13
+    status: stubbed
+functions:
+- id: metadata_editor
+  name: Editor avanzado de metadatos
+  domain: metadata
+  criticality: high
+  legacy:
+    status: frozen
+    files:
+    - legacy_widgets/ui/metadata_editor.py
+    entry_points:
+    - legacy_widgets/ui/window.py
+    controllers:
+    - legacy_widgets/ui/controllers/album_controller.py
+    services:
+    - metadata/tag_writer.py
+    - metadata/tag_reader.py
+  replacement:
+    qml_status: parity
+    qml_files:
+    - ui_qml/pages/metadata/MetadataEditorPage.qml
+    - ui_qml/pages/metadata/MetadataInspectorPage.qml
+    - ui_qml/pages/metadata/MetadataSingleEditor.qml
+    - ui_qml/pages/metadata/MetadataBatchEditor.qml
+    - ui_qml/pages/metadata/MetadataDiffView.qml
+    - ui_qml/pages/metadata/MetadataConflictView.qml
+    - ui_qml/pages/metadata/MetadataFieldRow.qml
+    - ui_qml/pages/metadata/MetadataFieldGrid.qml
+    - ui_qml/pages/metadata/MetadataPreview.qml
+    - ui_qml/pages/metadata/MetadataArtworkEditor.qml
+    - ui_qml/pages/metadata/MetadataArtworkPreview.qml
+    - ui_qml/pages/metadata/MetadataWriteProgress.qml
+    components: []
+    bridges:
+    - ui_qml_bridge/metadata_bridge.py
+    core_services:
+    - core/metadata_service.py
+    - metadata/tag_writer.py
+    - metadata/tag_reader.py
+    models: []
+    persistence: []
+  capabilities:
+  - id: edit_title
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: edit_artist
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: edit_album
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: edit_genre
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: edit_year
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: edit_track_number
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: edit_composer
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: edit_bpm
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: batch_edit
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: artwork_embedding
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: diff_preview
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: conflict_resolution
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: write_undo
+    legacy: true
+    qml: false
+    backend: true
+    status: backend_available_ui_missing
+  - id: write_progress
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  exclusive_legacy_logic: []
+  known_legacy_defects:
+  - Direct f.save() without backup/replace — FIXED in current tag_writer.py
+  - errors='ignore' in album_identity normalization — FIXED to 'replace'
+  must_preserve:
+  - Atomic write strategy (backup → tempfile → os.replace → cleanup)
+  - Support for MP3/FLAC/OGG/Opus/MP4/M4A
+  - Per-format artwork embedding (APIC/Pictures/covr)
+  - Dirty field tracking for partial writes
+  must_not_reproduce:
+  - Direct f.save() without backup
+  - errors='ignore' stripping non-ASCII
+  tests_required:
+  - test_tag_writer_atomic_write
+  - test_tag_writer_rollback
+  - test_tag_reader_encoding_fallback
+  hardware_required: []
+  deletion_gate:
+    documented: true
+    logic_extracted: false
+    qml_replacement_complete: true
+    tests_passed: false
+    imports_removed: false
+    safe_to_delete: false
+- id: equalizer
+  name: Ecualizador y cadena DSP
+  domain: audio
+  criticality: high
+  legacy:
+    status: frozen
+    files:
+    - legacy_widgets/ui/controllers/audio_output_controller.py
+    entry_points: []
+    controllers: []
+    services: []
+  replacement:
+    qml_status: parity
+    qml_files:
+    - ui_qml/pages/equalizer/EqualizerPage.qml
+    - ui_qml/pages/equalizer/EqualizerGraph.qml
+    - ui_qml/pages/equalizer/EqualizerBandControl.qml
+    - ui_qml/pages/equalizer/EqualizerPresetBrowser.qml
+    - ui_qml/pages/equalizer/DSPChainPage.qml
+    - ui_qml/pages/equalizer/DSPModuleCard.qml
+    - ui_qml/pages/equalizer/DSPConflictWarning.qml
+    components: []
+    bridges:
+    - ui_qml_bridge/eq_bridge.py
+    core_services:
+    - core/equalizer_service.py
+    - audio/eq_presets.py
+    - audio/eq_biquad.py
+    - audio/eq_convert.py
+    - audio/dsp_state.py
+    models: []
+    persistence: []
+  capabilities: []
+  exclusive_legacy_logic: []
+  known_legacy_defects: []
+  must_preserve: []
+  must_not_reproduce: []
+  tests_required: []
+  hardware_required: []
+  deletion_gate:
+    documented: true
+    logic_extracted: true
+    qml_replacement_complete: true
+    tests_passed: false
+    imports_removed: false
+    safe_to_delete: false
+- id: global_search
+  name: Búsqueda global
+  domain: library
+  criticality: high
+  legacy:
+    status: frozen
+    files:
+    - legacy_widgets/ui/controllers/navigation_controller.py
+    entry_points:
+    - legacy_widgets/ui/window.py
+    controllers: []
+    services: []
+  replacement:
+    qml_status: partial
+    qml_files:
+    - ui_qml/pages/search/GlobalSearchPage.qml
+    - ui_qml/pages/search/SearchFiltersDrawer.qml
+    - ui_qml/pages/search/SearchSuggestions.qml
+    - ui_qml/pages/search/SearchResultRow.qml
+    - ui_qml/pages/search/SearchResultGroup.qml
+    - ui_qml/pages/search/SearchResultSection.qml
+    - ui_qml/pages/search/SearchResultDelegate.qml
+    - ui_qml/pages/search/SearchResultItem.qml
+    - ui_qml/pages/search/SearchRecentQueries.qml
+    - ui_qml/pages/search/GlobalSearchOverlay.qml
+    components: []
+    bridges:
+    - ui_qml_bridge/global_search_bridge.py
+    core_services:
+    - core/global_search_service.py
+    - library/search_engine.py
+    - library/search_index.py
+    models: []
+    persistence: []
+  capabilities:
+  - id: text_search
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: type_filters
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: advanced_field_filters
+    legacy: true
+    qml: false
+    backend: true
+    status: backend_available_ui_missing
+  - id: recent_queries
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: search_cancellation
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  exclusive_legacy_logic:
+  - ui/search_controller.py source deleted. Only pyc remains. Legacy had AND/OR multi-criteria
+    filtering not exposed in QML.
+  known_legacy_defects: []
+  must_preserve:
+  - FTS5 fast path (<10ms)
+  - LIKE fallback when FTS5 returns 0 results
+  - Field filter parsing (artist:, album:, year:>, bitrate:>=)
+  must_not_reproduce: []
+  tests_required:
+  - test_search_fts_returns_results
+  - test_search_like_fallback
+  - test_search_field_filters
+  hardware_required: []
+  deletion_gate:
+    documented: true
+    logic_extracted: true
+    qml_replacement_complete: false
+    tests_passed: false
+    imports_removed: false
+    safe_to_delete: false
+- id: smart_tagging
+  name: Smart Tagging
+  domain: metadata
+  criticality: medium
+  legacy:
+    status: frozen
+    files:
+    - legacy_widgets/ui/audio_lab/services/smart_tagging_service.py
+    entry_points: []
+    controllers: []
+    services: []
+  replacement:
+    qml_status: partial
+    qml_files:
+    - ui_qml/pages/SmartTaggingPage.qml
+    - ui_qml/pages/metadata/SmartTaggingWorkflowPage.qml
+    components: []
+    bridges:
+    - ui_qml_bridge/smart_tagging_bridge.py
+    core_services:
+    - core/smart_tagging_service.py
+    models: []
+    persistence: []
+  capabilities: []
+  exclusive_legacy_logic:
+  - Legacy smart_tagging_service.py (199 lines) has richer model classes (TagSuggestion,
+    TrackMetadata) with confidence scoring and batch status management. Core version
+    is 52 lines — less rich.
+  known_legacy_defects: []
+  must_preserve: []
+  must_not_reproduce: []
+  tests_required: []
+  hardware_required: []
+  deletion_gate:
+    documented: true
+    logic_extracted: false
+    qml_replacement_complete: false
+    tests_passed: false
+    imports_removed: false
+    safe_to_delete: false
+- id: library_doctor
+  name: Library Doctor
+  domain: library
+  criticality: medium
+  legacy:
+    status: frozen
+    files:
+    - legacy_widgets/ui/audio_lab/services/library_doctor.py
+    entry_points: []
+    controllers: []
+    services: []
+  replacement:
+    qml_status: parity
+    qml_files:
+    - ui_qml/pages/library_doctor/LibraryDoctorPage.qml
+    - ui_qml/pages/library_doctor/LibraryDoctorIssueList.qml
+    - ui_qml/pages/library_doctor/LibraryDoctorIssueDetail.qml
+    - ui_qml/pages/library_doctor/LibraryDoctorScanPage.qml
+    - ui_qml/pages/library_doctor/LibraryDoctorReport.qml
+    - ui_qml/pages/library_doctor/LibraryDoctorProgress.qml
+    - ui_qml/pages/library_doctor/DoctorDryRunPage.qml
+    - ui_qml/pages/library_doctor/DoctorReportPage.qml
+    - ui_qml/pages/library_doctor/DoctorRepairProgress.qml
+    - ui_qml/pages/library_doctor/DoctorIssueList.qml
+    - ui_qml/pages/library_doctor/DoctorIssueDetail.qml
+    - ui_qml/pages/library_doctor/LibraryDoctorFixPreview.qml
+    components: []
+    bridges:
+    - ui_qml_bridge/library_doctor_bridge.py
+    core_services:
+    - core/library_doctor_service.py
+    - core/library_doctor/
+    models: []
+    persistence: []
+  capabilities: []
+  exclusive_legacy_logic: []
+  known_legacy_defects: []
+  must_preserve: []
+  must_not_reproduce: []
+  tests_required: []
+  hardware_required: []
+  deletion_gate:
+    documented: true
+    logic_extracted: true
+    qml_replacement_complete: true
+    tests_passed: false
+    imports_removed: false
+    safe_to_delete: false
+- id: audio_conversion
+  name: Conversión de audio
+  domain: audio_lab
+  criticality: high
+  legacy:
+    status: frozen
+    files:
+    - legacy_widgets/ui/audio_lab/services/encoder_service.py
+    entry_points: []
+    controllers: []
+    services: []
+  replacement:
+    qml_status: parity
+    qml_files:
+    - ui_qml/pages/audio_lab/AudioConversionPage.qml
+    - ui_qml/pages/audio_lab/AudioConversionProfileEditor.qml
+    - ui_qml/pages/audio_lab/AudioInputSelection.qml
+    components: []
+    bridges:
+    - ui_qml_bridge/audio_lab_bridge.py
+    core_services:
+    - core/audio_lab/audio_conversion_service.py
+    models: []
+    persistence: []
+  capabilities:
+  - id: format_selection
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: codec_bitrate_options
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: output_directory
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: collision_policy
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: naming_template
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: conversion_progress
+    legacy: true
+    qml: false
+    backend: false
+    status: ui_present_workflow_incomplete
+    note: Progress is fake — proc.communicate() blocks. Must be fixed to parse ffmpeg
+      time= from stderr.
+  - id: cancellation
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: batch_conversion
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  exclusive_legacy_logic: []
+  known_legacy_defects:
+  - encoder_service.py uses QProcess (Qt-specific) — core uses subprocess.Popen (correct)
+  - Conversion progress is fake (communicate() blocks without emitting) — BUG
+  must_preserve:
+  - Support for FLAC/WAV/MP3/AAC/Opus/Vorbis/ALAC/AIFF
+  - Per-format codec, bitrate, sample rate, bit depth, channels
+  - Naming templates
+  - Collision policy (overwrite/skip/rename)
+  must_not_reproduce:
+  - QProcess usage (bind to Qt)
+  - Blocking communicate() without progress
+  tests_required:
+  - test_conversion_progress_emits
+  - test_conversion_cancellation
+  - test_conversion_collision_policy
+  hardware_required: []
+  deletion_gate:
+    documented: true
+    logic_extracted: true
+    qml_replacement_complete: false
+    tests_passed: false
+    imports_removed: false
+    safe_to_delete: false
+- id: cd_ripper
+  name: Ripeo de CD
+  domain: audio_lab
+  criticality: high
+  legacy:
+    status: frozen
+    files:
+    - legacy_widgets/ui/audio_lab/services/rip_job_manager.py
+    - legacy_widgets/ui/audio_lab/services/rip_worker.py
+    - legacy_widgets/ui/audio_lab/services/disc_detection_service.py
+    entry_points: []
+    controllers: []
+    services: []
+  replacement:
+    qml_status: partial
+    qml_files:
+    - ui_qml/pages/audio_lab/CDRipperPage.qml
+    components: []
+    bridges:
+    - ui_qml_bridge/audio_lab_bridge.py
+    - ui_qml_bridge/disc_lab_bridge.py
+    core_services:
+    - core/audio_lab/cd_ripper_service.py
+    models: []
+    persistence: []
+  capabilities:
+  - id: drive_detection
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: cd_info_loading
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: track_selection
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: format_selection
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: output_folder
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: progress_feedback
+    legacy: true
+    qml: false
+    backend: false
+    status: ui_present_workflow_incomplete
+  - id: cancellation
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  exclusive_legacy_logic:
+  - 'rip_worker.py: Real-time progress parsing from cdparanoia stderr'
+  - 'rip_job_manager.py: Full job lifecycle with retry and error recovery'
+  - 'disc_detection_service.py: Optical drive detection via cdparanoia -V and udisksctl'
+  known_legacy_defects: []
+  must_preserve: []
+  must_not_reproduce: []
+  tests_required: []
+  hardware_required:
+  - Optical disc drive
+  deletion_gate:
+    documented: true
+    logic_extracted: false
+    qml_replacement_complete: false
+    tests_passed: false
+    imports_removed: false
+    safe_to_delete: false
+- id: adc_recorder
+  name: Grabación ADC (vinilo/cassette)
+  domain: audio_lab
+  criticality: medium
+  legacy:
+    status: frozen
+    files:
+    - legacy_widgets/ui/audio_lab/vinyl_lab_page.py
+    entry_points: []
+    controllers: []
+    services: []
+  replacement:
+    qml_status: partial
+    qml_files:
+    - ui_qml/pages/audio_lab/ADCRecorderPage.qml
+    components: []
+    bridges:
+    - ui_qml_bridge/audio_lab_bridge.py
+    core_services:
+    - core/audio_lab/adc_recorder_service.py
+    models: []
+    persistence: []
+  capabilities:
+  - id: device_detection
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: recording
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: vu_meter
+    legacy: true
+    qml: false
+    backend: false
+    status: ui_present_workflow_incomplete
+  - id: pause_resume
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: markers_cue_points
+    legacy: true
+    qml: true
+    backend: true
+    status: parity
+  - id: waveform_review
+    legacy: true
+    qml: false
+    backend: false
+    status: not_started
+  - id: track_splitting
+    legacy: true
+    qml: false
+    backend: true
+    status: not_started
+  - id: calibration
+    legacy: true
+    qml: false
+    backend: false
+    status: not_started
+  exclusive_legacy_logic:
+  - 'vinyl_lab_page.py (660 lines): Full vinyl digitization with calibration, waveform
+    review, track splitting, export'
+  known_legacy_defects:
+  - VU meter was using Math.random() as fallback — FIXED to -60 (silence)
+  - Thread leak (no daemon, no __del__) — FIXED
+  must_preserve: []
+  must_not_reproduce: []
+  tests_required: []
+  hardware_required:
+  - USB audio interface / turntable
+  deletion_gate:
+    documented: true
+    logic_extracted: false
+    qml_replacement_complete: false
+    tests_passed: false
+    imports_removed: false
+    safe_to_delete: false
+- id: device_sync
+  name: Sincronización de dispositivos
+  domain: devices
+  criticality: high
+  legacy:
+    status: frozen
+    files:
+    - legacy_widgets/ui/services/device_registry.py
+    - legacy_widgets/ui/services/device_sync_controller.py
+    - legacy_widgets/ui/services/sync_manifest_builder.py
+    - legacy_widgets/ui/services/sync_manifest_store.py
+    - legacy_widgets/ui/services/sync_queue.py
+    - legacy_widgets/ui/services/transcode_service.py
+    - legacy_widgets/ui/services/transfer_backends.py
+    entry_points: []
+    controllers: []
+    services: []
+  replacement:
+    qml_status: partial
+    qml_files:
+    - ui_qml/pages/devices/DevicesPage.qml
+    - ui_qml/pages/devices/DeviceDetailPage.qml
+    - ui_qml/pages/devices/DevicePairingPage.qml
+    - ui_qml/pages/devices/DeviceSyncProfileEditor.qml
+    - ui_qml/pages/devices/DeviceTransferPanel.qml
+    - ui_qml/pages/devices/DeviceTransferQueue.qml
+    - ui_qml/pages/devices/DeviceTransferJob.qml
+    - ui_qml/pages/devices/DeviceStoragePanel.qml
+    - ui_qml/pages/devices/DeviceSyncHistory.qml
+    - ui_qml/pages/devices/DeviceStorageView.qml
+    - ui_qml/pages/devices/DeviceCompatibilityView.qml
+    - ui_qml/pages/devices/DeviceCard.qml
+    components: []
+    bridges:
+    - ui_qml_bridge/devices_bridge.py
+    core_services:
+    - core/device_sync_service.py
+    - core/sync/
+    models: []
+    persistence: []
+  capabilities: []
+  exclusive_legacy_logic:
+  - 7 legacy service files with orchestration logic not extracted to core/sync/
+  - 'device_sync_controller.py: Full pairing flow and manifest coordination'
+  - 'sync_queue.py: Transfer job lifecycle with progress/cancel/pause/resume'
+  known_legacy_defects: []
+  must_preserve: []
+  must_not_reproduce: []
+  tests_required: []
+  hardware_required:
+  - MTP device
+  - MSC device
+  deletion_gate:
+    documented: true
+    logic_extracted: false
+    qml_replacement_complete: false
+    tests_passed: false
+    imports_removed: false
+    safe_to_delete: false
+- id: external_tools
+  name: Detección de herramientas externas
+  domain: audio_lab
+  criticality: medium
+  legacy:
+    status: frozen
+    files:
+    - legacy_widgets/ui/audio_lab/services/external_tools.py
+    entry_points: []
+    controllers: []
+    services: []
+  replacement:
+    qml_status: not_started
+    qml_files: []
+    components: []
+    bridges: []
+    core_services: []
+    models: []
+    persistence: []
+  capabilities: []
+  exclusive_legacy_logic:
+  - 'external_tools.py (52 lines): Detects ffmpeg, cdparanoia, abcde, sox, mp3splt
+    availability'
+  known_legacy_defects: []
+  must_preserve:
+  - Must extract to core/audio_lab/dependencies.py before deletion
+  must_not_reproduce: []
+  tests_required: []
+  hardware_required: []
+  deletion_gate:
+    documented: true
+    logic_extracted: false
+    qml_replacement_complete: false
+    tests_passed: false
+    imports_removed: false
+    safe_to_delete: false
+- id: library_importer
+  name: Importación a biblioteca
+  domain: library
+  criticality: medium
+  legacy:
+    status: frozen
+    files:
+    - legacy_widgets/ui/audio_lab/services/library_importer.py
+    entry_points: []
+    controllers: []
+    services: []
+  replacement:
+    qml_status: not_started
+    qml_files: []
+    components: []
+    bridges: []
+    core_services: []
+    models: []
+    persistence: []
+  capabilities: []
+  exclusive_legacy_logic:
+  - 'library_importer.py (148 lines): File copy to library directory + DB registration'
+  known_legacy_defects: []
+  must_preserve:
+  - Must extract to core/library/importer.py before deletion
+  must_not_reproduce: []
+  tests_required: []
+  hardware_required: []
+  deletion_gate:
+    documented: true
+    logic_extracted: false
+    qml_replacement_complete: false
+    tests_passed: false
+    imports_removed: false
+    safe_to_delete: false
+- id: playlist_cover_service
+  name: Carátulas de playlists
+  domain: playlists
+  criticality: low
+  legacy:
+    status: frozen
+    files:
+    - legacy_widgets/ui/services/playlist_cover_service.py
+    entry_points: []
+    controllers: []
+    services: []
+  replacement:
+    qml_status: not_started
+    qml_files: []
+    components: []
+    bridges: []
+    core_services: []
+    models: []
+    persistence: []
+  capabilities: []
+  exclusive_legacy_logic:
+  - 'playlist_cover_service.py (110 lines): Mosaic cover generation via QPixmap/QPainter
+    — Qt-specific, no core equivalent needed'
+  known_legacy_defects:
+  - Uses QPainter — Qt-specific. QML handles this differently (native compositor)
+  must_preserve: []
+  must_not_reproduce: []
+  tests_required: []
+  hardware_required: []
+  deletion_gate:
+    documented: true
+    logic_extracted: false
+    qml_replacement_complete: false
+    tests_passed: false
+    imports_removed: false
+    safe_to_delete: false
+- id: artwork_picker
+  name: Selector de carátulas
+  domain: metadata
+  criticality: low
+  legacy:
+    status: frozen
+    files:
+    - legacy_widgets/ui/artwork_picker.py
+    entry_points: []
+    controllers: []
+    services: []
+  replacement:
+    qml_status: partial
+    qml_files:
+    - ui_qml/pages/metadata/MetadataArtworkEditor.qml
+    - ui_qml/pages/metadata/MetadataArtworkPreview.qml
+    components: []
+    bridges:
+    - ui_qml_bridge/cover_bridge.py
+    - ui_qml_bridge/cover_provider_bridge.py
+    core_services:
+    - core/cover_art_service.py
+    - library/artwork_cache.py
+    - library/album_art.py
+    models: []
+    persistence: []
+  capabilities: []
+  exclusive_legacy_logic:
+  - 'artwork_picker.py (274 lines): Preview, resize, crop dialog — Qt-specific. QML
+    lacks crop/resize.'
+  known_legacy_defects: []
+  must_preserve: []
+  must_not_reproduce: []
+  tests_required: []
+  hardware_required: []
+  deletion_gate:
+    documented: true
+    logic_extracted: false
+    qml_replacement_complete: false
+    tests_passed: false
+    imports_removed: false
+    safe_to_delete: false
+- id: navigation
+  name: Navegación y enrutamiento
+  domain: navigation
+  criticality: high
+  legacy:
+    status: frozen
+    files:
+    - legacy_widgets/ui/controllers/navigation_controller.py
+    entry_points: []
+    controllers: []
+    services: []
+  replacement:
+    qml_status: parity
+    qml_files:
+    - ui_qml/shell/PageStack.qml
+    - ui_qml/shell/AppShell.qml
+    - ui_qml/shell/Sidebar.qml
+    components: []
+    bridges:
+    - ui_qml_bridge/navigation_bridge.py
+    - ui_qml_bridge/route_registry.py
+    core_services: []
+    models: []
+    persistence: []
+  capabilities: []
+  exclusive_legacy_logic:
+  - 'NavigationController (665 lines): Complete route dispatch with 50+ routes, 40+
+    SECTION_CONFIG entries'
+  known_legacy_defects: []
+  must_preserve: []
+  must_not_reproduce: []
+  tests_required: []
+  hardware_required: []
+  deletion_gate:
+    documented: true
+    logic_extracted: true
+    qml_replacement_complete: true
+    tests_passed: false
+    imports_removed: false
+    safe_to_delete: false
+- id: vinyl_workflow
+  name: Flujo completo de digitalización de vinilo
+  domain: audio_lab
+  criticality: medium
+  legacy:
+    status: frozen
+    files:
+    - legacy_widgets/ui/audio_lab/vinyl_lab_page.py
+    entry_points: []
+    controllers: []
+    services: []
+  replacement:
+    qml_status: not_started
+    qml_files: []
+    components: []
+    bridges: []
+    core_services: []
+    models: []
+    persistence: []
+  capabilities: []
+  exclusive_legacy_logic:
+  - 'vinyl_lab_page.py (660 lines): Complete vinyl digitization UI — source selection,
+    calibration, recording, waveform review, track splitting, export. NOT replicated
+    in QML.'
+  known_legacy_defects: []
+  must_preserve:
+  - Full workflow must be recreated in QML or documented as DEPRECATED
+  must_not_reproduce: []
+  tests_required: []
+  hardware_required:
+  - USB turntable
+  deletion_gate:
+    documented: true
+    logic_extracted: false
+    qml_replacement_complete: false
+    tests_passed: false
+    imports_removed: false
+    safe_to_delete: false
+files:
+- path: legacy_widgets/ui/controllers/action_controller.py
+  classification: presentation_only
+  functions:
+  - navigation
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/action_registry.py
+  safe_to_delete: true
+  reason: Replaced by action_registry bridge. No exclusive logic.
+- path: legacy_widgets/ui/controllers/ai_assistant_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/michi_ai_bridge.py
+  safe_to_delete: true
+  reason: Replaced by Michi AI bridge.
+- path: legacy_widgets/ui/controllers/album_controller.py
+  classification: presentation_only
+  functions:
+  - metadata_editor
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/metadata_bridge.py
+  safe_to_delete: true
+  reason: Replaced by metadata_bridge.
+- path: legacy_widgets/ui/controllers/artist_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by ui_qml_bridge.
+- path: legacy_widgets/ui/controllers/artist_repository.py
+  classification: presentation_only
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Data repository for legacy controllers.
+- path: legacy_widgets/ui/controllers/audio_lab_controller.py
+  classification: presentation_only
+  functions:
+  - audio_conversion
+  - cd_ripper
+  - adc_recorder
+  - audio_analysis
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/audio_lab_bridge.py
+  safe_to_delete: true
+  reason: Replaced by audio_lab_bridge.
+- path: legacy_widgets/ui/controllers/audio_output_controller.py
+  classification: presentation_only
+  functions:
+  - equalizer
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/eq_bridge.py
+  safe_to_delete: true
+  reason: Replaced by eq_bridge.
+- path: legacy_widgets/ui/controllers/cast_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by ui_qml_bridge.
+- path: legacy_widgets/ui/controllers/devices_controller.py
+  classification: presentation_only
+  functions:
+  - device_sync
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/devices_bridge.py
+  safe_to_delete: true
+  reason: Replaced by devices_bridge.
+- path: legacy_widgets/ui/controllers/ecosystem_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by ui_qml_bridge.
+- path: legacy_widgets/ui/controllers/expanded_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by ui_qml_bridge.
+- path: legacy_widgets/ui/controllers/folder_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by ui_qml_bridge.
+- path: legacy_widgets/ui/controllers/genre_cleanup_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by ui_qml_bridge.
+- path: legacy_widgets/ui/controllers/genre_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by ui_qml_bridge.
+- path: legacy_widgets/ui/controllers/genre_repository.py
+  classification: presentation_only
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Data repository for legacy controllers.
+- path: legacy_widgets/ui/controllers/home_audio_controller.py
+  classification: presentation_only
+  functions:
+  - home_audio
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/home_audio_bridge.py
+  safe_to_delete: true
+  reason: Replaced by home_audio_bridge.
+- path: legacy_widgets/ui/controllers/home_audio_handlers.py
+  classification: presentation_only
+  functions:
+  - home_audio
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/home_audio_bridge.py
+  safe_to_delete: true
+  reason: Replaced by home_audio_bridge.
+- path: legacy_widgets/ui/controllers/home_controller.py
+  classification: presentation_only
+  functions:
+  - home_dashboard
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/home_bridge.py
+  safe_to_delete: true
+  reason: Replaced by home_bridge.
+- path: legacy_widgets/ui/controllers/hub_route_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by ui_qml_bridge.
+- path: legacy_widgets/ui/controllers/identifier_handlers.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by ui_qml_bridge.
+- path: legacy_widgets/ui/controllers/library_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/library_bridge.py
+  safe_to_delete: true
+  reason: Replaced by library_bridge.
+- path: legacy_widgets/ui/controllers/library_watcher_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by ui_qml_bridge.
+- path: legacy_widgets/ui/controllers/local_media_server_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by ui_qml_bridge.
+- path: legacy_widgets/ui/controllers/metadata_review_controller.py
+  classification: presentation_only
+  functions:
+  - metadata_editor
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/metadata_bridge.py
+  safe_to_delete: true
+  reason: Replaced by metadata_bridge.
+- path: legacy_widgets/ui/controllers/michi_ai_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/michi_ai_bridge.py
+  safe_to_delete: true
+  reason: Replaced by michi_ai_bridge.
+- path: legacy_widgets/ui/controllers/michi_link_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by ui_qml_bridge.
+- path: legacy_widgets/ui/controllers/mini_player_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by ui_qml_bridge.
+- path: legacy_widgets/ui/controllers/mpris_controller.py
+  classification: adapter_or_compatibility
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: MPRIS adapter — D-Bus integration, not UI-dependent.
+- path: legacy_widgets/ui/controllers/navigation_controller.py
+  classification: logic_already_extracted
+  functions:
+  - navigation
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/navigation_bridge.py
+  - ui_qml_bridge/route_registry.py
+  safe_to_delete: true
+  reason: Navigation logic extracted to navigation_bridge and route_registry.
+- path: legacy_widgets/ui/controllers/player_bar_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/nowplaying_bridge.py
+  safe_to_delete: true
+  reason: Replaced by nowplaying_bridge.
+- path: legacy_widgets/ui/controllers/playlist_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/playlists_bridge.py
+  safe_to_delete: true
+  reason: Replaced by playlists_bridge.
+- path: legacy_widgets/ui/controllers/server_browser_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by ui_qml_bridge.
+- path: legacy_widgets/ui/controllers/shortcut_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Keyboard shortcuts — QML handles natively.
+- path: legacy_widgets/ui/controllers/sidebar_menu_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by QML Sidebar.
+- path: legacy_widgets/ui/controllers/smart_mix_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/mix_bridge.py
+  safe_to_delete: true
+  reason: Replaced by mix_bridge.
+- path: legacy_widgets/ui/controllers/smart_mix_preview.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/mix_bridge.py
+  safe_to_delete: true
+  reason: Replaced by mix_bridge.
+- path: legacy_widgets/ui/controllers/snapcast_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by ui_qml_bridge.
+- path: legacy_widgets/ui/controllers/songs_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/library_bridge.py
+  safe_to_delete: true
+  reason: Replaced by library_bridge.
+- path: legacy_widgets/ui/controllers/suggestion_bar_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by ui_qml_bridge.
+- path: legacy_widgets/ui/controllers/transmit_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by ui_qml_bridge.
+- path: legacy_widgets/ui/controllers/tray_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: System tray — QML handles differently.
+- path: legacy_widgets/ui/controllers/michi/continue_controller.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: 'Empty stub. Marked ''Phase 3: Do not connect to window.py yet''. Never
+    completed.'
+- path: legacy_widgets/ui/controllers/michi/import_controller.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Empty stub. Never connected.
+- path: legacy_widgets/ui/controllers/michi/server_controller.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Partial stub. Never connected.
+- path: legacy_widgets/ui/audio_lab/diagnostics_service.py
+  classification: logic_already_extracted
+  functions:
+  - audio_diagnostics
+  imported_by: []
+  replacement_files:
+  - core/audio_lab/diagnostics_service.py
+  safe_to_delete: true
+  reason: Re-exports from core. 32 lines vs 904 lines in core.
+- path: legacy_widgets/ui/audio_lab/vinyl_lab_page.py
+  classification: logic_still_exclusive
+  functions:
+  - vinyl_workflow
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: false
+  reason: 660 lines of unique vinyl digitization workflow not in QML.
+- path: legacy_widgets/ui/audio_lab/services/artwork_resolver.py
+  classification: logic_still_exclusive
+  functions:
+  - artwork_picker
+  imported_by: []
+  replacement_files:
+  - ui_qml_bridge/cover_bridge.py
+  safe_to_delete: false
+  reason: Uses Qt QPixmap for local cover search/ranking. No core equivalent.
+- path: legacy_widgets/ui/audio_lab/services/disc_detection_service.py
+  classification: duplicated_divergent
+  functions:
+  - cd_ripper
+  imported_by: []
+  replacement_files:
+  - core/audio_lab/cd_ripper_service.py
+  safe_to_delete: true
+  reason: Duplicated in core/audio_lab/cd_ripper_service.py.
+- path: legacy_widgets/ui/audio_lab/services/encoder_service.py
+  classification: duplicated_divergent
+  functions:
+  - audio_conversion
+  imported_by: []
+  replacement_files:
+  - core/audio_lab/audio_conversion_service.py
+  safe_to_delete: true
+  reason: Duplicated in core (uses QProcess — Qt-specific).
+- path: legacy_widgets/ui/audio_lab/services/external_tools.py
+  classification: logic_still_exclusive
+  functions:
+  - external_tools
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: false
+  reason: 52 lines — must extract to core/audio_lab/dependencies.py first.
+- path: legacy_widgets/ui/audio_lab/services/library_doctor.py
+  classification: duplicated_divergent
+  functions:
+  - library_doctor
+  imported_by: []
+  replacement_files:
+  - core/library_doctor_service.py
+  safe_to_delete: true
+  reason: Functionality replaced by core/library_doctor_service.py and ui_qml_bridge/library_doctor_bridge.py.
+- path: legacy_widgets/ui/audio_lab/services/library_importer.py
+  classification: logic_still_exclusive
+  functions:
+  - library_importer
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: false
+  reason: 148 lines — must extract to core/library/importer.py first.
+- path: legacy_widgets/ui/audio_lab/services/metadata_resolver.py
+  classification: logic_still_exclusive
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Disc TOC album identification — local only, not used by QML.
+- path: legacy_widgets/ui/audio_lab/services/rip_job_manager.py
+  classification: duplicated_divergent
+  functions:
+  - cd_ripper
+  imported_by: []
+  replacement_files:
+  - core/audio_lab/cd_ripper_service.py
+  safe_to_delete: true
+  reason: Job lifecycle logic partially replaced by core/cd_ripper_service.py.
+- path: legacy_widgets/ui/audio_lab/services/rip_worker.py
+  classification: logic_still_exclusive
+  functions:
+  - cd_ripper
+  imported_by: []
+  replacement_files:
+  - core/audio_lab/cd_ripper_service.py
+  safe_to_delete: false
+  reason: cdparanoia QProcess wrapper with progress parsing — core version lacks real-time
+    progress.
+- path: legacy_widgets/ui/audio_lab/services/smart_tagging_service.py
+  classification: logic_still_exclusive
+  functions:
+  - smart_tagging
+  imported_by: []
+  replacement_files:
+  - core/smart_tagging_service.py
+  safe_to_delete: false
+  reason: 199 lines of richer model classes (confidence, sources) than core (52 lines).
+- path: legacy_widgets/ui/audio_lab/services/tag_writer.py
+  classification: duplicated_divergent
+  functions:
+  - metadata_editor
+  imported_by: []
+  replacement_files:
+  - metadata/tag_writer.py
+  safe_to_delete: true
+  reason: Facade over canonical metadata/tag_writer.py for Audio Lab compatibility.
+- path: legacy_widgets/ui/services/device_registry.py
+  classification: logic_still_exclusive
+  functions:
+  - device_sync
+  imported_by: []
+  replacement_files:
+  - core/sync/device_registry.py
+  safe_to_delete: false
+  reason: Token hashing and paired device persistence — verify core equivalent covers
+    same cases.
+- path: legacy_widgets/ui/services/device_sync_controller.py
+  classification: logic_still_exclusive
+  functions:
+  - device_sync
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: false
+  reason: Orchestration logic (pairing flow, manifest coordination) not extracted
+    to core.
+- path: legacy_widgets/ui/services/playlist_cover_service.py
+  classification: logic_still_exclusive
+  functions:
+  - playlist_cover_service
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: false
+  reason: Mosaic cover generation (Qt-specific QPainter). May not need migration.
+- path: legacy_widgets/ui/services/sync_manifest_builder.py
+  classification: logic_still_exclusive
+  functions:
+  - device_sync
+  imported_by: []
+  replacement_files:
+  - core/sync/sync_manifest_builder.py
+  safe_to_delete: false
+  reason: Verify core version provides same Android-compatible manifest format.
+- path: legacy_widgets/ui/services/sync_manifest_store.py
+  classification: logic_still_exclusive
+  functions:
+  - device_sync
+  imported_by: []
+  replacement_files:
+  - core/sync/sync_manifest_store.py
+  safe_to_delete: false
+  reason: Verify core version provides same history/persistence.
+- path: legacy_widgets/ui/services/sync_queue.py
+  classification: logic_still_exclusive
+  functions:
+  - device_sync
+  imported_by: []
+  replacement_files:
+  - core/sync/sync_queue_impl.py
+  safe_to_delete: false
+  reason: Transfer job lifecycle — verify core version covers progress/cancel/pause/resume.
+- path: legacy_widgets/ui/services/transcode_service.py
+  classification: logic_still_exclusive
+  functions:
+  - device_sync
+  imported_by: []
+  replacement_files:
+  - core/sync/transcode_service.py
+  safe_to_delete: false
+  reason: Verify core version provides same mobile profiles (flac_mobile, opus_*).
+- path: legacy_widgets/ui/services/transfer_backends.py
+  classification: logic_still_exclusive
+  functions:
+  - device_sync
+  imported_by: []
+  replacement_files:
+  - core/sync/transfer_backends.py
+  safe_to_delete: false
+  reason: Verify core version provides same backends (Wireless, MTP, Filesystem).
+- path: legacy_widgets/ui/adaptive_artwork_background.py
+  classification: presentation_only
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Qt QPainter artwork background — QML has AcrylicBackdrop.
+- path: legacy_widgets/ui/ai_assistant_panel.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml/pages/assistant/
+  safe_to_delete: true
+  reason: Replaced by QML assistant pages.
+- path: legacy_widgets/ui/artwork_picker.py
+  classification: presentation_only
+  functions:
+  - artwork_picker
+  imported_by: []
+  replacement_files:
+  - ui_qml/pages/metadata/MetadataArtworkEditor.qml
+  safe_to_delete: true
+  reason: Crop/resize dialog — QML uses different interaction model.
+- path: legacy_widgets/ui/design_tokens.py
+  classification: logic_already_extracted
+  functions: []
+  imported_by: []
+  replacement_files:
+  - ui_qml/theme/MichiTheme.qml
+  - ui_qml/theme/MichiColors.qml
+  safe_to_delete: true
+  reason: Replaced by QML MichiTheme.
+- path: legacy_widgets/ui/icon_loader.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Qt-specific SVG rendering — QML handles natively.
+- path: legacy_widgets/ui/icon_registry.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Qt-specific icon registry — QML uses inline images.
+- path: legacy_widgets/ui/icon_renderer.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Qt-specific pixmap rendering.
+- path: legacy_widgets/ui/icons.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Qt icon convenience facade.
+- path: legacy_widgets/ui/loading_overlay.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml/components/StatusIndicator.qml
+  safe_to_delete: true
+  reason: Qt loading spinner — QML uses AsyncStateView.
+- path: legacy_widgets/ui/nowplaying_bar.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml/components/NowPlayingBar.qml
+  - ui_qml/pages/nowplaying/
+  safe_to_delete: true
+  reason: Replaced by QML nowplaying pages. Custom QPainter rendering is visual polish.
+- path: legacy_widgets/ui/playlist_io.py
+  classification: duplicated_divergent
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - core/playlist_io.py
+  safe_to_delete: true
+  reason: Verify identical to core/playlist_io.py.
+- path: legacy_widgets/ui/premium_menus.py
+  classification: presentation_only
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Qt QSS styling string.
+- path: legacy_widgets/ui/qss.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Qt QSS helper functions.
+- path: legacy_widgets/ui/safe_view_factory.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Qt widget factory with error fallback.
+- path: legacy_widgets/ui/style_tokens.py
+  classification: logic_already_extracted
+  functions: []
+  imported_by: []
+  replacement_files:
+  - ui_qml/theme/MichiColors.qml
+  safe_to_delete: true
+  reason: Simpler flat token dict — replaced by richer QML theme.
+- path: legacy_widgets/ui/theme.py
+  classification: logic_already_extracted
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml/theme/
+  safe_to_delete: true
+  reason: Qt theme application — replaced by QML MichiTheme.
+- path: legacy_widgets/ui/theme_manager.py
+  classification: logic_already_extracted
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/theme_bridge.py
+  safe_to_delete: true
+  reason: Theme switching — QML theme_bridge handles this.
+- path: legacy_widgets/ui/toast_notification.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml/components/MichiToast.qml
+  - ui_qml/components/NotificationToast.qml
+  safe_to_delete: true
+  reason: Replaced by QML toast components.
+- path: legacy_widgets/ui/view_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml/shell/PageStack.qml
+  safe_to_delete: true
+  reason: Replaced by QML PageStack.
+- path: legacy_widgets/ui/view_navigator.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/navigation_bridge.py
+  safe_to_delete: true
+  reason: Replaced by navigation_bridge.
+- path: legacy_widgets/ui/view_registry.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files:
+  - ui_qml_bridge/route_registry.py
+  safe_to_delete: true
+  reason: Replaced by route_registry.
+- path: legacy_widgets/ui/view_switcher.py
+  classification: presentation_only
+  functions: []
+  imported_by:
+  - legacy_widgets/ui/window.py
+  replacement_files: []
+  safe_to_delete: true
+  reason: Qt widget for view mode switching — QML handles natively.
+- path: legacy_widgets/ui/window.py
+  classification: dead_code
+  functions: []
+  imported_by:
+  - michi/widgets_app.py
+  replacement_files:
+  - ui_qml/shell/AppShell.qml
+  safe_to_delete: true
+  reason: References 12 deleted ui.* modules. Cannot be imported at runtime. Dead
+    code.
+- path: legacy_widgets/ui/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Empty init.
+- path: legacy_widgets/ui/assistant/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Source deleted — only empty __init__ remains.
+- path: legacy_widgets/ui/builder/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Source deleted — only empty __init__ remains.
+- path: legacy_widgets/ui/dialogs/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Source deleted — only empty __init__ and pyc remnants.
+- path: legacy_widgets/ui/ecosystem/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Source deleted — only empty __init__ remains.
+- path: legacy_widgets/ui/folders/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Source deleted — only empty __init__ remains.
+- path: legacy_widgets/ui/hubs/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Source deleted — only empty __init__ remains.
+- path: legacy_widgets/ui/library/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Source deleted — only empty __init__ remains.
+- path: legacy_widgets/ui/old_window/window.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Stale backup of window.py — identical structure with deleted imports.
+- path: legacy_widgets/ui/routers/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Source deleted — only empty __init__ remains.
+- path: legacy_widgets/michi_ai_ui/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Source deleted — only empty __init__ remains.
+- path: legacy_widgets/ui/controllers/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Package init.
+- path: legacy_widgets/ui/controllers/michi/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Package init for never-connected sub-controllers.
+- path: legacy_widgets/ui/audio_lab/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Package init.
+- path: legacy_widgets/ui/audio_lab/services/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Package init.
+- path: legacy_widgets/ui/audio_lab/audio_lab/diagnostics_service.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Stale duplicate of audio_lab/services/*
+- path: legacy_widgets/ui/audio_lab/audio_lab/services/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Stale duplicate of audio_lab/services/*
+- path: legacy_widgets/ui/audio_lab/audio_lab/services/artwork_resolver.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Stale duplicate of audio_lab/services/*
+- path: legacy_widgets/ui/audio_lab/audio_lab/services/disc_detection_service.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Stale duplicate of audio_lab/services/*
+- path: legacy_widgets/ui/audio_lab/audio_lab/services/encoder_service.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Stale duplicate of audio_lab/services/*
+- path: legacy_widgets/ui/audio_lab/audio_lab/services/external_tools.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Stale duplicate of audio_lab/services/*
+- path: legacy_widgets/ui/audio_lab/audio_lab/services/library_doctor.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Stale duplicate of audio_lab/services/*
+- path: legacy_widgets/ui/audio_lab/audio_lab/services/library_importer.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Stale duplicate of audio_lab/services/*
+- path: legacy_widgets/ui/audio_lab/audio_lab/services/metadata_resolver.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Stale duplicate of audio_lab/services/*
+- path: legacy_widgets/ui/audio_lab/audio_lab/services/rip_job_manager.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Stale duplicate of audio_lab/services/*
+- path: legacy_widgets/ui/audio_lab/audio_lab/services/rip_worker.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Stale duplicate of audio_lab/services/*
+- path: legacy_widgets/ui/audio_lab/audio_lab/services/smart_tagging_service.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Stale duplicate of audio_lab/services/*
+- path: legacy_widgets/ui/audio_lab/audio_lab/services/tag_writer.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Stale duplicate of audio_lab/services/*
+- path: legacy_widgets/ui/audio_lab/audio_lab/vinyl_lab_page.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Stale duplicate of audio_lab/services/*
+- path: legacy_widgets/ui/central/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Source deleted — only pyc/empty dir remains
+- path: legacy_widgets/ui/controllers/michi/michi/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Nested stale stub — never connected
+- path: legacy_widgets/ui/controllers/michi/michi/continue_controller.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Nested stale stub — never connected
+- path: legacy_widgets/ui/controllers/michi/michi/import_controller.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Nested stale stub — never connected
+- path: legacy_widgets/ui/controllers/michi/michi/server_controller.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Nested stale stub — never connected
+- path: legacy_widgets/ui/genres/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Source deleted — only pyc/empty dir remains
+- path: legacy_widgets/ui/services/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Package init
+- path: legacy_widgets/ui/sidebar/__init__.py
+  classification: dead_code
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Source deleted — only pyc/empty dir remains
+- path: legacy_widgets/ui/sidebar_controller.py
+  classification: presentation_only
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by QML Sidebar.qml
+- path: legacy_widgets/ui/sidebar_widget.py
+  classification: presentation_only
+  functions: []
+  imported_by: []
+  replacement_files: []
+  safe_to_delete: true
+  reason: Replaced by QML Sidebar.qml
