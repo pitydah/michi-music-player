@@ -159,6 +159,28 @@ class CDRipperService:
             logger.error(f"Error al obtener información del CD: {e}")
             return None
     
+    def _build_command(self, format: str, device: str, track_number: int,
+                       output_path: str) -> list[str] | None:
+        if format == 'flac':
+            return [
+                'ffmpeg', '-f', 'cdaudio', '-i', f'{device}:{track_number}',
+                '-c:a', 'flac', '-compression_level', '8',
+                '-y', output_path
+            ]
+        elif format == 'wav':
+            return [
+                'ffmpeg', '-f', 'cdaudio', '-i', f'{device}:{track_number}',
+                '-c:a', 'pcm_s16le',
+                '-y', output_path
+            ]
+        elif format == 'mp3':
+            return [
+                'ffmpeg', '-f', 'cdaudio', '-i', f'{device}:{track_number}',
+                '-c:a', 'libmp3lame', '-b:a', '320k',
+                '-y', output_path
+            ]
+        return None
+
     def rip_track(
         self, 
         device: str, 
@@ -176,26 +198,8 @@ class CDRipperService:
         }
         
         try:
-            # Determinar comando según formato
-            if format == 'flac':
-                cmd = [
-                    'ffmpeg', '-f', 'cdaudio', '-i', f'{device}:{track_number}',
-                    '-c:a', 'flac', '-compression_level', '8',
-                    '-y', output_path
-                ]
-            elif format == 'wav':
-                cmd = [
-                    'ffmpeg', '-f', 'cdaudio', '-i', f'{device}:{track_number}',
-                    '-c:a', 'pcm_s16le',
-                    '-y', output_path
-                ]
-            elif format == 'mp3':
-                cmd = [
-                    'ffmpeg', '-f', 'cdaudio', '-i', f'{device}:{track_number}',
-                    '-c:a', 'libmp3lame', '-b:a', '320k',
-                    '-y', output_path
-                ]
-            else:
+            cmd = self._build_command(format, device, track_number, output_path)
+            if cmd is None:
                 result['error'] = f"Formato {format} no soportado"
                 return result
             
