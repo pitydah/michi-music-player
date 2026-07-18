@@ -15,7 +15,11 @@ Item {
 
     property var ha: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
     property var _volumeTimers: ({})
-    property int pageState: root.ha ? stateReady : stateError
+    property int pageState: {
+        if (!root.ha) return stateError
+        if (!root.ha.available && root.ha.devices.length === 0 && root.ha.zones.length === 0) return stateEmpty
+        return stateReady
+    }
 
     readonly property int stateLoading: 0
     readonly property int stateReady: 1

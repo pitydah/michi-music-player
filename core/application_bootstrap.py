@@ -294,13 +294,18 @@ class ApplicationBootstrap:
     def _build_home_audio_services(self):
         try:
             from core.home_audio_service import HomeAudioService
-            from integrations.snapcast.group_manager import GroupManager
-            from integrations.snapcast.discovery import SnapClientDiscovery
-            from integrations.snapcast.snapserver_manager import SnapServerManager
+            try:
+                from integrations.snapcast.group_manager import GroupManager
+                from integrations.snapcast.discovery import SnapClientDiscovery
+                from integrations.snapcast.snapserver_manager import SnapServerManager
+                disc = SnapClientDiscovery()
+                snapserver = SnapServerManager()
+                group_mgr = GroupManager()
+            except Exception:
+                disc = None
+                snapserver = None
+                group_mgr = None
             eb = self.container.get("event_bus")
-            disc = SnapClientDiscovery()
-            snapserver = SnapServerManager()
-            group_mgr = GroupManager()
             ha = HomeAudioService(snapcast_group_manager=group_mgr,
                                   snapcast_discovery=disc,
                                   snapserver_manager=snapserver,
