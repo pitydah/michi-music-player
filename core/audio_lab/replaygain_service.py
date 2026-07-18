@@ -175,15 +175,18 @@ class ReplayGainService(QObject):
                  "-f", "null", "-"],
                 capture_output=True, text=True, timeout=120
             )
-            for line in result.stderr.split("\n"):
-                if "{" in line:
-                    try:
-                        parsed = json.loads(line.strip())
-                        data["track_gain"] = -float(parsed.get("input_i", 0.0))
-                        data["track_peak"] = float(parsed.get("input_tp", 0.0))
-                        data["reference_loudness"] = -18.0
-                    except (json.JSONDecodeError, ValueError):
-                        pass
+            stderr = result.stderr
+            json_start = stderr.find("{")
+            json_end = stderr.rfind("}") + 1
+            if json_start >= 0 and json_end > json_start:
+                try:
+                    parsed = json.loads(stderr[json_start:json_end])
+                    data["track_gain"] = -float(parsed.get("input_i", 0.0))
+                    input_tp = float(parsed.get("input_tp", 0.0))
+                    data["track_peak"] = 10 ** (input_tp / 20.0) if input_tp < 0 else 1.0
+                    data["reference_loudness"] = -18.0
+                except (json.JSONDecodeError, ValueError):
+                    pass
         except Exception:
             logger.debug("ffmpeg ReplayGain calc failed for %s; trying mutagen", filepath)
             import mutagen

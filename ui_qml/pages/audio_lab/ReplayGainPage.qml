@@ -57,11 +57,39 @@ Item {
     }
 
     function _applyTags() {
+        if (!inputSelection.selectedFiles || inputSelection.selectedFiles.length === 0) {
+            root._errorMessage = "Selecciona archivos para aplicar"
+            root._state = root.stateFailed
+            return
+        }
+        if (!root.labService || !root.labService.startReplayGain) {
+            root._errorMessage = "Bridge no disponible"
+            root._state = root.stateFailed
+            return
+        }
         root._state = root.stateApplying
-        root._state = root.stateCompleted
+        var filepath = typeof inputSelection.selectedFiles[0] === "string"
+            ? inputSelection.selectedFiles[0]
+            : inputSelection.selectedFiles[0].filepath || ""
+        var result = root.labService.startReplayGain(filepath, root._mode, root._preamp, root._headroom)
+        if (result && result.ok) {
+            root._state = root.stateCompleted
+        } else {
+            root._errorMessage = (result && result.error) || "Error al aplicar ReplayGain"
+            root._state = root.stateFailed
+        }
     }
 
     function _clearTags() {
+        if (!root.labService || !root.labService.clearReplayGain || !inputSelection.selectedFiles || inputSelection.selectedFiles.length === 0) {
+            root._results = null
+            root._state = root.stateIdle
+            return
+        }
+        var filepath = typeof inputSelection.selectedFiles[0] === "string"
+            ? inputSelection.selectedFiles[0]
+            : inputSelection.selectedFiles[0].filepath || ""
+        root.labService.clearReplayGain(filepath)
         root._results = null
         root._state = root.stateIdle
     }

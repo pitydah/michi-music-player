@@ -67,6 +67,26 @@ class AudioConversionService(QObject):
         self._profile_service = profile_service
         self._active_jobs: dict[str, ConversionJob] = {}
 
+    def _build_target_path(self, source: str, profile: ConversionProfile) -> Path:
+        """Construye la ruta de destino de forma consistente entre preview y conversion."""
+        fmt = profile.format.lower()
+        src_path = Path(source)
+        if profile.output_dir:
+            target_dir = Path(profile.output_dir)
+        else:
+            target_dir = src_path.parent
+        if profile.filename_template and "{artist}" in profile.filename_template:
+            target_name = profile.filename_template.format(
+                artist="{artist}", title=src_path.stem, album="{album}"
+            )
+            target_name = target_name.replace("{artist}", "Unknown").replace("{album}", "Unknown")
+        else:
+            target_name = src_path.stem
+        # Evitar sobrescribir el original si mismo formato
+        if fmt == src_path.suffix.lower().lstrip("."):
+            target_name = target_name + "_converted"
+        return target_dir / f"{target_name}.{fmt}"
+
     def preview(self, source: str, profile: ConversionProfile) -> dict[str, Any]:
         if not source or not os.path.isfile(source):
             return {"ok": False, "error": "SOURCE_NOT_FOUND"}
@@ -74,11 +94,7 @@ class AudioConversionService(QObject):
             return {"ok": False, "error": f"UNSUPPORTED_FORMAT:{profile.format}"}
         src_path = Path(source)
         estimated_size = src_path.stat().st_size * self._size_ratio(profile.format)
-        target_name = profile.filename_template.format(
-            artist="{artist}", title=src_path.stem, album="{album}"
-        )
-        target_name = target_name.replace("{artist}", "Unknown").replace("{album}", "Unknown")
-        target_path = Path(profile.output_dir) / f"{target_name}.{profile.format.lower()}"
+        target_path = self._build_target_path(source, profile)
         space_ok = True
         if profile.output_dir:
             try:
@@ -145,9 +161,7 @@ class AudioConversionService(QObject):
                     job: ConversionJob) -> dict[str, Any]:
         try:
             fmt = profile.format.lower()
-            target_dir = profile.output_dir or str(Path(source).parent)
-            target_name = f"{Path(source).stem}.{fmt}"
-            target_path = str(Path(target_dir) / target_name)
+            target_path = str(self._build_target_path(source, profile))
             job.target = target_path
 
             import subprocess

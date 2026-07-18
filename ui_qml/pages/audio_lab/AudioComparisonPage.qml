@@ -38,21 +38,12 @@ Item {
         root._errorMessage = ""
         var pathA = typeof root._fileA === "string" ? root._fileA : root._fileA.filepath || ""
         var pathB = typeof root._fileB === "string" ? root._fileB : root._fileB.filepath || ""
-        if (root.labService && root.labService.compareFiles) {
-            root._comparisonResult = root.labService.compareFiles(pathA, pathB)
+        if (root.labService && root.labService.previewComparison) {
+            root._comparisonResult = root.labService.previewComparison(pathA, pathB)
         } else {
-            root._comparisonResult = {
-                file_a: pathA, file_b: pathB,
-                identical: false,
-                dimensions: [
-                    { key: "format", label: "Formato", identical: false },
-                    { key: "bitrate", label: "Bitrate", identical: false },
-                    { key: "sample_rate", label: "Sample Rate", identical: false },
-                    { key: "bit_depth", label: "Bit Depth", identical: false },
-                    { key: "channels", label: "Canales", identical: false },
-                    { key: "size", label: "Tamaño", identical: false },
-                ]
-            }
+            root._errorMessage = "Bridge no disponible para comparación"
+            root._state = root.stateFailed
+            return
         }
         root._state = root.stateCompleted
     }

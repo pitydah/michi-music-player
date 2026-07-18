@@ -58,8 +58,7 @@ class AudioNormalizationService(QObject):
             result.error = str(e)
         return result
 
-    def _scan_loudness(self, filepath: str) -> dict[str, float]:
-        data: dict[str, float] = {}
+    def _scan_loudness(self, filepath: str) -> dict[str, float] | None:
         try:
             result = subprocess.run(
                 ["ffmpeg", "-i", filepath, "-af", "loudnorm=I=-14:LRA=1:TP=-1:print_format=json",
@@ -67,26 +66,20 @@ class AudioNormalizationService(QObject):
                 capture_output=True, text=True, timeout=120
             )
             import json
-            for line in result.stderr.split("\n"):
-                if "{" in line:
-                    try:
-                        parsed = json.loads(line.strip())
-                        data["integrated"] = float(parsed.get("input_i", 0.0))
-                        data["true_peak"] = float(parsed.get("input_tp", 0.0))
-                        data["loudness_range"] = float(parsed.get("input_lra", 0.0))
-                    except (json.JSONDecodeError, ValueError):
-                        pass
+            stderr = result.stderr
+            json_start = stderr.find("{")
+            json_end = stderr.rfind("}") + 1
+            if json_start >= 0 and json_end > json_start:
+                block = stderr[json_start:json_end]
+                parsed = json.loads(block)
+                return {
+                    "integrated": float(parsed.get("input_i", 0.0)),
+                    "true_peak": float(parsed.get("input_tp", 0.0)),
+                    "loudness_range": float(parsed.get("input_lra", 0.0)),
+                }
+            return None
         except Exception:
-            pass
-        if not data:
-            import mutagen
-            try:
-                af = mutagen.File(filepath)
-                if af and hasattr(af.info, "sample_rate") and af.info.sample_rate:
-                    data = {"integrated": 0.0, "true_peak": 0.0, "loudness_range": 0.0}
-            except Exception:
-                pass
-        return data
+            return None
 
     def normalize_file(self, filepath: str, target_loudness: float = -14.0,
                        destructive: bool = False,
@@ -121,13 +114,15 @@ class AudioNormalizationService(QObject):
     def _normalize_destructive(self, filepath: str, target_loudness: float) -> dict[str, Any]:
         try:
             import subprocess
+            ext = os.path.splitext(filepath)[1] or ".wav"
+            tmp_path = filepath + ".normalized" + ext
             result = subprocess.run(
                 ["ffmpeg", "-i", filepath, "-af", f"loudnorm=I={target_loudness}:TP=-1:LRA=7",
-                 "-y", filepath + ".tmp"],
+                 "-y", tmp_path],
                 capture_output=True, text=True, timeout=300,
             )
             if result.returncode == 0:
-                os.replace(filepath + ".tmp", filepath)
+                os.replace(tmp_path, filepath)
                 if not os.path.isfile(filepath):
                     return {"ok": False, "error": "Output file not found after normalization", "error_code": "FILE_NOT_FOUND"}
                 original_size = os.path.getsize(filepath)
