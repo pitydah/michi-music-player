@@ -13,6 +13,7 @@ id: root
     property string iconSource: ""
     property string label: ""
     property string text: ""  // alias for label
+    property string route: "" // route identifier for navigation
     property bool active: false
     property bool sidebarHovered: false
     property bool collapsed: false

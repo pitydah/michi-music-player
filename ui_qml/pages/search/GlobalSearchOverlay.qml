@@ -161,7 +161,7 @@ Item {
 
             Text {
                 visible: !root._searching && root._query !== "" && root._results.length === 0
-                text: qsTr("Sin resultados para \")" + root._query + "\""
+                text: qsTr("Sin resultados para \"%1\"").arg(root._query)
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
             }

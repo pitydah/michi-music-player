@@ -110,7 +110,7 @@ BaseDialog {
         }
 
         Text {
-            text: qsTr("Escribe \")" + root.keyword + "\" para habilitar la confirmación:"
+            text: qsTr("Escribe \"%1\" para habilitar la confirmación:").arg(root.keyword)
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.captionSize
             font.weight: MichiTheme.typography.weightMedium

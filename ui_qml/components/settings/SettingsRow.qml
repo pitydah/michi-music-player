@@ -318,7 +318,6 @@ Rectangle {
             }
         }
     }
-    }
 
     Component { id: secretCtl
         TextField {

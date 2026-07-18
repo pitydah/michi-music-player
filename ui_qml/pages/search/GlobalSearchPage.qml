@@ -311,7 +311,7 @@ Item {
             Text {
                 id: noResultsText
                 visible: !root._searching && root._errorCode === "" && root._query !== "" && root._groupedResults.length === 0
-                text: qsTr("Sin resultados para \")" + root._query + "\""
+                text: qsTr("Sin resultados para \"%1\"").arg(root._query)
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
             }

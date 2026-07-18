@@ -216,7 +216,7 @@ Item {
                         TextField {
                             focusPolicy: Qt.StrongFocus
                             id: seedField; width: parent.width
-                            placeholderText: qsTr("Parámetros en JSON (ej: {\")artist\":\"Genesis\"})"
+                            placeholderText: qsTr('Parámetros en JSON (ej: {"artist":"Genesis"})')
                             text: root._seedValue
                             onTextChanged: root._seedValue = text
                             activeFocusOnTab: true

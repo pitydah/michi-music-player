@@ -36,7 +36,7 @@ Dialog {
         width: parent ? parent.width : 360
 
         Text {
-            text: qsTr("Exportar \")" + root.playlistName + "\" como M3U"
+            text: qsTr("Exportar \"%1\" como M3U").arg(root.playlistName)
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.bodySize
             wrapMode: Text.WordWrap
