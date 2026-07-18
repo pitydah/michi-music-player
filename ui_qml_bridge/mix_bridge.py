@@ -267,6 +267,19 @@ class MixBridge(QObject):
         self._set_state(MixState.CANCELLED)
         return {"ok": True, "cancelled": gen}
 
+    @Slot(str, result=dict)
+    def saveRules(self, rules_json: str):
+        if self._mix_svc is None:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        mix_id = self._current_mix_id or "custom"
+        return self._mix_svc.save_rules(mix_id, rules_json)
+
+    @Slot(str, result=dict)
+    def previewRules(self, rules_json: str):
+        if self._mix_svc is None:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        return self._mix_svc.preview_rules(rules_json, limit=10)
+
     @Slot(result=dict)
     def reset(self):
         self._current_mix_id = ""

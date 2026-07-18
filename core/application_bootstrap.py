@@ -146,7 +146,7 @@ class ApplicationBootstrap:
             ("playback.seek", "playback", "playback_service", "seek"),
         ]
         for action_id, category, svc, method in ids:
-            ar.register(ActionDescriptor(action_id=action_id, category=category,
+            ar.register(ActionDescriptor(action_id=action_id, title=action_id, category=category,
                                          handler=h(svc, method)))
 
     def get_queue_service(self):

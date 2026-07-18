@@ -1,8 +1,12 @@
-"""MixService — real mix generation using recommendation and smart mix engines.
-Wraps SmartMixService, RecommendationService, and library/smart_mixes.py."""
+"""MixService — real mix generation using recommendation and rule engines.
+Wraps SmartMixService, RecommendationService, MixRuleEngine and library/smart_mixes.py."""
 from __future__ import annotations
 
+import json
 import logging
+from typing import Any
+
+from core.mix_rules import MixRuleEngine, MixDefinition, MixRuleGroup, MixRule
 
 logger = logging.getLogger("michi.mix_service")
 
@@ -16,6 +20,7 @@ class MixService:
         self._smart_mix = smart_mix_service
         self._library_query = library_query_service
         self._playlist_service = playlist_service
+        self._rule_engine = MixRuleEngine(library_query_service)
         self._cancelled = False
 
     @property
@@ -33,48 +38,50 @@ class MixService:
                 logger.error("SmartMix error: %s", e)
         return self._fallback_mix(strategy, limit)
 
-    def _format_mix(self, mix) -> dict:
-        tracks = []
-        for t in getattr(mix, "tracks", []) or []:
-            tracks.append({
-                "id": getattr(t, "id", 0),
-                "title": getattr(t, "title", ""),
-                "artist": getattr(t, "artist", ""),
-                "album": getattr(t, "album", ""),
-                "score": getattr(t, "score", 0.0),
-            })
-        return {
-            "ok": True,
-            "mix_id": getattr(mix, "mix_id", ""),
-            "title": getattr(mix, "title", ""),
-            "description": getattr(mix, "description", ""),
-            "strategy": getattr(mix, "strategy", "unknown"),
-            "tracks": tracks,
-            "count": len(tracks),
-        }
-
-    def _fallback_mix(self, strategy: str, limit: int) -> dict:
-        if not self._library_query:
-            return {"ok": False, "error": "SERVICE_UNAVAILABLE", "tracks": []}
+    def save_rules(self, mix_id: str, rules_json: str) -> dict:
         try:
-            items = self._library_query.recently_played(limit=limit) if strategy == "recent" else []
-            return {
-                "ok": True,
-                "mix_id": f"fallback_{strategy}",
-                "title": f"Mix {strategy}",
-                "description": f"Mix generado con {strategy}",
-                "strategy": strategy,
-                "tracks": [{"id": getattr(i, "id", 0), "title": getattr(i, "title", "")} for i in items],
-                "count": len(items),
-            }
+            data = json.loads(rules_json)
+            definition = MixDefinition(
+                name=data.get("name", mix_id),
+                groups=[MixRuleGroup(rules=[MixRule(**r) for r in g.get("rules", [])],
+                                     logic=g.get("logic", "AND"))
+                        for g in data.get("groups", [])],
+                limit=data.get("limit", 30),
+                sort_by=data.get("sort_by", "random"),
+                seed=data.get("seed", 0),
+            )
+            new_id = self._rule_engine.generate_id(definition)
+            return {"ok": True, "mix_id": new_id, "definition": {
+                "name": definition.name, "limit": definition.limit,
+                "sort_by": definition.sort_by, "seed": definition.seed,
+                "groups": [{"logic": g.logic,
+                            "rules": [{"field": r.field, "operator": r.operator,
+                                       "value": r.value, "logic": r.logic}
+                                      for r in g.rules]}
+                           for g in definition.groups],
+            }}
         except Exception as e:
-            return {"ok": False, "error": str(e), "tracks": []}
+            return {"ok": False, "error": str(e)}
 
-    def cancel(self):
-        self._cancelled = True
-
-    def health(self) -> dict:
-        return {"available": self.available, "smart_mix": self._smart_mix is not None}
-
-    def shutdown(self):
-        self._cancelled = True
+    def preview_rules(self, rules_json: str, limit: int = 10) -> dict:
+        try:
+            data = json.loads(rules_json)
+            definition = MixDefinition(
+                name=data.get("name", "preview"),
+                groups=[MixRuleGroup(rules=[MixRule(**r) for r in g.get("rules", [])],
+                                     logic=g.get("logic", "AND"))
+                        for g in data.get("groups", [])],
+                limit=limit, sort_by=data.get("sort_by", "random"),
+                seed=data.get("seed", 0),
+            )
+            if not self._library_query:
+                return {"ok": False, "error": "LIBRARY_UNAVAILABLE", "tracks": []}
+            tracks = self._library_query.search("")
+            matched = self._rule_engine.filter(tracks, definition)
+            return {"ok": True, "matched": len(matched),
+                    "tracks": matched[:limit],
+                    "total_in_library": len(tracks)}
+        except json.JSONDecodeError as e:
+            return {"ok": False, "error": f"Invalid JSON: {e}"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
