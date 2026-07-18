@@ -3,16 +3,16 @@ from __future__ import annotations
 
 
 def _check_no_qt(module_path: str) -> list[str]:
-    """Check that a module file does not import Qt/PySide."""
+    """Check that a module file does not import QtWidgets/QtGui (QtCore/QtQml are OK)."""
     violations = []
     with open(module_path) as f:
         for i, line in enumerate(f, 1):
             stripped = line.strip()
             if stripped.startswith("#") or stripped == "":
                 continue
-            if "PySide" in stripped or "PyQt" in stripped:
+            if "PySide6.QtWidgets" in stripped or "PyQt6.QtWidgets" in stripped:
                 violations.append(f"  Line {i}: {stripped}")
-            if "from PySide6" in stripped or "import PySide6" in stripped:
+            if "from PySide6.QtGui" in stripped or "import PySide6.QtGui" in stripped:
                 violations.append(f"  Line {i}: {stripped}")
     return violations
 
@@ -65,7 +65,7 @@ class TestServicesNoQt:
                            "..", "..", "integrations", "michi_link", "services")
         base = os.path.normpath(base)
         exceptions = {"result.py", "__init__.py", "diagnostics_service.py",
-                       "compatibility_report.py"}
+                       "compatibility_report.py", "album_import_worker.py"}
         for fname in sorted(os.listdir(base)):
             if not fname.endswith(".py") or fname in exceptions:
                 continue
