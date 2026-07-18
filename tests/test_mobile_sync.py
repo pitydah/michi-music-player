@@ -20,6 +20,20 @@ class TestMobileSync:
         assert result["ok"]
         assert len(result["code"]) == 6
         assert "session_id" in result
+        assert "qr_data" in result
+
+    def test_qr_code_generated(self, svc):
+        result = svc.start_pairing()
+        assert "qr_svg" in result
+        # SVG should be base64 data URL or empty if qrcode not installed
+        if result["qr_svg"]:
+            assert result["qr_svg"].startswith("data:image/")
+
+    def test_get_qr_code(self, svc):
+        pair = svc.start_pairing()
+        qr = svc.get_qr_code(pair["session_id"])
+        assert qr["ok"]
+        assert "qr_data" in qr
 
     def test_verify_pairing_valid(self, svc):
         pair = svc.start_pairing()

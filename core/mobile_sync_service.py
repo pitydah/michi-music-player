@@ -64,8 +64,34 @@ class MobileSyncService:
             expires_at=now + self._pairing_timeout,
         )
         self._active_sessions[session_id] = session
+
+        # Generate QR code data (URL encoding)
+        qr_data = f"michi://pair?session={session_id}&code={code}"
+        qr_svg = self._generate_qr(qr_data) if qr_data else ""
+
         return {"ok": True, "session_id": session_id, "code": code,
+                "qr_data": qr_data, "qr_svg": qr_svg,
                 "expires_at": session.expires_at}
+
+    def _generate_qr(self, data: str) -> str:
+        try:
+            import qrcode
+            import io
+            qr = qrcode.make(data)
+            buf = io.BytesIO()
+            qr.save(buf, format="PNG")
+            import base64
+            return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+        except ImportError:
+            return ""
+
+    def get_qr_code(self, session_id: str) -> dict:
+        session = self._active_sessions.get(session_id)
+        if not session:
+            return {"ok": False, "error": "SESSION_NOT_FOUND"}
+        qr_data = f"michi://pair?session={session_id}&code={session.code}"
+        svg = self._generate_qr(qr_data)
+        return {"ok": True, "qr_data": qr_data, "qr_svg": svg}
 
     def verify_pairing(self, session_id: str, code: str, device_name: str = "",
                        device_id: str = "") -> dict:
