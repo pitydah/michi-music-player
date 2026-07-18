@@ -53,6 +53,12 @@ def build(container: ServiceContainer) -> None:
     except Exception:
         pass
 
+    try:
+        from core.mobile_sync_service import MobileSyncService
+        container.register("mobile_sync_service", MobileSyncService(db=container.get("database")))
+    except Exception:
+        pass
+
     from core.radio.radio_service import RadioService
     container.register("radio_service", RadioService(event_bus=eb))
 
