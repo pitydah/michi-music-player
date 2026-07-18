@@ -39,6 +39,12 @@ class QueueBridge(QObject):
     def queue_service(self):
         return self._queue_service
 
+    @Property(bool, notify=dataChanged)
+    def canUndo(self):
+        if self._queue_service and hasattr(self._queue_service, '_can_undo'):
+            return self._queue_service._can_undo
+        return False
+
     @Property("QVariant", notify=dataChanged)
     def queueModel(self):
         return self._model

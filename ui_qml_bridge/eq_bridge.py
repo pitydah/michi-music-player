@@ -276,6 +276,32 @@ class EqBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    @Slot(int, bool, result=dict)
+    def setDspModule(self, index: int, enabled: bool):
+        if index == 0:
+            return self.setEnabled(enabled)
+        try:
+            if self._player:
+                if index == 1 and hasattr(self._player, 'set_replaygain_enabled'):
+                    self._player.set_replaygain_enabled(enabled)
+                elif index == 2 and hasattr(self._player, 'set_spectrum_enabled'):
+                    self._player.set_spectrum_enabled(enabled)
+            self.stateChanged.emit()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot("QVariantList", result=dict)
+    def reorderDspModules(self, order):
+        try:
+            if self._player and hasattr(self._player, 'reorder_dsp'):
+                self._player.reorder_dsp([int(i) for i in order])
+                self.stateChanged.emit()
+                return {"ok": True}
+            return {"ok": False, "error": "NO_PLAYER"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     @Slot(result=dict)
     def saveState(self):
         try:

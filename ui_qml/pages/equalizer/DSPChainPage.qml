@@ -41,6 +41,13 @@ Item {
                 active: root.eq && !root.eq.bypass && root.eq.backendAvailable
                 conflicts: root.eq && root.eq.bitperfectConflict ? ["Bit-perfect"] : []
                 available: root.eq && root.eq.backendAvailable
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        if (root.eq && root.eq.backendAvailable)
+                            root.eq.setDspModule(0, !parent.active)
+                    }
+                }
             }
 
             DSPModuleCard {
@@ -49,6 +56,13 @@ Item {
                 active: false
                 conflicts: []
                 available: true
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        if (root.eq)
+                            root.eq.setDspModule(1, !parent.active)
+                    }
+                }
             }
 
             DSPModuleCard {
@@ -57,6 +71,13 @@ Item {
                 active: false
                 conflicts: []
                 available: true
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        if (root.eq)
+                            root.eq.setDspModule(2, !parent.active)
+                    }
+                }
             }
 
             DSPConflictWarning {

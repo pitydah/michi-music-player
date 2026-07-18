@@ -37,8 +37,28 @@ Item {
         MichiButton {
             text: "Deshacer"
             variant: "ghost"
-            enabled: false
-            tooltipText: "Función próximamente"
+            enabled: root.qb && root.qb.canUndo
+            onClicked: {
+                if (root.qb) {
+                    var result = root.qb.undo()
+                    if (!result.ok && root.notif)
+                        root.notif.showMessage(result.error || "Error al deshacer", "error")
+                }
+            }
+        }
+
+        MichiButton {
+            text: "Guardar como playlist"
+            variant: "ghost"
+            onClicked: {
+                if (root.qb) {
+                    var result = root.qb.saveAsPlaylist("Cola")
+                    if (!result.ok && root.notif)
+                        root.notif.showMessage(result.error || "Error al guardar", "error")
+                    else if (typeof playlistsBridge !== "undefined" && playlistsBridge)
+                        playlistsBridge.createFromQueue()
+                }
+            }
         }
     }
 }
