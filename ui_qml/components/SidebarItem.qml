@@ -3,18 +3,19 @@ import QtQuick.Controls
 import "../theme"
 
 Item {
-Accessible.role: Accessible.Button
-Accessible.name: "Sidebar Item"
-objectName: "sidebarItem"
-activeFocusOnTab: true
-focus: true
-id: root
+    Accessible.role: Accessible.Button
+    Accessible.name: root.text || root.label || "Sidebar Item"
+    objectName: "sidebarItem"
+    activeFocusOnTab: true
+    focus: true
+    id: root
 
     property string iconSource: ""
     property string label: ""
-    property string text: ""  // alias for label
-    property string route: "" // route identifier for navigation
-    property bool active: false
+    property string text: ""
+    property string route: ""
+    property string currentRoute: ""
+    property bool active: route !== "" && currentRoute === route
     property bool sidebarHovered: false
     property bool collapsed: false
 

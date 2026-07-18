@@ -36,10 +36,12 @@ for f in sorted(Path('ui_qml').rglob('*.qml')):
         err = c.errorString()[:200]
         errors.append(f'{f.relative_to(Path(\".\"))}: {err}')
 if errors:
-    real_errors = [e for e in errors if 'unavailable' not in e and 'Cannot assign' not in e and 'AISettingsPage' not in e]
-    if real_errors:
-        print(f'{len(real_errors)} QML syntax errors:')
-        for e in real_errors:
+    # Filter out type-resolution cascading errors that are false positives
+    # when types are unavailable due to missing context properties
+    filtered = [e for e in errors if 'is not installed' not in e and 'is not a type' not in e]
+    if filtered:
+        print(f'{len(filtered)} QML errors:')
+        for e in filtered:
             print(f'  {e}')
         sys.exit(1)
     else:
