@@ -22,6 +22,18 @@ Item {
     signal applyRules(var rules, bool logicAnd)
     signal previewRequested(var rules, bool logicAnd)
 
+    Connections {
+        target: root
+        function onApplyRules(rules, logicAnd) {
+            var mb = typeof mixBridge !== "undefined" ? mixBridge : null
+            if (mb && mb.saveRules) mb.saveRules(JSON.stringify(rules), logicAnd)
+        }
+        function onPreviewRequested(rules, logicAnd) {
+            var mb = typeof mixBridge !== "undefined" ? mixBridge : null
+            if (mb && mb.previewRules) mb.previewRules(JSON.stringify(rules), logicAnd)
+        }
+    }
+
 
 
     function addRule() {

@@ -22,6 +22,21 @@ Item {
     signal groupUpdated(string name, var zoneIds)
     signal groupCancelled()
 
+    Connections {
+        target: root
+        function onGroupCreated(name, zoneIds) {
+            var ha = typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
+            if (ha && ha.createGroup) ha.createGroup(name, JSON.stringify(zoneIds))
+        }
+        function onGroupUpdated(name, zoneIds) {
+            var ha = typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
+            if (ha && ha.updateGroup) ha.updateGroup(name, JSON.stringify(zoneIds))
+        }
+        function onGroupCancelled() {
+            if (typeof navigationBridge !== "undefined" && navigationBridge)
+                navigationBridge.back()
+        }
+    }
 
 
     AsyncStateView {

@@ -24,6 +24,18 @@ Item {
     signal profileSaved(string deviceKey, var profile)
     signal profileReset(string deviceKey)
 
+    Connections {
+        target: root
+        function onProfileSaved(deviceKey, profile) {
+            var db = typeof devicesBridge !== "undefined" ? devicesBridge : null
+            if (db && db.saveProfile) db.saveProfile(deviceKey, JSON.stringify(profile))
+        }
+        function onProfileReset(deviceKey) {
+            var db = typeof devicesBridge !== "undefined" ? devicesBridge : null
+            if (db && db.resetProfile) db.resetProfile(deviceKey)
+        }
+    }
+
     implicitHeight: childrenRect.height
 
 
