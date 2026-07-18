@@ -66,7 +66,7 @@ Item {
                     anchors.fill: parent
                     spacing: MichiTheme.spacing.md
 
-                    // Cover art 64px (like legacy QtWidgets)
+                    // Cover art 64px
                     Rectangle {
                         Layout.preferredWidth: 64
                         Layout.preferredHeight: 64

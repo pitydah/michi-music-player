@@ -10,7 +10,7 @@ Written in Python 3.11+ with PySide6, GStreamer 1.0, SQLite FTS5, mutagen, shaza
 | License | GPL-3.0-or-later (derived from Miro Player — see NOTICE) |
 | Repository | https://github.com/pitydah/michi-music-player |
 | Python | 3.11+ |
-| UI toolkit | PySide6 (Qt 6) — QtWidgets stable/fallback + QML experimental skin |
+| UI toolkit | PySide6 (Qt 6) — QML UI |
 | Audio engine | Hybrid: GStreamer 1.28 (default) + MPD (Hi-Fi/bit-perfect) |
 | Hybrid engine | `audio/backends/` — `AudioBackend` API, `GStreamerBackend`, `MpdBackend`, `HybridAudioManager` |
 | Database | SQLite 3 (WAL mode) + FTS5 full-text search |
@@ -41,7 +41,7 @@ michi-music-player/
 │                     folder_integrity.py
 ├── recognition/    → Identificación: detection_service.py, providers/shazam|audd|acoustid
 ├── integrations/   → home_assistant/, snapcast/, michi_api/, artist_metadata/
-├── ui/             → window.py (MainWindow), controllers/ (15 controladores),
+├── ui_qml/          → QML pages, components, shell
 │                     folder_browser.py, folders/folder_problem_report.py,
 │                     style_tokens.py, qss.py, icon_registry.py, icon_loader.py,
 │                     central/ (central_styles.py, central_tokens.py),
@@ -424,8 +424,8 @@ local file starts → IdentifierController.set_current_track(source_type="local_
 ### Home Dashboard (Centro de Situación)
 ```
 sidebar "Inicio" click → SidebarController → navigation_requested.emit("home")
-  → MainWindow._on_sidebar_navigate("home") → NavigationController.dispatch("home")
-    → configure_header("Inicio") → MainWindow._show_home_page()
+  → navigationBridge.navigate("home")
+    → AppShell updates header via NavigationBridge
       → HomeController.show()
         → _ensure_page() → HomePage()
         → _ensure_service() → HomeDashboardService(db, playback, context_svc, ...)
@@ -553,15 +553,14 @@ Always run `python main.py` unless explicitly testing QML.
 - QML emits intention; Python executes
 - Bridges (ui_qml_bridge/) are the only communication layer between QML and Python
 - Python remains the brain; QML is a premium skin
-- QtWidgets (`main.py`) remains stable/fallback; never break it
+- QML (`python main.py`) is the only runtime
 
 ### Protected Files — QML
-- `ui_qml/` is the QML UI layer (experimental, parallel to QtWidgets)
+- `ui_qml/` is the QML UI layer
 - `ui_qml_bridge/` is the Python bridge layer
-- Do NOT touch `ui/devices_page.py`, `sync/`, `ui/nowplaying_bar.py`, `ui/source_status_badge.py`
 - Do NOT touch playback logic (`audio/player.py`, `audio/player_service.py`, `audio/pipeline_factory.py`, `core/playback_controller.py`)
 - Do NOT touch Android integration or sync protocol
-- Keep fallback QtWidgets intact
+- All UI is QML
 - Never show demo data as if it were real
 
 ### Visual Rules (QML)
@@ -573,9 +572,10 @@ Always run `python main.py` unless explicitly testing QML.
 
 ### How to run
 ```bash
-# QML experimental
-python -m ui_qml_bridge.qml_main
-python main.py --qml
+python main.py
+
+# Legacy QML entry (deprecated)
+# python -m ui_qml_bridge.qml_main
 
 # Classic app
 python main.py

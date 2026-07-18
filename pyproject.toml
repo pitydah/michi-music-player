@@ -136,8 +136,7 @@ markers = [
 
 # ── EL: Package separation ──
 # michi-core:           audio/, core/, michi_ai/, config/
-# michi-qml:            michi/ (launcher), ui_qml/, ui_qml_bridge/ (NO QtWidgets dependency)
-# michi-widgets-legacy: ui/, legacy_widgets/ (depends on michi-core, optional)
+# michi-qml:            michi/ (launcher), ui_qml/, ui_qml_bridge/
 
 # Linux platform extras:
 #   wayland, x11, kde, desktop file, notifications, media keys

@@ -7,7 +7,6 @@
 - Contrato de volumen unificado (0-100 en toda la cadena)
 
 ## Tests
-- 106 tests legacy congelados como .py.skip (QtWidgets eliminado sin reemplazo QML)
 - 28 tests suprimidos reemplazados: 9 eliminados (cobertura existe), 19 xfail
 - test_large_library.py marcado como perf (no se ejecuta en CI normal)
 - test_eq_advanced.py.skip (modulo audio/eq_advanced.py no existe)
@@ -25,15 +24,11 @@
 - reducedMotion: base en MichiTheme (pendiente de conexion a settings)
 
 ## Deuda Tecnica
-- 42 controladores legacy en legacy_widgets/ sin migrar a AppContext
-- legacy_widgets/ui/window.py con 1455 lineas (objeto-dios)
-- 2 ramas remotas experimentales con commits no mergeados
 - track_action_service.py devuelve {"ok": True} sin verificar DB
 - Componentes UI nuevos (MichiAlbumRow, MichiBanner, etc.) no integrados en paginas
 - ActionRegistry sin handlers productivos (solo schema)
 - Michi IA basada en reglas con datos mock (no conectada a biblioteca real)
 - Capturas baseline requieren servidor X real (offscreen no navega)
-- 102 tests .skip legacy (QtWidgets, sin reemplazo QML)
 
 ## Resueltos en 0.10.0-alpha.1
 - Fases 0-9: Settings QtCore, EngineBackendAdapter, 27 collection errors→0,
@@ -43,11 +38,9 @@
   NowPlaying, Inicio premium, library toolbar, reducedMotion, modo claro base
 - P0.1-P0.6: PipelineTransport, 9 tests verticales, 7 errores QML, capturas,
   28 pruebas suprimidas resueltas, 0 errores coleccion
- 106 tests .skip legacy
 
 ## Tests
 - `tests/qml/ai/test_michi_ai_keyboard.py` — 20 tests fallan en pytest estándar.
   Requieren QQmlApplicationEngine + window visible. No es causado por cambios recientes.
-  Para ejecutarlos: usar `python main.py --qml` con interacción manual.
 - `tests/qml/ai/test_michi_ai_action_registry.py` — errores similares.
   Requieren contexto QML completo. Preexistente.

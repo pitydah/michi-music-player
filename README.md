@@ -269,39 +269,13 @@ michi-music-player/
 │   └── home_assistant_custom_component/  # Componente HA personalizado
 │       ├── manifest.json / config_flow.py / media_player.py / media_source.py / api.py
 │
-├── ui/                               # Interfaz de usuario (35+ archivos)
-│   ├── window.py                     # MainWindow (2825 líneas)
-│   ├── nowplaying_bar.py             # Barra de reproducción inferior
-│   ├── sidebar_widget.py             # Sidebar colapsable
-│   ├── album_info_banner.py          # Banner de info de álbum
-│   ├── source_status_badge.py        # Badge de calidad/formato
-│   ├── home_audio_view.py            # Dashboard Home Audio
-│   ├── music_identifier_view.py      # Dashboard identificación
-│   ├── mini_player.py                # Reproductor compacto
-│   ├── style_tokens.py               # COLORS/RADIUS/SPACING
-│   ├── qss.py                        # Helpers QSS (glass_panel, premium_button, etc.)
-│   ├── premium_menus.py              # Estilos de menú premium
-│   ├── icon_registry.py              # Registro de 38+ iconos
-│   ├── theme.py                      # QPalette + QSS
-│   ├── eq_panel.py                   # Diálogo de ecualizador
-│   ├── preferences_window.py         # 16 categorías de preferencias
-│   ├── settings_pages.py             # Páginas de settings (AudioPage, etc.)
-│   ├── folder_browser.py             # FolderBrowserWidget — explorador + mantenimiento
-│   ├── folders/                       # Mantenimiento físico de Carpetas
-│   │   ├── __init__.py
-│   │   └── folder_problem_report.py   # Diálogo de reporte de problemas
-│   ├── controllers/                  # Controladores (15)
-│   │   ├── folder_controller.py      # Orquestación de Carpetas (salud, integridad, FS)
-│   │   ├── transmit_controller.py    # Dispositivos TransmitManager
-│   │   ├── audio_output_controller.py  # Selección de salida de audio local
-│   │   ├── snapcast_controller.py    # Ciclo de vida Snapcast
-│   │   ├── home_audio_controller.py  # Cast a Home Assistant
-│   │   ├── cast_controller.py        # Menú de transmisión unificado
-│   │   ├── local_media_server_controller.py  # Servidor HTTP local
-│   │   ├── mini_player_controller.py  # Ciclo de vida mini player
-│   │   ├── player_bar_controller.py  # NowPlayingBar facade
-│   │   ├── playlist_controller.py    # Operaciones de playlists
-│   │   ├── album_controller.py       # Operaciones de álbumes
+├── ui_qml/                           # Interfaz QML (274+ archivos)
+│   ├── shell/                        # AppShell, Sidebar, PageStack
+│   ├── pages/                        # 50+ páginas por dominio
+│   ├── components/                   # Componentes reutilizables
+│   ├── theme/                        # MichiTheme, colores, tipografía
+│   └── materials/                    # Glass, Hero, Popup, etc.
+├── ui_qml_bridge/                    # Puentes Python-QML (69+ archivos)
 │   │   ├── artist_repository.py      # Repositorio centralizado de artistas
 │   │   ├── expanded_controller.py    # Vista expandida
 │   │   ├── mpris_controller.py       # MPRIS facade

@@ -3,14 +3,12 @@
 > **Repositorio:** `pitydah/michi-music-player`  
 > **Última actualización:** 2026-07-01  
 > **Versión:** 0.2.0-alpha.1 — pre-beta técnica avanzada  
-> **UI estable:** QtWidgets (`python main.py`)  
-> **UI experimental:** QML (`python main.py --qml`)  
+> **UI:** QML (`python main.py`)  
 > **Validación:** pendiente de confirmar en GitHub Actions.  
 > Para validar localmente ejecutar:  
 > `ruff check .`  
 > `QT_QPA_PLATFORM=offscreen pytest -q`  
-> `QT_QPA_PLATFORM=offscreen python3 scripts/smoke_startup.py`  
-> `./scripts/ci_local.sh`
+> `QT_QPA_PLATFORM=offscreen python3 scripts/check_runtime.py`
 
 ---
 
@@ -19,7 +17,7 @@
 | Métrica | Valor | Cómo verificar |
 |---------|-------|---------------|
 | Líneas en `ui/window.py` | 1,548 (−53% desde 3,311) | `python tools/audit_window.py` |
-| Métodos en `MainWindow` | 147 | `python tools/audit_window.py` |
+| Métodos en ventana principal | — | Eliminado (QML-only) |
 | Widgets directos en window.py | 0 (todo en `UIBuilder`) | `python tools/audit_window.py` |
 | Controllers extraídos | 16+ | `ls ui/controllers/` |
 | Tests | dinámico | `QT_QPA_PLATFORM=offscreen pytest -q` |
@@ -33,7 +31,7 @@
 
 | Controller/Builder | Archivo | Responsabilidad |
 |-------------------|---------|----------------|
-| `UIBuilder` | `ui/builder/ui_builder.py` | Construye todo el árbol de widgets del MainWindow |
+| `AppShell` + `PageStack` | Shell QML con navegación por rutas |
 | `AlbumSortMenu` | `ui/builder/album_sort_menu.py` | Menús de orden/filtro de álbumes |
 | `InlineDialogs` | `ui/builder/inline_dialogs.py` | Diálogos inline (cover preview, nowplaying, audio diagnostics) |
 | `NavigationController` | `ui/controllers/navigation_controller.py` | SECTION_CONFIG, NAV_ROUTES, header, breadcrumb, historial de navegación |

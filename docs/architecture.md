@@ -4,21 +4,23 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        UI Layer (PySide6)                    │
-│  window.py  nowplaying_bar.py  sidebar_widget.py           │
-│  expanded_view.py  coverflow.py  preferences_window.py      │
+│                     UI Layer (PySide6 QML)                   │
+│  AppShell.qml  Sidebar.qml  NowPlayingBar.qml              │
+│  pages/*.qml  components/*.qml                              │
+├─────────────────────────────────────────────────────────────┤
+│                  QML Bridge Layer (Python)                   │
+│  ui_qml_bridge/*.py  bridges/*.py                           │
 ├─────────────────────────────────────────────────────────────┤
 │                     Player Engine (GStreamer)               │
-│  player.py → audio_chain.py → GStreamer pipeline           │
-│  eq_biquad.py  eq_basic.py  eq_advanced.py  spectrum.py     │
+│  audio/player.py → audio/pipeline_factory.py                │
+│  audio/eq_*.py  audio/spectrum.py                           │
+├─────────────────────────────────────────────────────────────┤
+│                  Core Services Layer                         │
+│  core/  library/  metadata/  audio/  integrations/          │
 ├─────────────────────────────────────────────────────────────┤
 │                     Data Layer (SQLite + JSON)              │
-│  library_db.py  radio_manager.py  transmit_manager.py       │
-│  subsonic_client.py  sync_manager.py                        │
-├─────────────────────────────────────────────────────────────┤
-│                     Integrations                             │
-│  adapters/mpris.py (KDE DBus)  sync_*.py (Android)          │
-│  transmit_manager.py (Snapcast/HTTP)                        │
+│  library/library_db.py  library/indexer.py                  │
+│  core/radio/  core/sync/  core/playlists/                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -26,17 +28,14 @@
 
 | File | Role |
 |------|------|
-| `main.py` | Entry point. Sets up QApplication, theme, font. |
-| `window.py` | MainWindow. Menus, sidebar, content area, signals. |
-| `player.py` | GStreamerEngine. Play/pause/seek/queue/EQ pipeline. |
-| `library_db.py` | SQLite schema, scanner, metadata, playlists, history. |
-| `nowplaying_bar.py` | Bottom bar: cover, seek, controls, volume. |
-| `sidebar_widget.py` | Collapsible section sidebar with search. |
-| `theme.py` | QPalette + QSS for glassmorphism dark theme. |
-| `audio_chain.py` | DAC config, EQ sink builders. |
-| `adapters/mpris.py` | MPRIS DBus service for KDE control. |
-| `settings_manager.py` | QSettings wrapper with defaults. |
-| `preferences_window.py` | 14-category settings dialog. |
+| `main.py` | Entry point. Delegates to michi/qml_app.py. |
+| `michi/qml_app.py` | QML runtime: QGuiApplication + QQmlApplicationEngine. |
+| `core/application_bootstrap.py` | DI container, builds all services. |
+| `ui_qml_bridge/*.py` | Python-QML bridges, one per domain. |
+| `ui_qml/shell/AppShell.qml` | Root QML shell with sidebar + page stack. |
+| `audio/player.py` | GStreamerEngine. Play/pause/seek/queue/EQ pipeline. |
+| `library/library_db.py` | SQLite schema, scanner, metadata, playlists, history. |
+| `core/settings_manager.py` | QSettings wrapper with defaults. |
 
 ## Data Flow
 

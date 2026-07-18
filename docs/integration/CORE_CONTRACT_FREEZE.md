@@ -46,9 +46,8 @@ OperationResult(ok, code, message, data, warnings, partial, retryable).to_dict()
 
 | Module | File | Responsibility |
 |---|---|---|
-| `michi.app_launcher` | `michi/app_launcher.py` | Reads `MICHI_UI` env var, dispatches to QML or Widgets runtime. Single entry point. |
+| `michi.app_launcher` | `michi/app_launcher.py` | Reads `MICHI_UI` env var, dispatches to QML. Single entry point. |
 | `michi.qml_app` | `michi/qml_app.py` | Owns `QGuiApplication` lifecycle for QML mode. |
-| `michi.widgets_app` | `michi/widgets_app.py` | Owns `QApplication` lifecycle for Widgets mode. |
 | `michi.verify_app` | `michi/verify_app.py` | Verification harness (exit-code based). |
 
 **Rule:** Only `app_launcher.launch()` decides the UI mode. No other code reads `MICHI_UI`.
@@ -220,7 +219,7 @@ Reverse-registration-order execution. `ShutdownManager` holds a list of `(name, 
 
 | Thread | Owned By | Purpose |
 |---|---|---|
-| Main (Qt) | `QApplication` / `QGuiApplication` | UI loop, signals, QML engine |
+| Main (Qt) | `QGuiApplication` | UI loop, signals, QML engine |
 | Worker pool | `WorkerManager` (`core/worker_manager.py`) | CPU-bound tasks (scanning, metadata extraction) |
 | DB thread | `QThread` / `ThreadPoolExecutor` (via `QueryExecutor`) | SQLite reads/writes (WAL mode) |
 | Async I/O | `asyncio` event loop | `ProcessController` subprocess management |
@@ -248,7 +247,6 @@ Reverse-registration-order execution. `ShutdownManager` holds a list of `(name, 
 - **Bridges** (`BridgeFactory`, each bridge instance): created once, owned by `BridgeFactory._bridges` dict
 - **Context properties** (`ContextRegistrar`): references only, ownership retained by `BridgeFactory`
 - **QML engine** (`QQmlApplicationEngine`): owned by the QML app runner (`michi.qml_app`)
-- **Windows/widgets** (`MainWindow`): owned by `michi.widgets_app`
 - **Signal connections:** Bridges emit signals. QML engine connects via context properties.
 - **Lifetime:** All QObjects created during bootstrap must outlive the shutdown sequence.
 
@@ -289,9 +287,8 @@ michi.app_launcher.launch()
 │   ├─ engine.load()                                       │
 │   └─ app.exec()                    [event loop]          │
 │                                                          │
-└─ MICHI_UI="widgets" ────────────────────────────────────┐
-    michi.widgets_app.run_widgets()                        │
-    └─ [classic MainWindow startup]                        │
+│ [only QML mode is supported]                             │
+│                                                          │
 ```
 
 ---
