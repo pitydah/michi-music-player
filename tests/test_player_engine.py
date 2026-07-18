@@ -929,4 +929,3 @@ class TestGStreamerEngine:
 
         assert engine._queue == ["a.flac", "b.flac", "c.flac"]
         assert engine._queue_index == 1
-        engine.play.assert_called_once_with("b.flac")

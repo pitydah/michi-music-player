@@ -752,13 +752,15 @@ class GStreamerEngine(QObject):
             self._db.save_queue(self._queue, self._queue_index)
 
     def set_queue(self, filepaths: list[str], start_index: int = 0):
-        self._transport.set_queue(filepaths, start_index)
+        self._queue = list(filepaths)
+        self._queue_index = max(0, min(start_index, len(self._queue) - 1)) if self._queue else -1
         self._sync_queue_from_backend()
         if self._db:
             self._db.save_queue(self._queue, self._queue_index)
 
     def clear_queue(self):
-        self._transport.clear_queue()
+        self._queue = []
+        self._queue_index = -1
         self._sync_queue_from_backend()
         self.queue_changed.emit([])
         if self._db:
@@ -779,15 +781,13 @@ class GStreamerEngine(QObject):
         return result
 
     def _sync_queue_from_backend(self):
-        self._queue = [q["filepath"] for q in self._transport.get_queue()]
-        self._queue_index = self._transport.get_queue_index()
         self.queue_changed.emit(self._queue)
 
     def get_queue(self) -> list[dict]:
-        return self._transport.get_queue()
+        return [{"filepath": fp} for fp in self._queue]
 
     def get_queue_index(self) -> int:
-        return self._transport.get_queue_index()
+        return self._queue_index
 
     def reorder_queue(self, filepaths: list[str]):
         current_fp = self._queue[self._queue_index] if self._queue_index >= 0 else None

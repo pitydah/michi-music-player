@@ -1,48 +1,74 @@
 """Tests for ToastService — unified toast notification API."""
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
+
 from core.toast_service import ToastService
 
 
 class TestToastService:
     def test_show_info(self):
-        with patch("core.toast_service.ToastNotification") as mock_tn:
-            svc = ToastService()
-            svc.show("test", "info")
-            mock_tn.info.assert_called_once_with("test", None, 4000)
+        svc = ToastService()
+        result = svc.show("test", "info")
+        assert result["ok"]
+        assert result["level"] == "info"
 
     def test_show_success(self):
-        with patch("core.toast_service.ToastNotification") as mock_tn:
-            svc = ToastService()
-            svc.show("ok", "success")
-            mock_tn.success.assert_called_once_with("ok", None, 3000)
+        svc = ToastService()
+        result = svc.show("ok", "success")
+        assert result["ok"]
 
     def test_show_warning(self):
-        with patch("core.toast_service.ToastNotification") as mock_tn:
-            svc = ToastService()
-            svc.show("warn", "warning")
-            mock_tn.warning.assert_called_once_with("warn", None, 5000)
+        svc = ToastService()
+        result = svc.show("warn", "warning")
+        assert result["ok"]
 
     def test_show_error(self):
-        with patch("core.toast_service.ToastNotification") as mock_tn:
-            svc = ToastService()
-            svc.show("err", "error")
-            mock_tn.error.assert_called_once_with("err", None, 6000)
+        svc = ToastService()
+        result = svc.show("err", "error")
+        assert result["ok"]
 
-    def test_show_with_parent(self):
-        parent = MagicMock()
-        with patch("core.toast_service.ToastNotification") as mock_tn:
-            svc = ToastService(parent)
-            svc.show("test", "info")
-            mock_tn.info.assert_called_once_with("test", parent, 4000)
+    def test_info_method(self):
+        svc = ToastService()
+        result = svc.info("test")
+        assert result["ok"]
+
+    def test_success_method(self):
+        svc = ToastService()
+        result = svc.success("ok")
+        assert result["ok"]
+
+    def test_warning_method(self):
+        svc = ToastService()
+        result = svc.warning("warn")
+        assert result["ok"]
+
+    def test_error_method(self):
+        svc = ToastService()
+        result = svc.error("err")
+        assert result["ok"]
+
+    def test_with_bridge(self):
+        bridge = MagicMock()
+        bridge.showMessage.return_value = {"ok": True, "sent": True}
+        svc = ToastService(notification_bridge=bridge)
+        result = svc.show("test", "info")
+        assert result["sent"]
+        bridge.showMessage.assert_called_once_with("test", "info")
+
+    def test_log_only_when_no_bridge(self):
+        svc = ToastService()
+        result = svc.show("test", "info")
+        assert result["ok"]
+
+    def test_set_notification_bridge(self):
+        svc = ToastService()
+        bridge = MagicMock()
+        svc.set_notification_bridge(bridge)
+        result = svc.show("test", "info")
+        assert result["ok"]
 
     def test_shortcuts(self):
-        with patch("core.toast_service.ToastNotification") as mock_tn:
-            svc = ToastService()
-            svc.info("i")
-            svc.success("s")
-            svc.warning("w")
-            svc.error("e")
-            assert mock_tn.info.called
-            assert mock_tn.success.called
-            assert mock_tn.warning.called
-            assert mock_tn.error.called
+        svc = ToastService()
+        assert svc.info("a")["ok"]
+        assert svc.success("a")["ok"]
+        assert svc.warning("a")["ok"]
+        assert svc.error("a")["ok"]
