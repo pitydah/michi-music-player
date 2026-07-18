@@ -49,6 +49,10 @@ class JobBridge(QObject):
         return sum(1 for j in self._jobs if j["state"] in
                    (STATE_QUEUED, STATE_RUNNING, STATE_CANCEL_REQUESTED))
 
+    @Property(int, notify=jobsChanged)
+    def failedCount(self):
+        return sum(1 for j in self._jobs if j["state"] == STATE_FAILED)
+
     def _add_job(self, job_type: str, title: str,
                  callable_fn: Callable | None = None) -> int:
         self._counter += 1

@@ -67,7 +67,7 @@ Item {
                     Rectangle {
                         width: 8; height: 8; radius: 4
                         color: {
-                            var s = model.status || ""
+                            var s = model.state || model.status || ""
                             if (s === "completed" || s === "succeeded") return MichiTheme.colors.success
                             if (s === "failed" || s === "error") return MichiTheme.colors.error
                             if (s === "running" || s === "processing") return MichiTheme.colors.accentBlue
@@ -81,23 +81,25 @@ Item {
                     Column {
                         Layout.fillWidth: true; spacing: 2
                         Text {
-                            text: model.name || model.type || "Trabajo"
+                            text: model.title || model.name || model.type || "Trabajo"
                             color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
                             font.weight: MichiTheme.typography.weightMedium; elide: Text.ElideRight; width: parent.width
                         }
                         Text {
                             text: {
-                                var s = model.status || ""
+                                var s = model.state || model.status || ""
                                 var p = model.progress || 0
-                                if (s === "completed" || s === "succeeded") return "Completado"
-                                if (s === "failed") return "Error: " + (model.error || "")
-                                if (s === "cancelled") return "Cancelado"
-                                if (s === "running" || s === "processing") return "En progreso: " + Math.round(p) + "%"
-                                return s || "Pendiente"
+                                var msg = model.message || model.error || ""
+                                if (s === "completed" || s === "succeeded") return qsTr("Completado")
+                                if (s === "failed") return qsTr("Error: %1").arg(msg)
+                                if (s === "cancelled") return qsTr("Cancelado")
+                                if (s === "running" || s === "processing") return qsTr("En progreso: %1%").arg(Math.round(p))
+                                return s || qsTr("Pendiente")
                             }
                             color: {
-                                if (model.status === "failed") return MichiTheme.colors.error
-                                if (model.status === "completed") return MichiTheme.colors.success
+                                var s = model.state || model.status || ""
+                                if (s === "failed") return MichiTheme.colors.error
+                                if (s === "completed") return MichiTheme.colors.success
                                 return MichiTheme.colors.textSecondary
                             }
                             font.pixelSize: MichiTheme.typography.metaSize; elide: Text.ElideRight; width: parent.width
@@ -108,7 +110,7 @@ Item {
                     MichiProgressBar {
                         value: model.progress || 0; from: 0; to: 100
                         implicitWidth: 80; implicitHeight: 6
-                        visible: model.status === "running" || model.status === "processing"
+                        visible: (model.state || model.status) === "running" || (model.state || model.status) === "processing"
                     }
 
                     // Cancel button
