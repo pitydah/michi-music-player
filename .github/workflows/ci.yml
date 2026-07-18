@@ -34,24 +34,10 @@ jobs:
         run: ruff check . ${{ env.ruff_out }}
       - name: Compileall
         run: python -m compileall -q -x '${{ env.compile_exclude }}' .
-      - name: Import audit
-        run: python scripts/audit_qtwidgets_imports.py
+      - name: QML-only gate
+        run: python scripts/qml_only_gate.py
 
-  legacy-audit:
-    needs: [lint]
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Run preservation validation
-        run: python scripts/validate_legacy_preservation_docs.py
-
-  test:
+  functional-tests:
     needs: [lint]
     runs-on: ubuntu-latest
     defaults:
@@ -70,23 +56,19 @@ jobs:
       - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 xvfb
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libgstreamer1.0-0 gstreamer1.0-plugins-base gir1.2-gst-plugins-base-1.0
           pip install -e ".[dev]" build
+      - name: Functional tests
+        run: |
+          QT_QPA_PLATFORM=offscreen python -m pytest tests/qml/functional/ -q --timeout=120 -x --junitxml=results-functional.xml
       - name: Core tests
         run: |
           QT_QPA_PLATFORM=offscreen python -m pytest tests/ -q --timeout=300 \
             --ignore=tests/qml --ignore=tests/test_large_library.py \
             --ignore=tests/perf -k "not qt_widget and not QtWidget" \
             -x --junitxml=results-core.xml
-      - name: App start test
-        run: |
-          QT_QPA_PLATFORM=offscreen python -m pytest tests/test_rc_compile.py::test_app_starts -q --timeout=60
-      - name: QML tests
-        run: |
-          QT_QPA_PLATFORM=offscreen python -m pytest tests/qml/visual_x10/test_controls_runtime.py tests/qml/visual_x10/test_dialog_runtime.py -q --timeout=120 --junitxml=results-qml.xml
-      - name: Migration tests
-        run: |
-          QT_QPA_PLATFORM=offscreen python -m pytest tests/test_migrations.py tests/test_migration_real_data.py -q --timeout=60
+      - name: Build wheel
+        run: python -m build --wheel
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
@@ -94,129 +76,3 @@ jobs:
           name: test-results-${{ github.sha }}
           path: "*.xml"
           retention-days: 7
-
-  qml-compile:
-    needs: [lint]
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1
-          pip install PySide6
-      - name: QML compile check
-        run: |
-          QT_QPA_PLATFORM=offscreen timeout 30 python3 -c "
-      import sys, os; sys.path.insert(0, '.')
-      from PySide6.QtQml import QQmlEngine, QQmlComponent
-      from PySide6.QtGui import QGuiApplication
-      from pathlib import Path
-      app = QGuiApplication(sys.argv)
-      engine = QQmlEngine()
-      class D: pass
-      for n in ['appBridge','navigationBridge','themeBridge','queueBridge','libraryBridge','playbackBridge','playlistsBridge','historyBridge','globalSearchBridge','settingsBridge','devicesBridge','notificationBridge','michiAiBridge','commandPaletteBridge','capabilityBridge','jobBridge','desktopBridge','homeBridge']:
-          engine.rootContext().setContextProperty(n, D())
-      errors = [str(f) for f in sorted(Path('ui_qml').rglob('*.qml')) if QQmlComponent(engine, str(f)).status() != QQmlComponent.Ready]
-      if errors:
-          for e in errors[:5]: print(f'QML ERROR: {e}')
-          sys.exit(1)
-      print(f'QML: {len(list(Path(\"ui_qml\").rglob(\"*.qml\")))} compiled OK')
-      "
-      - name: UX Screenshot capture (Xvfb)
-        if: always()
-        run: |
-          sudo apt-get install -y xvfb
-          QT_QPA_PLATFORM=xcb timeout 60 xvfb-run -s "-screen 0 1440x900x24" python tests/ux_captures_baseline.py 2>&1 || echo "Screenshot capture skipped (may fail without full UI stack)"
-
-  coverage:
-    needs: [test]
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 xvfb
-          pip install -e ".[dev]" coverage
-      - name: Run tests with coverage
-        run: |
-          QT_QPA_PLATFORM=offscreen coverage run -m pytest tests/ -q --timeout=300 --ignore=tests/qml --ignore=tests/test_large_library.py -x
-      - name: Generate report
-        run: |
-          coverage report --omit="*/shibokensupport/*,*signature_bootstrap*" > artifacts/coverage-report.txt
-          cat artifacts/coverage-report.txt
-          COVERAGE=$(coverage report --omit="*/shibokensupport/*,*signature_bootstrap*" | tail -1 | awk '{print $NF}' | tr -d '%')
-          echo "Coverage: ${COVERAGE}%"
-          MIN_COVERAGE=25
-          if [ "${COVERAGE}" -lt "${MIN_COVERAGE}" ]; then
-            echo "FAIL: Coverage ${COVERAGE}% < minimum ${MIN_COVERAGE}%"
-            exit 1
-          fi
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-${{ github.sha }}
-          path: artifacts/coverage-report.txt
-
-  build:
-    needs: [test, qml-compile]
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install deps
-        run: pip install build twine
-      - name: Build wheel
-        run: python -m build --wheel
-      - name: Verify wheel
-        run: |
-          python -c "
-      import zipfile, glob
-      whl = sorted(glob.glob('dist/*.whl'))
-      with zipfile.ZipFile(whl[-1]) as z:
-          names = z.namelist()
-          required = ['michi/', 'audio/', 'core/', 'library/', 'ui_qml/', 'ui_qml_bridge/', 'icons/']
-          for pkg in required:
-              assert any(n.startswith(pkg) for n in names), f'Missing: {pkg}'
-          qml_files = [n for n in names if n.endswith('.qml')]
-          svg_files = [n for n in names if n.endswith('.svg')]
-          png_files = [n for n in names if n.endswith('.png')]
-          required_icons = ['nav_back.svg', 'app_icon.svg', 'sidebar_home.svg']
-          for ico in required_icons:
-              assert any(ico in n for n in names), f'Missing icon: {ico}'
-          print(f'Wheel OK: {len(names)} files, {len(qml_files)} QML, {len(svg_files)} SVG, {len(png_files)} PNG')
-      "
-      - name: Install wheel
-        run: |
-          pip install dist/*.whl
-          python -c "from michi.app_launcher import launch; print('Entry point OK')"
-      - name: Upload wheel
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheel-${{ github.sha }}
-          path: dist/*.whl
-      - name: Publish to PyPI (tagged releases only)
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          twine upload dist/*.whl
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}

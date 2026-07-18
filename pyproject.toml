@@ -72,11 +72,8 @@ Repository = "https://github.com/pitydah/michi-music-player.git"
 Issues = "https://github.com/pitydah/michi-music-player/issues"
 
 [project.scripts]
-michi = "michi.app_launcher:launch"
-michi-qml = "michi.qml_app:run_qml"
-michi-widgets = "michi.widgets_app:run_widgets"
-michi-qml-verify = "michi.verify_app:run_verify"
-michi-music-player = "michi.app_launcher:launch"
+michi = "michi.qml_app:run_qml"
+michi-verify = "michi.verify_app:run_verify"
 
 [tool.setuptools]
 include-package-data = true
