@@ -1,10 +1,13 @@
-"""Intelligence composition — Michi AI and mix/recommendation services."""
+"""Intelligence composition — Michi AI, mix/recommendation, action registry."""
 from __future__ import annotations
 
 from core.service_container import ServiceContainer, ServicePriority
 
 
 def build(container: ServiceContainer) -> None:
+    from ui_qml_bridge.action_registry import ActionRegistry
+    ar = ActionRegistry()
+    container.register("action_registry", ar)
     try:
         from recommendation.smart_mix_service import SmartMixService
         from recommendation.recommendation_service import RecommendationService

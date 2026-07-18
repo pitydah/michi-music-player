@@ -19,6 +19,7 @@ from ui_qml_bridge.connections_bridge import ConnectionsBridge
 from ui_qml_bridge.cover_provider_bridge import CoverProviderBridge
 from ui_qml_bridge.desktop_bridge import DesktopBridge
 from ui_qml_bridge.devices_bridge import DevicesBridge
+from ui_qml_bridge.mobile_sync_bridge import MobileSyncBridge
 from ui_qml_bridge.diagnostics_bridge import DiagnosticsBridge
 from ui_qml_bridge.eq_bridge import EqBridge
 from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
@@ -89,6 +90,7 @@ CONTEXT_BINDINGS: list[ContextBinding] = [
     ContextBinding(ConnectionsBridge,   "connectionsBridge", optional_services=("connection_service",)),
     ContextBinding(HomeAudioBridge,     "homeAudioBridge", required_services=("home_audio_service",)),
     ContextBinding(DevicesBridge,       "devicesBridge",   required_services=("device_sync_service", "job_service")),
+    ContextBinding(MobileSyncBridge,    "mobileSyncBridge", optional_services=("mobile_sync_service",)),
     ContextBinding(RadioBridge,         "radioBridge",     required_services=("playback_service",), optional_services=("radio_service",)),
     ContextBinding(LibrarySourcesBridge,"librarySourcesBridge", required_services=("library_sources_service",)),
     ContextBinding(HomeBridge,          "homeBridge",      required_services=("connection_factory", "playback_service", "library_sources_service")),
