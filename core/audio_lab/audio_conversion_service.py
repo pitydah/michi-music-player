@@ -35,6 +35,8 @@ class ConversionJob:
     error: str = ""
     started_at: float = 0.0
     finished_at: float = 0.0
+    process: subprocess.Popen | None = None
+    cancelled: bool = False
 
 
 @dataclass
@@ -171,9 +173,18 @@ class AudioConversionService(QObject):
                 job.error = "NO_COMMAND_AVAILABLE"
                 return {"ok": False, "error": "NO_COMMAND_AVAILABLE"}
 
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
-            if proc.returncode != 0:
-                return {"ok": False, "error": proc.stderr[:500] or "Conversion failed"}
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            job.process = proc
+            try:
+                stdout, stderr = proc.communicate(timeout=3600)
+                if proc.returncode != 0:
+                    if job.cancelled:
+                        return {"ok": False, "error": "CANCELLED"}
+                    return {"ok": False, "error": stderr[:500] or "Conversion failed"}
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+                return {"ok": False, "error": "TIMEOUT"}
 
             if not os.path.isfile(target_path):
                 return {"ok": False, "error": "Output file not created", "error_code": "FILE_NOT_CREATED"}
@@ -236,10 +247,23 @@ class AudioConversionService(QObject):
         return None
 
     def cancel(self, job_id: str) -> bool:
-        if job_id in self._active_jobs:
-            self._active_jobs[job_id].status = "cancelled"
-            return True
-        return False
+        if job_id not in self._active_jobs:
+            return False
+        job = self._active_jobs[job_id]
+        if job.status in ("completed", "failed", "cancelled"):
+            return False
+        job.cancelled = True
+        if job.process and job.process.poll() is None:
+            try:
+                job.process.terminate()
+                job.process.wait(timeout=5)
+            except Exception:
+                try:
+                    job.process.kill()
+                except Exception:
+                    pass
+        job.status = "cancelled"
+        return True
 
     def _size_ratio(self, fmt: str) -> float:
         return {"MP3": 0.1, "AAC": 0.1, "Opus": 0.08, "Vorbis": 0.12,

@@ -239,13 +239,13 @@ class NotificationBridge(QObject):
 
     @Slot(str, result=dict)
     def cancelJobById(self, job_id: str):
+        if not job_id:
+            return {"ok": False, "error": "NO_JOB_ID"}
         if self._job_bridge and hasattr(self._job_bridge, 'cancelJob'):
             try:
-                job_id_int = int(job_id) if job_id.isdigit() else None
-                if job_id_int is not None:
-                    return self._job_bridge.cancelJob(job_id_int)
-            except Exception:
-                pass
+                return self._job_bridge.cancelJob(job_id)
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
         return {"ok": False, "error": "UNSUPPORTED"}
 
     @Slot(str, result=dict)
