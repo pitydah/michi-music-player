@@ -1,23 +1,17 @@
-"""Legacy widgets entry point — minimal launcher. Prefer QML (python main.py)."""
+"""Stub — QtWidgets frontend retired.
+
+Michi now runs exclusively on QML.
+See `main.py` or `michi/qml_app.py`.
+"""
 from __future__ import annotations
 
 import sys
-import logging
-
-logger = logging.getLogger("michi.widgets_app")
 
 
-def main():
-    try:
-        from PySide6.QtWidgets import QApplication
-        app = QApplication(sys.argv)
-        from legacy_widgets.ui.window import MainWindow
-        win = MainWindow()
-        win.show()
-        return app.exec()
-    except ImportError as e:
-        print(f"ERROR: widgets not available ({e}). Install michi-widgets-legacy or run QML.")
-        return 1
+def main() -> int:
+    print("Michi ya no incluye la interfaz QtWidgets.", file=sys.stderr)
+    print("Ejecute 'python main.py' para usar la interfaz QML.", file=sys.stderr)
+    return 2
 
 
 run_widgets = main

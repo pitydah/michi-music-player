@@ -199,6 +199,7 @@ Rectangle {
         Switch {
             checked: root.originalValue === true || root.originalValue === "true"
             onClicked: root.doSave(checked)
+            Accessible.role: Accessible.Button; Accessible.name: root.entry.label || root.entry.key; Accessible.description: "Activar o desactivar"
         }
     }
 
@@ -219,13 +220,12 @@ Rectangle {
             onActivated: function(idx) {
                 root.doSave(root.entry.options[idx].value)
             }
+            Accessible.role: Accessible.ComboBox; Accessible.name: root.entry.label || root.entry.key
         }
     }
 
     Component { id: sliderCtl
-        RowLayout {
-            spacing: MichiTheme.spacing.sm
-            Layout.fillWidth: true
+        RowLayout { spacing: MichiTheme.spacing.xs; Layout.fillWidth: true
             MichiSlider {
                 id: slider
                 Layout.fillWidth: true
@@ -256,11 +256,8 @@ Rectangle {
                     border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
                 }
                 Accessible.role: Accessible.EditableText
-
-                Accessible.name: "Campo de texto"
-
+                Accessible.name: "Valor numérico"
                 activeFocusOnTab: true
-
                 validator: DoubleValidator {
                     bottom: slider.from
                     top: slider.to
@@ -285,17 +282,13 @@ Rectangle {
                 text: root.originalValue || ""
                 readOnly: true
                 Layout.fillWidth: true
+                Accessible.role: Accessible.EditableText; Accessible.name: "Ruta de archivo"
             }
             MichiButton {
                 text: "..."
                 implicitWidth: 32
                 onClicked: fileDialog.open()
-            Accessible.role: Accessible.EditableText
-
-            Accessible.name: "Campo de texto"
-
-            activeFocusOnTab: true
-
+                Accessible.name: "Seleccionar archivo"
             }
             FileDialog {
                 id: fileDialog
@@ -311,17 +304,20 @@ Rectangle {
                 text: root.originalValue || ""
                 readOnly: true
                 Layout.fillWidth: true
+                Accessible.role: Accessible.EditableText; Accessible.name: "Ruta de carpeta"
             }
             MichiButton {
                 text: "..."
                 implicitWidth: 32
                 onClicked: folderDialog.open()
+                Accessible.name: "Seleccionar carpeta"
             }
             FolderDialog {
                 id: folderDialog
                 onAccepted: root.doSave(selectedFolder.toLocalFile())
             }
         }
+    }
     }
 
     Component { id: secretCtl
@@ -331,15 +327,15 @@ Rectangle {
             placeholderText: root.entry.placeholder || "Contraseña"
             echoMode: revealButton.checked ? TextInput.Normal : TextInput.Password
             onTextEdited: root.scheduleSave(text)
+            Accessible.role: Accessible.EditableText; Accessible.name: root.entry.label || "Contraseña"
             RowLayout {
                 anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                 anchors.rightMargin: MichiTheme.spacing.xs
                 CheckBox {
-
                     id: revealButton
-                activeFocusOnTab: true
-
+                    activeFocusOnTab: true
                     text: ""
+                    Accessible.role: Accessible.Button; Accessible.name: "Revelar contraseña"
                 }
             }
         }
@@ -371,6 +367,7 @@ Rectangle {
                 Layout.fillWidth: true
                 font.pixelSize: MichiTheme.typography.captionSize
                 onTextEdited: root.scheduleSave(text)
+                Accessible.role: Accessible.EditableText; Accessible.name: "Color"; Accessible.description: "Código hexadecimal de color"
             }
         }
     }
@@ -384,6 +381,7 @@ Rectangle {
                 text: root.originalValue ? String(root.originalValue) : ""
                 readOnly: true
                 Layout.fillWidth: true
+                Accessible.role: Accessible.EditableText; Accessible.name: root.entry.label || "Valor"
             }
         }
     }

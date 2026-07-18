@@ -26,7 +26,7 @@ _DQUOTES_PATTERN = re.compile(r"[\u201c\u201d\u201e\u201f\u00ab\u00bb]")
 
 def _fold(text: str) -> str:
     s = unicodedata.normalize("NFKD", str(text or ""))
-    s = s.encode("ascii", "ignore").decode("ascii")
+    s = s.encode("ascii", "replace").decode("ascii")
     s = _QUOTES_PATTERN.sub("'", s)
     s = _DQUOTES_PATTERN.sub('"', s)
     s = s.strip().lower()

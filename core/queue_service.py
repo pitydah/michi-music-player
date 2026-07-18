@@ -6,6 +6,7 @@ import contextlib
 import json
 import logging
 import os
+import threading
 import time
 
 
@@ -29,6 +30,7 @@ class QueueService:
     def __init__(self, player_service=None, event_bus=None):
         self._player = player_service
         self._event_bus = event_bus
+        self._lock = threading.RLock()
         self._items: list[dict] = []
         self._undo_stack: list[dict] = []
         self._can_undo = False
@@ -41,11 +43,13 @@ class QueueService:
 
     @property
     def items(self) -> list[dict]:
-        return list(self._items)
+        with self._lock:
+            return list(self._items)
 
     @property
     def count(self) -> int:
-        return len(self._items)
+        with self._lock:
+            return len(self._items)
 
     @property
     def current_index(self) -> int:
@@ -82,114 +86,128 @@ class QueueService:
     # ── Core API ──
 
     def get_items(self) -> list[dict]:
-        return list(self._items)
+        with self._lock:
+            return list(self._items)
 
     def set_items(self, items: list[dict], current_index: int | None = None):
-        self._save_undo()
-        self._items = list(items)
-        if current_index is not None:
-            self._current_index = current_index
-        elif self._items and self._current_index < 0:
-            self._current_index = 0
-        elif not self._items:
-            self._current_index = -1
+        with self._lock:
+            self._save_undo()
+            self._items = list(items)
+            if current_index is not None:
+                self._current_index = current_index
+            elif self._items and self._current_index < 0:
+                self._current_index = 0
+            elif not self._items:
+                self._current_index = -1
         self._sync()
 
     def add(self, item: dict):
-        self._save_undo()
-        self._items.append(item)
-        if self._current_index < 0:
-            self._current_index = 0
+        with self._lock:
+            self._save_undo()
+            self._items.append(item)
+            if self._current_index < 0:
+                self._current_index = 0
         self._sync()
 
     def insert(self, index: int, items: list[dict]):
-        self._save_undo()
-        for i, item in enumerate(items):
-            self._items.insert(index + i, item)
-        if self._current_index < 0 and self._items:
-            self._current_index = 0
+        with self._lock:
+            self._save_undo()
+            for i, item in enumerate(items):
+                self._items.insert(index + i, item)
+            if self._current_index < 0 and self._items:
+                self._current_index = 0
         self._sync()
 
     def append(self, items: list[dict]):
-        self._save_undo()
-        self._items.extend(items)
-        if self._current_index < 0 and self._items:
-            self._current_index = 0
+        with self._lock:
+            self._save_undo()
+            self._items.extend(items)
+            if self._current_index < 0 and self._items:
+                self._current_index = 0
         self._sync()
 
     def replace(self, items: list[dict]):
-        self._save_undo()
-        self._items = list(items)
-        if self._current_index < 0 and self._items:
-            self._current_index = 0
+        with self._lock:
+            self._save_undo()
+            self._items = list(items)
+            if self._current_index < 0 and self._items:
+                self._current_index = 0
         self._sync()
 
     def move(self, from_index: int, to_index: int):
-        self._save_undo()
-        if 0 <= from_index < len(self._items) and 0 <= to_index < len(self._items):
-            item = self._items.pop(from_index)
-            self._items.insert(to_index, item)
-            if self._current_index == from_index:
-                self._current_index = to_index
-            self._sync()
+        with self._lock:
+            self._save_undo()
+            if 0 <= from_index < len(self._items) and 0 <= to_index < len(self._items):
+                item = self._items.pop(from_index)
+                self._items.insert(to_index, item)
+                if self._current_index == from_index:
+                    self._current_index = to_index
+        self._sync()
 
     def reorder(self, from_index: int, to_index: int):
         self.move(from_index, to_index)
 
     def remove(self, indices: list[int]):
-        self._save_undo()
-        for idx in sorted(indices, reverse=True):
-            if 0 <= idx < len(self._items):
-                self._items.pop(idx)
-                if self._current_index == idx:
-                    self._current_index = min(idx, len(self._items) - 1) if self._items else -1
-                elif self._current_index > idx:
-                    self._current_index -= 1
+        with self._lock:
+            self._save_undo()
+            for idx in sorted(indices, reverse=True):
+                if 0 <= idx < len(self._items):
+                    self._items.pop(idx)
+                    if self._current_index == idx:
+                        self._current_index = min(idx, len(self._items) - 1) if self._items else -1
+                    elif self._current_index > idx:
+                        self._current_index -= 1
         self._sync()
 
     def play_next(self, item: dict) -> dict:
-        next_idx = self._current_index + 1 if self._current_index >= 0 else 0
-        if next_idx < len(self._items):
-            next_item = self._items[next_idx]
-            self._current_index = next_idx
-            self._sync()
-            return {"ok": True, "item": next_item}
-        return {"ok": False, "error": "QUEUE_EMPTY"}
+        with self._lock:
+            next_idx = self._current_index + 1 if self._current_index >= 0 else 0
+            if next_idx < len(self._items):
+                next_item = self._items[next_idx]
+                self._current_index = next_idx
+        self._sync()
+        return {"ok": True, "item": next_item}
 
     def enqueue(self, items: list, play_now: bool = False) -> dict:
         if not items:
             return {"ok": False, "error": "EMPTY"}
-        added = 0
-        for item in items:
-            self._items.append(item if isinstance(item, dict) else {"filepath": str(item)})
-            added += 1
-        if play_now and self._items:
-            self._current_index = len(self._items) - added
+        with self._lock:
+            added = 0
+            for item in items:
+                self._items.append(item if isinstance(item, dict) else {"filepath": str(item)})
+                added += 1
+            if play_now and self._items:
+                self._current_index = len(self._items) - added
         self._sync()
         return {"ok": True, "added": added, "total": len(self._items)}
 
     def save_as_playlist(self, name: str) -> dict:
-        return {"ok": True, "message": "Queue saved to playlist", "count": len(self._items), "name": name}
+        with self._lock:
+            count = len(self._items)
+        return {"ok": True, "message": "Queue saved to playlist", "count": count, "name": name}
 
     def clear(self):
-        self._save_undo()
-        self._items = []
-        self._current_index = -1
+        with self._lock:
+            self._save_undo()
+            self._items = []
+            self._current_index = -1
         self._sync()
 
     def get_current(self) -> dict | None:
-        if 0 <= self._current_index < len(self._items):
-            return dict(self._items[self._current_index])
+        with self._lock:
+            if 0 <= self._current_index < len(self._items):
+                return dict(self._items[self._current_index])
         return None
 
     def undo(self) -> bool:
-        if self._undo_stack:
-            self._items = self._undo_stack.pop()
-            self._can_undo = len(self._undo_stack) > 0
-            if self._current_index >= len(self._items):
-                self._current_index = len(self._items) - 1 if self._items else -1
-            self._sync()
-            return True
+        with self._lock:
+            if self._undo_stack:
+                self._items = self._undo_stack.pop()
+                self._can_undo = len(self._undo_stack) > 0
+                if self._current_index >= len(self._items):
+                    self._current_index = len(self._items) - 1 if self._items else -1
+                self._sync()
+                return True
         return False
 
     def _save_undo(self):
@@ -202,32 +220,37 @@ class QueueService:
                 self._event_bus.publish(event, **data)
 
     def _sync(self):
+        with self._lock:
+            items_snapshot = list(self._items)
         if self._player and hasattr(self._player, 'set_queue'):
             with contextlib.suppress(Exception):
-                self._player.set_queue(self._items)
-        self._publish("queue.changed", count=len(self._items))
+                self._player.set_queue(items_snapshot)
+        self._publish("queue.changed", count=len(items_snapshot))
 
     # ── Persistence ──
 
     def save_state(self, position: float = 0.0) -> dict:
         try:
-            state = {
-                "version": 2,
-                "timestamp": time.time(),
-                "current_index": self._current_index if self._current_index >= 0 else 0,
-                "position": position,
-                "source": "queue_service",
-                "shuffle_order": self._shuffle_order,
-                "repeat": self._repeat,
-                "context": self._context,
-                "items": self._items,
-            }
+            with self._lock:
+                state = {
+                    "version": 2,
+                    "timestamp": time.time(),
+                    "current_index": self._current_index if self._current_index >= 0 else 0,
+                    "position": position,
+                    "source": "queue_service",
+                    "shuffle_order": self._shuffle_order,
+                    "repeat": self._repeat,
+                    "context": self._context,
+                    "items": self._items,
+                }
             path = _queue_state_path()
             tmp = path + ".tmp"
             with open(tmp, "w") as f:
                 json.dump(state, f)
             os.replace(tmp, path)
-            return {"ok": True, "path": path, "count": len(self._items)}
+            with self._lock:
+                count = len(self._items)
+            return {"ok": True, "path": path, "count": count}
         except Exception as e:
             logger.exception("save_state failed")
             return {"ok": False, "error": str(e)}

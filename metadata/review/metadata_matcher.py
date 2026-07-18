@@ -16,7 +16,7 @@ def _normalize(s: str) -> str:
     if not s:
         return ""
     s = unicodedata.normalize("NFKD", s)
-    s = s.encode("ascii", "ignore").decode("ascii")
+    s = s.encode("ascii", "replace").decode("ascii")
     s = s.lower().strip()
     s = _STRIP_RE.sub(" ", s)
     s = _SPACE_RE.sub(" ", s)

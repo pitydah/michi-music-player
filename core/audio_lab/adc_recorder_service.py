@@ -211,7 +211,7 @@ class USBTurntableDetector:
         return False
 
 
-class ADCRecorderService:
+class ADCRecorderService: 
     """Servicio para grabación desde convertidores analógico-digitales."""
     
     SUPPORTED_FORMATS = ['wav', 'flac', 'mp3', 'opus']
@@ -223,6 +223,9 @@ class ADCRecorderService:
         self.recording_thread: Optional[threading.Thread] = None
         self.is_recording = False
         self.is_paused = False
+
+    def __del__(self):
+        self.stop_recording()
 
     def available(self) -> bool:
         """Devuelve True si hay un backend de captura disponible."""

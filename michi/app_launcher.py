@@ -7,25 +7,30 @@ import os
 import sys
 
 
-_VALID_MODES = {"qml", "widgets", "verify"}
+_VALID_MODES = {"qml", "verify"}
 
 
 def launch() -> int:
     ui_mode = os.environ.get("MICHI_UI", "qml").strip().lower()
     if ui_mode not in _VALID_MODES:
-        print(
-            f"[MICHI_UI] Invalid MICHI_UI={ui_mode!r}. "
-            f"Valid values: {', '.join(sorted(_VALID_MODES))}",
-            file=sys.stderr,
-        )
+        if ui_mode == "widgets":
+            print(
+                "[MICHI_UI] La interfaz QtWidgets fue retirada. "
+                "Michi solo funciona en modo QML. "
+                "Ejecute 'python main.py' sin variables de entorno.",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                f"[MICHI_UI] Invalid MICHI_UI={ui_mode!r}. "
+                f"Valid values: {', '.join(sorted(_VALID_MODES))}",
+                file=sys.stderr,
+            )
         return 1
 
     if ui_mode == "qml":
         return _launch_qml()
-    elif ui_mode == "verify":
-        return _launch_verify()
-    else:
-        return _launch_widgets()
+    return _launch_verify()
 
 
 def _launch_qml() -> int:
@@ -47,17 +52,6 @@ def _launch_verify() -> int:
         return run_verify()
     except Exception as exc:
         print(f"[MICHI_UI] QML verify failed: {exc}", file=sys.stderr)
-        import traceback
-        traceback.print_exc(file=sys.stderr)
-        return 2
-
-
-def _launch_widgets() -> int:
-    try:
-        from michi.widgets_app import run_widgets
-        return run_widgets()
-    except Exception as exc:
-        print(f"[MICHI_UI] Widgets launch failed: {exc}", file=sys.stderr)
         import traceback
         traceback.print_exc(file=sys.stderr)
         return 2

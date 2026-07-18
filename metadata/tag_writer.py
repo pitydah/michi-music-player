@@ -1,5 +1,15 @@
-"""Tag writer — saves modified tags back to audio files using Mutagen."""
+"""Tag writer — saves modified tags back to audio files using Mutagen.
+
+Atomic write strategy:
+  1. Backup original → {filepath}.bak
+  2. Write to temp file
+  3. os.replace(temp, original)
+  4. Remove .bak on success
+  5. If step 2 or 3 fails, restore from .bak
+"""
 import os
+import tempfile
+import shutil
 
 from metadata.tag_model import TrackTags
 import contextlib
@@ -54,18 +64,20 @@ def write_tags(tags: TrackTags) -> bool:
     if not _mutagen_available:
         return False
 
+    filepath = tags.filepath
+    backup_path = filepath + ".bak"
+
     try:
-        f = mutagen.File(tags.filepath)
+        f = mutagen.File(filepath)
         if f is None:
             return False
 
-        ext = os.path.splitext(tags.filepath)[1].lower()
+        ext = os.path.splitext(filepath)[1].lower()
         kind = "mp3" if ext == ".mp3" else "flac" if ext == ".flac" else ext.lstrip(".")
 
         dirty = tags.dirty_fields or set()
-        use_all = not dirty  # if no fields tracked, write everything (backward compat)
+        use_all = not dirty
 
-        # Write text fields
         for attr in TrackTags.TEXT_FIELDS:
             val = getattr(tags, attr, "")
             if use_all or attr in dirty:
@@ -76,11 +88,22 @@ def write_tags(tags: TrackTags) -> bool:
                 elif kind in ("mp4", "m4a"):
                     _set_mp4_field(f, attr, val)
 
-        # Artwork
         if use_all or tags.artwork_dirty or "artwork" in dirty:
             _write_artwork(f, kind, tags)
 
-        f.save()
+        # Atomic write: backup → temp → replace
+        shutil.copy2(filepath, backup_path)
+        fd, tmp_path = tempfile.mkstemp(suffix=ext, dir=os.path.dirname(filepath))
+        try:
+            os.close(fd)
+            f.save(tmp_path)
+            os.replace(tmp_path, filepath)
+        except BaseException:
+            with contextlib.suppress(OSError):
+                os.unlink(tmp_path)
+            raise
+
+        os.unlink(backup_path)
         tags.dirty = False
         tags.dirty_fields.clear()
         tags.artwork_dirty = False
@@ -88,6 +111,11 @@ def write_tags(tags: TrackTags) -> bool:
         return True
 
     except Exception as e:
+        if os.path.isfile(backup_path):
+            try:
+                os.replace(backup_path, filepath)
+            except OSError:
+                pass
         tags.error = str(e)
         return False
 

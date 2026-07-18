@@ -220,50 +220,69 @@ Item {
 
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
                         Text { text: "Título:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 60 }
-                        TextField { id: editTitle; text: root._editTitle; width: parent.width - 70; onTextChanged: root._editTitle = text }
-                            focusPolicy: Qt.StrongFocus
+                        TextField { id: editTitle; text: root._editTitle; width: parent.width - 70; onTextChanged: root._editTitle = text
+                            Accessible.role: Accessible.EditableText; Accessible.name: "Título"; Accessible.description: "Editar título de la canción"
+                            focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
                         Text { text: "Artista:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 60 }
-                        TextField { id: editArtist; text: root._editArtist; width: parent.width - 70; onTextChanged: root._editArtist = text }
-                            focusPolicy: Qt.StrongFocus
+                        TextField { id: editArtist; text: root._editArtist; width: parent.width - 70; onTextChanged: root._editArtist = text
+                            Accessible.role: Accessible.EditableText; Accessible.name: "Artista"; Accessible.description: "Editar nombre del artista"
+                            focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
                         Text { text: "Álbum:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 60 }
-                        TextField { id: editAlbum; text: root._editAlbum; width: parent.width - 70; onTextChanged: root._editAlbum = text }
-                            focusPolicy: Qt.StrongFocus
+                        TextField { id: editAlbum; text: root._editAlbum; width: parent.width - 70; onTextChanged: root._editAlbum = text
+                            Accessible.role: Accessible.EditableText; Accessible.name: "Álbum"; Accessible.description: "Editar nombre del álbum"
+                            focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
                         Text { text: "Album Artist:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
-                        TextField { text: root._editAlbumArtist; width: parent.width - 110; onTextChanged: root._editAlbumArtist = text; focusPolicy: Qt.StrongFocus }
+                        TextField { text: root._editAlbumArtist; width: parent.width - 110; onTextChanged: root._editAlbumArtist = text
+                            Accessible.role: Accessible.EditableText; Accessible.name: "Album Artist"; Accessible.description: "Editar artista del álbum"
+                            focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
                         Text { text: "Género:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
-                        TextField { text: root._editGenre; width: parent.width - 110; onTextChanged: root._editGenre = text; focusPolicy: Qt.StrongFocus }
+                        TextField { text: root._editGenre; width: parent.width - 110; onTextChanged: root._editGenre = text
+                            Accessible.role: Accessible.EditableText; Accessible.name: "Género"; Accessible.description: "Editar género musical"
+                            focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
                         Text { text: "Año:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
-                        TextField { text: root._editYear; width: parent.width - 110; onTextChanged: root._editYear = text; focusPolicy: Qt.StrongFocus }
+                        TextField { text: root._editYear; width: parent.width - 110; onTextChanged: root._editYear = text
+                            Accessible.role: Accessible.EditableText; Accessible.name: "Año"; Accessible.description: "Editar año de publicación"
+                            focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
                         Text { text: "# Pista:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
-                        TextField { text: root._editTrackNumber; width: parent.width - 110; onTextChanged: root._editTrackNumber = text; focusPolicy: Qt.StrongFocus }
+                        TextField { text: root._editTrackNumber; width: parent.width - 110; onTextChanged: root._editTrackNumber = text
+                            Accessible.role: Accessible.EditableText; Accessible.name: "Número de pista"
+                            focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
                         Text { text: "Total pistas:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
-                        TextField { text: root._editTrackTotal; width: parent.width - 110; onTextChanged: root._editTrackTotal = text; focusPolicy: Qt.StrongFocus }
+                        TextField { text: root._editTrackTotal; width: parent.width - 110; onTextChanged: root._editTrackTotal = text
+                            Accessible.role: Accessible.EditableText; Accessible.name: "Total pistas"
+                            focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
                         Text { text: "# Disco:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
-                        TextField { text: root._editDiscNumber; width: parent.width - 110; onTextChanged: root._editDiscNumber = text; focusPolicy: Qt.StrongFocus }
+                        TextField { text: root._editDiscNumber; width: parent.width - 110; onTextChanged: root._editDiscNumber = text
+                            Accessible.role: Accessible.EditableText; Accessible.name: "Número de disco"
+                            focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
                         Text { text: "Compositor:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
-                        TextField { text: root._editComposer; width: parent.width - 110; onTextChanged: root._editComposer = text; focusPolicy: Qt.StrongFocus }
+                        TextField { text: root._editComposer; width: parent.width - 110; onTextChanged: root._editComposer = text
+                            Accessible.role: Accessible.EditableText; Accessible.name: "Compositor"
+                            focusPolicy: Qt.StrongFocus }
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
                         Text { text: "BPM:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
-                        TextField { text: root._editBpm; width: parent.width - 110; onTextChanged: root._editBpm = text; focusPolicy: Qt.StrongFocus }
+                        TextField { text: root._editBpm; width: parent.width - 110; onTextChanged: root._editBpm = text
+                            Accessible.role: Accessible.EditableText; Accessible.name: "BPM"; Accessible.description: "Pulsaciones por minuto"
+                            focusPolicy: Qt.StrongFocus }
                     }
 
                     Row { spacing: MichiTheme.spacing.sm

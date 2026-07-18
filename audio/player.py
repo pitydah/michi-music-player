@@ -62,6 +62,7 @@ class GStreamerEngine(QObject):
     spectrum_data = Signal(object)
     queue_changed = Signal(list)
     audio_route_changed = Signal(object)
+    stream_metadata_changed = Signal(str, str, str)  # title, artist, album
     eq_bitperfect_warning = Signal()
 
     POLL_MS = 250
@@ -700,7 +701,15 @@ class GStreamerEngine(QObject):
                     if ret == Gst.StateChangeReturn.FAILURE:
                         logging.getLogger("michi.player").warning("Failed to resume after buffering")
         elif t == Gst.MessageType.TAG:
-            pass
+            tag_list = message.parse_tag()
+            title = tag_list.get_string(Gst.TAG_TITLE)
+            artist = tag_list.get_string(Gst.TAG_ARTIST)
+            album = tag_list.get_string(Gst.TAG_ALBUM)
+            if title or artist or album:
+                self.stream_metadata_changed.emit(
+                    title or "", artist or "", album or "")
+            elif tag_list.get_string(Gst.TAG_TRACK_NUMBER):
+                self.stream_metadata_changed.emit("", "", "")
         elif t == Gst.MessageType.STATE_CHANGED:
             if pipeline and message.src == pipeline:
                 old, new, pending = message.parse_state_changed()
