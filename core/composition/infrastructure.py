@@ -50,6 +50,6 @@ def build(container: ServiceContainer) -> None:
 
     migrate_all()
     coordinator = SettingsRuntimeCoordinator()
-    svc = SettingsService()
+    svc = SettingsService(coordinator=coordinator)
     container.register("settings_coordinator", coordinator)
     container.register("settings_service", svc)
