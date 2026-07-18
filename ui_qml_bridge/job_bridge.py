@@ -62,8 +62,8 @@ class JobBridge(QObject):
             "job_id": job_id, "type": job_type, "title": title,
             "state": STATE_QUEUED, "progress": 0.0, "processed": 0, "total": 0,
             "message": "", "error_code": "", "can_cancel": True,
-            "can_retry": False, "started_at": now, "finished_at": 0,
-            "duration": 0, "summary": "",
+            "can_retry": callable_fn is not None, "started_at": now, "finished_at": 0,
+            "duration": 0, "summary": "", "_fn": callable_fn,
         }
         self._jobs.insert(0, job)
         self.jobsChanged.emit()
