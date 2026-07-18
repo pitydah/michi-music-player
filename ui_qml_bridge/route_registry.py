@@ -95,6 +95,7 @@ ROUTES: dict[str, dict] = {
     "track_detail": {"title": "Canci\u00f3n", "source": "../pages/library/tracks/TracksPage.qml", "category": "detail", "status": "functional", "params": {"track_id": {"required": True, "type": "int"}}},
     "device_detail": {"title": "Dispositivo", "source": "../pages/devices/DeviceDetailPage.qml", "category": "detail", "status": "functional", "params": {"device_id": {"required": True, "type": "string"}}},
     "zone_detail": {"title": "Zona", "source": "../pages/home_audio/ZoneDetailPage.qml", "category": "detail", "status": "functional", "params": {"zone_id": {"required": True, "type": "string"}}},
+    "devices.mobile_pairing": {"title": "Emparejar dispositivo", "source": "../pages/devices/MobilePairingPage.qml", "category": "tools", "status": "functional"},
 }
 
 CAPABILITY_MAP: dict[str, str] = {
