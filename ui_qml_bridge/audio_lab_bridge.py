@@ -28,6 +28,8 @@ class AudioLabBridge(QObject):
         self._cap = capability_bridge
         self._notify = notification_bridge
         self._active_jobs: dict[str, dict] = {}
+        self._cached_audio_devices: list | None = None
+        self._cached_cd_drives: list | None = None
 
     @Property(bool, notify=dataChanged)
     def serviceAvailable(self):
@@ -475,18 +477,21 @@ class AudioLabBridge(QObject):
     
     @Slot(result=list)
     def detectCDDrives(self) -> list:
-        """Detecta unidades de CD disponibles."""
+        """Detecta unidades de CD disponibles. Cachea el resultado."""
+        if self._cached_cd_drives is not None:
+            return self._cached_cd_drives
         if not self._svc:
             return []
         try:
             from core.audio_lab.cd_ripper_service import CDRipperService
             ripper = CDRipperService()
             drives = ripper.detect_drives()
-            return [{
+            self._cached_cd_drives = [{
                 'device': d.device,
                 'model': d.model,
                 'is_audio_capable': d.is_audio_capable
             } for d in drives]
+            return self._cached_cd_drives
         except Exception as e:
             logger.error(f"Error detecting CD drives: {e}")
             return []
@@ -553,14 +558,17 @@ class AudioLabBridge(QObject):
     
     @Slot(result=list)
     def detectAudioDevices(self) -> list:
-        """Detecta dispositivos de entrada de audio (incluye tocadiscos USB)."""
+        """Detecta dispositivos de entrada de audio (incluye tocadiscos USB).
+        Cachea el resultado para no bloquear en llamadas sucesivas."""
+        if self._cached_audio_devices is not None:
+            return self._cached_audio_devices
         if not self._svc:
             return []
         try:
             from core.audio_lab.adc_recorder_service import ADCRecorderService
             recorder = ADCRecorderService()
             devices = recorder.detect_devices()
-            return [{
+            self._cached_audio_devices = [{
                 'device_id': d.device_id,
                 'name': d.name,
                 'is_usb': d.is_usb,
@@ -569,6 +577,7 @@ class AudioLabBridge(QObject):
                 'channels': d.channels,
                 'sample_rate': d.sample_rate
             } for d in devices]
+            return self._cached_audio_devices
         except Exception as e:
             logger.error(f"Error detecting audio devices: {e}")
             return []
