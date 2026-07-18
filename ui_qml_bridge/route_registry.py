@@ -47,6 +47,8 @@ ROUTES: dict[str, dict] = {
     "audio_lab.profiles": {"title": "Perfiles", "source": "../pages/audio_lab/AudioConversionProfileEditor.qml", "category": "tools", "status": "functional"},
     "audio_lab_job_detail": {"title": "Detalle de trabajo", "source": "../pages/audio_lab/AudioJobDetail.qml", "category": "detail", "status": "functional", "params": {"job": {"required": True, "type": "object"}}},
     "metadata.inspector": {"title": "Inspector de metadatos", "source": "../pages/metadata/MetadataInspectorPage.qml", "category": "tools", "status": "functional"},
+    "metadata.editor": {"title": "Editor de metadatos", "source": "../pages/metadata/MetadataEditorPage.qml", "category": "tools", "status": "functional"},
+    "metadata.single": {"title": "Editar metadatos", "source": "../pages/metadata/MetadataSingleEditor.qml", "category": "tools", "status": "functional"},
     "metadata.batch": {"title": "Edición por lotes", "source": "../pages/metadata/MetadataBatchEditor.qml", "category": "tools", "status": "functional"},
     "tagging": {"title": "Smart Tagging", "source": "../pages/SmartTaggingPage.qml", "category": "tools", "status": "functional"},
     "library_doctor": {"title": "Library Doctor", "source": "../pages/library_doctor/LibraryDoctorPage.qml", "category": "tools", "status": "functional"},

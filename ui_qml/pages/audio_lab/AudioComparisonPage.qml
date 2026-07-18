@@ -123,8 +123,6 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
-                    Accessible.role: Accessible.Button
-
                     text: "Comparar"
                     variant: "primary"
                     enabled: root._fileA !== null && root._fileB !== null && root._state !== root.stateComparing
@@ -133,7 +131,6 @@ Item {
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._startComparison()
                 }
-                    Accessible.role: Accessible.Button
 
                 MichiButton {
                     text: "Intercambiar A/B"
@@ -143,8 +140,6 @@ Item {
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._swapFiles()
-                    Accessible.role: Accessible.Button
-
                 }
                 MichiButton {
                     text: "Volver"

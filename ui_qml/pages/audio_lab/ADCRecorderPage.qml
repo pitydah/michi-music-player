@@ -501,8 +501,8 @@ Page {
                 if (status && typeof status.level === "number") {
                     recordingLevel = status.level
                 } else {
-                    // Fallback simulado — marcar como estimado
-                    recordingLevel = Math.random() * 0.8 - 40
+                    // Sin entrada de audio real — mostrar silencio
+                    recordingLevel = -60
                 }
             } else {
                 recordingLevel = -60
