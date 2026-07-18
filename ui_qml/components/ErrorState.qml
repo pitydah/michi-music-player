@@ -1,4 +1,4 @@
-// TODO: migrar a MichiErrorState cuando soporte todas las propiedades legacy
+// ErrorState — pending migration to MichiErrorState
 import QtQuick
 import QtQuick.Controls as QQC2
 import "../theme"

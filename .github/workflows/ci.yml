@@ -48,8 +48,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Run legacy gate
-        run: python scripts/audit_legacy_gate.py
+      - name: Run preservation validation
+        run: python scripts/validate_legacy_preservation_docs.py
 
   test:
     needs: [lint]

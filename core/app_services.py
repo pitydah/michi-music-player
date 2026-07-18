@@ -44,7 +44,7 @@ class AppServices:
     reload_library: callable = None       # (reason: str) -> None
     clear_coverflow_cache: callable = None
     enrich_artist: callable = None        # (key: str, name: str) -> None
-    get_content_widget: callable = None   # () -> QWidget (legacy — for overlay parents)
+    get_content_widget: callable = None   # () -> widget (legacy — pending removal)
     ha_client: object = None              # HomeAssistantClient (optional)
     ha_connected: callable = None         # () -> bool
     local_media_ctrl: object = None       # LocalMediaServerController

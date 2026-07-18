@@ -123,7 +123,7 @@ class MetadataBridge(QObject):
                 return {"ok": True, "title": fields.get("title", "")}
             self._error_message = result.message or result.code
         else:
-            meta = self._legacy_read(filepath)
+            meta = self._fallback_read(filepath)
             if "error" not in meta:
                 self._all_fields = meta
                 self._track_title = meta.get("title", _NA)
@@ -143,7 +143,7 @@ class MetadataBridge(QObject):
         self.dataChanged.emit()
         return {"ok": False, "error": self._error_message}
 
-    def _legacy_read(self, filepath: str) -> dict:
+    def _fallback_read(self, filepath: str) -> dict:
         result = {
             "title": Path(filepath).stem, "artist": "", "album": "",
             "format": Path(filepath).suffix.lower().lstrip(".").upper(),
