@@ -1,6 +1,4 @@
-"""Application launcher — reads MICHI_UI env var, dispatches to QML or Widgets.
-Does NOT create QApplication, QQmlApplicationEngine, or QtWidgets directly.
-"""
+"""Application launcher — reads MICHI_UI env var, dispatches to QML."""
 from __future__ import annotations
 
 import os
@@ -15,7 +13,7 @@ def launch() -> int:
     if ui_mode not in _VALID_MODES:
         if ui_mode == "widgets":
             print(
-                "[MICHI_UI] La interfaz QtWidgets fue retirada. "
+                "[MICHI_UI] La interfaz clasica fue retirada. "
                 "Michi solo funciona en modo QML. "
                 "Ejecute 'python main.py' sin variables de entorno.",
                 file=sys.stderr,

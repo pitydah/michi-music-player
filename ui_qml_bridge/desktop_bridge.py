@@ -1,5 +1,5 @@
 """DesktopBridge — minimal desktop integration for QML (notifications, MPRIS).
-Uses DBus for notifications instead of QSystemTrayIcon to avoid QtWidgets dependency.
+Uses DBus for notifications instead of QSystemTrayIcon.
 """
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""File actions — pure logic, no QtWidgets dependency."""
+"""File actions — pure logic, no UI framework dependency."""
 from __future__ import annotations
 
 import os

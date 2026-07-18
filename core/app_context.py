@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 class AppContext:
     """Holds references to the central dependencies of the application.
-    Passed to controllers so they don't need direct MainWindow references."""
+    Passed to controllers so they don't need direct window references."""
 
     def __init__(self, window):
         logger.debug("AppContext.__init__ called")

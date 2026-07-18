@@ -1,6 +1,6 @@
 """ContextRegistrar — registers context properties, validates contracts.
 
-Validates: unique name, bridge built, QObject alive, ownership stable, no QtWidgets.
+Validates: unique name, bridge built, QObject alive, ownership stable.
 REQUIRED service absent -> blocks registration.
 OPTIONAL service absent -> capability false.
 No None registered as context. No duplicate instances of same service.
@@ -99,9 +99,6 @@ class ContextRegistrar:
         issues = []
         if obj is None:
             issues.append(f"bridge '{name}' is None")
-            return issues
-        if hasattr(obj, '__module__') and 'QtWidgets' in getattr(obj.__class__, '__module__', ''):
-            issues.append(f"'{name}' is from QtWidgets")
         return issues
 
     def register_dict(self, mapping: dict[str, QObject | None]):

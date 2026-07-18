@@ -1,4 +1,4 @@
-"""Playback controller — core business logic, no QtWidgets dependency."""
+"""Playback controller — core business logic, no UI framework dependency."""
 from __future__ import annotations
 
 import contextlib

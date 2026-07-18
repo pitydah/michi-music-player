@@ -1,6 +1,4 @@
-"""QML application entry point — uses ApplicationBootstrap for productive composition.
-Does NOT import QtWidgets or ui.* modules.
-"""
+"""QML application entry point — uses ApplicationBootstrap for productive composition."""
 from __future__ import annotations
 
 import logging

@@ -1,7 +1,4 @@
-"""SnapcastAdapter — QML-friendly wrapper for Snapcast group management.
-
-Does NOT depend on MainWindow. Uses Snapcast infrastructure directly.
-"""
+"""SnapcastAdapter — QML-friendly wrapper for Snapcast group management."""
 from __future__ import annotations
 
 import logging
@@ -16,7 +13,7 @@ logger = logging.getLogger("michi.qml.snapcast_adapter")
 
 
 class SnapcastAdapter(QObject):
-    """Lightweight adapter for Snapcast GroupManager, usable without MainWindow."""
+    """Lightweight adapter for Snapcast GroupManager."""
 
     def __init__(self, group_manager: GroupManager | None = None, parent=None):
         super().__init__(parent)

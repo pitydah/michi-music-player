@@ -1,7 +1,4 @@
-"""HomeAudioAdapter — QML-friendly wrapper for Home Assistant client.
-
-Does NOT depend on MainWindow. Uses HomeAssistantClient directly.
-"""
+"""HomeAudioAdapter — QML-friendly wrapper for Home Assistant client."""
 from __future__ import annotations
 
 import logging
@@ -16,7 +13,7 @@ logger = logging.getLogger("michi.qml.ha_adapter")
 
 
 class HomeAudioAdapter(QObject):
-    """Lightweight adapter for HomeAssistantClient, usable without MainWindow."""
+    """Lightweight adapter for HomeAssistantClient."""
 
     def __init__(self, ha_client: HomeAssistantClient | None = None, parent=None):
         super().__init__(parent)
