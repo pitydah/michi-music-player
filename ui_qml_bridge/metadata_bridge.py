@@ -123,20 +123,7 @@ class MetadataBridge(QObject):
                 return {"ok": True, "title": fields.get("title", "")}
             self._error_message = result.message or result.code
         else:
-            meta = self._fallback_read(filepath)
-            if "error" not in meta:
-                self._all_fields = meta
-                self._track_title = meta.get("title", _NA)
-                self._track_artist = meta.get("artist", _NA)
-                self._track_album = meta.get("album", _NA)
-                self._fields = self._build_field_list(meta)
-                self._quality_summary = f"{meta.get('format', '?')} · {meta.get('bitrate', 0) // 1000}kbps · {meta.get('sample_rate', 0)}Hz"
-                self._artwork_status = "Con carátula" if meta.get("has_artwork") else "Sin carátula"
-                self._is_loading = False
-                self._set_status("IDLE")
-                self.dataChanged.emit()
-                return {"ok": True, "title": meta.get("title", "")}
-            self._error_message = meta.get("error", "UNKNOWN")
+            self._error_message = "SERVICE_UNAVAILABLE"
 
         self._is_loading = False
         self._set_status("ERROR")
