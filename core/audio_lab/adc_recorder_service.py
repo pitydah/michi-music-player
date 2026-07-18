@@ -223,6 +223,24 @@ class ADCRecorderService:
         self.recording_thread: Optional[threading.Thread] = None
         self.is_recording = False
         self.is_paused = False
+
+    def available(self) -> bool:
+        """Devuelve True si hay un backend de captura disponible."""
+        import shutil
+        if not shutil.which("ffmpeg"):
+            return False
+        if not shutil.which("arecord"):
+            try:
+                import pyaudio
+                p = pyaudio.PyAudio()
+                count = p.get_device_count()
+                p.terminate()
+                if count > 0:
+                    return True
+            except Exception:
+                pass
+            return False
+        return True
         
     def detect_devices(self) -> List[AudioDevice]:
         """Detecta todos los dispositivos de entrada disponibles."""

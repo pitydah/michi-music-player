@@ -25,11 +25,20 @@ Page {
     property int recordingDuration: 0
     property var markers: []
     property string outputPath: "/home/user/Music/Vinyl Rips"
+    property bool detectingDevices: true
 
     Component.onCompleted: {
-        // Cargar dispositivos asincrónicamente para no bloquear la UI
-        Qt.callLater(loadAudioDevices)
+        detectWithTimeout()
         Qt.callLater(startLevelMeter)
+    }
+
+    function detectWithTimeout() {
+        root.detectingDevices = true
+        var timer = Qt.callLater(function() {
+            loadAudioDevices()
+            root.detectingDevices = false
+        }, 50)
+        Qt.callLater(timer)
     }
 
     function loadAudioDevices() {

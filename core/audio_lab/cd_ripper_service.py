@@ -44,6 +44,8 @@ class CDRipperService:
         self.supported_formats = ['flac', 'wav', 'mp3', 'opus', 'aac']
         self.default_format = 'flac'
         self.default_quality = 'lossless'
+        self._cancel_requested = False
+        self._rip_process: Any = None
         
     def detect_drives(self) -> List[CDRomDrive]:
         """Detecta unidades de CD/DVD disponibles en el sistema."""
@@ -101,32 +103,57 @@ class CDRipperService:
         return drives
     
     def get_cd_info(self, device: str) -> Optional[CDInfo]:
-        """Obtiene información del CD insertado usando MusicBrainz."""
+        """Obtiene información del CD insertado usando cd-discid."""
         try:
-            # Usar cd-discid para obtener el Disc ID
             result = subprocess.run(
                 ['cd-discid', device],
-                capture_output=True,
-                text=True,
-                timeout=10
+                capture_output=True, text=True, timeout=10
             )
-            
             if result.returncode != 0:
                 logger.error(f"Error al leer Disc ID: {result.stderr}")
                 return None
-                
-            disc_id = result.stdout.strip().split()[0]
-            
-            # Aquí se integraría con MusicBrainz para obtener metadatos
-            # Por ahora, retornamos estructura básica
+
+            parts = result.stdout.strip().split()
+            if len(parts) < 3:
+                logger.error("Salida de cd-discid demasiado corta: %s", result.stdout)
+                return None
+
+            disc_id = parts[0]
+            # Los offsets de pista son los elementos 1..n-1
+            offsets = [int(x) for x in parts[1:-1]]
+            # El ultimo elemento es la duracion total del CD en segundos
+            leadout_seconds = int(parts[-1])
+
+            first_offset = offsets[0] if offsets else 0
+            # El leadout absoluto en frames = duracion en segundos * 75 + primer offset
+            leadout_frame = leadout_seconds * 75 + first_offset
+
+            tracks = []
+            for i, start in enumerate(offsets):
+                if i + 1 < len(offsets):
+                    end = offsets[i + 1]
+                else:
+                    end = leadout_frame
+                duration = (end - start) / 75.0
+                if duration <= 0:
+                    duration = 2.0
+                tracks.append(CDTrack(
+                    track_number=i + 1,
+                    title=f"Track {i + 1}",
+                    artist="Unknown",
+                    duration=round(duration, 1),
+                    start_sector=start,
+                    end_sector=end,
+                ))
+
             return CDInfo(
                 album_title="Unknown Album",
                 album_artist="Various Artists",
                 year=0,
                 genre="Unknown",
-                tracks=[],  # Se llenaría con información de MusicBrainz
+                tracks=tracks,
                 disc_id=disc_id,
-                total_tracks=0
+                total_tracks=len(tracks),
             )
         except Exception as e:
             logger.error(f"Error al obtener información del CD: {e}")
@@ -173,22 +200,27 @@ class CDRipperService:
                 return result
             
             logger.info(f"Ejecutando ripeo: {' '.join(cmd)}")
-            process = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=300  # 5 minutos máximo por pista
+            self._cancel_requested = False
+            self._rip_process = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
             )
-            
-            if process.returncode == 0:
-                result['success'] = True
-                result['log'].append(f"Pista {track_number} extraída exitosamente")
-            else:
-                result['error'] = process.stderr
-                result['log'].append(f"Error en ripeo: {process.stderr}")
-                
-        except subprocess.TimeoutExpired:
-            result['error'] = "Tiempo de espera agotado durante el ripeo"
+            try:
+                stdout, stderr = self._rip_process.communicate(timeout=300)
+                if self._cancel_requested:
+                    result['error'] = "CANCELLED"
+                    result['log'].append("Ripeo cancelado por el usuario")
+                    return result
+                if self._rip_process.returncode == 0:
+                    result['success'] = True
+                    result['log'].append(f"Pista {track_number} extraída exitosamente")
+                else:
+                    result['error'] = stderr
+                    result['log'].append(f"Error en ripeo: {stderr}")
+            except subprocess.TimeoutExpired:
+                if self._rip_process:
+                    self._rip_process.kill()
+                    self._rip_process.wait()
+                result['error'] = "Tiempo de espera agotado durante el ripeo"
         except Exception as e:
             result['error'] = str(e)
             logger.error(f"Error en ripeo de pista {track_number}: {e}")
@@ -255,3 +287,16 @@ class CDRipperService:
             
         result['success'] = result['tracks_failed'] == 0
         return result
+
+    def cancel_rip(self):
+        """Cancela el ripeo en curso."""
+        self._cancel_requested = True
+        if self._rip_process and self._rip_process.poll() is None:
+            try:
+                self._rip_process.terminate()
+                self._rip_process.wait(timeout=5)
+            except Exception:
+                try:
+                    self._rip_process.kill()
+                except Exception:
+                    pass

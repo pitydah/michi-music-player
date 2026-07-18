@@ -2,7 +2,7 @@ import QtQuick
 import "../theme"
 
 Item {
-    Accessible.role: Accessible.Pane
+    Accessible.role: Accessible.StaticText
     Accessible.name: "Unavailable State"
     objectName: "unavailableState"
     focus: true

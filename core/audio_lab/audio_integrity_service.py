@@ -95,6 +95,10 @@ class AudioIntegrityService(QObject):
 
         if not quick:
             result.checksum = self._compute_checksum(filepath)
+            decode_ok = self._check_decode(filepath)
+            if not decode_ok:
+                result.issues.append({"type": "DECODE_FAILED", "detail": "FFmpeg no pudo decodificar el archivo sin errores"})
+                result.is_valid = False
 
         if ext in (".wma", ".dsf", ".dff"):
             pass
@@ -140,6 +144,18 @@ class AudioIntegrityService(QObject):
             return h.hexdigest()
         except Exception:
             return ""
+
+    def _check_decode(self, filepath: str) -> bool:
+        """Verifica que FFmpeg pueda decodificar el archivo completo sin errores."""
+        import subprocess
+        try:
+            result = subprocess.run(
+                ["ffmpeg", "-v", "error", "-xerror", "-i", filepath, "-f", "null", "-"],
+                capture_output=True, text=True, timeout=120
+            )
+            return result.returncode == 0
+        except Exception:
+            return False
 
     def check_duplicate_content(self, filepaths: list[str]) -> list[list[str]]:
         groups: dict[str, list[str]] = {}
