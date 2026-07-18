@@ -37,11 +37,11 @@ Item {
     signal secondaryActionRequested()
     signal retryRequested()
 
-    Accessible.name: state === AsyncStateView.LOADING ? "Cargando" :
-                     state === AsyncStateView.ERROR ? "Error" + (title ? ": qsTr(" + title : ")") :
-                     state === AsyncStateView.EMPTY ? "Sin contenido" + (title ? ": qsTr(" + title : ")") :
-                     state === AsyncStateView.UNAVAILABLE ? "No disponible" :
-                     state === AsyncStateView.DEGRADED ? "Funcionamiento degradado" : ""
+    Accessible.name: state === AsyncStateView.LOADING ? qsTr("Cargando") :
+                     state === AsyncStateView.ERROR ? (title ? qsTr("Error: %1").arg(title) : qsTr("Error")) :
+                     state === AsyncStateView.EMPTY ? (title ? qsTr("Sin contenido: %1").arg(title) : qsTr("Sin contenido")) :
+                     state === AsyncStateView.UNAVAILABLE ? qsTr("No disponible") :
+                     state === AsyncStateView.DEGRADED ? qsTr("Funcionamiento degradado") : ""
     Accessible.description: message + (details ? ". " + details : "")
 
     Item {

@@ -93,7 +93,7 @@ Item {
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     StatusBadge { text: qsTr("La cadena DSP depende del perfil activo"); kind: "info" }
-                    StatusBadge { text: qsTr("Backend: ") + (root.eq && root.eq.backendAvailable ? "conectado" : "no disponible"); kind: root.eq && root.eq.backendAvailable ? "success" : "disconnected" }
+                    StatusBadge { text: qsTr("Backend: %1").arg((root.eq && root.eq.backendAvailable ? "conectado" : "no disponible"); kind: root.eq && root.eq.backendAvailable ? "success" : "disconnected" }
                 }
             }
         }

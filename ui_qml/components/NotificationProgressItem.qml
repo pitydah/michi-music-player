@@ -144,7 +144,7 @@ Rectangle {
             spacing: MichiTheme.spacing.sm
 
             Text {
-                text: qsTr("Restante: ") + estimatedRemaining()
+                text: qsTr("Restante: %1").arg(estimatedRemaining()
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
                 visible: root.notification && root.notification.progress !== undefined && root.notification.progress > 0 && root.notification.progress < 100

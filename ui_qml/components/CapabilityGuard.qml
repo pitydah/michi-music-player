@@ -73,7 +73,7 @@ Item {
             sourceComponent: Component {
                 LoadingState {
                     title: qsTr("Verificando disponibilidad")
-                    message: qsTr("Comprobando ") + root.capabilityName + "..."
+                    message: qsTr("Comprobando %1").arg(root.capabilityName + "..."
                 }
             }
         }

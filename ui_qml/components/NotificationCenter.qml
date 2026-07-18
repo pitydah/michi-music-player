@@ -113,7 +113,7 @@ Item {
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: qsTr("(") + notificationModel.count + ")"
+                        text: qsTr("(%1").arg(notificationModel.count + ")"
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.secondarySize
                         visible: notificationModel.count > 0

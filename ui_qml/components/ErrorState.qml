@@ -99,7 +99,7 @@ Item {
 
             Text {
                 width: parent.width
-                text: root.errorSource ? "Origen: qsTr(" + root.errorSource : ")"
+                text: root.errorSource ? "Origen: %1" + root.errorSource : ")"
                 color: MichiTheme.colors.textMeta
                 font.pixelSize: MichiTheme.typography.captionSize
                 wrapMode: Text.WordWrap
@@ -108,7 +108,7 @@ Item {
 
             Text {
                 width: parent.width
-                text: root.errorCode ? "Código: qsTr(" + root.errorCode : ")"
+                text: root.errorCode ? "Código: %1" + root.errorCode : ")"
                 color: MichiTheme.colors.textMeta
                 font.pixelSize: MichiTheme.typography.captionSize
                 wrapMode: Text.WordWrap
