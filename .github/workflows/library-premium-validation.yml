@@ -1,0 +1,67 @@
+name: Library Premium Validation
+
+on:
+  push:
+    branches: [feat/library-premium-views]
+    paths:
+      - "core/composition/library.py"
+      - "core/library/library_filtered_query_service.py"
+      - "ui_qml/components/MichiLibraryToolbar.qml"
+      - "ui_qml/models/TrackListModel.py"
+      - "ui_qml/pages/library/**"
+      - "ui_qml/shell/PageStack.qml"
+      - "ui_qml_bridge/library_refresh_coordinator.py"
+      - "tests/qml/library/**"
+      - ".github/workflows/library-premium-validation.yml"
+  pull_request:
+    paths:
+      - "core/composition/library.py"
+      - "core/library/library_filtered_query_service.py"
+      - "ui_qml/components/MichiLibraryToolbar.qml"
+      - "ui_qml/models/TrackListModel.py"
+      - "ui_qml/pages/library/**"
+      - "ui_qml/shell/PageStack.qml"
+      - "ui_qml_bridge/library_refresh_coordinator.py"
+      - "tests/qml/library/**"
+      - ".github/workflows/library-premium-validation.yml"
+
+jobs:
+  validate-library:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libegl1 libgl1 libxkbcommon0 libfontconfig1 xvfb
+      - name: Install project
+        run: pip install -e ".[dev]"
+      - name: Lint modified Python surface
+        run: |
+          ruff check \
+            core/composition/library.py \
+            core/library/library_filtered_query_service.py \
+            ui_qml/models/TrackListModel.py \
+            ui_qml_bridge/library_refresh_coordinator.py \
+            tests/qml/library/test_album_premium_views_runtime.py \
+            tests/qml/library/test_library_filtered_query_service.py
+      - name: Compile modified Python surface
+        run: |
+          python -m py_compile \
+            core/composition/library.py \
+            core/library/library_filtered_query_service.py \
+            ui_qml/models/TrackListModel.py \
+            ui_qml_bridge/library_refresh_coordinator.py
+      - name: Run premium library tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -m pytest -q --timeout=120 \
+            tests/qml/library/test_album_premium_views_runtime.py \
+            tests/qml/library/test_library_filtered_query_service.py \
+            tests/qml/library/test_library_track_table.py \
+            tests/qml/library/test_library_fetch_more.py
