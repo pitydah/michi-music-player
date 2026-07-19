@@ -58,7 +58,7 @@ Item {
         root.navigateTo("home_audio")
     }
 
-    implicitHeight: compactLayout ? 128 : 112
+    implicitHeight: 128
     height: implicitHeight
     clip: true
 

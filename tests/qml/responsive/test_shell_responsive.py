@@ -1,98 +1,74 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QUrl, QObject, Property, Signal, Slot
+from PySide6.QtCore import QUrl
 from PySide6.QtQml import QQmlComponent, QQmlEngine
+from PySide6.QtQuick import QQuickItem
+from PySide6.QtTest import QTest
+
+from ui_qml_bridge.navigation_bridge import NavigationBridge
+from ui_qml_bridge.route_registry_bridge import RouteRegistryBridge
+
 
 pytestmark = [pytest.mark.qml_module("shell"), pytest.mark.qml_dimension("responsive")]
-
-QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
-
-
-class FakeNavigationBridge(QObject):
-    routeChanged = Signal(str)
-    invalidRouteError = Signal(str, str)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._currentRoute = "home"
-        self._canGoBack = False
-        self._canGoForward = False
-
-    @Property(str, notify=routeChanged)
-    def currentRoute(self): return self._currentRoute
-
-    @Property(bool, notify=routeChanged)
-    def canGoBack(self): return self._canGoBack
-
-    @Property(bool, notify=routeChanged)
-    def canGoForward(self): return self._canGoForward
-
-    @Slot(str)
-    def navigate(self, route): self._currentRoute = route
-
-    @Slot()
-    def refreshCurrent(self): pass
-
-    @Slot(str, "QVariant")
-    def navigateWithParams(self, route, params): pass
-
-    @Slot(result=str)
-    def getTitle(self, route): return "Inicio"
+QML_DIR = Path(__file__).resolve().parents[3] / "ui_qml"
 
 
-class FakeRouteRegistryBridge(QObject):
-    @Slot(str, result=str)
-    def getTitle(self, route): return "Inicio"
+def _item(root: QQuickItem, name: str) -> QQuickItem:
+    item = root.findChild(QQuickItem, name)
+    assert item is not None, f"Missing QML item: {name}"
+    return item
 
 
-@pytest.fixture
-def engine(qapp):
-    return QQmlEngine(qapp)
+@pytest.mark.parametrize(
+    ("width", "height"),
+    (
+        (800, 640),
+        (1024, 768),
+        (1366, 768),
+        (1600, 900),
+        (1920, 1080),
+        (2560, 1440),
+        (3840, 2160),
+    ),
+)
+def test_shell_runtime_geometry(qapp, width: int, height: int) -> None:
+    engine = QQmlEngine()
+    navigation = NavigationBridge(parent=engine)
+    registry = RouteRegistryBridge(parent=engine)
+    engine.rootContext().setContextProperty("navigationBridge", navigation)
+    engine.rootContext().setContextProperty("routeRegistryBridge", registry)
+    component = QQmlComponent(engine)
+    component.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "shell/AppShell.qml")))
+    assert component.isReady(), component.errorString()
+    shell = component.createWithInitialProperties({"width": width, "height": height})
+    assert shell is not None, component.errorString()
+    QTest.qWait(80)
+    qapp.processEvents()
+
+    sidebar = _item(shell, "sidebar")
+    header = _item(shell, "headerBar")
+    stack = _item(shell, "pageStack")
+    surface = _item(shell, "pageSurface")
+    now_playing = _item(shell, "nowPlayingBar")
+
+    expected_sidebar = 70 if width < 1024 else 244
+    assert round(sidebar.width()) == expected_sidebar
+    assert round(sidebar.width() + header.width()) == width
+    assert round(header.height()) == 56
+    assert round(now_playing.height()) in (112, 128)
+    assert round(header.height() + stack.height() + now_playing.height()) == height
+    assert surface.width() <= stack.width()
+    assert surface.height() <= stack.height()
+    assert header.y() == 0
+    assert stack.y() >= header.height()
+    assert now_playing.y() >= stack.y() + stack.height()
+
+    shell.deleteLater()
+    engine.deleteLater()
 
 
-class TestShellResponsive:
-    def _create_page(self, engine, width, height):
-        nb = FakeNavigationBridge()
-        rrb = FakeRouteRegistryBridge()
-        engine.rootContext().setContextProperty("navigationBridge", nb)
-        engine.rootContext().setContextProperty("routeRegistryBridge", rrb)
-        engine.addImportPath(str(QML_DIR))
-        comp = QQmlComponent(engine)
-        comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "shell/AppShell.qml")))
-        return comp
-
-    def test_desktop_1920(self, engine):
-        comp = self._create_page(engine, 1920, 1080)
-        assert comp.isReady() or comp.status() == QQmlComponent.Null, comp.errorString()
-
-    def test_desktop_1366(self, engine):
-        comp = self._create_page(engine, 1366, 768)
-        assert comp.isReady() or comp.status() == QQmlComponent.Null, comp.errorString()
-
-    def test_desktop_1024(self, engine):
-        comp = self._create_page(engine, 1024, 768)
-        assert comp.isReady() or comp.status() == QQmlComponent.Null, comp.errorString()
-
-    def test_desktop_900(self, engine):
-        comp = self._create_page(engine, 900, 700)
-        assert comp.isReady() or comp.status() == QQmlComponent.Null, comp.errorString()
-
-    def test_compact(self, engine):
-        comp = self._create_page(engine, 600, 800)
-        assert comp.isReady() or comp.status() == QQmlComponent.Null, comp.errorString()
-
-    def test_narrow(self, engine):
-        comp = self._create_page(engine, 360, 640)
-        assert comp.isReady() or comp.status() == QQmlComponent.Null, comp.errorString()
-
-    def test_zoom_125(self, engine):
-        comp = self._create_page(engine, 900, 700)
-        assert comp.isReady() or comp.status() == QQmlComponent.Null, comp.errorString()
-
-    def test_zoom_150(self, engine):
-        comp = self._create_page(engine, 900, 700)
-        assert comp.isReady() or comp.status() == QQmlComponent.Null, comp.errorString()
-
-    def test_page_qml_exists(self):
-        assert (QML_DIR / "shell/AppShell.qml").exists()
+def test_page_qml_exists() -> None:
+    assert (QML_DIR / "shell/AppShell.qml").exists()

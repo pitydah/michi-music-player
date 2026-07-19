@@ -108,7 +108,8 @@ Item {
     }
 
     function isInputFocused() {
-        var item = activeFocusItem
+        var window = root.Window.window
+        var item = window ? window.activeFocusItem : null
         if (!item) return false
         var s = item.toString()
         return s.indexOf("TextInput") >= 0 || s.indexOf("TextField") >= 0 || s.indexOf("TextArea") >= 0

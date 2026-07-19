@@ -120,6 +120,7 @@ Item {
         MichiPageHeader {
             id: pageHeader
             width: parent.width
+            iconKey: "library"
             title: qsTr("Biblioteca")
             subtitle: root.lib && root.lib.songCount > 0
                       ? qsTr("%1 canciones · %2 álbumes · %3 artistas")

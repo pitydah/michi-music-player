@@ -117,8 +117,8 @@ Item {
                 id: nowPlayingBar
                 Layout.fillWidth: true
                 Layout.preferredHeight: implicitHeight
-                Layout.maximumHeight: 128
-                Layout.minimumHeight: 112
+                Layout.maximumHeight: implicitHeight
+                Layout.minimumHeight: implicitHeight
                 z: 10
             }
         }

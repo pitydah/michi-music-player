@@ -70,7 +70,7 @@ QtObject {
     // ── Shell ──
     readonly property int sidebarWidth: 244
     readonly property int sidebarWidthCompact: 70
-    readonly property int nowPlayingHeight: 112
+    readonly property int nowPlayingHeight: 128
     readonly property int headerHeight: 56
 
     // ── Shortcuts ──
