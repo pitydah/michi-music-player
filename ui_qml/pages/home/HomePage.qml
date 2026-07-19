@@ -3,10 +3,11 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../theme"
 import "../../components"
+import "../../components/layout"
 import "../../materials"
 import "."
 
-Item {
+MichiPage {
     id: root
     objectName: "homePage"
     focus: true
@@ -26,6 +27,8 @@ Item {
     readonly property int activeJobs: root.hb ? Number(root.hb.activeJobs || 0) : 0
     readonly property int quickColumns: width >= 1500 ? 4 : width >= 900 ? 2 : 1
     readonly property bool hasLibrary: libraryTracks > 0
+    visualState: homeState === HomePage.ERROR ? "error" : "content"
+    maximumContentWidth: 1360
 
     function setHomeState(value, message) {
         root.homeState = value
@@ -77,22 +80,11 @@ Item {
         function onSnapshotChanged() { root.updateState() }
     }
 
-    Flickable {
-        id: homeFlick
-        anchors.fill: parent
-        anchors.margins: root.width < 900 ? MichiTheme.spacing.lg : MichiTheme.spacing.xl
-        contentWidth: width
-        contentHeight: contentColumn.height + MichiTheme.spacing.xxl
-        clip: true
-        boundsBehavior: Flickable.StopAtBounds
-        visible: root.homeState !== HomePage.ERROR
-
-        Column {
-            id: contentColumn
-            objectName: "homeContent"
-            width: Math.min(homeFlick.width, 1360)
-            x: Math.round((homeFlick.width - width) / 2)
-            spacing: MichiTheme.spacing.lg
+    Column {
+        id: contentColumn
+        objectName: "homeContent"
+        width: parent.width
+        spacing: MichiTheme.spacing.lg
 
             HomeHero {
                 id: hero
@@ -221,14 +213,15 @@ Item {
                 onOpenLibrary: root.goToRoute("library")
             }
 
-            GridLayout {
+            MichiResponsiveGrid {
                 id: quickGrid
                 objectName: "homeQuickGrid"
                 width: parent.width
                 visible: root.homeState === HomePage.READY && root.hasLibrary
-                columns: root.quickColumns
-                columnSpacing: MichiTheme.spacing.md
-                rowSpacing: MichiTheme.spacing.md
+                requestedColumns: root.quickColumns
+                maximumColumns: 4
+                minimumCellWidth: 260
+                spacing: MichiTheme.spacing.md
 
                 Repeater {
                     model: [
@@ -238,47 +231,18 @@ Item {
                         { title: qsTr("Mixes"), description: qsTr("Escucha selecciones inteligentes construidas para ti"), action: qsTr("Ver mixes"), route: "mix" }
                     ]
 
-                    GlassCard {
+                    MichiFeatureCard {
                         required property var modelData
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 120
-                        Layout.minimumHeight: 120
-                        Layout.maximumHeight: 120
-                        activeFocusOnTab: true
-                        Accessible.name: modelData.title
+                        height: 144
+                        title: modelData.title
+                        description: modelData.description
+                        primaryActionText: modelData.action
+                        route: modelData.route
+                        iconKey: modelData.route === "mix" ? "mix"
+                                 : modelData.route === "library.recent" ? "history"
+                                 : "library"
+                        featureAccessibleName: modelData.title
                         onClicked: root.goToRoute(modelData.route)
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: MichiTheme.spacing.lg
-                            spacing: MichiTheme.spacing.xs
-
-                            Text {
-                                Layout.fillWidth: true
-                                text: modelData.title
-                                color: MichiTheme.colors.textPrimary
-                                font.pixelSize: MichiTheme.typography.cardTitleSize
-                                font.weight: MichiTheme.typography.weightSemiBold
-                                elide: Text.ElideRight
-                            }
-                            Text {
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                text: modelData.description
-                                color: MichiTheme.colors.textSecondary
-                                font.pixelSize: MichiTheme.typography.bodySize
-                                wrapMode: Text.WordWrap
-                                maximumLineCount: 2
-                                elide: Text.ElideRight
-                            }
-                            Text {
-                                Layout.fillWidth: true
-                                text: modelData.action
-                                color: MichiTheme.colors.accentBlue
-                                font.pixelSize: MichiTheme.typography.bodySize
-                                font.weight: MichiTheme.typography.weightSemiBold
-                            }
-                        }
                     }
                 }
             }
@@ -305,10 +269,9 @@ Item {
                 visible: root.homeState === HomePage.READY && root.statusMessage !== ""
                 wrapMode: Text.WordWrap
             }
-        }
     }
 
-    Rectangle {
+    stateContent: Rectangle {
         anchors.fill: parent
         color: MichiTheme.colors.bgApp
         visible: root.homeState === HomePage.ERROR

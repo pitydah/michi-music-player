@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import pytest
@@ -198,7 +197,7 @@ def test_home_quick_grid_breakpoints(qapp, width: int, columns: int) -> None:
     engine, page, bridge, navigation = _home_page(qapp, 120, 1, width)
     try:
         grid = _named(page, "homeQuickGrid")
-        assert grid.property("columns") == columns
+        assert grid.property("columnCount") == columns
     finally:
         page.deleteLater()
         engine.deleteLater()

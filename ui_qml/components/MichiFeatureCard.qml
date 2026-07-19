@@ -26,12 +26,20 @@ MichiCard {
 
         MichiIcon {
             iconKey: root.iconKey
-            size: 24
+            size: 20
             active: root.emphasis === "high"
             accessibleName: root.title
         }
 
-        Item { Layout.fillWidth: true }
+        Text {
+            Layout.fillWidth: true
+            visible: root.primaryActionText !== ""
+            text: root.primaryActionText
+            color: MichiTheme.colors.accentPrimary
+            font.pixelSize: MichiTheme.typography.bodySize
+            font.weight: MichiTheme.typography.weightSemiBold
+            elide: Text.ElideRight
+        }
 
         StatusBadge {
             visible: root.status !== "functional" && root.statusText !== ""
