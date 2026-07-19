@@ -482,6 +482,14 @@ class HomeAudioBridge(QObject):
 
     @Property("QVariant", notify=stateChanged)
     def syncStatus(self):
+        if (
+            self._distribution_state == "unavailable"
+            and not self._sources
+            and not self._servers
+            and not self._receivers
+            and not self._routes
+        ):
+            return {}
         return {
             "state": self._distribution_state,
             "latency_ms": self._latency_ms,
@@ -503,4 +511,6 @@ class HomeAudioBridge(QObject):
 
     @Slot(str, result=dict)
     def playbackTransfer(self, zone_id: str = ""):
+        if not zone_id:
+            return {"ok": False, "error": "EMPTY_ZONE"}
         return self._mutate_and_refresh("playback_transfer", zone_id)
