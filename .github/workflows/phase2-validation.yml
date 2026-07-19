@@ -1,0 +1,77 @@
+name: Phase 2 focused validation
+
+on:
+  push:
+    branches:
+      - agent/complete-partial-features-phase-1
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Ruff
+        run: pip install -q ruff
+      - name: Ruff changed Python files
+        run: |
+          ruff check --output-format=concise \
+            core/home_audio_service.py \
+            core/composition/ecosystem.py \
+            core/mix_query_service.py \
+            integrations/home_audio_service.py \
+            ui_qml_bridge/home_audio_bridge.py \
+            ui_qml_bridge/navigation_bridge.py \
+            ui_qml_bridge/settings_bridge_v2.py \
+            tests/test_home_audio_distribution_service.py \
+            tests/test_home_audio_distribution_bridge.py \
+            tests/test_home_audio_distribution_qml_contract.py \
+            tests/test_navigation_pending_settings_guard.py \
+            tests/test_settings_bridge_v2_transactions.py \
+            tests/test_settings_transaction_bar_contract.py \
+            tests/test_settings_workspace_contract.py \
+            tests/test_mix_query_service_limits.py
+      - name: Compile changed Python files
+        run: |
+          python -m py_compile \
+            core/home_audio_service.py \
+            core/composition/ecosystem.py \
+            core/mix_query_service.py \
+            integrations/home_audio_service.py \
+            ui_qml_bridge/home_audio_bridge.py \
+            ui_qml_bridge/navigation_bridge.py \
+            ui_qml_bridge/settings_bridge_v2.py \
+            tests/test_home_audio_distribution_service.py \
+            tests/test_home_audio_distribution_bridge.py \
+            tests/test_home_audio_distribution_qml_contract.py \
+            tests/test_navigation_pending_settings_guard.py
+      - name: Static QML contracts
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          required = {
+              "ui_qml/pages/SettingsPage.qml": [
+                  "SettingsContentPage",
+                  "SettingsTransactionBar",
+                  "resolvePendingNavigation",
+              ],
+              "ui_qml/pages/home_audio/DistributionHubPage.qml": [
+                  "bridge.sources",
+                  "bridge.servers",
+                  "bridge.receiverList",
+                  "bridge.destinations",
+                  "bridge.routes",
+                  "createRoute",
+                  "startRoute",
+                  "stopRoute",
+              ],
+          }
+          for filename, tokens in required.items():
+              text = Path(filename).read_text(encoding="utf-8")
+              missing = [token for token in tokens if token not in text]
+              if missing:
+                  raise SystemExit(f"{filename}: missing {missing}")
+          PY
