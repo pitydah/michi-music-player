@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - agent/complete-partial-features-phase-1
+  pull_request:
 
 jobs:
   validate:
