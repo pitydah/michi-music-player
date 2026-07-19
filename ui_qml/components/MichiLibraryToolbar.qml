@@ -113,19 +113,20 @@ Item {
             }
 
             MichiIconButton {
+                id: refreshButton
                 iconSource: "../../icons/nav_back.svg"
                 tooltipText: root.loading ? qsTr("Actualizando…") : qsTr("Actualizar biblioteca")
                 btnSize: 34
                 enabled: !root.loading
-                rotation: root.loading ? 360 : 0
-                Behavior on rotation {
-                    NumberAnimation {
-                        duration: 900
-                        loops: Animation.Infinite
-                        running: root.loading
-                    }
-                }
                 onClicked: root.refreshRequested()
+
+                RotationAnimator on rotation {
+                    from: 0
+                    to: 360
+                    duration: 900
+                    loops: Animation.Infinite
+                    running: root.loading
+                }
             }
         }
     }
