@@ -1,4 +1,4 @@
-"""TrackListModel — BasePagedListModel with expanded roles via QueryService."""
+"""TrackListModel — paged library tracks with complete query-state propagation."""
 from __future__ import annotations
 
 from typing import Any
@@ -43,6 +43,11 @@ class TrackListModel(BasePagedListModel):
     PathRole = Qt.UserRole + 32
     ReplayGainRole = Qt.UserRole + 33
     PeakRole = Qt.UserRole + 34
+
+    _QUERY_KEYS = (
+        "search", "artist", "album", "fmt", "genre", "composer", "year",
+        "folder", "favorites", "unplayed", "missing", "sort", "asc",
+    )
 
     def __init__(self, query_service=None, query_executor=None, parent=None, page_size=250):
         super().__init__(page_size=page_size, query_executor=query_executor, parent=parent)
@@ -129,34 +134,43 @@ class TrackListModel(BasePagedListModel):
         self._missing_filter = missing
         self._sort = sort
         self._asc = asc
-        kw = dict(search=search, artist=artist, album=album, fmt=fmt,
-                  genre=genre, composer=composer, year=year, folder=folder,
-                  favorites=favorites, unplayed=unplayed, missing=missing,
-                  sort=sort, asc=asc)
-        super().refresh(**kw)
+        query = dict(search=search, artist=artist, album=album, fmt=fmt,
+                     genre=genre, composer=composer, year=year, folder=folder,
+                     favorites=favorites, unplayed=unplayed, missing=missing,
+                     sort=sort, asc=asc)
+        super().refresh(**query)
+        return {"ok": True, "query": query}
 
-    @Slot(str, result=dict)
+    @Slot(str, bool, result=dict)
     def refreshForSort(self, sort_key: str, asc: bool = True):
-        return self.refresh(sort=sort_key, asc=asc)
+        query = self._active_query()
+        query.update(sort=sort_key, asc=asc)
+        return self.refresh(**query)
 
     @Slot(str, result=dict)
     def refreshForArtist(self, artist: str):
-        return self.refresh(artist=artist, sort="year")
+        return self.refresh(artist=artist, sort="year", asc=True)
 
     @Slot(str, result=dict)
     def refreshForAlbum(self, album_key: str):
         return self.refresh(album=album_key, sort="track_number", asc=True)
 
+    def _active_query(self) -> dict[str, Any]:
+        return dict(search=self._search, artist=self._artist_filter,
+                    album=self._album_filter, fmt=self._fmt_filter,
+                    genre=self._genre_filter, composer=self._composer_filter,
+                    year=self._year_filter, folder=self._folder_filter,
+                    favorites=self._favorites_filter, unplayed=self._unplayed_filter,
+                    missing=self._missing_filter, sort=self._sort, asc=self._asc)
+
     def _fetch_count(self, **kwargs) -> int:
         if not self._qs:
             return 0
-        kw = {k: v for k, v in kwargs.items()
-              if k in ("search", "artist", "album", "fmt")}
-        return self._qs.count_tracks(**kw)
+        query = {key: kwargs.get(key) for key in self._QUERY_KEYS if key not in ("sort", "asc")}
+        return self._qs.count_tracks(**query)
 
     def _fetch_page(self, offset: int, limit: int, **kwargs) -> list[dict[str, Any]]:
         if not self._qs:
             return []
-        kw = {k: v for k, v in kwargs.items()
-              if k in ("search", "artist", "album", "fmt", "sort", "asc", "folder")}
-        return self._qs.fetch_tracks(offset=offset, limit=limit, **kw)
+        query = {key: kwargs.get(key) for key in self._QUERY_KEYS}
+        return self._qs.fetch_tracks(offset=offset, limit=limit, **query)

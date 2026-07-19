@@ -1,9 +1,12 @@
 import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 import "../theme"
 import "."
 
 Item {
     id: root
+    objectName: "michiLibraryToolbar"
 
     property string title: qsTr("Biblioteca")
     property var filterModel: []
@@ -26,96 +29,111 @@ Item {
     signal selectionActionRequested(string action)
 
     Accessible.role: Accessible.ToolBar
-    Accessible.name: "Barra de biblioteca"
+    Accessible.name: qsTr("Barra de biblioteca")
 
-    implicitHeight: MichiTheme.toolbarHeight
+    function setSearchText(text) {
+        root.searchText = text
+        searchField.text = text
+    }
+
+    implicitHeight: 58
 
     Rectangle {
         anchors.fill: parent
-        color: "transparent"
+        radius: MichiTheme.radius.lg
+        color: MichiTheme.colors.surfaceToolbar
+        border.width: MichiTheme.borderWidth
+        border.color: MichiTheme.colors.borderSubtle
 
-        Row {
+        RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: MichiTheme.spacing.md
-            anchors.rightMargin: MichiTheme.spacing.md
-            spacing: MichiTheme.spacing.sm
+            anchors.leftMargin: MichiTheme.spacing.lg
+            anchors.rightMargin: MichiTheme.spacing.sm
+            spacing: MichiTheme.spacing.md
 
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: root.selectionActive ? root.selectedCount + " seleccionados" : root.title
-                color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.sectionTitleSize
-                font.weight: MichiTheme.typography.weightSemiBold
-                width: Math.min(implicitWidth, 160)
-                elide: Text.ElideRight
+            ColumnLayout {
+                Layout.preferredWidth: 150
+                Layout.maximumWidth: 190
+                spacing: 0
+
+                Text {
+                    Layout.fillWidth: true
+                    text: root.title
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.sectionTitleSize
+                    font.weight: MichiTheme.typography.weightBold
+                    elide: Text.ElideRight
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: root.selectionActive
+                          ? qsTr("%1 seleccionados").arg(root.selectedCount)
+                          : qsTr("Colección local")
+                    color: root.selectionActive ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.captionSize
+                    font.weight: root.selectionActive
+                                 ? MichiTheme.typography.weightSemiBold
+                                 : MichiTheme.typography.weightNormal
+                    elide: Text.ElideRight
+                }
             }
 
             MichiSegmentedControl {
                 id: filterTabs
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.preferredWidth: Math.min(370, Math.max(260, root.width * 0.31))
+                Layout.preferredHeight: 34
                 model: root.filterModel
                 currentIndex: root.currentFilterIndex
-                visible: root.filterModel.length > 0 && !root.selectionActive
-                implicitWidth: Math.min(320, parent.width * 0.3)
+                visible: root.filterModel.length > 0
                 onActivated: root.filterChanged(index)
             }
 
-            Item { height: 1; width: parent.width * 0.1 }
+            Item { Layout.fillWidth: true }
 
             MichiSearchField {
-                anchors.verticalCenter: parent.verticalCenter
-                placeholderText: qsTr("Buscar en biblioteca...")
-                implicitWidth: Math.min(200, parent.width * 0.2)
-                visible: !root.selectionActive
-                onTextChanged: root.searchChanged(text)
+                id: searchField
+                Layout.preferredWidth: Math.min(300, Math.max(180, root.width * 0.22))
+                Layout.preferredHeight: 36
+                placeholderText: qsTr("Buscar canción, álbum, artista…")
+                text: root.searchText
+                onSearchTextChanged: function(text) {
+                    root.searchText = text
+                    root.searchChanged(text)
+                }
             }
 
-            Row {
-                anchors.verticalCenter: parent.verticalCenter
+            RowLayout {
                 spacing: MichiTheme.spacing.xs
-                visible: !root.selectionActive
+                visible: root.viewModes.length > 0
 
                 Repeater {
                     model: root.viewModes
-
                     MichiIconButton {
+                        required property int index
+                        required property var modelData
                         iconSource: modelData.icon
                         tooltipText: modelData.tooltip
-                        btnSize: 28
+                        btnSize: 32
                         selected: index === root.currentViewMode
                         onClicked: root.viewModeChanged(index)
                     }
                 }
-
-                MichiIconButton {
-                    iconSource: "../../icons/nav_back.svg"
-                    tooltipText: "Refrescar"
-                    btnSize: 28
-                    onClicked: root.refreshRequested()
-                }
             }
 
-            Row {
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: MichiTheme.spacing.xs
-                visible: root.selectionActive
+            MichiIconButton {
+                id: refreshButton
+                iconSource: "../../icons/nav_back.svg"
+                tooltipText: root.loading ? qsTr("Actualizando…") : qsTr("Actualizar biblioteca")
+                btnSize: 34
+                enabled: !root.loading
+                onClicked: root.refreshRequested()
 
-                MichiButton {
-                    text: qsTr("Reproducir")
-                    variant: "primary"
-                    onClicked: root.selectionActionRequested("play")
-                }
-
-                MichiButton {
-                    text: qsTr("Añadir a cola")
-                    variant: "ghost"
-                    onClicked: root.selectionActionRequested("queue")
-                }
-
-                MichiButton {
-                    text: qsTr("Cancelar")
-                    variant: "ghost"
-                    onClicked: root.selectionActionRequested("cancel")
+                RotationAnimator on rotation {
+                    from: 0
+                    to: 360
+                    duration: 900
+                    loops: Animation.Infinite
+                    running: root.loading
                 }
             }
         }

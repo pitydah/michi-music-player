@@ -6,6 +6,7 @@ import "../../components"
 
 Popup {
     id: root
+    objectName: "LibraryContextMenu"
 
     property var bridge: null
     property var actionRegistry: null
@@ -13,112 +14,146 @@ Popup {
     property string trackTitle: ""
     property string trackArtist: ""
     property string trackAlbum: ""
+    property string albumKey: ""
 
-    signal playClicked(int trackId)
-    signal addToQueueClicked(int trackId)
-    signal addToPlaylistClicked(int trackId)
-    signal goToAlbumClicked(string album)
-    signal goToArtistClicked(string artist)
-    signal editMetadataClicked(int trackId)
-    signal showInFolderClicked(int trackId)
-    signal propertiesClicked(int trackId)
-
-    width: 220
-    height: Math.min(implicitHeight, 420)
-    modal: true
+    width: 260
+    implicitHeight: menuColumn.implicitHeight + padding * 2
+    modal: false
+    focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     padding: MichiTheme.spacing.xs
 
-    objectName: "LibraryContextMenu"
+    function execute(actionId) {
+        var result = null
+        if (!root.bridge && actionId !== "track_open_album" && actionId !== "track_open_artist")
+            return
+        switch (actionId) {
+        case "track_play_now":
+            result = root.bridge.playTrackById(root.trackId)
+            break
+        case "track_add_to_queue":
+            result = root.bridge.enqueueTrackById(root.trackId)
+            break
+        case "track_favorite":
+            result = root.bridge.toggleFavoriteById(root.trackId)
+            break
+        case "track_open_album":
+            if (root.albumKey && typeof navigationBridge !== "undefined")
+                navigationBridge.navigateWithParams("library.album_detail", {album_key: root.albumKey})
+            break
+        case "track_open_artist":
+            if (root.trackArtist && typeof navigationBridge !== "undefined")
+                navigationBridge.navigateWithParams("library.artist_detail", {artist: root.trackArtist})
+            break
+        case "track_open_folder":
+            result = root.bridge.revealTrackById(root.trackId)
+            break
+        }
+        root.close()
+    }
 
     background: Rectangle {
-        Accessible.role: Accessible.PopupMenu
-        Accessible.name: "Menú contextual"
-        radius: MichiTheme.radius.md
+        radius: MichiTheme.radius.lg
         color: MichiTheme.colors.surfacePopup
         border.width: MichiTheme.borderWidth
         border.color: MichiTheme.colors.borderCard
+
+        Accessible.role: Accessible.PopupMenu
+        Accessible.name: qsTr("Acciones de canción")
     }
 
-    Column {
-        anchors.fill: parent
+    contentItem: ColumnLayout {
+        id: menuColumn
         spacing: 2
 
-        Text {
-            text: root.trackTitle
-            color: MichiTheme.colors.textPrimary
-            font.pixelSize: MichiTheme.typography.bodySize
-            font.weight: MichiTheme.typography.weightSemiBold
-            bottomPadding: MichiTheme.spacing.xs
-            elide: Text.ElideRight
-            width: parent.width
-            leftPadding: MichiTheme.spacing.sm
-        }
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 56
+            radius: MichiTheme.radius.md
+            color: MichiTheme.colors.surfaceSubtle
 
-        MenuSeparator { width: parent.width }
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.leftMargin: MichiTheme.spacing.md
+                anchors.rightMargin: MichiTheme.spacing.md
+                anchors.topMargin: MichiTheme.spacing.sm
+                anchors.bottomMargin: MichiTheme.spacing.sm
+                spacing: 1
+
+                Text {
+                    Layout.fillWidth: true
+                    text: root.trackTitle || qsTr("Canción")
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    font.weight: MichiTheme.typography.weightSemiBold
+                    elide: Text.ElideRight
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: root.trackArtist || root.trackAlbum
+                    color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.captionSize
+                    elide: Text.ElideRight
+                }
+            }
+        }
 
         Repeater {
             model: [
-                {label: qsTr("Reproducir"), action: "play"},
-                {label: qsTr("Añadir a cola"), action: "queue"},
-                {label: qsTr("Añadir a playlist"), action: "addPlaylist"},
-                {label: qsTr("Ir al álbum"), action: "goAlbum"},
-                {label: qsTr("Ir al artista"), action: "goArtist"},
-                {label: qsTr("Editar metadatos"), action: "editMeta"},
-                {label: qsTr("Mostrar en carpeta"), action: "showFolder"},
-                {label: qsTr("Propiedades"), action: "properties"},
+                { label: qsTr("Reproducir ahora"), actionId: "track_play_now", glyph: "▶", enabled: true },
+                { label: qsTr("Añadir a la cola"), actionId: "track_add_to_queue", glyph: "+", enabled: true },
+                { label: qsTr("Marcar o quitar favorito"), actionId: "track_favorite", glyph: "♡", enabled: true },
+                { label: qsTr("Abrir álbum"), actionId: "track_open_album", glyph: "▣", enabled: root.albumKey !== "" },
+                { label: qsTr("Abrir artista"), actionId: "track_open_artist", glyph: "◎", enabled: root.trackArtist !== "" },
+                { label: qsTr("Mostrar en carpeta"), actionId: "track_open_folder", glyph: "↗", enabled: true }
             ]
 
-            Item {
-    focus: true
-                width: parent.width
-                height: 32
+            Rectangle {
+                required property var modelData
+                Layout.fillWidth: true
+                Layout.preferredHeight: 38
+                radius: MichiTheme.radius.sm
+                color: actionMouse.containsMouse && modelData.enabled
+                       ? MichiTheme.colors.surfaceHover
+                       : "transparent"
+                opacity: modelData.enabled ? 1.0 : MichiTheme.opacity.disabled
 
-                Rectangle {
+                Accessible.role: Accessible.MenuItem
+                Accessible.name: modelData.label
+                Accessible.onPressAction: {
+                    if (modelData.enabled) root.execute(modelData.actionId)
+                }
+
+                RowLayout {
                     anchors.fill: parent
-                    color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-                    radius: MichiTheme.radius.sm
+                    anchors.leftMargin: MichiTheme.spacing.md
+                    anchors.rightMargin: MichiTheme.spacing.md
+                    spacing: MichiTheme.spacing.sm
 
                     Text {
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.leftMargin: MichiTheme.spacing.sm
-                        text: modelData.label
-                        color: root.actionRegistry && root.actionRegistry.qmlGet("track_" + modelData.action)
-                               ? (root.actionRegistry.qmlGet("track_" + modelData.action).destructive ? MichiTheme.colors.error : MichiTheme.colors.textPrimary)
-                               : MichiTheme.colors.textPrimary
+                        Layout.preferredWidth: 22
+                        text: modelData.glyph
+                        color: actionMouse.containsMouse ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: modelData.label
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        elide: Text.ElideRight
                     }
                 }
 
                 MouseArea {
-                    id: mouseArea
+                    id: actionMouse
                     anchors.fill: parent
                     hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-
-                    Accessible.onPressAction: {
-                        if (root.actionRegistry)
-                            root.actionRegistry.execute("track_" + modelData.action, [root.trackId])
-                        root.close()
-                    }
-
+                    cursorShape: modelData.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                     onClicked: {
-                        if (root.actionRegistry)
-                            root.actionRegistry.execute("track_" + modelData.action, [root.trackId])
-                        root.close()
+                        if (modelData.enabled) root.execute(modelData.actionId)
                     }
-                }
-
-                Keys.onReturnPressed: {
-                    if (root.actionRegistry)
-                        root.actionRegistry.execute("track_" + modelData.action, [root.trackId])
-                    root.close()
-                }
-                Keys.onEnterPressed: {
-                    if (root.actionRegistry)
-                        root.actionRegistry.execute("track_" + modelData.action, [root.trackId])
-                    root.close()
                 }
             }
         }

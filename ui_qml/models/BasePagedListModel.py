@@ -350,6 +350,12 @@ class BasePagedListModel(QAbstractListModel):
     def filteredIds(self):
         return [item.get("track_id", 0) for item in self._items]
 
+    @Slot(int, result="QVariantMap")
+    def get(self, row: int) -> dict[str, Any]:
+        if 0 <= row < len(self._items):
+            return dict(self._items[row])
+        return {}
+
     def _owner(self) -> str:
         raise NotImplementedError
 
