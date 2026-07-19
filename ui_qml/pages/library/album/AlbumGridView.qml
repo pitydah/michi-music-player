@@ -17,6 +17,7 @@ Item {
     property var albumModel: null
     property var bridge: null
     property int minimumCardWidth: 184
+    property var _pendingAlbum: ({})
     signal albumClicked(string albumKey, string title, string artist, int year)
 
     function currentAlbum() {
@@ -29,6 +30,18 @@ Item {
         var item = root.currentAlbum()
         if (item)
             root.albumClicked(item.albumKey || "", item.title || "", item.artist || "", item.year || 0)
+    }
+
+    function scheduleOpen(key, title, artist, year) {
+        root._pendingAlbum = { key: key, title: title, artist: artist, year: year }
+        openTimer.restart()
+    }
+
+    Timer {
+        id: openTimer
+        interval: Qt.styleHints.mouseDoubleClickInterval
+        onTriggered: root.albumClicked(root._pendingAlbum.key || "", root._pendingAlbum.title || "",
+                                       root._pendingAlbum.artist || "", root._pendingAlbum.year || 0)
     }
 
     GridView {
@@ -215,8 +228,9 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 acceptedButtons: Qt.LeftButton
                 onPressed: gridView.currentIndex = index
-                onClicked: root.albumClicked(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
+                onClicked: root.scheduleOpen(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
                 onDoubleClicked: {
+                    openTimer.stop()
                     if (root.bridge && root.bridge.playAlbum)
                         root.bridge.playAlbum(model.albumKey || "")
                 }

@@ -48,8 +48,8 @@ class LibraryRefreshCoordinator(QObject):
         if self._album and hasattr(self._album, "refresh"):
             self._album.refresh(
                 search=self._get("_search_query", ""),
-                sort="year" if self._get("_sort_key", "title") == "year" else "title",
-                asc=bool(self._get("_sort_asc", True)),
+                sort="year",
+                asc=False,
             )
 
     def refresh_artists(self):

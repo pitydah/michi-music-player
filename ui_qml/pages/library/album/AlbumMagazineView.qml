@@ -17,13 +17,45 @@ Item {
     property var albumModel: null
     property var bridge: null
     property int featuredIndex: 0
+    property var _pendingAlbum: ({})
     readonly property var featuredAlbum: albumModel && albumModel.count > 0 && albumModel.get
                                          ? albumModel.get(Math.min(featuredIndex, albumModel.count - 1)) : ({})
     signal albumClicked(string albumKey, string title, string artist, int year)
 
+    activeFocusOnTab: true
+
+    function scheduleOpen(key, title, artist, year) {
+        root._pendingAlbum = { key: key, title: title, artist: artist, year: year }
+        openTimer.restart()
+    }
+
+    Timer {
+        id: openTimer
+        interval: Qt.styleHints.mouseDoubleClickInterval
+        onTriggered: root.albumClicked(root._pendingAlbum.key || "", root._pendingAlbum.title || "",
+                                       root._pendingAlbum.artist || "", root._pendingAlbum.year || 0)
+    }
+
+    Keys.onLeftPressed: root.stepFeatured(-1)
+    Keys.onRightPressed: root.stepFeatured(1)
+    Keys.onReturnPressed: root.albumClicked(root.featuredAlbum.albumKey || "", root.featuredAlbum.title || "",
+                                            root.featuredAlbum.artist || "", root.featuredAlbum.year || 0)
+    Keys.onEnterPressed: root.albumClicked(root.featuredAlbum.albumKey || "", root.featuredAlbum.title || "",
+                                           root.featuredAlbum.artist || "", root.featuredAlbum.year || 0)
+    Keys.onSpacePressed: {
+        if (root.bridge && root.bridge.playAlbum)
+            root.bridge.playAlbum(root.featuredAlbum.albumKey || "")
+    }
+
     function stepFeatured(delta) {
         if (!root.albumModel || root.albumModel.count <= 0) return
         featuredIndex = (featuredIndex + delta + root.albumModel.count) % root.albumModel.count
+    }
+
+    function openArticleCurrent() {
+        if (!root.albumModel || articleList.currentIndex < 0) return
+        var item = root.albumModel.get(articleList.currentIndex)
+        root.albumClicked(item.albumKey || "", item.title || "", item.artist || "", item.year || 0)
     }
 
     Flickable {
@@ -248,6 +280,8 @@ Item {
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 snapMode: ListView.SnapToItem
+                activeFocusOnTab: true
+                keyNavigationWraps: false
 
                 ScrollBar.horizontal: ScrollBar { height: 6; policy: ScrollBar.AsNeeded }
 
@@ -331,7 +365,20 @@ Item {
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 spacing: MichiTheme.spacing.sm
-                interactive: false
+                interactive: true
+                activeFocusOnTab: true
+                keyNavigationWraps: false
+
+                Keys.onReturnPressed: root.openArticleCurrent()
+                Keys.onEnterPressed: root.openArticleCurrent()
+                Keys.onSpacePressed: {
+                    if (root.albumModel && currentIndex >= 0 && root.bridge && root.bridge.playAlbum) {
+                        var item = root.albumModel.get(currentIndex)
+                        root.bridge.playAlbum(item.albumKey || "")
+                    }
+                }
+
+                ScrollBar.vertical: ScrollBar { width: 8; policy: ScrollBar.AsNeeded }
 
                 delegate: Rectangle {
                     id: article
@@ -412,8 +459,10 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: root.albumClicked(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
+                        onPressed: articleList.currentIndex = index
+                        onClicked: root.scheduleOpen(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
                         onDoubleClicked: {
+                            openTimer.stop()
                             if (root.bridge && root.bridge.playAlbum)
                                 root.bridge.playAlbum(model.albumKey || "")
                         }

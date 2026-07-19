@@ -16,7 +16,20 @@ Item {
 
     property var albumModel: null
     property var bridge: null
+    property var _pendingAlbum: ({})
     signal albumClicked(string albumKey, string title, string artist, int year)
+
+    function scheduleOpen(key, title, artist, year) {
+        root._pendingAlbum = { key: key, title: title, artist: artist, year: year }
+        openTimer.restart()
+    }
+
+    Timer {
+        id: openTimer
+        interval: Qt.styleHints.mouseDoubleClickInterval
+        onTriggered: root.albumClicked(root._pendingAlbum.key || "", root._pendingAlbum.title || "",
+                                       root._pendingAlbum.artist || "", root._pendingAlbum.year || 0)
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -99,9 +112,9 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.horizontalCenterOffset: tileMouse.containsMouse || tile.selected ? 34 : 18
-                        color: "#090A0D"
+                        color: MichiTheme.colors.surfaceElevation0
                         border.width: 1
-                        border.color: "#262933"
+                        border.color: MichiTheme.colors.borderSubtle
                         z: 0
 
                         Behavior on anchors.horizontalCenterOffset {
@@ -117,20 +130,21 @@ Item {
                                 radius: width / 2
                                 color: "transparent"
                                 border.width: 1
-                                border.color: index % 2 === 0 ? "#20232A" : "#15171C"
+                                border.color: index % 2 === 0
+                                              ? MichiTheme.colors.borderInner
+                                              : MichiTheme.colors.borderSubtle
                             }
                         }
 
                         Rectangle {
                             anchors.centerIn: parent
                             width: 52; height: 52; radius: 26
-                            color: index % 3 === 0 ? MichiTheme.colors.accentPrimary
-                                                  : index % 3 === 1 ? MichiTheme.colors.accentSecondary
-                                                                  : MichiTheme.colors.warning
+                            color: index % 2 === 0 ? MichiTheme.colors.accentPrimary
+                                                  : MichiTheme.colors.accentSecondary
                             Rectangle {
                                 anchors.centerIn: parent
                                 width: 8; height: 8; radius: 4
-                                color: "#0A0B0E"
+                                color: MichiTheme.colors.bgContent
                             }
                         }
 
@@ -185,6 +199,15 @@ Item {
                                 color: MichiTheme.colors.textOnAccent
                                 font.pixelSize: 12
                             }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: function(mouse) {
+                                    mouse.accepted = true
+                                    if (root.bridge && root.bridge.playAlbum)
+                                        root.bridge.playAlbum(model.albumKey || "")
+                                }
+                            }
                         }
                     }
                 }
@@ -229,8 +252,9 @@ Item {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onPressed: vinylGrid.currentIndex = index
-                onClicked: root.albumClicked(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
+                onClicked: root.scheduleOpen(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
                 onDoubleClicked: {
+                    openTimer.stop()
                     if (root.bridge && root.bridge.playAlbum)
                         root.bridge.playAlbum(model.albumKey || "")
                 }

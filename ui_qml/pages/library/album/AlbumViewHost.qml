@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../../theme"
 import "../../../components"
+import ".." as LibraryPages
 
 Item {
     id: root
@@ -166,5 +167,20 @@ Item {
                 item.forceActiveFocus()
             }
         }
+    }
+
+    LoadingState {
+        anchors.centerIn: parent
+        z: 10
+        visible: root.albumModel && root.albumModel.loading
+        title: qsTr("Cargando álbumes")
+    }
+
+    LibraryPages.LibraryEmptyState {
+        anchors.centerIn: parent
+        z: 10
+        visible: root.albumModel && root.albumModel.initialized && root.albumModel.count === 0
+        title: qsTr("Sin álbumes")
+        message: qsTr("No hay álbumes que coincidan con la búsqueda y los filtros actuales.")
     }
 }

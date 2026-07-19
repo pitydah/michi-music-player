@@ -16,10 +16,23 @@ Item {
 
     property var albumModel: null
     property var bridge: null
+    property var _pendingAlbum: ({})
     property int coverSize: Math.max(190, Math.min(320, Math.min(width * 0.28, height * 0.48)))
     readonly property var currentAlbum: albumModel && albumModel.count > 0 && albumModel.get
                                         ? albumModel.get(pathView.currentIndex) : ({})
     signal albumClicked(string albumKey, string title, string artist, int year)
+
+    function scheduleOpen(key, title, artist, year) {
+        root._pendingAlbum = { key: key, title: title, artist: artist, year: year }
+        openTimer.restart()
+    }
+
+    Timer {
+        id: openTimer
+        interval: Qt.styleHints.mouseDoubleClickInterval
+        onTriggered: root.albumClicked(root._pendingAlbum.key || "", root._pendingAlbum.title || "",
+                                       root._pendingAlbum.artist || "", root._pendingAlbum.year || 0)
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -66,6 +79,11 @@ Item {
         Keys.onSpacePressed: {
             if (root.bridge && root.bridge.playAlbum)
                 root.bridge.playAlbum(root.currentAlbum.albumKey || "")
+        }
+        onCurrentIndexChanged: {
+            if (root.albumModel && root.albumModel.hasMore && !root.albumModel.loadingMore &&
+                    currentIndex >= Math.max(0, count - 3))
+                root.albumModel.fetchMore()
         }
 
         path: Path {
@@ -124,7 +142,7 @@ Item {
                     axis.y: 1
                     origin.x: artContainer.width / 2
                     origin.y: artContainer.height / 2
-                    angle: PathView.isCurrentItem ? 0 : PathView.itemAngle
+                    angle: PathView.isCurrentItem ? 0 : (PathView.itemAngle || 0)
                 }
 
                 Rectangle {
@@ -202,9 +220,10 @@ Item {
                     if (!PathView.isCurrentItem)
                         pathView.currentIndex = index
                     else
-                        root.albumClicked(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
+                        root.scheduleOpen(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
                 }
                 onDoubleClicked: {
+                    openTimer.stop()
                     if (root.bridge && root.bridge.playAlbum)
                         root.bridge.playAlbum(model.albumKey || "")
                 }

@@ -18,6 +18,7 @@ VIEWS = (
     ("pages/library/album/AlbumTimelineView.qml", "albumTimelineView"),
     ("pages/library/album/AlbumMagazineView.qml", "albumMagazineView"),
 )
+ALBUM_VIEWS = VIEWS[1:]
 
 
 @pytest.fixture
@@ -55,4 +56,71 @@ def test_album_view_host_exposes_all_five_modes(engine):
         host.setProperty("currentView", index)
         assert host.property("currentView") == index
 
+    host.deleteLater()
+
+
+@pytest.mark.parametrize("width", (800, 1200, 1600))
+@pytest.mark.parametrize(("relative_path", "object_name"), ALBUM_VIEWS)
+def test_populated_album_view_instantiates_at_supported_widths(
+    engine,
+    width,
+    relative_path,
+    object_name,
+):
+    from ui_qml.models.AlbumListModel import AlbumListModel
+
+    model = AlbumListModel()
+    model._items = [
+        {
+            "album_key": f"album-{index}",
+            "title": f"Album {index}",
+            "artist": "Artist",
+            "year": 2000 + index,
+            "decade": 2000,
+            "track_count": 10,
+            "cover_key": "",
+        }
+        for index in range(12)
+    ]
+    model._total_count = len(model._items)
+    model._initialized = True
+    component = QQmlComponent(engine)
+    component.loadUrl(QUrl.fromLocalFile(str(QML_ROOT / relative_path)))
+    assert component.isReady(), component.errorString()
+
+    item = component.createWithInitialProperties({
+        "width": width,
+        "height": 720,
+        "albumModel": model,
+    })
+
+    assert item is not None, component.errorString()
+    assert item.objectName() == object_name
+    item.deleteLater()
+
+
+def test_album_view_switch_does_not_requery_database(engine, qapp):
+    from unittest.mock import MagicMock
+
+    from ui_qml.models.AlbumListModel import AlbumListModel
+
+    query = MagicMock()
+    model = AlbumListModel(query_service=query)
+    model._items = [{"album_key": "album-1", "title": "Album"}]
+    model._total_count = 1
+    model._initialized = True
+    component = QQmlComponent(engine)
+    component.loadUrl(QUrl.fromLocalFile(str(QML_ROOT / "pages/library/album/AlbumViewHost.qml")))
+    assert component.isReady(), component.errorString()
+    host = component.createWithInitialProperties({
+        "width": 1200,
+        "height": 720,
+        "albumModel": model,
+    })
+
+    for mode in range(5):
+        host.setProperty("currentView", mode)
+        qapp.processEvents()
+
+    query.assert_not_called()
     host.deleteLater()

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -170,3 +171,21 @@ def test_format_and_special_filters_cannot_diverge() -> None:
     bridge.clearSpecialFilters()
     assert bridge.activeFormatFilter == "flac"
     assert bridge._filter_unplayed is False
+
+
+def test_album_refresh_is_chronological_without_view_switch_queries() -> None:
+    from ui_qml_bridge.library_refresh_coordinator import LibraryRefreshCoordinator
+
+    album_model = MagicMock()
+    coordinator = LibraryRefreshCoordinator(
+        album_model=album_model,
+        library_bridge=SimpleNamespace(_search_query="query"),
+    )
+
+    coordinator.refresh_albums()
+
+    album_model.refresh.assert_called_once_with(
+        search="query",
+        sort="year",
+        asc=False,
+    )

@@ -17,7 +17,20 @@ Item {
     property var albumModel: null
     property var bridge: null
     property bool groupByDecade: false
+    property var _pendingAlbum: ({})
     signal albumClicked(string albumKey, string title, string artist, int year)
+
+    function scheduleOpen(key, title, artist, year) {
+        root._pendingAlbum = { key: key, title: title, artist: artist, year: year }
+        openTimer.restart()
+    }
+
+    Timer {
+        id: openTimer
+        interval: Qt.styleHints.mouseDoubleClickInterval
+        onTriggered: root.albumClicked(root._pendingAlbum.key || "", root._pendingAlbum.title || "",
+                                       root._pendingAlbum.artist || "", root._pendingAlbum.year || 0)
+    }
 
     function scrollToAlbum(albumKey) {
         if (!root.albumModel || !root.albumModel.get) return
@@ -338,8 +351,9 @@ Item {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onPressed: listView.currentIndex = index
-                        onClicked: root.albumClicked(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
+                        onClicked: root.scheduleOpen(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
                         onDoubleClicked: {
+                            openTimer.stop()
                             if (root.bridge && root.bridge.playAlbum)
                                 root.bridge.playAlbum(model.albumKey || "")
                         }
