@@ -47,7 +47,8 @@ def test_album_view_host_exposes_all_five_modes(engine):
 
     host = component.createWithInitialProperties({"width": 1200, "height": 760})
     assert host is not None, component.errorString()
-    modes = host.property("viewModes")
+    modes_value = host.property("viewModes")
+    modes = modes_value.toVariant() if hasattr(modes_value, "toVariant") else modes_value
     assert len(modes) == 5
 
     for index in range(5):
