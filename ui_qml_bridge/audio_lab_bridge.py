@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import uuid
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
 
@@ -27,6 +26,8 @@ class AudioLabBridge(QObject):
         self._nav = navigation_bridge
         self._cap = capability_bridge
         self._notify = notification_bridge
+        candidate = getattr(audio_lab_service, "jobs", None)
+        self._adapter = candidate if isinstance(candidate, QObject) else None
         self._active_jobs: dict[str, dict] = {}
         self._cached_audio_devices: list | None = None
         self._cached_cd_drives: list | None = None
@@ -35,6 +36,11 @@ class AudioLabBridge(QObject):
             self._adc_recorder = ADCRecorderService()
         except Exception:
             self._adc_recorder = None
+        if self._adapter:
+            self._adapter.jobProgress.connect(self._on_adapter_progress)
+            self._adapter.jobCompleted.connect(self._on_adapter_completed)
+            self._adapter.jobFailed.connect(self._on_adapter_failed)
+            self._adapter.jobCancelled.connect(self._on_adapter_cancelled)
 
     @Property(bool, notify=dataChanged)
     def serviceAvailable(self):
@@ -42,20 +48,13 @@ class AudioLabBridge(QObject):
 
     @Property(bool, notify=dataChanged)
     def jobServiceAvailable(self):
-        return self._jobs is not None
+        return self._adapter is not None
 
     @Slot(result=dict)
     def capabilityMap(self):
         if not self._svc:
             return {}
         return self._svc.capability_map()
-
-    def _run_async(self, job_id: str, run_fn, on_done):
-        if self._pc and hasattr(self._pc, 'run_in_thread'):
-            self._pc.run_in_thread(job_id, run_fn, on_done=on_done)
-        else:
-            result = run_fn()
-            on_done(result)
 
     def _job_preview(self, module_attr: str, method: str, filepath: str, *args):
         if not self._svc:
@@ -83,29 +82,58 @@ class AudioLabBridge(QObject):
         except Exception as e:
             return {"ok": False, "error_code": "VALIDATE_FAILED", "detail": str(e)}
 
-    def _start_job(self, job_prefix: str, job_type: str, filepath: str,
-                   run_fn, result_builder):
-        if not self._svc:
-            return ""
-        module = getattr(self._svc, job_type, None)
-        if not module:
-            return ""
-        job_id = f"{job_prefix}_{uuid.uuid4().hex[:8]}"
-        self._active_jobs[job_id] = {"type": job_type, "filepath": filepath, "status": "running"}
+    def _adapter_snapshot(self, job_id: str) -> dict:
+        if not self._adapter:
+            return {}
+        return self._adapter.get(job_id) or {}
 
-        def _done(result):
-            d = result_builder(result)
-            self._active_jobs[job_id]["status"] = d.get("status", "completed")
-            self._active_jobs[job_id]["result"] = d
-            if d.get("status") == "completed":
-                self.jobCompleted.emit(job_id, job_type, d)
-            else:
-                self.jobFailed.emit(job_id, d.get("error", "unknown"))
-            self.dataChanged.emit()
-
-        self._run_async(job_id, run_fn, _done)
+    def _on_adapter_progress(self, job_id: str, progress: float):
+        snapshot = self._adapter_snapshot(job_id)
+        self.jobProgress.emit(job_id, snapshot.get("type", ""), progress)
         self.dataChanged.emit()
-        return job_id
+
+    def _on_adapter_completed(self, job_id: str, _status: str, result):
+        snapshot = self._adapter_snapshot(job_id)
+        job_type = snapshot.get("type", "")
+        request = snapshot.get("request", {})
+        if job_type == "analysis":
+            payload = {
+                "filepath": request.get("filepath", ""),
+                "format": result.get("format", "") if isinstance(result, dict) else "",
+                "status": "completed",
+                "error": "",
+            }
+        elif job_type == "replaygain":
+            payload = {
+                **(result if isinstance(result, dict) else {}),
+                "track_peak": 0,
+                "status": "completed",
+            }
+        elif job_type == "integrity":
+            source = result if isinstance(result, dict) else {}
+            payload = {
+                "is_valid": source.get("valid", False),
+                "issues": source.get("issues", []),
+                "checksum": "",
+                "status": "completed",
+            }
+        elif job_type == "comparison":
+            source = result if isinstance(result, dict) else {}
+            payload = {
+                "identical": source.get("identical", False),
+                "dimensions": len(source.get("dimensions", [])),
+            }
+        else:
+            payload = result
+        self.jobCompleted.emit(job_id, job_type, payload)
+        self.dataChanged.emit()
+
+    def _on_adapter_failed(self, job_id: str, error: str):
+        self.jobFailed.emit(job_id, error)
+        self.dataChanged.emit()
+
+    def _on_adapter_cancelled(self, _job_id: str):
+        self.dataChanged.emit()
 
     @Slot(str, result=dict)
     def previewAnalysis(self, filepath: str):
@@ -137,13 +165,7 @@ class AudioLabBridge(QObject):
 
     @Slot(str, result=str)
     def startAnalysis(self, filepath: str):
-        return self._start_job(
-            "analysis", "analysis", filepath,
-            lambda: self._svc.analysis.analyze_file(filepath),
-            lambda r: {"filepath": filepath, "format": r.get("format", ""),
-                        "status": "completed" if r.get("status") not in ("error",) else "failed",
-                        "error": r.get("status", "")},
-        )
+        return self._adapter.submit_analysis(filepath) if self._adapter else ""
 
     @Slot(str, str, result=dict)
     def previewConversion(self, filepath: str, target_format: str = "flac"):
@@ -274,25 +296,7 @@ class AudioLabBridge(QObject):
 
     @Slot(str, result=str)
     def startReplayGain(self, filepath: str):
-        return self._start_job(
-            "rg", "replaygain", filepath,
-            lambda: self._run_replaygain(filepath),
-            lambda r: {"track_gain": getattr(r, "track_gain", 0),
-                        "track_peak": getattr(r, "track_peak", 0),
-                        "status": "completed" if getattr(r, "status", "") == "completed" else "failed",
-                        "error": getattr(r, "error", "")},
-        )
-
-    def _run_replaygain(self, filepath: str):
-        if not self._svc or not self._svc.replaygain:
-            return {"status": "failed", "error": "SERVICE_UNAVAILABLE"}
-        result = self._svc.replaygain.analyze_track(filepath)
-        if result.status == "completed":
-            self._svc.replaygain.write_tags(
-                filepath, result.track_gain, result.track_peak,
-                album_gain=result.album_gain, album_peak=result.album_peak
-            )
-        return result
+        return self._adapter.submit_replaygain(filepath) if self._adapter else ""
 
     @Slot(str, result=dict)
     def previewIntegrity(self, filepath: str):
@@ -321,12 +325,7 @@ class AudioLabBridge(QObject):
 
     @Slot(str, result=str)
     def startIntegrity(self, filepath: str):
-        return self._start_job(
-            "integrity", "integrity", filepath,
-            lambda: self._svc.integrity.check(filepath, quick=False),
-            lambda r: {"is_valid": r.is_valid, "issues": r.issues, "checksum": r.checksum,
-                        "status": "completed"},
-        )
+        return self._adapter.submit_integrity(filepath) if self._adapter else ""
 
     @Slot(str, str, result=dict)
     def previewComparison(self, file_a: str, file_b: str):
@@ -351,30 +350,15 @@ class AudioLabBridge(QObject):
 
     @Slot(str, str, result=str)
     def startComparison(self, file_a: str, file_b: str):
-        if not self._svc:
-            return ""
-        module = getattr(self._svc, "comparison", None)
-        if not module:
-            return ""
-        job_id = f"compare_{uuid.uuid4().hex[:8]}"
-        self._active_jobs[job_id] = {"type": "comparison", "status": "running"}
-
-        def _run():
-            return module.compare(file_a, file_b)
-
-        def _done(result):
-            d = {"identical": result.identical, "dimensions": len(result.dimensions)}
-            self._active_jobs[job_id]["status"] = "completed"
-            self._active_jobs[job_id]["result"] = d
-            self.jobCompleted.emit(job_id, "comparison", d)
-            self.dataChanged.emit()
-
-        self._run_async(job_id, _run, _done)
-        self.dataChanged.emit()
-        return job_id
+        return self._adapter.submit_comparison(file_a, file_b) if self._adapter else ""
 
     @Slot(str, result=dict)
     def cancelJob(self, job_id: str):
+        if self._adapter and self._adapter.get(job_id):
+            if self._adapter.cancel(job_id):
+                self.dataChanged.emit()
+                return {"ok": True, "job_id": job_id}
+            return {"ok": False, "error_code": "JOB_NOT_CANCELLABLE"}
         if job_id in self._active_jobs:
             self._active_jobs[job_id]["status"] = "cancelled"
             if self._pc and hasattr(self._pc, 'cancel'):
@@ -390,11 +374,12 @@ class AudioLabBridge(QObject):
 
     @Slot(str, result=dict)
     def retryJob(self, job_id: str):
-        info = self._active_jobs.get(job_id)
+        info = self._adapter_snapshot(job_id) or self._active_jobs.get(job_id)
         if not info:
             return {"ok": False, "error_code": "JOB_NOT_FOUND"}
         job_type = info.get("type")
-        filepath = info.get("filepath", "")
+        request = info.get("request", {})
+        filepath = request.get("filepath", info.get("filepath", ""))
         if job_type == "analysis" and filepath:
             new_id = self.startAnalysis(filepath)
             return {"ok": True, "new_job_id": new_id, "type": job_type}
@@ -419,6 +404,9 @@ class AudioLabBridge(QObject):
 
     @Slot(str, result=dict)
     def jobStatus(self, job_id: str):
+        snapshot = self._adapter_snapshot(job_id)
+        if snapshot:
+            return {"ok": True, "job_id": job_id, **snapshot}
         info = self._active_jobs.get(job_id)
         if info:
             return {"ok": True, "job_id": job_id, "status": info.get("status"),
@@ -431,7 +419,14 @@ class AudioLabBridge(QObject):
 
     @Slot(result=dict)
     def activeJobs(self):
-        return {jid: info.get("status") for jid, info in self._active_jobs.items()}
+        active = {jid: info.get("status") for jid, info in self._active_jobs.items()
+                  if info.get("status") in ("queued", "running", "cancel_requested")}
+        if self._adapter:
+            active.update({
+                job["id"]: job["status"] for job in self._adapter.list()
+                if job["status"] in ("queued", "running", "cancel_requested")
+            })
+        return active
 
     @Slot(result=dict)
     def refresh(self):
