@@ -130,10 +130,10 @@ Item {
             wrapMode: Text.WordWrap
         }
 
-        Column {
+        Item {
             id: customContent
             width: parent.width
-            spacing: MichiTheme.spacing.sm
+            height: children.length > 0 ? childrenRect.height : 0
             visible: children.length > 0
         }
     }
