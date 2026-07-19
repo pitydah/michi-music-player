@@ -16,10 +16,16 @@ Item {
     property string lastError: ""
     property string lastLoadedRoute: ""
     property string lastRequestedSource: ""
-    readonly property string loadedObjectName: pageLoader.item ? pageLoader.item.objectName : ""
+    property string pendingRoute: ""
+    property string previousRoute: ""
+    property bool transitionRunning: false
+    readonly property string loadedObjectName: _activeLoader && _activeLoader.item ? _activeLoader.item.objectName : ""
     property bool loading: false
     property string _prevRoute: ""
     property var _prevParams: ({})
+    property int _loadGeneration: 0
+    property Loader _activeLoader: loaderA
+    property Loader _incomingLoader: loaderB
 
     function currentParams() {
         return typeof navigationBridge !== "undefined" && navigationBridge
@@ -31,15 +37,22 @@ Item {
         var valid = registry ? registry.isValidRoute(route) : false
         var requestedSource = valid ? registry.getSource(canonical) : getFallbackSource(route)
         if (!requestedSource) requestedSource = getFallbackSource(route)
+
         _prevRoute = currentRoute
         _prevParams = root.currentParams()
-        currentRoute = valid ? canonical : route
+        pendingRoute = valid ? canonical : route
         lastError = ""
         lastRequestedSource = requestedSource
         loading = true
-        callOnPage("routeLeave", _prevRoute, _prevParams)
-        pageLoader.source = ""
-        pageLoader.source = requestedSource
+        _loadGeneration += 1
+        var gen = _loadGeneration
+
+        if (_activeLoader.item && typeof _activeLoader.item.routeLeave === "function") {
+            _activeLoader.item.routeLeave(_prevRoute, _prevParams)
+        }
+
+        _incomingLoader.source = ""
+        _incomingLoader.source = requestedSource
     }
 
     function getFallbackSource(route) {
@@ -51,8 +64,16 @@ Item {
     }
 
     function callOnPage(methodName, firstArg, secondArg) {
-        if (pageLoader.item && typeof pageLoader.item[methodName] === "function")
-            pageLoader.item[methodName](firstArg, secondArg)
+        if (_activeLoader.item && typeof _activeLoader.item[methodName] === "function")
+            _activeLoader.item[methodName](firstArg, secondArg)
+    }
+
+    function _swapLoaders() {
+        var oldActive = _activeLoader
+        _activeLoader = _incomingLoader
+        _incomingLoader = oldActive
+        _incomingLoader.opacity = 0
+        _incomingLoader.visible = false
     }
 
     Connections {
@@ -61,45 +82,147 @@ Item {
             root.callOnPage("routeRefresh", route, root.currentParams())
         }
         function onRouteParamsChanged() {
-            if (pageLoader.status === Loader.Ready)
+            if (_activeLoader.status === Loader.Ready)
                 root.callOnPage("routeParamsChanged", root.currentRoute, root.currentParams())
         }
     }
 
     Loader {
-        id: pageLoader
+        id: loaderA
         anchors.fill: parent
         asynchronous: true
         source: ""
+        opacity: 1.0
+        visible: true
 
-        opacity: status === Loader.Ready ? 1.0 : 0.0
         Behavior on opacity {
-            NumberAnimation { duration: MichiTheme.motion.fast; easing.type: Easing.OutCubic }
+            enabled: !MichiTheme.reducedMotion
+            NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
         }
 
-        onStatusChanged: {
-            if (status === Loader.Ready) {
-                root.loading = false
-                root.lastError = ""
-                root.lastLoadedRoute = root.currentRoute
-                root.callOnPage("routeEnter", root.currentRoute, root.currentParams())
-            } else if (status === Loader.Error) {
-                root.loading = false
-                root.lastError = qsTr("No se pudo cargar la ruta '%1' desde %2. Consulta los diagnósticos QML anteriores para conocer el error de componente.")
-                                 .arg(root.currentRoute).arg(root.lastRequestedSource)
-                console.error("[PageStack] Route load error", root.currentRoute, root.lastRequestedSource,
-                              "Loader status:", status)
-            } else if (status === Loader.Loading) {
-                root.loading = true
+        onStatusChanged: root._handleLoaderStatus(loaderA, status)
+    }
+
+    Loader {
+        id: loaderB
+        anchors.fill: parent
+        asynchronous: true
+        source: ""
+        opacity: 0.0
+        visible: false
+
+        Behavior on opacity {
+            enabled: !MichiTheme.reducedMotion
+            NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+        }
+
+        onStatusChanged: root._handleLoaderStatus(loaderB, status)
+    }
+
+    function _handleLoaderStatus(loader, status) {
+        if (loader !== _incomingLoader)
+            return
+        if (status === Loader.Ready) {
+            root.loading = false
+            root.lastError = ""
+            root.previousRoute = root.currentRoute
+            root.currentRoute = root.pendingRoute
+            root.lastLoadedRoute = root.currentRoute
+            root.transitionRunning = true
+
+            loader.opacity = 0
+            loader.visible = true
+
+            if (MichiTheme.reducedMotion) {
+                loader.opacity = 1
+                _activeLoader.opacity = 0
+                _activeLoader.visible = false
+                root._finalizeTransition()
+            } else {
+                loader.opacity = 1
+                _activeLoader.opacity = 0
+                transitionTimer.restart()
             }
+
+            if (loader.item) {
+                loader.item.forceActiveFocus()
+                if (typeof loader.item.routeEnter === "function") {
+                    loader.item.routeEnter(root.currentRoute, root.currentParams())
+                }
+            }
+        } else if (status === Loader.Error) {
+            root.loading = false
+            root.lastError = qsTr("No se pudo cargar la ruta '%1' desde %2.")
+                             .arg(root.pendingRoute).arg(root.lastRequestedSource)
+            loader.source = ""
+            loader.visible = false
+            console.error("[PageStack] Route load error", root.pendingRoute, root.lastRequestedSource)
+        } else if (status === Loader.Loading) {
+            root.loading = true
+        }
+    }
+
+    function _finalizeTransition() {
+        if (_activeLoader !== _incomingLoader) {
+            var oldLoader = _activeLoader
+            _swapLoaders()
+            oldLoader.source = ""
+        }
+        root.transitionRunning = false
+    }
+
+    Timer {
+        id: transitionTimer
+        interval: 180
+        repeat: false
+        onTriggered: root._finalizeTransition()
+    }
+
+    Timer {
+        id: loadingIndicatorTimer
+        interval: 120
+        repeat: false
+        onTriggered: {
+            if (root.loading) loadingIndicator.visible = true
+        }
+    }
+
+    onLoadingChanged: {
+        if (loading) {
+            loadingIndicatorTimer.restart()
+        } else {
+            loadingIndicatorTimer.stop()
+            loadingIndicator.visible = false
         }
     }
 
     Rectangle {
+        id: loadingIndicator
         anchors.fill: parent
         color: MichiTheme.colors.bgApp
-        visible: pageLoader.status === Loader.Null && root.currentRoute !== "" && !root.loading
-        z: -1
+        opacity: 0.6
+        visible: false
+        z: 50
+
+        Column {
+            anchors.centerIn: parent
+            spacing: MichiTheme.spacing.md
+
+            BusyIndicator {
+                anchors.horizontalCenter: parent.horizontalCenter
+                running: loadingIndicator.visible
+            }
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: qsTr("Cargando…")
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
+            }
+        }
+
+        Accessible.role: Accessible.AlertMessage
+        Accessible.name: qsTr("Cargando contenido")
     }
 
     Rectangle {
@@ -130,14 +253,27 @@ Item {
                 horizontalAlignment: Text.AlignHCenter
             }
 
-            MichiButton {
+            Row {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: qsTr("Ir a Inicio")
-                variant: "primary"
-                onClicked: {
-                    if (typeof navigationBridge !== "undefined" && navigationBridge)
-                        navigationBridge.navigate("home")
-                    root.lastError = ""
+                spacing: MichiTheme.spacing.sm
+
+                MichiButton {
+                    text: qsTr("Reintentar")
+                    variant: "primary"
+                    onClicked: {
+                        root.lastError = ""
+                        root.loadRoute(root.pendingRoute)
+                    }
+                }
+
+                MichiButton {
+                    text: qsTr("Ir a Inicio")
+                    variant: "ghost"
+                    onClicked: {
+                        if (typeof navigationBridge !== "undefined" && navigationBridge)
+                            navigationBridge.navigate("home")
+                        root.lastError = ""
+                    }
                 }
             }
         }
