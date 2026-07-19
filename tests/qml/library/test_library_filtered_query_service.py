@@ -94,6 +94,39 @@ def test_missing_filter(service):
     assert service.count_tracks(missing=True) == 1
     missing = service.fetch_tracks(missing=True)
     assert missing[0]["title"] == "Gamma"
+    assert missing[0]["missing"] is True
+
+
+def test_track_rows_expose_filter_backed_roles(service):
+    favorite = service.fetch_tracks(favorites=True)[0]
+
+    assert favorite["favorite"] is True
+    assert favorite["composer"] == "Composer One"
+
+
+def test_album_and_artist_models_share_active_filters(service):
+    assert service.count_albums(genre="Jazz", composer="Composer One") == 1
+    albums = service.fetch_albums(genre="Jazz", composer="Composer One")
+    assert albums[0]["title"] == "First"
+    assert albums[0]["track_count"] == 2
+
+    assert service.count_artists(fmt="mp3") == 1
+    artists = service.fetch_artists(fmt="mp3")
+    assert artists[0]["name"] == "B"
+
+
+def test_detail_queries_return_real_metadata(service):
+    album = service.fetch_album_detail("first")
+    artist = service.fetch_artist_detail("A")
+
+    assert album["title"] == "First"
+    assert album["artist"] == "A"
+    assert album["year"] == 2020
+    assert album["genre"] == "Jazz"
+    assert album["tracks"][0]["album"] == "First"
+    assert artist["genre"] == "Jazz"
+    assert artist["tracks"][0]["artist"] == "A"
+    assert artist["tracks"][0]["year"] == 2020
 
 
 def test_sort_and_pagination(service):

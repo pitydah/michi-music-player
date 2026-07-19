@@ -617,6 +617,9 @@ class LibraryBridge(QObject):
                     "INSERT OR IGNORE INTO favorites (track_id) VALUES (?)", (fp,))
                 fav = True
             self._db.conn.commit()
+            self._refresh_coordinator.refresh_tracks()
+            self._sync_state()
+            self.dataChanged.emit()
             return {"ok": True, "favorite": fav}
         except Exception as e:
             return {"ok": False, "error": str(e)}

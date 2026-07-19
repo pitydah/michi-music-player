@@ -46,9 +46,13 @@ class AlbumListModel(BasePagedListModel):
             return item.get("title", "")
         return None
 
-    @Slot(str, str, bool, result=dict)
-    def refresh(self, search: str = "", sort: str = "year", asc: bool = False):
-        kw = dict(search=search, sort=sort, asc=asc)
+    def refresh(self, search: str = "", artist: str = "", album: str = "",
+                fmt: str = "", genre: str = "", composer: str = "", year: str = "",
+                folder: str = "", favorites: bool = False, unplayed: bool = False,
+                missing: bool = False, sort: str = "year", asc: bool = False):
+        kw = dict(search=search, artist=artist, album=album, fmt=fmt, genre=genre,
+                  composer=composer, year=year, folder=folder, favorites=favorites,
+                  unplayed=unplayed, missing=missing, sort=sort, asc=asc)
         super().refresh(**kw)
         return {"ok": True, "search": search, "sort": sort, "asc": asc}
 

@@ -47,14 +47,12 @@ class LibraryRefreshCoordinator(QObject):
     def refresh_albums(self):
         if self._album and hasattr(self._album, "refresh"):
             self._album.refresh(
-                search=self._get("_search_query", ""),
-                sort="year",
-                asc=False,
+                **self._catalog_filters(), sort="year", asc=False,
             )
 
     def refresh_artists(self):
         if self._artist and hasattr(self._artist, "refresh"):
-            self._artist.refresh(search=self._get("_search_query", ""))
+            self._artist.refresh(**self._catalog_filters(), sort="name", asc=True)
 
     def refresh_folders(self):
         if self._folder and hasattr(self._folder, "refresh"):
@@ -101,3 +99,18 @@ class LibraryRefreshCoordinator(QObject):
 
     def _get(self, name: str, default):
         return getattr(self._lib, name, default) if self._lib is not None else default
+
+    def _catalog_filters(self) -> dict:
+        return {
+            "search": self._get("_search_query", ""),
+            "artist": self._get("_filter_artist", ""),
+            "album": self._get("_filter_album", ""),
+            "fmt": self._get("_filter_format", ""),
+            "genre": self._get("_filter_genre", ""),
+            "composer": self._get("_filter_composer", ""),
+            "year": self._get("_filter_year", ""),
+            "folder": self._get("_filter_folder", ""),
+            "favorites": bool(self._get("_filter_favorites", False)),
+            "unplayed": bool(self._get("_filter_unplayed", False)),
+            "missing": bool(self._get("_filter_missing", False)),
+        }

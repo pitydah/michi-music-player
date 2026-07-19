@@ -22,6 +22,19 @@ _TRACK_SORT = {
     "track_number": "COALESCE(m.track_number, 0)",
 }
 
+_ALBUM_SORT = {
+    "title": "LOWER(COALESCE(m.album, ''))",
+    "artist": "LOWER(COALESCE(NULLIF(m.albumartist, ''), m.artist, ''))",
+    "year": "COALESCE(MIN(m.year), 0)",
+    "track_count": "COUNT(*)",
+}
+
+_ARTIST_SORT = {
+    "name": "LOWER(COALESCE(NULLIF(m.albumartist, ''), m.artist, ''))",
+    "track_count": "COUNT(*)",
+    "album_count": "COUNT(DISTINCT COALESCE(m.album, ''))",
+}
+
 
 class LibraryFilteredQueryService:
     """Proxy that provides a stable, complete track-filter contract."""
@@ -155,7 +168,11 @@ class LibraryFilteredQueryService:
             "m.artist, m.album, m.albumartist, m.year, m.genre, m.track_number, "
             "m.track_total, m.disc_number, m.disc_total, m.bitrate, m.sample_rate, "
             "m.bit_depth, m.channels, m.play_count, m.last_played, m.album_key, "
-            "m.track_uid, m.created_at "
+            "m.track_uid, m.created_at, m.composer, "
+            "EXISTS (SELECT 1 FROM favorites f WHERE "
+            "f.track_id = m.filepath OR f.track_id = CAST(m.id AS TEXT)) AS favorite, "
+            "LOWER(COALESCE(m.scan_status, '')) IN "
+            "('missing', 'not_found', 'offline', 'unavailable') AS missing "
             "FROM media_items m "
             f"WHERE m.deleted_at IS NULL{where} "
             f"ORDER BY {sort_column} {order} LIMIT ? OFFSET ?"
@@ -163,3 +180,64 @@ class LibraryFilteredQueryService:
         params.extend([max(1, int(limit)), max(0, int(offset))])
         rows = self._delegate._exec(sql, params).fetchall()
         return [self._delegate._row_to_public(row) for row in rows]
+
+    def count_albums(self, **filters) -> int:
+        self._delegate._check_db()
+        where, params = self._build_track_where(**filters)
+        row = self._delegate._exec(
+            "SELECT COUNT(DISTINCT COALESCE(NULLIF(m.album_key, ''), m.album, '')) "
+            "FROM media_items m WHERE m.deleted_at IS NULL "
+            f"AND COALESCE(m.album, '') != ''{where}",
+            params,
+        ).fetchone()
+        return int(row[0]) if row else 0
+
+    def fetch_albums(self, offset: int = 0, limit: int = 100,
+                     **filters) -> list[dict[str, Any]]:
+        self._delegate._check_db()
+        sort_key = str(filters.pop("sort", "year"))
+        ascending = bool(filters.pop("asc", False))
+        sort_column = _ALBUM_SORT.get(sort_key, _ALBUM_SORT["year"])
+        order = "ASC" if ascending else "DESC"
+        where, params = self._build_track_where(**filters)
+        sql = (
+            "SELECT COALESCE(NULLIF(m.album_key, ''), m.album, '') AS album_key, "
+            "m.album, COALESCE(NULLIF(m.albumartist, ''), m.artist, '') AS album_artist, "
+            "MIN(m.year) AS year, COUNT(*) AS track_count, SUM(m.duration) AS duration, "
+            "MAX(m.genre) AS genre FROM media_items m "
+            "WHERE m.deleted_at IS NULL AND COALESCE(m.album, '') != ''"
+            f"{where} GROUP BY album_key ORDER BY {sort_column} {order} LIMIT ? OFFSET ?"
+        )
+        params.extend([max(1, int(limit)), max(0, int(offset))])
+        rows = self._delegate._exec(sql, params).fetchall()
+        return [self._delegate._album_row_to_dict(row) for row in rows]
+
+    def count_artists(self, **filters) -> int:
+        self._delegate._check_db()
+        where, params = self._build_track_where(**filters)
+        row = self._delegate._exec(
+            "SELECT COUNT(DISTINCT COALESCE(NULLIF(m.albumartist, ''), m.artist, '')) "
+            "FROM media_items m WHERE m.deleted_at IS NULL "
+            f"AND COALESCE(m.artist, '') != ''{where}",
+            params,
+        ).fetchone()
+        return int(row[0]) if row else 0
+
+    def fetch_artists(self, offset: int = 0, limit: int = 100,
+                      **filters) -> list[dict[str, Any]]:
+        self._delegate._check_db()
+        sort_key = str(filters.pop("sort", "name"))
+        ascending = bool(filters.pop("asc", True))
+        sort_column = _ARTIST_SORT.get(sort_key, _ARTIST_SORT["name"])
+        order = "ASC" if ascending else "DESC"
+        where, params = self._build_track_where(**filters)
+        sql = (
+            "SELECT COALESCE(NULLIF(m.albumartist, ''), m.artist, '') AS artist_name, "
+            "COUNT(*) AS track_count, COUNT(DISTINCT COALESCE(m.album, '')) AS album_count, "
+            "SUM(m.duration) AS duration FROM media_items m "
+            "WHERE m.deleted_at IS NULL AND COALESCE(m.artist, '') != ''"
+            f"{where} GROUP BY artist_name ORDER BY {sort_column} {order} LIMIT ? OFFSET ?"
+        )
+        params.extend([max(1, int(limit)), max(0, int(offset))])
+        rows = self._delegate._exec(sql, params).fetchall()
+        return [self._delegate._artist_row_to_dict(row) for row in rows]

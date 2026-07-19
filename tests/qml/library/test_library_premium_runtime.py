@@ -184,8 +184,8 @@ def test_album_refresh_is_chronological_without_view_switch_queries() -> None:
 
     coordinator.refresh_albums()
 
-    album_model.refresh.assert_called_once_with(
-        search="query",
-        sort="year",
-        asc=False,
-    )
+    kwargs = album_model.refresh.call_args.kwargs
+    assert kwargs["search"] == "query"
+    assert kwargs["sort"] == "year"
+    assert kwargs["asc"] is False
+    assert kwargs["favorites"] is False
