@@ -1,0 +1,67 @@
+name: Phase 2 one-shot autofix
+
+on:
+  push:
+    branches:
+      - agent/complete-partial-features-phase-1
+
+permissions:
+  contents: write
+
+jobs:
+  autofix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/complete-partial-features-phase-1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Apply Ruff safe fixes
+        run: |
+          pip install -q ruff
+          ruff check --fix \
+            core/home_audio_service.py \
+            core/composition/ecosystem.py \
+            core/mix_query_service.py \
+            integrations/home_audio_service.py \
+            ui_qml_bridge/home_audio_bridge.py \
+            ui_qml_bridge/navigation_bridge.py \
+            ui_qml_bridge/settings_bridge_v2.py \
+            tests/test_home_audio_distribution_service.py \
+            tests/test_home_audio_distribution_bridge.py \
+            tests/test_home_audio_distribution_qml_contract.py \
+            tests/test_navigation_pending_settings_guard.py \
+            tests/test_settings_bridge_v2_transactions.py \
+            tests/test_settings_transaction_bar_contract.py \
+            tests/test_settings_workspace_contract.py \
+            tests/test_mix_query_service_limits.py
+      - name: Commit fixes
+        run: |
+          if git diff --quiet; then
+            echo "No fixes required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            core/home_audio_service.py \
+            core/composition/ecosystem.py \
+            core/mix_query_service.py \
+            integrations/home_audio_service.py \
+            ui_qml_bridge/home_audio_bridge.py \
+            ui_qml_bridge/navigation_bridge.py \
+            ui_qml_bridge/settings_bridge_v2.py \
+            tests/test_home_audio_distribution_service.py \
+            tests/test_home_audio_distribution_bridge.py \
+            tests/test_home_audio_distribution_qml_contract.py \
+            tests/test_navigation_pending_settings_guard.py \
+            tests/test_settings_bridge_v2_transactions.py \
+            tests/test_settings_transaction_bar_contract.py \
+            tests/test_settings_workspace_contract.py \
+            tests/test_mix_query_service_limits.py
+          git commit -m "style: apply Ruff safe fixes to phase 2"
+          git push origin HEAD:agent/complete-partial-features-phase-1
