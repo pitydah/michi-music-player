@@ -254,87 +254,25 @@ Item {
         Accessible.name: "Cargando contenido"
     }
 
-    Rectangle {
+    ErrorState {
         id: errorOverlay
         anchors.fill: parent
-        color: MichiTheme.colors.overlayDark
         z: 9999
         visible: pageStack.lastError !== "" && !root.fatalError
-
-        Column {
-            anchors.centerIn: parent
-            spacing: MichiTheme.spacing.lg
-            width: Math.min(420, parent.width * 0.8)
-
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: qsTr("Error de carga")
-                color: MichiTheme.colors.error
-                font.pixelSize: MichiTheme.typography.pageTitleSize
-                font.weight: MichiTheme.typography.weightBold
-            }
-
-            Text {
-                width: parent.width
-                text: pageStack.lastError
-                color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.bodySize
-                wrapMode: Text.WordWrap
-                horizontalAlignment: Text.AlignHCenter
-            }
-
-            MichiButton {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: qsTr("Reintentar")
-                variant: "primary"
-                onClicked: pageStack.loadRoute(pageStack.currentRoute)
-            }
-        }
-
-        Accessible.role: Accessible.AlertMessage
-        Accessible.name: "Error de carga de página"
+        showRetry: true
+        message: pageStack.lastError
+        onRetryRequested: pageStack.loadRoute(pageStack.currentRoute)
     }
 
-    Rectangle {
+    ErrorState {
         id: fatalOverlay
         anchors.fill: parent
-        color: MichiTheme.colors.bgApp
         z: 9999
         visible: root.fatalError
         objectName: "fatalOverlay"
-
-        Column {
-            anchors.centerIn: parent
-            spacing: MichiTheme.spacing.lg
-            width: Math.min(400, parent.width * 0.8)
-
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: qsTr("Error fatal")
-                color: MichiTheme.colors.error
-                font.pixelSize: MichiTheme.typography.pageTitleSize
-                font.weight: MichiTheme.typography.weightBold
-            }
-
-            Text {
-                width: parent.width
-                text: root.fatalMessage
-                color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.bodySize
-                wrapMode: Text.WordWrap
-                horizontalAlignment: Text.AlignHCenter
-            }
-
-            MichiButton {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: qsTr("Reintentar")
-                variant: "primary"
-                onClicked: root.dismissFatal()
-            }
-        }
-
-        Accessible.role: Accessible.AlertMessage
-        Accessible.name: "Error fatal de la aplicación"
+        showRetry: true
+        message: root.fatalMessage
+        onRetryRequested: root.dismissFatal()
     }
 
     Connections {
