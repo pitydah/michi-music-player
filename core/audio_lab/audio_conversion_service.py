@@ -13,6 +13,7 @@ import re
 import shutil
 import subprocess
 import time
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -20,6 +21,7 @@ from typing import Any, Callable
 from PySide6.QtCore import QObject, Signal
 
 from core.worker_manager import WorkerManager
+from core.audio_lab.audio_lab_contracts import ConversionProfile
 
 logger = logging.getLogger("michi.audio_lab.conversion")
 
@@ -43,22 +45,6 @@ class ConversionJob:
     cancelled: bool = False
 
 
-@dataclass
-class ConversionProfile:
-    name: str = "Custom"
-    format: str = "FLAC"
-    codec: str = ""
-    bitrate: int = 0
-    sample_rate: int = 0
-    bit_depth: int = 0
-    channels: int = 0
-    copy_metadata: bool = True
-    copy_artwork: bool = True
-    apply_replaygain: bool = False
-    filename_template: str = "{artist} - {title}"
-    output_dir: str = ""
-
-
 class AudioConversionService(QObject):
     conversionStarted = Signal(str)
     conversionProgress = Signal(str, float)
@@ -77,10 +63,7 @@ class AudioConversionService(QObject):
         """Construye la ruta de destino de forma consistente entre preview y conversion."""
         fmt = profile.format.lower()
         src_path = Path(source)
-        if profile.output_dir:
-            target_dir = Path(profile.output_dir)
-        else:
-            target_dir = src_path.parent
+        target_dir = Path(profile.output_dir) if profile.output_dir else src_path.parent
         if profile.filename_template and "{artist}" in profile.filename_template:
             target_name = profile.filename_template.format(
                 artist="{artist}", title=src_path.stem, album="{album}"
@@ -167,7 +150,6 @@ class AudioConversionService(QObject):
     def _do_convert(self, source: str, profile: ConversionProfile,
                     job: ConversionJob) -> dict[str, Any]:
         try:
-            fmt = profile.format.lower()
             target_path = str(self._build_target_path(source, profile))
             job.target = target_path
 
@@ -289,10 +271,8 @@ class AudioConversionService(QObject):
                 job.process.terminate()
                 job.process.wait(timeout=5)
             except Exception:
-                try:
+                with suppress(Exception):
                     job.process.kill()
-                except Exception:
-                    pass
         job.status = "cancelled"
         return True
 

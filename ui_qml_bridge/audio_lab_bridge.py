@@ -172,21 +172,9 @@ class AudioLabBridge(QObject):
             pd = json.loads(profile_json)
         except Exception:
             pd = {}
-        from core.audio_lab.audio_conversion_service import ConversionProfile
-        profile = ConversionProfile(
-            format=pd.get("format", "FLAC").upper(),
-            codec=pd.get("codec"),
-            bitrate=pd.get("bitrate"),
-            vbr_quality=pd.get("vbr_quality"),
-            sample_rate=pd.get("sample_rate"),
-            bit_depth=pd.get("bit_depth"),
-            channels=pd.get("channels"),
-            preserve_metadata=pd.get("preserve_metadata", True),
-            preserve_artwork=pd.get("preserve_artwork", True),
-            output_dir=pd.get("output_dir", ""),
-            filename_template=pd.get("filename_template", "{artist} - {title}"),
-            collision_policy=pd.get("collision_policy", "rename"),
-        )
+        from core.audio_lab.audio_lab_contracts import ConversionProfile
+        pd["format"] = str(pd.get("format", "FLAC")).upper()
+        profile = ConversionProfile.from_mapping(pd)
         job_id = module.convert(filepath, profile)
         self._active_jobs[job_id] = {"type": "conversion", "filepath": filepath, "status": "running"}
         module.conversionCompleted.connect(
@@ -497,7 +485,7 @@ class AudioLabBridge(QObject):
         return self.navigateTo(route)
 
     # ==================== CD RIPPER ====================
-    
+
     @Slot(result=list)
     def detectCDDrives(self) -> list:
         """Detecta unidades de CD disponibles. Cachea el resultado."""
@@ -518,7 +506,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error detecting CD drives: {e}")
             return []
-    
+
     @Slot(str, result=dict)
     def getCDInfo(self, device: str) -> dict:
         """Obtiene información del CD insertado."""
@@ -548,7 +536,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error getting CD info: {e}")
             return {'ok': False, 'error': str(e)}
-    
+
     @Slot(str, str, str, str, result=dict)
     def ripCDTrack(self, device: str, track_number: int, output_path: str, format: str = 'flac') -> dict:
         """Extrae una pista individual del CD."""
@@ -562,7 +550,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error ripping CD track: {e}")
             return {'ok': False, 'error': str(e)}
-    
+
     @Slot(str, str, str, str, bool, result=dict)
     def ripFullCD(self, device: str, output_dir: str, format: str = 'flac', quality: str = 'lossless', include_log: bool = True) -> dict:
         """Extrae todo el CD."""
@@ -578,7 +566,7 @@ class AudioLabBridge(QObject):
             return {'ok': False, 'error': str(e)}
 
     # ==================== ADC RECORDER / TURNTABLE ====================
-    
+
     @Slot(result=list)
     def detectAudioDevices(self) -> list:
         """Detecta dispositivos de entrada de audio (incluye tocadiscos USB).
@@ -604,7 +592,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error detecting audio devices: {e}")
             return []
-    
+
     @Slot(result=dict)
     def getRecommendedDevice(self) -> dict:
         """Obtiene el dispositivo recomendado (prioriza tocadiscos USB)."""
@@ -627,21 +615,20 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error getting recommended device: {e}")
             return {'ok': False, 'error': str(e)}
-    
+
     @Slot(int, str, str, int, int, int, list, result=dict)
-    def startRecording(self, device_id: int, output_path: str, format: str = 'wav', 
-                       sample_rate: int = 44100, bit_depth: int = 16, channels: int = 2, 
+    def startRecording(self, device_id: int, output_path: str, format: str = 'wav',
+                       sample_rate: int = 44100, bit_depth: int = 16, channels: int = 2,
                        dsp_filters: list = None) -> dict:
         """Inicia grabación desde dispositivo ADC."""
         if not self._svc or not self._adc_recorder:
             return {'ok': False, 'error': 'Service unavailable'}
         try:
-            from core.audio_lab.adc_recorder_service import AudioDevice
             devices = self._adc_recorder.detect_devices()
             device = next((d for d in devices if d.device_id == device_id), None)
             if not device:
                 return {'ok': False, 'error': 'Device not found'}
-            
+
             result = self._adc_recorder.start_recording(
                 device=device, output_path=output_path, format=format,
                 sample_rate=sample_rate, bit_depth=bit_depth,
@@ -651,7 +638,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error starting recording: {e}")
             return {'ok': False, 'error': str(e)}
-    
+
     @Slot(result=dict)
     def pauseRecording(self) -> dict:
         """Pausa la grabación actual."""
@@ -663,7 +650,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error pausing recording: {e}")
             return {'ok': False, 'error': str(e)}
-    
+
     @Slot(result=dict)
     def resumeRecording(self) -> dict:
         """Reanuda la grabación pausada."""
@@ -675,7 +662,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error resuming recording: {e}")
             return {'ok': False, 'error': str(e)}
-    
+
     @Slot(result=dict)
     def stopRecording(self) -> dict:
         """Detiene la grabación actual."""
@@ -687,7 +674,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error stopping recording: {e}")
             return {'ok': False, 'error': str(e)}
-    
+
     @Slot(str, float, result=dict)
     def addMarker(self, label: str = "", timestamp: float = None) -> dict:
         """Agrega un marcador en la grabación actual."""
@@ -699,7 +686,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error adding marker: {e}")
             return {'ok': False, 'error': str(e)}
-    
+
     @Slot(str, str, result=dict)
     def splitByMarkers(self, input_file: str, output_dir: str) -> dict:
         """Divide grabación por marcadores."""
@@ -711,7 +698,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error splitting by markers: {e}")
             return {'ok': False, 'error': str(e)}
-    
+
     @Slot(result=dict)
     def getRecordingStatus(self) -> dict:
         """Obtiene estado de la grabación actual."""
