@@ -1,4 +1,5 @@
 from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
+from core.worker_manager import WorkerManager
 
 
 class DistributionService:
@@ -58,7 +59,7 @@ def test_refresh_exposes_all_distribution_models():
     result = bridge.refreshDistribution()
 
     assert result["ok"] is True
-    assert bridge.distributionState == "ready"
+    assert bridge.distributionState == "active"
     assert bridge.sources[0]["id"] == "music"
     assert bridge.servers[0]["state"] == "running"
     assert bridge.receiverList[0]["id"] == "client-1"
@@ -73,3 +74,35 @@ def test_create_route_delegates_typed_destination_list():
 
     assert result["ok"] is True
     assert service.created == ("Sala", "music", ["living"])
+
+
+def test_worker_manager_keeps_refresh_off_the_qml_thread(qtbot):
+    manager = WorkerManager()
+    bridge = HomeAudioBridge(
+        home_audio_service=DistributionService(),
+        worker_manager=manager,
+    )
+
+    with qtbot.waitSignal(bridge.operationFinished, timeout=2000):
+        accepted = bridge.refreshDistribution()
+
+    assert accepted["accepted"] is True
+    assert bridge.operationInProgress is False
+    assert bridge.sources[0]["id"] == "music"
+    manager.shutdown()
+
+
+def test_distribution_bridge_exposes_required_compatibility_slots():
+    bridge = HomeAudioBridge(home_audio_service=DistributionService())
+    for name in (
+        "startLocalServer",
+        "stopLocalServer",
+        "updateRoute",
+        "retryRoute",
+        "setReceiverVolume",
+        "setReceiverMute",
+        "setReceiverLatency",
+    ):
+        assert callable(getattr(bridge, name))
+    assert bridge.playbackTransfer("")["error"] == "EMPTY_ZONE"
+    assert bridge.syncStatus == {}

@@ -153,6 +153,7 @@ class BridgeFactory(QObject):
             from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
             from ui_qml_bridge.audio_quality_adapter import AudioQualityAdapter
             quality_adapter = AudioQualityAdapter(
+                worker_manager=self._get("worker_manager"),
             )
             self._bridges["nowplaying"] = NowPlayingBridge(
                 player_service=self._get("playback_service"),

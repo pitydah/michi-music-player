@@ -17,6 +17,7 @@ _RETRY_DELAY_MS = 1500
 
 class HomeAudioBridge(QObject):
     stateChanged = Signal()
+    operationFinished = Signal("QVariant")
 
     def __init__(
         self,
@@ -28,10 +29,14 @@ class HomeAudioBridge(QObject):
         capability_bridge: Any = None,
         accessibility_bridge: Any = None,
         notification_bridge: Any = None,
+        worker_manager: Any = None,
+        ha_controller: Any = None,
+        snapcast_ctrl: Any = None,
         parent=None,
     ):
         super().__init__(parent)
-        self._ha_svc = home_audio_service
+        self._ha_svc = home_audio_service or ha_controller or snapcast_ctrl
+        self._legacy_snapcast = snapcast_ctrl
         self._job_svc = job_service
         self._registry = action_registry
         self._nav = navigation_bridge
@@ -39,6 +44,7 @@ class HomeAudioBridge(QObject):
         self._capability = capability_bridge
         self._accessibility = accessibility_bridge
         self._notification = notification_bridge
+        self._worker_manager = worker_manager
 
         self._ha_state = "not_configured"
         self._snapcast_state = "concept"
@@ -59,6 +65,10 @@ class HomeAudioBridge(QObject):
         self._latency_ms = 0
         self._server_handoff_available = False
         self._offline = False
+        self._operation_in_progress = False
+        self._current_operation = ""
+        self._operation_error = ""
+        self._operation_generation = 0
 
     @Property(bool, constant=True)
     def homeAssistantAvailable(self):
@@ -156,6 +166,18 @@ class HomeAudioBridge(QObject):
     def offline(self):
         return self._offline
 
+    @Property(bool, notify=stateChanged)
+    def operationInProgress(self):
+        return self._operation_in_progress
+
+    @Property(str, notify=stateChanged)
+    def currentOperation(self):
+        return self._current_operation
+
+    @Property(str, notify=stateChanged)
+    def operationError(self):
+        return self._operation_error
+
     def _cancel_retry(self):
         if self._retry_timer:
             self._retry_timer.stop()
@@ -195,6 +217,8 @@ class HomeAudioBridge(QObject):
                 if not raw.get("ok"):
                     self._last_error = str(raw.get("error", "OPERATION_FAILED"))
                 return raw
+            if isinstance(raw, bool):
+                return {"ok": raw, **({} if raw else {"error": "METHOD_FAILED"})}
             if raw is None:
                 return {"ok": True, "result": None}
             return {"ok": True, "result": raw}
@@ -226,22 +250,136 @@ class HomeAudioBridge(QObject):
             return False
         return callable(getattr(type(self._ha_svc), method_name, None))
 
-    def _refresh_models(self):
-        self._devices = self._list_from_service("get_devices")
-        self._zones = self._list_from_service("get_zones", "discover_zones")
-        self._groups = self._list_from_service("get_groups")
-        self._streams = self._list_from_service("get_streams")
-        self._sources = self._list_from_service("get_sources") or list(self._streams)
-        self._servers = self._list_from_service("get_servers")
-        self._receivers = self._list_from_service("get_receivers")
-        self._destinations = self._list_from_service("get_destinations")
-        self._routes = self._list_from_service("list_routes")
+    def _service_snapshot(self) -> dict:
+        return {
+            "devices": self._list_from_service("get_devices"),
+            "zones": self._list_from_service("get_zones", "discover_zones"),
+            "groups": self._list_from_service("get_groups"),
+            "streams": self._list_from_service("get_streams"),
+            "sources": self._list_from_service("get_sources"),
+            "servers": self._list_from_service("get_servers"),
+            "receivers": self._list_from_service("get_receivers"),
+            "destinations": self._list_from_service("get_destinations"),
+            "routes": self._list_from_service("list_routes"),
+        }
+
+    def _apply_snapshot(self, snapshot: dict) -> None:
+        self._devices = snapshot.get("devices", [])
+        self._zones = snapshot.get("zones", [])
+        self._groups = snapshot.get("groups", [])
+        self._streams = snapshot.get("streams", [])
+        self._sources = snapshot.get("sources", []) or list(self._streams)
+        self._servers = snapshot.get("servers", [])
+        self._receivers = snapshot.get("receivers", [])
+        self._destinations = snapshot.get("destinations", [])
+        self._routes = snapshot.get("routes", [])
 
         raw_latency = getattr(self._ha_svc, "latency_ms", 0) if self._ha_svc else 0
         try:
             self._latency_ms = int(raw_latency() if callable(raw_latency) else raw_latency)
         except (TypeError, ValueError):
             self._latency_ms = 0
+
+    def _refresh_models(self):
+        self._apply_snapshot(self._service_snapshot())
+
+    def _derive_connection_state(self) -> bool:
+        connected_raw = getattr(self._ha_svc, "is_connected", False)
+        try:
+            connected = connected_raw() if callable(connected_raw) else bool(connected_raw)
+        except Exception:
+            connected = False
+        self._server_handoff_available = bool(
+            getattr(self._ha_svc, "server_handoff_available", False)
+        )
+        server_running = any(server.get("state") == "running" for server in self._servers)
+        receiver_online = any(
+            receiver.get("connected") or receiver.get("state") == "online"
+            for receiver in self._receivers
+        )
+        self._snapcast_state = "running" if server_running else (
+            "connected" if receiver_online else "concept"
+        )
+        if self._last_error:
+            self._ha_state = "error"
+        elif connected:
+            self._ha_state = "connected"
+            self._last_contact = time.time()
+        elif self._devices or self._zones:
+            self._ha_state = "degraded"
+        else:
+            self._ha_state = "not_configured"
+        if server_running and receiver_online:
+            self._distribution_state = "active"
+        elif self._servers or self._sources or self._destinations or self._routes:
+            self._distribution_state = "configured"
+        else:
+            self._distribution_state = "stopped"
+        return connected
+
+    def _dispatch(self, operation: str, method: str | None = None, *args) -> dict:
+        if not self._ha_svc:
+            return {"ok": False, "error": "UNSUPPORTED"}
+        if self._operation_in_progress:
+            return {"ok": False, "error": "OPERATION_IN_PROGRESS"}
+        if method and not callable(getattr(self._ha_svc, method, None)):
+            return {"ok": False, "error": "UNSUPPORTED"}
+        if self._worker_manager is None:
+            result = self._call_svc(method, *args) if method else {"ok": True}
+            self._refresh_models()
+            self.stateChanged.emit()
+            return result
+
+        self._operation_generation += 1
+        generation = self._operation_generation
+        task_id = f"home_audio.{operation}.{generation}"
+        self._operation_in_progress = True
+        self._current_operation = operation
+        self._operation_error = ""
+        self.stateChanged.emit()
+
+        def run_operation():
+            result = self._call_svc(method, *args) if method else {"ok": True}
+            return {"result": result, "snapshot": self._service_snapshot()}
+
+        def done(payload):
+            if generation != self._operation_generation:
+                return
+            result = payload.get("result", {"ok": False, "error": "INVALID_RESULT"})
+            self._apply_snapshot(payload.get("snapshot", {}))
+            self._derive_connection_state()
+            self._operation_in_progress = False
+            self._current_operation = ""
+            self._operation_error = "" if result.get("ok") else str(result.get("error", "OPERATION_FAILED"))
+            self.stateChanged.emit()
+            self.operationFinished.emit(result)
+
+        def failed(code, message):
+            if generation != self._operation_generation:
+                return
+            self._operation_in_progress = False
+            self._current_operation = ""
+            self._operation_error = message or code
+            self._last_error = self._operation_error
+            self._offline = True
+            result = {"ok": False, "error": code, "message": message}
+            self.stateChanged.emit()
+            self.operationFinished.emit(result)
+
+        handle = self._worker_manager.run_task(
+            task_id,
+            run_operation,
+            owner="home_audio",
+            on_done=done,
+            on_error=failed,
+        )
+        if getattr(handle, "state", "") == "failed":
+            self._operation_in_progress = False
+            self._current_operation = ""
+            self._operation_error = getattr(handle, "error_code", "WORKER_REJECTED")
+            self.stateChanged.emit()
+            return {"ok": False, "error": self._operation_error}
+        return {"ok": True, "accepted": True, "pending": True, "task_id": task_id}
 
     @Slot(result=dict)
     def refresh(self):
@@ -252,44 +390,12 @@ class HomeAudioBridge(QObject):
             self._snapcast_state = "concept"
             self._distribution_state = "unavailable"
             self.stateChanged.emit()
-            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+            return {"ok": True, "available": False, "state": "unavailable"}
 
+        if self._worker_manager is not None:
+            return self._dispatch("refresh")
         self._refresh_models()
-        connected_raw = getattr(self._ha_svc, "is_connected", False)
-        try:
-            connected = connected_raw() if callable(connected_raw) else bool(connected_raw)
-        except Exception:
-            connected = False
-
-        self._server_handoff_available = bool(
-            getattr(self._ha_svc, "server_handoff_available", False)
-        )
-        server_running = any(server.get("state") == "running" for server in self._servers)
-        receiver_online = any(
-            receiver.get("connected") or receiver.get("state") == "online"
-            for receiver in self._receivers
-        )
-        if server_running:
-            self._snapcast_state = "running"
-        elif receiver_online:
-            self._snapcast_state = "connected"
-        else:
-            self._snapcast_state = "concept"
-
-        if connected:
-            self._ha_state = "connected"
-            self._last_contact = time.time()
-        elif self._devices or self._zones:
-            self._ha_state = "degraded"
-        else:
-            self._ha_state = "not_configured"
-
-        if server_running and receiver_online:
-            self._distribution_state = "ready"
-        elif self._servers or self._sources or self._destinations or self._routes:
-            self._distribution_state = "configured"
-        else:
-            self._distribution_state = "empty"
+        connected = self._derive_connection_state()
 
         self.stateChanged.emit()
         return {
@@ -309,13 +415,12 @@ class HomeAudioBridge(QObject):
         return self.refresh()
 
     def _mutate_and_refresh(self, method: str, *args):
-        result = self._call_svc(method, *args)
-        self._refresh_models()
-        self.stateChanged.emit()
-        return result
+        return self._dispatch(method, method, *args)
 
     @Slot(str, int, str, result=dict)
     def configureHomeAssistant(self, host: str = "", port: int = 0, token: str = ""):
+        if not self._service_defines("configure"):
+            return {"ok": False, "error": "UNSUPPORTED"}
         return self._call_svc("configure", host=host, port=port, access_token=token)
 
     @Slot(result=dict)
@@ -340,14 +445,33 @@ class HomeAudioBridge(QObject):
     def startServer(self, server_id: str = "local_snapserver"):
         return self._mutate_and_refresh("start_server", server_id)
 
+    @Slot(result=dict)
+    def startLocalServer(self):
+        return self.startServer("local_snapserver")
+
     @Slot(str, result=dict)
     def stopServer(self, server_id: str = "local_snapserver"):
         return self._mutate_and_refresh("stop_server", server_id)
 
+    @Slot(result=dict)
+    def stopLocalServer(self):
+        return self.stopServer("local_snapserver")
+
     @Slot(str, str, "QVariantList", result=dict)
     def createRoute(self, name: str, source_id: str, destination_ids):
         ids = [str(item) for item in (destination_ids or []) if str(item)]
+        if not source_id:
+            return {"ok": False, "error": "UNKNOWN_SOURCE"}
+        if not ids:
+            return {"ok": False, "error": "UNKNOWN_DESTINATION"}
         return self._mutate_and_refresh("create_route", name, source_id, ids)
+
+    @Slot(str, str, str, "QVariantList", result=dict)
+    def updateRoute(self, route_id: str, name: str, source_id: str, destination_ids):
+        ids = [str(item) for item in (destination_ids or []) if str(item)]
+        if not route_id:
+            return {"ok": False, "error": "UNKNOWN_ROUTE"}
+        return self._mutate_and_refresh("update_route", route_id, name, source_id, ids)
 
     @Slot(str, result=dict)
     def startRoute(self, route_id: str):
@@ -365,6 +489,10 @@ class HomeAudioBridge(QObject):
     def recoverRoute(self, route_id: str):
         return self._mutate_and_refresh("recover_route", route_id)
 
+    @Slot(str, result=dict)
+    def retryRoute(self, route_id: str):
+        return self.recoverRoute(route_id)
+
     @Slot(str, int, result=dict)
     def setReceiverVolume(self, receiver_id: str, volume: int):
         return self._mutate_and_refresh("set_receiver_volume", receiver_id, volume)
@@ -376,6 +504,14 @@ class HomeAudioBridge(QObject):
     @Slot(str, int, result=dict)
     def setReceiverLatency(self, receiver_id: str, latency_ms: int):
         return self._mutate_and_refresh("set_receiver_latency", receiver_id, latency_ms)
+
+    @Slot(str, str, result=dict)
+    def setReceiverName(self, receiver_id: str, name: str):
+        return self._mutate_and_refresh("set_receiver_name", receiver_id, name)
+
+    @Slot(str, str, result=dict)
+    def moveReceiver(self, receiver_id: str, group_id: str):
+        return self._mutate_and_refresh("move_receiver", receiver_id, group_id)
 
     @Slot(result=dict)
     def openDiagnostics(self):

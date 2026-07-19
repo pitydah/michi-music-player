@@ -14,6 +14,8 @@ Item {
     property var selectedDestinationIds: []
     property string feedback: ""
     property bool feedbackError: false
+    property string editingRouteId: ""
+    readonly property bool operationBusy: root.bridge ? root.bridge.operationInProgress : false
 
     Accessible.role: Accessible.Pane
     Accessible.name: qsTr("Distribución de audio")
@@ -32,9 +34,11 @@ Item {
         root.feedbackError = !result || !result.ok
         if (root.feedbackError)
             root.feedback = qsTr("No se pudo completar la operación: %1").arg(result && result.error ? result.error : qsTr("error desconocido"))
+        else if (result.pending)
+            root.feedback = qsTr("Operación en curso…")
         else
             root.feedback = successText
-        if (root.bridge)
+        if (root.bridge && !result.pending)
             root.bridge.refreshDistribution()
     }
 
@@ -87,9 +91,17 @@ Item {
                 kind: root.statusKind(root.bridge ? root.bridge.distributionState : "unavailable")
             }
 
+            BusyIndicator {
+                running: root.operationBusy
+                visible: running
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
+            }
+
             MichiButton {
                 text: qsTr("Actualizar")
                 variant: "ghost"
+                enabled: !root.operationBusy
                 onClicked: {
                     if (root.bridge)
                         root.showResult(root.bridge.refreshDistribution(), qsTr("Estado actualizado."))
@@ -102,9 +114,7 @@ Item {
             implicitHeight: feedbackLabel.implicitHeight + MichiTheme.spacing.md * 2
             visible: root.feedback !== ""
             radius: MichiTheme.radius.md
-            color: root.feedbackError
-                   ? Qt.rgba(1.0, 0.35, 0.35, 0.12)
-                   : Qt.rgba(0.35, 0.85, 0.55, 0.12)
+            color: MichiTheme.colors.surfaceCard
             border.width: 1
             border.color: root.feedbackError ? MichiTheme.colors.error : MichiTheme.colors.success
 
@@ -288,7 +298,8 @@ Item {
                                 MichiButton {
                                     text: modelData.state === "running" ? qsTr("Detener") : qsTr("Iniciar")
                                     variant: modelData.state === "running" ? "danger" : "primary"
-                                    enabled: modelData.binary_available !== false
+                                    visible: modelData.id === "local_snapserver"
+                                    enabled: modelData.binary_available !== false && !root.operationBusy
                                     onClicked: {
                                         var result = modelData.state === "running"
                                                    ? root.bridge.stopServer(modelData.id)
@@ -323,6 +334,7 @@ Item {
                         MichiButton {
                             text: qsTr("Detectar")
                             variant: "ghost"
+                            enabled: !root.operationBusy
                             onClicked: root.showResult(root.bridge.discoverReceivers(), qsTr("Descubrimiento completado."))
                         }
                     }
@@ -394,7 +406,7 @@ Item {
                                         to: 100
                                         value: modelData.volume !== undefined ? modelData.volume : 100
                                         onPressedChanged: {
-                                            if (!pressed)
+                                            if (!pressed && !root.operationBusy)
                                                 root.showResult(root.bridge.setReceiverVolume(modelData.id, Math.round(value)), qsTr("Volumen actualizado."))
                                         }
                                     }
@@ -402,6 +414,7 @@ Item {
                                     CheckBox {
                                         text: qsTr("Mute")
                                         checked: modelData.muted === true
+                                        enabled: !root.operationBusy
                                         onClicked: root.showResult(root.bridge.setReceiverMute(modelData.id, checked), qsTr("Mute actualizado."))
                                     }
 
@@ -415,8 +428,43 @@ Item {
                                         to: 5000
                                         value: modelData.latency_ms || 0
                                         editable: true
+                                        enabled: !root.operationBusy
                                         onValueModified: root.showResult(root.bridge.setReceiverLatency(modelData.id, value), qsTr("Latencia actualizada."))
                                         Accessible.name: qsTr("Latencia de %1").arg(modelData.name || modelData.id)
+                                    }
+                                }
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    enabled: modelData.connected === true && !root.operationBusy
+                                    spacing: MichiTheme.spacing.sm
+
+                                    TextField {
+                                        id: receiverName
+                                        Layout.fillWidth: true
+                                        text: modelData.name || ""
+                                        placeholderText: qsTr("Nombre del receptor")
+                                        Accessible.name: qsTr("Nombre de %1").arg(modelData.name || modelData.id)
+                                    }
+
+                                    MichiButton {
+                                        text: qsTr("Renombrar")
+                                        variant: "ghost"
+                                        enabled: receiverName.text.trim() !== "" && receiverName.text.trim() !== (modelData.name || "")
+                                        onClicked: root.showResult(root.bridge.setReceiverName(modelData.id, receiverName.text), qsTr("Receptor renombrado."))
+                                    }
+
+                                    ComboBox {
+                                        id: receiverGroup
+                                        model: root.bridge ? root.bridge.destinations : []
+                                        textRole: "name"
+                                        valueRole: "id"
+                                        currentIndex: indexOfValue(modelData.group)
+                                        Accessible.name: qsTr("Mover %1 a otro grupo").arg(modelData.name || modelData.id)
+                                        onActivated: {
+                                            if (currentValue && currentValue !== modelData.group)
+                                                root.showResult(root.bridge.moveReceiver(modelData.id, currentValue), qsTr("Receptor movido y verificado."))
+                                        }
                                     }
                                 }
                             }
@@ -560,14 +608,29 @@ Item {
                             }
 
                             MichiButton {
-                                text: qsTr("Crear ruta")
+                                text: root.editingRouteId ? qsTr("Guardar cambios") : qsTr("Crear ruta")
                                 variant: "primary"
-                                enabled: root.selectedSourceId !== "" && root.selectedDestinationIds.length > 0
+                                enabled: !root.operationBusy && root.selectedSourceId !== "" && root.selectedDestinationIds.length > 0
                                 onClicked: {
-                                    var result = root.bridge.createRoute(routeName.text, root.selectedSourceId, root.selectedDestinationIds)
-                                    root.showResult(result, qsTr("Ruta creada y pendiente de activación."))
-                                    if (result && result.ok)
+                                    var result = root.editingRouteId
+                                               ? root.bridge.updateRoute(root.editingRouteId, routeName.text, root.selectedSourceId, root.selectedDestinationIds)
+                                               : root.bridge.createRoute(routeName.text, root.selectedSourceId, root.selectedDestinationIds)
+                                    root.showResult(result, root.editingRouteId ? qsTr("Ruta actualizada.") : qsTr("Ruta creada y pendiente de activación."))
+                                    if (result && result.ok) {
                                         routeName.clear()
+                                        root.editingRouteId = ""
+                                    }
+                                }
+                            }
+
+                            MichiButton {
+                                text: qsTr("Cancelar edición")
+                                variant: "ghost"
+                                visible: root.editingRouteId !== ""
+                                enabled: !root.operationBusy
+                                onClicked: {
+                                    root.editingRouteId = ""
+                                    routeName.clear()
                                 }
                             }
                         }
@@ -644,6 +707,7 @@ Item {
                                     MichiButton {
                                         text: modelData.state === "active" || modelData.state === "degraded" ? qsTr("Detener") : qsTr("Activar")
                                         variant: modelData.state === "active" ? "danger" : "primary"
+                                        enabled: !root.operationBusy
                                         onClicked: {
                                             var result = modelData.state === "active" || modelData.state === "degraded"
                                                        ? root.bridge.stopRoute(modelData.id)
@@ -656,7 +720,20 @@ Item {
                                         text: qsTr("Recuperar")
                                         variant: "ghost"
                                         visible: modelData.state === "error" || modelData.state === "degraded"
-                                        onClicked: root.showResult(root.bridge.recoverRoute(modelData.id), qsTr("Recuperación completada."))
+                                        enabled: !root.operationBusy
+                                        onClicked: root.showResult(root.bridge.retryRoute(modelData.id), qsTr("Recuperación completada."))
+                                    }
+
+                                    MichiButton {
+                                        text: qsTr("Editar")
+                                        variant: "ghost"
+                                        enabled: !root.operationBusy && modelData.state !== "active" && modelData.state !== "degraded"
+                                        onClicked: {
+                                            root.editingRouteId = modelData.id
+                                            routeName.text = modelData.name || ""
+                                            root.selectedSourceId = modelData.source_id || ""
+                                            root.selectedDestinationIds = modelData.destination_ids ? modelData.destination_ids.slice(0) : []
+                                        }
                                     }
 
                                     Item { Layout.fillWidth: true }
@@ -675,6 +752,16 @@ Item {
                     Item { Layout.fillHeight: true }
                 }
             }
+        }
+    }
+
+    Connections {
+        target: root.bridge
+        function onOperationFinished(result) {
+            root.feedbackError = !result || !result.ok
+            root.feedback = root.feedbackError
+                          ? qsTr("La operación falló: %1").arg(result && result.error ? result.error : qsTr("error desconocido"))
+                          : qsTr("Operación completada y verificada.")
         }
     }
 }
