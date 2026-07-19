@@ -473,11 +473,11 @@ class AudioLabBridge(QObject):
     def navigateToArea(self, area_key: str):
         """Navega a una página específica del área (hub interno)."""
         route_map = {
-            "diagnostics": "audio_lab.diagnostics_hub",
-            "identifier": "audio_lab.identifier_hub",
-            "backup": "audio_lab.backup_hub",
-            "output_profiles": "audio_lab.output_profiles_hub",
-            "local_intelligence": "audio_lab.local_intelligence_hub"
+            "diagnostics": "audio_lab.analysis",
+            "identifier": "audio_lab.metadata",
+            "backup": "audio_lab",
+            "output_profiles": "audio_lab.output_profiles",
+            "local_intelligence": "audio_lab.analysis",
         }
         route = route_map.get(area_key)
         if not route:
