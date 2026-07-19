@@ -98,6 +98,38 @@ jobs:
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           cat phase2-qml.txt
           exit 0
+      - name: Install focused test dependencies
+        run: pip install -q -e ".[dev]"
+      - name: Focused regression tests
+        id: tests
+        continue-on-error: true
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          set +e
+          python -m pytest -q --timeout=120 \
+            tests/test_home_audio_distribution_service.py \
+            tests/test_home_audio_distribution_bridge.py \
+            tests/test_home_audio_distribution_qml_contract.py \
+            tests/test_navigation_pending_settings_guard.py \
+            tests/test_settings_bridge_v2_transactions.py \
+            tests/test_settings_transaction_bar_contract.py \
+            tests/test_settings_workspace_contract.py \
+            tests/test_mix_query_service_limits.py \
+            tests/test_home_audio.py \
+            tests/qml/home_audio/test_home_audio_completo.py \
+            tests/test_settings_bridge.py > phase2-tests.txt 2>&1
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          cat phase2-tests.txt
+          exit 0
+      - name: Audit global Ruff status
+        if: always()
+        run: |
+          set +e
+          ruff check . --output-format=concise > phase2-global-ruff.txt 2>&1
+          cat phase2-global-ruff.txt
+          exit 0
       - name: Upload focused validation report
         if: always()
         uses: actions/upload-artifact@v4
@@ -107,6 +139,8 @@ jobs:
             phase2-ruff.txt
             phase2-compile.txt
             phase2-qml.txt
+            phase2-tests.txt
+            phase2-global-ruff.txt
           retention-days: 3
       - name: Enforce focused validation
         if: always()
@@ -114,3 +148,4 @@ jobs:
           test "${{ steps.ruff.outputs.exit_code }}" = "0"
           test "${{ steps.compile.outputs.exit_code }}" = "0"
           test "${{ steps.qml.outputs.exit_code }}" = "0"
+          test "${{ steps.tests.outputs.exit_code }}" = "0"
