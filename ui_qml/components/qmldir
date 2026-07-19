@@ -30,7 +30,8 @@ MichiMenuItem 1.0 MichiMenuItem.qml
 MichiTabBar 1.0 MichiTabBar.qml
 MichiTooltip 1.0 MichiTooltip.qml
 JobStatusBanner 1.0 JobStatusBanner.qml
-MichiIcon 1.0 IconSlot.qml
+MichiIcon 1.0 MichiIcon.qml
+MichiFeatureCard 1.0 MichiFeatureCard.qml
 
 AsyncStateView 1.0 AsyncStateView.qml
 LoadingState 1.0 LoadingState.qml

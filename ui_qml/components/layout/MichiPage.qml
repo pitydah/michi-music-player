@@ -11,6 +11,7 @@ Item {
 
     property bool scrollable: true
     property bool constrainContentWidth: true
+    property int maximumContentWidth: 1480
     property string visualState: "content"
     property alias header: headerHost.data
     property alias stateContent: stateHost.data
@@ -36,7 +37,8 @@ Item {
             y: responsive.pageMargin
             width: root.constrainContentWidth
                    ? Math.min(viewport.width - responsive.pageMargin * 2,
-                              responsive.contentMaximumWidth)
+                               Math.min(responsive.contentMaximumWidth,
+                                        root.maximumContentWidth))
                    : viewport.width - responsive.pageMargin * 2
             spacing: MichiTheme.spacing.lg
 

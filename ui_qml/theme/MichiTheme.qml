@@ -9,11 +9,11 @@ QtObject {
 
     // ── Radius ──
     readonly property QtObject radius: QtObject {
-        readonly property int xs: 2
-        readonly property int sm: 4
-        readonly property int md: 8
-        readonly property int lg: 12
-        readonly property int xl: 16
+        readonly property int xs: 4
+        readonly property int sm: 8
+        readonly property int md: 12
+        readonly property int lg: 16
+        readonly property int xl: 20
         readonly property int pill: 999
     }
 
@@ -68,8 +68,8 @@ QtObject {
     readonly property int coverRadius: radius.sm
 
     // ── Shell ──
-    readonly property int sidebarWidth: 232
-    readonly property int sidebarWidthCompact: 68
+    readonly property int sidebarWidth: 244
+    readonly property int sidebarWidthCompact: 70
     readonly property int nowPlayingHeight: 96
     readonly property int headerHeight: 56
 
