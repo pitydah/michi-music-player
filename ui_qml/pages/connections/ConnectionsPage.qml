@@ -177,6 +177,118 @@ Item {
                             navigationBridge.navigate("home_audio")
                     }
                 }
+
+                SectionHeader {
+                    text: qsTr("Servicios compatibles")
+                    width: parent.width
+                }
+
+                Text {
+                    text: qsTr("Integraciones adicionales planificadas o en desarrollo.")
+                    color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.metaSize
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                }
+
+                Grid {
+                    width: parent.width
+                    columns: responsive.compact ? 2 : 4
+                    columnSpacing: MichiTheme.spacing.md
+                    rowSpacing: MichiTheme.spacing.md
+
+                    GlassCard {
+                        width: parent.width / parent.columns - MichiTheme.spacing.md * (parent.columns - 1) / parent.columns
+                        height: 88
+                        title: qsTr("Michi Big Server")
+                        subtitle: qsTr("Servidor central de biblioteca musical. Protocolo en estabilizacion.")
+                        variant: "base"
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: onClicked()
+                        Keys.onSpacePressed: onClicked()
+                        onClicked: {
+                            if (typeof navigationBridge !== "undefined" && navigationBridge)
+                                navigationBridge.navigate("connections.big_server")
+                        }
+
+                        StatusBadge {
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.margins: 8
+                            text: qsTr("Planificado")
+                            kind: "neutral"
+                        }
+                    }
+
+                    GlassCard {
+                        width: parent.width / parent.columns - MichiTheme.spacing.md * (parent.columns - 1) / parent.columns
+                        height: 88
+                        title: qsTr("Navidrome")
+                        subtitle: qsTr("Servidor musical compatible Subsonic.")
+                        variant: "base"
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: onClicked()
+                        Keys.onSpacePressed: onClicked()
+                        onClicked: {
+                            if (typeof navigationBridge !== "undefined" && navigationBridge)
+                                navigationBridge.navigate("connections.navidrome")
+                        }
+
+                        StatusBadge {
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.margins: 8
+                            text: qsTr("Planificado")
+                            kind: "neutral"
+                        }
+                    }
+
+                    GlassCard {
+                        width: parent.width / parent.columns - MichiTheme.spacing.md * (parent.columns - 1) / parent.columns
+                        height: 88
+                        title: qsTr("Jellyfin")
+                        subtitle: qsTr("Servidor multimedia con streaming de audio.")
+                        variant: "base"
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: onClicked()
+                        Keys.onSpacePressed: onClicked()
+                        onClicked: {
+                            if (typeof navigationBridge !== "undefined" && navigationBridge)
+                                navigationBridge.navigate("connections.jellyfin")
+                        }
+
+                        StatusBadge {
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.margins: 8
+                            text: qsTr("Planificado")
+                            kind: "neutral"
+                        }
+                    }
+
+                    GlassCard {
+                        width: parent.width / parent.columns - MichiTheme.spacing.md * (parent.columns - 1) / parent.columns
+                        height: 88
+                        title: qsTr("Home Assistant")
+                        subtitle: qsTr("Automatizacion y control por voz. Requiere configuracion.")
+                        variant: "base"
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: onClicked()
+                        Keys.onSpacePressed: onClicked()
+                        onClicked: {
+                            if (typeof navigationBridge !== "undefined" && navigationBridge)
+                                navigationBridge.navigate("connections.home_assistant")
+                        }
+
+                        StatusBadge {
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.margins: 8
+                            text: qsTr("Configurar")
+                            kind: "warning"
+                        }
+                    }
+                }
             }
         }
     }

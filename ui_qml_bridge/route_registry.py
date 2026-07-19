@@ -551,7 +551,7 @@ ROUTES: dict[str, dict] = {
         "icon": "audio_lab", "order": 70, "sidebar_visible": True,
         "sidebar_group": None, "expandable": True,
         "status": "functional", "capability": None,
-        "aliases": [],
+        "aliases": ["audio_lab.overview"],
         "keywords": ["audio lab", "análisis", "procesamiento", "metadatos", "captura"],
         "placeholder_state": None,
         "params": None, "category": "tools",
