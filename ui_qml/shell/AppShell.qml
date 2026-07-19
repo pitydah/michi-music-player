@@ -51,7 +51,10 @@ Item {
             Sidebar {
                 id: sidebar
                 Layout.fillHeight: true
-                Layout.preferredWidth: responsive.sidebarAutoCollapse ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
+                Layout.preferredWidth: sidebar.collapsed ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
+                Layout.minimumWidth: Layout.preferredWidth
+                Layout.maximumWidth: Layout.preferredWidth
+                forceCompact: root.width < 1100
                 currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
 
                 onRouteRequested: function(route) {
@@ -96,24 +99,6 @@ Item {
                     pageTitle: "Inicio"
                     mainWindow: mainWindow
 
-                    MouseArea {
-                        anchors.fill: parent
-                        property variant previousPosition: Qt.point(0, 0)
-                        onPressed: function(event) {
-                            previousPosition = Qt.point(event.x, event.y)
-                        }
-                        onPositionChanged: function(event) {
-                            if (event.buttons & Qt.LeftButton) {
-                                var mainWindow = root.parent
-                                while (mainWindow && mainWindow.objectName !== "mainWindow")
-                                    mainWindow = mainWindow.parent
-                                if (mainWindow && mainWindow.hasOwnProperty("startSystemMove")) {
-                                    mainWindow.startSystemMove()
-                                }
-                            }
-                        }
-                        cursorShape: Qt.OpenHandCursor
-                    }
                     canGoBack: navigationBridge ? navigationBridge.canGoBack : false
                     canGoForward: navigationBridge ? navigationBridge.canGoForward : false
                     routeHistory: navigationBridge ? navigationBridge.history : []
@@ -146,9 +131,9 @@ Item {
         NowPlayingBar {
             id: nowPlayingBar
             Layout.fillWidth: true
-            Layout.preferredHeight: MichiTheme.nowPlayingHeight
-            Layout.maximumHeight: MichiTheme.nowPlayingHeight
-            Layout.minimumHeight: MichiTheme.nowPlayingHeight
+            Layout.preferredHeight: implicitHeight
+            Layout.maximumHeight: 112
+            Layout.minimumHeight: 96
             z: 10
         }
     }

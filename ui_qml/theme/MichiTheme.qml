@@ -68,9 +68,9 @@ QtObject {
     readonly property int coverRadius: radius.sm
 
     // ── Shell ──
-    readonly property int sidebarWidth: 250
+    readonly property int sidebarWidth: 232
     readonly property int sidebarWidthCompact: 68
-    readonly property int nowPlayingHeight: 116
+    readonly property int nowPlayingHeight: 96
     readonly property int headerHeight: 56
 
     // ── Shortcuts ──

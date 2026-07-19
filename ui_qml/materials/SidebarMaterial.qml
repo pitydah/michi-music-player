@@ -8,17 +8,32 @@ Item {
     focus: true
     id: root
 
+    default property alias content: contentLayer.data
+
     property int radius: 0
 
-    Rectangle {
+    Item {
+        id: backgroundLayer
         anchors.fill: parent
-        color: MichiTheme.colors.surfaceSidebar
+        z: 0
+        enabled: false
 
         Rectangle {
-            anchors.right: parent.right
-            width: MichiTheme.borderWidth
-            height: parent.height
-            color: MichiTheme.colors.borderSubtle
+            anchors.fill: parent
+            color: MichiTheme.colors.surfaceSidebar
+
+            Rectangle {
+                anchors.right: parent.right
+                width: MichiTheme.borderWidth
+                height: parent.height
+                color: MichiTheme.colors.borderSubtle
+            }
         }
+    }
+
+    Item {
+        id: contentLayer
+        anchors.fill: parent
+        z: 1
     }
 }

@@ -5,12 +5,13 @@ import "theme"
 
 Window {
     id: mainWindow
+    objectName: "mainWindow"
     visible: true
     width: 1440
     height: 900
     title: qsTr("Michi Music Player")
     color: MichiTheme.colors.bgApp
-    minimumWidth: 1024
+    minimumWidth: 800
     minimumHeight: 640
     flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowSystemMenuHint | Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint
 

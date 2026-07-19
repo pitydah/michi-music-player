@@ -20,17 +20,24 @@ Item {
 
     signal clicked()
 
+    Keys.onReturnPressed: if (root.interactive) root.clicked()
+    Keys.onSpacePressed: if (root.interactive) root.clicked()
+    Accessible.onPressAction: if (root.interactive) root.clicked()
+
     GlassMaterial {
         id: glass
         anchors.fill: parent
         variant: root.variant
-        hovered: root.hovered
-        interactive: true
+        hovered: root.hovered || root.activeFocus
+        interactive: root.interactive
         radius: MichiTheme.radius.md
 
         MouseArea {
+            id: pointerArea
             anchors.fill: parent
-            hoverEnabled: true
+            enabled: root.interactive
+            hoverEnabled: root.interactive
+            cursorShape: root.interactive ? Qt.PointingHandCursor : Qt.ArrowCursor
             onEntered: root.hovered = true
             onExited: root.hovered = false
             onClicked: root.clicked()
@@ -59,6 +66,16 @@ Item {
                 width: parent.width
                 visible: text !== ""
             }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 2
+            radius: Math.max(0, glass.radius - 2)
+            color: "transparent"
+            border.width: root.activeFocus ? MichiTheme.focusWidth : 0
+            border.color: MichiTheme.colors.borderFocus
+            visible: root.activeFocus
         }
     }
 }

@@ -9,7 +9,7 @@ Item {
     focus: true
     id: root
 
-    default property alias content: contentItem.data
+    default property alias content: contentLayer.data
 
     property string variant: "base"
     property bool hovered: false
@@ -20,17 +20,15 @@ Item {
     property alias borderColor: bgRect.border.color
     property alias borderWidth: bgRect.border.width
 
-    implicitWidth: contentItem.implicitWidth + MichiTheme.spacing.md * 2
-    implicitHeight: contentItem.implicitHeight + MichiTheme.spacing.md * 2
+    implicitWidth: MichiTheme.minimumInteractiveSize
+    implicitHeight: MichiTheme.minimumInteractiveSize
 
     Item {
-        id: contentItem
+        id: backgroundLayer
+        objectName: "glassBackgroundLayer"
         anchors.fill: parent
-        anchors.margins: MichiTheme.spacing.md
-    }
-
-    Item {
-        anchors.fill: parent
+        z: 0
+        enabled: false
 
         Rectangle {
             id: bgRect
@@ -88,5 +86,12 @@ Item {
                 border.width: MichiTheme.borderWidth
             }
         }
+    }
+
+    Item {
+        id: contentLayer
+        objectName: "glassContentLayer"
+        anchors.fill: parent
+        z: 1
     }
 }

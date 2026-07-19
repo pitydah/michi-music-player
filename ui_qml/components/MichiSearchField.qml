@@ -41,11 +41,14 @@ Item {
             anchors.bottomMargin: MichiTheme.spacing.xs
             spacing: MichiTheme.spacing.sm
 
-            Text {
+            Image {
                 anchors.verticalCenter: parent.verticalCenter
-                text: qsTr("\uD83D\uDD0D")
-                font.pixelSize: MichiTheme.typography.bodySize
-                color: MichiTheme.colors.textMuted
+                width: 18
+                height: 18
+                source: "../../icons/sidebar/search.svg"
+                sourceSize.width: 18
+                sourceSize.height: 18
+                fillMode: Image.PreserveAspectFit
                 visible: !root.loading
                 Accessible.role: Accessible.Graphic
                 Accessible.name: "Buscar"
@@ -55,7 +58,7 @@ Item {
             QQC2.TextField {
                 id: field
                 height: parent.height
-                width: parent.width - clearBtn.width - MichiTheme.spacing.sm - parent.spacing - parent.anchors.leftMargin - parent.anchors.rightMargin
+                width: parent.width - (clearBtn.visible ? clearBtn.width : 0) - 18 - parent.spacing - parent.anchors.leftMargin - parent.anchors.rightMargin
                 font.pixelSize: MichiTheme.typography.bodySize
                 color: MichiTheme.colors.textPrimary
                 selectionColor: MichiTheme.colors.accentSelection
@@ -65,6 +68,7 @@ Item {
                 enabled: !root.loading
                 activeFocusOnTab: enabled && visible
                 verticalAlignment: TextInput.AlignVCenter
+                background: Item { }
 
                 onTextChanged: {
                     root.text = text

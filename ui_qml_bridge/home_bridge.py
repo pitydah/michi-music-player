@@ -83,14 +83,20 @@ class HomeBridge(QObject):
     def output(self):
         return self._output
 
-    @Slot()
-    def refresh(self):
-        self._load_library_stats()
-        self._load_playback()
-        self._load_sources()
-        self._load_jobs()
-        self._load_audio()
+    @Slot(result=bool)
+    def refresh(self) -> bool:
+        """Refresh the dashboard snapshot and report bridge-level failures."""
+        try:
+            self._load_library_stats()
+            self._load_playback()
+            self._load_sources()
+            self._load_jobs()
+            self._load_audio()
+        except Exception:
+            logger.exception("Home snapshot refresh failed")
+            return False
         self.snapshotChanged.emit()
+        return True
 
     def _load_library_stats(self):
         if self._lib:

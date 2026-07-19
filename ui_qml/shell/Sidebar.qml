@@ -17,24 +17,24 @@ Item {
     signal routeRequested(string route)
 
     property bool _userCollapsed: false
-    readonly property bool _autoCollapsed: parent ? parent.width < 1050 : false
-    property bool collapsed: _autoCollapsed || _userCollapsed
+    property bool forceCompact: false
+    property bool collapsed: forceCompact || _userCollapsed
 
-    width: collapsed ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
-    Behavior on width { NumberAnimation { duration: MichiTheme.motion.durationNormal; easing.type: Easing.OutCubic } }
+    implicitWidth: collapsed ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
 
     SidebarMaterial {
         anchors.fill: parent
 
         Flickable {
             anchors.fill: parent
+            contentWidth: width
             contentHeight: contentColumn.height + MichiTheme.spacing.xxl
             clip: true
             boundsBehavior: Flickable.StopAtBounds
 
             Column {
                 id: contentColumn
-                width: parent.width; spacing: 0
+                width: root.width; spacing: 0
 
                 Item { width: 1; height: MichiTheme.spacing.md }
 

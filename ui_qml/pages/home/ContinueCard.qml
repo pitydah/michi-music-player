@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../../theme"
 import "../../materials"
 import "../../components"
@@ -35,26 +36,27 @@ Item {
             onClicked: root.activate()
         }
 
-        Row {
+        RowLayout {
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.lg
             spacing: MichiTheme.spacing.lg
 
             CoverImage {
-                anchors.verticalCenter: parent.verticalCenter
-                width: 56
-                height: 56
+                Layout.alignment: Qt.AlignVCenter
+                Layout.preferredWidth: 56
+                Layout.preferredHeight: 56
                 coverRadius: MichiTheme.radius.sm
                 coverKey: root.hasPlayback ? "NOWPLAYING" : ""
                 visible: root.hasPlayback
             }
 
-            Column {
-                width: parent.width - 160
-                anchors.verticalCenter: parent.verticalCenter
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
                 spacing: MichiTheme.spacing.xs
 
                 Text {
+                    Layout.fillWidth: true
                     text: qsTr("Continuar escuchando")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.cardTitleSize
@@ -62,18 +64,18 @@ Item {
                 }
 
                 Text {
+                    Layout.fillWidth: true
                     text: root.hasPlayback
                         ? (root.trackTitle + " · " + root.trackArtist)
                         : "No hay reproducción activa"
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.metaSize
                     elide: Text.ElideRight
-                    width: parent.width
                 }
             }
 
             MichiButton {
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
                 text: root.hasPlayback ? "Reproducir" : qsTr("Sin reproducción")
                 variant: root.hasPlayback ? "accent" : "secondary"
                 enabled: root.hasPlayback

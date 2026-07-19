@@ -4,14 +4,13 @@ import QtQuick.Layouts
 import "../theme"
 import "../components"
 import "../components/foundations"
-import "../materials"
 
 Item {
+    id: root
     Accessible.role: Accessible.Pane
     Accessible.name: "Header Bar"
     objectName: "headerBar"
     focus: true
-    id: root
 
     property string pageTitle: "Inicio"
     property bool canGoBack: false
@@ -22,8 +21,6 @@ Item {
     signal backClicked()
     signal forwardClicked()
     signal breadcrumbClicked(string route)
-
-    MichiResponsive { id: responsive; availableWidth: root.width }
 
     height: MichiTheme.headerHeight
 
@@ -40,140 +37,73 @@ Item {
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: responsive.compact ? MichiTheme.spacing.md : MichiTheme.spacing.xl
-            anchors.rightMargin: responsive.compact ? MichiTheme.spacing.md : MichiTheme.spacing.xl
-            spacing: responsive.compact ? MichiTheme.spacing.sm : MichiTheme.spacing.md
+            anchors.leftMargin: MichiTheme.spacing.lg
+            anchors.rightMargin: MichiTheme.spacing.lg
+            spacing: MichiTheme.spacing.sm
 
-            // Navegación (atrás/adelante + breadcrumbs)
-            RowLayout {
+            MichiIconButton {
+                iconSource: "../../icons/nav_back.svg"
+                tooltipText: qsTr("Atrás")
+                enabled: root.canGoBack
+                onClicked: root.backClicked()
+                controlObjectName: "backButton"
+                accessibleName: qsTr("Atrás")
+            }
+
+            MichiIconButton {
+                iconSource: "../../icons/nav_forward.svg"
+                tooltipText: qsTr("Adelante")
+                enabled: root.canGoForward
+                onClicked: root.forwardClicked()
+                controlObjectName: "forwardButton"
+                accessibleName: qsTr("Adelante")
+            }
+
+            Text {
+                Layout.preferredWidth: Math.min(240, implicitWidth)
+                Layout.maximumWidth: 240
+                Layout.alignment: Qt.AlignVCenter
+                text: root.pageTitle
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.pageTitleSize
+                font.weight: MichiTheme.typography.weightSemiBold
+                elide: Text.ElideRight
+                maximumLineCount: 1
+            }
+
+            Item {
+                id: dragArea
                 Layout.fillWidth: true
-                width: 400
-                spacing: MichiTheme.spacing.xs
+                Layout.fillHeight: true
+                Accessible.ignored: true
 
-                MichiIconButton {
-                    iconSource: "../../icons/nav_back.svg"
-                    tooltipText: "Atrás"
-                    btnSize: responsive.compact ? 24 : 28
-                    enabled: root.canGoBack
-                    onClicked: root.backClicked()
-                    objectName: "backButton"
-                    accessibleName: "Atrás"
-                }
-
-                MichiIconButton {
-                    iconSource: "../../icons/nav_forward.svg"
-                    tooltipText: "Adelante"
-                    btnSize: responsive.compact ? 24 : 28
-                    enabled: root.canGoForward
-                    onClicked: root.forwardClicked()
-                    objectName: "forwardButton"
-                    accessibleName: "Adelante"
-                }
-
-                Item { width: MichiTheme.spacing.sm; height: 1 }
-
-                // Breadcrumbs
-                Row {
-                    id: breadcrumbRow
-                    Layout.alignment: Qt.AlignVCenter
-                    spacing: MichiTheme.spacing.xs
-                    visible: root.routeHistory.length > 0
-                    width: 250
-                    clip: true
-
-                    Repeater {
-                        model: {
-                            if (responsive.compact && root.routeHistory.length > 1)
-                                return [root.routeHistory[root.routeHistory.length - 1]]
-                            return root.routeHistory
-                        }
-
-                        delegate: Row {
-                            spacing: MichiTheme.spacing.xs
-
-                            Text {
-                                text: typeof modelData === 'object' ? modelData.title : modelData
-                                color: index < (responsive.compact ? 0 : root.routeHistory.length - 1) ? MichiTheme.colors.textMuted : MichiTheme.colors.textPrimary
-                                font.pixelSize: MichiTheme.typography.secondarySize
-                                font.weight: index < (responsive.compact ? 0 : root.routeHistory.length - 1) ? MichiTheme.typography.weightNormal : MichiTheme.typography.weightSemiBold
-                                height: parent.height
-                                verticalAlignment: Text.AlignVCenter
-                                elide: Text.ElideRight
-                                width: 120
-                            }
-
-                            Text {
-                                text: qsTr("/")
-                                color: MichiTheme.colors.textMeta
-                                font.pixelSize: MichiTheme.typography.secondarySize
-                                height: parent.height
-                                verticalAlignment: Text.AlignVCenter
-                                visible: index < (responsive.compact ? 0 : root.routeHistory.length - 1)
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                enabled: index < (responsive.compact ? 0 : root.routeHistory.length - 1)
-                                onClicked: root.breadcrumbClicked(typeof modelData === 'object' ? modelData.route : modelData)
-                            }
-                        }
+                DragHandler {
+                    target: null
+                    acceptedButtons: Qt.LeftButton
+                    onActiveChanged: {
+                        if (active && root.mainWindow && root.mainWindow.startSystemMove)
+                            root.mainWindow.startSystemMove()
                     }
-                }
-
-                // Título de página (solo si no está ya en breadcrumbs)
-                Text {
-                    text: root.pageTitle
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: responsive.compact ? MichiTheme.typography.bodySize : MichiTheme.typography.pageTitleSize
-                    font.weight: MichiTheme.typography.weightSemiBold
-                    Layout.alignment: Qt.AlignVCenter
-                    leftPadding: root.routeHistory.length > 0 ? 0 : MichiTheme.spacing.sm
-                    visible: root.routeHistory.length === 0
-                    elide: Text.ElideRight
-                    maximumLineCount: 1
-                    width: 200
                 }
             }
 
-            // Espacio flexible
-            Item { Layout.fillWidth: true; height: 1 }
-
-            // Búsqueda
             MichiSearchField {
                 id: searchField
                 Layout.alignment: Qt.AlignVCenter
+                Layout.preferredWidth: Math.min(340, Math.max(220, root.width * 0.28))
+                Layout.maximumWidth: 340
                 placeholderText: qsTr("Buscar en Michi...")
-                implicitWidth: responsive.compact ? Math.min(160, root.width * 0.2) : Math.min(280, root.width * 0.25)
                 objectName: "searchField"
-                Accessible.name: "Buscar en Michi"
+                Accessible.name: qsTr("Buscar en Michi")
             }
 
-            // Botón modo claro/oscuro
             MichiIconButton {
                 id: themeBtn
-                objectName: "headerThemeToggle"
-                iconText: MichiTheme.darkMode ? "\u2600" : "\u263D"
-                tooltipText: MichiTheme.darkMode ? "Modo claro" : "Modo oscuro"
-                Accessible.name: tooltipText
-                btnSize: 28
+                controlObjectName: "headerThemeToggle"
+                iconSource: MichiTheme.darkMode ? "../../icons/theme_sun.svg" : "../../icons/theme_moon.svg"
+                tooltipText: MichiTheme.darkMode ? qsTr("Modo claro") : qsTr("Modo oscuro")
+                accessibleName: tooltipText
                 onClicked: MichiTheme.setDarkMode(!MichiTheme.darkMode)
-            }
-
-            // Botón maximizar/restaurar
-            MichiIconButton {
-                id: maxBtn
-                objectName: "headerMaximizeButton"
-                iconText: root.mainWindow && root.mainWindow.visibility === Window.Maximized ? "\u25A1" : "\u25A2"
-                tooltipText: root.mainWindow && root.mainWindow.visibility === Window.Maximized ? "Restaurar" : "Maximizar"
-                Accessible.name: tooltipText
-                btnSize: 28
-                onClicked: {
-                    if (root.mainWindow && root.mainWindow.visibility === Window.Maximized)
-                        root.mainWindow.showNormal()
-                    else if (root.mainWindow)
-                        root.mainWindow.showMaximized()
-                }
             }
         }
     }

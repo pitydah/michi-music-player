@@ -34,7 +34,7 @@ Item {
             from: 0
             to: Math.max(1, root.duration)
             value: root.position
-            enabled: root.duration > 0
+            enabled: root.enabled && root.duration > 0
             showThumb: enabled && (pressed || hovered || root.position > 0)
             onValueChanged: { if (pressed) root.seekRequested(value) }
             onCommit: root.seekRequested(value)

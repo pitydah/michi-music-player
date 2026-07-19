@@ -15,6 +15,7 @@ Item {
     property bool playPauseSupported: true
     property bool shuffleSupported: true
     property bool repeatSupported: true
+    property bool compact: false
 
     signal playClicked()
     signal prevClicked()
@@ -22,17 +23,17 @@ Item {
     signal shuffleClicked()
     signal repeatClicked()
 
-    implicitHeight: 54
-    implicitWidth: 240
+    implicitHeight: compact ? 46 : 54
+    implicitWidth: compact ? 222 : 250
 
     Row {
         anchors.centerIn: parent
-        spacing: 11
+        spacing: 7
 
         TransportButton {
             id: shuffleBtn
-            btnSize: 40
-            iconSize: 20
+            btnSize: root.compact ? 36 : 40
+            iconSize: root.compact ? 18 : 20
             iconSource: "../../icons/nowplaying_clean/warm_shuffle_32.png"
             tooltipText: root.shuffleSupported ? "Aleatorio" : "No soportado"
             enabled: root.shuffleSupported
@@ -44,8 +45,8 @@ Item {
 
         TransportButton {
             id: prevBtn
-            btnSize: 44
-            iconSize: 26
+            btnSize: root.compact ? 38 : 44
+            iconSize: root.compact ? 22 : 26
             iconSource: "../../icons/nowplaying_clean/warm_prev_32.png"
             tooltipText: root.previousSupported ? "Anterior" : "No soportado"
             enabled: root.previousSupported
@@ -53,8 +54,8 @@ Item {
         }
 
         Item {
-            width: 54
-            height: 54
+            width: root.compact ? 46 : 54
+            height: width
 
             Rectangle {
                 anchors.fill: parent
@@ -77,8 +78,8 @@ Item {
                 Image {
                     anchors.centerIn: parent
                     source: root.isPlaying ? "../../icons/nowplaying_clean/warm_pause_32.png" : "../../icons/nowplaying_clean/warm_play_32.png"
-                    sourceSize.width: root.isPlaying ? 32 : 34
-                    sourceSize.height: root.isPlaying ? 32 : 34
+                    sourceSize.width: root.compact ? 28 : (root.isPlaying ? 32 : 34)
+                    sourceSize.height: root.compact ? 28 : (root.isPlaying ? 32 : 34)
                     fillMode: Image.PreserveAspectFit
                 }
 
@@ -112,8 +113,8 @@ Item {
 
         TransportButton {
             id: nextBtn
-            btnSize: 44
-            iconSize: 26
+            btnSize: root.compact ? 38 : 44
+            iconSize: root.compact ? 22 : 26
             iconSource: "../../icons/nowplaying_clean/warm_next_32.png"
             tooltipText: root.nextSupported ? "Siguiente" : "No soportado"
             enabled: root.nextSupported
@@ -122,8 +123,8 @@ Item {
 
         TransportButton {
             id: repeatBtn
-            btnSize: 40
-            iconSize: 20
+            btnSize: root.compact ? 36 : 40
+            iconSize: root.compact ? 18 : 20
             iconSource: "../../icons/nowplaying_clean/warm_repeat_32.png"
             tooltipText: root.repeatSupported ? (root.repeatMode === "one" ? "Repetir una" : "Repetir todo") : "No soportado"
             enabled: root.repeatSupported

@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import "../../theme"
 import "../../materials"
 import "../../components"
@@ -17,7 +18,7 @@ Item {
 
     signal openLibrary()
 
-    implicitHeight: 160
+    implicitHeight: 190
 
     GlassMaterial {
         anchors.fill: parent
@@ -33,10 +34,10 @@ Item {
             onClicked: root.openLibrary()
         }
 
-        Column {
+        ColumnLayout {
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.lg
-            spacing: MichiTheme.spacing.md
+            spacing: MichiTheme.spacing.sm
 
             Text {
                 text: qsTr("Biblioteca")
@@ -46,15 +47,16 @@ Item {
             }
 
             Loader {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
                 sourceComponent: root.hasData ? statsComponent : emptyComponent
-                width: parent.width
             }
 
             MichiButton {
                 Accessible.role: Accessible.Button
 
                 activeFocusOnTab: true
-
+                Layout.alignment: Qt.AlignLeft
                 text: qsTr("Explorar biblioteca")
                 variant: "secondary"
                 onClicked: root.openLibrary()
@@ -64,9 +66,11 @@ Item {
 
     Component {
         id: statsComponent
-        Row {
+        RowLayout {
+            width: parent ? parent.width : implicitWidth
             spacing: MichiTheme.spacing.xl
             Column {
+                Layout.fillWidth: true
                 spacing: MichiTheme.spacing.xs
                 Text {
                     text: root.albums
@@ -81,6 +85,7 @@ Item {
                 }
             }
             Column {
+                Layout.fillWidth: true
                 spacing: MichiTheme.spacing.xs
                 Text {
                     text: root.artists
@@ -95,6 +100,7 @@ Item {
                 }
             }
             Column {
+                Layout.fillWidth: true
                 spacing: MichiTheme.spacing.xs
                 Text {
                     text: root.tracks

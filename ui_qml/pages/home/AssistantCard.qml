@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import "../../theme"
 import "../../materials"
 import "../../components"
@@ -12,7 +13,7 @@ Item {
 
     signal openAssistant()
 
-    implicitHeight: MichiTheme.density.comfortable + MichiTheme.spacing.xl * 2
+    implicitHeight: 112
 
     GlassMaterial {
         anchors.fill: parent
@@ -28,17 +29,18 @@ Item {
             onClicked: root.openAssistant()
         }
 
-        Row {
+        RowLayout {
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.lg
             spacing: MichiTheme.spacing.lg
 
-            Column {
-                anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - 140
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
                 spacing: MichiTheme.spacing.xs
 
                 Text {
+                    Layout.fillWidth: true
                     text: qsTr("Asistente Michi")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.cardTitleSize
@@ -49,9 +51,9 @@ Item {
                     text: qsTr("Pregunta sobre tu música, recibe sugerencias y controla tu biblioteca con IA.")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.metaSize
-                    width: parent.width
                     wrapMode: Text.WordWrap
-                    lineHeight: 1.4
+                    maximumLineCount: 2
+                    elide: Text.ElideRight
                 }
             }
 
@@ -60,7 +62,7 @@ Item {
 
                 activeFocusOnTab: true
 
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
                 text: qsTr("Abrir")
                 variant: "ghost"
                 onClicked: root.openAssistant()

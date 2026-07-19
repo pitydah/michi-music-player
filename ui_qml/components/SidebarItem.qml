@@ -29,8 +29,8 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        anchors.leftMargin: MichiTheme.spacing.sm
-        anchors.rightMargin: MichiTheme.spacing.sm
+        anchors.leftMargin: root.collapsed ? 6 : MichiTheme.spacing.sm
+        anchors.rightMargin: root.collapsed ? 6 : MichiTheme.spacing.sm
         radius: MichiTheme.radius.sm
         color: {
             if (root.active) return MichiTheme.colors.accentSelection
@@ -54,26 +54,28 @@ Item {
 
         Row {
             anchors.left: parent.left
-            anchors.leftMargin: MichiTheme.spacing.lg
+            anchors.leftMargin: root.collapsed ? Math.round((parent.width - 20) / 2) : MichiTheme.spacing.md
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 12
+            spacing: MichiTheme.spacing.md
 
-            Rectangle {
-                width: 28
-                height: 28
-                radius: MichiTheme.radius.xs
-                color: root.active ? MichiTheme.colors.accentSurface : "transparent"
+            Item {
+                width: 20
+                height: 20
                 anchors.verticalCenter: parent.verticalCenter
                 visible: root.iconSource !== ""
 
                 Image {
+                    id: navIcon
+                    objectName: "sidebarIcon_" + root.route
+                    property int loadStatus: status
                     anchors.centerIn: parent
-                    width: 18
-                    height: 18
+                    width: 20
+                    height: 20
                     source: root.iconSource
-                    sourceSize.width: 18
-                    sourceSize.height: 18
+                    sourceSize.width: 20
+                    sourceSize.height: 20
                     fillMode: Image.PreserveAspectFit
+                    opacity: root.active ? 1.0 : 0.82
                 }
             }
 
@@ -84,6 +86,8 @@ Item {
                 font.weight: root.active ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
                 anchors.verticalCenter: parent.verticalCenter
                 visible: !root.collapsed
+                width: Math.max(0, parent.parent.width - 56)
+                elide: Text.ElideRight
             }
         }
 

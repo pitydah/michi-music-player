@@ -11,10 +11,13 @@ Item {
     property bool transmitActive: false
     property string transmitDeviceName: ""
     property bool transmitSupported: true
+    property bool queueSupported: true
+    property bool showMiniPlayer: true
 
     signal eqClicked()
     signal transmitClicked()
     signal outputClicked()
+    signal queueClicked()
     signal miniPlayerClicked()
 
     implicitHeight: 44
@@ -39,6 +42,7 @@ Item {
             btnSize: 40
             tooltipText: root.transmitActive && root.transmitDeviceName ? root.transmitDeviceName : "Transmitir a dispositivo"
             enabled: root.transmitSupported
+            visible: root.transmitSupported
             active: root.transmitActive
             activeColor: MichiTheme.colors.nowPlayingTransmitActive
             activeBorderColor: MichiTheme.colors.nowPlayingTransmitActiveBorder
@@ -54,10 +58,20 @@ Item {
         }
 
         UtilityButton {
+            iconSource: "../../icons/sidebar/queue.svg"
+            iconVisualSize: 20
+            btnSize: 40
+            tooltipText: "Abrir cola"
+            enabled: root.queueSupported
+            onClicked: root.queueClicked()
+        }
+
+        UtilityButton {
             iconSource: "../../icons/nowplaying_clean/warm_mini_player_32.png"
             iconVisualSize: 22
             btnSize: 44
             tooltipText: "Abrir mini reproductor"
+            visible: root.showMiniPlayer
             onClicked: root.miniPlayerClicked()
         }
     }

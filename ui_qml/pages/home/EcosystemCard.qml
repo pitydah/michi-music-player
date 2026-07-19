@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import "../../theme"
 import "../../materials"
 import "../../components"
@@ -16,7 +17,7 @@ Item {
     signal openConnections()
     signal openHomeAudio()
 
-    implicitHeight: 160
+    implicitHeight: 210
 
     GlassMaterial {
         anchors.fill: parent
@@ -31,10 +32,10 @@ Item {
             cursorShape: Qt.PointingHandCursor
         }
 
-        Column {
+        ColumnLayout {
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.lg
-            spacing: MichiTheme.spacing.md
+            spacing: MichiTheme.spacing.sm
 
             Text {
                 text: qsTr("Ecosistema Michi")
@@ -43,7 +44,8 @@ Item {
                 font.weight: MichiTheme.typography.weightSemiBold
             }
 
-            Row {
+            RowLayout {
+                Layout.fillWidth: true
                 spacing: MichiTheme.spacing.sm
                 StatusBadge {
                     text: {
@@ -65,14 +67,19 @@ Item {
             }
 
             Text {
+                Layout.fillWidth: true
                 text: qsTr("Michi Micro Server — Servidor musical doméstico del ecosistema Michi")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
-                width: parent.width
                 wrapMode: Text.WordWrap
+                maximumLineCount: 2
+                elide: Text.ElideRight
             }
 
-            Row {
+            Item { Layout.fillHeight: true }
+
+            RowLayout {
+                Layout.fillWidth: true
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
                     Accessible.role: Accessible.Button
@@ -84,6 +91,7 @@ Item {
                     onClicked: root.openConnections()
                 }
                 MichiButton {
+                    Layout.alignment: Qt.AlignLeft
                     text: qsTr("Home Audio")
                     variant: "secondary"
                     onClicked: root.openHomeAudio()

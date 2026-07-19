@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../../theme"
 import "../../materials"
 import "../../components"
@@ -11,86 +12,87 @@ Item {
     focus: true
     id: root
 
-    implicitHeight: Math.max(160, MichiTheme.typography.heroTitleSize * 6)
+    property string message: qsTr("Tu biblioteca y el ecosistema Michi, listos en un solo lugar.")
+    property string primaryText: qsTr("Explorar biblioteca")
+    property string secondaryText: qsTr("Conectar servidor")
+
+    signal primaryAction()
+    signal secondaryAction()
+
+    implicitHeight: width < 900 ? 112 : width < 1500 ? 132 : 148
 
     HeroMaterial {
         anchors.fill: parent
         radius: MichiTheme.radius.lg
-        showGlow: true
+        showGlow: false
 
-        Row {
+        RowLayout {
             anchors.fill: parent
-            anchors.margins: MichiTheme.spacing.xl
-            spacing: MichiTheme.spacing.xl
+            anchors.margins: root.width < 900 ? MichiTheme.spacing.md : MichiTheme.spacing.lg
+            spacing: root.width < 900 ? MichiTheme.spacing.md : MichiTheme.spacing.lg
 
-            Column {
-                width: parent.width * 0.60
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: MichiTheme.spacing.md
+            Rectangle {
+                Layout.preferredWidth: root.width < 900 ? 64 : 80
+                Layout.preferredHeight: width
+                Layout.alignment: Qt.AlignVCenter
+                radius: MichiTheme.radius.md
+                color: MichiTheme.colors.accentSurface
+                border.color: MichiTheme.colors.borderFocus
+                border.width: MichiTheme.borderWidth
+
+                Image {
+                    anchors.centerIn: parent
+                    width: parent.width * 0.58
+                    height: width
+                    source: "../../../icons/app_icon.svg"
+                    sourceSize.width: 64
+                    sourceSize.height: 64
+                    fillMode: Image.PreserveAspectFit
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
+                spacing: MichiTheme.spacing.xs
 
                 Text {
+                    objectName: "homeHeroTitle"
                     text: qsTr("Centro Michi")
                     color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.heroTitleSize
+                    font.pixelSize: root.width < 900 ? MichiTheme.typography.sectionTitleSize : MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightBold
                 }
 
                 Text {
-                    text: qsTr("Tu ecosistema musical. Biblioteca, servidores, Home Audio y asistente en un solo lugar.")
+                    objectName: "homeHeroMessage"
+                    Layout.fillWidth: true
+                    text: root.message
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.bodySize
-                    width: parent.width
                     wrapMode: Text.WordWrap
-                    lineHeight: 1.5
-                }
-
-                Row {
-                    spacing: MichiTheme.spacing.sm
-
-                    MichiButton {
-                        Accessible.role: Accessible.Button
-                        text: qsTr("Continuar escuchando")
-                        variant: "primary"
-                        onClicked: {
-                            if (typeof navigationBridge !== "undefined" && navigationBridge)
-                                navigationBridge.navigate("playback")
-                        }
-                    }
-
-                    MichiButton {
-                        text: qsTr("Explorar")
-                        variant: "ghost"
-                        onClicked: {
-                            if (typeof navigationBridge !== "undefined" && navigationBridge)
-                                navigationBridge.navigate("library")
-                        }
-                    }
+                    maximumLineCount: 2
+                    elide: Text.ElideRight
                 }
             }
 
-            Item {
-                width: parent.width * 0.35
-                height: parent.height
-                anchors.verticalCenter: parent.verticalCenter
+            ColumnLayout {
+                Layout.preferredWidth: root.width < 900 ? 150 : 176
+                Layout.alignment: Qt.AlignVCenter
+                spacing: MichiTheme.spacing.xs
 
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: 100
-                    height: 100
-                    radius: width / 2
-                    color: MichiTheme.colors.accentSurface
-                    border.color: MichiTheme.colors.borderFocus
-                    border.width: MichiTheme.borderWidth
+                MichiButton {
+                    Layout.fillWidth: true
+                    text: root.primaryText
+                    variant: "primary"
+                    onClicked: root.primaryAction()
+                }
 
-                    Image {
-                        anchors.centerIn: parent
-                        width: 48
-                        height: 48
-                        source: "../../../icons/app_icon.svg"
-                        sourceSize.width: 48
-                        sourceSize.height: 48
-                        fillMode: Image.PreserveAspectFit
-                    }
+                MichiButton {
+                    Layout.fillWidth: true
+                    text: root.secondaryText
+                    variant: "ghost"
+                    onClicked: root.secondaryAction()
                 }
             }
         }
