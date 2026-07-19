@@ -37,8 +37,8 @@ def test_page_stack_loads_route_inside_canonical_surface(qapp) -> None:
     assert container is not None
     assert surface is not None
     assert content is not None
-    assert surface.width() < stack.width()
-    assert surface.height() < stack.height()
+    assert surface.property("width") < stack.property("width")
+    assert surface.property("height") < stack.property("height")
 
     stack.deleteLater()
     registry.deleteLater()
@@ -56,6 +56,7 @@ def test_now_playing_utility_routes_load_functional_pages(qapp) -> None:
     assert stack is not None, component.errorString()
 
     for route, object_name in (
+        ("library", "libraryPage_control"),
         ("equalizer", "equalizerPage"),
         ("audio_lab.output_profiles", "outputProfilesPage"),
         ("queue", "queuePage_control"),

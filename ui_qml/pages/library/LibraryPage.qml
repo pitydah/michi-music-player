@@ -5,6 +5,7 @@ import QtQuick.Dialogs
 import "../../theme"
 import "../../components"
 import "../../components/foundations"
+import "../../components/layout"
 import "../../materials"
 
 Item {
@@ -60,7 +61,7 @@ Item {
     }
 
     function clearFilters() {
-        navBar.clearSearch()
+        toolbar.clearSearch()
         filterBar.clearAll()
         if (root.lib && typeof root.lib.clearFilters !== "undefined")
             root.lib.clearFilters()
@@ -112,28 +113,34 @@ Item {
     }
 
     Column {
-        anchors.fill: parent; spacing: MichiTheme.spacing.xxs
+        anchors.fill: parent
+        anchors.margins: responsive.compact ? MichiTheme.spacing.md : MichiTheme.spacing.xl
+        spacing: MichiTheme.spacing.md
+
+        MichiPageHeader {
+            id: pageHeader
+            width: parent.width
+            title: qsTr("Biblioteca")
+            subtitle: root.lib && root.lib.songCount > 0
+                      ? qsTr("%1 canciones · %2 álbumes · %3 artistas")
+                        .arg(root.lib.songCount).arg(root.lib.albumCount).arg(root.lib.artistCount)
+                      : qsTr("Explora y organiza tu colección musical")
+        }
 
         MichiLibraryToolbar {
             id: toolbar
             width: parent.width
-            title: qsTr("Biblioteca")
-            filterModel: ["Canciones", "Álbumes", "Artistas", "Géneros"]
+            showTitle: false
+            filterModel: ["Canciones", "Álbumes", "Artistas", "Carpetas"]
             currentFilterIndex: root._currentLibrarySection
+            searchText: pageState.searchText
             onFilterChanged: function(idx) { root._currentLibrarySection = idx; pageState.currentTab = idx }
             onSearchChanged: function(text) {
                 if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(text)
                 root._searchActive = text.length > 0
+                pageState.searchText = text
             }
             onRefreshRequested: root.refreshData()
-        }
-
-        LibraryNavigationBar {
-            id: navBar; width: parent.width
-            visible: false
-            onSearchTextUpdated: { if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(text); root._searchActive = text.length > 0; pageState.searchText = text }
-            Keys.onReturnPressed: { if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(navBar.searchText) }
-            Keys.onEscapePressed: { navBar.clearSearch(); root._searchActive = false; pageState.searchText = "" }
         }
 
         LibraryFilterBar {
@@ -156,7 +163,11 @@ Item {
         StackLayout {
             id: stackContainer
             width: parent.width
-            height: parent.height - filterBar.height - statusHeader.height - selectionBar.height
+            height: Math.max(0, parent.height - pageHeader.height - toolbar.height
+                             - filterBar.height
+                             - (statusHeader.visible ? statusHeader.height : 0)
+                             - (selectionBar.visible ? selectionBar.height : 0)
+                             - MichiTheme.spacing.md * 4)
             currentIndex: root._currentLibrarySection
             onCurrentIndexChanged: { root._currentLibrarySection = currentIndex; pageState.currentTab = currentIndex }
 
@@ -315,4 +326,6 @@ Item {
         function onStateChanged() { root._updateState() }
         function onDataChanged() { root._updateState() }
     }
+
+    Component.onCompleted: root._updateState()
 }

@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import "../theme"
 import "."
 
@@ -6,6 +7,7 @@ Item {
     id: root
 
     property string title: qsTr("Biblioteca")
+    property bool showTitle: true
     property var filterModel: []
     property int currentFilterIndex: 0
     property string searchText: ""
@@ -25,6 +27,11 @@ Item {
     signal addMusicRequested()
     signal selectionActionRequested(string action)
 
+    function clearSearch() {
+        searchField.clear()
+        root.searchText = ""
+    }
+
     Accessible.role: Accessible.ToolBar
     Accessible.name: "Barra de biblioteca"
 
@@ -34,44 +41,57 @@ Item {
         anchors.fill: parent
         color: "transparent"
 
-        Row {
+        RowLayout {
             anchors.fill: parent
             anchors.leftMargin: MichiTheme.spacing.md
             anchors.rightMargin: MichiTheme.spacing.md
             spacing: MichiTheme.spacing.sm
 
             Text {
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
                 text: root.selectionActive ? root.selectedCount + " seleccionados" : root.title
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
-                width: Math.min(implicitWidth, 160)
+                Layout.maximumWidth: 180
+                visible: root.showTitle || root.selectionActive
                 elide: Text.ElideRight
             }
 
             MichiSegmentedControl {
                 id: filterTabs
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
+                Layout.preferredWidth: 360
+                Layout.maximumWidth: 420
                 model: root.filterModel
                 currentIndex: root.currentFilterIndex
                 visible: root.filterModel.length > 0 && !root.selectionActive
-                implicitWidth: Math.min(320, parent.width * 0.3)
                 onActivated: root.filterChanged(index)
             }
 
-            Item { height: 1; width: parent.width * 0.1 }
+            Item { Layout.fillWidth: true }
 
             MichiSearchField {
-                anchors.verticalCenter: parent.verticalCenter
+                id: searchField
+                Layout.alignment: Qt.AlignVCenter
+                Layout.preferredWidth: 240
+                Layout.maximumWidth: 320
                 placeholderText: qsTr("Buscar en biblioteca...")
-                implicitWidth: Math.min(200, parent.width * 0.2)
                 visible: !root.selectionActive
-                onTextChanged: root.searchChanged(text)
+                text: root.searchText
+                debounceMs: 250
+                onSearchTextChanged: function(query) {
+                    root.searchText = query
+                    root.searchChanged(query)
+                }
+                onClearRequested: {
+                    root.searchText = ""
+                    root.searchChanged("")
+                }
             }
 
             Row {
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
                 spacing: MichiTheme.spacing.xs
                 visible: !root.selectionActive
 
@@ -88,7 +108,7 @@ Item {
                 }
 
                 MichiIconButton {
-                    iconSource: "../../icons/nav_back.svg"
+                    iconSource: "../../icons/refresh.svg"
                     tooltipText: "Refrescar"
                     btnSize: 28
                     onClicked: root.refreshRequested()
@@ -96,7 +116,7 @@ Item {
             }
 
             Row {
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
                 spacing: MichiTheme.spacing.xs
                 visible: root.selectionActive
 
