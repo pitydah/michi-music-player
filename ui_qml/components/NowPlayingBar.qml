@@ -170,7 +170,7 @@ Item {
                         queueSupported: root._hasTrack && root.bridgeValue("queueSupported", false)
                         showMiniPlayer: root.width >= 1180
                         onEqClicked: if (typeof navigationBridge !== "undefined") navigationBridge.navigate("equalizer")
-                        onTransmitClicked: { }
+                        onTransmitClicked: if (typeof navigationBridge !== "undefined") navigationBridge.navigate("home_audio")
                         onOutputClicked: outputPopup.open()
                         onQueueClicked: if (typeof navigationBridge !== "undefined") navigationBridge.navigate("queue")
                         onMiniPlayerClicked: if (typeof navigationBridge !== "undefined") navigationBridge.navigate("playback")

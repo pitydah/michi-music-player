@@ -38,14 +38,16 @@ Item {
     function updateState() {
         if (!root.hb) {
             root.setHomeState(HomePage.ERROR, qsTr("Servicio de inicio no disponible"))
-        } else if (root.libraryTracks > 0) {
-            root.setHomeState(HomePage.READY, "")
-        } else if (root.sourcesCount === 0) {
+        } else if (root.hb.loading) {
+            root.setHomeState(HomePage.LOADING, qsTr("Actualizando estado"))
+        } else if (root.hb.errorMessage !== "") {
+            root.setHomeState(HomePage.ERROR, root.hb.errorMessage)
+        } else if (root.hb.ready && !root.hb.hasLibrary && root.sourcesCount === 0) {
             root.setHomeState(HomePage.EMPTY, "")
-        } else if (root.activeJobs > 0) {
-            root.setHomeState(HomePage.LOADING, qsTr("Escaneando tu biblioteca"))
+        } else if (root.hb.ready && root.hb.hasLibrary) {
+            root.setHomeState(HomePage.READY, "")
         } else {
-            root.setHomeState(HomePage.READY, qsTr("Fuente configurada. Inicia un escaneo para añadir música."))
+            root.setHomeState(HomePage.LOADING, qsTr("Escaneando tu biblioteca"))
         }
     }
 
@@ -56,9 +58,11 @@ Item {
         }
         root.setHomeState(HomePage.LOADING, qsTr("Actualizando Inicio"))
         try {
-            var ok = root.hb.refresh()
-            if (ok === false)
-                root.setHomeState(HomePage.ERROR, qsTr("No se pudo actualizar Inicio"))
+            var result = root.hb.refresh()
+            if (result && result.ok === false)
+                root.setHomeState(HomePage.ERROR, result.errors && result.errors.length > 0
+                    ? result.errors.map(function(e) { return e.section }).join(", ")
+                    : qsTr("No se pudo actualizar Inicio"))
             else
                 root.updateState()
         } catch (error) {

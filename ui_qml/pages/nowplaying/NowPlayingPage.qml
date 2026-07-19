@@ -20,7 +20,7 @@ Item {
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false
     property bool _showError: false
     property string _errorText: ""
-    property int pageState: !root.ps ? stateError : !root._hasTrack ? stateEmpty : stateReady
+    property int pageState: !root.ps ? stateError : (root.ps.commandPending ? stateLoading : !root._hasTrack ? stateEmpty : stateReady)
 
     readonly property int stateLoading: 0
     readonly property int stateReady: 1
@@ -41,13 +41,19 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
-        sourceComponent: ErrorState { message: qsTr("Reproducción no disponible") }
+        sourceComponent: ErrorState {
+            message: qsTr("Reproducción no disponible")
+        }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: qsTr("Sin reproducción activa") }
+        sourceComponent: EmptyState {
+            title: qsTr("Sin reproducción activa")
+            actionText: qsTr("Explorar biblioteca")
+            onActionClicked: if (root.nav) root.nav.navigate("library")
+        }
     }
 
     Flickable {
