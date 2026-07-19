@@ -9,648 +9,146 @@ Item {
     objectName: "settingsPage"
     focus: true
 
+    property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
+    property var navigation: typeof navigationBridge !== "undefined" ? navigationBridge : null
+    property string transactionMessage: ""
+    property bool transactionBusy: false
+
     Accessible.role: Accessible.Pane
-    Accessible.name: "Ajustes"
+    Accessible.name: qsTr("Ajustes")
 
-    property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : (typeof settingsBridge !== "undefined" ? settingsBridge : null)
-    property int pageState: root.bridge ? stateReady : stateError
-
-    readonly property int stateLoading: 0
-    readonly property int stateReady: 1
-    readonly property int stateError: 2
-    readonly property int stateEmpty: 3
-
-    property string selectedCategoryId: ""
-    property var selectedCategory: null
-    property string selectedSectionId: ""
-    property var selectedSection: null
-    property var selectedEntry: null
-    property string searchQuery: ""
-    property var shownCategories: []
-    property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
-
-    signal closeRequested()
-
-    function openCategory(catId) {
-        root.selectedCategoryId = catId
-        root.selectedCategory = null
-        root.selectedSectionId = ""
-        root.selectedSection = null
-        root.selectedEntry = null
-        var cats = root.bridge ? root.bridge.categories : []
-        for (var i = 0; i < cats.length; i++) {
-            if (cats[i].id === catId) {
-                root.selectedCategory = cats[i]
-                break
-            }
-        }
+    function reloadContent() {
+        contentLoader.active = false
+        Qt.callLater(function() { contentLoader.active = true })
     }
 
-    function openSection(sectionId) {
-        root.selectedSectionId = sectionId
-        root.selectedSection = null
-        root.selectedEntry = null
-        if (!root.selectedCategory) return
-        for (var i = 0; i < root.selectedCategory.sections.length; i++) {
-            if (root.selectedCategory.sections[i].id === sectionId) {
-                root.selectedSection = root.selectedCategory.sections[i]
-                break
-            }
-        }
-    }
-
-    function openEntry(entryKey) {
-        root.selectedEntry = null
-        if (!root.selectedSection) return
-        for (var i = 0; i < root.selectedSection.entries.length; i++) {
-            if (root.selectedSection.entries[i].key === entryKey) {
-                root.selectedEntry = root.selectedSection.entries[i]
-                break
-            }
-        }
-    }
-
-    function searchCategories(query) {
-        root.searchQuery = query
-        if (!query || !root.bridge) {
-            root.shownCategories = root.bridge ? root.bridge.categories : []
+    function applyChanges(continueNavigation) {
+        if (!root.bridge) return
+        root.transactionBusy = true
+        var result = root.bridge.commitAll()
+        root.transactionBusy = false
+        if (!result || !result.ok) {
+            root.transactionMessage = qsTr("No se pudieron confirmar los cambios.")
             return
         }
-        var q = query.toLowerCase()
-        var cats = root.bridge.categories
-        var filtered = []
-        for (var i = 0; i < cats.length; i++) {
-            var cat = cats[i]
-            var match = cat.title.toLowerCase().indexOf(q) >= 0
-            if (!match && cat.sections) {
-                for (var j = 0; j < cat.sections.length; j++) {
-                    var sec = cat.sections[j]
-                    if (sec.title.toLowerCase().indexOf(q) >= 0) {
-                        match = true
-                        break
-                    }
-                    if (sec.entries) {
-                        for (var k = 0; k < sec.entries.length; k++) {
-                            var ent = sec.entries[k]
-                            if (ent.label.toLowerCase().indexOf(q) >= 0 ||
-                                ent.key.toLowerCase().indexOf(q) >= 0) {
-                                match = true
-                                break
-                            }
-                        }
-                        if (match) break
-                    }
-                }
-            }
-            if (match) filtered.push(cat)
-        }
-        root.shownCategories = filtered
+        root.transactionMessage = qsTr("Cambios aplicados.")
+        root.reloadContent()
+        if (continueNavigation && root.navigation)
+            root.navigation.resolvePendingNavigation("apply")
     }
 
-    function resetCategory(catId) {
-        if (!root.bridge || !catId) return
-        var cats = root.bridge.categories
-        for (var i = 0; i < cats.length; i++) {
-            if (cats[i].id === catId && cats[i].sections) {
-                for (var j = 0; j < cats[i].sections.length; j++) {
-                    var sec = cats[i].sections[j]
-                    if (sec.entries) {
-                        for (var k = 0; k < sec.entries.length; k++) {
-                            root.bridge.resetValue(sec.entries[k].key)
-                        }
-                    }
-                }
-                if (root.notif) root.notif.showMessage("Categoría restaurada", "info")
-                break
-            }
+    function discardChanges(continueNavigation) {
+        if (!root.bridge) return
+        root.transactionBusy = true
+        var result = root.bridge.rollbackAll()
+        root.transactionBusy = false
+        if (!result || !result.ok) {
+            root.transactionMessage = qsTr("No se pudieron restaurar todos los ajustes.")
+            return
         }
-    }
-
-    function resetAll() {
-        if (root.bridge) {
-            root.bridge.resetAll()
-            if (root.notif) root.notif.showMessage("Todos los ajustes restaurados", "info")
-        }
-    }
-
-    function back() {
-        if (root.selectedEntry) {
-            root.selectedEntry = null
-        } else if (root.selectedSection) {
-            root.selectedSection = null
-            root.selectedSectionId = ""
-        } else if (root.selectedCategory) {
-            root.selectedCategory = null
-            root.selectedCategoryId = ""
-            root.selectedSection = null
-            root.selectedSectionId = ""
-            root.selectedEntry = null
-        }
-    }
-
-    function hasChanges() {
-        return false
+        root.transactionMessage = qsTr("Se restauraron los valores anteriores.")
+        root.reloadContent()
+        if (continueNavigation && root.navigation)
+            root.navigation.resolvePendingNavigation("discard")
     }
 
     Component.onCompleted: {
-        root.shownCategories = root.bridge ? root.bridge.categories : []
-        if (root.bridge && typeof root.bridge.refresh !== "undefined")
-            root.bridge.refresh()
+        if (root.navigation && root.bridge)
+            root.navigation.registerLeaveGuard("settings", root.bridge)
     }
 
-    function _backIfNoBreadcrumbs() {
-        if (root.selectedEntry || root.selectedSection || root.selectedCategory) {
-            root.back()
-        }
+    Component.onDestruction: {
+        if (root.navigation)
+            root.navigation.unregisterLeaveGuard("settings")
     }
 
-    // Desktop layout: width >= 900
-    RowLayout {
-        anchors.fill: parent; spacing: 0
-        visible: root.pageState === root.stateReady && root.width >= 900
+    Loader {
+        id: contentLoader
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: transactionBar.visible ? transactionBar.top : parent.bottom
+        anchors.bottomMargin: transactionBar.visible ? MichiTheme.spacing.sm : 0
+        active: true
+        source: "SettingsContentPage.qml"
+        focus: true
+    }
 
-        // Left panel: category list
-        Rectangle {
-            Layout.preferredWidth: 240; Layout.fillHeight: true
-            color: MichiTheme.colors.surfaceCard
+    SettingsTransactionBar {
+        id: transactionBar
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: MichiTheme.spacing.md
+        bridge: root.bridge
+        busy: root.transactionBusy
+        message: root.transactionMessage
+        onApplyRequested: root.applyChanges(false)
+        onDiscardRequested: root.discardChanges(false)
+    }
 
-            ColumnLayout {
-                anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
+    Dialog {
+        id: leaveDialog
+        modal: true
+        closePolicy: Popup.NoAutoClose
+        anchors.centerIn: parent
+        width: Math.min(520, root.width - MichiTheme.spacing.xl * 2)
+        title: qsTr("Cambios pendientes")
 
-                MichiSearchField {
-                    Accessible.role: Accessible.EditableText
+        contentItem: ColumnLayout {
+            spacing: MichiTheme.spacing.lg
 
-                    id: searchFieldDesktop
-                    activeFocusOnTab: true
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Hay cambios de ajustes pendientes. Decide qué hacer antes de abandonar esta página.")
+                wrapMode: Text.WordWrap
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.bodySize
+            }
 
-                    Layout.fillWidth: true
-                    placeholderText: qsTr("Buscar ajustes...")
-                    onSearchTextChanged: root.searchCategories(text)
-                }
-                    Accessible.role: Accessible.List
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: MichiTheme.spacing.sm
 
-                    Accessible.name: "ListView"
-
-
-                ListView {
-                    focusPolicy: Qt.StrongFocus
-                    Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 2
-                    model: root.shownCategories
-                    delegate: Rectangle {
-                        width: parent.width; height: 44; radius: MichiTheme.radius.sm
-                        color: mouse.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-
-                        RowLayout {
-                            anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm
-                            Label {
-                                text: modelData.title || ""
-                                color: root.selectedCategoryId === modelData.id ? MichiTheme.colors.accent : MichiTheme.colors.textPrimary
-                                font.pixelSize: MichiTheme.typography.bodySize
-                                font.weight: root.selectedCategoryId === modelData.id ? MichiTheme.typography.weightBold : MichiTheme.typography.weightNormal
-                                Layout.fillWidth: true
-                            }
-                            Label {
-                                text: qsTr(">")
-                                visible: mouse.containsMouse || root.selectedCategoryId === modelData.id
-                                color: MichiTheme.colors.textSecondary
-                            }
-                        }
-
-                        MouseArea {
-                            id: mouse; anchors.fill: parent; hoverEnabled: true
-                            onClicked: root.openCategory(modelData.id)
-                        }
-
-                        Keys.onReturnPressed: root.openCategory(modelData.id)
-                        Keys.onSpacePressed: root.openCategory(modelData.id)
-                        focus: true
-                        activeFocusOnTab: true
+                MichiButton {
+                    text: qsTr("Cancelar")
+                    variant: "ghost"
+                    onClicked: {
+                        leaveDialog.close()
+                        if (root.navigation)
+                            root.navigation.resolvePendingNavigation("cancel")
                     }
-                    keyNavigationEnabled: true
                 }
 
-                Rectangle {
-                    Accessible.role: Accessible.Button
+                Item { Layout.fillWidth: true }
 
-                    activeFocusOnTab: true
-
-                    Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle
+                MichiButton {
+                    text: qsTr("Descartar")
+                    variant: "danger"
+                    onClicked: {
+                        leaveDialog.close()
+                        root.discardChanges(true)
+                    }
                 }
 
                 MichiButton {
-                    Layout.fillWidth: true
-                    text: qsTr("Restaurar todo")
-                    variant: "danger"
-                    visible: root.bridge !== null
-                    onClicked: confirmResetDialog.open()
-                }
-            }
-        }
-
-        // Right panel: detail view
-        Rectangle {
-            Layout.fillWidth: true; Layout.fillHeight: true
-            color: "transparent"
-
-            ColumnLayout {
-                anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.md
-
-                // Breadcrumbs
-                RowLayout {
-                    Layout.fillWidth: true; spacing: MichiTheme.spacing.xs; visible: root.selectedCategory !== null
-                    Label {
-                        text: qsTr("Ajustes")
-                        color: MichiTheme.colors.textSecondary
-                        font.pixelSize: MichiTheme.typography.captionSize
-                        MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: root.back()
-                        }
-                    }
-                    Label { text: qsTr("/"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.captionSize; visible: root.selectedCategory !== null }
-                    Label {
-                        text: root.selectedCategory ? root.selectedCategory.title : ""
-                        color: root.selectedSection ? MichiTheme.colors.textSecondary : MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.captionSize
-                        font.weight: root.selectedSection ? MichiTheme.typography.weightNormal : MichiTheme.typography.weightBold
-                        MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { root.selectedSection = null; root.selectedEntry = null }
-                        }
-                    }
-                    Label {
-                        text: qsTr("/"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.captionSize
-                        visible: root.selectedSection !== null
-                    }
-                    Label {
-                        text: root.selectedSection ? root.selectedSection.title : ""
-                        color: root.selectedEntry ? MichiTheme.colors.textSecondary : MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.captionSize
-                        font.weight: root.selectedEntry ? MichiTheme.typography.weightNormal : MichiTheme.typography.weightBold
-                        visible: root.selectedSection !== null
-                        MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { root.selectedEntry = null }
-                        }
-                    }
-                    Label {
-                        text: qsTr("/"); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.captionSize
-                        visible: root.selectedEntry !== null
-                    }
-                    Label {
-                        text: root.selectedEntry ? root.selectedEntry.label : ""
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.captionSize
-                        font.weight: MichiTheme.typography.weightBold
-                        visible: root.selectedEntry !== null
-                    }
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true; visible: root.selectedCategory !== null
-                    MichiButton { text: qsTr("< Volver"); variant: "ghost"; onClicked: root.back(); Accessible.name: "Volver" }
-                    Label {
-                        text: root.selectedEntry ? root.selectedEntry.label :
-                              root.selectedSection ? root.selectedSection.title :
-                              root.selectedCategory ? root.selectedCategory.title : ""
-                        font.pixelSize: root.selectedEntry ? MichiTheme.typography.bodySize : MichiTheme.typography.sectionTitleSize
-                        color: MichiTheme.colors.textPrimary; Layout.fillWidth: true
-                    }
-                    MichiButton {
-                        text: qsTr("Restaurar categoría")
-                        variant: "ghost"
-                        visible: root.selectedCategory !== null && root.selectedSection === null && root.selectedEntry === null
-                        onClicked: root.resetCategory(root.selectedCategoryId)
-                    }
-                }
-
-                ScrollView {
-                    focusPolicy: Qt.StrongFocus
-                    Layout.fillWidth: true; Layout.fillHeight: true
-                    clip: true
-
-                    Loader {
-                        sourceComponent: {
-                            if (root.selectedCategory === null) return desktopCategoryList
-                            if (root.selectedEntry) return entryDetailView
-                            if (root.selectedSection) return sectionDetailView
-                            return categoryDetailView
-                        }
+                    text: qsTr("Aplicar y salir")
+                    variant: "primary"
+                    onClicked: {
+                        leaveDialog.close()
+                        root.applyChanges(true)
                     }
                 }
             }
         }
     }
 
-    // Tablet layout: width >= 600 and < 900
-    RowLayout {
-        anchors.fill: parent; spacing: 0
-        visible: root.pageState === root.stateReady && root.width >= 600 && root.width < 900
+    Connections {
+        target: root.navigation
 
-        Rectangle {
-            Layout.preferredWidth: root.selectedCategory === null ? parent.width : 200
-            Layout.fillHeight: true
-            color: MichiTheme.colors.surfaceCard
-            visible: root.selectedCategory === null || root.width >= 700
-
-            ColumnLayout {
-                anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
-
-                MichiSearchField {
-                    Layout.fillWidth: true
-                    placeholderText: qsTr("Buscar...")
-                    onSearchTextChanged: root.searchCategories(text)
-                }
-
-                ListView {
-                    focusPolicy: Qt.StrongFocus
-                    Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 2
-                    model: root.shownCategories
-                    delegate: Rectangle {
-                        width: parent.width; height: 44; radius: MichiTheme.radius.sm
-                        color: mouse.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-
-                        RowLayout {
-                            anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm
-                            Label {
-                                text: modelData.title || ""
-                                color: root.selectedCategoryId === modelData.id ? MichiTheme.colors.accent : MichiTheme.colors.textPrimary
-                                font.pixelSize: MichiTheme.typography.bodySize
-                                Layout.fillWidth: true
-                            }
-                            Label {
-                                text: qsTr(">")
-                                visible: mouse.containsMouse || root.selectedCategoryId === modelData.id
-                                color: MichiTheme.colors.textSecondary
-                            }
-                        }
-
-                        MouseArea {
-                            id: mouseT; anchors.fill: parent; hoverEnabled: true
-                            onClicked: root.openCategory(modelData.id)
-                        }
-                        Keys.onReturnPressed: root.openCategory(modelData.id)
-                        focus: true; activeFocusOnTab: true
-                    }
-                }
-            }
+        function onNavigationBlocked(targetRoute, reason) {
+            if (reason === "pending_changes")
+                leaveDialog.open()
         }
-
-        Rectangle {
-            Layout.fillWidth: true; Layout.fillHeight: true
-            color: "transparent"
-
-            ColumnLayout {
-                anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.md
-
-                RowLayout {
-                    Layout.fillWidth: true; visible: root.selectedCategory !== null
-                    MichiButton { text: qsTr("< Volver"); variant: "ghost"; onClicked: root.back(); Accessible.name: "Volver" }
-                    Label {
-                        text: root.selectedEntry ? root.selectedEntry.label :
-                              root.selectedSection ? root.selectedSection.title :
-                              root.selectedCategory ? root.selectedCategory.title : ""
-                        font.pixelSize: MichiTheme.typography.sectionTitleSize
-                        color: MichiTheme.colors.textPrimary; Layout.fillWidth: true
-                    }
-                }
-
-                ScrollView {
-                    focusPolicy: Qt.StrongFocus
-                    Layout.fillWidth: true; Layout.fillHeight: true; clip: true
-                    Loader {
-                        sourceComponent: {
-                            if (root.selectedCategory === null) return tabletCategoryList
-                            if (root.selectedEntry) return entryDetailView
-                            if (root.selectedSection) return sectionDetailView
-                            return categoryDetailView
-                        }
-                    }
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
-                }
-            }
-        }
-    }
-
-    // Compact layout: width >= 400 and < 600
-    ColumnLayout {
-        anchors.fill: parent; spacing: 0
-        visible: root.pageState === root.stateReady && root.width >= 400 && root.width < 600
-
-        RowLayout {
-            Layout.fillWidth: true; Layout.margins: MichiTheme.spacing.md
-            MichiButton {
-                text: qsTr("< Volver")
-            Accessible.role: Accessible.EditableText
-
-            activeFocusOnTab: true
-
-                variant: "ghost"
-                visible: root.selectedCategory !== null
-                onClicked: root.back()
-            }
-            Label {
-                text: root.selectedEntry ? root.selectedEntry.label :
-                      root.selectedSection ? root.selectedSection.title :
-                      root.selectedCategory ? root.selectedCategory.title : qsTr("Ajustes")
-                font.pixelSize: MichiTheme.typography.pageTitleSize
-                color: MichiTheme.colors.textPrimary; Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
-            }
-        }
-
-        MichiSearchField {
-            Layout.fillWidth: true; Layout.margins: MichiTheme.spacing.sm
-            placeholderText: qsTr("Buscar...")
-            visible: root.selectedCategory === null
-            onSearchTextChanged: root.searchCategories(text)
-        }
-
-        ScrollView {
-            focusPolicy: Qt.StrongFocus
-            Layout.fillWidth: true; Layout.fillHeight: true; clip: true
-            Loader {
-                sourceComponent: {
-                    if (root.selectedCategory === null) return compactList
-                    if (root.selectedEntry) return entryDetailView
-                    if (root.selectedSection) return sectionDetailView
-                    return compactCategoryDetail
-                }
-            }
-        }
-    }
-
-    // Narrow layout: width < 400
-    ColumnLayout {
-        anchors.fill: parent; spacing: 0
-        visible: root.pageState === root.stateReady && root.width < 400
-
-        RowLayout {
-            Layout.fillWidth: true; Layout.margins: MichiTheme.spacing.sm
-            MichiButton {
-                text: qsTr("<")
-                variant: "ghost"
-                implicitWidth: 36
-                visible: root.selectedCategory !== null
-                onClicked: root.back()
-            }
-            Label {
-                text: root.selectedEntry ? root.selectedEntry.label :
-                      root.selectedSection ? root.selectedSection.title :
-                      root.selectedCategory ? root.selectedCategory.title : qsTr("Ajustes")
-                font.pixelSize: MichiTheme.typography.bodySize
-                color: MichiTheme.colors.textPrimary; Layout.fillWidth: true
-                elide: Text.ElideRight
-                horizontalAlignment: Text.AlignHCenter
-            Accessible.role: Accessible.List
-
-            Accessible.name: "ListView"
-
-            activeFocusOnTab: true
-
-            }
-        }
-
-        ScrollView {
-            focusPolicy: Qt.StrongFocus
-            Layout.fillWidth: true; Layout.fillHeight: true; clip: true
-            Loader {
-                sourceComponent: {
-                    if (root.selectedCategory === null) return compactList
-                    if (root.selectedEntry) return entryDetailView
-                    if (root.selectedSection) return sectionDetailView
-                    return compactCategoryDetail
-                }
-            }
-        }
-    }
-
-    Component { id: desktopCategoryList
-        ListView {
-            focusPolicy: Qt.StrongFocus
-            clip: true; spacing: 2
-            model: root.shownCategories.length > 0 ? root.shownCategories : (root.bridge ? root.bridge.categories : [])
-            delegate: GlassCard {
-                width: parent ? parent.width : 0; height: 72
-                title: modelData.title || ""
-                subtitle: modelData.sections ? modelData.sections.length + " secciones" : ""
-                onClicked: root.openCategory(modelData.id)
-            }
-        }
-    }
-
-    Component { id: tabletCategoryList
-        ListView {
-            focusPolicy: Qt.StrongFocus
-            clip: true; spacing: 2
-            model: root.shownCategories.length > 0 ? root.shownCategories : (root.bridge ? root.bridge.categories : [])
-            delegate: GlassCard {
-                width: parent ? parent.width : 0; height: 64
-                title: modelData.title || ""
-                onClicked: root.openCategory(modelData.id)
-            }
-        }
-    }
-
-    Component { id: categoryDetailView
-        ColumnLayout {
-            spacing: MichiTheme.spacing.md
-            Repeater {
-                model: root.selectedCategory ? root.selectedCategory.sections : []
-                GlassCard {
-                    Layout.fillWidth: true
-                    title: modelData.title || ""
-                    subtitle: modelData.entries ? modelData.entries.length + " ajustes" : ""
-                    onClicked: root.openSection(modelData.id)
-                }
-            }
-            Item { Layout.fillHeight: true }
-        }
-    }
-
-    Component { id: sectionDetailView
-        ColumnLayout {
-            spacing: MichiTheme.spacing.sm
-            Accessible.role: Accessible.List
-
-            Accessible.name: "ListView"
-
-            activeFocusOnTab: true
-
-            Repeater {
-                model: root.selectedSection ? root.selectedSection.entries : []
-                SettingsRow {
-                    Layout.fillWidth: true
-                    entry: modelData
-                    onClicked: root.openEntry(modelData.key)
-                }
-            }
-            Item { Layout.fillHeight: true }
-        }
-    }
-
-    Component { id: entryDetailView
-        ColumnLayout {
-            anchors.fill: parent; spacing: MichiTheme.spacing.md
-            SettingsRow {
-                Layout.fillWidth: true
-                entry: root.selectedEntry
-            }
-            Item { Layout.fillHeight: true }
-        }
-    }
-
-    Component { id: compactList
-        ListView {
-            focusPolicy: Qt.StrongFocus
-            clip: true; spacing: 2
-            model: root.shownCategories.length > 0 ? root.shownCategories : (root.bridge ? root.bridge.categories : [])
-            delegate: GlassCard {
-                width: parent ? parent.width : 0; height: 56
-                title: modelData.title || ""
-                onClicked: root.openCategory(modelData.id)
-            }
-        }
-    }
-
-    Component { id: compactCategoryDetail
-        ListView {
-            focusPolicy: Qt.StrongFocus
-            clip: true; spacing: 2
-            model: root.selectedCategory ? root.selectedCategory.sections : []
-            delegate: GlassCard {
-                width: parent ? parent.width : 0; height: 56
-                title: modelData.title || ""
-                onClicked: root.openSection(modelData.id)
-            }
-        }
-    }
-
-    Loader {
-        anchors.centerIn: parent
-        active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: qsTr("Cargando ajustes") }
-    }
-
-    Loader {
-        anchors.centerIn: parent
-        active: root.pageState === root.stateError
-        sourceComponent: ErrorState { message: qsTr("Ajustes no disponibles") }
-    }
-
-    Loader {
-        anchors.centerIn: parent
-        active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: qsTr("Sin opciones de configuración") }
-    }
-
-    ConfirmActionDialog {
-        id: confirmResetDialog
-        title: qsTr("Restaurar todos los ajustes")
-        message: qsTr("¿Estás seguro de que deseas restaurar todos los ajustes a sus valores por defecto? Esta acción no puede deshacerse.")
-        onConfirmed: root.resetAll()
     }
 }
