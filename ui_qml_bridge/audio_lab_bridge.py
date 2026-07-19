@@ -30,6 +30,7 @@ class AudioLabBridge(QObject):
         self._active_jobs: dict[str, dict] = {}
         self._cached_audio_devices: list | None = None
         self._cached_cd_drives: list | None = None
+        self._cd_ripper: object | None = None
         try:
             from core.audio_lab.adc_recorder_service import ADCRecorderService
             self._adc_recorder = ADCRecorderService()
@@ -481,23 +482,8 @@ class AudioLabBridge(QObject):
             logger.error(f"Error getting overview data: {e}")
             return {"ok": False, "error_code": "OVERVIEW_ERROR", "message": str(e)}
 
-    @Slot(str, result=dict)
-    def navigateToArea(self, area_key: str):
-        """Navega a una página específica del área (hub interno)."""
-        route_map = {
-            "diagnostics": "audio_lab.diagnostics_hub",
-            "identifier": "audio_lab.identifier_hub",
-            "backup": "audio_lab.backup_hub",
-            "output_profiles": "audio_lab.output_profiles_hub",
-            "local_intelligence": "audio_lab.local_intelligence_hub"
-        }
-        route = route_map.get(area_key)
-        if not route:
-            return {"ok": False, "error_code": "INVALID_AREA"}
-        return self.navigateTo(route)
-
     # ==================== CD RIPPER ====================
-    
+
     @Slot(result=list)
     def detectCDDrives(self) -> list:
         """Detecta unidades de CD disponibles. Cachea el resultado."""
@@ -518,7 +504,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error detecting CD drives: {e}")
             return []
-    
+
     @Slot(str, result=dict)
     def getCDInfo(self, device: str) -> dict:
         """Obtiene información del CD insertado."""
@@ -548,7 +534,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error getting CD info: {e}")
             return {'ok': False, 'error': str(e)}
-    
+
     @Slot(str, str, str, str, result=dict)
     def ripCDTrack(self, device: str, track_number: int, output_path: str, format: str = 'flac') -> dict:
         """Extrae una pista individual del CD."""
@@ -562,7 +548,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error ripping CD track: {e}")
             return {'ok': False, 'error': str(e)}
-    
+
     @Slot(str, str, str, str, bool, result=dict)
     def ripFullCD(self, device: str, output_dir: str, format: str = 'flac', quality: str = 'lossless', include_log: bool = True) -> dict:
         """Extrae todo el CD."""
@@ -571,6 +557,7 @@ class AudioLabBridge(QObject):
         try:
             from core.audio_lab.cd_ripper_service import CDRipperService
             ripper = CDRipperService()
+            self._cd_ripper = ripper
             result = ripper.rip_full_cd(device, output_dir, format, quality, include_log)
             return {'ok': result['success'], **result}
         except Exception as e:
@@ -578,7 +565,7 @@ class AudioLabBridge(QObject):
             return {'ok': False, 'error': str(e)}
 
     # ==================== ADC RECORDER / TURNTABLE ====================
-    
+
     @Slot(result=list)
     def detectAudioDevices(self) -> list:
         """Detecta dispositivos de entrada de audio (incluye tocadiscos USB).
@@ -604,7 +591,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error detecting audio devices: {e}")
             return []
-    
+
     @Slot(result=dict)
     def getRecommendedDevice(self) -> dict:
         """Obtiene el dispositivo recomendado (prioriza tocadiscos USB)."""
@@ -627,21 +614,20 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error getting recommended device: {e}")
             return {'ok': False, 'error': str(e)}
-    
+
     @Slot(int, str, str, int, int, int, list, result=dict)
-    def startRecording(self, device_id: int, output_path: str, format: str = 'wav', 
-                       sample_rate: int = 44100, bit_depth: int = 16, channels: int = 2, 
+    def startRecording(self, device_id: int, output_path: str, format: str = 'wav',
+                       sample_rate: int = 44100, bit_depth: int = 16, channels: int = 2,
                        dsp_filters: list = None) -> dict:
         """Inicia grabación desde dispositivo ADC."""
         if not self._svc or not self._adc_recorder:
             return {'ok': False, 'error': 'Service unavailable'}
         try:
-            from core.audio_lab.adc_recorder_service import AudioDevice
             devices = self._adc_recorder.detect_devices()
             device = next((d for d in devices if d.device_id == device_id), None)
             if not device:
                 return {'ok': False, 'error': 'Device not found'}
-            
+
             result = self._adc_recorder.start_recording(
                 device=device, output_path=output_path, format=format,
                 sample_rate=sample_rate, bit_depth=bit_depth,
@@ -651,7 +637,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error starting recording: {e}")
             return {'ok': False, 'error': str(e)}
-    
+
     @Slot(result=dict)
     def pauseRecording(self) -> dict:
         """Pausa la grabación actual."""
@@ -663,7 +649,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error pausing recording: {e}")
             return {'ok': False, 'error': str(e)}
-    
+
     @Slot(result=dict)
     def resumeRecording(self) -> dict:
         """Reanuda la grabación pausada."""
@@ -675,7 +661,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error resuming recording: {e}")
             return {'ok': False, 'error': str(e)}
-    
+
     @Slot(result=dict)
     def stopRecording(self) -> dict:
         """Detiene la grabación actual."""
@@ -687,7 +673,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error stopping recording: {e}")
             return {'ok': False, 'error': str(e)}
-    
+
     @Slot(str, float, result=dict)
     def addMarker(self, label: str = "", timestamp: float = None) -> dict:
         """Agrega un marcador en la grabación actual."""
@@ -699,7 +685,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error adding marker: {e}")
             return {'ok': False, 'error': str(e)}
-    
+
     @Slot(str, str, result=dict)
     def splitByMarkers(self, input_file: str, output_dir: str) -> dict:
         """Divide grabación por marcadores."""
@@ -711,7 +697,7 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error splitting by markers: {e}")
             return {'ok': False, 'error': str(e)}
-    
+
     @Slot(result=dict)
     def getRecordingStatus(self) -> dict:
         """Obtiene estado de la grabación actual."""
@@ -722,3 +708,41 @@ class AudioLabBridge(QObject):
         except Exception as e:
             logger.error(f"Error getting recording status: {e}")
             return {'active': False, 'error': str(e)}
+
+    @Slot(result=dict)
+    def getCDRippingCapability(self) -> dict:
+        """Reporta si las dependencias de ripeo de CD están disponibles."""
+        import shutil
+        critical = ["cdparanoia", "cd-discid", "ffmpeg"]
+        missing = [tool for tool in critical if not shutil.which(tool)]
+        return {"available": len(missing) == 0, "missing_tools": missing}
+
+    @Slot(result=dict)
+    def getCaptureCapabilities(self) -> dict:
+        """Reporta capacidades de captura ADC y filtros DSP disponibles."""
+        import shutil
+        ffmpeg_ok = shutil.which("ffmpeg") is not None
+        formats = ["wav", "flac", "mp3", "opus"] if ffmpeg_ok else []
+        dsp_filters = [
+            "riaa_eq", "declicker", "dehisser",
+            "noise_gate", "normalize", "highpass",
+        ]
+        return {
+            "available": ffmpeg_ok,
+            "formats": formats,
+            "dsp_filters": dsp_filters,
+        }
+
+    @Slot(result=dict)
+    def cancelCDRip(self) -> dict:
+        """Cancela el ripeo de CD en curso."""
+        ripper = self._cd_ripper
+        if ripper is None:
+            return {"ok": False, "error": "NO_RIP_IN_PROGRESS"}
+        try:
+            ripper.cancel_rip()
+            self._cd_ripper = None
+            return {"ok": True}
+        except Exception as exc:
+            logger.error(f"Error cancelling CD rip: {exc}")
+            return {"ok": False, "error": str(exc)}
