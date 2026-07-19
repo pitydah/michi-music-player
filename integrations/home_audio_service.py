@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import socket
+import threading
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -13,8 +14,12 @@ logger = logging.getLogger(__name__)
 class HomeAudioError(Exception):
     """Raised when a home-audio transport cannot complete an operation."""
 
+    def __init__(self, message: str, code: str = "SNAPCAST_RPC_FAILED"):
+        super().__init__(message)
+        self.code = code
 
-class SnapcastService:
+
+class SnapcastJsonRpcClient:
     """Small synchronous client for the Snapserver JSON-RPC control API."""
 
     def __init__(self, host: str = "localhost", port: int = 1705, timeout: float = 5.0):
@@ -23,6 +28,8 @@ class SnapcastService:
         self._timeout = float(timeout)
         self._connected = False
         self._request_id = 0
+        self._id_lock = threading.Lock()
+        self._last_error = ""
 
     @property
     def connected(self) -> bool:
@@ -32,13 +39,23 @@ class SnapcastService:
     def endpoint(self) -> str:
         return f"{self._host}:{self._port}"
 
+    @property
+    def connection_state(self) -> str:
+        return "active" if self._connected else "stopped"
+
+    @property
+    def last_error(self) -> str:
+        return self._last_error
+
     def _rpc(self, method: str, params: Any = None) -> dict:
-        self._request_id += 1
+        with self._id_lock:
+            self._request_id += 1
+            request_id = self._request_id
         request = (
             json.dumps(
                 {
                     "jsonrpc": "2.0",
-                    "id": self._request_id,
+                    "id": request_id,
                     "method": method,
                     "params": params or {},
                 }
@@ -62,16 +79,44 @@ class SnapcastService:
                         break
             payload = b"".join(chunks).decode("utf-8", errors="replace").strip()
             if not payload:
-                raise HomeAudioError("Snapcast returned an empty response")
-            response = json.loads(payload.splitlines()[0])
+                raise HomeAudioError("Snapcast returned an empty response", "EMPTY_RESPONSE")
+            try:
+                response = json.loads(payload.splitlines()[0])
+            except (TypeError, ValueError, json.JSONDecodeError) as exc:
+                raise HomeAudioError("Snapcast returned invalid JSON", "INVALID_RESPONSE") from exc
+            if not isinstance(response, dict):
+                raise HomeAudioError("Snapcast returned a non-object response", "INVALID_RESPONSE")
+            if response.get("id") != request_id:
+                raise HomeAudioError("Snapcast response ID does not match request", "RESPONSE_ID_MISMATCH")
             if "error" in response:
-                raise HomeAudioError(f"Snapcast RPC error: {response['error']}")
+                raise HomeAudioError(f"Snapcast RPC error: {response['error']}", "RPC_ERROR")
+            result = response.get("result", {})
+            if not isinstance(result, dict):
+                raise HomeAudioError("Snapcast result is not an object", "INVALID_RESPONSE")
             self._connected = True
-            return response.get("result", {})
-        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            self._last_error = ""
+            return result
+        except HomeAudioError as exc:
             self._connected = False
+            self._last_error = str(exc)
+            raise
+        except socket.timeout as exc:
+            self._connected = False
+            self._last_error = str(exc)
             raise HomeAudioError(
-                f"Cannot use Snapcast at {self.endpoint}: {exc}"
+                f"Snapcast timed out at {self.endpoint}", "TIMEOUT"
+            ) from exc
+        except ConnectionRefusedError as exc:
+            self._connected = False
+            self._last_error = str(exc)
+            raise HomeAudioError(
+                f"Snapcast refused the connection at {self.endpoint}", "CONNECTION_REFUSED"
+            ) from exc
+        except OSError as exc:
+            self._connected = False
+            self._last_error = str(exc)
+            raise HomeAudioError(
+                f"Cannot use Snapcast at {self.endpoint}: {exc}", "CONNECTION_FAILED"
             ) from exc
 
     def get_status(self) -> dict:
@@ -167,6 +212,10 @@ class SnapcastService:
     def set_group_name(self, group_id: str, name: str) -> bool:
         self._rpc("Group.SetName", {"id": group_id, "name": name})
         return True
+
+
+# Public legacy name used by composition and older consumers.
+SnapcastService = SnapcastJsonRpcClient
 
 
 class HomeAssistantService:

@@ -12,7 +12,6 @@ import json
 import logging
 import time
 from copy import deepcopy
-from typing import Any
 from uuid import uuid4
 
 from PySide6.QtCore import QSettings
@@ -98,6 +97,11 @@ class HomeAudioService:
         try:
             parsed = json.loads(raw) if isinstance(raw, str) else raw
             self._routes = [route for route in (parsed or []) if isinstance(route, dict)]
+            for route in self._routes:
+                if route.get("state") in {"active", "degraded", "starting"}:
+                    route["state"] = "configured"
+                route.setdefault("last_error", route.get("error", ""))
+                route.setdefault("destination_errors", {})
         except (TypeError, ValueError):
             logger.warning("Invalid persisted home-audio routes; resetting them")
             self._routes = []
@@ -106,6 +110,13 @@ class HomeAudioService:
         self._settings.setValue(_ROUTES_KEY, json.dumps(self._routes, ensure_ascii=False))
         if hasattr(self._settings, "sync"):
             self._settings.sync()
+        status = getattr(self._settings, "status", None)
+        if callable(status):
+            current = status()
+            raw_status = getattr(current, "value", current)
+            status_code = raw_status if isinstance(raw_status, int) else 0
+            if status_code != 0:
+                raise RuntimeError(f"ROUTE_PERSISTENCE_FAILED: {status_code}")
 
     def _publish(self, event_name: str, payload: dict) -> None:
         if self._event_bus is None:
@@ -157,9 +168,12 @@ class HomeAudioService:
             "sample_rate": rate,
             "bit_depth": bits,
             "channels": channels,
+            "uri": stream.get("uri", {}),
             "state": status,
             "routeable": bool(stream_id),
+            "routable": bool(stream_id),
             "backend": "snapcast",
+            "server_id": "snapcast_control",
         }
 
     @staticmethod
@@ -171,6 +185,10 @@ class HomeAudioService:
         ]
         stream_id = str(group.get("stream_id", group.get("streamId", "")) or "")
         group_id = str(group.get("id", "") or "")
+        connected_members = [
+            member for member in clients
+            if isinstance(member, dict) and bool(member.get("connected"))
+        ]
         return {
             "id": group_id,
             "name": group.get("name") or group_id or "Zona",
@@ -182,19 +200,33 @@ class HomeAudioService:
             "muted": bool(group.get("muted", False)),
             "state": "playing" if stream_id else "configured",
             "backend": backend,
-            "routeable": backend == "snapcast" and bool(group_id),
+            "connected": bool(connected_members),
+            "routeable": backend == "snapcast" and bool(group_id) and bool(connected_members),
+            "routable": backend == "snapcast" and bool(group_id) and bool(connected_members),
+            "server_id": "snapcast_control" if backend == "snapcast" else "",
         }
 
     def get_servers(self) -> list[dict]:
+        servers = []
         if self._snapserver is None:
-            return []
+            if self._snapcast is not None:
+                servers.append(self._control_server_snapshot())
+            return servers
         running = bool(getattr(self._snapserver, "is_running", False))
         binary_available = True
         availability = getattr(self._snapserver, "is_binary_available", None)
         if callable(availability):
             binary_available = bool(availability())
-        state = "running" if running else ("stopped" if binary_available else "unavailable")
-        return [
+        state = str(getattr(self._snapserver, "state", "") or "")
+        if not state:
+            state = "running" if running else ("stopped" if binary_available else "unavailable")
+        control_connected = bool(
+            self._snapcast is not None and getattr(self._snapcast, "connected", False)
+        )
+        groups = self.get_groups() if control_connected else []
+        streams = self.get_streams() if control_connected else []
+        receivers = self.get_receivers() if control_connected else []
+        servers.append(
             {
                 "id": "local_snapserver",
                 "name": "Snapserver local",
@@ -206,8 +238,39 @@ class HomeAudioService:
                 "binary_available": binary_available,
                 "state": state,
                 "error": str(getattr(self._snapserver, "last_error", "") or ""),
+                "endpoint": f"127.0.0.1:{int(getattr(self._snapserver, 'control_port', 1705))}",
+                "last_checked": self._last_refresh,
+                "streams_count": len(streams),
+                "groups_count": len(groups),
+                "clients_count": len([item for item in receivers if item.get("connected")]),
             }
-        ]
+        )
+        endpoint = str(getattr(self._snapcast, "endpoint", "") or "")
+        if endpoint and not endpoint.startswith(("127.0.0.1:", "localhost:")):
+            servers.append(self._control_server_snapshot())
+        return servers
+
+    def _control_server_snapshot(self) -> dict:
+        endpoint = str(getattr(self._snapcast, "endpoint", "") or "")
+        host, _, raw_port = endpoint.partition(":")
+        connected = bool(getattr(self._snapcast, "connected", False))
+        groups = self.get_groups() if connected else []
+        streams = self.get_streams() if connected else []
+        receivers = self.get_receivers() if connected else []
+        return {
+            "id": "snapcast_control",
+            "name": "Servidor Snapcast configurado",
+            "type": "snapserver_remote",
+            "endpoint": endpoint,
+            "host": host,
+            "control_port": int(raw_port) if raw_port.isdigit() else 1705,
+            "state": "active" if connected else "configured",
+            "last_checked": self._last_refresh,
+            "streams_count": len(streams),
+            "groups_count": len(groups),
+            "clients_count": len([item for item in receivers if item.get("connected")]),
+            "error": str(getattr(self._snapcast, "last_error", "") or ""),
+        }
 
     def start_server(self, server_id: str = "local_snapserver") -> dict:
         if server_id != "local_snapserver" or self._snapserver is None:
@@ -218,8 +281,10 @@ class HomeAudioService:
         if callable(availability) and not availability():
             return {"ok": False, "error": "SNAPSERVER_BINARY_UNAVAILABLE"}
         try:
-            self._snapserver.start()
-            return {"ok": True, "state": "starting"}
+            result = self._snapserver.start()
+            if isinstance(result, dict):
+                return result
+            return {"ok": False, "error": "SNAPSERVER_START_NOT_VERIFIED"}
         except Exception as exc:
             self._last_error = str(exc)
             return {"ok": False, "error": str(exc)}
@@ -230,9 +295,10 @@ class HomeAudioService:
         if not bool(getattr(self._snapserver, "is_running", False)):
             return {"ok": True, "state": "stopped", "already_stopped": True}
         try:
-            self._snapserver.stop()
-            still_running = bool(getattr(self._snapserver, "is_running", False))
-            return {"ok": True, "state": "stopping" if still_running else "stopped"}
+            result = self._snapserver.stop()
+            if isinstance(result, dict):
+                return result
+            return {"ok": False, "error": "SNAPSERVER_STOP_NOT_VERIFIED"}
         except Exception as exc:
             self._last_error = str(exc)
             return {"ok": False, "error": str(exc)}
@@ -269,6 +335,7 @@ class HomeAudioService:
                     "channels": 0,
                     "state": "playing" if current else "idle",
                     "routeable": False,
+                    "routable": False,
                     "backend": "michi",
                     "reason": "El motor local aún no está conectado a un stream Snapcast",
                 }
@@ -301,6 +368,7 @@ class HomeAudioService:
                         "state": "online" if client.get("connected") else "offline",
                         "available": bool(client.get("connected")),
                         "backend": "snapcast",
+                        "last_activity": self._last_refresh,
                     }
                 self._last_refresh = time.time()
             except Exception as exc:
@@ -402,6 +470,7 @@ class HomeAudioService:
                     "state": device.get("state", "unknown"),
                     "backend": "home_assistant",
                     "routeable": False,
+                    "routable": False,
                 }
             )
         return zones
@@ -423,6 +492,9 @@ class HomeAudioService:
                     "stream_id": group["stream_id"],
                     "members": group["members"],
                     "routeable": bool(group.get("routeable")),
+                    "routable": bool(group.get("routeable")),
+                    "connected": bool(group.get("connected")),
+                    "server_id": group.get("server_id", ""),
                 }
             )
         return destinations
@@ -459,13 +531,61 @@ class HomeAudioService:
             "state": "configured",
             "latency_ms": 0,
             "error": "",
+            "last_error": "",
+            "destination_errors": {},
             "previous_streams": {},
             "created_at": int(time.time()),
             "updated_at": int(time.time()),
         }
         self._routes.append(route)
-        self._save_routes()
+        try:
+            self._save_routes()
+        except RuntimeError as exc:
+            self._routes.remove(route)
+            return {"ok": False, "error": "ROUTE_PERSISTENCE_FAILED", "message": str(exc)}
         self._publish("home_audio.route.created", deepcopy(route))
+        return {"ok": True, "route": deepcopy(route)}
+
+    def update_route(
+        self,
+        route_id: str,
+        name: str,
+        source_id: str,
+        destination_ids: list[str],
+    ) -> dict:
+        route = self._route(route_id)
+        if route is None:
+            return {"ok": False, "error": "UNKNOWN_ROUTE"}
+        if route.get("state") in {"active", "degraded"}:
+            return {"ok": False, "error": "ACTIVE_ROUTE_MUST_BE_STOPPED"}
+        sources = {source["id"]: source for source in self.get_sources()}
+        if source_id not in sources:
+            return {"ok": False, "error": "UNKNOWN_SOURCE"}
+        if not sources[source_id].get("routeable"):
+            return {"ok": False, "error": "SOURCE_NOT_ROUTEABLE"}
+        destinations = {destination["id"]: destination for destination in self.get_destinations()}
+        unique_ids = list(dict.fromkeys(destination_ids))
+        if not unique_ids or any(destination_id not in destinations for destination_id in unique_ids):
+            return {"ok": False, "error": "UNKNOWN_DESTINATION"}
+        if any(not destinations[item].get("routeable") for item in unique_ids):
+            return {"ok": False, "error": "DESTINATION_NOT_ROUTEABLE"}
+        previous_route = deepcopy(route)
+        route.update(
+            name=name.strip() or route.get("name", "Ruta"),
+            source_id=source_id,
+            destination_ids=unique_ids,
+            state="configured",
+            previous_streams={},
+            last_error="",
+            destination_errors={},
+            updated_at=int(time.time()),
+        )
+        try:
+            self._save_routes()
+        except RuntimeError as exc:
+            route.clear()
+            route.update(previous_route)
+            return {"ok": False, "error": "ROUTE_PERSISTENCE_FAILED", "message": str(exc)}
         return {"ok": True, "route": deepcopy(route)}
 
     def start_route(self, route_id: str) -> dict:
@@ -473,16 +593,46 @@ class HomeAudioService:
         if route is None:
             return {"ok": False, "error": "UNKNOWN_ROUTE"}
         if self._snapcast is None:
-            route.update(state="error", error="SNAPCAST_CONTROL_UNAVAILABLE")
-            self._save_routes()
+            route.update(
+                state="error",
+                error="SNAPCAST_CONTROL_UNAVAILABLE",
+                last_error="SNAPCAST_CONTROL_UNAVAILABLE",
+            )
+            try:
+                self._save_routes()
+            except RuntimeError as exc:
+                return {"ok": False, "error": "ROUTE_PERSISTENCE_FAILED", "message": str(exc)}
             return {"ok": False, "error": route["error"], "route": deepcopy(route)}
+
+        source = next(
+            (item for item in self.get_sources() if item.get("id") == route.get("source_id")),
+            None,
+        )
+        if source is None:
+            route.update(state="error", last_error="UNKNOWN_SOURCE", error="UNKNOWN_SOURCE")
+            try:
+                self._save_routes()
+            except RuntimeError as exc:
+                return {"ok": False, "error": "ROUTE_PERSISTENCE_FAILED", "message": str(exc)}
+            return {"ok": False, "error": "UNKNOWN_SOURCE", "route": deepcopy(route)}
+        if not source.get("routeable"):
+            route.update(
+                state="error",
+                last_error="SOURCE_NOT_ROUTEABLE",
+                error="SOURCE_NOT_ROUTEABLE",
+            )
+            try:
+                self._save_routes()
+            except RuntimeError as exc:
+                return {"ok": False, "error": "ROUTE_PERSISTENCE_FAILED", "message": str(exc)}
+            return {"ok": False, "error": "SOURCE_NOT_ROUTEABLE", "route": deepcopy(route)}
 
         groups = {group["id"]: group for group in self.get_groups()}
         previous = {}
         failures = []
         for destination_id in route.get("destination_ids", []):
             group = groups.get(destination_id)
-            if group is None or group.get("backend") != "snapcast":
+            if group is None or group.get("backend") != "snapcast" or not group.get("connected"):
                 failures.append({"destination_id": destination_id, "error": "DESTINATION_OFFLINE"})
                 continue
             previous[destination_id] = group.get("stream_id", "")
@@ -508,10 +658,22 @@ class HomeAudioService:
         route["previous_streams"] = previous
         route["updated_at"] = int(time.time())
         route["error"] = json.dumps(failures, ensure_ascii=False) if failures else ""
+        route["last_error"] = route["error"]
+        route["destination_errors"] = {
+            item["destination_id"]: item["error"] for item in failures
+        }
         route["state"] = "active" if not failures else (
             "degraded" if len(failures) < len(route.get("destination_ids", [])) else "error"
         )
-        self._save_routes()
+        try:
+            self._save_routes()
+        except RuntimeError as exc:
+            return {
+                "ok": False,
+                "error": "ROUTE_PERSISTENCE_FAILED",
+                "message": str(exc),
+                "route": deepcopy(route),
+            }
         self._publish("home_audio.route.started", deepcopy(route))
         return {
             "ok": not failures,
@@ -556,12 +718,24 @@ class HomeAudioService:
 
         route["updated_at"] = int(time.time())
         route["error"] = json.dumps(failures, ensure_ascii=False) if failures else ""
+        route["last_error"] = route["error"]
+        route["destination_errors"] = {
+            item["destination_id"]: item["error"] for item in failures
+        }
         route["state"] = "stopped" if not failures else (
             "degraded" if restored else "error"
         )
         if not failures:
             route["previous_streams"] = {}
-        self._save_routes()
+        try:
+            self._save_routes()
+        except RuntimeError as exc:
+            return {
+                "ok": False,
+                "error": "ROUTE_PERSISTENCE_FAILED",
+                "message": str(exc),
+                "route": deepcopy(route),
+            }
         self._publish("home_audio.route.stopped", deepcopy(route))
         return {
             "ok": not failures,
@@ -577,8 +751,13 @@ class HomeAudioService:
             return {"ok": False, "error": "UNKNOWN_ROUTE"}
         if route.get("state") in {"active", "degraded"}:
             return {"ok": False, "error": "ACTIVE_ROUTE_MUST_BE_STOPPED"}
+        previous_routes = self._routes
         self._routes = [item for item in self._routes if item.get("id") != route_id]
-        self._save_routes()
+        try:
+            self._save_routes()
+        except RuntimeError as exc:
+            self._routes = previous_routes
+            return {"ok": False, "error": "ROUTE_PERSISTENCE_FAILED", "message": str(exc)}
         self._publish("home_audio.route.deleted", {"id": route_id})
         return {"ok": True, "deleted": route_id}
 
@@ -595,7 +774,9 @@ class HomeAudioService:
         if self._snapcast is None:
             return {"ok": False, "error": "SNAPCAST_CONTROL_UNAVAILABLE"}
         current = self._receiver(receiver_id)
-        if current is None or not current.get("connected"):
+        if current is None:
+            return {"ok": False, "error": "RECEIVER_NOT_FOUND"}
+        if not current.get("connected"):
             return {"ok": False, "error": "RECEIVER_OFFLINE"}
         target = max(0, min(100, int(volume)))
         try:
@@ -611,7 +792,9 @@ class HomeAudioService:
         if self._snapcast is None:
             return {"ok": False, "error": "SNAPCAST_CONTROL_UNAVAILABLE"}
         current = self._receiver(receiver_id)
-        if current is None or not current.get("connected"):
+        if current is None:
+            return {"ok": False, "error": "RECEIVER_NOT_FOUND"}
+        if not current.get("connected"):
             return {"ok": False, "error": "RECEIVER_OFFLINE"}
         try:
             self._snapcast.set_client_volume(
@@ -630,7 +813,9 @@ class HomeAudioService:
         if self._snapcast is None:
             return {"ok": False, "error": "SNAPCAST_CONTROL_UNAVAILABLE"}
         current = self._receiver(receiver_id)
-        if current is None or not current.get("connected"):
+        if current is None:
+            return {"ok": False, "error": "RECEIVER_NOT_FOUND"}
+        if not current.get("connected"):
             return {"ok": False, "error": "RECEIVER_OFFLINE"}
         target = max(0, int(latency_ms))
         try:
@@ -642,6 +827,51 @@ class HomeAudioService:
             return {"ok": False, "error": "LATENCY_VERIFICATION_FAILED"}
         return {"ok": True, "receiver": verified}
 
+    def set_receiver_name(self, receiver_id: str, name: str) -> dict:
+        if self._snapcast is None:
+            return {"ok": False, "error": "SNAPCAST_CONTROL_UNAVAILABLE"}
+        current = self._receiver(receiver_id)
+        if current is None:
+            return {"ok": False, "error": "RECEIVER_NOT_FOUND"}
+        if not current.get("connected"):
+            return {"ok": False, "error": "RECEIVER_OFFLINE"}
+        if not name.strip():
+            return {"ok": False, "error": "INVALID_RECEIVER_NAME"}
+        try:
+            self._snapcast.set_client_name(receiver_id, name.strip())
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)}
+        verified = self._receiver(receiver_id)
+        if verified is None or verified.get("name") != name.strip():
+            return {"ok": False, "error": "NAME_VERIFICATION_FAILED"}
+        return {"ok": True, "receiver": verified}
+
+    def move_receiver(self, receiver_id: str, group_id: str) -> dict:
+        if self._snapcast is None:
+            return {"ok": False, "error": "SNAPCAST_CONTROL_UNAVAILABLE"}
+        receiver = self._receiver(receiver_id)
+        if receiver is None:
+            return {"ok": False, "error": "RECEIVER_NOT_FOUND"}
+        if not receiver.get("connected"):
+            return {"ok": False, "error": "RECEIVER_OFFLINE"}
+        groups = {group["id"]: group for group in self.get_groups()}
+        target = groups.get(group_id)
+        if target is None:
+            return {"ok": False, "error": "DESTINATION_NOT_FOUND"}
+        current_group_id = receiver.get("group", "")
+        try:
+            if current_group_id and current_group_id in groups and current_group_id != group_id:
+                old_members = [item for item in groups[current_group_id]["members"] if item != receiver_id]
+                self._snapcast.set_group_clients(current_group_id, old_members)
+            target_members = list(dict.fromkeys([*target.get("members", []), receiver_id]))
+            self._snapcast.set_group_clients(group_id, target_members)
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)}
+        verified = self._receiver(receiver_id)
+        if verified is None or verified.get("group") != group_id:
+            return {"ok": False, "error": "GROUP_MOVE_VERIFICATION_FAILED"}
+        return {"ok": True, "receiver": verified}
+
     def create_group(self, name: str, zone_ids: list[str]) -> dict:
         if self._group_mgr is None:
             return {"ok": False, "error": "GROUP_MANAGER_UNAVAILABLE"}
@@ -650,7 +880,7 @@ class HomeAudioService:
             return {"ok": False, "error": "GROUP_CREATION_UNSUPPORTED"}
         try:
             group_id = add_group(name, zone_ids)
-            groups = getattr(self._group_mgr, "groups")()
+            groups = self._group_mgr.groups()
             group = next((item for item in groups if item.get("id") == group_id), None)
             if group is None:
                 return {"ok": False, "error": "GROUP_VERIFICATION_FAILED"}
@@ -666,7 +896,7 @@ class HomeAudioService:
             return {"ok": False, "error": "GROUP_DELETION_UNSUPPORTED"}
         try:
             remove(group_id)
-            remaining = getattr(self._group_mgr, "groups")()
+            remaining = self._group_mgr.groups()
             if any(group.get("id") == group_id for group in remaining):
                 return {"ok": False, "error": "GROUP_DELETION_NOT_VERIFIED"}
             return {"ok": True, "deleted": group_id}
@@ -693,7 +923,7 @@ class HomeAudioService:
             return {"ok": False, "error": "GROUP_RENAME_UNSUPPORTED"}
         rename(group_id, new_name)
         group = next(
-            (item for item in getattr(self._group_mgr, "groups")() if item.get("id") == group_id),
+            (item for item in self._group_mgr.groups() if item.get("id") == group_id),
             None,
         )
         if group is None or group.get("name") != new_name:
@@ -890,7 +1120,7 @@ class HomeAudioService:
         return {"ok": True, "routes": len(self._routes)}
 
     def cancel(self):
-        return None
+        return {"ok": True, "cancelled": True}
 
     def health(self) -> dict:
         servers = self.get_servers()

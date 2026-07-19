@@ -350,7 +350,7 @@ HOME_AUDIO = SettingsCategory("home_audio_settings", "Home Audio", "home_audio",
     ]),
     SettingsSection("snapcast", "Snapcast", entries=[
         SettingsEntry("home_audio/snapcast_host", "Host Snapcast", ENTRY_TEXT, "localhost"),
-        SettingsEntry("home_audio/snapcast_port", "Puerto Snapcast", ENTRY_INT, 1704,
+        SettingsEntry("home_audio/snapcast_port", "Puerto de control Snapcast", ENTRY_INT, 1705,
                        validator=_port_validator),
     ]),
 ])

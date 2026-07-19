@@ -16,6 +16,9 @@ class MemorySettings:
     def sync(self):
         return None
 
+    def status(self):
+        return 0
+
 
 class FakeSnapcast:
     def __init__(self):
@@ -97,11 +100,37 @@ class FakeSnapcast:
         client["config"]["latency"] = latency_ms
         return True
 
+    def set_client_name(self, client_id, name):
+        client = next(
+            item
+            for group in self.groups
+            for item in group["clients"]
+            if item["id"] == client_id
+        )
+        client["config"]["name"] = name
+        client["name"] = name
+        return True
 
-def build_service(control=None):
+    def set_group_clients(self, group_id, client_ids):
+        all_clients = {
+            client["id"]: client
+            for group in self.groups
+            for client in group["clients"]
+        }
+        for group in self.groups:
+            if group["id"] == group_id:
+                group["clients"] = [all_clients[item] for item in client_ids]
+            else:
+                group["clients"] = [
+                    client for client in group["clients"] if client["id"] not in client_ids
+                ]
+        return True
+
+
+def build_service(control=None, settings=None):
     return HomeAudioService(
         snapcast_control=control,
-        settings=MemorySettings(),
+        settings=settings or MemorySettings(),
     )
 
 
@@ -172,3 +201,159 @@ def test_local_playback_is_not_claimed_as_routeable_without_pipe_connection():
 
     local = next(source for source in service.get_sources() if source["id"] == "local_playback")
     assert local["routeable"] is False
+
+
+def test_routes_persist_but_active_state_is_not_trusted_after_reload():
+    settings = MemorySettings()
+    control = FakeSnapcast()
+    service = build_service(control, settings)
+    created = service.create_route("Sala", "music", ["living"])
+    assert service.start_route(created["route"]["id"])["ok"] is True
+
+    restored = build_service(control, settings).list_routes()[0]
+
+    assert restored["state"] == "configured"
+    assert restored["previous_streams"] == {"living": "old"}
+
+
+def test_route_creation_rejects_unknown_source_and_destination():
+    service = build_service(FakeSnapcast())
+    assert service.create_route("Bad", "missing", ["living"])["error"] == "UNKNOWN_SOURCE"
+    assert service.create_route("Bad", "music", ["missing"])["error"] == "UNKNOWN_DESTINATION"
+
+
+def test_activation_requires_readback_and_records_destination_error():
+    class NoReadbackSnapcast(FakeSnapcast):
+        def set_group_stream(self, group_id, stream_id):
+            return True
+
+    service = build_service(NoReadbackSnapcast())
+    route = service.create_route("Sala", "music", ["living"])["route"]
+
+    result = service.start_route(route["id"])
+
+    assert result["ok"] is False
+    assert result["route"]["state"] == "error"
+    assert result["route"]["destination_errors"] == {"living": "ROUTE_VERIFICATION_FAILED"}
+
+
+def test_receiver_not_found_is_distinct_from_offline():
+    control = FakeSnapcast()
+    service = build_service(control)
+    assert service.set_receiver_volume("missing", 10)["error"] == "RECEIVER_NOT_FOUND"
+    control.groups[0]["clients"][0]["connected"] = False
+    assert service.set_receiver_volume("client-1", 10)["error"] == "RECEIVER_OFFLINE"
+
+
+def test_receiver_name_requires_readback():
+    service = build_service(FakeSnapcast())
+    result = service.set_receiver_name("client-1", "Sala principal")
+    assert result["ok"] is True
+    assert result["receiver"]["name"] == "Sala principal"
+
+
+def test_update_route_changes_persisted_configuration():
+    service = build_service(FakeSnapcast())
+    route = service.create_route("Old", "music", ["living"])["route"]
+
+    result = service.update_route(route["id"], "New", "music", ["living"])
+
+    assert result["ok"] is True
+    assert service.list_routes()[0]["name"] == "New"
+
+
+class TwoGroupSnapcast(FakeSnapcast):
+    def __init__(self):
+        super().__init__()
+        second = deepcopy(self.groups[0])
+        second["id"] = "kitchen"
+        second["name"] = "Cocina"
+        second["clients"][0]["id"] = "client-2"
+        self.groups.append(second)
+        self.known_clients = {
+            client["id"]: client for group in self.groups for client in group["clients"]
+        }
+        self.failures = set()
+
+    def get_client_list(self):
+        receivers = []
+        for group in self.groups:
+            for client in group["clients"]:
+                volume = client["config"]["volume"]
+                receivers.append(
+                    {
+                        "id": client["id"],
+                        "name": client["name"],
+                        "connected": client["connected"],
+                        "volume": volume["percent"],
+                        "muted": volume["muted"],
+                        "latency_ms": client["config"]["latency"],
+                        "group": group["id"],
+                        "group_name": group["name"],
+                        "stream_id": group["stream_id"],
+                    }
+                )
+        return receivers
+
+    def set_group_stream(self, group_id, stream_id):
+        if (group_id, stream_id) in self.failures:
+            raise RuntimeError("rpc failed")
+        return super().set_group_stream(group_id, stream_id)
+
+    def set_group_clients(self, group_id, client_ids):
+        for group in self.groups:
+            if group["id"] == group_id:
+                group["clients"] = [self.known_clients[item] for item in client_ids]
+            else:
+                group["clients"] = [
+                    client for client in group["clients"] if client["id"] not in client_ids
+                ]
+        return True
+
+
+def test_partial_activation_is_degraded():
+    control = TwoGroupSnapcast()
+    service = build_service(control)
+    route = service.create_route("House", "music", ["living", "kitchen"])["route"]
+    control.failures.add(("kitchen", "music"))
+
+    result = service.start_route(route["id"])
+
+    assert result["ok"] is False
+    assert result["partial"] is True
+    assert result["route"]["state"] == "degraded"
+
+
+def test_receiver_move_requires_group_readback():
+    service = build_service(TwoGroupSnapcast())
+    result = service.move_receiver("client-1", "kitchen")
+    assert result["ok"] is True
+    assert result["receiver"]["group"] == "kitchen"
+
+
+def test_partial_stop_keeps_recovery_metadata():
+    control = TwoGroupSnapcast()
+    service = build_service(control)
+    route = service.create_route("House", "music", ["living", "kitchen"])["route"]
+    assert service.start_route(route["id"])["ok"] is True
+    control.failures.add(("kitchen", "old"))
+
+    result = service.stop_route(route["id"])
+
+    assert result["ok"] is False
+    assert result["partial"] is True
+    assert result["route"]["state"] == "degraded"
+    assert result["route"]["previous_streams"] == {"living": "old", "kitchen": "old"}
+
+
+def test_route_creation_reports_persistence_failure():
+    class FailingSettings(MemorySettings):
+        def status(self):
+            return 1
+
+    service = build_service(FakeSnapcast(), FailingSettings())
+    result = service.create_route("Sala", "music", ["living"])
+
+    assert result["ok"] is False
+    assert result["error"] == "ROUTE_PERSISTENCE_FAILED"
+    assert service.list_routes() == []

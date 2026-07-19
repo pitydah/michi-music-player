@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import logging
+
 from core.service_container import ServiceContainer
+
+logger = logging.getLogger(__name__)
 
 
 def build(container: ServiceContainer) -> None:
@@ -23,33 +27,52 @@ def build(container: ServiceContainer) -> None:
             event_bus=event_bus,
         )
         container.register("connection_service", connection_service)
-    except Exception:
+    except Exception as exc:
+        logger.warning("Connection service unavailable: %s", exc)
         container.register("connection_service", None)
 
     try:
         from core.home_audio_service import HomeAudioService
-        from integrations.home_audio_service import SnapcastService
+        from core.settings_manager import get_int, get_str
+        from integrations.home_audio_service import HomeAssistantService
+        from integrations.snapcast.json_rpc_client import SnapcastJsonRpcClient
         from integrations.snapcast.discovery import SnapClientDiscovery
-        from integrations.snapcast.group_manager import GroupManager
         from integrations.snapcast.snapserver_manager import SnapServerManager
 
         discovery = SnapClientDiscovery()
         snapserver = SnapServerManager()
-        group_manager = GroupManager()
-        snapcast_control = SnapcastService(
-            host="127.0.0.1",
-            port=snapserver.control_port,
+        snapserver.configure(
+            get_int("home_audio/snapserver_tcp_port") or 1704,
+            get_int("home_audio/snapserver_control_port") or 1705,
+            get_int("home_audio/snapserver_http_port") or 1780,
         )
+        snapcast_control = SnapcastJsonRpcClient(
+            host=get_str("home_audio/snapcast_host") or "127.0.0.1",
+            port=get_int("home_audio/snapcast_port")
+            or get_int("home_audio/snapserver_control_port")
+            or 1705,
+        )
+        ha_url = get_str("home_audio/ha_base_url")
+        if not ha_url:
+            ha_host = get_str("home_audio/ha_host")
+            ha_port = get_int("home_audio/ha_port")
+            if ha_host:
+                ha_url = f"{ha_host.rstrip('/')}:{ha_port}" if ha_port else ha_host
+        ha_token = get_str("home_audio/ha_token")
+        ha_client = HomeAssistantService(ha_url, ha_token) if ha_url and ha_token else None
         home_audio = HomeAudioService(
-            snapcast_group_manager=group_manager,
             snapcast_discovery=discovery,
             snapserver_manager=snapserver,
             snapcast_control=snapcast_control,
+            ha_client=ha_client,
             playback_service=container.get("playback_service"),
             event_bus=event_bus,
         )
+        container.register("snapcast_control", snapcast_control)
+        container.register("snapserver_manager", snapserver)
         container.register("home_audio_service", home_audio)
-    except Exception:
+    except Exception as exc:
+        logger.warning("Home Audio degraded during composition: %s", exc)
         container.register("home_audio_service", None)
 
     try:
@@ -58,8 +81,8 @@ def build(container: ServiceContainer) -> None:
 
         container.register("device_sync_service", DeviceSyncService())
         container.register("device_registry", DeviceRegistry())
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Device sync unavailable: %s", exc)
 
     try:
         from core.mobile_sync_service import MobileSyncService
@@ -68,8 +91,8 @@ def build(container: ServiceContainer) -> None:
             "mobile_sync_service",
             MobileSyncService(db=container.get("database")),
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Mobile sync unavailable: %s", exc)
 
     from core.radio.radio_service import RadioService
 
@@ -84,5 +107,6 @@ def build(container: ServiceContainer) -> None:
             worker_manager=container.get("worker_manager"),
         )
         container.register("lyrics_service", lyrics_service)
-    except Exception:
+    except Exception as exc:
+        logger.warning("Lyrics service unavailable: %s", exc)
         container.register("lyrics_service", None)
