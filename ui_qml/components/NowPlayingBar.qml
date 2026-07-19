@@ -28,7 +28,37 @@ Item {
         return typeof value === "undefined" ? fallbackValue : value
     }
 
-    implicitHeight: compactLayout ? 112 : 96
+    function navigateTo(route) {
+        if (typeof navigationBridge !== "undefined" && navigationBridge)
+            navigationBridge.navigate(route)
+    }
+
+    function openOutputSelector() {
+        if (!root.outputBridge)
+            return
+        var result = root.outputBridge.refresh()
+        if (result && result.ok === false) {
+            if (root.notif) root.notif.showMessage(result.error || qsTr("No se pudieron cargar las salidas"), "warning")
+            return
+        }
+        outputPopup.open()
+    }
+
+    function applyOutputProfile(profileId) {
+        if (!root.outputBridge)
+            return
+        var result = root.outputBridge.setActiveProfile(profileId)
+        if (result && result.ok === false && root.notif)
+            root.notif.showMessage(result.message || result.error || qsTr("No se pudo cambiar la salida"), "error")
+        else
+            outputPopup.close()
+    }
+
+    function openTransmit() {
+        root.navigateTo("home_audio")
+    }
+
+    implicitHeight: compactLayout ? 128 : 112
     height: implicitHeight
     clip: true
 
@@ -68,7 +98,7 @@ Item {
                 id: seekBar
                 objectName: "nowPlayingProgress"
                 Layout.fillWidth: true
-                Layout.preferredHeight: 20
+                Layout.preferredHeight: 24
                 position: root.ps ? root.ps.position : 0
                 duration: root.ps ? root.ps.duration : 0
                 enabled: root._hasTrack && (root.ps ? root.ps.seekSupported : false)
@@ -90,8 +120,8 @@ Item {
                     spacing: MichiTheme.spacing.md
 
                     CoverImage {
-                        Layout.preferredWidth: 56
-                        Layout.preferredHeight: 56
+                        Layout.preferredWidth: 64
+                        Layout.preferredHeight: 64
                         coverRadius: MichiTheme.radius.sm
                         coverKey: root.ps ? root.ps.coverPath : ""
                         showPlaceholder: true
@@ -108,6 +138,15 @@ Item {
                             color: root._hasTrack ? MichiTheme.colors.textPrimary : MichiTheme.colors.textSecondary
                             font.pixelSize: MichiTheme.typography.bodySize
                             font.weight: MichiTheme.typography.weightSemiBold
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: root._hasTrack
+                                  ? root.bridgeValue("formatLabel", qsTr("Audio local"))
+                                  : qsTr("Biblioteca Michi")
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.metaSize
                             elide: Text.ElideRight
                         }
                         Text {
@@ -161,19 +200,20 @@ Item {
                         bitDepth: root.bridgeValue("bitDepth", "")
                         channels: root.bridgeValue("channels", "")
                         bitrate: root.bridgeValue("bitrate", "")
-                        onClicked: if (typeof navigationBridge !== "undefined") navigationBridge.navigate("playback")
+                        onClicked: root.navigateTo("playback")
                     }
 
                     NowPlayingUtilityControls {
-                        eqSupported: root._hasTrack && (typeof capabilityBridge !== "undefined" && capabilityBridge ? capabilityBridge.has("eq") : true)
-                        transmitSupported: root._hasTrack && (typeof capabilityBridge !== "undefined" && capabilityBridge ? capabilityBridge.has("transmit") : false)
+                        eqSupported: root._hasTrack && typeof eqBridge !== "undefined" && eqBridge && eqBridge.backendAvailable
+                        transmitSupported: false
+                        outputSupported: root.outputBridge !== null
                         queueSupported: root._hasTrack && root.bridgeValue("queueSupported", false)
                         showMiniPlayer: root.width >= 1180
-                        onEqClicked: if (typeof navigationBridge !== "undefined") navigationBridge.navigate("equalizer")
-                        onTransmitClicked: { }
-                        onOutputClicked: outputPopup.open()
-                        onQueueClicked: if (typeof navigationBridge !== "undefined") navigationBridge.navigate("queue")
-                        onMiniPlayerClicked: if (typeof navigationBridge !== "undefined") navigationBridge.navigate("playback")
+                        onEqClicked: root.navigateTo("equalizer")
+                        onTransmitClicked: root.openTransmit()
+                        onOutputClicked: root.openOutputSelector()
+                        onQueueClicked: root.navigateTo("queue")
+                        onMiniPlayerClicked: root.navigateTo("playback")
                     }
 
                     NowPlayingVolume {
@@ -232,8 +272,20 @@ Item {
                 RowLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    spacing: MichiTheme.spacing.xs
 
-                    Item { Layout.fillWidth: true }
+                    NowPlayingUtilityControls {
+                        eqSupported: root._hasTrack && typeof eqBridge !== "undefined" && eqBridge && eqBridge.backendAvailable
+                        transmitSupported: false
+                        outputSupported: root.outputBridge !== null
+                        queueSupported: root._hasTrack && root.bridgeValue("queueSupported", false)
+                        showMiniPlayer: false
+                        onEqClicked: root.navigateTo("equalizer")
+                        onTransmitClicked: root.openTransmit()
+                        onOutputClicked: root.openOutputSelector()
+                        onQueueClicked: root.navigateTo("queue")
+                    }
+                    Item { Layout.fillWidth: true; Layout.minimumWidth: 0 }
                     NowPlayingTransport {
                         compact: true
                         isPlaying: root.ps ? root.ps.isPlaying : false
@@ -252,7 +304,7 @@ Item {
                     }
                     NowPlayingVolume {
                         Layout.preferredWidth: 140
-                        visible: root.width >= 620
+                        visible: root.width >= 680
                         volume: root.ps ? root.ps.volume : 80
                         muted: root.ps ? root.ps.muted : false
                         volumeSupported: root._hasTrack && (root.ps ? root.ps.volumeSupported : false)
@@ -260,7 +312,7 @@ Item {
                         onVolumeAdjusted: function(vol) { if (root.ps) root.ps.setVolume(vol) }
                         onMuteClicked: if (root.ps) root.ps.toggleMute()
                     }
-                    Item { Layout.fillWidth: true }
+                    Item { Layout.fillWidth: true; Layout.minimumWidth: 0 }
                 }
             }
         }
@@ -301,13 +353,15 @@ Item {
                     width: parent.width
                     height: 36
                     radius: MichiTheme.radius.sm
-                    color: modelData.active ? MichiTheme.colors.accentSurface : "transparent"
+                    color: root.outputBridge && root.outputBridge.activeProfileId === modelData.id
+                           ? MichiTheme.colors.accentSurface : "transparent"
                     Text {
                         anchors.fill: parent
                         anchors.leftMargin: MichiTheme.spacing.sm
                         anchors.rightMargin: MichiTheme.spacing.sm
                         text: modelData.label || modelData.name || ""
-                        color: modelData.active ? MichiTheme.colors.accent : MichiTheme.colors.textSecondary
+                        color: root.outputBridge && root.outputBridge.activeProfileId === modelData.id
+                               ? MichiTheme.colors.accent : MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.secondarySize
                         verticalAlignment: Text.AlignVCenter
                         elide: Text.ElideRight
@@ -316,9 +370,7 @@ Item {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            if (root.outputBridge && root.outputBridge.setActiveProfile)
-                                root.outputBridge.setActiveProfile(modelData.id || modelData.key || "")
-                            outputPopup.close()
+                            root.applyOutputProfile(modelData.id || modelData.key || "")
                         }
                     }
                 }

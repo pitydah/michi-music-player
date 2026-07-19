@@ -38,7 +38,7 @@ Rectangle {
     // Clickthrough - permite cerrar haciendo clic fuera
     MouseArea {
         anchors.fill: parent
-        onClicked: {}
+        onClicked: root.closeRequested()
     }
     
     // Panel central

@@ -204,7 +204,7 @@ def test_placeholder_route_loads_through_navigation_and_page_stack(
         ("assistant", "michi_ai"),
         ("metadata.inspector", "audio_lab.metadata"),
         ("library_doctor", "audio_lab.library_health"),
-        ("equalizer", "audio_lab.processing"),
+        ("equalizer", "audio_lab.equalizer"),
         ("outputs", "audio_lab.processing"),
     ),
 )

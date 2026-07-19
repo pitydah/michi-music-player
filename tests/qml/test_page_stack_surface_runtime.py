@@ -43,3 +43,32 @@ def test_page_stack_loads_route_inside_canonical_surface(qapp) -> None:
     stack.deleteLater()
     registry.deleteLater()
     engine.deleteLater()
+
+
+def test_now_playing_utility_routes_load_functional_pages(qapp) -> None:
+    engine = QQmlEngine()
+    registry = RouteRegistryBridge()
+    engine.rootContext().setContextProperty("routeRegistryBridge", registry)
+    component = QQmlComponent(engine)
+    component.loadUrl(QUrl.fromLocalFile(str(QML_ROOT / "shell/PageStack.qml")))
+    assert component.isReady(), component.errorString()
+    stack = component.createWithInitialProperties({"width": 1000, "height": 700})
+    assert stack is not None, component.errorString()
+
+    for route, object_name in (
+        ("equalizer", "equalizerPage"),
+        ("audio_lab.output_profiles", "outputProfilesPage"),
+        ("queue", "queuePage_control"),
+    ):
+        stack.loadRoute(route)
+        for _ in range(100):
+            qapp.processEvents()
+            if stack.property("loadedObjectName") == object_name:
+                break
+            QTest.qWait(10)
+        assert stack.property("loadedObjectName") == object_name
+        assert stack.property("lastError") == ""
+
+    stack.deleteLater()
+    registry.deleteLater()
+    engine.deleteLater()
