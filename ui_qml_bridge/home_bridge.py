@@ -14,19 +14,23 @@ class HomeBridge(QObject):
     def __init__(self, db=None, player_service=None, library_bridge=None,
                  library_sources_service=None, job_bridge=None, playback_service=None,
                  library_query_service=None, library_mutation_service=None,
-                 track_action_service=None, query_executor=None, parent=None):
+                 track_action_service=None, query_executor=None,
+                 connections_bridge=None, parent=None):
         super().__init__(parent)
         self._db = db
         self._player = player_service or playback_service
         self._lib = library_bridge
         self._src_svc = library_sources_service
         self._job_bridge = job_bridge
+        self._connections = connections_bridge
         if self._player and hasattr(self._player, 'track_changed'):
             self._player.track_changed.connect(self._on_playback_changed)
         if self._player and hasattr(self._player, 'state_changed'):
             self._player.state_changed.connect(self._on_playback_changed)
         if self._job_bridge and hasattr(self._job_bridge, 'jobsChanged'):
             self._job_bridge.jobsChanged.connect(self._load_jobs)
+        if self._connections and hasattr(self._connections, 'stateChanged'):
+            self._connections.stateChanged.connect(self.snapshotChanged.emit)
         self._albums = 0
         self._artists = 0
         self._tracks = 0
@@ -82,6 +86,12 @@ class HomeBridge(QObject):
     @Property(str, notify=snapshotChanged)
     def output(self):
         return self._output
+
+    @Property(str, notify=snapshotChanged)
+    def ecosystemState(self):
+        if not self._connections:
+            return "not_configured"
+        return getattr(self._connections, "microServerState", "not_configured")
 
     @Slot(result=bool)
     def refresh(self) -> bool:

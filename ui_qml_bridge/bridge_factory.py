@@ -464,6 +464,7 @@ class BridgeFactory(QObject):
                 library_bridge=self._bridges.get("library"),
                 library_sources_service=self._get("library_sources_service"),
                 job_bridge=self._bridges.get("job_bridge"),
+                connections_bridge=self._bridges.get("connections"),
             )
 
     def create_app_bridge(self):

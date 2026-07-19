@@ -250,7 +250,7 @@ MichiPage {
             EcosystemCard {
                 width: parent.width
                 visible: root.homeState === HomePage.READY
-                microServerState: root.hb && root.hb.ecosystemState ? root.hb.ecosystemState : "not_configured"
+                microServerState: root.hb ? root.hb.ecosystemState : "not_configured"
                 onOpenConnections: root.goToRoute("connections")
                 onOpenHomeAudio: root.goToRoute("home_audio")
             }
