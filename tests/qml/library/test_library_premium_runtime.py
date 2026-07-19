@@ -189,3 +189,29 @@ def test_album_refresh_is_chronological_without_view_switch_queries() -> None:
     assert kwargs["sort"] == "year"
     assert kwargs["asc"] is False
     assert kwargs["favorites"] is False
+
+
+def test_filter_bar_exposes_composer_contract() -> None:
+    source = (QML_ROOT / "pages/library/LibraryFilterBar.qml").read_text()
+
+    assert "property string composerText" in source
+    assert "signal composerFilterChanged" in source
+    assert 'placeholderText: qsTr("Compositor")' in source
+
+
+def test_catalog_models_forward_complete_filter_state() -> None:
+    from ui_qml.models.AlbumListModel import AlbumListModel
+    from ui_qml.models.ArtistListModel import ArtistListModel
+
+    query = MagicMock()
+    query.count_albums.return_value = 0
+    query.fetch_albums.return_value = []
+    query.count_artists.return_value = 0
+    query.fetch_artists.return_value = []
+    filters = {"fmt": "flac", "composer": "Composer", "favorites": True}
+
+    AlbumListModel(query_service=query)._fetch_count(**filters)
+    ArtistListModel(query_service=query)._fetch_page(0, 100, **filters)
+
+    query.count_albums.assert_called_once_with(**filters)
+    query.fetch_artists.assert_called_once_with(offset=0, limit=100, **filters)

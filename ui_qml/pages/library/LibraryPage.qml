@@ -64,6 +64,7 @@ Item {
         toolbar.setSearchText("")
         filterBar.specialFilter = ""
         filterBar.genreText = ""
+        filterBar.composerText = ""
         filterBar.yearText = ""
         if (root.lib && root.lib.clearFilters) root.lib.clearFilters()
     }
@@ -107,6 +108,7 @@ Item {
         pageState.filterState = {
             specialFilter: filterBar.specialFilter,
             genreText: filterBar.genreText,
+            composerText: filterBar.composerText,
             yearText: filterBar.yearText,
             expanded: filterBar.expanded
         }
@@ -123,6 +125,7 @@ Item {
         var filters = state.filterState || ({})
         filterBar.specialFilter = filters.specialFilter || ""
         filterBar.genreText = filters.genreText || ""
+        filterBar.composerText = filters.composerText || ""
         filterBar.yearText = filters.yearText || ""
         filterBar.expanded = filters.expanded || false
         root._restoringState = false
@@ -208,11 +211,15 @@ Item {
             onGenreFilterChanged: function(genre) {
                 if (root.lib) root.lib.setGenreFilter(genre)
             }
+            onComposerFilterChanged: function(composer) {
+                if (root.lib) root.lib.setComposerFilter(composer)
+            }
             onYearFilterChanged: function(year) {
                 if (root.lib) root.lib.setYearFilter(year)
             }
             onSpecialFilterChanged: root._saveFilterState()
             onGenreTextChanged: root._saveFilterState()
+            onComposerTextChanged: root._saveFilterState()
             onYearTextChanged: root._saveFilterState()
             onExpandedChanged: root._saveFilterState()
         }

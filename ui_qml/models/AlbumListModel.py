@@ -63,12 +63,10 @@ class AlbumListModel(BasePagedListModel):
     def _fetch_count(self, **kwargs) -> int:
         if not self._qs:
             return 0
-        return self._qs.count_albums(search=kwargs.get("search", ""))
+        filters = {key: value for key, value in kwargs.items() if key not in ("sort", "asc")}
+        return self._qs.count_albums(**filters)
 
     def _fetch_page(self, offset: int, limit: int, **kwargs) -> list[dict[str, Any]]:
         if not self._qs:
             return []
-        return self._qs.fetch_albums(offset=offset, limit=limit,
-                                     search=kwargs.get("search", ""),
-                                     sort=kwargs.get("sort", "year"),
-                                     asc=kwargs.get("asc", False))
+        return self._qs.fetch_albums(offset=offset, limit=limit, **kwargs)

@@ -16,10 +16,12 @@ Item {
     property bool expanded: false
     property string specialFilter: ""
     property string genreText: ""
+    property string composerText: ""
     property string yearText: ""
 
     signal formatFilterChanged(string fmt)
     signal genreFilterChanged(string genre)
+    signal composerFilterChanged(string composer)
     signal yearFilterChanged(string year)
 
     implicitHeight: root.expanded ? 88 : 44
@@ -27,9 +29,11 @@ Item {
     function clearAll() {
         root.specialFilter = ""
         root.genreText = ""
+        root.composerText = ""
         root.yearText = ""
         root.formatFilterChanged("")
         root.genreFilterChanged("")
+        root.composerFilterChanged("")
         root.yearFilterChanged("")
     }
 
@@ -177,7 +181,8 @@ Item {
 
                 TextField {
                     id: genreField
-                    Layout.preferredWidth: 190
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 150
                     Layout.fillHeight: true
                     placeholderText: qsTr("Género, por ejemplo Jazz")
                     text: root.genreText
@@ -197,8 +202,30 @@ Item {
                 }
 
                 TextField {
+                    id: composerField
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 150
+                    Layout.fillHeight: true
+                    placeholderText: qsTr("Compositor")
+                    text: root.composerText
+                    color: MichiTheme.colors.textPrimary
+                    placeholderTextColor: MichiTheme.colors.textMuted
+                    selectByMouse: true
+                    background: Rectangle {
+                        radius: MichiTheme.radius.md
+                        color: MichiTheme.colors.surfaceInput
+                        border.width: composerField.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
+                        border.color: composerField.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderSubtle
+                    }
+                    onAccepted: {
+                        root.composerText = text.trim()
+                        root.composerFilterChanged(root.composerText)
+                    }
+                }
+
+                TextField {
                     id: yearField
-                    Layout.preferredWidth: 130
+                    Layout.preferredWidth: 88
                     Layout.fillHeight: true
                     placeholderText: qsTr("Año")
                     text: root.yearText
@@ -223,8 +250,10 @@ Item {
                     variant: "primary"
                     onClicked: {
                         root.genreText = genreField.text.trim()
+                        root.composerText = composerField.text.trim()
                         root.yearText = yearField.text.trim()
                         root.genreFilterChanged(root.genreText)
+                        root.composerFilterChanged(root.composerText)
                         root.yearFilterChanged(root.yearText)
                     }
                 }
