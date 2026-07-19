@@ -1,526 +1,570 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
+import QtCore
 import "../../theme"
 import "../../components"
+import "../../components/audio"
 
-/**
- * Página de Grabación ADC - Digitaliza vinilos y cassettes desde tocadiscos USB
- * Usa ADCRecorderService con detección automática de tocadiscos USB
- */
 Page {
     id: page
-
-    header: SectionHeader {
-        text: qsTr("Grabación ADC (Vinilo/Cassette)")
-
-        // onBackClicked eliminado (no existe en SectionHeader)
-    }
+    objectName: "adcRecorderPage"
+    focus: true
 
     property var audioDevices: []
     property var selectedDevice: null
-    property bool isRecording: false
-    property bool isPaused: false
-    property double recordingLevel: 0.0
-    property int recordingDuration: 0
-    property var markers: []
-    property string outputPath: "/home/user/Music/Vinyl Rips"
-    property bool detectingDevices: true
-
-    Component.onCompleted: {
-        detectWithTimeout()
-        Qt.callLater(startLevelMeter)
-    }
-
-    function detectWithTimeout() {
-        root.detectingDevices = true
-        var timer = Qt.callLater(function() {
-            loadAudioDevices()
-            root.detectingDevices = false
-        }, 50)
-        Qt.callLater(timer)
-    }
-
-    function loadAudioDevices() {
-        audioDevices = audioLabBridge.detectAudioDevices()
-        
-        // Buscar automáticamente un tocadiscos USB
-        const turntable = audioDevices.find(d => d.is_turntable)
-        if (turntable) {
-            selectedDevice = turntable
-            deviceSelector.currentIndex = audioDevices.indexOf(turntable)
-            statusMessage.text = `✓ Tocadiscos USB detectado: ${turntable.name}`
-        } else if (audioDevices.length > 0) {
-            selectedDevice = audioDevices[0]
-            statusMessage.text = "Selecciona un dispositivo de entrada"
-        } else {
-            statusMessage.text = "⚠️ No se detectaron dispositivos de entrada. Conecta un tocadiscos USB o interfaz de audio."
+    property var recordingStatus: ({
+        active: false,
+        paused: false,
+        status: "idle",
+        duration: 0,
+        markers: [],
+        levels: {
+            left_peak_dbfs: -60,
+            right_peak_dbfs: -60,
+            left_rms_dbfs: -60,
+            right_rms_dbfs: -60,
+            clipping_left: false,
+            clipping_right: false
         }
+    })
+    property string outputPath: StandardPaths.writableLocation(
+        StandardPaths.MusicLocation) + "/Vinyl Rips"
+    property bool detectingDevices: false
+
+    readonly property bool isRecording: recordingStatus.active === true
+    readonly property bool isPaused: recordingStatus.paused === true
+    readonly property real recordingDuration: Number(recordingStatus.duration || 0)
+    readonly property var markers: recordingStatus.markers || []
+    readonly property var levels: recordingStatus.levels || ({
+        left_peak_dbfs: -60,
+        right_peak_dbfs: -60,
+        left_rms_dbfs: -60,
+        right_rms_dbfs: -60,
+        clipping_left: false,
+        clipping_right: false
+    })
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: qsTr("Grabación ADC de vinilo y casete")
+
+    header: SectionHeader {
+        text: qsTr("Grabación ADC")
     }
 
-    function startLevelMeter() {
-        levelTimer.start()
+    function notify(kind, message) {
+        if (typeof notificationBridge === "undefined" || !notificationBridge)
+            return
+        if (kind === "error" && notificationBridge.showError)
+            notificationBridge.showError(message)
+        else if (kind === "success" && notificationBridge.showSuccess)
+            notificationBridge.showSuccess(message)
+        else if (notificationBridge.showInfo)
+            notificationBridge.showInfo(message)
     }
 
-    function pollRecordingLevel() {
-        if (!isRecording) return
-        var status = audioLabBridge.getRecordingStatus()
-        if (status && typeof status.level === "number") {
-            recordingLevel = status.level
+    function localPath(url) {
+        var path = String(url)
+        if (path.indexOf("file:///") === 0)
+            path = path.substring(7)
+        else if (path.indexOf("file://") === 0)
+            path = path.substring(7)
+        return decodeURIComponent(path)
+    }
+
+    function levelValue(name) {
+        var value = levels[name]
+        return value === undefined || value === null ? -60 : Number(value)
+    }
+
+    function detectDevices() {
+        detectingDevices = true
+        var devices = audioLabBridge.detectAudioDevices()
+        audioDevices = devices || []
+        detectingDevices = false
+
+        if (audioDevices.length === 0) {
+            selectedDevice = null
+            deviceSelector.currentIndex = -1
+            return
         }
+
+        var recommended = audioDevices.findIndex(function(device) {
+            return device.is_turntable
+        })
+        if (recommended < 0) {
+            recommended = audioDevices.findIndex(function(device) {
+                return device.is_usb
+            })
+        }
+        if (recommended < 0)
+            recommended = 0
+        deviceSelector.currentIndex = recommended
+        selectedDevice = audioDevices[recommended]
+    }
+
+    function makeOutputFile() {
+        var stamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-")
+        var format = String(formatSelector.currentText).toLowerCase()
+        return outputPath + "/vinyl_" + stamp + "." + format
+    }
+
+    function selectedFilters() {
+        var filters = []
+        if (riaaCheck.checked)
+            filters.push("riaa_eq")
+        if (declickCheck.checked)
+            filters.push("declicker")
+        if (dehissCheck.checked)
+            filters.push("dehisser")
+        if (highpassCheck.checked)
+            filters.push("highpass")
+        return filters
     }
 
     function startRecording() {
-        if (!selectedDevice) return
-
-        var dspFilters = []
-        if (applyRIAA.checked) dspFilters.push("riaa")
-        if (deClickerCheck.checked) dspFilters.push("declicker")
-        if (deHisserCheck.checked) dspFilters.push("dehisser")
-
-        const result = audioLabBridge.startRecording(
-            selectedDevice.device_id,
-            `${outputPath}/recording_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.wav`,
-            "wav",
-            44100,
-            24,
-            2,
-            dspFilters
-        )
-
-        if (result.ok) {
-            isRecording = true
-            isPaused = false
-            durationTimer.start()
-            statusMessage.text = "🔴 Grabando..."
-        } else {
-            notificationBridge.showError(`Error al iniciar grabación: ${result.error}`)
+        if (!selectedDevice) {
+            notify("error", qsTr("Selecciona un dispositivo de entrada"))
+            return
         }
+        if (!outputPath) {
+            notify("error", qsTr("Selecciona una carpeta de salida"))
+            return
+        }
+
+        var result = audioLabBridge.startRecording(
+            Number(selectedDevice.device_id),
+            makeOutputFile(),
+            String(formatSelector.currentText).toLowerCase(),
+            Number(sampleRateSelector.currentText),
+            Number(bitDepthSelector.currentText),
+            Number(channelSelector.currentText),
+            selectedFilters()
+        )
+        if (!result || !result.ok) {
+            notify("error", qsTr("No se pudo iniciar la grabación: ")
+                + (result && result.error ? result.error : qsTr("error desconocido")))
+            return
+        }
+        refreshStatus()
+        notify("success", qsTr("Grabación iniciada"))
     }
 
     function stopRecording() {
-        audioLabBridge.stopRecording()
-        isRecording = false
-        isPaused = false
-        durationTimer.stop()
-        recordingDuration = 0
-        
-        if (markers.length > 0) {
-            notificationBridge.showInfo(`Grabación guardada con ${markers.length} marcadores de pista`)
-        } else {
-            notificationBridge.showSuccess("Grabación guardada")
-        }
+        var result = audioLabBridge.stopRecording()
+        refreshStatus()
+        if (result && result.ok)
+            notify("success", qsTr("Grabación guardada"))
+        else
+            notify("error", qsTr("No se pudo detener la grabación"))
     }
 
-    function pauseRecording() {
-        if (isPaused) {
-            audioLabBridge.resumeRecording()
-            isPaused = false
-            statusMessage.text = "🔴 Grabando..."
-        } else {
-            audioLabBridge.pauseRecording()
-            isPaused = true
-            statusMessage.text = "⏸️ Pausa"
+    function togglePause() {
+        var result = isPaused
+            ? audioLabBridge.resumeRecording()
+            : audioLabBridge.pauseRecording()
+        if (!result || !result.ok) {
+            notify("error", isPaused
+                ? qsTr("No se pudo reanudar la grabación")
+                : qsTr("El backend no pudo pausar la grabación"))
         }
+        refreshStatus()
     }
 
     function addMarker() {
-        if (!isRecording) return
-        
-        const timestamp = recordingDuration
-        const label = `Pista ${markers.length + 1}`
-        
-        audioLabBridge.addMarker(label, timestamp)
-        
-        markers.push({
-            timestamp: timestamp,
-            label: label
-        })
-        
-        notificationBridge.showInfo(`Marcador agregado en ${formatTime(timestamp)}`)
+        if (!isRecording)
+            return
+        var label = qsTr("Pista %1").arg(markers.length + 1)
+        var result = audioLabBridge.addMarker(label, recordingDuration)
+        if (!result || !result.ok) {
+            notify("error", qsTr("No se pudo agregar el marcador"))
+            return
+        }
+        refreshStatus()
     }
 
-    function formatTime(seconds) {
-        const mins = Math.floor(seconds / 60)
-        const secs = Math.floor(seconds % 60)
-        return `${mins}:${secs.toString().padStart(2, '0')}`
+    function refreshStatus() {
+        var status = audioLabBridge.getRecordingStatus()
+        if (status)
+            recordingStatus = status
+    }
+
+    Component.onCompleted: {
+        Qt.callLater(detectDevices)
+        refreshStatus()
+    }
+
+    FolderDialog {
+        id: outputFolderDialog
+        title: qsTr("Seleccionar carpeta para grabaciones")
+        currentFolder: "file://" + outputPath
+        onAccepted: outputPath = localPath(selectedFolder)
+    }
+
+    Timer {
+        interval: 100
+        repeat: true
+        running: true
+        onTriggered: refreshStatus()
     }
 
     ScrollView {
         anchors.fill: parent
-        contentWidth: container.width
         clip: true
+        contentWidth: availableWidth
 
         ColumnLayout {
-            id: container
-            width: Math.max(parent.width, 800)
-    anchors.margins: 20
-            spacing: 20
+            width: Math.max(760, parent.width)
+            spacing: MichiTheme.spacing.lg
 
-            // Selector de dispositivo
-            GlassCard {
+            RowLayout {
                 Layout.fillWidth: true
-    anchors.margins: 15
+                spacing: MichiTheme.spacing.md
 
-                ColumnLayout {
-                    anchors.fill: parent
-                    spacing: 10
+                Text {
+                    Layout.fillWidth: true
+                    text: qsTr("Digitaliza vinilos y casetes desde una entrada USB o interfaz de audio.")
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    wrapMode: Text.WordWrap
+                }
 
-                    Label {
-                        text: qsTr("Dispositivo de Entrada")
-                        font.bold: true
-                        font.pixelSize: 14
-                    }
-
-                    ComboBox {
-                        id: deviceSelector
-                        Layout.fillWidth: true
-                        model: audioDevices.map(d => `${d.is_turntable ? '🎵 ' : ''}${d.name} ${d.is_turntable ? '(Tocadiscos USB)' : ''}`)
-                        
-                        onCurrentIndexChanged: {
-                            if (currentIndex >= 0 && audioDevices.length > 0) {
-                                selectedDevice = audioDevices[currentIndex]
-                            }
-                        }
-                    }
-
-                    Label {
-                        visible: audioDevices.length === 0
-                        text: qsTr("⚠️ Conecta un tocadiscos USB o interfaz de audio")
-                        color: MichiTheme.warning
-                        font.pixelSize: 12
-                        wrapMode: Text.Wrap
-                    }
+                StatusBadge {
+                    text: isRecording
+                        ? (isPaused ? qsTr("Pausado") : qsTr("Grabando"))
+                        : (detectingDevices ? qsTr("Detectando") : qsTr("Preparado"))
+                    kind: isRecording
+                        ? (isPaused ? "warning" : "error")
+                        : (audioDevices.length > 0 ? "success" : "warning")
+                    pulse: isRecording && !isPaused
                 }
             }
 
-            // Medidor de nivel VU
-            GlassCard {
+            GridLayout {
                 Layout.fillWidth: true
-    anchors.margins: 20
+                columns: width >= 1040 ? 3 : 1
+                columnSpacing: MichiTheme.spacing.lg
+                rowSpacing: MichiTheme.spacing.lg
 
-                ColumnLayout {
-                    anchors.fill: parent
-                    spacing: 15
+                GlassCard {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 280
 
-                    Label {
-                        text: qsTr("Nivel de Entrada")
-                        font.bold: true
-                        font.pixelSize: 14
-                        horizontalAlignment: Text.AlignHCenter
-                    }
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
+                        spacing: MichiTheme.spacing.md
 
-                    // Medidor visual
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 5
-
-                        Repeater {
-                            model: 50
-
-                            delegate: Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 30
-                                radius: 2
-                                color: {
-                                    if (index < recordingLevel * 50) {
-                                        if (index < 35) return MichiTheme.success
-                                        if (index < 45) return MichiTheme.warning
-                                        return MichiTheme.error
-                                    }
-                                    return "#2a2a2a"
-                                }
-
-                                Behavior on color {
-                                    ColorAnimation { duration: 50 }
-                                }
-                            }
-                        }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-
-                        Label {
-                            text: qsTr("-60 dB")
-                            font.pixelSize: 10
-                            color: MichiTheme.textSecondary
+                        Text {
+                            text: qsTr("Entrada")
+                            color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.cardTitleSize
+                            font.weight: MichiTheme.typography.weightSemiBold
                         }
 
-                        Item { Layout.fillWidth: true }
-
-                        Label {
-                            text: qsTr("0 dB")
-                            font.pixelSize: 10
-                            color: MichiTheme.textSecondary
-                        }
-                    }
-
-                    // Nivel numérico
-                    Label {
-                        text: `${recordingLevel.toFixed(1)} dB`
-                        font.pixelSize: 24
-                        font.bold: true
-                        color: recordingLevel > -3 ? MichiTheme.error : MichiTheme.success
-                        horizontalAlignment: Text.AlignHCenter
-                    }
-
-                    Label {
-                        text: qsTr("(estimado)")
-                        font.pixelSize: 11
-                        color: MichiTheme.textMuted
-                        horizontalAlignment: Text.AlignHCenter
-                        visible: {
-                            var s = audioLabBridge.getRecordingStatus()
-                            !(s && typeof s.level === "number")
-                        }
-                    }
-                }
-            }
-
-            // Controles de grabación
-            GlassCard {
-                Layout.fillWidth: true
-    anchors.margins: 20
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    spacing: 20
-
-                    // Temporizador
-                    Label {
-                        text: formatTime(recordingDuration)
-                        font.pixelSize: 48
-                        font.bold: true
-                        font.family: "Mono"
-                        horizontalAlignment: Text.AlignHCenter
-                        color: isRecording ? MichiTheme.accent : MichiTheme.textPrimary
-                    }
-
-                    // Botones de control
-                    RowLayout {
-                        Layout.alignment: Qt.AlignHCenter
-                        spacing: 15
-
-                        // Botón Grabar
-                        RoundButton {
-                            width: 70
-                            height: 70
-                            radius: 35
-                            text: isRecording ? "⬛" : qsTr("🔴")
-                            font.pixelSize: 24
-                            highlighted: !isRecording
-                            enabled: audioDevices.length > 0
-
-                            onClicked: {
-                                if (isRecording) {
-                                    stopRecording()
-                                } else {
-                                    startRecording()
-                                }
-                            }
-                        }
-
-                        // Botón Pausar
-                        RoundButton {
-                            width: 60
-                            height: 60
-                            radius: 30
-                            text: isPaused ? "▶️" : qsTr("⏸️")
-                            font.pixelSize: 20
-                            enabled: isRecording
-
-                            onClicked: pauseRecording()
-                        }
-
-                        // Botón Marcar
-                        RoundButton {
-                            width: 60
-                            height: 60
-                            radius: 30
-                            text: qsTr("🏷️")
-                            font.pixelSize: 20
-                            enabled: isRecording
-
-                            onClicked: addMarker()
-                        }
-                    }
-
-                    // Estado
-                    Label {
-                        id: statusMessage
-                        Layout.fillWidth: true
-                        text: qsTr("Listo para grabar")
-                        horizontalAlignment: Text.AlignHCenter
-                        font.pixelSize: 14
-                        color: MichiTheme.textSecondary
-                    }
-                }
-            }
-
-            // Configuración
-            GlassCard {
-                Layout.fillWidth: true
-    anchors.margins: 15
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    spacing: 15
-
-                    Label {
-                        text: qsTr("Configuración")
-                        font.bold: true
-                        font.pixelSize: 14
-                    }
-
-                    // Ecualización RIAA
-                    CheckBox {
-                        id: applyRIAA
-                        text: qsTr("Aplicar ecualización RIAA (para tocadiscos sin preamp)")
-                        checked: selectedDevice && selectedDevice.is_turntable
-                    }
-
-                    ToolTip {
-                        visible: applyRIAA.hovered
-                        text: qsTr("La ecualización RIAA corrige la respuesta de frecuencia estándar de vinilos. Actívala si tu tocadiscos no tiene preamplificador incorporado.")
-                        delay: 500
-                    }
-
-                    // Filtros DSP
-                    CheckBox {
-                        id: deClickerCheck
-                        text: qsTr("Filtro De-Clicker (eliminar clicks y pops)")
-                        checked: false
-                    }
-
-                    CheckBox {
-                        id: deHisserCheck
-                        text: qsTr("Filtro De-Hisser (reducir ruido de cinta)")
-                        checked: false
-                    }
-
-                    // Carpeta de salida
-                    RowLayout {
-                        Layout.fillWidth: true
-
-                        Label {
-                            text: qsTr("Guardar en:")
-                            width: 100
-                        }
-
-                        TextField {
+                        ComboBox {
+                            id: deviceSelector
                             Layout.fillWidth: true
-                            text: outputPath
-                            onTextChanged: outputPath = text
-                        }
-
-                        Button {
-                            text: qsTr("...")
-                            onClicked: {
-                                // Abrir selector de carpetas
+                            model: audioDevices.map(function(device) {
+                                var prefix = device.is_turntable ? "◉ " : ""
+                                return prefix + device.name
+                            })
+                            enabled: !isRecording && audioDevices.length > 0
+                            onCurrentIndexChanged: {
+                                if (currentIndex >= 0 && currentIndex < audioDevices.length)
+                                    selectedDevice = audioDevices[currentIndex]
                             }
                         }
-                    }
-                }
-            }
 
-            // Lista de marcadores
-            GlassCard {
-                Layout.fillWidth: true
-    anchors.margins: 15
-                visible: markers.length > 0
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    spacing: 10
-
-                    RowLayout {
-                        Label {
-                            text: `Marcadores (${markers.length})`
-                            font.bold: true
-                            font.pixelSize: 14
-                        }
-                        Item { Layout.fillWidth: true }
-                        Label {
-                            text: qsTr("Se usarán para dividir pistas automáticamente")
-                            font.pixelSize: 11
-                            color: MichiTheme.textSecondary
-                        }
-                    }
-
-                    Repeater {
-                        model: markers
-
-                        delegate: RowLayout {
+                        RowLayout {
                             Layout.fillWidth: true
 
-                            Label {
-                                text: modelData.label
-                                font.pixelSize: 13
+                            Button {
+                                text: qsTr("Actualizar")
+                                enabled: !isRecording && !detectingDevices
+                                onClicked: detectDevices()
                             }
 
                             Item { Layout.fillWidth: true }
 
-                            Label {
-                                text: formatTime(modelData.timestamp)
-                                font.family: "Mono"
-                                color: MichiTheme.textSecondary
+                            Text {
+                                text: selectedDevice
+                                    ? (selectedDevice.is_usb ? qsTr("USB") : qsTr("Entrada de audio"))
+                                    : qsTr("Sin dispositivo")
+                                color: MichiTheme.colors.textMuted
+                                font.pixelSize: MichiTheme.typography.captionSize
                             }
+                        }
+
+                        StereoLevelMeter {
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.fillHeight: true
+                            Layout.preferredWidth: 180
+                            leftPeakDbfs: levelValue("left_peak_dbfs")
+                            rightPeakDbfs: levelValue("right_peak_dbfs")
+                            leftRmsDbfs: levelValue("left_rms_dbfs")
+                            rightRmsDbfs: levelValue("right_rms_dbfs")
+                            clippingLeft: levels.clipping_left === true
+                            clippingRight: levels.clipping_right === true
+                        }
+                    }
+                }
+
+                GlassCard {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 280
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
+                        spacing: MichiTheme.spacing.lg
+
+                        Text {
+                            text: qsTr("Transporte")
+                            color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.cardTitleSize
+                            font.weight: MichiTheme.typography.weightSemiBold
+                        }
+
+                        AudioTimeDisplay {
+                            Layout.alignment: Qt.AlignHCenter
+                            seconds: recordingDuration
+                        }
+
+                        RowLayout {
+                            Layout.alignment: Qt.AlignHCenter
+                            spacing: MichiTheme.spacing.md
+
+                            RoundButton {
+                                text: isRecording ? "■" : "●"
+                                font.pixelSize: 24
+                                highlighted: !isRecording
+                                enabled: isRecording || selectedDevice !== null
+                                Accessible.name: isRecording
+                                    ? qsTr("Detener grabación")
+                                    : qsTr("Iniciar grabación")
+                                onClicked: isRecording ? stopRecording() : startRecording()
+                            }
+
+                            RoundButton {
+                                text: isPaused ? "▶" : "Ⅱ"
+                                enabled: isRecording
+                                Accessible.name: isPaused
+                                    ? qsTr("Reanudar")
+                                    : qsTr("Pausar")
+                                onClicked: togglePause()
+                            }
+
+                            RoundButton {
+                                text: "+"
+                                enabled: isRecording && !isPaused
+                                Accessible.name: qsTr("Agregar marcador")
+                                onClicked: addMarker()
+                            }
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            horizontalAlignment: Text.AlignHCenter
+                            text: recordingStatus.error
+                                ? recordingStatus.error
+                                : (isRecording
+                                    ? qsTr("Capturando %1 Hz / %2-bit")
+                                        .arg(recordingStatus.sample_rate || "")
+                                        .arg(recordingStatus.bit_depth || "")
+                                    : qsTr("Listo para grabar"))
+                            color: recordingStatus.error
+                                ? MichiTheme.colors.error
+                                : MichiTheme.colors.textSecondary
+                            wrapMode: Text.WordWrap
+                        }
+
+                        ProgressBar {
+                            Layout.fillWidth: true
+                            from: 0
+                            to: 1
+                            indeterminate: isRecording && !isPaused
+                            value: 0
+                            visible: isRecording
+                        }
+                    }
+                }
+
+                GlassCard {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 280
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
+                        spacing: MichiTheme.spacing.sm
+
+                        Text {
+                            text: qsTr("Sesión")
+                            color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.cardTitleSize
+                            font.weight: MichiTheme.typography.weightSemiBold
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: qsTr("Marcadores: %1").arg(markers.length)
+                            color: MichiTheme.colors.textSecondary
+                        }
+
+                        ListView {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            clip: true
+                            model: markers
+
+                            delegate: RowLayout {
+                                width: ListView.view.width
+                                spacing: MichiTheme.spacing.sm
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: modelData.label
+                                    color: MichiTheme.colors.textPrimary
+                                    elide: Text.ElideRight
+                                }
+
+                                Text {
+                                    text: {
+                                        var value = Number(modelData.timestamp || 0)
+                                        var minutes = Math.floor(value / 60)
+                                        var seconds = Math.floor(value % 60)
+                                        return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
+                                    }
+                                    color: MichiTheme.colors.textMuted
+                                    font.family: "monospace"
+                                }
+                            }
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            visible: markers.length === 0
+                            text: qsTr("Agrega marcadores durante la grabación para dividir las pistas después.")
+                            color: MichiTheme.colors.textMuted
+                            wrapMode: Text.WordWrap
                         }
                     }
                 }
             }
 
-            // Badge experimental
-            StatusBadge {
-                text: qsTr("Experimental")
-                kind: "warning"
-                Layout.alignment: Qt.AlignHCenter
-            }
-
-            Label {
+            GlassCard {
                 Layout.fillWidth: true
-                text: qsTr("Consejo: Para mejores resultados, graba a 24-bit/96kHz si tu dispositivo lo soporta. Aplica RIAA solo si tu tocadiscos no tiene preamplificador.")
-                font.pixelSize: 12
-                color: MichiTheme.textSecondary
-                wrapMode: Text.Wrap
-            }
-        }
-    }
 
-    // Timer para medidor de nivel — usa bridge cuando es real, simulado como fallback
-    Timer {
-        id: levelTimer
-        interval: 100
-        running: false
-        repeat: true
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: MichiTheme.spacing.lg
+                    spacing: MichiTheme.spacing.md
 
-        onTriggered: {
-            if (isRecording && !isPaused) {
-                var status = audioLabBridge.getRecordingStatus()
-                if (status && typeof status.level === "number") {
-                    recordingLevel = status.level
-                } else {
-                    // Sin entrada de audio real — mostrar silencio
-                    recordingLevel = -60
+                    Text {
+                        text: qsTr("Formato y procesamiento")
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.cardTitleSize
+                        font.weight: MichiTheme.typography.weightSemiBold
+                    }
+
+                    GridLayout {
+                        Layout.fillWidth: true
+                        columns: width >= 900 ? 4 : 2
+                        columnSpacing: MichiTheme.spacing.md
+                        rowSpacing: MichiTheme.spacing.sm
+
+                        Label { text: qsTr("Formato") }
+                        ComboBox {
+                            id: formatSelector
+                            Layout.fillWidth: true
+                            model: ["WAV", "FLAC", "MP3", "OPUS"]
+                            enabled: !isRecording
+                        }
+
+                        Label { text: qsTr("Frecuencia") }
+                        ComboBox {
+                            id: sampleRateSelector
+                            Layout.fillWidth: true
+                            model: [44100, 48000, 88200, 96000]
+                            currentIndex: 3
+                            enabled: !isRecording
+                        }
+
+                        Label { text: qsTr("Profundidad") }
+                        ComboBox {
+                            id: bitDepthSelector
+                            Layout.fillWidth: true
+                            model: [16, 24, 32]
+                            currentIndex: 1
+                            enabled: !isRecording
+                        }
+
+                        Label { text: qsTr("Canales") }
+                        ComboBox {
+                            id: channelSelector
+                            Layout.fillWidth: true
+                            model: [1, 2]
+                            currentIndex: 1
+                            enabled: !isRecording
+                        }
+                    }
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: MichiTheme.spacing.md
+
+                        CheckBox {
+                            id: riaaCheck
+                            text: qsTr("RIAA")
+                            enabled: !isRecording
+                            ToolTip.visible: hovered
+                            ToolTip.text: qsTr("Actívalo solo para una señal PHONO sin preamplificador RIAA.")
+                        }
+
+                        CheckBox {
+                            id: declickCheck
+                            text: qsTr("De-click")
+                            enabled: !isRecording
+                        }
+
+                        CheckBox {
+                            id: dehissCheck
+                            text: qsTr("De-hiss")
+                            enabled: !isRecording
+                        }
+
+                        CheckBox {
+                            id: highpassCheck
+                            text: qsTr("Filtro subsónico 20 Hz")
+                            enabled: !isRecording
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+
+                        TextField {
+                            Layout.fillWidth: true
+                            text: outputPath
+                            readOnly: true
+                            Accessible.name: qsTr("Carpeta de salida")
+                        }
+
+                        Button {
+                            text: qsTr("Elegir carpeta")
+                            enabled: !isRecording
+                            onClicked: outputFolderDialog.open()
+                        }
+                    }
                 }
-            } else {
-                recordingLevel = -60
             }
-        }
-    }
 
-    // Timer para duración
-    Timer {
-        id: durationTimer
-        interval: 1000
-        running: false
-        repeat: true
-
-        onTriggered: {
-            if (isRecording && !isPaused) {
-                recordingDuration++
-            }
+            Item { Layout.preferredHeight: MichiTheme.spacing.xl }
         }
     }
 }

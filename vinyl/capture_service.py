@@ -1,178 +1,109 @@
-"""Capture service — records audio from system input via GStreamer.
+"""Qt compatibility wrapper around the canonical vinyl recorder.
 
-Uses GStreamer's autoaudiosrc or a user-selected ALSA/PulseAudio source
-to capture PCM audio and write it to a temporary WAV file.
+Historically this module contained a second GStreamer recording engine. Keeping
+it as a facade removes duplicate capture state while preserving its public Qt
+signals for any future consumers.
 """
 
 from __future__ import annotations
 
-import logging
 import os
 import tempfile
 
 from PySide6.QtCore import QObject, Signal
 
-import gi  # noqa: E402
-gi.require_version("Gst", "1.0")  # noqa: E402
-from gi.repository import Gst  # noqa: E402
-
-logger = logging.getLogger("michi.vinyl.capture")
+from .vinyl_recorder_service import VinylRecorderService
 
 
 class VinylCaptureService(QObject):
-    recording_started = Signal(str)  # filepath
-    recording_progress = Signal(float)  # seconds recorded
-    recording_finished = Signal(str)  # filepath
+    recording_started = Signal(str)
+    recording_progress = Signal(float)
+    recording_finished = Signal(str)
     recording_error = Signal(str)
     recording_paused = Signal()
     recording_resumed = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, recorder: VinylRecorderService | None = None):
         super().__init__(parent)
-        self._pipeline: Gst.Element | None = None
-        self._filepath: str = ""
-        self._is_recording = False
-        self._is_paused = False
+        self._recorder = recorder or VinylRecorderService()
+        self._filepath = ""
         self._sample_rate = 96000
         self._bit_depth = 24
         self._channels = 2
 
     @property
     def is_recording(self) -> bool:
-        return self._is_recording
+        return self._recorder.is_recording
 
     @property
     def is_paused(self) -> bool:
-        return self._is_paused
+        return self._recorder.is_paused
 
-    def set_format(self, sample_rate: int = 96000,
-                   bit_depth: int = 24, channels: int = 2):
-        self._sample_rate = sample_rate
-        self._bit_depth = bit_depth
-        self._channels = channels
+    def set_format(
+        self, sample_rate: int = 96000, bit_depth: int = 24, channels: int = 2
+    ) -> None:
+        self._sample_rate = int(sample_rate)
+        self._bit_depth = int(bit_depth)
+        self._channels = int(channels)
 
     def start_recording(self, filepath: str | None = None) -> bool:
-        if self._is_recording:
+        if self.is_recording:
             return False
-
         if not filepath:
             fd, filepath = tempfile.mkstemp(suffix=".wav", prefix="vinyl_")
             os.close(fd)
-
-        pipeline_str = (
-            f"autoaudiosrc ! "
-            f"audioconvert ! audioresample ! "
-            f"capsfilter caps=audio/x-raw,rate={self._sample_rate},"
-            f"channels={self._channels},"
-            f"format=S{self._bit_depth}LE ! "
-            f"wavenc ! "
-            f"filesink location={filepath}"
-        )
-
-        try:
-            self._pipeline = Gst.parse_launch(pipeline_str)
-            self._pipeline.set_state(Gst.State.PLAYING)
-            self._filepath = filepath
-            self._is_recording = True
-            self.recording_started.emit(filepath)
-            logger.info("Vinyl recording started: %s", filepath)
-            return True
-        except Exception as e:
-            logger.exception("Failed to start vinyl capture")
-            self.recording_error.emit(str(e))
+        device = self._recorder.get_recommended_device()
+        if device is None:
+            self.recording_error.emit("No hay dispositivos de entrada disponibles")
             return False
+        result = self._recorder.start_recording(
+            device=device,
+            output_path=filepath,
+            format="wav",
+            sample_rate=self._sample_rate,
+            bit_depth=self._bit_depth,
+            channels=self._channels,
+        )
+        if not result.get("success"):
+            self.recording_error.emit(str(result.get("error", "Error de captura")))
+            return False
+        self._filepath = filepath
+        self.recording_started.emit(filepath)
+        return True
 
     def stop_recording(self) -> str:
-        if not self._is_recording or not self._pipeline:
+        if not self.is_recording:
             return self._filepath
-
-        try:
-            self._pipeline.send_event(Gst.Event.new_eos())
-            self._pipeline.get_state(Gst.CLOCK_TIME_NONE)
-            self._pipeline.set_state(Gst.State.NULL)
-        except Exception as e:
-            logger.warning("Error stopping capture: %s", e)
-
-        self._is_recording = False
+        result = self._recorder.stop_recording()
+        if not result.get("success"):
+            self.recording_error.emit(str(result.get("error", "Error al detener")))
+            return self._filepath
+        self._filepath = str(result.get("output_path", self._filepath))
         self.recording_finished.emit(self._filepath)
-        logger.info("Vinyl recording finished: %s", self._filepath)
         return self._filepath
 
     def list_devices(self) -> list[dict]:
-        """List available audio input sources."""
-        from audio.output_device_manager import list_devices
-        try:
-            return [d.to_dict() if hasattr(d, 'to_dict') else {"name": str(d)}
-                    for d in list_devices(capture=True)]
-        except Exception:
-            return [{"name": "Default (autoaudiosrc)"}]
+        return [device.to_dict() for device in self._recorder.detect_devices()]
 
     def get_level(self) -> float:
-        """Return current RMS level as a float 0..1 for calibration display.
-
-        Returns 0.0 if not recording or level cannot be computed.
-        """
-        if not self._is_recording or not self._pipeline:
-            return 0.0
-        try:
-            bus = self._pipeline.get_bus()
-            if bus:
-                msg = bus.peek()
-                while msg:
-                    if msg.type == Gst.MessageType.ELEMENT:
-                        s = msg.get_structure()
-                        if s and s.has_field("rms"):
-                            rms = s.get_double("rms")
-                            if rms is not None:
-                                return min(1.0, float(rms) * 10.0)
-                    msg = bus.peek()
-        except Exception:
-            pass
-        return 0.0
+        status = self._recorder.get_recording_status()
+        peak_dbfs = float(status.get("level", -60.0))
+        return max(0.0, min(1.0, (peak_dbfs + 60.0) / 60.0))
 
     def get_recording_seconds(self) -> float:
-        """Return approximate recording duration in seconds."""
-        if not self._filepath or not os.path.exists(self._filepath):
-            return 0.0
-        try:
-            size = os.path.getsize(self._filepath)
-            bytes_per_sec = self._sample_rate * (self._bit_depth // 8) * self._channels
-            if bytes_per_sec > 0:
-                return size / bytes_per_sec
-        except OSError:
-            pass
-        return 0.0
+        return float(self._recorder.get_recording_status().get("duration", 0.0))
 
     def pause_recording(self) -> bool:
-        """Pause the recording. Returns True if successful."""
-        if not self._is_recording or self._is_paused or not self._pipeline:
-            return False
-        try:
-            self._pipeline.set_state(Gst.State.PAUSED)
-            self._is_paused = True
+        paused = self._recorder.pause_recording()
+        if paused:
             self.recording_paused.emit()
-            return True
-        except Exception as e:
-            logger.warning("Error pausing capture: %s", e)
-            return False
+        return paused
 
     def resume_recording(self) -> bool:
-        """Resume a paused recording. Returns True if successful."""
-        if not self._is_recording or not self._is_paused or not self._pipeline:
-            return False
-        try:
-            self._pipeline.set_state(Gst.State.PLAYING)
-            self._is_paused = False
+        resumed = self._recorder.resume_recording()
+        if resumed:
             self.recording_resumed.emit()
-            return True
-        except Exception as e:
-            logger.warning("Error resuming capture: %s", e)
-            return False
+        return resumed
 
-    def cleanup(self):
-        if self._pipeline:
-            import contextlib
-            with contextlib.suppress(Exception):
-                self._pipeline.set_state(Gst.State.NULL)
-            self._pipeline = None
-        self._is_recording = False
+    def cleanup(self) -> None:
+        self._recorder.cleanup()
