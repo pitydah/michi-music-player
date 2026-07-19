@@ -25,6 +25,12 @@ Item {
         return root.albumModel.get(gridView.currentIndex)
     }
 
+    function openCurrentAlbum() {
+        var item = root.currentAlbum()
+        if (item)
+            root.albumClicked(item.albumKey || "", item.title || "", item.artist || "", item.year || 0)
+    }
+
     GridView {
         id: gridView
         anchors.fill: parent
@@ -42,11 +48,8 @@ Item {
         cellWidth: width / columnCount
         cellHeight: Math.max(238, cellWidth + 56)
 
-        Keys.onReturnPressed: {
-            var item = root.currentAlbum()
-            if (item) root.albumClicked(item.albumKey || "", item.title || "", item.artist || "", item.year || 0)
-        }
-        Keys.onEnterPressed: Keys.returnPressed()
+        Keys.onReturnPressed: root.openCurrentAlbum()
+        Keys.onEnterPressed: root.openCurrentAlbum()
         Keys.onSpacePressed: {
             var item = root.currentAlbum()
             if (item && root.bridge && root.bridge.playAlbum)
@@ -73,6 +76,7 @@ Item {
 
             Rectangle {
                 id: surface
+                z: 1
                 anchors.fill: parent
                 anchors.margins: card.cardMargin
                 radius: MichiTheme.radius.lg
@@ -123,31 +127,30 @@ Item {
                                 Behavior on opacity { NumberAnimation { duration: MichiTheme.motionFast } }
                             }
 
-                            Row {
+                            Rectangle {
                                 anchors.right: parent.right
                                 anchors.bottom: parent.bottom
                                 anchors.margins: MichiTheme.spacing.sm
-                                spacing: MichiTheme.spacing.xs
+                                width: 36
+                                height: 36
+                                radius: 18
+                                color: MichiTheme.colors.accentPrimary
                                 opacity: cardMouse.containsMouse || card.selected ? 1 : 0
                                 Behavior on opacity { NumberAnimation { duration: MichiTheme.motionFast } }
 
-                                Rectangle {
-                                    width: 36; height: 36; radius: 18
-                                    color: MichiTheme.colors.accentPrimary
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "▶"
-                                        color: MichiTheme.colors.textOnAccent
-                                        font.pixelSize: 13
-                                    }
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: function(mouse) {
-                                            mouse.accepted = true
-                                            if (root.bridge && root.bridge.playAlbum)
-                                                root.bridge.playAlbum(model.albumKey || "")
-                                        }
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "▶"
+                                    color: MichiTheme.colors.textOnAccent
+                                    font.pixelSize: 13
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: function(mouse) {
+                                        mouse.accepted = true
+                                        if (root.bridge && root.bridge.playAlbum)
+                                            root.bridge.playAlbum(model.albumKey || "")
                                     }
                                 }
                             }
@@ -205,6 +208,7 @@ Item {
 
             MouseArea {
                 id: cardMouse
+                z: 0
                 anchors.fill: parent
                 anchors.margins: card.cardMargin
                 hoverEnabled: true
