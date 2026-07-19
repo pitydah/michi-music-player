@@ -9,127 +9,670 @@ Item {
     objectName: "distributionHubPage"
     focus: true
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Distribucion de audio"
+    property var bridge: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
+    property string selectedSourceId: ""
+    property var selectedDestinationIds: []
+    property string feedback: ""
+    property bool feedbackError: false
 
-    Flickable {
-        id: flickable
+    Accessible.role: Accessible.Pane
+    Accessible.name: qsTr("Distribución de audio")
+
+    function statusKind(state) {
+        if (state === "active" || state === "running" || state === "online" || state === "ready")
+            return "success"
+        if (state === "error" || state === "offline" || state === "unavailable")
+            return "error"
+        if (state === "degraded" || state === "starting" || state === "stopping")
+            return "warning"
+        return "info"
+    }
+
+    function showResult(result, successText) {
+        root.feedbackError = !result || !result.ok
+        if (root.feedbackError)
+            root.feedback = qsTr("No se pudo completar la operación: %1").arg(result && result.error ? result.error : qsTr("error desconocido"))
+        else
+            root.feedback = successText
+        if (root.bridge)
+            root.bridge.refreshDistribution()
+    }
+
+    function toggleDestination(destinationId, checked) {
+        var next = root.selectedDestinationIds.slice(0)
+        var index = next.indexOf(destinationId)
+        if (checked && index < 0)
+            next.push(destinationId)
+        else if (!checked && index >= 0)
+            next.splice(index, 1)
+        root.selectedDestinationIds = next
+    }
+
+    Component.onCompleted: {
+        if (root.bridge)
+            root.bridge.refreshDistribution()
+    }
+
+    ColumnLayout {
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
-        contentHeight: column.height + MichiTheme.spacing.xxl
-        clip: true
-        boundsBehavior: Flickable.StopAtBounds
-        activeFocusOnTab: true
+        spacing: MichiTheme.spacing.md
 
-        Column {
-            id: column
-            width: parent.width
-            spacing: MichiTheme.spacing.lg
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: MichiTheme.spacing.md
 
-            Text {
-                text: qsTr("Distribucion de audio")
-                color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.pageTitleSize
-                font.weight: MichiTheme.typography.weightSemiBold
-            }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: MichiTheme.spacing.xs
 
-            Text {
-                text: qsTr("Gestion de fuentes, servidores, receptores y rutas activas de audio.")
-                color: MichiTheme.colors.textSecondary
-                font.pixelSize: MichiTheme.typography.bodySize
-                width: parent.width
-                wrapMode: Text.WordWrap
+                Label {
+                    text: qsTr("Distribución de audio")
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.pageTitleSize
+                    font.weight: MichiTheme.typography.weightSemiBold
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    text: qsTr("Gestiona fuentes, Snapserver, receptores, destinos y rutas verificadas de audio.")
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    wrapMode: Text.WordWrap
+                }
             }
 
             StatusBadge {
-                text: qsTr("Parcial")
-                kind: "warning"
+                text: root.bridge ? root.bridge.distributionState : qsTr("No disponible")
+                kind: root.statusKind(root.bridge ? root.bridge.distributionState : "unavailable")
             }
 
-            SectionHeader {
-                text: qsTr("Componentes de distribucion")
-                width: parent.width
+            MichiButton {
+                text: qsTr("Actualizar")
+                variant: "ghost"
+                onClicked: {
+                    if (root.bridge)
+                        root.showResult(root.bridge.refreshDistribution(), qsTr("Estado actualizado."))
+                }
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: feedbackLabel.implicitHeight + MichiTheme.spacing.md * 2
+            visible: root.feedback !== ""
+            radius: MichiTheme.radius.md
+            color: root.feedbackError
+                   ? Qt.rgba(1.0, 0.35, 0.35, 0.12)
+                   : Qt.rgba(0.35, 0.85, 0.55, 0.12)
+            border.width: 1
+            border.color: root.feedbackError ? MichiTheme.colors.error : MichiTheme.colors.success
+
+            Label {
+                id: feedbackLabel
+                anchors.fill: parent
+                anchors.margins: MichiTheme.spacing.md
+                text: root.feedback
+                color: MichiTheme.colors.textPrimary
+                wrapMode: Text.WordWrap
+            }
+        }
+
+        TabBar {
+            id: tabs
+            Layout.fillWidth: true
+
+            TabButton { text: qsTr("Fuentes") }
+            TabButton { text: qsTr("Servidores") }
+            TabButton { text: qsTr("Receptores") }
+            TabButton { text: qsTr("Destinos") }
+            TabButton { text: qsTr("Rutas") }
+        }
+
+        StackLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            currentIndex: tabs.currentIndex
+
+            ScrollView {
+                clip: true
+                contentWidth: availableWidth
+
+                ColumnLayout {
+                    width: parent.width
+                    spacing: MichiTheme.spacing.md
+
+                    SectionHeader {
+                        Layout.fillWidth: true
+                        text: qsTr("Fuentes disponibles")
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        visible: !root.bridge || root.bridge.sources.length === 0
+                        text: qsTr("No hay streams de audio disponibles. Inicia Snapserver y conecta una fuente real antes de crear rutas.")
+                        color: MichiTheme.colors.textMuted
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Repeater {
+                        model: root.bridge ? root.bridge.sources : []
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: sourceRow.implicitHeight + MichiTheme.spacing.md * 2
+                            radius: MichiTheme.radius.md
+                            color: root.selectedSourceId === modelData.id
+                                   ? MichiTheme.colors.accentSurface
+                                   : MichiTheme.colors.surfaceCard
+                            border.width: 1
+                            border.color: root.selectedSourceId === modelData.id
+                                          ? MichiTheme.colors.accent
+                                          : MichiTheme.colors.borderCard
+
+                            RowLayout {
+                                id: sourceRow
+                                anchors.fill: parent
+                                anchors.margins: MichiTheme.spacing.md
+                                spacing: MichiTheme.spacing.md
+
+                                RadioButton {
+                                    checked: root.selectedSourceId === modelData.id
+                                    enabled: modelData.routeable === true
+                                    onClicked: root.selectedSourceId = modelData.id
+                                    Accessible.name: qsTr("Seleccionar fuente %1").arg(modelData.name || modelData.id)
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 2
+
+                                    Label {
+                                        text: modelData.name || modelData.id
+                                        color: MichiTheme.colors.textPrimary
+                                        font.weight: Font.DemiBold
+                                    }
+
+                                    Label {
+                                        Layout.fillWidth: true
+                                        text: modelData.routeable
+                                              ? qsTr("%1 · %2 Hz · %3 canal(es)").arg(modelData.format || "unknown").arg(modelData.sample_rate || 0).arg(modelData.channels || 0)
+                                              : (modelData.reason || qsTr("Fuente informativa; todavía no enrutable"))
+                                        color: MichiTheme.colors.textSecondary
+                                        wrapMode: Text.WordWrap
+                                    }
+                                }
+
+                                StatusBadge {
+                                    text: modelData.routeable ? (modelData.state || qsTr("disponible")) : qsTr("No enrutable")
+                                    kind: modelData.routeable ? root.statusKind(modelData.state) : "warning"
+                                }
+                            }
+                        }
+                    }
+
+                    Item { Layout.fillHeight: true }
+                }
             }
 
-            Grid {
-                width: parent.width
-                columns: parent.width > 900 ? 3 : 2
-                columnSpacing: MichiTheme.spacing.md
-                rowSpacing: MichiTheme.spacing.md
+            ScrollView {
+                clip: true
+                contentWidth: availableWidth
 
-                GlassCard {
-                    width: parent.width / parent.columns - MichiTheme.spacing.md * (parent.columns - 1) / parent.columns
-                    height: 80
-                    title: qsTr("Fuentes")
-                    subtitle: qsTr("Origenes de audio disponibles.")
-                    variant: "base"
-                    activeFocusOnTab: true
-                    Keys.onReturnPressed: clicked()
-                    Keys.onSpacePressed: clicked()
-                    onClicked: {
-                        if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.navigate("home_audio")
+                ColumnLayout {
+                    width: parent.width
+                    spacing: MichiTheme.spacing.md
+
+                    SectionHeader {
+                        Layout.fillWidth: true
+                        text: qsTr("Servidores de distribución")
                     }
+
+                    Label {
+                        Layout.fillWidth: true
+                        visible: !root.bridge || root.bridge.servers.length === 0
+                        text: qsTr("No existe un administrador de Snapserver disponible en esta instalación.")
+                        color: MichiTheme.colors.textMuted
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Repeater {
+                        model: root.bridge ? root.bridge.servers : []
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: serverRow.implicitHeight + MichiTheme.spacing.md * 2
+                            radius: MichiTheme.radius.md
+                            color: MichiTheme.colors.surfaceCard
+                            border.width: 1
+                            border.color: MichiTheme.colors.borderCard
+
+                            RowLayout {
+                                id: serverRow
+                                anchors.fill: parent
+                                anchors.margins: MichiTheme.spacing.md
+                                spacing: MichiTheme.spacing.md
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 2
+
+                                    Label {
+                                        text: modelData.name || qsTr("Snapserver")
+                                        color: MichiTheme.colors.textPrimary
+                                        font.weight: Font.DemiBold
+                                    }
+
+                                    Label {
+                                        text: qsTr("Audio %1 · Control %2 · Web %3")
+                                              .arg(modelData.tcp_port || 1704)
+                                              .arg(modelData.control_port || 1705)
+                                              .arg(modelData.http_port || 1780)
+                                        color: MichiTheme.colors.textSecondary
+                                    }
+
+                                    Label {
+                                        Layout.fillWidth: true
+                                        visible: modelData.error
+                                        text: modelData.error || ""
+                                        color: MichiTheme.colors.error
+                                        wrapMode: Text.WordWrap
+                                    }
+                                }
+
+                                StatusBadge {
+                                    text: modelData.state || qsTr("desconocido")
+                                    kind: root.statusKind(modelData.state)
+                                }
+
+                                MichiButton {
+                                    text: modelData.state === "running" ? qsTr("Detener") : qsTr("Iniciar")
+                                    variant: modelData.state === "running" ? "danger" : "primary"
+                                    enabled: modelData.binary_available !== false
+                                    onClicked: {
+                                        var result = modelData.state === "running"
+                                                   ? root.bridge.stopServer(modelData.id)
+                                                   : root.bridge.startServer(modelData.id)
+                                        root.showResult(result, modelData.state === "running" ? qsTr("Detención solicitada.") : qsTr("Inicio solicitado."))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Item { Layout.fillHeight: true }
                 }
+            }
 
-                GlassCard {
-                    width: parent.width / parent.columns - MichiTheme.spacing.md * (parent.columns - 1) / parent.columns
-                    height: 80
-                    title: qsTr("Servidores")
-                    subtitle: qsTr("Servidores de streaming y retransmision.")
-                    variant: "base"
-                    activeFocusOnTab: true
-                    Keys.onReturnPressed: clicked()
-                    Keys.onSpacePressed: clicked()
-                    onClicked: {
-                        if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.navigate("home_audio")
+            ScrollView {
+                clip: true
+                contentWidth: availableWidth
+
+                ColumnLayout {
+                    width: parent.width
+                    spacing: MichiTheme.spacing.md
+
+                    RowLayout {
+                        Layout.fillWidth: true
+
+                        SectionHeader {
+                            Layout.fillWidth: true
+                            text: qsTr("Receptores detectados")
+                        }
+
+                        MichiButton {
+                            text: qsTr("Detectar")
+                            variant: "ghost"
+                            onClicked: root.showResult(root.bridge.discoverReceivers(), qsTr("Descubrimiento completado."))
+                        }
                     }
+
+                    Label {
+                        Layout.fillWidth: true
+                        visible: !root.bridge || root.bridge.receiverList.length === 0
+                        text: qsTr("No se detectaron Snapclients ni receptores Michi Music Stream.")
+                        color: MichiTheme.colors.textMuted
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Repeater {
+                        model: root.bridge ? root.bridge.receiverList : []
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: receiverColumn.implicitHeight + MichiTheme.spacing.md * 2
+                            radius: MichiTheme.radius.md
+                            color: MichiTheme.colors.surfaceCard
+                            border.width: 1
+                            border.color: MichiTheme.colors.borderCard
+
+                            ColumnLayout {
+                                id: receiverColumn
+                                anchors.fill: parent
+                                anchors.margins: MichiTheme.spacing.md
+                                spacing: MichiTheme.spacing.sm
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 2
+
+                                        Label {
+                                            text: modelData.name || modelData.id
+                                            color: MichiTheme.colors.textPrimary
+                                            font.weight: Font.DemiBold
+                                        }
+
+                                        Label {
+                                            text: qsTr("%1 · Grupo: %2").arg(modelData.host || modelData.backend || "snapcast").arg(modelData.group_name || modelData.group || qsTr("sin grupo"))
+                                            color: MichiTheme.colors.textSecondary
+                                        }
+                                    }
+
+                                    StatusBadge {
+                                        text: modelData.state || (modelData.connected ? qsTr("online") : qsTr("offline"))
+                                        kind: root.statusKind(modelData.state || (modelData.connected ? "online" : "offline"))
+                                    }
+                                }
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    enabled: modelData.connected === true
+                                    spacing: MichiTheme.spacing.md
+
+                                    Label {
+                                        text: qsTr("Volumen")
+                                        color: MichiTheme.colors.textSecondary
+                                    }
+
+                                    MichiSlider {
+                                        id: receiverVolume
+                                        Layout.fillWidth: true
+                                        from: 0
+                                        to: 100
+                                        value: modelData.volume !== undefined ? modelData.volume : 100
+                                        onPressedChanged: {
+                                            if (!pressed)
+                                                root.showResult(root.bridge.setReceiverVolume(modelData.id, Math.round(value)), qsTr("Volumen actualizado."))
+                                        }
+                                    }
+
+                                    CheckBox {
+                                        text: qsTr("Mute")
+                                        checked: modelData.muted === true
+                                        onClicked: root.showResult(root.bridge.setReceiverMute(modelData.id, checked), qsTr("Mute actualizado."))
+                                    }
+
+                                    Label {
+                                        text: qsTr("Latencia")
+                                        color: MichiTheme.colors.textSecondary
+                                    }
+
+                                    SpinBox {
+                                        from: 0
+                                        to: 5000
+                                        value: modelData.latency_ms || 0
+                                        editable: true
+                                        onValueModified: root.showResult(root.bridge.setReceiverLatency(modelData.id, value), qsTr("Latencia actualizada."))
+                                        Accessible.name: qsTr("Latencia de %1").arg(modelData.name || modelData.id)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Item { Layout.fillHeight: true }
                 }
+            }
 
-                GlassCard {
-                    width: parent.width / parent.columns - MichiTheme.spacing.md * (parent.columns - 1) / parent.columns
-                    height: 80
-                    title: qsTr("Receptores")
-                    subtitle: qsTr("Dispositivos que reciben y reproducen audio.")
-                    variant: "base"
-                    activeFocusOnTab: true
-                    Keys.onReturnPressed: clicked()
-                    Keys.onSpacePressed: clicked()
-                    onClicked: {
-                        if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.navigate("home_audio")
+            ScrollView {
+                clip: true
+                contentWidth: availableWidth
+
+                ColumnLayout {
+                    width: parent.width
+                    spacing: MichiTheme.spacing.md
+
+                    SectionHeader {
+                        Layout.fillWidth: true
+                        text: qsTr("Destinos de ruta")
                     }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("Selecciona una o más zonas Snapcast. Los dispositivos de Home Assistant permanecen visibles en Habitaciones, pero no se marcan como enrutables sin un transporte de audio verificable.")
+                        color: MichiTheme.colors.textSecondary
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        visible: !root.bridge || root.bridge.destinations.length === 0
+                        text: qsTr("No hay destinos enrutables disponibles.")
+                        color: MichiTheme.colors.textMuted
+                    }
+
+                    Repeater {
+                        model: root.bridge ? root.bridge.destinations : []
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: destinationRow.implicitHeight + MichiTheme.spacing.md * 2
+                            radius: MichiTheme.radius.md
+                            color: MichiTheme.colors.surfaceCard
+                            border.width: 1
+                            border.color: MichiTheme.colors.borderCard
+
+                            RowLayout {
+                                id: destinationRow
+                                anchors.fill: parent
+                                anchors.margins: MichiTheme.spacing.md
+                                spacing: MichiTheme.spacing.md
+
+                                CheckBox {
+                                    enabled: modelData.routeable === true
+                                    checked: root.selectedDestinationIds.indexOf(modelData.id) >= 0
+                                    onClicked: root.toggleDestination(modelData.id, checked)
+                                    Accessible.name: qsTr("Seleccionar destino %1").arg(modelData.name || modelData.id)
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 2
+
+                                    Label {
+                                        text: modelData.name || modelData.id
+                                        color: MichiTheme.colors.textPrimary
+                                        font.weight: Font.DemiBold
+                                    }
+
+                                    Label {
+                                        text: qsTr("%1 miembro(s) · Stream actual: %2")
+                                              .arg(modelData.members ? modelData.members.length : 0)
+                                              .arg(modelData.stream_id || qsTr("ninguno"))
+                                        color: MichiTheme.colors.textSecondary
+                                    }
+                                }
+
+                                StatusBadge {
+                                    text: modelData.routeable ? (modelData.state || qsTr("configurado")) : qsTr("No enrutable")
+                                    kind: modelData.routeable ? root.statusKind(modelData.state) : "warning"
+                                }
+                            }
+                        }
+                    }
+
+                    Item { Layout.fillHeight: true }
                 }
+            }
 
-                GlassCard {
-                    width: parent.width / parent.columns - MichiTheme.spacing.md * (parent.columns - 1) / parent.columns
-                    height: 80
-                    title: qsTr("Destinos")
-                    subtitle: qsTr("Salidas de audio configuradas.")
-                    variant: "base"
-                    activeFocusOnTab: true
-                    Keys.onReturnPressed: clicked()
-                    Keys.onSpacePressed: clicked()
-                    onClicked: {
-                        if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.navigate("home_audio")
-                    }
-                }
+            ScrollView {
+                clip: true
+                contentWidth: availableWidth
 
-                GlassCard {
-                    width: parent.width / parent.columns - MichiTheme.spacing.md * (parent.columns - 1) / parent.columns
-                    height: 80
-                    title: qsTr("Rutas activas")
-                    subtitle: qsTr("Rutas de senal actualmente en uso.")
-                    variant: "base"
-                    activeFocusOnTab: true
-                    Keys.onReturnPressed: clicked()
-                    Keys.onSpacePressed: clicked()
-                    onClicked: {
-                        if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.navigate("home_audio")
+                ColumnLayout {
+                    width: parent.width
+                    spacing: MichiTheme.spacing.md
+
+                    SectionHeader {
+                        Layout.fillWidth: true
+                        text: qsTr("Crear ruta")
                     }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: routeBuilder.implicitHeight + MichiTheme.spacing.md * 2
+                        radius: MichiTheme.radius.md
+                        color: MichiTheme.colors.surfaceCard
+                        border.width: 1
+                        border.color: MichiTheme.colors.borderCard
+
+                        ColumnLayout {
+                            id: routeBuilder
+                            anchors.fill: parent
+                            anchors.margins: MichiTheme.spacing.md
+                            spacing: MichiTheme.spacing.sm
+
+                            TextField {
+                                id: routeName
+                                Layout.fillWidth: true
+                                placeholderText: qsTr("Nombre de la ruta")
+                                Accessible.name: qsTr("Nombre de la ruta")
+                            }
+
+                            Label {
+                                Layout.fillWidth: true
+                                text: root.selectedSourceId
+                                      ? qsTr("Fuente: %1").arg(root.selectedSourceId)
+                                      : qsTr("Selecciona una fuente enrutable en la pestaña Fuentes.")
+                                color: root.selectedSourceId ? MichiTheme.colors.textPrimary : MichiTheme.colors.warning
+                                wrapMode: Text.WordWrap
+                            }
+
+                            Label {
+                                Layout.fillWidth: true
+                                text: root.selectedDestinationIds.length > 0
+                                      ? qsTr("%1 destino(s) seleccionado(s)").arg(root.selectedDestinationIds.length)
+                                      : qsTr("Selecciona destinos en la pestaña Destinos.")
+                                color: root.selectedDestinationIds.length > 0 ? MichiTheme.colors.textPrimary : MichiTheme.colors.warning
+                            }
+
+                            MichiButton {
+                                text: qsTr("Crear ruta")
+                                variant: "primary"
+                                enabled: root.selectedSourceId !== "" && root.selectedDestinationIds.length > 0
+                                onClicked: {
+                                    var result = root.bridge.createRoute(routeName.text, root.selectedSourceId, root.selectedDestinationIds)
+                                    root.showResult(result, qsTr("Ruta creada y pendiente de activación."))
+                                    if (result && result.ok)
+                                        routeName.clear()
+                                }
+                            }
+                        }
+                    }
+
+                    SectionHeader {
+                        Layout.fillWidth: true
+                        text: qsTr("Rutas configuradas")
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        visible: !root.bridge || root.bridge.routes.length === 0
+                        text: qsTr("Todavía no existen rutas configuradas.")
+                        color: MichiTheme.colors.textMuted
+                    }
+
+                    Repeater {
+                        model: root.bridge ? root.bridge.routes : []
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: routeColumn.implicitHeight + MichiTheme.spacing.md * 2
+                            radius: MichiTheme.radius.md
+                            color: MichiTheme.colors.surfaceCard
+                            border.width: 1
+                            border.color: modelData.state === "error" ? MichiTheme.colors.error : MichiTheme.colors.borderCard
+
+                            ColumnLayout {
+                                id: routeColumn
+                                anchors.fill: parent
+                                anchors.margins: MichiTheme.spacing.md
+                                spacing: MichiTheme.spacing.sm
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 2
+
+                                        Label {
+                                            text: modelData.name || modelData.id
+                                            color: MichiTheme.colors.textPrimary
+                                            font.weight: Font.DemiBold
+                                        }
+
+                                        Label {
+                                            Layout.fillWidth: true
+                                            text: qsTr("%1 → %2 destino(s)").arg(modelData.source_id || "").arg(modelData.destination_ids ? modelData.destination_ids.length : 0)
+                                            color: MichiTheme.colors.textSecondary
+                                            wrapMode: Text.WordWrap
+                                        }
+                                    }
+
+                                    StatusBadge {
+                                        text: modelData.state || qsTr("configurada")
+                                        kind: root.statusKind(modelData.state)
+                                    }
+                                }
+
+                                Label {
+                                    Layout.fillWidth: true
+                                    visible: modelData.error
+                                    text: modelData.error || ""
+                                    color: MichiTheme.colors.error
+                                    wrapMode: Text.WordWrap
+                                }
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: MichiTheme.spacing.sm
+
+                                    MichiButton {
+                                        text: modelData.state === "active" || modelData.state === "degraded" ? qsTr("Detener") : qsTr("Activar")
+                                        variant: modelData.state === "active" ? "danger" : "primary"
+                                        onClicked: {
+                                            var result = modelData.state === "active" || modelData.state === "degraded"
+                                                       ? root.bridge.stopRoute(modelData.id)
+                                                       : root.bridge.startRoute(modelData.id)
+                                            root.showResult(result, modelData.state === "active" ? qsTr("Ruta detenida y stream anterior restaurado.") : qsTr("Ruta activada y verificada."))
+                                        }
+                                    }
+
+                                    MichiButton {
+                                        text: qsTr("Recuperar")
+                                        variant: "ghost"
+                                        visible: modelData.state === "error" || modelData.state === "degraded"
+                                        onClicked: root.showResult(root.bridge.recoverRoute(modelData.id), qsTr("Recuperación completada."))
+                                    }
+
+                                    Item { Layout.fillWidth: true }
+
+                                    MichiButton {
+                                        text: qsTr("Eliminar")
+                                        variant: "danger"
+                                        enabled: modelData.state !== "active" && modelData.state !== "degraded"
+                                        onClicked: root.showResult(root.bridge.deleteRoute(modelData.id), qsTr("Ruta eliminada."))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Item { Layout.fillHeight: true }
                 }
             }
         }
