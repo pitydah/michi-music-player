@@ -17,6 +17,7 @@ jobs:
         run: pip install ruff
       - name: Capture Ruff diagnostics
         run: |
+          cp vinyl/vinyl_recorder_service.py vinyl-recorder-source.py
           ruff check . --output-format=concise > ruff-output.txt 2>&1 || true
           ruff check . --fix --output-format=concise > ruff-fix-output.txt 2>&1 || true
           git diff > ruff-fixes.patch
@@ -25,6 +26,7 @@ jobs:
         with:
           name: ruff-diagnostics-${{ github.sha }}
           path: |
+            vinyl-recorder-source.py
             ruff-output.txt
             ruff-fix-output.txt
             ruff-fixes.patch
