@@ -4,7 +4,9 @@ import "../theme"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Notification Item"
+    Accessible.name: root.notification
+        ? (root.notification.title || root.notification.text || qsTr("Notificación"))
+        : qsTr("Notificación")
     objectName: "notificationItem"
     focus: true
     id: root
@@ -155,10 +157,6 @@ Rectangle {
                 }
 
             }
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
 
             MichiButton {
                 id: cancelBtn
@@ -182,13 +180,13 @@ Rectangle {
         property: "opacity"
         from: 1
         to: 0
-        duration: root.reducedMotion ? 1 : MichiTheme.motion.normal
+        duration: root.reducedMotion ? 1 : MichiTheme.motion.durationNormal
         onFinished: root.dismissed()
     }
 
     function dismissItem() {
         if (root.bridge && root.notification) {
-            root.bridge.dismiss()
+            root.bridge.dismiss(root.notification.id || "")
         }
         removeAnim.start()
     }
