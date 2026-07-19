@@ -9,7 +9,7 @@ import "../../materials"
 Item {
     id: root
     objectName: "portablePlayersPlaceholderPage"
-    // Kept until route metadata and its legacy runtime test are promoted together.
+    // Temporary compatibility with route metadata and its legacy smoke test.
     property string featureState: "planned"
     property var devices: typeof devicesBridge !== "undefined" ? devicesBridge : null
     property string selectedDeviceKey: ""
@@ -24,25 +24,19 @@ Item {
 
     function deviceKey(device) {
         if (!device) return ""
-        if (device.key) return device.key
-        return (device.protocol || device.device || "unknown") + ":" + (device.serial || device.alias || "")
+        return device.key || ((device.protocol || device.device || "unknown") + ":" + (device.serial || device.alias || ""))
     }
 
     function showResult(result, successText) {
-        if (result && result.ok) {
-            root.feedback = successText
-            root.feedbackError = false
-        } else {
-            root.feedback = qsTr("No se pudo completar la operación: ")
-                    + (result && (result.message || result.error) ? (result.message || result.error) : qsTr("error desconocido"))
-            root.feedbackError = true
-        }
+        root.feedbackError = !result || !result.ok
+        root.feedback = root.feedbackError
+                ? qsTr("No se pudo completar la operación: ") + (result && (result.message || result.error) ? (result.message || result.error) : qsTr("error desconocido"))
+                : successText
     }
 
     function refreshDevices() {
         if (!root.devices) return
-        var result = root.devices.discoverDevices("")
-        root.showResult(result, qsTr("Búsqueda de dispositivos completada"))
+        root.showResult(root.devices.discover(), qsTr("Búsqueda de dispositivos completada"))
         root.devices.refresh()
     }
 
@@ -55,21 +49,13 @@ Item {
         }
         var separator = root.destinationFolder.endsWith("/") ? "" : "/"
         var destination = root.destinationFolder + separator + root.devices.fileName(root.sourceFile)
-        var result = root.devices.startTransfer(root.sourceFile, destination)
-        root.showResult(result, qsTr("Transferencia iniciada"))
+        root.showResult(root.devices.startTransfer(root.sourceFile, destination), qsTr("Transferencia iniciada"))
     }
 
     Component.onCompleted: {
         if (root.devices) {
             root.devices.refresh()
             root.refreshDevices()
-        }
-    }
-
-    Connections {
-        target: root.devices
-        function onStateChanged() {
-            // Reading the bridge properties is enough to invalidate delegates.
         }
     }
 
@@ -90,7 +76,6 @@ Item {
                 height: 150
                 radius: MichiTheme.radius.lg
                 showGlow: true
-
                 Column {
                     anchors.fill: parent
                     anchors.margins: MichiTheme.spacing.xl
@@ -104,7 +89,7 @@ Item {
                     Text {
                         width: parent.width * 0.78
                         wrapMode: Text.WordWrap
-                        text: qsTr("Detecta reproductores DAP mediante almacenamiento USB o MTP y transfiere exclusivamente archivos de audio.")
+                        text: qsTr("Detecta DAPs mediante almacenamiento USB o MTP y transfiere exclusivamente archivos de audio.")
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize
                     }
@@ -141,10 +126,7 @@ Item {
                 onDismissed: root.feedback = ""
             }
 
-            SectionHeader {
-                width: parent.width
-                text: qsTr("Dispositivos detectados")
-            }
+            SectionHeader { width: parent.width; text: qsTr("Dispositivos detectados") }
 
             Text {
                 visible: !root.devices || root.devices.discovered.length === 0
@@ -161,7 +143,6 @@ Item {
                     height: 88
                     radius: MichiTheme.radius.md
                     variant: root.selectedDeviceKey === root.deviceKey(modelData) ? "accent" : "base"
-
                     RowLayout {
                         anchors.fill: parent
                         anchors.margins: MichiTheme.spacing.md
@@ -175,14 +156,14 @@ Item {
                                 font.weight: MichiTheme.typography.weightSemiBold
                             }
                             Text {
-                                text: (modelData.protocol || modelData.device || qsTr("desconocido")).toUpperCase()
+                                text: String(modelData.protocol || modelData.device || qsTr("desconocido")).toUpperCase()
                                       + (modelData.serial ? " · " + modelData.serial : "")
                                 color: MichiTheme.colors.textSecondary
                                 font.pixelSize: MichiTheme.typography.captionSize
                             }
                         }
                         MichiButton {
-                            text: root.selectedDeviceKey === root.deviceKey(modelData) ? qsTr("Seleccionado") : qsTr("Seleccionar")
+                            text: qsTr("Seleccionar")
                             variant: "secondary"
                             onClicked: {
                                 root.selectedDeviceKey = root.deviceKey(modelData)
@@ -192,31 +173,23 @@ Item {
                         MichiButton {
                             text: qsTr("Emparejar")
                             variant: "primary"
-                            onClicked: {
-                                var key = root.deviceKey(modelData)
-                                root.showResult(root.devices.pairDevice(key), qsTr("Dispositivo emparejado"))
-                            }
+                            onClicked: root.showResult(root.devices.pairDevice(root.deviceKey(modelData)), qsTr("Dispositivo emparejado"))
                         }
                     }
                 }
             }
 
-            SectionHeader {
-                width: parent.width
-                text: qsTr("Transferencia manual")
-            }
+            SectionHeader { width: parent.width; text: qsTr("Transferencia manual") }
 
             GlassMaterial {
                 width: parent.width
                 height: 190
                 radius: MichiTheme.radius.md
                 variant: "base"
-
                 ColumnLayout {
                     anchors.fill: parent
                     anchors.margins: MichiTheme.spacing.md
                     spacing: MichiTheme.spacing.sm
-
                     RowLayout {
                         Layout.fillWidth: true
                         TextField {
@@ -224,15 +197,9 @@ Item {
                             readOnly: true
                             text: root.sourceFile
                             placeholderText: qsTr("Archivo de audio de origen")
-                            Accessible.name: qsTr("Archivo de audio de origen")
                         }
-                        MichiButton {
-                            text: qsTr("Elegir archivo")
-                            variant: "secondary"
-                            onClicked: sourceDialog.open()
-                        }
+                        MichiButton { text: qsTr("Elegir archivo"); variant: "secondary"; onClicked: sourceDialog.open() }
                     }
-
                     RowLayout {
                         Layout.fillWidth: true
                         TextField {
@@ -240,23 +207,15 @@ Item {
                             readOnly: true
                             text: root.destinationFolder
                             placeholderText: qsTr("Carpeta Music del dispositivo")
-                            Accessible.name: qsTr("Carpeta de destino")
                         }
-                        MichiButton {
-                            text: qsTr("Elegir destino")
-                            variant: "secondary"
-                            onClicked: destinationDialog.open()
-                        }
+                        MichiButton { text: qsTr("Elegir destino"); variant: "secondary"; onClicked: destinationDialog.open() }
                     }
-
                     RowLayout {
                         Layout.fillWidth: true
                         Text {
                             Layout.fillWidth: true
                             color: MichiTheme.colors.textSecondary
-                            text: root.selectedDeviceName
-                                  ? qsTr("Dispositivo seleccionado: ") + root.selectedDeviceName
-                                  : qsTr("También puedes seleccionar manualmente cualquier almacenamiento montado.")
+                            text: root.selectedDeviceName ? qsTr("Seleccionado: ") + root.selectedDeviceName : qsTr("Selecciona cualquier almacenamiento montado como destino.")
                             elide: Text.ElideRight
                         }
                         MichiButton {
@@ -269,26 +228,21 @@ Item {
                 }
             }
 
-            SectionHeader {
-                width: parent.width
-                text: qsTr("Trabajos activos")
-            }
-
+            SectionHeader { width: parent.width; text: qsTr("Trabajos activos") }
             Text {
                 visible: !root.devices || root.devices.transferJobs.length === 0
                 color: MichiTheme.colors.textMuted
                 text: qsTr("No hay transferencias activas.")
             }
-
             Repeater {
                 model: root.devices ? root.devices.transferJobs : []
                 delegate: GlassCard {
                     width: contentColumn.width
                     height: 76
                     title: modelData.file_name || qsTr("Transferencia")
-                    subtitle: (modelData.status || modelData.state || "")
-                              + " · " + Math.round((modelData.transferred_bytes || 0) / 1048576)
-                              + " / " + Math.round((modelData.total_bytes || 0) / 1048576) + " MB"
+                    subtitle: (modelData.status || modelData.state || "") + " · "
+                              + Math.round((modelData.transferred_bytes || 0) / 1048576) + " / "
+                              + Math.round((modelData.total_bytes || 0) / 1048576) + " MB"
                     variant: "base"
                 }
             }
