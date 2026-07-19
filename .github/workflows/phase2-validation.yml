@@ -98,8 +98,11 @@ jobs:
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           cat phase2-qml.txt
           exit 0
-      - name: Install focused test dependencies
-        run: pip install -q -e ".[dev]"
+      - name: Install Qt runtime and focused test dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libegl1 libgl1 libxkbcommon0 libfontconfig1
+          pip install -q -e ".[dev]"
       - name: Focused regression tests
         id: tests
         continue-on-error: true
