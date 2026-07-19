@@ -1,0 +1,1 @@
+Phase 2 replaces the distribution hub dead ends with verified Snapcast-backed sources, servers, receivers, destinations and route controls. Operations must report configured, starting, active, degraded or error rather than treating saved configuration as a live connection.
