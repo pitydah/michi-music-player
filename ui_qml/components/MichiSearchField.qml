@@ -14,6 +14,7 @@ Item {
     property int debounceMs: 0
     property string accessibleName: "Buscar..."
     property string accessibleDescription: ""
+    property bool _clearing: false
 
     signal searchTextChanged(string newText)
     signal searchSubmitted(string text)
@@ -22,6 +23,18 @@ Item {
     function forceInputFocus() {
         field.forceActiveFocus()
         field.selectAll()
+    }
+
+    function clear() {
+        if (root.text === "")
+            return
+        debounceTimer.stop()
+        root._clearing = true
+        root.text = ""
+        field.text = ""
+        root._clearing = false
+        field.forceActiveFocus()
+        root.clearRequested()
     }
 
     implicitHeight: MichiTheme.minimumInteractiveSize
@@ -72,6 +85,8 @@ Item {
 
                 onTextChanged: {
                     root.text = text
+                    if (root._clearing)
+                        return
                     if (root.debounceMs > 0) {
                         debounceTimer.restart()
                     } else {
@@ -88,10 +103,7 @@ Item {
 
                 Keys.onEscapePressed: function(event) {
                     if (root.text !== "") {
-                        root.text = ""
-                        field.text = ""
-                        root.clearRequested()
-                        root.searchTextChanged("")
+                        root.clear()
                         event.accepted = true
                     }
                 }
@@ -102,19 +114,13 @@ Item {
 
             MichiIconButton {
                 id: clearBtn
-                iconSource: "../../icons/nav_back.svg"
+                controlObjectName: "searchClearButton"
+                iconSource: "../../icons/clear.svg"
                 tooltipText: "Limpiar"
                 btnSize: Math.min(root.height - MichiTheme.spacing.xs * 2, 28)
                 visible: root.text !== ""
                 accessibleName: "Limpiar búsqueda"
-                transform: Rotation { angle: 45 }
-                onClicked: {
-                    root.text = ""
-                    field.text = ""
-                    field.forceActiveFocus()
-                    root.clearRequested()
-                    root.searchTextChanged("")
-                }
+                onClicked: root.clear()
             }
         }
     }

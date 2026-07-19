@@ -96,8 +96,13 @@ Item {
                 }
 
                 onSearchRequested: function(query, submitted) {
-                    if (typeof navigationBridge !== "undefined" && navigationBridge)
-                        navigationBridge.navigateWithParams("search", {"query": query, "submitted": submitted})
+                    if (typeof navigationBridge === "undefined" || !navigationBridge)
+                        return
+                    var params = {"query": query, "submitted": submitted}
+                    if (submitted)
+                        navigationBridge.navigateWithParams("search", params)
+                    else if (navigationBridge.currentRoute === "search")
+                        navigationBridge.updateCurrentParams(params)
                 }
             }
 

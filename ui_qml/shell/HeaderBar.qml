@@ -157,13 +157,13 @@ Item {
                 accessibleName: qsTr("Buscar en Michi")
                 debounceMs: 300
                 onSearchTextChanged: function(query) {
-                    if (query.length >= 2)
-                        root.searchRequested(query, false)
+                    root.searchRequested(query, false)
                 }
                 onSearchSubmitted: function(query) {
                     if (query.trim().length > 0)
                         root.searchRequested(query.trim(), true)
                 }
+                onClearRequested: root.searchRequested("", false)
             }
 
             MichiIconButton {

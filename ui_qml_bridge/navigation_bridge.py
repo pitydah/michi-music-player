@@ -154,7 +154,26 @@ class NavigationBridge(QObject):
     def navigateWithParams(self, route: str, params: dict):
         if params is None:
             params = {}
+        resolved = self._resolve(route)
+        if resolved == self._current_route:
+            self._update_current_params(params, route)
+            return
         self._navigate_internal(route, params)
+
+    def _update_current_params(self, params: dict, requested_route: str) -> None:
+        updated = dict(params or {})
+        param_error = self._validate_params(self._current_route, updated)
+        if param_error:
+            self.invalidRouteError.emit(requested_route, param_error)
+            return
+        if updated == self._current_params:
+            return
+        self._current_params = updated
+        self.routeParamsChanged.emit()
+
+    @Slot("QVariant")
+    def updateCurrentParams(self, params: dict):
+        self._update_current_params(params or {}, self._current_route)
 
     @Slot(str)
     def replace(self, route: str):

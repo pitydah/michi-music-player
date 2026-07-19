@@ -28,6 +28,8 @@ Item {
     property int _yearFrom: 0
     property int _yearTo: 0
     property string _qualityFilter: "any"
+    property bool _syncingRouteParams: false
+    property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null
 
 
     PageStateManager {
@@ -46,6 +48,32 @@ Item {
                 root._searching = false
             }
         }
+    }
+
+    Connections {
+        target: root.nav
+        function onRouteParamsChanged() { root.syncRouteQuery() }
+    }
+
+    function syncRouteQuery() {
+        if (!root.nav || root.nav.currentRoute !== "search")
+            return
+        var params = root.nav.currentParams || {}
+        var query = params.query ? String(params.query) : ""
+        if (globalSearchInput.text === query && root._query === query)
+            return
+        root._syncingRouteParams = true
+        globalSearchInput.text = query
+        root._syncingRouteParams = false
+        if (query === "")
+            root.clearQuery()
+        else
+            root.search(query)
+    }
+
+    function updateRouteQuery(query) {
+        if (root.nav && root.nav.currentRoute === "search")
+            root.nav.updateCurrentParams({"query": query, "submitted": false})
     }
 
     function search(text) {
@@ -176,6 +204,7 @@ Item {
         if (root.bridge && typeof root.bridge.refresh !== "undefined")
             root.bridge.refresh()
         searchGuard.checkCapability(root.bridge)
+        root.syncRouteQuery()
     }
 
     CapabilityGuard {
@@ -239,6 +268,7 @@ Item {
                             onClicked: {
                                 globalSearchInput.text = ""
                                 root.clearQuery()
+                                root.updateRouteQuery("")
                             }
                         Accessible.role: Accessible.EditableText
 
@@ -250,7 +280,12 @@ Item {
                         width: parent.width * 0.7
                         placeholderText: qsTr("Canciones, álbumes, artistas, playlists...")
                         Accessible.description: "Escribe para buscar en toda la biblioteca"
-                        onSearchTextChanged: root.search(text)
+                        onSearchTextChanged: {
+                            if (!root._syncingRouteParams) {
+                                root.search(text)
+                                root.updateRouteQuery(text)
+                            }
+                        }
                         activeFocusOnTab: true
                         KeyNavigation.tab: resultsFlickable
                         KeyNavigation.backtab: root
@@ -258,6 +293,7 @@ Item {
                         Keys.onEscapePressed: {
                             text = ""
                             root.clearQuery()
+                            root.updateRouteQuery("")
                         }
                     }
                 }
