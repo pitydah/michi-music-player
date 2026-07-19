@@ -160,10 +160,10 @@ class _TaskWorker(QRunnable):
         except CancelledError:
             if self._cancelled_cb:
                 self._cancelled_cb()
-        except Exception:
+        except Exception as exc:
             logger.exception("TaskWorker failed")
             if self._error_cb:
-                self._error_cb("TASK_FAILED", ERR_FAILED)
+                self._error_cb(str(exc), ERR_FAILED)
 
 
 # ── Cover/Identify workers ──
@@ -292,6 +292,7 @@ class WorkerManager(QObject):
             "on_done": on_done,
             "on_error": on_error,
             "on_cancelled": on_cancelled,
+            "on_progress": on_progress,
         }
 
         self._emit_public(handle, TaskHandle.TASK_QUEUED)
@@ -338,8 +339,10 @@ class WorkerManager(QObject):
                 return False
             if h.state not in (TaskHandle.TASK_QUEUED, TaskHandle.TASK_RUNNING):
                 return False
-            h.cancel()
-            return True
+            accepted = h.cancel()
+        if accepted:
+            self._emit_public(h, TaskHandle.TASK_CANCEL_REQUESTED)
+        return accepted
 
     def cancel_all(self, owner: str = ""):
         with self._lock:
@@ -432,6 +435,9 @@ class WorkerManager(QObject):
         text = str(msg) if msg else ""
         self.taskProgress.emit(task_id, pct, text)
         self.taskStateChanged.emit(task_id, TaskHandle.TASK_RUNNING)
+        cbs = self._callbacks.get(eid)
+        if cbs and cbs.get("on_progress"):
+            cbs["on_progress"](pct, text)
 
     # ── Internal ──
 
@@ -467,7 +473,7 @@ class WorkerManager(QObject):
             self.taskCancelled.emit(tid)
         elif state == TaskHandle.TASK_FAILED:
             code = error_code or handle.error_code or ERR_FAILED
-            self.taskFailed.emit(tid, code, "Error de ejecución")
+            self.taskFailed.emit(tid, code, handle.message or "Error de ejecución")
         self.taskStateChanged.emit(tid, state)
 
     def _pop_callbacks(self, eid: int) -> dict | None:
