@@ -275,6 +275,20 @@ def test_sidebar_child_click_navigates_and_loads_placeholder(
         window.contentItem(), f"sidebarChildAction_{target_route}"
     )
     assert action is not None
+    flickable = _find_visual_item(
+        window.contentItem(), "sidebarNavigationFlickable"
+    )
+    assert flickable is not None
+    action_scene_y = action.mapToScene(QPoint(0, 0)).y()
+    viewport_scene_y = flickable.mapToScene(QPoint(0, 0)).y()
+    viewport_bottom = viewport_scene_y + flickable.height()
+    if (action_scene_y < viewport_scene_y
+            or action_scene_y + action.height() > viewport_bottom):
+        scroll_delta = action_scene_y + action.height() - viewport_bottom + 8
+        flickable.setProperty(
+            "contentY", max(0.0, float(flickable.property("contentY")) + scroll_delta)
+        )
+        gui_app.processEvents()
     scene_point = action.mapToScene(
         QPoint(int(action.width() / 2), int(action.height() / 2))
     ).toPoint()

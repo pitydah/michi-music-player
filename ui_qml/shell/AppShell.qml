@@ -40,102 +40,82 @@ Item {
         root.fatalMessage = ""
     }
 
-    ColumnLayout {
+    RowLayout {
         anchors.fill: parent
         spacing: 0
 
-        RowLayout {
+        Sidebar {
+            id: sidebar
             Layout.fillHeight: true
-            Layout.fillWidth: true
-            spacing: 0
+            Layout.preferredWidth: sidebar.collapsed ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
+            Layout.minimumWidth: Layout.preferredWidth
+            Layout.maximumWidth: Layout.preferredWidth
+            forceCompact: root.width < 1024
+            currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
 
-            Sidebar {
-                id: sidebar
-                Layout.fillHeight: true
-                Layout.preferredWidth: sidebar.collapsed ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
-                Layout.minimumWidth: Layout.preferredWidth
-                Layout.maximumWidth: Layout.preferredWidth
-                forceCompact: root.width < 1100
-                currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
-
-                onRouteRequested: function(route) {
-                    if (typeof navigationBridge !== "undefined" && navigationBridge) {
-                        navigationBridge.navigate(route)
-                    } else {
-                        pageStack.loadRoute(route)
-                        sidebar.currentRoute = route
-                        updateHeaderTitle(route)
-                    }
-                }
-            }
-
-            Rectangle {
-                width: 4
-                height: parent.height
-                color: "transparent"
-                MouseArea {
-                    anchors.fill: parent
-                    anchors.leftMargin: -4
-                    anchors.rightMargin: -4
-                    cursorShape: Qt.SizeHorCursor
-                    onPositionChanged: {
-                        if (mouse.buttons & Qt.LeftButton) {
-                            var newWidth = sidebar.width + mouse.x
-                            if (newWidth > 150 && newWidth < 500)
-                                sidebar.width = newWidth
-                        }
-                    }
-                }
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                spacing: 0
-
-                HeaderBar {
-                    id: header
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 56
-                    pageTitle: "Inicio"
-                    mainWindow: mainWindow
-
-                    canGoBack: navigationBridge ? navigationBridge.canGoBack : false
-                    canGoForward: navigationBridge ? navigationBridge.canGoForward : false
-                    routeHistory: navigationBridge ? navigationBridge.history : []
-
-                    onBackClicked: {
-                        if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.back()
-                    }
-
-                    onForwardClicked: {
-                        if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.forward()
-                    }
-
-                    onBreadcrumbClicked: function(route) {
-                        if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.navigate(route)
-                    }
-                }
-
-                PageStack {
-                    id: pageStack
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
+            onRouteRequested: function(route) {
+                if (typeof navigationBridge !== "undefined" && navigationBridge) {
+                    navigationBridge.navigate(route)
+                } else {
+                    pageStack.loadRoute(route)
+                    sidebar.currentRoute = route
+                    updateHeaderTitle(route)
                 }
             }
         }
 
-        NowPlayingBar {
-            id: nowPlayingBar
+        ColumnLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: implicitHeight
-            Layout.maximumHeight: 112
-            Layout.minimumHeight: 96
-            z: 10
+            Layout.fillHeight: true
+            spacing: 0
+
+            HeaderBar {
+                id: header
+                Layout.fillWidth: true
+                Layout.preferredHeight: MichiTheme.headerHeight
+                pageTitle: "Inicio"
+                mainWindow: mainWindow
+
+                canGoBack: navigationBridge ? navigationBridge.canGoBack : false
+                canGoForward: navigationBridge ? navigationBridge.canGoForward : false
+                routeHistory: navigationBridge ? navigationBridge.history : []
+
+                onBackClicked: {
+                    if (typeof navigationBridge !== "undefined" && navigationBridge)
+                        navigationBridge.back()
+                }
+
+                onForwardClicked: {
+                    if (typeof navigationBridge !== "undefined" && navigationBridge)
+                        navigationBridge.forward()
+                }
+
+                onBreadcrumbClicked: function(route) {
+                    if (typeof navigationBridge !== "undefined" && navigationBridge)
+                        navigationBridge.navigate(route)
+                }
+
+                onSearchRequested: function(query, submitted) {
+                    if (typeof navigationBridge !== "undefined" && navigationBridge)
+                        navigationBridge.navigateWithParams("search", {"query": query, "submitted": submitted})
+                }
+            }
+
+            PageStack {
+                id: pageStack
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
+            }
+
+            NowPlayingBar {
+                id: nowPlayingBar
+                Layout.fillWidth: true
+                Layout.preferredHeight: implicitHeight
+                Layout.maximumHeight: 112
+                Layout.minimumHeight: 88
+                z: 10
+            }
         }
     }
 
@@ -148,6 +128,7 @@ Item {
     ShortcutLayer {
         anchors.fill: parent
         cmdPalette: commandPalette
+        searchTarget: header
     }
 
     NotificationCenter {

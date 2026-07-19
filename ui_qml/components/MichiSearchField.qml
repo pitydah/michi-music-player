@@ -19,6 +19,11 @@ Item {
     signal searchSubmitted(string text)
     signal clearRequested()
 
+    function forceInputFocus() {
+        field.forceActiveFocus()
+        field.selectAll()
+    }
+
     implicitHeight: MichiTheme.minimumInteractiveSize
     implicitWidth: 220
 
@@ -41,18 +46,13 @@ Item {
             anchors.bottomMargin: MichiTheme.spacing.xs
             spacing: MichiTheme.spacing.sm
 
-            Image {
+            MichiIcon {
                 anchors.verticalCenter: parent.verticalCenter
-                width: 18
-                height: 18
-                source: "../../icons/sidebar/search.svg"
-                sourceSize.width: 18
-                sourceSize.height: 18
-                fillMode: Image.PreserveAspectFit
+                iconKey: "search"
+                size: 18
+                color: MichiTheme.colors.textMuted
                 visible: !root.loading
-                Accessible.role: Accessible.Graphic
-                Accessible.name: "Buscar"
-                Accessible.description: "Icono de búsqueda"
+                accessibleName: qsTr("Buscar")
             }
 
             QQC2.TextField {

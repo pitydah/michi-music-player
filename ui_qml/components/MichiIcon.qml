@@ -24,9 +24,9 @@ Item {
     property string iconText: ""
 
     readonly property url resolvedSource: source.toString() !== ""
-                                          ? source : iconSource(iconKey)
+                                          ? source : sourceForKey(iconKey)
 
-    function iconSource(key) {
+    function sourceForKey(key) {
         if (!key)
             return ""
         return "../../icons/sidebar/" + key + ".svg"
