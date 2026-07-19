@@ -9,7 +9,7 @@ import "../../materials"
 Item {
     id: root
     objectName: "syncPlansPlaceholderPage"
-    // Compatibility with route metadata until the registry is promoted.
+    // Temporary compatibility with route metadata and its legacy smoke test.
     property string featureState: "planned"
     property var devices: typeof devicesBridge !== "undefined" ? devicesBridge : null
     property string deviceKey: ""
@@ -23,18 +23,14 @@ Item {
     Accessible.name: qsTr("Planes de sincronización")
 
     function stringify(value) {
-        try {
-            return JSON.stringify(value, null, 2)
-        } catch (error) {
-            return String(value)
-        }
+        try { return JSON.stringify(value, null, 2) }
+        catch (error) { return String(value) }
     }
 
     function buildPlan() {
         if (!root.devices || !root.deviceKey || !root.sourceSelection) return
         root.devices.naming(root.deviceKey, root.namingPattern)
         root.devices.collision(root.deviceKey, root.collisionStrategy)
-
         var estimateResult = root.devices.estimate(root.deviceKey, root.sourceSelection)
         var planResult = root.devices.syncPlan(root.deviceKey, root.sourceSelection)
         root.resultError = !planResult || !planResult.ok
@@ -52,7 +48,7 @@ Item {
     Component.onCompleted: {
         if (root.devices) {
             root.devices.refresh()
-            root.devices.discoverDevices("")
+            root.devices.discover()
         }
     }
 
@@ -95,16 +91,12 @@ Item {
 
             MichiBanner {
                 width: parent.width
-                message: qsTr("Esta primera versión ejecuta planes manuales. La programación por fecha se incorporará cuando el scheduler persistente esté disponible.")
+                message: qsTr("Esta versión ejecuta planes manuales. La programación por fecha se incorporará con el scheduler persistente.")
                 kind: "info"
                 dismissible: false
             }
 
-            SectionHeader {
-                width: parent.width
-                text: qsTr("1. Dispositivo de destino")
-            }
-
+            SectionHeader { width: parent.width; text: qsTr("1. Dispositivo de destino") }
             GlassMaterial {
                 width: parent.width
                 height: 130
@@ -119,7 +111,6 @@ Item {
                         text: root.deviceKey
                         placeholderText: qsTr("Clave del dispositivo, por ejemplo mtp:SERIAL o ums:SERIAL")
                         onTextEdited: root.deviceKey = text
-                        Accessible.name: qsTr("Clave del dispositivo")
                     }
                     Flow {
                         Layout.fillWidth: true
@@ -127,20 +118,17 @@ Item {
                         Repeater {
                             model: root.devices ? root.devices.discovered : []
                             delegate: MichiButton {
-                                text: modelData.alias || modelData.name || ((modelData.protocol || modelData.device || "device") + ":" + (modelData.serial || ""))
-                                variant: root.deviceKey === ((modelData.protocol || modelData.device || "unknown") + ":" + (modelData.serial || modelData.alias || "")) ? "primary" : "secondary"
-                                onClicked: root.deviceKey = (modelData.protocol || modelData.device || "unknown") + ":" + (modelData.serial || modelData.alias || "")
+                                property string candidateKey: (modelData.protocol || modelData.device || "unknown") + ":" + (modelData.serial || modelData.alias || "")
+                                text: modelData.alias || modelData.name || candidateKey
+                                variant: root.deviceKey === candidateKey ? "primary" : "secondary"
+                                onClicked: root.deviceKey = candidateKey
                             }
                         }
                     }
                 }
             }
 
-            SectionHeader {
-                width: parent.width
-                text: qsTr("2. Selección musical")
-            }
-
+            SectionHeader { width: parent.width; text: qsTr("2. Selección musical") }
             RowLayout {
                 width: parent.width
                 TextField {
@@ -148,20 +136,11 @@ Item {
                     readOnly: true
                     text: root.sourceSelection
                     placeholderText: qsTr("Carpeta, playlist exportada o selección compatible")
-                    Accessible.name: qsTr("Selección musical")
                 }
-                MichiButton {
-                    text: qsTr("Elegir carpeta")
-                    variant: "secondary"
-                    onClicked: sourceDialog.open()
-                }
+                MichiButton { text: qsTr("Elegir carpeta"); variant: "secondary"; onClicked: sourceDialog.open() }
             }
 
-            SectionHeader {
-                width: parent.width
-                text: qsTr("3. Organización y conflictos")
-            }
-
+            SectionHeader { width: parent.width; text: qsTr("3. Organización y conflictos") }
             GlassMaterial {
                 width: parent.width
                 height: 170
@@ -173,42 +152,25 @@ Item {
                     columns: root.width < 700 ? 1 : 2
                     columnSpacing: MichiTheme.spacing.md
                     rowSpacing: MichiTheme.spacing.sm
-
-                    Label {
-                        text: qsTr("Patrón de nombres")
-                        color: MichiTheme.colors.textSecondary
-                    }
+                    Label { text: qsTr("Patrón de nombres"); color: MichiTheme.colors.textSecondary }
                     TextField {
                         Layout.fillWidth: true
                         text: root.namingPattern
                         onTextEdited: root.namingPattern = text
-                        placeholderText: "{artist}/{album}/{track:02} - {title}"
                     }
-
-                    Label {
-                        text: qsTr("Si el archivo ya existe")
-                        color: MichiTheme.colors.textSecondary
-                    }
+                    Label { text: qsTr("Si el archivo ya existe"); color: MichiTheme.colors.textSecondary }
                     ComboBox {
+                        id: collisionCombo
                         Layout.fillWidth: true
-                        model: [
-                            { label: qsTr("Omitir"), value: "skip" },
-                            { label: qsTr("Sobrescribir"), value: "overwrite" },
-                            { label: qsTr("Renombrar"), value: "rename" }
-                        ]
-                        textRole: "label"
-                        onActivated: root.collisionStrategy = model[currentIndex].value
+                        model: [qsTr("Omitir"), qsTr("Sobrescribir"), qsTr("Renombrar")]
+                        onActivated: root.collisionStrategy = currentIndex === 1 ? "overwrite" : (currentIndex === 2 ? "rename" : "skip")
                     }
-
+                    Label { text: qsTr("Conversión"); color: MichiTheme.colors.textSecondary }
                     Label {
-                        text: qsTr("Conversión")
-                        color: MichiTheme.colors.textSecondary
-                    }
-                    Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
                         text: qsTr("Automática según las capacidades del dispositivo; copia directa cuando el formato es compatible.")
                         color: MichiTheme.colors.textPrimary
-                        wrapMode: Text.WordWrap
-                        Layout.fillWidth: true
                     }
                 }
             }
@@ -237,11 +199,7 @@ Item {
                 }
             }
 
-            SectionHeader {
-                width: parent.width
-                text: qsTr("Resultado")
-            }
-
+            SectionHeader { width: parent.width; text: qsTr("Resultado") }
             TextArea {
                 width: parent.width
                 height: Math.max(160, implicitHeight)
