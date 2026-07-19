@@ -150,6 +150,65 @@ Item {
         cmdPalette: commandPalette
     }
 
+    Dialog {
+        id: pendingSettingsDialog
+        objectName: "pendingSettingsNavigationDialog"
+        modal: true
+        closePolicy: Popup.NoAutoClose
+        anchors.centerIn: parent
+        width: Math.min(520, root.width - MichiTheme.spacing.xl * 2)
+        title: qsTr("Cambios pendientes")
+
+        contentItem: ColumnLayout {
+            spacing: MichiTheme.spacing.lg
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Hay cambios de ajustes sin confirmar. Decide qué hacer antes de salir.")
+                wrapMode: Text.WordWrap
+                color: MichiTheme.colors.textPrimary
+            }
+            Label {
+                id: pendingSettingsError
+                Layout.fillWidth: true
+                visible: text !== ""
+                color: MichiTheme.colors.error
+                wrapMode: Text.WordWrap
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                MichiButton {
+                    text: qsTr("Cancelar")
+                    variant: "ghost"
+                    onClicked: {
+                        navigationBridge.resolvePendingNavigation("cancel")
+                        pendingSettingsDialog.close()
+                    }
+                }
+                Item { Layout.fillWidth: true }
+                MichiButton {
+                    text: qsTr("Descartar y salir")
+                    variant: "danger"
+                    onClicked: root.resolvePendingSettings("discard")
+                }
+                MichiButton {
+                    text: qsTr("Aplicar y salir")
+                    variant: "primary"
+                    onClicked: root.resolvePendingSettings("apply")
+                }
+            }
+        }
+    }
+
+    function resolvePendingSettings(decision) {
+        var result = navigationBridge.resolvePendingNavigation(decision)
+        if (result && result.ok) {
+            pendingSettingsError.text = ""
+            pendingSettingsDialog.close()
+        } else {
+            pendingSettingsError.text = qsTr("No se pudo resolver la transacción de ajustes.")
+        }
+    }
+
     NotificationCenter {
         id: notificationCenter
         anchors.right: parent.right
@@ -288,6 +347,12 @@ Item {
         function onBreadcrumbChanged() {
             if (typeof navigationBridge !== "undefined" && navigationBridge)
                 header.breadcrumbs = navigationBridge.currentBreadcrumb
+        }
+        function onNavigationBlocked(targetRoute, reason) {
+            if (reason === "pending_changes") {
+                pendingSettingsError.text = ""
+                pendingSettingsDialog.open()
+            }
         }
     }
 
