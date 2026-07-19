@@ -551,7 +551,7 @@ ROUTES: dict[str, dict] = {
         "icon": "audio_lab", "order": 70, "sidebar_visible": True,
         "sidebar_group": None, "expandable": True,
         "status": "functional", "capability": None,
-        "aliases": ["audio_lab.overview", "audio_lab.backup"],
+        "aliases": ["audio_lab.overview"],
         "keywords": ["audio lab", "análisis", "procesamiento", "metadatos", "captura"],
         "placeholder_state": None,
         "params": None, "category": "tools",
@@ -563,7 +563,7 @@ ROUTES: dict[str, dict] = {
         "icon": "analysis", "order": 10, "sidebar_visible": True,
         "sidebar_group": "audio_lab", "expandable": False,
         "status": "functional", "capability": "audio_lab",
-        "aliases": ["audio_lab.diagnostics", "audio_lab.local_intelligence"],
+        "aliases": [],
         "keywords": ["análisis", "analysis", "técnico", "formato", "códec", "espectro"],
         "placeholder_state": None,
         "params": None, "category": "tools",
@@ -575,20 +575,8 @@ ROUTES: dict[str, dict] = {
         "icon": "processing", "order": 20, "sidebar_visible": True,
         "sidebar_group": "audio_lab", "expandable": False,
         "status": "functional", "capability": "audio_lab",
-        "aliases": ["outputs"],
+        "aliases": ["equalizer", "outputs", "eq"],
         "keywords": ["procesamiento", "ecualizador", "dsp", "perfiles", "normalización", "conversión"],
-        "placeholder_state": None,
-        "params": None, "category": "tools",
-    },
-    "audio_lab.equalizer": {
-        "route": "audio_lab.equalizer", "parent": "audio_lab.processing",
-        "title": "Ecualizador", "breadcrumb_title": "Ecualizador",
-        "source": "../pages/equalizer/EqualizerPage.qml",
-        "icon": "eq", "order": 10, "sidebar_visible": False,
-        "sidebar_group": None, "expandable": False,
-        "status": "functional", "capability": "audio_lab",
-        "aliases": ["equalizer", "eq"],
-        "keywords": ["ecualizador", "equalizer", "eq", "dsp"],
         "placeholder_state": None,
         "params": None, "category": "tools",
     },
@@ -599,10 +587,7 @@ ROUTES: dict[str, dict] = {
         "icon": "metadata", "order": 30, "sidebar_visible": True,
         "sidebar_group": "audio_lab", "expandable": False,
         "status": "functional", "capability": "audio_lab",
-        "aliases": [
-            "metadata.inspector", "metadata.editor", "metadata_editor",
-            "metadata_inspector", "audio_lab.identifier",
-        ],
+        "aliases": ["metadata.inspector", "metadata.editor", "metadata_editor", "metadata_inspector"],
         "keywords": ["metadatos", "metadata", "tags", "editor", "inspector", "carátulas"],
         "placeholder_state": None,
         "params": None, "category": "tools",
@@ -755,28 +740,28 @@ ROUTES: dict[str, dict] = {
         "category": "detail",
     },
     "audio_lab.cd_ripper": {
-        "route": "audio_lab.cd_ripper", "parent": "audio_lab.capture",
+        "route": "audio_lab.cd_ripper", "parent": "audio_lab",
         "title": "Ripeo de CD", "breadcrumb_title": "CD",
-        "source": "../pages/audio_lab/CDRipperPage.qml",
+        "source": "../pages/audio_lab/AudioBackupPage.qml",
         "icon": "capture", "order": 0, "sidebar_visible": False,
         "sidebar_group": None, "expandable": False,
         "status": "experimental", "capability": "audio_lab",
         "aliases": [],
         "keywords": [],
         "placeholder_state": None,
-        "params": None, "category": "tools",
+        "params": {"tab": "cd"}, "category": "tools",
     },
     "audio_lab.adc_recorder": {
-        "route": "audio_lab.adc_recorder", "parent": "audio_lab.capture",
+        "route": "audio_lab.adc_recorder", "parent": "audio_lab",
         "title": "Grabación ADC", "breadcrumb_title": "ADC",
-        "source": "../pages/audio_lab/ADCRecorderPage.qml",
+        "source": "../pages/audio_lab/AudioBackupPage.qml",
         "icon": "capture", "order": 0, "sidebar_visible": False,
         "sidebar_group": None, "expandable": False,
         "status": "experimental", "capability": "audio_lab",
         "aliases": [],
         "keywords": [],
         "placeholder_state": None,
-        "params": None, "category": "tools",
+        "params": {"tab": "adc"}, "category": "tools",
     },
 
     # ═══════════════════════════════════════════════════════════════════
@@ -1215,14 +1200,62 @@ ROUTES: dict[str, dict] = {
         "params": None, "category": "tools",
     },
 
-    # Audio Lab internal route retained as a canonical destination.
+    # Audio Lab — rutas directas a páginas herramienta (hubs eliminados)
+    "audio_lab.diagnostics": {
+        "route": "audio_lab.diagnostics", "parent": "audio_lab",
+        "title": "Diagnóstico de Audio", "breadcrumb_title": "Diagnóstico Audio",
+        "source": "../pages/audio_lab/AudioAnalysisPage.qml",
+        "icon": "analysis", "order": 0, "sidebar_visible": False,
+        "sidebar_group": None, "expandable": False,
+        "status": "functional", "capability": "audio_lab",
+        "aliases": [],
+        "keywords": [],
+        "placeholder_state": None,
+        "params": None, "category": "tools",
+    },
+    "audio_lab.identifier": {
+        "route": "audio_lab.identifier", "parent": "audio_lab",
+        "title": "Identificador", "breadcrumb_title": "Identificador",
+        "source": "../pages/metadata/MetadataInspectorPage.qml",
+        "icon": "analysis", "order": 0, "sidebar_visible": False,
+        "sidebar_group": None, "expandable": False,
+        "status": "functional", "capability": "metadata",
+        "aliases": [],
+        "keywords": [],
+        "placeholder_state": None,
+        "params": None, "category": "tools",
+    },
+    "audio_lab.backup": {
+        "route": "audio_lab.backup", "parent": "audio_lab",
+        "title": "Respaldar", "breadcrumb_title": "Respaldar",
+        "source": "../pages/audio_lab/AudioBackupPage.qml",
+        "icon": "audio_lab", "order": 0, "sidebar_visible": False,
+        "sidebar_group": None, "expandable": False,
+        "status": "functional", "capability": "audio_lab",
+        "aliases": [],
+        "keywords": [],
+        "placeholder_state": None,
+        "params": None, "category": "tools",
+    },
     "audio_lab.output_profiles": {
-        "route": "audio_lab.output_profiles", "parent": "audio_lab.processing",
+        "route": "audio_lab.output_profiles", "parent": "audio_lab",
         "title": "Perfiles de Salida", "breadcrumb_title": "Perfiles",
         "source": "../pages/outputs/OutputProfilesPage.qml",
         "icon": "processing", "order": 0, "sidebar_visible": False,
         "sidebar_group": None, "expandable": False,
-        "status": "functional", "capability": None,
+        "status": "functional", "capability": "output_profiles",
+        "aliases": [],
+        "keywords": [],
+        "placeholder_state": None,
+        "params": None, "category": "tools",
+    },
+    "audio_lab.local_intelligence": {
+        "route": "audio_lab.local_intelligence", "parent": "audio_lab",
+        "title": "Inteligencia Local", "breadcrumb_title": "Inteligencia Local",
+        "source": "../pages/mix/MixHubPage.qml",
+        "icon": "analysis", "order": 0, "sidebar_visible": False,
+        "sidebar_group": None, "expandable": False,
+        "status": "functional", "capability": "mix",
         "aliases": [],
         "keywords": [],
         "placeholder_state": None,
@@ -1283,14 +1316,15 @@ SIDEBAR_ORDER: list[str] = [
     "streaming",   # 4. Streaming (expandable: radio, podcasts)
     "playlists",   # 5. Playlists
     "connections", # 6. Conexiones (expandable: micro, big, navidrome, jellyfin, ha)
-    "audio_lab",   # 7. Audio Lab
-    "home_audio",  # 8. Home Audio
+    "audio_lab",   # 7. Audio Lab (expandable: analysis, processing, metadata, capture, health)
+    "home_audio",  # 8. Home Audio (expandable: stream, rooms, distribution, chain planner)
     "michi_ai",    # 9. Michi AI
-    "sync",        # 10. Michi Sync Suite
+    "sync",        # 10. Michi Sync Suite (expandable: mobile, portable, plans, history)
 ]
 
-SIDEBAR_EXPANDABLE_GROUPS = {"library", "streaming", "connections"}
-SIDEBAR_FIXED_BOTTOM: list[str] = []
+SIDEBAR_FIXED_BOTTOM: list[str] = [
+    "settings",
+]
 
 
 def get_sidebar_sections() -> list[dict]:
@@ -1312,7 +1346,7 @@ def get_sidebar_sections() -> list[dict]:
             "route": spec["route"],
             "title": spec["title"],
             "icon": spec.get("icon", ""),
-            "expandable": route in SIDEBAR_EXPANDABLE_GROUPS,
+            "expandable": spec.get("expandable", False),
             "order": spec.get("order", 0),
             "status": spec.get("status", "functional"),
             "children": [],

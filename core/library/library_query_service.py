@@ -327,13 +327,19 @@ class LibraryQueryService:
         self._check_db()
         try:
             rows = self._exec(
-                "SELECT id, filepath, title, artist, duration, track_number, track_uid "
+                "SELECT id, filepath, title, artist, album, albumartist, duration, "
+                "track_number, track_uid, year, genre, ext, sample_rate, bit_depth, album_key "
                 f"FROM media_items WHERE deleted_at IS NULL AND {_album_key_sql()}=? "
                 "ORDER BY COALESCE(track_number, 999), title", (album_key,)
             ).fetchall()
             return [{"track_id": r[0], "filepath": r[1], "title": r[2] or "",
-                     "artist": r[3] or "", "duration": r[4] or 0,
-                     "track_number": r[5] or 0, "track_uid": r[6] or ""} for r in rows]
+                     "artist": r[3] or "", "album": r[4] or "",
+                     "album_artist": r[5] or "", "duration": r[6] or 0,
+                     "track_number": r[7] or 0, "track_uid": r[8] or "",
+                     "year": r[9] or 0, "genre": r[10] or "", "format": r[11] or "",
+                     "sample_rate": r[12] or 0, "bit_depth": r[13] or 0,
+                     "album_key": r[14] or album_key, "cover_key": r[14] or album_key}
+                    for r in rows]
         except Exception as e:
             raise LibraryQueryError("QUERY_FAILED", "fetch_album_tracks_internal", str(e)) from e
 
@@ -341,15 +347,19 @@ class LibraryQueryService:
         self._check_db()
         try:
             rows = self._exec(
-                "SELECT id, filepath, title, album, duration, track_number, track_uid, album_key "
+                "SELECT id, filepath, title, artist, album, albumartist, duration, "
+                "track_number, track_uid, album_key, year, genre, ext, sample_rate, bit_depth "
                 f"FROM media_items WHERE deleted_at IS NULL AND "
                 f"({_artist_key_sql()}=? OR artist=?) "
                 "ORDER BY COALESCE(album, ''), COALESCE(track_number, 999), title",
                 (artist_name, artist_name)
             ).fetchall()
-            return [{"track_id": r[0], "filepath": r[1], "title": r[2] or "", "album": r[3] or "",
-                     "duration": r[4] or 0, "track_number": r[5] or 0, "track_uid": r[6] or "",
-                     "album_key": r[7] or ""} for r in rows]
+            return [{"track_id": r[0], "filepath": r[1], "title": r[2] or "",
+                     "artist": r[3] or "", "album": r[4] or "", "album_artist": r[5] or "",
+                     "duration": r[6] or 0, "track_number": r[7] or 0, "track_uid": r[8] or "",
+                     "album_key": r[9] or "", "year": r[10] or 0, "genre": r[11] or "",
+                     "format": r[12] or "", "sample_rate": r[13] or 0,
+                     "bit_depth": r[14] or 0, "cover_key": r[9] or ""} for r in rows]
         except Exception as e:
             raise LibraryQueryError("QUERY_FAILED", "fetch_artist_tracks_internal", str(e)) from e
 
@@ -372,7 +382,11 @@ class LibraryQueryService:
             internal = self.fetch_album_tracks_internal(album_key)
             if not internal:
                 return None
-            return {"album_key": album_key, "track_count": len(internal),
+            first = internal[0]
+            return {"album_key": album_key, "title": first.get("album", ""),
+                    "artist": first.get("album_artist") or first.get("artist", ""),
+                    "year": first.get("year", 0), "genre": first.get("genre", ""),
+                    "cover_key": first.get("cover_key", album_key), "track_count": len(internal),
                     "tracks": [{k: v for k, v in t.items() if k != "filepath"} for t in internal]}
         except LibraryQueryError:
             raise
@@ -388,8 +402,10 @@ class LibraryQueryService:
             for t in internal:
                 if t.get("album"):
                     albums.add(t["album"])
+            genres = next((t.get("genre", "") for t in internal if t.get("genre")), "")
             return {"artist": artist_name, "track_count": len(internal),
                     "album_count": len(albums),
+                    "genre": genres,
                     "tracks": [{k: v for k, v in t.items() if k != "filepath"} for t in internal]}
         except LibraryQueryError:
             raise
@@ -398,6 +414,9 @@ class LibraryQueryService:
 
     def _row_to_public(self, r) -> dict[str, Any]:
         album_key = r[21] or r[7] or ""
+        composer = (r[24] or "") if len(r) > 24 else ""
+        favorite = bool(r[25]) if len(r) > 25 else False
+        missing = bool(r[26]) if len(r) > 26 else False
         return {
             "track_id": r[0], "track_uid": r[22] or "", "public_ref": f"track_{r[0]}",
             "filename": r[2] or "", "format": (r[3] or "").lstrip(".").upper(),
@@ -407,7 +426,8 @@ class LibraryQueryService:
             "track_total": r[12] or 0, "disc_number": r[13] or 0, "disc_total": r[14] or 0,
             "bitrate": r[15] or 0, "sample_rate": r[16] or 0, "bit_depth": r[17] or 0,
             "channels": r[18] or 0, "play_count": r[19] or 0, "last_played": r[20] or 0,
-            "cover_key": album_key, "missing": False, "source_type": "local_file",
+            "cover_key": album_key, "composer": composer, "favorite": favorite,
+            "missing": missing, "date_added": r[23] or 0, "source_type": "local_file",
         }
 
     def _album_row_to_dict(self, r) -> dict:

@@ -5,87 +5,116 @@ import "../../theme"
 import "../../components"
 
 Rectangle {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Library Selection Bar"
+    id: root
     objectName: "librarySelectionBar"
     focus: true
-    id: root
+
+    Accessible.role: Accessible.ToolBar
+    Accessible.name: qsTr("Acciones para la selección de biblioteca")
 
     property var bridge: null
     property var selectedIds: []
-    property int selectedCount: 0
+    property int selectedCount: selectedIds ? selectedIds.length : 0
     property string activeCategory: "track"
 
     signal selectionCleared()
     signal selectAllRequested()
     signal actionRequested(string actionId, var ids)
 
-    color: MichiTheme.colors.accentSurface
-    border.color: MichiTheme.colors.accentBlue
-    border.width: 1
-    radius: MichiTheme.radius.sm
+    implicitHeight: 58
+    color: MichiTheme.colors.surfaceToolbar
+    border.color: MichiTheme.colors.borderActive
+    border.width: MichiTheme.borderWidth
+    radius: MichiTheme.radius.lg
 
     RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: MichiTheme.spacing.md; anchors.rightMargin: MichiTheme.spacing.md
+        anchors.leftMargin: MichiTheme.spacing.lg
+        anchors.rightMargin: MichiTheme.spacing.md
         spacing: MichiTheme.spacing.sm
 
-        Text {
-            text: selectedCount + (root.activeCategory === "track" ? " canciones seleccionadas" :
-                                   root.activeCategory === "album" ? " álbumes seleccionados" :
-                                   root.activeCategory === "artist" ? " artistas seleccionados" : " seleccionados")
-            color: MichiTheme.colors.accentBlue
-            font.pixelSize: MichiTheme.typography.bodySize
-            font.weight: MichiTheme.typography.weightSemiBold
+        Rectangle {
+            Layout.preferredWidth: 30
+            Layout.preferredHeight: 30
+            radius: 15
+            color: MichiTheme.colors.accentSelection
+            Text {
+                anchors.centerIn: parent
+                text: root.selectedCount
+                color: MichiTheme.colors.accentBlue
+                font.pixelSize: MichiTheme.typography.metaSize
+                font.weight: MichiTheme.typography.weightBold
+            }
+        }
+
+        ColumnLayout {
+            spacing: 0
+            Text {
+                text: root.activeCategory === "track"
+                      ? qsTr("Canciones seleccionadas")
+                      : qsTr("Elementos seleccionados")
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.bodySize
+                font.weight: MichiTheme.typography.weightSemiBold
+            }
+            Text {
+                text: qsTr("Las acciones se aplicarán a los %1 elementos cargados").arg(root.selectedCount)
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.captionSize
+            }
         }
 
         Item { Layout.fillWidth: true }
 
-        MichiButton { text: qsTr("Reproducir"); variant: "ghost"; onClicked: root.actionRequested("track_play_now", root.selectedIds) }
-        MichiButton { text: qsTr("Añadir a cola"); variant: "ghost"; onClicked: root.actionRequested("track_add_to_queue", root.selectedIds) }
-        MichiButton { text: qsTr("Añadir a playlist"); variant: "ghost"; onClicked: root.actionRequested("track_add_to_playlist", root.selectedIds) }
-        MichiButton { text: qsTr("Favorito"); variant: "ghost"; onClicked: root.actionRequested("track_favorite", root.selectedIds) }
-        MichiButton { text: qsTr("Deseleccionar"); variant: "ghost"; onClicked: { root.selectedIds = []; root.selectedCount = 0; root.selectionCleared(); root.visible = false } }
+        MichiButton {
+            text: qsTr("Reproducir")
+            variant: "primary"
+            enabled: root.selectedCount > 0
+            onClicked: root.actionRequested("track_play_now", root.selectedIds.slice())
+        }
+        MichiButton {
+            text: qsTr("Añadir a cola")
+            variant: "ghost"
+            enabled: root.selectedCount > 0
+            onClicked: root.actionRequested("track_add_to_queue", root.selectedIds.slice())
+        }
+        MichiButton {
+            text: qsTr("Favorito")
+            variant: "ghost"
+            enabled: root.selectedCount > 0
+            onClicked: root.actionRequested("track_favorite", root.selectedIds.slice())
+        }
+        MichiButton {
+            text: qsTr("Deseleccionar")
+            variant: "ghost"
+            onClicked: root.clearSelection()
+        }
     }
 
     function clearSelection() {
-        selectedIds = []
-        selectedCount = 0
+        root.selectedIds = []
         root.selectionCleared()
-        root.visible = false
     }
 
     function addSelection(id) {
-        if (selectedIds.indexOf(id) === -1) {
-            selectedIds = selectedIds.concat([id])
-        }
-        selectedCount = selectedIds.length
-        root.visible = selectedCount > 0
+        var ids = root.selectedIds.slice()
+        if (ids.indexOf(id) === -1) ids.push(id)
+        root.selectedIds = ids
     }
 
     function removeSelection(id) {
-        var idx = selectedIds.indexOf(id)
-        if (idx !== -1) {
-            var copy = selectedIds.slice()
-            copy.splice(idx, 1)
-            selectedIds = copy
-        }
-        selectedCount = selectedIds.length
-        root.visible = selectedCount > 0
+        var ids = root.selectedIds.slice()
+        var index = ids.indexOf(id)
+        if (index !== -1) ids.splice(index, 1)
+        root.selectedIds = ids
     }
 
     function toggleSelection(id) {
-        if (selectedIds.indexOf(id) !== -1) {
-            removeSelection(id)
-        } else {
-            addSelection(id)
-        }
+        if (root.selectedIds.indexOf(id) !== -1) root.removeSelection(id)
+        else root.addSelection(id)
     }
 
     function selectAll(count) {
-        selectedIds = []
-        selectedCount = count
-        root.visible = count > 0
-        selectAllRequested()
+        root.selectAllRequested()
     }
 }

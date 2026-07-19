@@ -27,7 +27,7 @@ def test_home_audio_page_has_object_name(engine):
     component.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/home_audio/HomeAudioPage.qml")))
     obj = component.create()
     try:
-        assert obj.property("objectName") == "homeAudio.page"
+        assert obj.property("objectName") == "homeAudioPage"
     finally:
         obj.deleteLater()
 

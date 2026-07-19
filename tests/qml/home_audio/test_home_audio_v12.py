@@ -13,7 +13,7 @@ class TestHomeAudioBridgeCreation:
         from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
         hab = HomeAudioBridge()
         assert hab.homeAssistantState == "not_configured"
-        assert hab.snapcastState == "unavailable"
+        assert hab.snapcastState == "concept"
 
     def test_receivers_available(self):
         from ui_qml_bridge.home_audio_bridge import HomeAudioBridge

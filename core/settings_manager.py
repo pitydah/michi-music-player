@@ -75,6 +75,7 @@ DEFAULTS = {
     "home_audio/ha_token": "",
     "home_audio/ha_verify_ssl": True,
     "home_audio/snapserver_enabled": False,
+    "home_audio/snapcast_host": "127.0.0.1",
     "home_audio/snapserver_tcp_port": 1704,
     "home_audio/snapserver_control_port": 1705,
     "home_audio/snapserver_http_port": 1780,

@@ -40,87 +40,102 @@ Item {
         root.fatalMessage = ""
     }
 
-    RowLayout {
+    ColumnLayout {
         anchors.fill: parent
         spacing: 0
 
-        Sidebar {
-            id: sidebar
+        RowLayout {
             Layout.fillHeight: true
-            Layout.preferredWidth: sidebar.collapsed ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
-            Layout.minimumWidth: Layout.preferredWidth
-            Layout.maximumWidth: Layout.preferredWidth
-            forceCompact: root.width < 1024
-            currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
+            Layout.fillWidth: true
+            spacing: 0
 
-            onRouteRequested: function(route) {
-                if (typeof navigationBridge !== "undefined" && navigationBridge) {
-                    navigationBridge.navigate(route)
-                } else {
-                    pageStack.loadRoute(route)
-                    sidebar.currentRoute = route
-                    updateHeaderTitle(route)
+            Sidebar {
+                id: sidebar
+                Layout.fillHeight: true
+                Layout.preferredWidth: sidebar.collapsed ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
+                Layout.minimumWidth: Layout.preferredWidth
+                Layout.maximumWidth: Layout.preferredWidth
+                forceCompact: root.width < 1100
+                currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
+
+                onRouteRequested: function(route) {
+                    if (typeof navigationBridge !== "undefined" && navigationBridge) {
+                        navigationBridge.navigate(route)
+                    } else {
+                        pageStack.loadRoute(route)
+                        sidebar.currentRoute = route
+                        updateHeaderTitle(route)
+                    }
+                }
+            }
+
+            Rectangle {
+                width: 4
+                height: parent.height
+                color: "transparent"
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.leftMargin: -4
+                    anchors.rightMargin: -4
+                    cursorShape: Qt.SizeHorCursor
+                    onPositionChanged: {
+                        if (mouse.buttons & Qt.LeftButton) {
+                            var newWidth = sidebar.width + mouse.x
+                            if (newWidth > 150 && newWidth < 500)
+                                sidebar.width = newWidth
+                        }
+                    }
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                spacing: 0
+
+                HeaderBar {
+                    id: header
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 56
+                    pageTitle: "Inicio"
+                    mainWindow: mainWindow
+
+                    canGoBack: navigationBridge ? navigationBridge.canGoBack : false
+                    canGoForward: navigationBridge ? navigationBridge.canGoForward : false
+                    routeHistory: navigationBridge ? navigationBridge.history : []
+
+                    onBackClicked: {
+                        if (typeof navigationBridge !== "undefined" && navigationBridge)
+                            navigationBridge.back()
+                    }
+
+                    onForwardClicked: {
+                        if (typeof navigationBridge !== "undefined" && navigationBridge)
+                            navigationBridge.forward()
+                    }
+
+                    onBreadcrumbClicked: function(route) {
+                        if (typeof navigationBridge !== "undefined" && navigationBridge)
+                            navigationBridge.navigate(route)
+                    }
+                }
+
+                PageStack {
+                    id: pageStack
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
                 }
             }
         }
 
-        ColumnLayout {
+        NowPlayingBar {
+            id: nowPlayingBar
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            spacing: 0
-
-            HeaderBar {
-                id: header
-                Layout.fillWidth: true
-                Layout.preferredHeight: MichiTheme.headerHeight
-                pageTitle: "Inicio"
-                mainWindow: mainWindow
-
-                canGoBack: navigationBridge ? navigationBridge.canGoBack : false
-                canGoForward: navigationBridge ? navigationBridge.canGoForward : false
-                routeHistory: navigationBridge ? navigationBridge.history : []
-
-                onBackClicked: {
-                    if (typeof navigationBridge !== "undefined" && navigationBridge)
-                        navigationBridge.back()
-                }
-
-                onForwardClicked: {
-                    if (typeof navigationBridge !== "undefined" && navigationBridge)
-                        navigationBridge.forward()
-                }
-
-                onBreadcrumbClicked: function(route) {
-                    if (typeof navigationBridge !== "undefined" && navigationBridge)
-                        navigationBridge.navigate(route)
-                }
-
-                onSearchRequested: function(query, submitted) {
-                    if (typeof navigationBridge === "undefined" || !navigationBridge)
-                        return
-                    var params = {"query": query, "submitted": submitted}
-                    if (submitted)
-                        navigationBridge.navigateWithParams("search", params)
-                    else if (navigationBridge.currentRoute === "search")
-                        navigationBridge.updateCurrentParams(params)
-                }
-            }
-
-            PageStack {
-                id: pageStack
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
-            }
-
-            NowPlayingBar {
-                id: nowPlayingBar
-                Layout.fillWidth: true
-                Layout.preferredHeight: implicitHeight
-                Layout.maximumHeight: implicitHeight
-                Layout.minimumHeight: implicitHeight
-                z: 10
-            }
+            Layout.preferredHeight: implicitHeight
+            Layout.maximumHeight: 112
+            Layout.minimumHeight: 96
+            z: 10
         }
     }
 
@@ -133,7 +148,65 @@ Item {
     ShortcutLayer {
         anchors.fill: parent
         cmdPalette: commandPalette
-        searchTarget: header
+    }
+
+    Dialog {
+        id: pendingSettingsDialog
+        objectName: "pendingSettingsNavigationDialog"
+        modal: true
+        closePolicy: Popup.NoAutoClose
+        anchors.centerIn: parent
+        width: Math.min(520, root.width - MichiTheme.spacing.xl * 2)
+        title: qsTr("Cambios pendientes")
+
+        contentItem: ColumnLayout {
+            spacing: MichiTheme.spacing.lg
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Hay cambios de ajustes sin confirmar. Decide qué hacer antes de salir.")
+                wrapMode: Text.WordWrap
+                color: MichiTheme.colors.textPrimary
+            }
+            Label {
+                id: pendingSettingsError
+                Layout.fillWidth: true
+                visible: text !== ""
+                color: MichiTheme.colors.error
+                wrapMode: Text.WordWrap
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                MichiButton {
+                    text: qsTr("Cancelar")
+                    variant: "ghost"
+                    onClicked: {
+                        navigationBridge.resolvePendingNavigation("cancel")
+                        pendingSettingsDialog.close()
+                    }
+                }
+                Item { Layout.fillWidth: true }
+                MichiButton {
+                    text: qsTr("Descartar y salir")
+                    variant: "danger"
+                    onClicked: root.resolvePendingSettings("discard")
+                }
+                MichiButton {
+                    text: qsTr("Aplicar y salir")
+                    variant: "primary"
+                    onClicked: root.resolvePendingSettings("apply")
+                }
+            }
+        }
+    }
+
+    function resolvePendingSettings(decision) {
+        var result = navigationBridge.resolvePendingNavigation(decision)
+        if (result && result.ok) {
+            pendingSettingsError.text = ""
+            pendingSettingsDialog.close()
+        } else {
+            pendingSettingsError.text = qsTr("No se pudo resolver la transacción de ajustes.")
+        }
     }
 
     NotificationCenter {
@@ -149,45 +222,57 @@ Item {
     }
 
     Rectangle {
-        id: fatalOverlay
+        id: loadingOverlay
         anchors.fill: parent
-        color: MichiTheme.colors.bgApp
+        color: MichiTheme.colors.overlayDark
         z: 9999
-        visible: root.fatalError
-        objectName: "fatalOverlay"
+        visible: pageStack.loading
+        objectName: "loadingOverlay"
 
         Column {
             anchors.centerIn: parent
             spacing: MichiTheme.spacing.lg
-            width: Math.min(400, parent.width * 0.8)
+            width: Math.min(320, parent.width * 0.6)
 
-            Text {
+            MichiProgressBar {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: qsTr("Error fatal")
-                color: MichiTheme.colors.error
-                font.pixelSize: MichiTheme.typography.pageTitleSize
-                font.weight: MichiTheme.typography.weightBold
+                width: parent.width
+                indeterminate: true
+                objectName: "loadingProgressBar"
             }
 
             Text {
-                width: parent.width
-                text: root.fatalMessage
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: qsTr("Cargando...")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
-                wrapMode: Text.WordWrap
-                horizontalAlignment: Text.AlignHCenter
-            }
-
-            MichiButton {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: qsTr("Reintentar")
-                variant: "primary"
-                onClicked: root.dismissFatal()
+                font.weight: MichiTheme.typography.weightMedium
             }
         }
 
         Accessible.role: Accessible.AlertMessage
-        Accessible.name: "Error fatal de la aplicación"
+        Accessible.name: "Cargando contenido"
+    }
+
+    ErrorState {
+        id: errorOverlay
+        anchors.fill: parent
+        z: 9999
+        visible: pageStack.lastError !== "" && !root.fatalError
+        showRetry: true
+        message: pageStack.lastError
+        onRetryRequested: pageStack.loadRoute(pageStack.currentRoute)
+    }
+
+    ErrorState {
+        id: fatalOverlay
+        anchors.fill: parent
+        z: 9999
+        visible: root.fatalError
+        objectName: "fatalOverlay"
+        showRetry: true
+        message: root.fatalMessage
+        onRetryRequested: root.dismissFatal()
     }
 
     Connections {
@@ -200,6 +285,12 @@ Item {
         function onBreadcrumbChanged() {
             if (typeof navigationBridge !== "undefined" && navigationBridge)
                 header.breadcrumbs = navigationBridge.currentBreadcrumb
+        }
+        function onNavigationBlocked(targetRoute, reason) {
+            if (reason === "pending_changes") {
+                pendingSettingsError.text = ""
+                pendingSettingsDialog.open()
+            }
         }
     }
 

@@ -3,11 +3,10 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../theme"
 import "../../components"
-import "../../components/layout"
 import "../../materials"
 import "."
 
-MichiPage {
+Item {
     id: root
     objectName: "homePage"
     focus: true
@@ -18,42 +17,37 @@ MichiPage {
     property var hb: typeof homeBridge !== "undefined" ? homeBridge : null
     property var nb: typeof navigationBridge !== "undefined" ? navigationBridge : null
 
-    enum State { LOADING, READY, EMPTY, DEGRADED, ERROR }
+    enum State { LOADING, READY, EMPTY, ERROR }
 
     property int homeState: HomePage.LOADING
     property string statusMessage: ""
     readonly property int libraryTracks: root.hb ? Number(root.hb.libraryTracks || 0) : 0
     readonly property int sourcesCount: root.hb ? Number(root.hb.sourcesCount || 0) : 0
     readonly property int activeJobs: root.hb ? Number(root.hb.activeJobs || 0) : 0
+    readonly property int quickColumns: width >= 1500 ? 4 : width >= 900 ? 2 : 1
     readonly property bool hasLibrary: libraryTracks > 0
-    readonly property bool contentReady: homeState === HomePage.READY
-                                         || homeState === HomePage.DEGRADED
-    visualState: homeState === HomePage.ERROR ? "error" : "content"
-    maximumContentWidth: 1360
 
     function setHomeState(value, message) {
         root.homeState = value
         root.state = value === HomePage.LOADING ? "LOADING"
                    : value === HomePage.READY ? "READY"
-                   : value === HomePage.EMPTY ? "EMPTY"
-                   : value === HomePage.DEGRADED ? "DEGRADED" : "ERROR"
+                   : value === HomePage.EMPTY ? "EMPTY" : "ERROR"
         root.statusMessage = message || ""
     }
 
     function updateState() {
         if (!root.hb) {
             root.setHomeState(HomePage.ERROR, qsTr("Servicio de inicio no disponible"))
-        } else if (root.activeJobs > 0) {
-            root.setHomeState(HomePage.LOADING, qsTr("Escaneando tu biblioteca"))
-        } else if (root.hb.degraded) {
-            root.setHomeState(HomePage.DEGRADED,
-                              root.hb.degradedMessage || qsTr("Algunos servicios no están disponibles"))
-        } else if (root.libraryTracks > 0) {
-            root.setHomeState(HomePage.READY, "")
-        } else if (root.sourcesCount === 0) {
+        } else if (root.hb.loading) {
+            root.setHomeState(HomePage.LOADING, qsTr("Actualizando estado"))
+        } else if (root.hb.errorMessage !== "") {
+            root.setHomeState(HomePage.ERROR, root.hb.errorMessage)
+        } else if (root.hb.ready && !root.hb.hasLibrary && root.sourcesCount === 0) {
             root.setHomeState(HomePage.EMPTY, "")
+        } else if (root.hb.ready && root.hb.hasLibrary) {
+            root.setHomeState(HomePage.READY, "")
         } else {
-            root.setHomeState(HomePage.READY, qsTr("Fuente configurada. Inicia un escaneo para añadir música."))
+            root.setHomeState(HomePage.LOADING, qsTr("Escaneando tu biblioteca"))
         }
     }
 
@@ -64,9 +58,11 @@ MichiPage {
         }
         root.setHomeState(HomePage.LOADING, qsTr("Actualizando Inicio"))
         try {
-            var ok = root.hb.refresh()
-            if (ok === false)
-                root.setHomeState(HomePage.ERROR, qsTr("No se pudo actualizar Inicio"))
+            var result = root.hb.refresh()
+            if (result && result.ok === false)
+                root.setHomeState(HomePage.ERROR, result.errors && result.errors.length > 0
+                    ? result.errors.map(function(e) { return e.section }).join(", ")
+                    : qsTr("No se pudo actualizar Inicio"))
             else
                 root.updateState()
         } catch (error) {
@@ -85,48 +81,35 @@ MichiPage {
         function onSnapshotChanged() { root.updateState() }
     }
 
-    Column {
-        id: contentColumn
-        objectName: "homeContent"
-        width: parent.width
-        spacing: MichiTheme.spacing.lg
+    Flickable {
+        id: homeFlick
+        anchors.fill: parent
+        anchors.margins: root.width < 900 ? MichiTheme.spacing.lg : MichiTheme.spacing.xl
+        contentWidth: width
+        contentHeight: contentColumn.height + MichiTheme.spacing.xxl
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        visible: root.homeState !== HomePage.ERROR
+
+        Column {
+            id: contentColumn
+            objectName: "homeContent"
+            width: Math.min(homeFlick.width, 1360)
+            x: Math.round((homeFlick.width - width) / 2)
+            spacing: MichiTheme.spacing.lg
 
             HomeHero {
                 id: hero
                 width: parent.width
-                visible: root.homeState !== HomePage.EMPTY
-                message: root.homeState === HomePage.LOADING
-                            ? qsTr("Estamos actualizando el estado de tu música.")
-                            : root.homeState === HomePage.DEGRADED
-                              ? qsTr("Tu música sigue disponible mientras recuperamos algunos servicios.")
-                            : qsTr("Tu biblioteca y el ecosistema Michi, listos en un solo lugar.")
-                primaryText: qsTr("Explorar biblioteca")
+                message: root.homeState === HomePage.EMPTY
+                         ? qsTr("Prepara tu biblioteca local o conecta tu servidor Michi.")
+                         : root.homeState === HomePage.LOADING
+                           ? qsTr("Estamos actualizando el estado de tu música.")
+                           : qsTr("Tu biblioteca y el ecosistema Michi, listos en un solo lugar.")
+                primaryText: root.homeState === HomePage.EMPTY ? qsTr("Añadir carpeta") : qsTr("Explorar biblioteca")
                 secondaryText: qsTr("Conectar servidor")
-                onPrimaryAction: root.goToRoute("library")
+                onPrimaryAction: root.goToRoute(root.homeState === HomePage.EMPTY ? "library.sources" : "library")
                 onSecondaryAction: root.goToRoute("connections")
-            }
-
-            GlassMaterial {
-                objectName: "homeDegradedCard"
-                width: parent.width
-                height: 72
-                visible: root.homeState === HomePage.DEGRADED
-                variant: "warning"
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: MichiTheme.spacing.lg
-                    spacing: MichiTheme.spacing.md
-                    MichiIcon { iconKey: "connections"; size: 20; color: MichiTheme.colors.warning }
-                    Text {
-                        Layout.fillWidth: true
-                        text: root.statusMessage
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        wrapMode: Text.WordWrap
-                    }
-                    MichiButton { text: qsTr("Reintentar"); variant: "secondary"; onClicked: root.refresh() }
-                }
             }
 
             GlassMaterial {
@@ -226,7 +209,7 @@ MichiPage {
                 trackTitle: root.hb ? root.hb.currentTrackTitle : "—"
                 trackArtist: root.hb ? root.hb.currentArtist : "—"
                 hasPlayback: root.hb ? root.hb.hasPlayback : false
-                visible: root.contentReady && hasPlayback
+                visible: root.homeState === HomePage.READY && hasPlayback
                 activeFocusOnTab: visible
                 onActivate: root.goToRoute("playback")
             }
@@ -234,7 +217,7 @@ MichiPage {
             LibraryStatusCard {
                 id: libraryCard
                 width: parent.width
-                visible: root.contentReady
+                visible: root.homeState === HomePage.READY
                 albums: root.hb ? root.hb.libraryAlbums : 0
                 artists: root.hb ? root.hb.libraryArtists : 0
                 tracks: root.libraryTracks
@@ -242,14 +225,14 @@ MichiPage {
                 onOpenLibrary: root.goToRoute("library")
             }
 
-            MichiResponsiveGrid {
+            GridLayout {
                 id: quickGrid
                 objectName: "homeQuickGrid"
                 width: parent.width
-                visible: root.contentReady && root.hasLibrary
-                maximumColumns: 4
-                minimumCellWidth: 260
-                spacing: MichiTheme.spacing.md
+                visible: root.homeState === HomePage.READY && root.hasLibrary
+                columns: root.quickColumns
+                columnSpacing: MichiTheme.spacing.md
+                rowSpacing: MichiTheme.spacing.md
 
                 Repeater {
                     model: [
@@ -259,33 +242,62 @@ MichiPage {
                         { title: qsTr("Mixes"), description: qsTr("Escucha selecciones inteligentes construidas para ti"), action: qsTr("Ver mixes"), route: "mix" }
                     ]
 
-                    MichiFeatureCard {
+                    GlassCard {
                         required property var modelData
-                        height: 144
-                        title: modelData.title
-                        description: modelData.description
-                        primaryActionText: modelData.action
-                        route: modelData.route
-                        iconKey: modelData.route === "mix" ? "mix"
-                                 : modelData.route === "library.recent" ? "history"
-                                 : "library"
-                        featureAccessibleName: modelData.title
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 120
+                        Layout.minimumHeight: 120
+                        Layout.maximumHeight: 120
+                        activeFocusOnTab: true
+                        Accessible.name: modelData.title
                         onClicked: root.goToRoute(modelData.route)
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: MichiTheme.spacing.lg
+                            spacing: MichiTheme.spacing.xs
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: modelData.title
+                                color: MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.cardTitleSize
+                                font.weight: MichiTheme.typography.weightSemiBold
+                                elide: Text.ElideRight
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                text: modelData.description
+                                color: MichiTheme.colors.textSecondary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                wrapMode: Text.WordWrap
+                                maximumLineCount: 2
+                                elide: Text.ElideRight
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: modelData.action
+                                color: MichiTheme.colors.accentBlue
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                font.weight: MichiTheme.typography.weightSemiBold
+                            }
+                        }
                     }
                 }
             }
 
             EcosystemCard {
                 width: parent.width
-                visible: root.contentReady
-                microServerState: root.hb ? root.hb.ecosystemState : "not_configured"
+                visible: root.homeState === HomePage.READY
+                microServerState: root.hb && root.hb.ecosystemState ? root.hb.ecosystemState : "not_configured"
                 onOpenConnections: root.goToRoute("connections")
                 onOpenHomeAudio: root.goToRoute("home_audio")
             }
 
             AssistantCard {
                 width: parent.width
-                visible: root.contentReady
+                visible: root.homeState === HomePage.READY
                 onOpenAssistant: root.goToRoute("assistant")
             }
 
@@ -297,9 +309,10 @@ MichiPage {
                 visible: root.homeState === HomePage.READY && root.statusMessage !== ""
                 wrapMode: Text.WordWrap
             }
+        }
     }
 
-    stateContent: Rectangle {
+    Rectangle {
         anchors.fill: parent
         color: MichiTheme.colors.bgApp
         visible: root.homeState === HomePage.ERROR

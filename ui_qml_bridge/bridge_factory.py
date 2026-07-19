@@ -72,9 +72,13 @@ class BridgeFactory(QObject):
     def create_navigation_bridge(self):
         if "navigation" not in self._bridges:
             from ui_qml_bridge.navigation_bridge import NavigationBridge
-            self._bridges["navigation"] = NavigationBridge(
+            navigation = NavigationBridge(
                 navigation_service=self._get("navigation_service"),
             )
+            self._bridges["navigation"] = navigation
+            settings = self._bridges.get("settings")
+            if settings is not None:
+                navigation.registerLeaveGuard("settings", settings)
 
     def create_job_bridge(self):
         if "job_bridge" not in self._bridges:
@@ -258,6 +262,9 @@ class BridgeFactory(QObject):
             bridge = SettingsBridgeV2(service=self._get("settings_service"))
             self._bridges["settings"] = bridge
             self._bridges["settings_v2"] = bridge
+            navigation = self._bridges.get("navigation")
+            if navigation is not None:
+                navigation.registerLeaveGuard("settings", bridge)
 
     def create_output_profiles_bridge(self):
         if "output_profiles" not in self._bridges:
@@ -318,6 +325,7 @@ class BridgeFactory(QObject):
                 capability_bridge=cap,
                 accessibility_bridge=acc,
                 notification_bridge=notif,
+                worker_manager=self._get("worker_manager"),
             )
 
     def create_devices_bridge(self):

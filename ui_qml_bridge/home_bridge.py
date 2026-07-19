@@ -14,23 +14,13 @@ class HomeBridge(QObject):
     def __init__(self, db=None, player_service=None, library_bridge=None,
                  library_sources_service=None, job_bridge=None, playback_service=None,
                  library_query_service=None, library_mutation_service=None,
-                 track_action_service=None, query_executor=None,
-                 connections_bridge=None, parent=None):
+                 track_action_service=None, query_executor=None, parent=None):
         super().__init__(parent)
         self._db = db
         self._player = player_service or playback_service
         self._lib = library_bridge
         self._src_svc = library_sources_service
         self._job_bridge = job_bridge
-        self._connections = connections_bridge
-        if self._player and hasattr(self._player, 'track_changed'):
-            self._player.track_changed.connect(self._on_playback_changed)
-        if self._player and hasattr(self._player, 'state_changed'):
-            self._player.state_changed.connect(self._on_playback_changed)
-        if self._job_bridge and hasattr(self._job_bridge, 'jobsChanged'):
-            self._job_bridge.jobsChanged.connect(self._load_jobs)
-        if self._connections and hasattr(self._connections, 'stateChanged'):
-            self._connections.stateChanged.connect(self.snapshotChanged.emit)
         self._albums = 0
         self._artists = 0
         self._tracks = 0
@@ -42,7 +32,17 @@ class HomeBridge(QObject):
         self._active_jobs = 0
         self._backend = ""
         self._output = ""
-        self._degraded_reasons: list[str] = []
+        self._loading = False
+        self._ready = False
+        self._error_message = ""
+        self._has_library = False
+        self._errors: list[dict] = []
+        if self._player and hasattr(self._player, 'track_changed'):
+            self._player.track_changed.connect(self._on_playback_changed)
+        if self._player and hasattr(self._player, 'state_changed'):
+            self._player.state_changed.connect(self._on_playback_changed)
+        if self._job_bridge and hasattr(self._job_bridge, 'jobsChanged'):
+            self._job_bridge.jobsChanged.connect(self._load_jobs)
 
     @Property(int, notify=snapshotChanged)
     def libraryAlbums(self):
@@ -88,80 +88,90 @@ class HomeBridge(QObject):
     def output(self):
         return self._output
 
-    @Property(str, notify=snapshotChanged)
-    def ecosystemState(self):
-        if not self._connections:
-            return "not_configured"
-        return getattr(self._connections, "microServerState", "not_configured")
+    @Property(bool, notify=snapshotChanged)
+    def loading(self):
+        return self._loading
 
     @Property(bool, notify=snapshotChanged)
-    def degraded(self):
-        return bool(self._degraded_reasons)
+    def ready(self):
+        return self._ready
 
     @Property(str, notify=snapshotChanged)
-    def degradedMessage(self):
-        return " · ".join(self._degraded_reasons)
+    def errorMessage(self):
+        return self._error_message
 
-    def _mark_degraded(self, reason: str) -> None:
-        if reason not in self._degraded_reasons:
-            self._degraded_reasons.append(reason)
+    @Property(bool, notify=snapshotChanged)
+    def hasLibrary(self):
+        return self._has_library
 
-    @Slot(result=bool)
-    def refresh(self) -> bool:
-        """Refresh the dashboard snapshot and report bridge-level failures."""
-        try:
-            self._degraded_reasons = []
-            self._load_library_stats()
-            self._load_playback()
-            self._load_sources()
-            self._load_jobs()
-            self._load_audio()
-            if self.ecosystemState in {"error", "offline", "service_unavailable"}:
-                self._mark_degraded("Conexiones no disponibles")
-        except Exception:
-            logger.exception("Home snapshot refresh failed")
-            return False
+    @Slot(result="QVariantMap")
+    def refresh(self):
+        """Refresh the dashboard snapshot and report per-section errors."""
+        self._loading = True
+        self._ready = False
+        self._error_message = ""
+        errors: list[dict] = []
+
+        for section, loader in (
+            ("library_stats", self._load_library_stats),
+            ("playback", self._load_playback),
+            ("sources", self._load_sources),
+            ("jobs", self._load_jobs),
+            ("audio", self._load_audio),
+        ):
+            try:
+                loader()
+            except Exception as exc:
+                logger.exception("Home snapshot section %s failed", section)
+                errors.append({"section": section, "error": str(exc)})
+
+        self._has_library = bool(self._tracks or self._albums or self._artists)
+        self._error_message = "; ".join(
+            item["section"] for item in errors
+        ) if errors else ""
+        self._errors = errors
+        self._loading = False
+        self._ready = True
         self.snapshotChanged.emit()
-        return True
+        return {"ok": not errors, "ready": True, "errors": errors,
+                "has_library": self._has_library, "sources": self._sources_count}
 
     def _load_library_stats(self):
         if self._lib:
-            try:
-                self._tracks = getattr(self._lib, 'songCount', 0)
-                self._albums = getattr(self._lib, 'albumCount', 0)
-                self._artists = getattr(self._lib, 'artistCount', 0)
-            except Exception:
-                self._mark_degraded("Biblioteca no disponible")
+            self._tracks = getattr(self._lib, 'songCount', 0)
+            self._albums = getattr(self._lib, 'albumCount', 0)
+            self._artists = getattr(self._lib, 'artistCount', 0)
 
     def _load_playback(self):
         if self._player:
             try:
-                if hasattr(self._player, 'current'):
-                    cur = self._player.current
-                    if cur:
-                        self._current_track = getattr(cur, 'title', '—') or '—'
-                        self._current_artist = getattr(cur, 'artist', '—') or '—'
-                        self._has_playback = True
-                    else:
-                        self._has_playback = False
-                elif hasattr(self._player, 'get_current_track'):
-                    cur = self._player.get_current_track()
-                    if cur and isinstance(cur, dict):
-                        self._current_track = cur.get('title', '—')
-                        self._current_artist = cur.get('artist', '—')
-                        self._has_playback = True
-                    else:
-                        self._has_playback = False
+                self._current_track = self._read_field('title') or '—'
+                self._current_artist = self._read_field('artist') or '—'
+                self._has_playback = bool(self._current_track != '—')
             except Exception:
-                self._mark_degraded("Reproducción no disponible")
+                pass
+
+    def _read_field(self, field: str) -> str:
+        if not self._player:
+            return ""
+        try:
+            if hasattr(self._player, 'current'):
+                cur = self._player.current
+                if cur:
+                    val = getattr(cur, field, '')
+                    return str(val) if val else ''
+            elif hasattr(self._player, 'get_current_track'):
+                cur = self._player.get_current_track()
+                if cur and isinstance(cur, dict):
+                    return str(cur.get(field, ''))
+            return ""
+        except Exception:
+            return ""
 
     def _load_sources(self):
         if self._src_svc:
-            try:
-                srcs = self._src_svc.list()
-                self._sources_count = len(srcs)
-            except Exception:
-                self._mark_degraded("Fuentes no disponibles")
+            srcs = self._src_svc.list()
+            self._sources_count = len(srcs)
 
     def _load_jobs(self):
         try:
@@ -169,7 +179,7 @@ class HomeBridge(QObject):
                 self._active_jobs = getattr(self._job_bridge, 'activeCount', 0)
                 return
         except Exception:
-            self._mark_degraded("Trabajos no disponibles")
+            pass
 
     def _on_playback_changed(self):
         self._load_playback()
@@ -185,7 +195,7 @@ class HomeBridge(QObject):
             if hasattr(self._player, 'get_output_device_id'):
                 self._output = self._player.get_output_device_id() or ""
         except Exception:
-            self._mark_degraded("Salida de audio no disponible")
+            pass
 
     @Slot(result=dict)
     def homeScore(self) -> dict:
@@ -204,6 +214,8 @@ class HomeBridge(QObject):
             score += 15
         return {
             "score": min(100, score),
+            "ready": self._ready,
+            "error": self._error_message,
             "has_db": self._db is not None,
             "has_player": self._player is not None,
             "tracks": self._tracks,
@@ -212,7 +224,7 @@ class HomeBridge(QObject):
 
     @Slot(int, int, int)
     def set_library_stats(self, albums: int, artists: int, tracks: int):
-        self._albums = albums
-        self._artists = artists
-        self._tracks = tracks
+        self._albums = max(0, albums)
+        self._artists = max(0, artists)
+        self._tracks = max(0, tracks)
         self.snapshotChanged.emit()

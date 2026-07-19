@@ -1,5 +1,6 @@
 import QtQuick
-import QtQuick.Controls as QQC2
+import QtQuick.Controls
+import QtQuick.Layouts
 import "../theme"
 
 Item {
@@ -15,36 +16,40 @@ Item {
     signal dismissAllRequested()
     signal notificationActivated(string notificationId)
 
-    ListModel { id: notificationModel }
+    property var notificationItems: []
+    readonly property int count: notificationItems.length
 
     Accessible.role: Accessible.Pane
     Accessible.name: "Centro de notificaciones"
     Accessible.description: "Lista de notificaciones activas"
 
     implicitWidth: 360
-    visible: (notificationModel.count > 0 || root.pinned) && _open
+    visible: opacity > 0.001
+    enabled: _open && count > 0
 
     property bool _open: false
-    property int _autoCloseTimer: 0
+    property bool _hovered: false
+
+    Timer {
+        id: autoCloseTimer
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (!root._hovered && !root.pinned)
+                root.close()
+        }
+    }
 
     function open() {
         _open = true
         root.refresh()
-        if (!root.pinned) {
-            _autoCloseTimer = Qt.callLater(function() {
-                Qt.callLater(function() {
-                    if (!root.containsMouse && !root.pinned)
-                        _open = false
-                })
-            }, 5000)
-        }
+        if (!root.pinned)
+            autoCloseTimer.restart()
     }
 
     function close() {
         _open = false
-        if (_autoCloseTimer) {
-            Qt.callLater(function() { _autoCloseTimer = 0 }, 0)
-        }
+        autoCloseTimer.stop()
     }
 
     function toggle() {
@@ -58,25 +63,28 @@ Item {
     height: Math.min(420, parent ? parent.height * 0.55 : 420)
     z: 9997
 
-    NumberAnimation on x {
-        id: slideAnim
-        from: root.parent ? root.parent.width : 0
-        to: root.parent ? root.parent.width - root.width - MichiTheme.spacing.md : root.width
-        duration: root.reducedMotion ? 0 : MichiTheme.motion.durationNormal
-        easing.type: Easing.OutCubic
-        running: false
+    opacity: 0
+    Behavior on opacity {
+        enabled: !root.reducedMotion
+        PropertyAnimation { duration: MichiTheme.motion.durationNormal }
     }
 
     on_OpenChanged: {
         if (_open) {
-            slideAnim.from = root.parent ? root.parent.width : 0
-            slideAnim.to = root.parent ? root.parent.width - root.width - MichiTheme.spacing.md : root.width
-            slideAnim.start()
-            root.visible = true
+            opacity = 1
         } else {
-            slideAnim.from = root.parent ? root.parent.width - root.width - MichiTheme.spacing.md : root.width
-            slideAnim.to = root.parent ? root.parent.width : 0
-            slideAnim.start()
+            opacity = 0
+        }
+    }
+
+    HoverHandler {
+        id: hoverHandler
+        onHoveredChanged: {
+            root._hovered = hoverHandler.hovered
+            if (hoverHandler.hovered)
+                autoCloseTimer.stop()
+            else if (_open && !root.pinned)
+                autoCloseTimer.restart()
         }
     }
 
@@ -88,132 +96,82 @@ Item {
         border.color: MichiTheme.colors.borderCard
         clip: true
 
-        Column {
+        ColumnLayout {
             anchors.fill: parent
             spacing: 0
 
-            Rectangle {
-                width: parent.width
-                height: 48
-                color: "transparent"
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 48
+                Layout.leftMargin: MichiTheme.spacing.md
+                Layout.rightMargin: MichiTheme.spacing.sm
+                spacing: MichiTheme.spacing.sm
 
-                Row {
-                    anchors.fill: parent
-                    anchors.leftMargin: MichiTheme.spacing.md
-                    anchors.rightMargin: MichiTheme.spacing.sm
-                    spacing: MichiTheme.spacing.sm
+                Label {
+                    text: qsTr("Notificaciones")
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.cardTitleSize
+                    font.weight: MichiTheme.typography.weightSemiBold
+                    Layout.alignment: Qt.AlignVCenter
+                }
 
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: qsTr("Notificaciones")
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.cardTitleSize
-                        font.weight: MichiTheme.typography.weightSemiBold
-                    }
+                StatusBadge {
+                    Layout.alignment: Qt.AlignVCenter
+                    visible: root.count > 0
+                    text: String(root.count)
+                    kind: root.count > 0 ? "info" : "disconnected"
+                }
 
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: qsTr("(%1)").arg(notificationModel.count)
-                        color: MichiTheme.colors.textSecondary
-                        font.pixelSize: MichiTheme.typography.secondarySize
-                        visible: notificationModel.count > 0
-                    }
+                Item { Layout.fillWidth: true }
 
-                    Item { width: parent.width * 0.3; height: 1 }
+                MichiButton {
+                    text: root.pinned ? qsTr("Fijado") : qsTr("Fijar")
+                    variant: "ghost"
+                    onClicked: root.pinned = !root.pinned
+                    Layout.alignment: Qt.AlignVCenter
+                }
 
-                    MichiIconButton {
-                        id: pinBtn
-                        anchors.verticalCenter: parent.verticalCenter
-                        iconSource: ""
-                        iconText: root.pinned ? "\u{1F4CC}" : "\u{1F4CC}"
-                        tooltipText: root.pinned ? "Desfijar" : "Fijar"
-                        btnSize: 28
-                        opacity: root.pinned ? 1.0 : 0.5
-                        onClicked: root.pinned = !root.pinned
-                    }
+                MichiButton {
+                    text: qsTr("Limpiar")
+                    variant: "ghost"
+                    visible: root.count > 0
+                    onClicked: root.clearAll()
+                    Layout.alignment: Qt.AlignVCenter
+                }
 
-                    MichiIconButton {
-                        id: dismissAllBtn
-                        anchors.verticalCenter: parent.verticalCenter
-                        iconText: "\u2716"
-                        tooltipText: "Descartar todas"
-                        btnSize: 28
-                        visible: notificationModel.count > 0
-                        onClicked: {
-                            notificationModel.clear()
-                            if (root.bridge) root.bridge.clear()
-                            if (root.nb) root.nb.clear()
-                            root.dismissAllRequested()
-                        }
-                    }
-
-                    MichiIconButton {
-                        anchors.verticalCenter: parent.verticalCenter
-                        iconText: "\u2715"
-                        tooltipText: "Cerrar"
-                        btnSize: 28
-                        onClicked: root.close()
-                    }
+                MichiButton {
+                    text: qsTr("Cerrar")
+                    variant: "ghost"
+                    onClicked: root.close()
+                    Layout.alignment: Qt.AlignVCenter
                 }
             }
 
             Rectangle {
-                width: parent.width
-                height: 1
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
                 color: MichiTheme.colors.borderSubtle
             }
 
             Item {
-                id: emptyStateItem
-                width: parent.width
-                height: parent.height - 48 - 1
-                visible: notificationModel.count === 0
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: root.count === 0
 
-                Column {
+                Label {
                     anchors.centerIn: parent
-                    spacing: MichiTheme.spacing.md
-                    width: Math.min(implicitWidth, parent.width * 0.8)
-
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: qsTr("\u2709")
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: 32
-                    }
-
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: qsTr("Sin notificaciones")
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.sectionTitleSize
-                        font.weight: MichiTheme.typography.weightMedium
-                    }
-
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: parent.width
-                        text: qsTr("No hay notificaciones activas")
-                        color: MichiTheme.colors.textSecondary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
-                    }
-
-                    MichiButton {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: qsTr("Cerrar")
-                        variant: "ghost"
-                        onClicked: root.close()
-                    }
+                    text: qsTr("No hay notificaciones")
+                    color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.bodySize
                 }
             }
 
             ListView {
                 id: notificationList
-                width: parent.width
-                height: parent.height - 48 - 1
-                model: notificationModel
-                visible: notificationModel.count > 0
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                model: root.notificationItems
+                visible: root.count > 0
                 clip: true
                 focus: true
                 keyNavigationEnabled: true
@@ -223,10 +181,7 @@ Item {
                 delegate: Item {
                     id: delegateRoot
                     width: notificationList.width
-                    height: {
-                        if (modelData.kind === "progress") return 120
-                        return 80
-                    }
+                    height: modelData.kind === "progress" ? 120 : 80
 
                     Rectangle {
                         id: sectionHeader
@@ -235,20 +190,21 @@ Item {
                         color: "transparent"
                         visible: {
                             if (index === 0) return true
-                            var prev = notificationList.model[index - 1]
+                            var items = root.notificationItems
+                            var prev = items[index - 1]
                             if (!prev || !modelData) return false
                             return (prev.kind || "") !== (modelData.kind || "")
                         }
 
-                        Text {
+                        Label {
                             anchors.left: parent.left
                             anchors.leftMargin: MichiTheme.spacing.md
                             anchors.verticalCenter: parent.verticalCenter
                             text: {
                                 if (!modelData || !modelData.kind) return "NOTIFICACIONES"
-                                if (modelData.kind === "error") return "Errores"
-                                if (modelData.kind === "warning") return "Advertencias"
-                                return "Información"
+                                if (modelData.kind === "error") return qsTr("Errores")
+                                if (modelData.kind === "warning") return qsTr("Advertencias")
+                                return qsTr("Información")
                             }
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.badgeSize
@@ -259,10 +215,9 @@ Item {
                     Loader {
                         anchors.fill: parent
                         anchors.topMargin: sectionHeader.visible ? sectionHeader.height : 0
-                        sourceComponent: {
-                            if (modelData.kind === "progress") return progressItemComponent
-                            return notificationItemComponent
-                        }
+                        sourceComponent: modelData.kind === "progress"
+                            ? progressItemComponent
+                            : notificationItemComponent
 
                         onLoaded: {
                             item.notification = modelData
@@ -277,7 +232,7 @@ Item {
                         }
                     }
 
-                    Text {
+                    Label {
                         anchors.right: parent.right
                         anchors.rightMargin: MichiTheme.spacing.md
                         anchors.bottom: parent.bottom
@@ -323,15 +278,6 @@ Item {
         }
     }
 
-    MouseArea {
-        anchors.fill: parent
-        propagateComposedEvents: true
-        hoverEnabled: true
-        onPressed: function(mouse) {
-            mouse.accepted = false
-        }
-    }
-
     Component {
         id: notificationItemComponent
         NotificationItem {}
@@ -344,53 +290,44 @@ Item {
 
     function refresh() {
         if (!root.bridge) return
-        notificationModel.clear()
         var persistent = root.bridge.persistentNotifications || []
         var current = root.bridge.currentNotification
-
+        var merged = []
+        var seen = {}
         for (var i = 0; i < persistent.length; i++) {
-            notificationModel.append(persistent[i])
+            var item = persistent[i]
+            var itemId = item.id || ""
+            if (itemId && !seen[itemId]) {
+                merged.push(item)
+                seen[itemId] = true
+            } else if (!itemId) {
+                merged.push(item)
+            }
         }
         if (current) {
-            notificationModel.append(current)
+            var curId = current.id || ""
+            if (!curId || !seen[curId])
+                merged.push(current)
         }
+        root.notificationItems = merged
 
-        if (notificationModel.count > 0 && !root._open && !root.reducedMotion) {
+        if (root.count > 0 && !root._open && !root.reducedMotion) {
             _open = true
         }
+    }
+
+    function clearAll() {
+        root.notificationItems = []
+        _open = false
+        if (root.bridge) root.bridge.clear()
+        root.dismissAllRequested()
     }
 
     Connections {
         target: root.bridge
-        function onNotificationChanged() {
-            root.refresh()
-            if (!root._open) {
-                _open = true
-                if (!root.pinned) {
-                    Qt.callLater(function() {
-                        Qt.callLater(function() {
-                            if (!root.containsMouse && !root.pinned)
-                                _open = false
-                        })
-                    }, 5000)
-                }
-            }
-        }
+        function onNotificationChanged() { root.refresh() }
+        function onNotificationCountChanged() { root.refresh() }
     }
 
-    function showTemporary(message, kind, duration) {
-        if (!message) return
-        refresh()
-        if (!root._open) {
-            _open = true
-        }
-        if (duration > 0 && !root.pinned) {
-            Qt.callLater(function() {
-                Qt.callLater(function() {
-                    if (!root.containsMouse && !root.pinned)
-                        _open = false
-                })
-            }, duration)
-        }
-    }
+    Component.onCompleted: root.refresh()
 }

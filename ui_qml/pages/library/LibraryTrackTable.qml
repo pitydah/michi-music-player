@@ -5,11 +5,12 @@ import "../../theme"
 import "../../components"
 
 Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Library Track Table"
+    id: root
     objectName: "libraryTrackTable"
     focus: true
-    id: root
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: qsTr("Tabla de canciones de la biblioteca")
 
     property var trackModel: null
     property var bridge: null
@@ -22,80 +23,119 @@ Item {
     property int _lastClickedIndex: -1
 
     signal trackPlayRequested(int trackId)
-    signal trackContextMenuRequested(int trackId, string title, string artist, string album)
+    signal trackContextMenuRequested(int trackId, string title, string artist, string album, string albumKey)
+    signal selectionChanged(var selectedIds)
 
     function getTrackId(index) {
-        if (!root.trackModel) return 0
-        var idx = root.trackModel.index(index, 0)
-        var role = root.trackModel.TrackIdRole || 256
-        return root.trackModel.data(idx, role) || 0
+        if (!root.trackModel || index < 0) return 0
+        return root.trackModel.idAt(index) || 0
     }
 
-    function getTrackData(index, roleName) {
-        if (!root.trackModel || !root.trackModel.roleNames) return ""
-        var roleMap = root.trackModel.roleNames()
-        var role = 256
-        for (var r in roleMap) {
-            if (roleMap[r] === roleName) { role = parseInt(r); break }
+    function commitSelection(ids) {
+        root._selectedIds = ids.slice()
+        root.selectionChanged(root._selectedIds.slice())
+        if (root.selectionController) {
+            if (root._selectedIds.length === 1 && root.selectionController.setSelectedId)
+                root.selectionController.setSelectedId(String(root._selectedIds[0]))
+            else if (root._selectedIds.length === 0 && root.selectionController.clearSelection)
+                root.selectionController.clearSelection()
         }
-        var idx = root.trackModel.index(index, 0)
-        return root.trackModel.data(idx, role) || ""
     }
 
-    Column {
-        anchors.fill: parent; spacing: 0
+    function clearSelection() {
+        root._lastClickedIndex = -1
+        root.commitSelection([])
+    }
+
+    Connections {
+        target: root.trackModel
+        function onCountChanged() { root.clearSelection() }
+    }
+
+    function selectAllLoaded() {
+        var ids = []
+        if (root.trackModel) {
+            for (var i = 0; i < root.trackModel.count; i++) {
+                var trackId = root.getTrackId(i)
+                if (trackId > 0) ids.push(trackId)
+            }
+        }
+        root.commitSelection(ids)
+    }
+
+    function toggleSelection(id, index, ctrl, shift) {
+        var ids = root._selectedIds.slice()
+        if (shift && root._lastClickedIndex >= 0) {
+            var start = Math.min(root._lastClickedIndex, index)
+            var end = Math.max(root._lastClickedIndex, index)
+            if (!ctrl) ids = []
+            for (var i = start; i <= end; i++) {
+                var rangeId = root.getTrackId(i)
+                if (rangeId > 0 && ids.indexOf(rangeId) === -1) ids.push(rangeId)
+            }
+        } else if (ctrl) {
+            var selectedIndex = ids.indexOf(id)
+            if (selectedIndex >= 0) ids.splice(selectedIndex, 1)
+            else ids.push(id)
+        } else {
+            ids = [id]
+        }
+        root._lastClickedIndex = index
+        root.commitSelection(ids)
+    }
+
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: 0
 
         LibraryTrackHeader {
             id: header
-            width: parent.width
+            Layout.fillWidth: true
             bridge: root.bridge
             sortKey: root.bridge ? root.bridge.activeSortKey : "title"
             sortAsc: root.bridge ? root.bridge.activeSortAscending : true
         }
 
         ListView {
-            Accessible.role: Accessible.List
-
-            Accessible.name: "Lista de canciones"
-
-            activeFocusOnTab: true
-
-            focusPolicy: Qt.StrongFocus
             id: listView
-            width: parent.width
-            height: parent.height - header.height - loadMoreBar.height
+            Layout.fillWidth: true
+            Layout.fillHeight: true
             model: root.trackModel
             clip: true
             boundsBehavior: Flickable.StopAtBounds
-            cacheBuffer: 200
+            cacheBuffer: 320
             focus: true
+            activeFocusOnTab: true
             keyNavigationWraps: false
+
+            Accessible.role: Accessible.List
+            Accessible.name: qsTr("Lista de canciones")
 
             Keys.onPressed: function(event) {
                 if (event.key === Qt.Key_Shift) root._shiftPressed = true
                 if (event.key === Qt.Key_Escape) {
-                    root._selectedIds = []
-                    if (root.selectionController) root.selectionController.clear()
-                    updateSelectionBar()
-                }
-                if (event.key === Qt.Key_A && (event.modifiers & Qt.ControlModifier)) {
-                    selectAll()
-                }
-                if (event.key === Qt.Key_Down) {
+                    root.clearSelection()
+                    event.accepted = true
+                } else if (event.key === Qt.Key_A && (event.modifiers & Qt.ControlModifier)) {
+                    root.selectAllLoaded()
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Down) {
                     incrementCurrentIndex()
                     event.accepted = true
-                }
-                if (event.key === Qt.Key_Up) {
+                } else if (event.key === Qt.Key_Up) {
                     decrementCurrentIndex()
                     event.accepted = true
-                }
-                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                    var curIdx = listView.currentIndex
-                    if (curIdx >= 0) {
-                        var tid = getTrackId(curIdx)
-                        if (root.bridge && root.bridge.playTrackById)
-                            root.bridge.playTrackById(tid)
-                    }
+                } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                    var trackId = root.getTrackId(listView.currentIndex)
+                    if (trackId > 0 && root.bridge && root.bridge.playTrackById)
+                        root.bridge.playTrackById(trackId)
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Space) {
+                    var selectedTrackId = root.getTrackId(listView.currentIndex)
+                    if (selectedTrackId > 0)
+                        root.toggleSelection(selectedTrackId, listView.currentIndex,
+                                             event.modifiers & Qt.ControlModifier,
+                                             event.modifiers & Qt.ShiftModifier)
                     event.accepted = true
                 }
             }
@@ -105,21 +145,16 @@ Item {
             }
 
             onContentYChanged: {
-                if (!root.trackModel || root._fetchingMore || !root.trackModel.hasMore) return
-                if (contentY + height >= contentHeight - 400) {
-                    root._fetchingMore = true
+                if (!root.trackModel || root.trackModel.loadingMore || root.trackModel.loading || !root.trackModel.hasMore)
+                    return
+                if (contentY + height >= contentHeight - 480)
                     root.trackModel.fetchMore()
-                    root._fetchingMore = false
-                }
             }
 
-            ScrollBar.vertical: ScrollBar {
-                width: 8
-                policy: ScrollBar.AsNeeded
-            }
+            ScrollBar.vertical: ScrollBar { width: 8; policy: ScrollBar.AsNeeded }
 
             delegate: LibraryTrackRow {
-                width: parent.width
+                width: ListView.view.width
                 trackId: model.trackId || 0
                 trackTitle: model.title || ""
                 trackArtist: model.artist || ""
@@ -141,112 +176,67 @@ Item {
                     if (root.bridge && root.bridge.playTrackById)
                         root.bridge.playTrackById(model.trackId || 0)
                 }
-
                 onDoubleClicked: {
                     if (root.bridge && root.bridge.playTrackById)
                         root.bridge.playTrackById(model.trackId || 0)
                 }
-
                 onRightClicked: function(mx, my) {
-                    root._selectedIds = [model.trackId || 0]
-                    updateSelectionBar()
-                    root.trackContextMenuRequested(model.trackId || 0, model.title || "", model.artist || "", model.album || "")
+                    var trackId = model.trackId || 0
+                    if (root._selectedIds.indexOf(trackId) === -1)
+                        root.commitSelection([trackId])
+                    root.trackContextMenuRequested(trackId, model.title || "", model.artist || "",
+                                                   model.album || "", model.albumKey || "")
                 }
-
                 onSelectionToggled: function(id, ctrl, shift) {
-                    if (ctrl && shift) {
-                        var start = Math.min(root._lastClickedIndex, index)
-                        var end = Math.max(root._lastClickedIndex, index)
-                        for (var i = start; i <= end; i++) {
-                            var tid = getTrackId(i)
-                            if (root._selectedIds.indexOf(tid) === -1)
-                                root._selectedIds.push(tid)
+                    listView.currentIndex = index
+                    root.toggleSelection(id, index, ctrl, shift)
+                }
+            }
+
+            footer: Item {
+                width: listView.width
+                height: root.trackModel && root.trackModel.hasMore ? 46 : 0
+
+                Row {
+                    anchors.centerIn: parent
+                    spacing: MichiTheme.spacing.md
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("Mostrando %1 de %2").arg(root.trackModel ? root.trackModel.count : 0)
+                              .arg(root.trackModel ? root.trackModel.totalCount : 0)
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.metaSize
+                    }
+                    MichiButton {
+                        text: root.trackModel && root.trackModel.loadingMore ? qsTr("Cargando…") : qsTr("Cargar más")
+                        variant: "ghost"
+                        enabled: root.trackModel && !root.trackModel.loadingMore
+                        onClicked: {
+                            if (root.trackModel && root.trackModel.hasMore)
+                                root.trackModel.fetchMore()
                         }
-                    } else if (ctrl) {
-                        var idx = root._selectedIds.indexOf(id)
-                        if (idx !== -1) root._selectedIds.splice(idx, 1)
-                        else root._selectedIds.push(id)
-                    } else {
-                        root._selectedIds = [id]
-                    }
-                    root._lastClickedIndex = index
-                    updateSelectionBar()
-                }
-            }
-        }
-
-        Row {
-            id: loadMoreBar
-            width: parent.width; height: 28; spacing: MichiTheme.spacing.sm
-            leftPadding: MichiTheme.spacing.md
-            visible: root.trackModel && root.trackModel.hasMore
-
-            Text {
-                text: qsTr("Mostrando ") + (root.trackModel ? root.trackModel.count : 0) + " de " + (root.trackModel ? root.trackModel.totalCount : 0)
-                color: MichiTheme.colors.textMuted
-                font.pixelSize: MichiTheme.typography.metaSize
-                anchors.verticalCenter: parent.verticalCenter
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
-            }
-
-            MichiButton {
-                text: qsTr("Cargar más"); variant: "ghost"; height: 24
-                onClicked: {
-                    if (root.trackModel && root.trackModel.hasMore && !root._fetchingMore) {
-                        root._fetchingMore = true
-                        root.trackModel.fetchMore()
-                        root._fetchingMore = false
                     }
                 }
             }
         }
 
-        Item {
-            width: parent.width
-            height: parent.height > 0 ? parent.height - listView.height - header.height - loadMoreBar.height : 0
-            visible: root.trackModel && root.trackModel.count === 0 && root.trackModel.initialized
-
-            LibraryEmptyState {
-                anchors.centerIn: parent
-                title: qsTr("Sin resultados")
-                message: qsTr("No se encontraron canciones con los filtros actuales.")
-                actionText: "Limpiar filtros"
-                onActionRequested: { if (typeof libraryBridge !== "undefined") libraryBridge.clearFilters() }
+        LibraryEmptyState {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: root.trackModel && root.trackModel.count === 0 && root.trackModel.initialized && !root.trackModel.loading
+            title: qsTr("Sin resultados")
+            message: qsTr("No se encontraron canciones con los filtros actuales.")
+            actionText: qsTr("Limpiar filtros")
+            onActionRequested: {
+                if (root.bridge && root.bridge.clearFilters) root.bridge.clearFilters()
             }
         }
     }
 
-    function selectAll() {
-        root._selectedIds = []
-        if (root.trackModel) {
-            for (var i = 0; i < root.trackModel.count; i++) {
-                var tid = getTrackId(i)
-                if (tid > 0) root._selectedIds.push(tid)
-            }
+    Connections {
+        target: root.trackModel
+        function onLoadingMoreChanged() {
+            root._fetchingMore = root.trackModel ? root.trackModel.loadingMore : false
         }
-        updateSelectionBar()
-    }
-
-    function updateSelectionBar() {
-        if (typeof selectionBar !== "undefined" && selectionBar) {
-            selectionBar.selectedCount = root._selectedIds.length
-            selectionBar.selectedIds = root._selectedIds
-            selectionBar.visible = root._selectedIds.length > 0
-        }
-    }
-
-    function clearSelection() {
-        root._selectedIds = []
-        if (typeof selectionBar !== "undefined" && selectionBar)
-            selectionBar.visible = false
-    }
-
-    function formatDuration(secs) {
-        var m = Math.floor(secs / 60)
-        var s = Math.floor(secs % 60)
-        return m + ":" + (s < 10 ? "0" : "") + s
     }
 }

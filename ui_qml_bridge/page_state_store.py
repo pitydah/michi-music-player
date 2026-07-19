@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
+from PySide6.QtQml import QJSValue
 
 
 class PageStateStore(QObject):
@@ -15,7 +16,9 @@ class PageStateStore(QObject):
 
     @Slot(str, "QVariant")
     def saveState(self, route: str, state: dict):
-        self._states[route] = dict(state) if state else {}
+        if isinstance(state, QJSValue):
+            state = state.toVariant()
+        self._states[route] = dict(state) if isinstance(state, dict) else {}
         self._update_history(route)
         self.stateChanged.emit()
 

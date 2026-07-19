@@ -4,11 +4,12 @@ import "../theme"
 import "../components"
 
 Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Stack"
+    id: root
     objectName: "pageStack"
     focus: true
-    id: root
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: qsTr("Contenido principal")
 
     property var registry: typeof routeRegistryBridge !== "undefined" ? routeRegistryBridge : null
     property string currentRoute: "home"
@@ -18,6 +19,12 @@ Item {
     readonly property string loadedObjectName: pageLoader.item ? pageLoader.item.objectName : ""
     property bool loading: false
     property string _prevRoute: ""
+    property var _prevParams: ({})
+
+    function currentParams() {
+        return typeof navigationBridge !== "undefined" && navigationBridge
+               ? navigationBridge.currentParams : ({})
+    }
 
     function loadRoute(route) {
         var canonical = registry ? registry.resolveRoute(route) : route
@@ -25,11 +32,12 @@ Item {
         var requestedSource = valid ? registry.getSource(canonical) : getFallbackSource(route)
         if (!requestedSource) requestedSource = getFallbackSource(route)
         _prevRoute = currentRoute
+        _prevParams = root.currentParams()
         currentRoute = valid ? canonical : route
         lastError = ""
         lastRequestedSource = requestedSource
         loading = true
-        callOnPage("routeLeave", _prevRoute)
+        callOnPage("routeLeave", _prevRoute, _prevParams)
         pageLoader.source = ""
         pageLoader.source = requestedSource
     }
@@ -42,65 +50,62 @@ Item {
         return "Michi Music Player"
     }
 
-    function callOnPage(methodName, arg) {
-        if (pageLoader.item && typeof pageLoader.item[methodName] === "function") {
-            pageLoader.item[methodName](arg)
-        }
+    function callOnPage(methodName, firstArg, secondArg) {
+        if (pageLoader.item && typeof pageLoader.item[methodName] === "function")
+            pageLoader.item[methodName](firstArg, secondArg)
     }
 
     Connections {
         target: typeof navigationBridge !== "undefined" ? navigationBridge : null
         function onRouteRefreshRequested(route) {
-            callOnPage("routeRefresh", route)
+            root.callOnPage("routeRefresh", route, root.currentParams())
+        }
+        function onRouteParamsChanged() {
+            if (pageLoader.status === Loader.Ready)
+                root.callOnPage("routeParamsChanged", root.currentRoute, root.currentParams())
         }
     }
 
-    PageStackContainer {
+    Loader {
         id: pageLoader
         anchors.fill: parent
         asynchronous: true
         source: ""
 
+        opacity: status === Loader.Ready ? 1.0 : 0.0
+        Behavior on opacity {
+            NumberAnimation { duration: MichiTheme.motion.fast; easing.type: Easing.OutCubic }
+        }
+
         onStatusChanged: {
             if (status === Loader.Ready) {
-                loading = false
-                lastError = ""
-                lastLoadedRoute = currentRoute
-                callOnPage("routeEnter", currentRoute)
+                root.loading = false
+                root.lastError = ""
+                root.lastLoadedRoute = root.currentRoute
+                root.callOnPage("routeEnter", root.currentRoute, root.currentParams())
             } else if (status === Loader.Error) {
-                loading = false
-                lastError = qsTr("No se pudo cargar la ruta '%1' desde %2. Consulta los diagnósticos QML anteriores para conocer el error de componente.").arg(currentRoute).arg(lastRequestedSource)
-                console.error("[PageStack] Route load error", currentRoute, lastRequestedSource,
+                root.loading = false
+                root.lastError = qsTr("No se pudo cargar la ruta '%1' desde %2. Consulta los diagnósticos QML anteriores para conocer el error de componente.")
+                                 .arg(root.currentRoute).arg(root.lastRequestedSource)
+                console.error("[PageStack] Route load error", root.currentRoute, root.lastRequestedSource,
                               "Loader status:", status)
             } else if (status === Loader.Loading) {
-                loading = true
+                root.loading = true
             }
         }
     }
 
     Rectangle {
         anchors.fill: parent
-        color: MichiTheme.colors.bgContent
-        visible: root.loading
-        z: 90
-
-        Column {
-            anchors.centerIn: parent
-            spacing: MichiTheme.spacing.md
-            BusyIndicator { anchors.horizontalCenter: parent.horizontalCenter; running: root.loading }
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: qsTr("Cargando contenido")
-                color: MichiTheme.colors.textSecondary
-                font.pixelSize: MichiTheme.typography.bodySize
-            }
-        }
+        color: MichiTheme.colors.bgApp
+        visible: pageLoader.status === Loader.Null && root.currentRoute !== "" && !root.loading
+        z: -1
     }
 
     Rectangle {
         anchors.fill: parent
-        color: MichiTheme.colors.bgContent
-        visible: lastError !== ""
+        color: MichiTheme.colors.bgApp
+        visible: root.lastError !== ""
         z: 100
 
         Column {
