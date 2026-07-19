@@ -12,7 +12,6 @@ import json
 import logging
 import time
 from copy import deepcopy
-from typing import Any
 from uuid import uuid4
 
 from PySide6.QtCore import QSettings
@@ -650,7 +649,7 @@ class HomeAudioService:
             return {"ok": False, "error": "GROUP_CREATION_UNSUPPORTED"}
         try:
             group_id = add_group(name, zone_ids)
-            groups = getattr(self._group_mgr, "groups")()
+            groups = self._group_mgr.groups()
             group = next((item for item in groups if item.get("id") == group_id), None)
             if group is None:
                 return {"ok": False, "error": "GROUP_VERIFICATION_FAILED"}
@@ -666,7 +665,7 @@ class HomeAudioService:
             return {"ok": False, "error": "GROUP_DELETION_UNSUPPORTED"}
         try:
             remove(group_id)
-            remaining = getattr(self._group_mgr, "groups")()
+            remaining = self._group_mgr.groups()
             if any(group.get("id") == group_id for group in remaining):
                 return {"ok": False, "error": "GROUP_DELETION_NOT_VERIFIED"}
             return {"ok": True, "deleted": group_id}
@@ -693,7 +692,7 @@ class HomeAudioService:
             return {"ok": False, "error": "GROUP_RENAME_UNSUPPORTED"}
         rename(group_id, new_name)
         group = next(
-            (item for item in getattr(self._group_mgr, "groups")() if item.get("id") == group_id),
+            (item for item in self._group_mgr.groups() if item.get("id") == group_id),
             None,
         )
         if group is None or group.get("name") != new_name:
