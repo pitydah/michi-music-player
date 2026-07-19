@@ -16,6 +16,7 @@ Item {
     property bool canGoBack: false
     property bool canGoForward: false
     property var routeHistory: []
+    property var breadcrumbs: []
     property var mainWindow: null
 
     signal backClicked()
@@ -59,16 +60,65 @@ Item {
                 accessibleName: qsTr("Adelante")
             }
 
-            Text {
-                Layout.preferredWidth: Math.min(240, implicitWidth)
-                Layout.maximumWidth: 240
+            RowLayout {
                 Layout.alignment: Qt.AlignVCenter
+                Layout.preferredWidth: Math.min(340, implicitWidth)
+                spacing: 0
+                visible: breadcrumbs.length > 1
+
+                Repeater {
+                    model: breadcrumbs
+                    delegate: RowLayout {
+                        spacing: MichiTheme.spacing.xs
+
+                        Text {
+                            text: modelData.title
+                            color: index === breadcrumbs.length - 1
+                                ? MichiTheme.colors.textPrimary
+                                : MichiTheme.colors.textSecondary
+                            font.pixelSize: MichiTheme.typography.pageTitleSize
+                            font.weight: MichiTheme.typography.weightSemiBold
+                            elide: Text.ElideRight
+                            maximumLineCount: 1
+                            Layout.maximumWidth: index === breadcrumbs.length - 1 ? 200 : 120
+
+                            MouseArea {
+                                anchors.fill: parent
+                                anchors.margins: -4
+                                cursorShape: index < breadcrumbs.length - 1 ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                enabled: index < breadcrumbs.length - 1
+                                Accessible.role: Accessible.Button
+                                Accessible.name: qsTr("Ir a ") + modelData.title
+                                onClicked: {
+                                    if (index < breadcrumbs.length - 1) {
+                                        root.breadcrumbClicked(modelData.route)
+                                    }
+                                }
+                            }
+                        }
+
+                        Text {
+                            text: "/"
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.pageTitleSize
+                            font.weight: MichiTheme.typography.weightNormal
+                            opacity: 0.4
+                            visible: index < breadcrumbs.length - 1
+                        }
+                    }
+                }
+            }
+
+            Text {
+                visible: breadcrumbs.length <= 1
                 text: root.pageTitle
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
                 elide: Text.ElideRight
                 maximumLineCount: 1
+                Layout.alignment: Qt.AlignVCenter
+                Layout.fillWidth: true
             }
 
             Item {

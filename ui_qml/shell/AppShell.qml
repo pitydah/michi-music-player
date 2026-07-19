@@ -24,6 +24,7 @@ Item {
     function updateHeaderTitle(route) {
         if (typeof routeRegistryBridge !== "undefined" && routeRegistryBridge) {
             header.pageTitle = routeRegistryBridge.getTitle(route)
+            header.breadcrumbs = navigationBridge ? navigationBridge.currentBreadcrumb : []
         } else {
             header.pageTitle = pageStack.getRouteTitle(route)
         }
@@ -283,6 +284,10 @@ Item {
             pageStack.loadRoute(route)
             sidebar.currentRoute = route
             updateHeaderTitle(route)
+        }
+        function onBreadcrumbChanged() {
+            if (typeof navigationBridge !== "undefined" && navigationBridge)
+                header.breadcrumbs = navigationBridge.currentBreadcrumb
         }
     }
 

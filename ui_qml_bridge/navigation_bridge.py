@@ -5,8 +5,9 @@ from typing import Any
 
 from PySide6.QtCore import QObject, QTimer, Signal, Property, Slot
 
+from .route_registry import ROUTES, CAPABILITY_MAP, resolve_route, get_breadcrumb
+
 logger = logging.getLogger(__name__)
-from .route_registry import ROUTES, CAPABILITY_MAP
 
 
 class NavigationBridge(QObject):
@@ -16,6 +17,7 @@ class NavigationBridge(QObject):
     forwardStackChanged = Signal()
     routeRefreshRequested = Signal(str)
     invalidRouteError = Signal(str, str)
+    breadcrumbChanged = Signal()
 
     def __init__(self, navigation_service: Any = None, parent=None):
         super().__init__(parent)
@@ -67,10 +69,11 @@ class NavigationBridge(QObject):
     def _resolve(self, route: str) -> str:
         if not route:
             return "home"
-        if route in ROUTES:
-            if not self._route_matches_capability(route):
+        canonical = resolve_route(route)
+        if canonical in ROUTES:
+            if not self._route_matches_capability(canonical):
                 return "home"
-            return route
+            return canonical
         return "placeholder"
 
     def _validate_params(self, route: str, params: dict) -> str | None:
@@ -104,6 +107,10 @@ class NavigationBridge(QObject):
     def currentParams(self):
         return self._current_params
 
+    @Property("QVariantList", notify=breadcrumbChanged)
+    def currentBreadcrumb(self):
+        return get_breadcrumb(self._current_route)
+
     @Property(bool, notify=backStackChanged)
     def canGoBack(self):
         return len(self._back_stack) > 0
@@ -136,6 +143,7 @@ class NavigationBridge(QObject):
         self.routeParamsChanged.emit()
         self.backStackChanged.emit()
         self.forwardStackChanged.emit()
+        self.breadcrumbChanged.emit()
 
     @Slot(str)
     def navigate(self, route: str):

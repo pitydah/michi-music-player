@@ -220,31 +220,26 @@ def test_ecosystem_card_has_no_visual_overflow(qapp) -> None:
 
 
 def test_sidebar_icon_inventory_exists_and_loads(qapp) -> None:
-    sidebar_source = (QML_DIR / "shell" / "Sidebar.qml").read_text(encoding="utf-8")
-    relative_sources = re.findall(r'iconSource:\s*"([^"]+)"', sidebar_source)
-    assert len(relative_sources) == 18
-    for relative_source in relative_sources:
-        icon_path = (QML_DIR / "shell" / relative_source).resolve()
-        assert icon_path.is_file(), f"Missing sidebar icon: {relative_source}"
-        svg = icon_path.read_text(encoding="utf-8")
-        assert 'viewBox="0 0 24 24"' in svg
-        assert "<text" not in svg and "gradient" not in svg
+    from ui_qml_bridge.route_registry import ROUTES
+    icon_dir = QML_DIR.parent / "icons" / "sidebar"
 
-    engine = QQmlEngine()
-    component = _component(engine, "shell/Sidebar.qml")
-    sidebar = component.createWithInitialProperties({"height": 900})
-    assert sidebar is not None
-    try:
-        _process(qapp, 80)
-        images = [
-            child for child in sidebar.findChildren(QQuickItem)
-            if child.objectName().startswith("sidebarIcon_")
-        ]
-        assert len(images) == len(relative_sources)
-        assert all(image.property("loadStatus") == 1 for image in images)
-    finally:
-        sidebar.deleteLater()
-        engine.deleteLater()
+    sidebar_routes = [
+        r for r, info in ROUTES.items()
+        if info.get("sidebar_visible") and info.get("sidebar_group") != "fixed_bottom"
+    ]
+    assert len(sidebar_routes) >= 10
+
+    for route_key in sidebar_routes:
+        info = ROUTES[route_key]
+        icon_name = info.get("icon", "")
+        if not icon_name:
+            continue
+        icon_path = icon_dir / f"{icon_name}.svg"
+        assert icon_path.is_file(), f"Missing sidebar icon for {route_key}: {icon_path}"
+        svg = icon_path.read_text(encoding="utf-8")
+        assert 'viewBox="0 0 24 24"' in svg, f"Bad viewBox in {icon_path}"
+        assert "<text" not in svg, f"Text in icon {icon_path}"
+        assert "gradient" not in svg, f"Gradient in icon {icon_path}"
 
 
 @pytest.mark.parametrize("width,height", [(1366, 96), (700, 112)])

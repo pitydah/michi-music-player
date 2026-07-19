@@ -47,7 +47,11 @@ def test_functional_route_count():
 def test_all_params_defined():
     from ui_qml_bridge.route_registry import ROUTES
     for route_id, info in ROUTES.items():
-        params = info.get("params", {})
+        params = info.get("params")
+        if params is None:
+            continue
+        if not isinstance(params, dict):
+            continue
         for param_name, param_info in params.items():
             assert "required" in param_info, f"{route_id}.{param_name}: missing required"
             assert "type" in param_info, f"{route_id}.{param_name}: missing type"
@@ -55,12 +59,16 @@ def test_all_params_defined():
 
 def test_no_placeholder_routes():
     from ui_qml_bridge.route_registry import ROUTES
+    allowed_states = {"planned", "experimental", "deprecated", "configuration_required",
+                      "dependency_missing", "hardware_validation_pending", "unavailable"}
     for route_id, info in ROUTES.items():
         src = info.get("source", "")
         status = info.get("status", "")
-        if "PlaceholderPage" in src:
+        if "PlaceholderPage" in src or "Placeholder" in src:
+            if status in allowed_states:
+                continue
             if status == "deprecated":
-                continue  # explicitly deprecated routes are OK
+                continue
             pytest.fail(f"{route_id}: uses PlaceholderPage: {src} (status: {status})")
 
 

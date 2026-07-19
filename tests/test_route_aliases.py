@@ -21,15 +21,9 @@ def _extract_navigate_calls(qml_file: str) -> list[str]:
 
 
 def test_all_navigate_calls_exist_in_registry():
-    from ui_qml_bridge.route_registry import ROUTES
+    from ui_qml_bridge.route_registry import ROUTES, ROUTE_ALIASES, resolve_route
 
     ui_qml_dir = os.path.join(os.path.dirname(__file__), "..", "ui_qml")
-    aliases = {
-        "metadata_inspector": "metadata.inspector",
-        "smart_tagging": "tagging",
-        "eq": "equalizer",
-        "output_profiles": "outputs",
-    }
 
     missing = []
     for root, _dirs, files in os.walk(ui_qml_dir):
@@ -39,8 +33,8 @@ def test_all_navigate_calls_exist_in_registry():
             fpath = os.path.join(root, f)
             calls = _extract_navigate_calls(fpath)
             for route in calls:
-                resolved = aliases.get(route, route)
-                if resolved not in ROUTES:
+                resolved = resolve_route(route)
+                if resolved not in ROUTES and route not in ROUTE_ALIASES:
                     rel = os.path.relpath(fpath, ui_qml_dir)
                     missing.append(f"{rel}: navigates to '{route}' (resolved: '{resolved}') not in registry")
 

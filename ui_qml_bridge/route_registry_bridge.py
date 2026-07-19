@@ -6,8 +6,9 @@ import logging
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
 
+from .route_registry import ROUTES, ROUTE_ALIASES, resolve_route, get_breadcrumb, get_sidebar_sections, is_child_active, get_parent_route
+
 logger = logging.getLogger(__name__)
-from .route_registry import ROUTES
 
 
 class RouteRegistryBridge(QObject):
@@ -75,3 +76,46 @@ class RouteRegistryBridge(QObject):
             if spec.get("required") and key not in params:
                 return False
         return True
+
+    @Slot(str, result=str)
+    def resolveRoute(self, route: str):
+        return resolve_route(route)
+
+    @Slot(str, result=str)
+    def resolveAlias(self, route: str):
+        return ROUTE_ALIASES.get(route, route)
+
+    @Slot(str, result="QVariantList")
+    def getBreadcrumb(self, route: str):
+        return get_breadcrumb(route)
+
+    @Slot(result="QVariantList")
+    def getSidebarSections(self):
+        sections, fixed = get_sidebar_sections()
+        result = []
+        for s in sections:
+            result.append(s)
+        for f in fixed:
+            result.append(f)
+        return result
+
+    @Slot(str, result=str)
+    def getParentRoute(self, route: str):
+        return get_parent_route(route) or ""
+
+    @Slot(str, str, result=bool)
+    def isChildActive(self, parent_route: str, current_route: str):
+        return is_child_active(parent_route, current_route)
+
+    @Slot(str, result="QVariant")
+    def getIconPath(self, route: str):
+        info = ROUTES.get(route)
+        icon = info.get("icon", "") if info else ""
+        if icon:
+            return f"../../icons/sidebar/{icon}.svg"
+        return ""
+
+    @Slot(str, result=str)
+    def getBreadcrumbTitle(self, route: str):
+        info = ROUTES.get(route)
+        return info.get("breadcrumb_title", info.get("title", "")) if info else ""
