@@ -14,8 +14,14 @@ Item {
     property string transactionMessage: ""
     property bool transactionBusy: false
 
+    signal closeRequested()
+
     Accessible.role: Accessible.Pane
     Accessible.name: qsTr("Ajustes")
+
+    function hasChanges() {
+        return root.bridge ? root.bridge.hasPendingChanges : false
+    }
 
     function reloadContent() {
         contentLoader.active = false
