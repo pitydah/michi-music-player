@@ -1316,15 +1316,14 @@ SIDEBAR_ORDER: list[str] = [
     "streaming",   # 4. Streaming (expandable: radio, podcasts)
     "playlists",   # 5. Playlists
     "connections", # 6. Conexiones (expandable: micro, big, navidrome, jellyfin, ha)
-    "audio_lab",   # 7. Audio Lab (expandable: analysis, processing, metadata, capture, health)
-    "home_audio",  # 8. Home Audio (expandable: stream, rooms, distribution, chain planner)
+    "audio_lab",   # 7. Audio Lab
+    "home_audio",  # 8. Home Audio
     "michi_ai",    # 9. Michi AI
-    "sync",        # 10. Michi Sync Suite (expandable: mobile, portable, plans, history)
+    "sync",        # 10. Michi Sync Suite
 ]
 
-SIDEBAR_FIXED_BOTTOM: list[str] = [
-    "settings",
-]
+SIDEBAR_EXPANDABLE_GROUPS = {"library", "streaming", "connections"}
+SIDEBAR_FIXED_BOTTOM: list[str] = []
 
 
 def get_sidebar_sections() -> list[dict]:
@@ -1346,7 +1345,7 @@ def get_sidebar_sections() -> list[dict]:
             "route": spec["route"],
             "title": spec["title"],
             "icon": spec.get("icon", ""),
-            "expandable": spec.get("expandable", False),
+            "expandable": route in SIDEBAR_EXPANDABLE_GROUPS,
             "order": spec.get("order", 0),
             "status": spec.get("status", "functional"),
             "children": [],

@@ -176,7 +176,12 @@ Item {
                 height: root.collapsed ? 48 : 44
                 radius: MichiTheme.radius.sm
                 color: root.isParentActive(section.sectionRoute) && !root.collapsed
-                       ? MichiTheme.colors.accentSelection : "transparent"
+                       ? MichiTheme.colors.accentSelection
+                       : mainAction.pressed ? MichiTheme.colors.surfacePressed
+                       : mainAction.containsMouse ? MichiTheme.colors.surfaceHover
+                       : "transparent"
+                border.width: mainAction.activeFocus ? MichiTheme.focusWidth : 0
+                border.color: MichiTheme.colors.borderFocus
 
                 Rectangle {
                     visible: root.isParentActive(section.sectionRoute)
@@ -190,8 +195,8 @@ Item {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: root.collapsed ? 10 : MichiTheme.spacing.md
-                    anchors.rightMargin: root.collapsed ? 10 : MichiTheme.spacing.sm
+                    anchors.leftMargin: root.collapsed ? (parent.width - 20) / 2 : MichiTheme.spacing.md
+                    anchors.rightMargin: root.collapsed ? (parent.width - 20) / 2 : MichiTheme.spacing.sm
                     spacing: MichiTheme.spacing.sm
 
                     MichiIcon {
@@ -311,7 +316,12 @@ Item {
                             anchors.centerIn: parent
                             radius: MichiTheme.radius.sm
                             color: root.canonicalCurrentRoute === child.childRoute
-                                   ? MichiTheme.colors.accentSelection : "transparent"
+                                   ? MichiTheme.colors.accentSelection
+                                   : childAction.pressed ? MichiTheme.colors.surfacePressed
+                                   : childAction.containsMouse ? MichiTheme.colors.surfaceHover
+                                   : "transparent"
+                            border.width: childAction.activeFocus ? MichiTheme.focusWidth : 0
+                            border.color: MichiTheme.colors.borderFocus
 
                             Rectangle {
                                 visible: root.canonicalCurrentRoute === child.childRoute
@@ -376,6 +386,7 @@ Item {
                                 objectName: "sidebarChildAction_" + child.childRoute
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
+                                hoverEnabled: true
                                 activeFocusOnTab: true
                                 Accessible.role: Accessible.Button
                                 Accessible.name: qsTr("%1, subsección de %2")

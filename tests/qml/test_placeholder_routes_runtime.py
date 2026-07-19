@@ -228,10 +228,6 @@ def test_registry_aliases_return_canonical_metadata(alias: str, canonical: str) 
             "connections.home_assistant",
             "homeAssistantPlaceholderPage",
         ),
-        ("home_audio.stream", "home_audio.chain_planner", "chainPlannerPlaceholderPage"),
-        ("sync.mobile", "sync.portable_players", "portablePlayersPlaceholderPage"),
-        ("sync.mobile", "sync.plans", "syncPlansPlaceholderPage"),
-        ("sync.mobile", "sync.history", "syncHistoryPlaceholderPage"),
     ),
 )
 def test_sidebar_child_click_navigates_and_loads_placeholder(
