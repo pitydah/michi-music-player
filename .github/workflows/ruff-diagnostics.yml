@@ -1,0 +1,31 @@
+name: Ruff diagnostics
+
+on:
+  push:
+    branches:
+      - feature/vinyl-recorder-convergence
+
+jobs:
+  diagnostics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Ruff
+        run: pip install ruff
+      - name: Capture Ruff diagnostics
+        run: |
+          ruff check . --output-format=concise > ruff-output.txt 2>&1 || true
+          ruff check . --fix --output-format=concise > ruff-fix-output.txt 2>&1 || true
+          git diff > ruff-fixes.patch
+      - name: Upload diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: ruff-diagnostics-${{ github.sha }}
+          path: |
+            ruff-output.txt
+            ruff-fix-output.txt
+            ruff-fixes.patch
+          retention-days: 1
