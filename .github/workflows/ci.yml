@@ -3,7 +3,6 @@ name: CI
 on: [push, pull_request]
 
 env:
-  ruff_out: --output-format=github
   compile_exclude: .venv/|\.tmpl\.'
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
 
@@ -24,7 +23,14 @@ jobs:
       - name: Install Ruff
         run: pip install -q ruff
       - name: Ruff check
-        run: ruff check . ${{ env.ruff_out }}
+        run: ruff check . --output-format=concise 2>&1 | tee ruff.log
+      - name: Upload Ruff diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ruff-${{ matrix.python-version }}-${{ github.sha }}
+          path: ruff.log
+          retention-days: 3
       - name: Compileall
         run: python -m compileall -q -x '${{ env.compile_exclude }}' .
       - name: QML-only gate
