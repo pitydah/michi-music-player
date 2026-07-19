@@ -20,7 +20,9 @@ Item {
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false
     property bool _backendAvailable: root.ps ? root.ps.backendAvailable : false
     property string _lastShownError: ""
-    readonly property bool compactLayout: width < 900
+    readonly property bool compactLayout: width < MichiTheme.breakpoints.compact
+    readonly property bool mediumLayout: width >= MichiTheme.breakpoints.compact && width < 900
+    readonly property string layoutMode: compactLayout ? "compact" : mediumLayout ? "medium" : "desktop"
 
     function bridgeValue(name, fallbackValue) {
         if (!root.ps) return fallbackValue
@@ -28,7 +30,11 @@ Item {
         return typeof value === "undefined" ? fallbackValue : value
     }
 
-    implicitHeight: compactLayout ? 112 : 96
+    implicitHeight: {
+        if (compactLayout) return MichiTheme.nowPlaying.compact
+        if (mediumLayout) return MichiTheme.nowPlaying.medium
+        return MichiTheme.nowPlaying.desktop
+    }
     height: implicitHeight
     clip: true
 
