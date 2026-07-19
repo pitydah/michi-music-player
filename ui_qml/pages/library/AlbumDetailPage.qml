@@ -3,14 +3,14 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../theme"
 import "../../components"
-import "../../materials"
 
 Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Album Detail"
+    id: root
     objectName: "albumDetailPage"
     focus: true
-    id: root
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: qsTr("Detalle de álbum")
 
     property string albumKey: ""
     property string albumTitle: ""
@@ -18,171 +18,302 @@ Item {
     property int albumYear: 0
     property string albumGenre: ""
     property string albumCoverKey: ""
-    property var bridge: null
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
-    property var _tracks: []
+    property var albumTracks: []
+    property bool loading: false
 
-    signal backRequested()
+    function routeEnter(route, params) {
+        if (params && params.album_key) root.loadAlbum(params.album_key)
+    }
 
-    function loadAlbum(key, title, artist, year) {
-        albumKey = key; albumTitle = title; albumArtist = artist; albumYear = year
-        albumCoverKey = key
-        if (root.lib && root.lib.trackModel) {
-            root.lib.trackModel.refreshForAlbum(key)
+    function routeParamsChanged(route, params) {
+        if (params && params.album_key && params.album_key !== root.albumKey)
+            root.loadAlbum(params.album_key)
+    }
+
+    function loadAlbum(key) {
+        if (!key || !root.lib) return
+        root.loading = true
+        root.albumKey = key
+        root.albumCoverKey = key
+        var detail = root.lib.getAlbumDetail ? root.lib.getAlbumDetail(key) : null
+        if (detail && detail.ok) {
+            root.albumTitle = detail.title || detail.album || key
+            root.albumArtist = detail.artist || detail.album_artist || ""
+            root.albumYear = Number(detail.year || 0)
+            root.albumGenre = detail.genre || ""
+            root.albumCoverKey = detail.cover_key || detail.album_key || key
+        } else {
+            root.albumTitle = key
         }
-        if (root.lib && root.lib.getAlbumDetail) {
-            var detail = root.lib.getAlbumDetail(key)
-            if (detail && detail.ok) {
-                albumGenre = detail.genre || ""
-            }
+        root.albumTracks = root.lib.getAlbumTracks ? root.lib.getAlbumTracks(key) : []
+        root.loading = false
+    }
+
+    function totalDuration() {
+        var total = 0
+        for (var i = 0; i < root.albumTracks.length; i++)
+            total += Number(root.albumTracks[i].duration || 0)
+        return total
+    }
+
+    function playShuffled() {
+        if (!root.lib || root.albumTracks.length === 0) return
+        var shuffled = root.albumTracks.slice()
+        for (var i = shuffled.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1))
+            var tmp = shuffled[i]
+            shuffled[i] = shuffled[j]
+            shuffled[j] = tmp
         }
+        root.lib.playTrackById(shuffled[0].track_id || 0)
+        for (var q = 1; q < shuffled.length; q++)
+            root.lib.enqueueTrackById(shuffled[q].track_id || 0)
+    }
+
+    function formatDuration(seconds) {
+        var value = Math.max(0, Number(seconds || 0))
+        var hours = Math.floor(value / 3600)
+        var minutes = Math.floor((value % 3600) / 60)
+        var secs = Math.floor(value % 60)
+        if (hours > 0)
+            return hours + ":" + (minutes < 10 ? "0" : "") + minutes + ":" + (secs < 10 ? "0" : "") + secs
+        return minutes + ":" + (secs < 10 ? "0" : "") + secs
     }
 
     Flickable {
         anchors.fill: parent
-        contentHeight: column.height + MichiTheme.spacing.xxl
-        clip: true; boundsBehavior: Flickable.StopAtBounds
+        clip: true
+        contentWidth: width
+        contentHeight: contentColumn.height + MichiTheme.spacing.xl
+        boundsBehavior: Flickable.StopAtBounds
+        ScrollBar.vertical: ScrollBar { width: 8; policy: ScrollBar.AsNeeded }
 
-        Column {
-            id: column; width: parent.width; spacing: MichiTheme.spacing.lg
+        ColumnLayout {
+            id: contentColumn
+            width: parent.width
+            spacing: MichiTheme.spacing.lg
 
-            MichiButton { text: qsTr("← Volver"); variant: "ghost"; onClicked: root.backRequested() }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: MichiTheme.spacing.sm
+                MichiButton {
+                    text: qsTr("← Volver")
+                    variant: "ghost"
+                    onClicked: {
+                        if (typeof navigationBridge !== "undefined") navigationBridge.back()
+                    }
+                }
+                Item { Layout.fillWidth: true }
+                Text {
+                    text: root.albumTracks.length + " " + qsTr("canciones") + " · " + root.formatDuration(root.totalDuration())
+                    color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.metaSize
+                }
+            }
 
             Rectangle {
-                width: parent.width; height: 200
-                color: "transparent"
+                Layout.fillWidth: true
+                Layout.preferredHeight: 270
+                radius: MichiTheme.radius.xl
+                color: MichiTheme.colors.surfaceHero
+                border.width: MichiTheme.borderWidth
+                border.color: MichiTheme.colors.borderSubtle
+                clip: true
 
-                Row {
-                    anchors.fill: parent; spacing: MichiTheme.spacing.xl
-                    anchors.margins: MichiTheme.spacing.md
+                Rectangle {
+                    anchors.fill: parent
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: MichiTheme.colors.accentSoft }
+                        GradientStop { position: 0.65; color: "transparent" }
+                        GradientStop { position: 1.0; color: MichiTheme.colors.surfaceSubtle }
+                    }
+                }
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: MichiTheme.spacing.xl
+                    spacing: MichiTheme.spacing.xl
 
                     CoverImage {
-                        width: 160; height: 160; coverRadius: MichiTheme.radius.sm
-                        coverKey: root.albumCoverKey || root.albumKey || "ALBUM"
+                        Layout.preferredWidth: 210
+                        Layout.preferredHeight: 210
+                        coverRadius: MichiTheme.radius.lg
+                        coverKey: root.albumCoverKey || root.albumKey
                     }
 
-                    Column {
-                        anchors.verticalCenter: parent.verticalCenter
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignVCenter
                         spacing: MichiTheme.spacing.sm
-                        width: parent.width - 180
 
                         Text {
-                            text: root.albumTitle
+                            text: qsTr("ÁLBUM")
+                            color: MichiTheme.colors.accentBlue
+                            font.pixelSize: MichiTheme.typography.captionSize
+                            font.weight: MichiTheme.typography.weightBold
+                            font.letterSpacing: 1.4
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: root.albumTitle || qsTr("Álbum sin título")
                             color: MichiTheme.colors.textPrimary
                             font.pixelSize: MichiTheme.typography.heroTitleSize
                             font.weight: MichiTheme.typography.weightBold
-                            wrapMode: Text.WordWrap; width: parent.width
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 2
+                            elide: Text.ElideRight
                         }
-
                         Text {
-                            text: root.albumArtist
+                            Layout.fillWidth: true
+                            text: root.albumArtist || qsTr("Artista desconocido")
                             color: MichiTheme.colors.textSecondary
                             font.pixelSize: MichiTheme.typography.sectionTitleSize
-                            visible: root.albumArtist !== ""
+                            elide: Text.ElideRight
                         }
-
-                        Row {
-                            spacing: MichiTheme.spacing.sm
-                            Text {
-                                text: root.albumYear > 0 ? root.albumYear : ""
-                                color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
-                                visible: text !== ""
-                            }
-                            Text {
-                                text: root.albumGenre
-                                color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
-                                visible: text !== ""
-                            }
-                        }
-
                         Text {
-                            text: qsTr("Canciones: ") + (root.lib && root.lib.trackModel ? root.lib.trackModel.totalCount : 0)
+                            text: ((root.albumYear > 0) ? root.albumYear + " · " : "") +
+                                  (root.albumGenre ? root.albumGenre + " · " : "") +
+                                  root.albumTracks.length + " " + qsTr("canciones")
                             color: MichiTheme.colors.textMuted
-                            font.pixelSize: MichiTheme.typography.metaSize
+                            font.pixelSize: MichiTheme.typography.bodySize
                         }
 
                         RowLayout {
                             spacing: MichiTheme.spacing.sm
-                            MichiButton { text: qsTr("Reproducir"); variant: "primary"; onClicked: { if (root.lib) root.lib.playAlbum(root.albumKey) } }
-                            MichiButton { text: qsTr("Mezclar"); variant: "ghost"; onClicked: {
-                                if (root.lib && root.lib.trackModel) {
-                                    root.lib.trackModel.refreshForAlbum(root.albumKey)
-                                }
-                            }}
-                            MichiButton { text: qsTr("Añadir a cola"); variant: "ghost"; onClicked: { if (root.lib) root.lib.enqueueAlbum(root.albumKey) } }
+                            MichiButton {
+                                text: qsTr("Reproducir")
+                                variant: "primary"
+                                enabled: root.albumTracks.length > 0
+                                onClicked: root.lib.playAlbum(root.albumKey)
+                            }
+                            MichiButton {
+                                text: qsTr("Mezclar")
+                                variant: "ghost"
+                                enabled: root.albumTracks.length > 0
+                                onClicked: root.playShuffled()
+                            }
+                            MichiButton {
+                                text: qsTr("Añadir a cola")
+                                variant: "ghost"
+                                enabled: root.albumTracks.length > 0
+                                onClicked: root.lib.enqueueAlbum(root.albumKey)
+                            }
                         }
                     }
                 }
             }
 
-            SectionHeader { text: qsTr("Canciones"); width: parent.width }
+            Text {
+                text: qsTr("Canciones")
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.pageTitleSize
+                font.weight: MichiTheme.typography.weightBold
+            }
 
-            ListView {
-                Accessible.role: Accessible.List
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.max(180, Math.min(620, root.albumTracks.length * 46 + 12))
+                radius: MichiTheme.radius.lg
+                color: MichiTheme.colors.surfaceCard
+                border.width: MichiTheme.borderWidth
+                border.color: MichiTheme.colors.borderCard
+                clip: true
 
-                Accessible.name: "Canciones del álbum"
+                ListView {
+                    id: tracksList
+                    anchors.fill: parent
+                    anchors.margins: 6
+                    model: root.albumTracks
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    activeFocusOnTab: true
+                    focus: true
+                    keyNavigationWraps: false
+                    ScrollBar.vertical: ScrollBar { width: 8; policy: ScrollBar.AsNeeded }
 
-                activeFocusOnTab: true
-
-                focusPolicy: Qt.StrongFocus
-                id: tracksList
-                width: parent.width
-                height: Math.min(600, (root.lib && root.lib.trackModel ? root.lib.trackModel.count : 0) * 36)
-                clip: true; boundsBehavior: Flickable.StopAtBounds
-                model: root.lib ? root.lib.trackModel : []
-
-                delegate: Item {
-                    width: parent.width; height: 36
-                    RowLayout {
-                        anchors.fill: parent; anchors.leftMargin: MichiTheme.spacing.md
-                        anchors.rightMargin: MichiTheme.spacing.md
-                        spacing: MichiTheme.spacing.sm
-
-                        Text {
-                            text: typeof trackNumber !== "undefined" && trackNumber > 0 ? trackNumber : ""
-                            color: MichiTheme.colors.textMuted
-                            font.pixelSize: MichiTheme.typography.metaSize
-                            width: 30
-                        }
-
-                        Column {
-                            Layout.fillWidth: true; Layout.alignment: Qt.AlignVCenter
-                            Text {
-                                text: title || ""
-                                color: MichiTheme.colors.textPrimary
-                                font.pixelSize: MichiTheme.typography.bodySize
-                                elide: Text.ElideRight; width: parent.width
-                            }
-                            Text {
-                                text: artist || ""
-                                color: MichiTheme.colors.textMuted
-                                font.pixelSize: MichiTheme.typography.captionSize
-                                elide: Text.ElideRight; width: parent.width; visible: text !== "" && text !== root.albumArtist
-                            }
-                        }
-
-                        TrackQualityBadge {
-                            format: format || ""
-                            bitDepth: 0
-                        }
-
-                        Text {
-                            text: duration ? formatDuration(duration) : ""
-                            color: MichiTheme.colors.textMuted
-                            font.pixelSize: MichiTheme.typography.metaSize
-                        }
+                    Keys.onReturnPressed: {
+                        if (currentIndex >= 0) root.lib.playTrackById(root.albumTracks[currentIndex].track_id || 0)
+                    }
+                    Keys.onEnterPressed: {
+                        if (currentIndex >= 0) root.lib.playTrackById(root.albumTracks[currentIndex].track_id || 0)
                     }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: { if (root.lib && root.lib.playTrackById) root.lib.playTrackById(trackId || 0) }
+                    delegate: Rectangle {
+                        required property int index
+                        required property var modelData
+                        width: tracksList.width
+                        height: 44
+                        radius: MichiTheme.radius.sm
+                        color: ListView.isCurrentItem
+                               ? MichiTheme.colors.accentSelection
+                               : trackMouse.containsMouse
+                                 ? MichiTheme.colors.surfaceHover
+                                 : "transparent"
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: MichiTheme.spacing.md
+                            anchors.rightMargin: MichiTheme.spacing.md
+                            spacing: MichiTheme.spacing.md
+
+                            Text {
+                                Layout.preferredWidth: 30
+                                text: modelData.track_number || (index + 1)
+                                color: MichiTheme.colors.textMuted
+                                font.pixelSize: MichiTheme.typography.metaSize
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: modelData.title || qsTr("Canción sin título")
+                                    color: MichiTheme.colors.textPrimary
+                                    font.pixelSize: MichiTheme.typography.bodySize
+                                    font.weight: MichiTheme.typography.weightMedium
+                                    elide: Text.ElideRight
+                                }
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: modelData.artist || root.albumArtist
+                                    color: MichiTheme.colors.textMuted
+                                    font.pixelSize: MichiTheme.typography.captionSize
+                                    elide: Text.ElideRight
+                                }
+                            }
+                            TrackQualityBadge {
+                                format: modelData.format || ""
+                                bitDepth: modelData.bit_depth || 0
+                            }
+                            Text {
+                                Layout.preferredWidth: 52
+                                text: root.formatDuration(modelData.duration || 0)
+                                color: MichiTheme.colors.textMuted
+                                font.pixelSize: MichiTheme.typography.metaSize
+                                horizontalAlignment: Text.AlignRight
+                            }
+                        }
+
+                        MouseArea {
+                            id: trackMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onPressed: tracksList.currentIndex = index
+                            onDoubleClicked: root.lib.playTrackById(modelData.track_id || 0)
+                        }
                     }
                 }
             }
         }
     }
 
-    function formatDuration(secs) { var m = Math.floor(secs / 60); var s = Math.floor(secs % 60); return m + ":" + (s < 10 ? "0" : "") + s }
+    LoadingState {
+        anchors.centerIn: parent
+        visible: root.loading
+        title: qsTr("Cargando álbum")
+    }
 }
