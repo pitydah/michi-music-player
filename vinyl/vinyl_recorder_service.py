@@ -6,6 +6,7 @@ Qt ``VinylCaptureService`` delegate here so there is only one recording engine.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import re
@@ -272,10 +273,8 @@ class VinylRecorderService:
         self._manual_stop = False
 
     def __del__(self) -> None:
-        try:
+        with contextlib.suppress(Exception):
             self.stop_recording()
-        except Exception:
-            pass
 
     def available(self) -> bool:
         return shutil.which("ffmpeg") is not None
@@ -669,10 +668,8 @@ class VinylRecorderService:
                 self.is_recording = False
                 self.is_paused = False
                 if self.recording_thread is not None:
-                    try:
+                    with contextlib.suppress(Exception):
                         self.recording_thread.join(timeout=1)
-                    except Exception:
-                        pass
                 return {
                     "success": True,
                     "output_path": (
@@ -686,10 +683,8 @@ class VinylRecorderService:
                     ),
                 }
             if self.is_paused and os.name != "nt":
-                try:
+                with contextlib.suppress(OSError):
                     os.kill(process.pid, signal.SIGCONT)
-                except OSError:
-                    pass
             self._manual_stop = True
             self._stop_event.set()
             try:
