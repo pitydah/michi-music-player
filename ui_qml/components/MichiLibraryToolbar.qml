@@ -31,6 +31,11 @@ Item {
     Accessible.role: Accessible.ToolBar
     Accessible.name: qsTr("Barra de biblioteca")
 
+    function setSearchText(text) {
+        root.searchText = text
+        searchField.text = text
+    }
+
     implicitHeight: 58
 
     Rectangle {
@@ -91,7 +96,10 @@ Item {
                 Layout.preferredHeight: 36
                 placeholderText: qsTr("Buscar canción, álbum, artista…")
                 text: root.searchText
-                onTextChanged: root.searchChanged(text)
+                onSearchTextChanged: function(text) {
+                    root.searchText = text
+                    root.searchChanged(text)
+                }
             }
 
             RowLayout {

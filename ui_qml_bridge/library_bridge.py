@@ -93,6 +93,70 @@ class LibraryBridge(QObject):
             artist_model=self._artist_model, folder_model=self._folder_model,
             library_bridge=self, parent=self,
         )
+        for model in (self._track_model, self._album_model, self._artist_model):
+            model.loadingChanged.connect(self._sync_state)
+            model.initializedChanged.connect(self._sync_state)
+            model.errorChanged.connect(self._sync_state)
+            model.cancelledChanged.connect(self._sync_state)
+            model.countChanged.connect(self._on_model_data_changed)
+            model.totalCountChanged.connect(self._on_model_data_changed)
+
+    def _set_state(self, state: LibraryState) -> None:
+        if state == self._state:
+            return
+        self._state = state
+        self.stateChanged.emit()
+
+    def _has_active_filters(self) -> bool:
+        return bool(
+            self._search_query or self._filter_artist or self._filter_album
+            or self._filter_format or self._filter_folder or self._filter_genre
+            or self._filter_composer or self._filter_year
+            or self._filter_favorites or self._filter_unplayed or self._filter_missing
+        )
+
+    def _source_state(self) -> LibraryState | None:
+        if not self._sources_svc or not hasattr(self._sources_svc, "list"):
+            return None
+        sources = self._sources_svc.list()
+        if not sources:
+            return LibraryState.NO_SOURCES
+        enabled = [source for source in sources if source.get("enabled", True)]
+        if enabled and not any(source.get("available", True) for source in enabled):
+            return LibraryState.SOURCE_OFFLINE
+        if any(source.get("error_code") == "PERMISSION_DENIED" for source in enabled):
+            return LibraryState.SOURCE_PERMISSION_ERROR
+        return None
+
+    def _sync_state(self) -> None:
+        models = (self._track_model, self._album_model, self._artist_model)
+        if any(model.errorCode for model in models):
+            failed = next(model for model in models if model.errorCode)
+            self._error_message = failed.errorMessage
+            self._set_state(LibraryState.QUERY_ERROR)
+            return
+        if any(model.cancelled for model in models):
+            self._set_state(LibraryState.CANCELLED)
+            return
+        if any(model.loading for model in models):
+            self._set_state(LibraryState.LOADING)
+            return
+        if not all(model.initialized for model in models):
+            self._set_state(LibraryState.INITIALIZING)
+            return
+        if self._track_model.totalCount == 0:
+            if self._has_active_filters():
+                self._set_state(LibraryState.FILTERED_EMPTY)
+                return
+            source_state = self._source_state()
+            self._set_state(source_state or LibraryState.SOURCE_EMPTY)
+            return
+        self._set_state(LibraryState.READY)
+
+    def _on_model_data_changed(self) -> None:
+        self._loaded_count = min(self._page_size, self.visibleCount)
+        self._sync_state()
+        self.dataChanged.emit()
 
     @Property(str, notify=stateChanged)
     def state(self):
@@ -388,11 +452,24 @@ class LibraryBridge(QObject):
 
     @Slot(result=dict)
     def refresh(self, limit: int = 0):
+        del limit
+        self._error_message = ""
+        self._set_state(LibraryState.LOADING)
         if self._refresh_coordinator:
             self._refresh_coordinator.refresh_all()
         self._loaded_count = min(self._page_size, self.visibleCount)
+        self._sync_state()
         self.dataChanged.emit()
         return {"ok": True, "count": self.visibleCount}
+
+    @Slot(result=dict)
+    def ensureLoaded(self):
+        models = (self._track_model, self._album_model, self._artist_model)
+        if any(model.loading for model in models) or all(model.initialized for model in models):
+            self._sync_state()
+            return {"ok": True, "refreshed": False, "count": self.visibleCount}
+        result = self.refresh()
+        return {**result, "refreshed": True}
 
     @Slot(int, result=dict)
     def playTrackById(self, track_id: int):

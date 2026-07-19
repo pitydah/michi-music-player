@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 from PySide6.QtCore import QUrl
@@ -45,3 +46,92 @@ def test_premium_library_component_compiles_and_instantiates(
     assert instance is not None, component.errorString()
     assert instance.objectName() == object_name
     instance.deleteLater()
+
+
+def _query_service(track_count: int = 1):
+    query = MagicMock()
+    query.count_tracks.return_value = track_count
+    query.fetch_tracks.return_value = (
+        [{"track_id": 1, "title": "Track", "artist": "Artist"}]
+        if track_count else []
+    )
+    query.count_albums.return_value = 1 if track_count else 0
+    query.fetch_albums.return_value = (
+        [{"album_key": "album-1", "title": "Album", "artist": "Artist"}]
+        if track_count else []
+    )
+    query.count_artists.return_value = 1 if track_count else 0
+    query.fetch_artists.return_value = (
+        [{"name": "Artist", "track_count": track_count}]
+        if track_count else []
+    )
+    query.count_folders.return_value = 0
+    query.fetch_folders.return_value = []
+    return query
+
+
+def test_library_bridge_initializes_models_and_reaches_ready() -> None:
+    from ui_qml_bridge.library_bridge import LibraryBridge
+
+    query = _query_service()
+    sources = MagicMock()
+    sources.list.return_value = [{"enabled": True, "available": True}]
+    bridge = LibraryBridge(
+        query_service=query,
+        track_action_service=MagicMock(),
+        library_sources_service=sources,
+    )
+
+    result = bridge.ensureLoaded()
+
+    assert result["refreshed"] is True
+    assert bridge.state == "READY"
+    assert bridge.trackModel.initialized is True
+    assert bridge.albumModel.get(0)["album_key"] == "album-1"
+
+
+def test_library_bridge_does_not_requery_initialized_models() -> None:
+    from ui_qml_bridge.library_bridge import LibraryBridge
+
+    query = _query_service()
+    bridge = LibraryBridge(
+        query_service=query,
+        track_action_service=MagicMock(),
+    )
+    bridge.ensureLoaded()
+    initial_calls = query.count_tracks.call_count
+
+    result = bridge.ensureLoaded()
+
+    assert result["refreshed"] is False
+    assert query.count_tracks.call_count == initial_calls
+
+
+def test_empty_library_without_sources_reaches_no_sources() -> None:
+    from ui_qml_bridge.library_bridge import LibraryBridge
+
+    sources = MagicMock()
+    sources.list.return_value = []
+    bridge = LibraryBridge(
+        query_service=_query_service(track_count=0),
+        track_action_service=MagicMock(),
+        library_sources_service=sources,
+    )
+
+    bridge.ensureLoaded()
+
+    assert bridge.state == "NO_SOURCES"
+
+
+def test_active_filter_with_no_matches_reaches_filtered_empty() -> None:
+    from ui_qml_bridge.library_bridge import LibraryBridge
+
+    bridge = LibraryBridge(
+        query_service=_query_service(track_count=0),
+        track_action_service=MagicMock(),
+    )
+    bridge.ensureLoaded()
+
+    bridge.setFormatFilter("FLAC")
+
+    assert bridge.state == "FILTERED_EMPTY"

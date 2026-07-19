@@ -60,6 +60,7 @@ Item {
     }
 
     function clearFilters() {
+        toolbar.setSearchText("")
         filterBar.specialFilter = ""
         filterBar.genreText = ""
         filterBar.yearText = ""
@@ -98,6 +99,11 @@ Item {
         case "MISSING_CONTENT": libraryState = LibraryPage.MISSING_CONTENT; break
         default: libraryState = LibraryPage.INITIALIZING
         }
+    }
+
+    function routeEnter(route, params) {
+        if (root.lib && root.lib.ensureLoaded) root.lib.ensureLoaded()
+        root._updateState()
     }
 
     function openTrackContextMenu(trackId, trackTitle, trackArtist, trackAlbum, albumKey) {
@@ -385,5 +391,8 @@ Item {
         function onDataChanged() { root._updateState() }
     }
 
-    Component.onCompleted: root._updateState()
+    Component.onCompleted: {
+        if (root.lib && root.lib.ensureLoaded) root.lib.ensureLoaded()
+        root._updateState()
+    }
 }

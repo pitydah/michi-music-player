@@ -28,9 +28,7 @@ Item {
 
     function getTrackId(index) {
         if (!root.trackModel || index < 0) return 0
-        var idx = root.trackModel.index(index, 0)
-        var role = root.trackModel.TrackIdRole || 256
-        return root.trackModel.data(idx, role) || 0
+        return root.trackModel.idAt(index) || 0
     }
 
     function commitSelection(ids) {
@@ -47,6 +45,11 @@ Item {
     function clearSelection() {
         root._lastClickedIndex = -1
         root.commitSelection([])
+    }
+
+    Connections {
+        target: root.trackModel
+        function onCountChanged() { root.clearSelection() }
     }
 
     function selectAllLoaded() {

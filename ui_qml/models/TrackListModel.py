@@ -141,7 +141,7 @@ class TrackListModel(BasePagedListModel):
         super().refresh(**query)
         return {"ok": True, "query": query}
 
-    @Slot(str, result=dict)
+    @Slot(str, bool, result=dict)
     def refreshForSort(self, sort_key: str, asc: bool = True):
         query = self._active_query()
         query.update(sort=sort_key, asc=asc)
