@@ -25,19 +25,10 @@ jobs:
           path = Path("ui_qml_bridge/home_audio_bridge.py")
           text = path.read_text(encoding="utf-8")
 
-          old_status = '''    @Property("QVariant", notify=stateChanged)
-              def syncStatus(self):
+          status_marker = '''    def syncStatus(self):
                   return {
-                      "state": self._distribution_state,
-                      "latency_ms": self._latency_ms,
-                      "offline": self._offline,
-                      "active_routes": len(
-                          [route for route in self._routes if route.get("state") == "active"]
-                      ),
-                  }
           '''.replace("              ", "")
-          new_status = '''    @Property("QVariant", notify=stateChanged)
-              def syncStatus(self):
+          status_replacement = '''    def syncStatus(self):
                   if (
                       self._distribution_state == "unavailable"
                       and not self._sources
@@ -47,31 +38,23 @@ jobs:
                   ):
                       return {}
                   return {
-                      "state": self._distribution_state,
-                      "latency_ms": self._latency_ms,
-                      "offline": self._offline,
-                      "active_routes": len(
-                          [route for route in self._routes if route.get("state") == "active"]
-                      ),
-                  }
           '''.replace("              ", "")
 
-          old_transfer = '''    @Slot(str, result=dict)
-              def playbackTransfer(self, zone_id: str = ""):
+          transfer_marker = '''    def playbackTransfer(self, zone_id: str = ""):
                   return self._mutate_and_refresh("playback_transfer", zone_id)
           '''.replace("              ", "")
-          new_transfer = '''    @Slot(str, result=dict)
-              def playbackTransfer(self, zone_id: str = ""):
+          transfer_replacement = '''    def playbackTransfer(self, zone_id: str = ""):
                   if not zone_id:
                       return {"ok": False, "error": "EMPTY_ZONE"}
                   return self._mutate_and_refresh("playback_transfer", zone_id)
           '''.replace("              ", "")
 
-          if old_status not in text:
-              raise SystemExit("syncStatus block not found")
-          if old_transfer not in text:
-              raise SystemExit("playbackTransfer block not found")
-          text = text.replace(old_status, new_status).replace(old_transfer, new_transfer)
+          if status_marker not in text:
+              raise SystemExit("syncStatus marker not found")
+          if transfer_marker not in text:
+              raise SystemExit("playbackTransfer marker not found")
+          text = text.replace(status_marker, status_replacement, 1)
+          text = text.replace(transfer_marker, transfer_replacement, 1)
           path.write_text(text, encoding="utf-8")
           PY
       - name: Commit patch
