@@ -6,6 +6,7 @@ from core.service_container import ServiceContainer, ServicePriority
 
 def build(container: ServiceContainer) -> None:
     from core.library.library_query_service import LibraryQueryService
+    from core.library.library_filtered_query_service import LibraryFilteredQueryService
     from core.library_sources_service import LibrarySourcesService
     from core.metadata_editor_service import MetadataEditorService
     from core.library_service import LibraryService
@@ -14,13 +15,13 @@ def build(container: ServiceContainer) -> None:
     from core.global_search_service import GlobalSearchService
     from core.metadata_service import MetadataService
     from core.smart_tagging_service import SmartTaggingService
-    from core.metadata_service import MetadataService
 
     cf = container.get("connection_factory")
     db = container.get("database")
     wm = container.get("worker_manager")
 
-    lqs = LibraryQueryService(cf)
+    canonical_query_service = LibraryQueryService(cf)
+    lqs = LibraryFilteredQueryService(canonical_query_service)
     container.register("library_query_service", lqs)
     container.register("library_sources_service", LibrarySourcesService(cf))
     container.register("library_mutation_service", MetadataEditorService(db=db))
