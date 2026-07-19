@@ -133,6 +133,8 @@ class NavigationBridge(QObject):
     ) -> bool:
         if self._resolving_guard:
             return False
+        if self._pending_navigation is not None:
+            return True
         match = self._guard_for_route(self._current_route)
         if not match:
             return False

@@ -13,6 +13,7 @@ Item {
     property var navigation: typeof navigationBridge !== "undefined" ? navigationBridge : null
     property string transactionMessage: ""
     property bool transactionBusy: false
+    property int reloadGeneration: 0
 
     signal closeRequested()
 
@@ -24,6 +25,7 @@ Item {
     }
 
     function reloadContent() {
+        root.reloadGeneration += 1
         contentLoader.active = false
         Qt.callLater(function() { contentLoader.active = true })
     }
@@ -58,16 +60,6 @@ Item {
         root.reloadContent()
     }
 
-    Component.onCompleted: {
-        if (root.navigation && root.bridge)
-            root.navigation.registerLeaveGuard("settings", root.bridge)
-    }
-
-    Component.onDestruction: {
-        if (root.navigation)
-            root.navigation.unregisterLeaveGuard("settings")
-    }
-
     Loader {
         id: contentLoader
         anchors.left: parent.left
@@ -93,69 +85,4 @@ Item {
         onDiscardRequested: root.discardChanges(false)
     }
 
-    Dialog {
-        id: leaveDialog
-        modal: true
-        closePolicy: Popup.NoAutoClose
-        x: Math.round((root.width - width) / 2)
-        y: Math.round((root.height - height) / 2)
-        width: Math.min(520, root.width - MichiTheme.spacing.xl * 2)
-        title: qsTr("Cambios pendientes")
-
-        contentItem: ColumnLayout {
-            spacing: MichiTheme.spacing.lg
-
-            Label {
-                Layout.fillWidth: true
-                text: qsTr("Hay cambios de ajustes pendientes. Decide qué hacer antes de abandonar esta página.")
-                wrapMode: Text.WordWrap
-                color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.bodySize
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: MichiTheme.spacing.sm
-
-                MichiButton {
-                    text: qsTr("Cancelar")
-                    variant: "ghost"
-                    onClicked: {
-                        leaveDialog.close()
-                        if (root.navigation)
-                            root.navigation.resolvePendingNavigation("cancel")
-                    }
-                }
-
-                Item { Layout.fillWidth: true }
-
-                MichiButton {
-                    text: qsTr("Descartar")
-                    variant: "danger"
-                    onClicked: {
-                        leaveDialog.close()
-                        root.discardChanges(true)
-                    }
-                }
-
-                MichiButton {
-                    text: qsTr("Aplicar y salir")
-                    variant: "primary"
-                    onClicked: {
-                        leaveDialog.close()
-                        root.applyChanges(true)
-                    }
-                }
-            }
-        }
-    }
-
-    Connections {
-        target: root.navigation
-
-        function onNavigationBlocked(targetRoute, reason) {
-            if (reason === "pending_changes")
-                leaveDialog.open()
-        }
-    }
 }
