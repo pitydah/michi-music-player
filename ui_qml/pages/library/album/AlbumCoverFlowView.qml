@@ -1,33 +1,56 @@
-// SPDX-FileCopyrightText: 2011 Martin Grimme <martin.grimme _AT_ gmail.com>
-//   Patrón: PathAttribute dimming + reflection para CoverFlow
-//   (inspirado en Nemo Mobile qmlmusicplayer / Music Shelf)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../../../theme"
 import "../../../components"
 
 Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Album Cover Flow View"
+    id: root
     objectName: "albumCoverFlowView"
     focus: true
-    id: root
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: qsTr("CoverFlow de álbumes")
 
     property var albumModel: null
     property var bridge: null
-    property int coverSize: 140
+    property int coverSize: Math.max(190, Math.min(320, Math.min(width * 0.28, height * 0.48)))
+    readonly property var currentAlbum: albumModel && albumModel.count > 0 && albumModel.get
+                                        ? albumModel.get(pathView.currentIndex) : ({})
     signal albumClicked(string albumKey, string title, string artist, int year)
+
+    Rectangle {
+        anchors.fill: parent
+        radius: MichiTheme.radius.lg
+        color: MichiTheme.colors.surfaceHero
+        border.width: MichiTheme.borderWidth
+        border.color: MichiTheme.colors.borderSubtle
+
+        Rectangle {
+            anchors.fill: parent
+            radius: parent.radius
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: MichiTheme.colors.surfaceHeroGlow }
+                GradientStop { position: 0.58; color: "transparent" }
+                GradientStop { position: 1.0; color: MichiTheme.colors.surfaceSubtle }
+            }
+        }
+    }
 
     PathView {
         id: pathView
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: detailsPanel.top
+        anchors.margins: MichiTheme.spacing.md
         model: root.albumModel
         clip: true
-        pathItemCount: 5
-        cacheItemCount: 4
-        dragMargin: 100
+        pathItemCount: width > 1100 ? 9 : width > 760 ? 7 : 5
+        cacheItemCount: pathItemCount + 2
+        dragMargin: 160
         preferredHighlightBegin: 0.5
         preferredHighlightEnd: 0.5
         highlightRangeMode: PathView.StrictlyEnforceRange
@@ -36,106 +59,223 @@ Item {
 
         Keys.onLeftPressed: decrementCurrentIndex()
         Keys.onRightPressed: incrementCurrentIndex()
+        Keys.onReturnPressed: root.albumClicked(root.currentAlbum.albumKey || "", root.currentAlbum.title || "",
+                                                root.currentAlbum.artist || "", root.currentAlbum.year || 0)
+        Keys.onEnterPressed: root.albumClicked(root.currentAlbum.albumKey || "", root.currentAlbum.title || "",
+                                               root.currentAlbum.artist || "", root.currentAlbum.year || 0)
+        Keys.onSpacePressed: {
+            if (root.bridge && root.bridge.playAlbum)
+                root.bridge.playAlbum(root.currentAlbum.albumKey || "")
+        }
 
         path: Path {
-            id: coverflowPath
-            startX: -100
-            startY: pathView.height / 2
-            PathAttribute { name: "itemScale"; value: 0.70 }
-            PathAttribute { name: "itemOpacity"; value: 0.50 }
-            PathAttribute { name: "itemAngle"; value: -25 }
-            PathAttribute { name: "zValue"; value: 1 }
+            startX: -root.coverSize * 0.35
+            startY: pathView.height * 0.58
+            PathAttribute { name: "itemScale"; value: 0.56 }
+            PathAttribute { name: "itemOpacity"; value: 0.28 }
+            PathAttribute { name: "itemAngle"; value: -54 }
+            PathAttribute { name: "itemDepth"; value: 0 }
 
-            PathLine { x: pathView.width / 2; y: pathView.height / 2 }
-            PathAttribute { name: "itemScale"; value: 1.15 }
+            PathCurve { x: pathView.width * 0.24; y: pathView.height * 0.51 }
+            PathAttribute { name: "itemScale"; value: 0.76 }
+            PathAttribute { name: "itemOpacity"; value: 0.72 }
+            PathAttribute { name: "itemAngle"; value: -30 }
+            PathAttribute { name: "itemDepth"; value: 4 }
+
+            PathCurve { x: pathView.width * 0.5; y: pathView.height * 0.46 }
+            PathAttribute { name: "itemScale"; value: 1.08 }
             PathAttribute { name: "itemOpacity"; value: 1.0 }
             PathAttribute { name: "itemAngle"; value: 0 }
-            PathAttribute { name: "zValue"; value: 10 }
+            PathAttribute { name: "itemDepth"; value: 12 }
 
-            PathLine { x: pathView.width + 100; y: pathView.height / 2 }
-            PathAttribute { name: "itemScale"; value: 0.70 }
-            PathAttribute { name: "itemOpacity"; value: 0.50 }
-            PathAttribute { name: "itemAngle"; value: 25 }
-            PathAttribute { name: "zValue"; value: 1 }
+            PathCurve { x: pathView.width * 0.76; y: pathView.height * 0.51 }
+            PathAttribute { name: "itemScale"; value: 0.76 }
+            PathAttribute { name: "itemOpacity"; value: 0.72 }
+            PathAttribute { name: "itemAngle"; value: 30 }
+            PathAttribute { name: "itemDepth"; value: 4 }
+
+            PathCurve { x: pathView.width + root.coverSize * 0.35; y: pathView.height * 0.58 }
+            PathAttribute { name: "itemScale"; value: 0.56 }
+            PathAttribute { name: "itemOpacity"; value: 0.28 }
+            PathAttribute { name: "itemAngle"; value: 54 }
+            PathAttribute { name: "itemDepth"; value: 0 }
         }
 
         delegate: Item {
-            width: 160
-            height: 200
+            id: flowItem
+            width: root.coverSize
+            height: root.coverSize * 1.22
+            scale: PathView.isCurrentItem ? 1.08 : PathView.itemScale
+            opacity: PathView.itemOpacity
+            z: PathView.isCurrentItem ? 100 : PathView.itemDepth
 
-            Rectangle {
-                anchors.centerIn: parent
+            Accessible.role: Accessible.Button
+            Accessible.name: (model.title || qsTr("Álbum sin título")) + " — " + (model.artist || "")
+            Accessible.onPressAction: root.albumClicked(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
+
+            Item {
+                id: artContainer
+                anchors.top: parent.top
+                anchors.horizontalCenter: parent.horizontalCenter
                 width: root.coverSize
                 height: root.coverSize
-                radius: MichiTheme.radiusSm
-                color: MichiTheme.colors.borderInner
-                scale: PathView.isCurrentItem ? 1.15 : PathView.itemScale
-                opacity: PathView.itemOpacity
-                z: PathView.zValue
 
                 transform: Rotation {
                     axis.y: 1
-                    origin.x: root.coverSize / 2
-                    origin.y: root.coverSize / 2
+                    origin.x: artContainer.width / 2
+                    origin.y: artContainer.height / 2
                     angle: PathView.isCurrentItem ? 0 : PathView.itemAngle
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -6
+                    radius: MichiTheme.radius.lg
+                    color: PathView.isCurrentItem ? MichiTheme.colors.accentSoft : MichiTheme.colors.shadowSoft
+                    opacity: PathView.isCurrentItem ? 0.9 : 0.5
                 }
 
                 CoverImage {
                     anchors.fill: parent
-                    coverRadius: MichiTheme.radiusSm
-                    coverKey: model.albumKey || ""
+                    coverRadius: MichiTheme.radius.md
+                    coverKey: model.coverKey || model.albumKey || ""
                 }
 
-                Behavior on scale {
-                    NumberAnimation { duration: MichiTheme.motionNormal; easing.type: Easing.OutCubic }
-                }
-                Behavior on opacity {
-                    NumberAnimation { duration: MichiTheme.motionNormal; easing.type: Easing.OutCubic }
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.bottom
+                    height: root.coverSize * 0.28
+                    opacity: PathView.isCurrentItem ? 0.26 : 0.12
+                    scale: -1
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: MichiTheme.colors.textPrimary }
+                        GradientStop { position: 1.0; color: "transparent" }
+                    }
                 }
 
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.albumClicked(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
-                    onDoubleClicked: {
-                        if (root.bridge && root.bridge.playAlbum) {
-                            root.bridge.playAlbum(model.albumKey || "")
+                Rectangle {
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.margins: MichiTheme.spacing.sm
+                    width: 42; height: 42; radius: 21
+                    color: MichiTheme.colors.accentPrimary
+                    opacity: PathView.isCurrentItem ? 1 : 0
+                    scale: PathView.isCurrentItem ? 1 : 0.8
+                    Behavior on opacity { NumberAnimation { duration: MichiTheme.motionFast } }
+                    Behavior on scale { NumberAnimation { duration: MichiTheme.motionFast } }
+                    Text {
+                        anchors.centerIn: parent
+                        text: "▶"
+                        color: MichiTheme.colors.textOnAccent
+                        font.pixelSize: 15
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: function(mouse) {
+                            mouse.accepted = true
+                            if (root.bridge && root.bridge.playAlbum)
+                                root.bridge.playAlbum(model.albumKey || "")
                         }
                     }
                 }
             }
 
             Text {
-                anchors.top: parent.bottom
-                anchors.topMargin: MichiTheme.spacing.sm
+                anchors.top: artContainer.bottom
+                anchors.topMargin: MichiTheme.spacing.md
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: parent.width
+                width: parent.width * 0.94
                 horizontalAlignment: Text.AlignHCenter
-                text: model.title || ""
+                text: model.title || qsTr("Álbum sin título")
                 color: PathView.isCurrentItem ? MichiTheme.colors.textPrimary : MichiTheme.colors.textMuted
-                font.pixelSize: MichiTheme.typography.metaSize
-                font.weight: PathView.isCurrentItem ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
+                font.pixelSize: PathView.isCurrentItem ? MichiTheme.typography.sectionTitleSize : MichiTheme.typography.metaSize
+                font.weight: PathView.isCurrentItem ? MichiTheme.typography.weightSemiBold : MichiTheme.typography.weightMedium
                 elide: Text.ElideRight
             }
+
+            MouseArea {
+                anchors.fill: artContainer
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    if (!PathView.isCurrentItem)
+                        pathView.currentIndex = index
+                    else
+                        root.albumClicked(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
+                }
+                onDoubleClicked: {
+                    if (root.bridge && root.bridge.playAlbum)
+                        root.bridge.playAlbum(model.albumKey || "")
+                }
+            }
+
+            Behavior on scale { NumberAnimation { duration: MichiTheme.motionNormal; easing.type: Easing.OutCubic } }
+            Behavior on opacity { NumberAnimation { duration: MichiTheme.motionNormal } }
         }
     }
 
     Rectangle {
+        id: detailsPanel
+        anchors.left: parent.left
+        anchors.right: parent.right
         anchors.bottom: parent.bottom
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: Math.min(parent.width * 0.3, 300)
-        height: MichiTheme.spacing.xxs
-        radius: MichiTheme.radius.xs
-        color: MichiTheme.colors.borderSubtle
+        anchors.margins: MichiTheme.spacing.md
+        height: 86
+        radius: MichiTheme.radius.lg
+        color: MichiTheme.colors.surfaceToolbar
+        border.width: MichiTheme.borderWidth
+        border.color: MichiTheme.colors.borderCard
         visible: root.albumModel && root.albumModel.count > 0
 
-        Rectangle {
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            x: (pathView.currentIndex / Math.max(1, pathView.count - 1)) * (parent.width - parent.height)
-            width: parent.height
-            radius: MichiTheme.radius.xs
-            color: MichiTheme.colors.accentBlue
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: MichiTheme.spacing.lg
+            anchors.rightMargin: MichiTheme.spacing.lg
+            spacing: MichiTheme.spacing.lg
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+                Text {
+                    Layout.fillWidth: true
+                    text: root.currentAlbum.title || qsTr("Álbum sin título")
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.sectionTitleSize
+                    font.weight: MichiTheme.typography.weightSemiBold
+                    elide: Text.ElideRight
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: (root.currentAlbum.artist || qsTr("Artista desconocido")) +
+                          ((root.currentAlbum.year || 0) > 0 ? " · " + root.currentAlbum.year : "") +
+                          " · " + (root.currentAlbum.trackCount || 0) + " " + qsTr("canciones")
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.metaSize
+                    elide: Text.ElideRight
+                }
+            }
+
+            Text {
+                text: (pathView.currentIndex + 1) + " / " + pathView.count
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.metaSize
+            }
+
+            MichiButton {
+                text: qsTr("Reproducir")
+                variant: "primary"
+                onClicked: {
+                    if (root.bridge && root.bridge.playAlbum)
+                        root.bridge.playAlbum(root.currentAlbum.albumKey || "")
+                }
+            }
+            MichiButton {
+                text: qsTr("Abrir")
+                variant: "ghost"
+                onClicked: root.albumClicked(root.currentAlbum.albumKey || "", root.currentAlbum.title || "",
+                                             root.currentAlbum.artist || "", root.currentAlbum.year || 0)
+            }
         }
     }
 }
