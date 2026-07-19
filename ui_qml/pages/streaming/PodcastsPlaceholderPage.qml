@@ -6,7 +6,7 @@ FeatureStatePage {
     id: root
     objectName: "podcastsPlaceholderPage"
     pageTitle: qsTr("Podcasts")
-    state: "planned"
+    featureState: "planned"
     description: qsTr("La interfaz esta disponible, pero el gestor de suscripciones y descargas todavia no esta habilitado en esta instalacion.")
     primaryActionText: qsTr("Ver requisitos")
     iconSource: "../../icons/sidebar/podcasts.svg"

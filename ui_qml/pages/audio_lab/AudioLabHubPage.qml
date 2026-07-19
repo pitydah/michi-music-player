@@ -73,8 +73,8 @@ Item {
                     subtitle: qsTr("Analisis tecnico, integridad y comparacion A/B.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("audio_lab.analysis")
@@ -88,8 +88,8 @@ Item {
                     subtitle: qsTr("EQ, DSP, normalizacion, conversion y ReplayGain.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("audio_lab.processing")
@@ -103,8 +103,8 @@ Item {
                     subtitle: qsTr("Editor, fingerprint y caratulas.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("audio_lab.metadata")
@@ -118,8 +118,8 @@ Item {
                     subtitle: qsTr("CD Ripping y grabacion ADC.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("audio_lab.capture")
@@ -141,8 +141,8 @@ Item {
                     subtitle: qsTr("Verifica la integridad general de la coleccion.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("audio_lab.library_health")

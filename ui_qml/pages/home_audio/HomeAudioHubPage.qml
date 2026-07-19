@@ -73,8 +73,8 @@ Item {
                     subtitle: qsTr("Transmision de audio en tiempo real entre dispositivos.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("home_audio.stream")
@@ -88,8 +88,8 @@ Item {
                     subtitle: qsTr("Gestion de zonas multiroom y agrupacion de dispositivos.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("home_audio.rooms")
@@ -111,8 +111,8 @@ Item {
                     subtitle: qsTr("Fuentes, servidores, receptores y rutas activas.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("home_audio.distribution")
@@ -134,8 +134,8 @@ Item {
                     subtitle: qsTr("Diseno y configuracion de cadenas de audio fisicas.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("home_audio.chain_planner")

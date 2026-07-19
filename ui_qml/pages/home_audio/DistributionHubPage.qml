@@ -64,8 +64,8 @@ Item {
                     subtitle: qsTr("Origenes de audio disponibles.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("home_audio")
@@ -79,8 +79,8 @@ Item {
                     subtitle: qsTr("Servidores de streaming y retransmision.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("home_audio")
@@ -94,8 +94,8 @@ Item {
                     subtitle: qsTr("Dispositivos que reciben y reproducen audio.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("home_audio")
@@ -109,8 +109,8 @@ Item {
                     subtitle: qsTr("Salidas de audio configuradas.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("home_audio")
@@ -124,8 +124,8 @@ Item {
                     subtitle: qsTr("Rutas de senal actualmente en uso.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("home_audio")

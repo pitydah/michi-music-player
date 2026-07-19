@@ -73,8 +73,8 @@ Item {
                     subtitle: qsTr("Sincronizacion con Android a traves de la API REST.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("sync.mobile")
@@ -96,8 +96,8 @@ Item {
                     subtitle: qsTr("Sincronizacion con DAPs y reproductores portatiles.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("sync.portable_players")
@@ -119,8 +119,8 @@ Item {
                     subtitle: qsTr("Programa y automatiza tus sincronizaciones.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("sync.plans")
@@ -142,8 +142,8 @@ Item {
                     subtitle: qsTr("Registro de sincronizaciones realizadas.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("sync.history")

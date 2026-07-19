@@ -6,7 +6,7 @@ FeatureStatePage {
     id: root
     objectName: "navidromePlaceholderPage"
     pageTitle: qsTr("Navidrome")
-    state: "planned"
+    featureState: "planned"
     description: qsTr("La integracion con servidores Navidrome via Subsonic API estara disponible en una proxima actualizacion. Podras explorar y reproducir tu musica directamente desde tu servidor Navidrome.")
     primaryActionText: qsTr("Ver requisitos")
     iconSource: ""

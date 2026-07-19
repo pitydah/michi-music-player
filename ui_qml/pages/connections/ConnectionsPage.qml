@@ -137,8 +137,8 @@ Item {
                             serverName: modelData.name || "Servidor externo"
                             serverType: modelData.serverType || modelData.apiType || "API"
                             activeFocusOnTab: true
-                            Keys.onReturnPressed: onClicked()
-                            Keys.onSpacePressed: onClicked()
+                            Keys.onReturnPressed: clicked()
+                            Keys.onSpacePressed: clicked()
                         }
                     }
 
@@ -204,8 +204,8 @@ Item {
                         subtitle: qsTr("Servidor central de biblioteca musical. Protocolo en estabilizacion.")
                         variant: "base"
                         activeFocusOnTab: true
-                        Keys.onReturnPressed: onClicked()
-                        Keys.onSpacePressed: onClicked()
+                        Keys.onReturnPressed: clicked()
+                        Keys.onSpacePressed: clicked()
                         onClicked: {
                             if (typeof navigationBridge !== "undefined" && navigationBridge)
                                 navigationBridge.navigate("connections.big_server")
@@ -227,8 +227,8 @@ Item {
                         subtitle: qsTr("Servidor musical compatible Subsonic.")
                         variant: "base"
                         activeFocusOnTab: true
-                        Keys.onReturnPressed: onClicked()
-                        Keys.onSpacePressed: onClicked()
+                        Keys.onReturnPressed: clicked()
+                        Keys.onSpacePressed: clicked()
                         onClicked: {
                             if (typeof navigationBridge !== "undefined" && navigationBridge)
                                 navigationBridge.navigate("connections.navidrome")
@@ -250,8 +250,8 @@ Item {
                         subtitle: qsTr("Servidor multimedia con streaming de audio.")
                         variant: "base"
                         activeFocusOnTab: true
-                        Keys.onReturnPressed: onClicked()
-                        Keys.onSpacePressed: onClicked()
+                        Keys.onReturnPressed: clicked()
+                        Keys.onSpacePressed: clicked()
                         onClicked: {
                             if (typeof navigationBridge !== "undefined" && navigationBridge)
                                 navigationBridge.navigate("connections.jellyfin")
@@ -273,8 +273,8 @@ Item {
                         subtitle: qsTr("Automatizacion y control por voz. Requiere configuracion.")
                         variant: "base"
                         activeFocusOnTab: true
-                        Keys.onReturnPressed: onClicked()
-                        Keys.onSpacePressed: onClicked()
+                        Keys.onReturnPressed: clicked()
+                        Keys.onSpacePressed: clicked()
                         onClicked: {
                             if (typeof navigationBridge !== "undefined" && navigationBridge)
                                 navigationBridge.navigate("connections.home_assistant")

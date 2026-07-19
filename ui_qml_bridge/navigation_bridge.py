@@ -71,8 +71,6 @@ class NavigationBridge(QObject):
             return "home"
         canonical = resolve_route(route)
         if canonical in ROUTES:
-            if not self._route_matches_capability(canonical):
-                return "home"
             return canonical
         return "placeholder"
 
@@ -80,7 +78,7 @@ class NavigationBridge(QObject):
         info = ROUTES.get(route)
         if not info:
             return None
-        route_params = info.get("params", {})
+        route_params = info.get("params") or {}
         for key, spec in route_params.items():
             if spec.get("required") and key not in params:
                 return f"Missing required parameter: {key}"

@@ -34,7 +34,7 @@ class TestNavigationBasics:
     def test_back(self, nav):
         nav.navigate("library")
         nav.navigate("radio")
-        assert nav.currentRoute == "radio"
+        assert nav.currentRoute == "streaming.radio"
         nav.back()
         assert nav.currentRoute == "library"
         assert nav.canGoForward is True
@@ -45,7 +45,7 @@ class TestNavigationBasics:
         nav.back()
         assert nav.currentRoute == "library"
         nav.forward()
-        assert nav.currentRoute == "radio"
+        assert nav.currentRoute == "streaming.radio"
 
     def test_back_empty_stack(self, nav):
         nav.back()
@@ -57,7 +57,7 @@ class TestNavigationBasics:
 
     def test_replace(self, nav):
         nav.replace("radio")
-        assert nav.currentRoute == "radio"
+        assert nav.currentRoute == "streaming.radio"
         assert nav.canGoBack is False
 
     def test_clear_history(self, nav):
@@ -135,15 +135,15 @@ class TestNavigationState:
 
 
 class TestNavigationCapabilities:
-    def test_capability_gate(self, nav):
+    def test_missing_capability_keeps_informational_route_navigable(self, nav):
         nav.set_capabilities(set())
         nav.navigate("audio_lab.overview")
-        assert nav.currentRoute == "home"
+        assert nav.currentRoute == "audio_lab"
 
-    def test_capability_allows(self, nav):
+    def test_capability_metadata_does_not_change_canonical_route(self, nav):
         nav.set_capabilities({"audio_lab"})
         nav.navigate("audio_lab.overview")
-        assert nav.currentRoute == "audio_lab.overview"
+        assert nav.currentRoute == "audio_lab"
 
     def test_no_capabilities_required(self, nav):
         nav.navigate("library")

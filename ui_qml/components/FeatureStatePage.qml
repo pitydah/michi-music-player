@@ -14,7 +14,7 @@ Item {
 
     property string pageTitle: ""
     property string description: ""
-    property string state: "planned"
+    property string featureState: "planned"
     property string iconSource: ""
     property string primaryActionText: ""
     property string secondaryActionText: ""
@@ -40,7 +40,7 @@ Item {
             "unavailable": qsTr("No disponible"),
             "error": qsTr("Error")
         }
-        return statusLabel !== "" ? statusLabel : (map[state] || qsTr("Desconocido"))
+        return statusLabel !== "" ? statusLabel : (map[featureState] || qsTr("Desconocido"))
     }
 
     readonly property string _stateKind: {
@@ -55,7 +55,7 @@ Item {
             "unavailable": "disconnected",
             "error": "error"
         }
-        return map[state] || "info"
+        return map[featureState] || "info"
     }
 
     readonly property string _glyph: {

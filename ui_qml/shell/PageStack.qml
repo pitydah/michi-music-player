@@ -14,19 +14,24 @@ Item {
     property string currentRoute: "home"
     property string lastError: ""
     property string lastLoadedRoute: ""
+    property string lastRequestedSource: ""
+    readonly property string loadedObjectName: pageLoader.item ? pageLoader.item.objectName : ""
     property bool loading: false
     property string _prevRoute: ""
 
     function loadRoute(route) {
-        var source = registry ? registry.getSource(route) : getFallbackSource(route)
-        if (!source) source = "../pages/PlaceholderPage.qml"
+        var canonical = registry ? registry.resolveRoute(route) : route
+        var valid = registry ? registry.isValidRoute(route) : false
+        var requestedSource = valid ? registry.getSource(canonical) : getFallbackSource(route)
+        if (!requestedSource) requestedSource = getFallbackSource(route)
         _prevRoute = currentRoute
-        currentRoute = route
+        currentRoute = valid ? canonical : route
         lastError = ""
+        lastRequestedSource = requestedSource
         loading = true
         callOnPage("routeLeave", _prevRoute)
         pageLoader.source = ""
-        pageLoader.source = source
+        pageLoader.source = requestedSource
     }
 
     function getFallbackSource(route) {
@@ -62,13 +67,14 @@ Item {
         onStatusChanged: {
             if (status === Loader.Ready) {
                 loading = false
+                lastError = ""
                 lastLoadedRoute = currentRoute
                 callOnPage("routeEnter", currentRoute)
             } else if (status === Loader.Error) {
                 loading = false
-                lastError = "Failed to load: " + source
-                console.warn("[PageStack] Failed to load:", source)
-                source = "../pages/PlaceholderPage.qml"
+                lastError = qsTr("No se pudo cargar la ruta '%1' desde %2. Consulta los diagnósticos QML anteriores para conocer el error de componente.").arg(currentRoute).arg(lastRequestedSource)
+                console.error("[PageStack] Route load error", currentRoute, lastRequestedSource,
+                              "Loader status:", status)
             } else if (status === Loader.Loading) {
                 loading = true
             }

@@ -60,8 +60,8 @@ Item {
                     subtitle: qsTr("Ecualizador grafico y parametrico.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("audio_lab.processing")
@@ -75,8 +75,8 @@ Item {
                     subtitle: qsTr("Cadenas de procesamiento digital de senal.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("audio_lab.output_profiles")
@@ -90,8 +90,8 @@ Item {
                     subtitle: qsTr("Configuracion de DAC y dispositivos de salida.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("audio_lab.output_profiles")
@@ -105,8 +105,8 @@ Item {
                     subtitle: qsTr("Normalizacion de volumen por lote.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("audio_lab.normalization")
@@ -120,8 +120,8 @@ Item {
                     subtitle: qsTr("Conversion entre formatos de audio.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("audio_lab.conversion")
@@ -135,8 +135,8 @@ Item {
                     subtitle: qsTr("Analisis y aplicacion de ReplayGain.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("audio_lab.replaygain")
@@ -150,8 +150,8 @@ Item {
                     subtitle: qsTr("Procesamiento batch programado.")
                     variant: "base"
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("audio_lab.jobs")

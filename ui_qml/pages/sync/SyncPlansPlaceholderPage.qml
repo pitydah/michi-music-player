@@ -6,7 +6,7 @@ FeatureStatePage {
     id: root
     objectName: "syncPlansPlaceholderPage"
     pageTitle: qsTr("Planes de sincronizacion")
-    state: "planned"
+    featureState: "planned"
     description: qsTr("Los planes de sincronizacion permitiran programar transferencias automaticas segun reglas, generos, playlists y espacio disponible en el dispositivo destino.")
     primaryActionText: qsTr("Ver requisitos")
     iconSource: ""

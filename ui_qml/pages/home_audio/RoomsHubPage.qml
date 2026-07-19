@@ -78,8 +78,8 @@ Item {
                         subtitle: (modelData.devices ? modelData.devices.length : 0) + " dispositivo(s)"
                         variant: "base"
                         activeFocusOnTab: true
-                        Keys.onReturnPressed: onClicked()
-                        Keys.onSpacePressed: onClicked()
+                        Keys.onReturnPressed: clicked()
+                        Keys.onSpacePressed: clicked()
                         onClicked: {
                             if (typeof navigationBridge !== "undefined" && navigationBridge && modelData.id)
                                 navigationBridge.navigateWithParams("zone_detail", {zoneId: modelData.id})
