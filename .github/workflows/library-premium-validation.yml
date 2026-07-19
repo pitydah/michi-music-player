@@ -60,8 +60,17 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
+          set -o pipefail
           python -m pytest -q --timeout=120 \
             tests/qml/library/test_album_premium_views_runtime.py \
             tests/qml/library/test_library_filtered_query_service.py \
             tests/qml/library/test_library_track_table.py \
-            tests/qml/library/test_library_fetch_more.py
+            tests/qml/library/test_library_fetch_more.py \
+            2>&1 | tee library-premium-tests.log
+      - name: Upload premium library diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: library-premium-tests-${{ github.sha }}
+          path: library-premium-tests.log
+          retention-days: 3
