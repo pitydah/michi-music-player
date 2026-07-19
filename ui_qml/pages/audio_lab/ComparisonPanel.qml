@@ -11,7 +11,7 @@ Item {
     property var labService: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
 
     objectName: "ComparisonPanel"
-    Accessible.role: Accessible.Panel
+    Accessible.role: Accessible.Pane
     Accessible.name: "Panel de comparación"
 
     Column {

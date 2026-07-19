@@ -85,7 +85,9 @@ Item {
                 model: root.filterModel
                 currentIndex: root.currentFilterIndex
                 visible: root.filterModel.length > 0
-                onActivated: root.filterChanged(index)
+                onActivated: function(index) {
+                    root.filterChanged(index)
+                }
             }
 
             Item { Layout.fillWidth: true }

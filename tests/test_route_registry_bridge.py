@@ -21,7 +21,7 @@ class TestRouteRegistryBridge:
             "michi_ai",
             "sync",
         ]
-        assert fixed == []
+        assert [item["route"] for item in fixed] == ["settings"]
         assert {
             section["route"]: [child["route"] for child in section["children"]]
             for section in sections
@@ -40,5 +40,24 @@ class TestRouteRegistryBridge:
                 "connections.navidrome",
                 "connections.jellyfin",
                 "connections.home_assistant",
+            ],
+            "audio_lab": [
+                "audio_lab.analysis",
+                "audio_lab.processing",
+                "audio_lab.metadata",
+                "audio_lab.capture",
+                "audio_lab.library_health",
+            ],
+            "home_audio": [
+                "home_audio.stream",
+                "home_audio.rooms",
+                "home_audio.distribution",
+                "home_audio.chain_planner",
+            ],
+            "sync": [
+                "sync.mobile",
+                "sync.portable_players",
+                "sync.plans",
+                "sync.history",
             ],
         }

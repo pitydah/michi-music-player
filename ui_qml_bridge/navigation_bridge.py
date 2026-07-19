@@ -86,8 +86,16 @@ class NavigationBridge(QObject):
         info = ROUTES.get(route)
         if not info:
             return None
-        route_params = info.get("params") or {}
+        route_params = info.get("params")
+        if route_params is None:
+            return None
+        if not isinstance(route_params, dict):
+            logger.warning("Route %s has invalid params spec (not a dict)", route)
+            return None
         for key, spec in route_params.items():
+            if not isinstance(spec, dict):
+                logger.warning("Route %s param %s has invalid spec (not a dict)", route, key)
+                continue
             if spec.get("required") and key not in params:
                 return f"Missing required parameter: {key}"
             if key in params:
