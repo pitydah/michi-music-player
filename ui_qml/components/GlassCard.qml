@@ -7,5 +7,6 @@ MichiCard {
     objectName: "glassCard"
     controlObjectName: "glassCard"
     property string iconName: ""
+    interactive: true
     variant: "glass"
 }

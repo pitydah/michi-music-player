@@ -15,10 +15,17 @@ MichiCard {
     property var metadata: ({})
     property string featureAccessibleName: title
 
+    interactive: true
     accessibleName: featureAccessibleName
     accessibleDescription: description
     subtitle: description
     elevated: emphasis === "high"
+    variant: status === "experimental" ? "accent"
+             : status === "configuration_required" || status === "dependency_missing"
+               || status === "hardware_validation_pending" ? "warning"
+             : status === "partial" || status === "planned" ? "info"
+             : status === "error" || status === "failure" ? "danger"
+             : emphasis === "high" ? "elevated" : "solid"
 
     RowLayout {
         width: parent.width
