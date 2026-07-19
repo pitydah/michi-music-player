@@ -42,6 +42,7 @@ class HomeBridge(QObject):
         self._active_jobs = 0
         self._backend = ""
         self._output = ""
+        self._degraded_reasons: list[str] = []
 
     @Property(int, notify=snapshotChanged)
     def libraryAlbums(self):
@@ -93,15 +94,30 @@ class HomeBridge(QObject):
             return "not_configured"
         return getattr(self._connections, "microServerState", "not_configured")
 
+    @Property(bool, notify=snapshotChanged)
+    def degraded(self):
+        return bool(self._degraded_reasons)
+
+    @Property(str, notify=snapshotChanged)
+    def degradedMessage(self):
+        return " · ".join(self._degraded_reasons)
+
+    def _mark_degraded(self, reason: str) -> None:
+        if reason not in self._degraded_reasons:
+            self._degraded_reasons.append(reason)
+
     @Slot(result=bool)
     def refresh(self) -> bool:
         """Refresh the dashboard snapshot and report bridge-level failures."""
         try:
+            self._degraded_reasons = []
             self._load_library_stats()
             self._load_playback()
             self._load_sources()
             self._load_jobs()
             self._load_audio()
+            if self.ecosystemState in {"error", "offline", "service_unavailable"}:
+                self._mark_degraded("Conexiones no disponibles")
         except Exception:
             logger.exception("Home snapshot refresh failed")
             return False
@@ -110,9 +126,12 @@ class HomeBridge(QObject):
 
     def _load_library_stats(self):
         if self._lib:
-            self._tracks = getattr(self._lib, 'songCount', 0)
-            self._albums = getattr(self._lib, 'albumCount', 0)
-            self._artists = getattr(self._lib, 'artistCount', 0)
+            try:
+                self._tracks = getattr(self._lib, 'songCount', 0)
+                self._albums = getattr(self._lib, 'albumCount', 0)
+                self._artists = getattr(self._lib, 'artistCount', 0)
+            except Exception:
+                self._mark_degraded("Biblioteca no disponible")
 
     def _load_playback(self):
         if self._player:
@@ -134,7 +153,7 @@ class HomeBridge(QObject):
                     else:
                         self._has_playback = False
             except Exception:
-                pass
+                self._mark_degraded("Reproducción no disponible")
 
     def _load_sources(self):
         if self._src_svc:
@@ -142,7 +161,7 @@ class HomeBridge(QObject):
                 srcs = self._src_svc.list()
                 self._sources_count = len(srcs)
             except Exception:
-                pass
+                self._mark_degraded("Fuentes no disponibles")
 
     def _load_jobs(self):
         try:
@@ -150,7 +169,7 @@ class HomeBridge(QObject):
                 self._active_jobs = getattr(self._job_bridge, 'activeCount', 0)
                 return
         except Exception:
-            pass
+            self._mark_degraded("Trabajos no disponibles")
 
     def _on_playback_changed(self):
         self._load_playback()
@@ -166,7 +185,7 @@ class HomeBridge(QObject):
             if hasattr(self._player, 'get_output_device_id'):
                 self._output = self._player.get_output_device_id() or ""
         except Exception:
-            pass
+            self._mark_degraded("Salida de audio no disponible")
 
     @Slot(result=dict)
     def homeScore(self) -> dict:

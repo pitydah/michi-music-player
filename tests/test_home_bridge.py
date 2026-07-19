@@ -30,3 +30,12 @@ class TestHomeBridge:
         factory.create_home_bridge()
 
         assert factory.get("home")._connections is connections
+
+    def test_partial_service_failure_marks_snapshot_degraded(self):
+        sources = MagicMock()
+        sources.list.side_effect = RuntimeError("offline")
+        bridge = HomeBridge(library_sources_service=sources)
+
+        assert bridge.refresh() is True
+        assert bridge.degraded is True
+        assert "Fuentes" in bridge.degradedMessage
