@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from PySide6.QtCore import QUrl
-from PySide6.QtQml import QQmlComponent, QQmlEngine
+from PySide6.QtQml import QJSEngine, QQmlComponent, QQmlEngine
 
 pytestmark = [pytest.mark.qml_module("library")]
 
@@ -135,3 +135,38 @@ def test_active_filter_with_no_matches_reaches_filtered_empty() -> None:
     bridge.setFormatFilter("FLAC")
 
     assert bridge.state == "FILTERED_EMPTY"
+
+
+def test_page_state_store_accepts_qml_object(qapp) -> None:
+    from ui_qml_bridge.page_state_store import PageStateStore
+
+    js_engine = QJSEngine()
+    qml_state = js_engine.toScriptValue({"currentTab": 2, "searchText": "jazz"})
+    store = PageStateStore()
+
+    store.saveState("library", qml_state)
+
+    assert store.restoreState("library") == {
+        "currentTab": 2,
+        "searchText": "jazz",
+    }
+
+
+def test_format_and_special_filters_cannot_diverge() -> None:
+    from ui_qml_bridge.library_bridge import LibraryBridge
+
+    bridge = LibraryBridge(
+        query_service=_query_service(),
+        track_action_service=MagicMock(),
+    )
+    bridge.ensureLoaded()
+    bridge.setFavoritesFilter()
+
+    bridge.setFormatFilter("flac")
+
+    assert bridge._filter_favorites is False
+    assert bridge.activeFormatFilter == "flac"
+    bridge.setUnplayedFilter()
+    bridge.clearSpecialFilters()
+    assert bridge.activeFormatFilter == "flac"
+    assert bridge._filter_unplayed is False

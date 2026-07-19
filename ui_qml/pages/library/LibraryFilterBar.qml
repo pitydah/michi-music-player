@@ -42,8 +42,8 @@ Item {
             root.lib.setUnplayedFilter()
         else if (root.specialFilter === "missing" && root.lib.setMissingFilter)
             root.lib.setMissingFilter()
-        else if (root.specialFilter === "" && root.lib.clearFilters)
-            root.lib.clearFilters()
+        else if (root.specialFilter === "" && root.lib.clearSpecialFilters)
+            root.lib.clearSpecialFilters()
     }
 
     Rectangle {

@@ -21,6 +21,7 @@ Item {
     property var sel: typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null
     property int _currentLibrarySection: 0
     property bool _searchActive: false
+    property bool _restoringState: false
 
     MichiResponsive { id: responsive; availableWidth: root.width }
 
@@ -101,7 +102,34 @@ Item {
         }
     }
 
+    function _saveFilterState() {
+        if (root._restoringState) return
+        pageState.filterState = {
+            specialFilter: filterBar.specialFilter,
+            genreText: filterBar.genreText,
+            yearText: filterBar.yearText,
+            expanded: filterBar.expanded
+        }
+        pageState.save()
+    }
+
+    function _restoreVisualState() {
+        if (!pageState.hasSavedState()) return
+        root._restoringState = true
+        var state = pageState.restore()
+        root._currentLibrarySection = pageState.currentTab
+        toolbar.setSearchText(pageState.searchText)
+        albumViewHost.currentView = pageState.currentView
+        var filters = state.filterState || ({})
+        filterBar.specialFilter = filters.specialFilter || ""
+        filterBar.genreText = filters.genreText || ""
+        filterBar.yearText = filters.yearText || ""
+        filterBar.expanded = filters.expanded || false
+        root._restoringState = false
+    }
+
     function routeEnter(route, params) {
+        root._restoreVisualState()
         if (root.lib && root.lib.ensureLoaded) root.lib.ensureLoaded()
         root._updateState()
     }
@@ -160,9 +188,11 @@ Item {
                 pageState.currentTab = index
             }
             onSearchChanged: function(text) {
+                if (root._restoringState) return
                 if (root.lib && root.lib.search) root.lib.search(text)
                 root._searchActive = text.length > 0
                 pageState.searchText = text
+                pageState.save()
             }
             onRefreshRequested: root.refreshData()
         }
@@ -181,6 +211,10 @@ Item {
             onYearFilterChanged: function(year) {
                 if (root.lib) root.lib.setYearFilter(year)
             }
+            onSpecialFilterChanged: root._saveFilterState()
+            onGenreTextChanged: root._saveFilterState()
+            onYearTextChanged: root._saveFilterState()
+            onExpandedChanged: root._saveFilterState()
         }
 
         LibraryStatusHeader {
@@ -232,6 +266,10 @@ Item {
                     bridge: root.lib
                     onAlbumClicked: function(key, title, artist, year) {
                         root.showAlbumDetail(key, title, artist, year)
+                    }
+                    onViewChanged: function(index) {
+                        pageState.currentView = index
+                        pageState.save()
                     }
                 }
             }
@@ -392,6 +430,7 @@ Item {
     }
 
     Component.onCompleted: {
+        root._restoreVisualState()
         if (root.lib && root.lib.ensureLoaded) root.lib.ensureLoaded()
         root._updateState()
     }

@@ -12,6 +12,7 @@ QtObject {
 
     property real scrollY: 0
     property int currentTab: 0
+    property int currentView: 0
     property string searchText: ""
     property var filterState: ({})
     property string inputText: ""
@@ -21,6 +22,7 @@ QtObject {
         var state = {
             scrollY: root.scrollY,
             currentTab: root.currentTab,
+            currentView: root.currentView,
             searchText: root.searchText,
             filterState: root.filterState,
             inputText: root.inputText,
@@ -35,6 +37,7 @@ QtObject {
         if (state) {
             root.scrollY = state.scrollY || 0
             root.currentTab = state.currentTab || 0
+            root.currentView = state.currentView || 0
             root.searchText = state.searchText || ""
             root.filterState = state.filterState || ({})
             root.inputText = state.inputText || ""
@@ -49,6 +52,7 @@ QtObject {
     function clear() {
         root.scrollY = 0
         root.currentTab = 0
+        root.currentView = 0
         root.searchText = ""
         root.filterState = ({})
         root.inputText = ""

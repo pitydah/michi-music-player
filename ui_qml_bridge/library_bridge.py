@@ -325,6 +325,9 @@ class LibraryBridge(QObject):
     @Slot(str, result=dict)
     def setFormatFilter(self, fmt: str):
         self._filter_format = fmt
+        self._filter_favorites = False
+        self._filter_unplayed = False
+        self._filter_missing = False
         self._refresh_track_query()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
@@ -412,6 +415,16 @@ class LibraryBridge(QObject):
         self._filter_favorites = False
         self._filter_unplayed = False
         self._filter_missing = True
+        self._refresh_track_query()
+        self._loaded_count = min(self._page_size, self.visibleCount)
+        self.dataChanged.emit()
+        return {"ok": True}
+
+    @Slot(result=dict)
+    def clearSpecialFilters(self):
+        self._filter_favorites = False
+        self._filter_unplayed = False
+        self._filter_missing = False
         self._refresh_track_query()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
