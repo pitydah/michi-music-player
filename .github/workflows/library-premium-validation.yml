@@ -48,7 +48,8 @@ jobs:
             ui_qml/models/TrackListModel.py \
             ui_qml_bridge/library_refresh_coordinator.py \
             tests/qml/library/test_album_premium_views_runtime.py \
-            tests/qml/library/test_library_filtered_query_service.py
+            tests/qml/library/test_library_filtered_query_service.py \
+            tests/qml/library/test_library_premium_runtime.py
       - name: Compile modified Python surface
         run: |
           python -m py_compile \
@@ -64,6 +65,7 @@ jobs:
           python -m pytest -q --timeout=120 \
             tests/qml/library/test_album_premium_views_runtime.py \
             tests/qml/library/test_library_filtered_query_service.py \
+            tests/qml/library/test_library_premium_runtime.py \
             tests/qml/library/test_library_track_table.py \
             tests/qml/library/test_library_fetch_more.py \
             2>&1 | tee library-premium-tests.log
