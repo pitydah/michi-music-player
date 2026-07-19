@@ -17,7 +17,10 @@ jobs:
       - name: Install Ruff
         run: pip install -q ruff
       - name: Ruff changed Python files
+        id: ruff
+        continue-on-error: true
         run: |
+          set +e
           ruff check --output-format=concise \
             core/home_audio_service.py \
             core/composition/ecosystem.py \
@@ -33,9 +36,16 @@ jobs:
             tests/test_settings_bridge_v2_transactions.py \
             tests/test_settings_transaction_bar_contract.py \
             tests/test_settings_workspace_contract.py \
-            tests/test_mix_query_service_limits.py
+            tests/test_mix_query_service_limits.py > phase2-ruff.txt 2>&1
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          cat phase2-ruff.txt
+          exit 0
       - name: Compile changed Python files
+        id: compile
+        continue-on-error: true
         run: |
+          set +e
           python -m py_compile \
             core/home_audio_service.py \
             core/composition/ecosystem.py \
@@ -47,10 +57,17 @@ jobs:
             tests/test_home_audio_distribution_service.py \
             tests/test_home_audio_distribution_bridge.py \
             tests/test_home_audio_distribution_qml_contract.py \
-            tests/test_navigation_pending_settings_guard.py
+            tests/test_navigation_pending_settings_guard.py > phase2-compile.txt 2>&1
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          cat phase2-compile.txt
+          exit 0
       - name: Static QML contracts
+        id: qml
+        continue-on-error: true
         run: |
-          python - <<'PY'
+          set +e
+          python - <<'PY' > phase2-qml.txt 2>&1
           from pathlib import Path
 
           required = {
@@ -75,4 +92,25 @@ jobs:
               missing = [token for token in tokens if token not in text]
               if missing:
                   raise SystemExit(f"{filename}: missing {missing}")
+          print("QML static contracts passed")
           PY
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          cat phase2-qml.txt
+          exit 0
+      - name: Upload focused validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase2-validation-report
+          path: |
+            phase2-ruff.txt
+            phase2-compile.txt
+            phase2-qml.txt
+          retention-days: 3
+      - name: Enforce focused validation
+        if: always()
+        run: |
+          test "${{ steps.ruff.outputs.exit_code }}" = "0"
+          test "${{ steps.compile.outputs.exit_code }}" = "0"
+          test "${{ steps.qml.outputs.exit_code }}" = "0"
