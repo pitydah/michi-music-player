@@ -68,6 +68,7 @@ MichiVisualState 1.0 foundations/MichiVisualState.qml
 MichiPage 1.0 layout/MichiPage.qml
 MichiPageHeader 1.0 layout/MichiPageHeader.qml
 MichiResponsiveGrid 1.0 layout/MichiResponsiveGrid.qml
+PageSurface 1.0 layout/PageSurface.qml
 MichiSection 1.0 layout/MichiSection.qml
 MichiSplitView 1.0 layout/MichiSplitView.qml
 MichiToolbar 1.0 layout/MichiToolbar.qml

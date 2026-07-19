@@ -55,14 +55,11 @@ Item {
         }
     }
 
-    Loader {
+    PageStackContainer {
         id: pageLoader
         anchors.fill: parent
         asynchronous: true
         source: ""
-
-        opacity: status === Loader.Ready ? 1.0 : 0.0
-        Behavior on opacity { NumberAnimation { duration: MichiTheme.motion.fast; easing.type: Easing.OutCubic } }
 
         onStatusChanged: {
             if (status === Loader.Ready) {
@@ -83,14 +80,26 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: MichiTheme.colors.bgApp
-        visible: pageLoader.status === Loader.Null && currentRoute !== "" && !loading
-        z: -1
+        color: MichiTheme.colors.bgContent
+        visible: root.loading
+        z: 90
+
+        Column {
+            anchors.centerIn: parent
+            spacing: MichiTheme.spacing.md
+            BusyIndicator { anchors.horizontalCenter: parent.horizontalCenter; running: root.loading }
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: qsTr("Cargando contenido")
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
+            }
+        }
     }
 
     Rectangle {
         anchors.fill: parent
-        color: MichiTheme.colors.bgApp
+        color: MichiTheme.colors.bgContent
         visible: lastError !== ""
         z: 100
 
