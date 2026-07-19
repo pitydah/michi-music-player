@@ -132,9 +132,15 @@ Item {
         NowPlayingBar {
             id: nowPlayingBar
             Layout.fillWidth: true
-            Layout.preferredHeight: implicitHeight
-            Layout.maximumHeight: 112
-            Layout.minimumHeight: 96
+            Layout.preferredHeight: {
+                if (root.width >= MichiTheme.breakpoints.medium)
+                    return MichiTheme.nowPlaying.desktop
+                if (root.width >= MichiTheme.breakpoints.compact)
+                    return MichiTheme.nowPlaying.medium
+                return MichiTheme.nowPlaying.compact
+            }
+            Layout.maximumHeight: MichiTheme.nowPlaying.desktop
+            Layout.minimumHeight: MichiTheme.nowPlaying.minHeight
             z: 10
         }
     }

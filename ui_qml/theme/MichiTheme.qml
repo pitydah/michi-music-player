@@ -56,10 +56,27 @@ QtObject {
     readonly property int pageMarginCompact: spacing.lg
     readonly property int pageMarginRegular: spacing.xl
     readonly property int pageMarginWide: spacing.page
-    readonly property int toolbarHeight: 48
+    readonly property int pageSurfaceInset: spacing.md
+    readonly property int pageMaximumWidth: 1680
+    readonly property int sectionSpacing: spacing.xl
+    readonly property int controlHeight: 36
+    readonly property int toolbarHeight: 56
+    readonly property int tableRowHeight: 42
+    readonly property int cardMinimumWidth: 220
     readonly property int rowHeightCompact: 36
     readonly property int rowHeightComfortable: 44
     readonly property int minimumInteractiveSize: 44
+
+    // ── Now Playing heights ──
+    readonly property QtObject nowPlaying: QtObject {
+        readonly property int desktop: 132
+        readonly property int medium: 122
+        readonly property int compact: 108
+        readonly property int minHeight: 96
+    }
+
+    // ── Reduced motion ──
+    property bool reducedMotion: false
 
     // ── Covers ──
     readonly property int coverSizeSmall: 48
@@ -70,7 +87,7 @@ QtObject {
     // ── Shell ──
     readonly property int sidebarWidth: 244
     readonly property int sidebarWidthCompact: 70
-    readonly property int nowPlayingHeight: 128
+    readonly property int nowPlayingHeight: nowPlaying.desktop
     readonly property int headerHeight: 56
 
     // ── Shortcuts ──
