@@ -25,7 +25,9 @@ Item {
     function applyChanges(continueNavigation) {
         if (!root.bridge) return
         root.transactionBusy = true
-        var result = root.bridge.commitAll()
+        var result = continueNavigation && root.navigation
+                   ? root.navigation.resolvePendingNavigation("apply")
+                   : root.bridge.commitAll()
         root.transactionBusy = false
         if (!result || !result.ok) {
             root.transactionMessage = qsTr("No se pudieron confirmar los cambios.")
@@ -33,14 +35,14 @@ Item {
         }
         root.transactionMessage = qsTr("Cambios aplicados.")
         root.reloadContent()
-        if (continueNavigation && root.navigation)
-            root.navigation.resolvePendingNavigation("apply")
     }
 
     function discardChanges(continueNavigation) {
         if (!root.bridge) return
         root.transactionBusy = true
-        var result = root.bridge.rollbackAll()
+        var result = continueNavigation && root.navigation
+                   ? root.navigation.resolvePendingNavigation("discard")
+                   : root.bridge.rollbackAll()
         root.transactionBusy = false
         if (!result || !result.ok) {
             root.transactionMessage = qsTr("No se pudieron restaurar todos los ajustes.")
@@ -48,8 +50,6 @@ Item {
         }
         root.transactionMessage = qsTr("Se restauraron los valores anteriores.")
         root.reloadContent()
-        if (continueNavigation && root.navigation)
-            root.navigation.resolvePendingNavigation("discard")
     }
 
     Component.onCompleted: {
@@ -91,7 +91,8 @@ Item {
         id: leaveDialog
         modal: true
         closePolicy: Popup.NoAutoClose
-        anchors.centerIn: parent
+        x: Math.round((root.width - width) / 2)
+        y: Math.round((root.height - height) / 2)
         width: Math.min(520, root.width - MichiTheme.spacing.xl * 2)
         title: qsTr("Cambios pendientes")
 
