@@ -8,6 +8,7 @@ Item {
     id: root
     objectName: "michiLibraryToolbar"
 
+    property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property string title: qsTr("Biblioteca")
     property string subtitle: qsTr("Colección local")
     property var filterModel: []
@@ -20,7 +21,9 @@ Item {
     property bool sortAscending: true
     property bool selectionActive: false
     property int selectedCount: 0
-    property bool loading: false
+    property bool loading: root.lib
+                           ? ["INITIALIZING", "LOADING", "SCANNING", "INDEXING"].indexOf(root.lib.state) >= 0
+                           : false
     readonly property bool compact: width < 940
 
     signal filterChanged(int index)
@@ -122,7 +125,7 @@ Item {
                 Layout.column: root.compact ? 0 : 1
                 Layout.fillWidth: root.compact
                 Layout.preferredWidth: root.compact
-                                       ? Math.max(280, root.width * 0.48)
+                                       ? Math.max(250, root.width * 0.47)
                                        : Math.min(390, Math.max(270, root.width * 0.31))
                 Layout.preferredHeight: 36
                 model: root.filterModel
@@ -145,7 +148,7 @@ Item {
                 Layout.column: root.compact ? 1 : 3
                 Layout.fillWidth: root.compact
                 Layout.preferredWidth: root.compact
-                                       ? Math.max(220, root.width * 0.44)
+                                       ? Math.max(210, root.width * 0.41)
                                        : Math.min(330, Math.max(200, root.width * 0.24))
                 Layout.preferredHeight: 38
                 placeholderText: qsTr("Buscar canción, álbum o artista…")
