@@ -1,7 +1,7 @@
 """Batch writer — resilient, normalized writes to the SQLite catalogue.
 
 Every record crosses the metadata normalization boundary exactly once before it
-enters the buffer.  This guarantees that display fields, normalized SQL keys,
+enters the buffer. This guarantees that display fields, normalized SQL keys,
 metadata hashes and catalogue-health diagnostics cannot drift between scanners.
 """
 from __future__ import annotations
@@ -17,7 +17,7 @@ logger = logging.getLogger("michi.indexer.batch_writer")
 BATCH_COLUMNS = [
     "filepath", "filename", "directory", "ext", "kind", "size", "mtime",
     "duration", "channels", "sample_rate", "bitrate",
-    "title", "artist", "album", "albumartist",
+    "title", "artist", "album", "albumartist", "album_key",
     "year", "genre", "track_number", "track_total",
     "disc_number", "disc_total", "composer",
     "mb_track_id", "mb_album_id", "mb_albumartist_id",
@@ -33,11 +33,16 @@ BATCH_COLUMNS = [
     "normalized_title", "normalized_artist", "normalized_album",
     "normalized_albumartist", "metadata_source", "metadata_confidence",
     "metadata_completeness", "metadata_issues", "metadata_hash",
+    "rating", "play_count", "last_played",
 ]
 
+# User-owned playback/rating state must survive ordinary metadata rescans. A
+# force reindex can restore it separately, but an upsert never overwrites it.
+_PRESERVED_ON_CONFLICT = {
+    "filepath", "created_at", "rating", "play_count", "last_played",
+}
 _CONFLICT_UPDATE_COLS = [
-    column for column in BATCH_COLUMNS
-    if column not in ("filepath", "created_at")
+    column for column in BATCH_COLUMNS if column not in _PRESERVED_ON_CONFLICT
 ]
 
 NUMERIC_DEFAULTS = frozenset({
@@ -46,14 +51,14 @@ NUMERIC_DEFAULTS = frozenset({
     "bpm", "replaygain_track", "replaygain_album", "replaygain_track_peak",
     "replaygain_album_peak", "r128_track_gain", "r128_album_gain", "compilation",
     "created_at", "updated_at", "last_scanned", "metadata_confidence",
-    "metadata_completeness",
+    "metadata_completeness", "rating", "play_count", "last_played",
 })
 
 FLOAT_DEFAULTS = frozenset({
     "mtime", "duration", "replaygain_track", "replaygain_album",
     "replaygain_track_peak", "replaygain_album_peak", "r128_track_gain",
     "r128_album_gain", "created_at", "updated_at", "last_scanned",
-    "metadata_confidence",
+    "metadata_confidence", "last_played",
 })
 
 _MIN_BATCH = 1
@@ -98,7 +103,16 @@ class BatchWriter:
 
     def add(self, record: dict) -> None:
         """Normalize and buffer a record; flush automatically at the threshold."""
-        self._buffer.append(enrich_index_record(record))
+        enriched = enrich_index_record(record)
+        if not enriched.get("album_key") and enriched.get("album"):
+            from library.album_key import make_album_key
+
+            enriched["album_key"] = make_album_key(
+                enriched.get("albumartist") or enriched.get("artist") or "",
+                enriched.get("artist") or "",
+                enriched.get("album") or "",
+            )
+        self._buffer.append(enriched)
         if len(self._buffer) >= self._current_batch:
             self.flush()
 
