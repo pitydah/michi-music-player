@@ -1,8 +1,8 @@
 """Versioned SQLite migrations for the Michi catalogue.
 
-Migrations are deliberately idempotent.  Michi has databases created by several
+Migrations are deliberately idempotent. Michi has databases created by several
 historical schema paths, so an ``ALTER TABLE ... ADD COLUMN`` is skipped when the
-column already exists instead of aborting startup.  Every migration still runs
+column already exists instead of aborting startup. Every migration still runs
 inside a transaction and is recorded with a checksum.
 """
 from __future__ import annotations
@@ -320,52 +320,67 @@ def _migrate_legacy_playcount(conn: sqlite3.Connection) -> None:
         )
 
 
+def _select_expression(columns: set[str], name: str, default_sql: str) -> str:
+    if name in columns:
+        return name
+    return f"{default_sql} AS {name}"
+
+
 def _backfill_metadata_keys(conn: sqlite3.Connection, batch_size: int = 500) -> None:
+    """Backfill normalized metadata even on incomplete historical schemas."""
     columns = _table_columns(conn, "media_items")
-    required = {
+    target_columns = {
         "normalized_title", "normalized_artist", "normalized_album",
         "normalized_albumartist", "metadata_source", "metadata_confidence",
         "metadata_completeness", "metadata_issues", "metadata_hash",
     }
-    if not required.issubset(columns):
+    if not target_columns.issubset(columns):
         return
 
     from library.metadata_normalizer import enrich_index_record
 
+    source_defaults = {
+        "filepath": "''",
+        "filename": "''",
+        "title": "''",
+        "artist": "''",
+        "album": "''",
+        "albumartist": "''",
+        "year": "0",
+        "genre": "''",
+        "track_number": "0",
+        "track_total": "0",
+        "disc_number": "0",
+        "disc_total": "0",
+        "composer": "''",
+        "isrc": "''",
+        "mb_track_id": "''",
+        "mb_album_id": "''",
+        "duration": "0",
+        "sample_rate": "0",
+        "channels": "0",
+    }
+    source_names = list(source_defaults)
+    select_list = ", ".join(
+        _select_expression(columns, name, source_defaults[name])
+        for name in source_names
+    )
     cursor = conn.execute(
-        "SELECT id, filepath, filename, title, artist, album, albumartist, year, "
-        "genre, track_number, track_total, disc_number, disc_total, composer, "
-        "isrc, mb_track_id, mb_album_id, duration, sample_rate, channels "
-        "FROM media_items WHERE COALESCE(normalized_title, '')='' "
+        f"SELECT id, {select_list} FROM media_items "
+        "WHERE COALESCE(normalized_title, '')='' "
         "OR COALESCE(metadata_hash, '')=''"
     )
+
     total = 0
     while True:
-        rows = cursor.fetchmany(batch_size)
+        rows = cursor.fetchmany(max(1, int(batch_size)))
         if not rows:
             break
         updates = []
         for row in rows:
             record = {
-                "filepath": row[1] or "",
-                "filename": row[2] or "",
-                "title": row[3] or "",
-                "artist": row[4] or "",
-                "album": row[5] or "",
-                "albumartist": row[6] or "",
-                "year": row[7] or 0,
-                "genre": row[8] or "",
-                "track_number": row[9] or 0,
-                "track_total": row[10] or 0,
-                "disc_number": row[11] or 0,
-                "disc_total": row[12] or 0,
-                "composer": row[13] or "",
-                "isrc": row[14] or "",
-                "mb_track_id": row[15] or "",
-                "mb_album_id": row[16] or "",
-                "duration": row[17] or 0,
-                "sample_rate": row[18] or 0,
-                "channels": row[19] or 0,
+                name: row[index + 1]
+                for index, name in enumerate(source_names)
             }
             enriched = enrich_index_record(record)
             updates.append((
