@@ -72,15 +72,30 @@ def test_rollback_keeps_initial_catalogue_tables():
 
 
 def test_partial_migration_skips_existing_columns():
+    """A valid v1 catalogue may already contain a later backported column."""
     conn = sqlite3.connect(":memory:")
     conn.executescript("""
         CREATE TABLE media_items (
             id INTEGER PRIMARY KEY,
-            filepath TEXT UNIQUE,
-            filename TEXT,
-            directory TEXT,
-            ext TEXT,
-            kind TEXT,
+            filepath TEXT UNIQUE NOT NULL,
+            filename TEXT NOT NULL,
+            directory TEXT NOT NULL,
+            ext TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            size INTEGER,
+            mtime REAL,
+            duration REAL,
+            channels INTEGER,
+            sample_rate INTEGER,
+            bitrate INTEGER,
+            title TEXT,
+            artist TEXT,
+            album TEXT,
+            year INTEGER,
+            genre TEXT,
+            track_number INTEGER,
+            composer TEXT,
+            date_added REAL,
             track_uid TEXT DEFAULT ''
         );
         CREATE TABLE playlists (id INTEGER PRIMARY KEY, name TEXT);
