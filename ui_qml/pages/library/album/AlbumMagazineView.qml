@@ -13,70 +13,180 @@ Item {
 
     Accessible.role: Accessible.Pane
     Accessible.name: qsTr("Vista editorial de álbumes")
+    Accessible.description: qsTr("Portada destacada, descubrimiento horizontal y ediciones de la colección")
 
     property var albumModel: null
     property var bridge: null
     property int featuredIndex: 0
-    property var _pendingAlbum: ({})
+    property bool automaticPagination: true
+    readonly property bool compact: width < 900
     readonly property var featuredAlbum: albumModel && albumModel.count > 0 && albumModel.get
-                                         ? albumModel.get(Math.min(featuredIndex, albumModel.count - 1)) : ({})
+                                         ? albumModel.get(
+                                               Math.max(
+                                                   0,
+                                                   Math.min(featuredIndex, albumModel.count - 1)
+                                               )
+                                           )
+                                         : ({})
+
     signal albumClicked(string albumKey, string title, string artist, int year)
 
-    activeFocusOnTab: true
-
-    function scheduleOpen(key, title, artist, year) {
-        root._pendingAlbum = { key: key, title: title, artist: artist, year: year }
-        openTimer.restart()
+    function albumKeyOf(album) {
+        return album ? (album.albumKey || album.album_key || "") : ""
     }
 
-    Timer {
-        id: openTimer
-        interval: Qt.styleHints.mouseDoubleClickInterval
-        onTriggered: root.albumClicked(root._pendingAlbum.key || "", root._pendingAlbum.title || "",
-                                       root._pendingAlbum.artist || "", root._pendingAlbum.year || 0)
+    function albumTitleOf(album) {
+        return album ? (album.title || "") : ""
     }
 
-    Keys.onLeftPressed: root.stepFeatured(-1)
-    Keys.onRightPressed: root.stepFeatured(1)
-    Keys.onReturnPressed: root.albumClicked(root.featuredAlbum.albumKey || "", root.featuredAlbum.title || "",
-                                            root.featuredAlbum.artist || "", root.featuredAlbum.year || 0)
-    Keys.onEnterPressed: root.albumClicked(root.featuredAlbum.albumKey || "", root.featuredAlbum.title || "",
-                                           root.featuredAlbum.artist || "", root.featuredAlbum.year || 0)
-    Keys.onSpacePressed: {
-        if (root.bridge && root.bridge.playAlbum)
-            root.bridge.playAlbum(root.featuredAlbum.albumKey || "")
+    function albumArtistOf(album) {
+        return album ? (album.artist || album.album_artist || "") : ""
+    }
+
+    function albumYearOf(album) {
+        return album ? (album.year || 0) : 0
+    }
+
+    function albumTrackCountOf(album) {
+        return album ? (album.trackCount || album.track_count || 0) : 0
+    }
+
+    function selectFeatured(index) {
+        if (!root.albumModel || root.albumModel.count <= 0)
+            return
+        root.featuredIndex = Math.max(0, Math.min(index, root.albumModel.count - 1))
+        discoveryRail.currentIndex = root.featuredIndex
+        discoveryRail.positionViewAtIndex(root.featuredIndex, ListView.Contain)
     }
 
     function stepFeatured(delta) {
-        if (!root.albumModel || root.albumModel.count <= 0) return
-        featuredIndex = (featuredIndex + delta + root.albumModel.count) % root.albumModel.count
+        if (!root.albumModel || root.albumModel.count <= 0)
+            return
+        if (delta > 0 && root.featuredIndex >= root.albumModel.count - 1 &&
+                root.albumModel.hasMore && !root.albumModel.loadingMore) {
+            root.albumModel.fetchMore()
+            return
+        }
+        var next = (root.featuredIndex + delta + root.albumModel.count) % root.albumModel.count
+        root.selectFeatured(next)
     }
 
-    function openArticleCurrent() {
-        if (!root.albumModel || articleList.currentIndex < 0) return
-        var item = root.albumModel.get(articleList.currentIndex)
-        root.albumClicked(item.albumKey || "", item.title || "", item.artist || "", item.year || 0)
+    function openFeatured() {
+        var key = root.albumKeyOf(root.featuredAlbum)
+        if (!key)
+            return
+        root.albumClicked(
+            key,
+            root.albumTitleOf(root.featuredAlbum),
+            root.albumArtistOf(root.featuredAlbum),
+            root.albumYearOf(root.featuredAlbum)
+        )
     }
 
-    Flickable {
-        id: flick
+    function playFeatured() {
+        var key = root.albumKeyOf(root.featuredAlbum)
+        if (key && root.bridge && root.bridge.playAlbum)
+            root.bridge.playAlbum(key)
+    }
+
+    function maybeFetchMore() {
+        if (!root.automaticPagination || !root.albumModel || !root.albumModel.hasMore ||
+                root.albumModel.loadingMore || magazineList.moving)
+            return
+        var remaining = magazineList.contentHeight -
+                        (magazineList.contentY + magazineList.height)
+        if (remaining <= 420)
+            root.albumModel.fetchMore()
+    }
+
+    Connections {
+        target: root.albumModel
+        function onCountChanged() {
+            if (!root.albumModel || root.albumModel.count <= 0)
+                root.featuredIndex = 0
+            else if (root.featuredIndex >= root.albumModel.count)
+                root.featuredIndex = root.albumModel.count - 1
+        }
+    }
+
+    ListView {
+        id: magazineList
+        objectName: "albumMagazineList"
         anchors.fill: parent
+        model: root.albumModel
         clip: true
-        contentWidth: width
-        contentHeight: pageColumn.height + MichiTheme.spacing.xl
         boundsBehavior: Flickable.StopAtBounds
+        spacing: MichiTheme.spacing.sm
+        activeFocusOnTab: true
+        focus: true
+        keyNavigationWraps: false
+        cacheBuffer: 420
+        leftMargin: MichiTheme.spacing.sm
+        rightMargin: MichiTheme.spacing.sm
+        bottomMargin: MichiTheme.spacing.md
 
-        ScrollBar.vertical: ScrollBar { width: 8; policy: ScrollBar.AsNeeded }
+        onContentYChanged: paginationTimer.restart()
+        onMovementEnded: root.maybeFetchMore()
+        onCurrentIndexChanged: {
+            if (currentIndex >= 0 && root.albumModel && root.albumModel.hasMore &&
+                    !root.albumModel.loadingMore &&
+                    currentIndex >= Math.max(0, count - 5))
+                root.albumModel.fetchMore()
+        }
 
-        Column {
-            id: pageColumn
-            width: flick.width
+        Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_Left) {
+                root.stepFeatured(-1)
+                event.accepted = true
+            } else if (event.key === Qt.Key_Right) {
+                root.stepFeatured(1)
+                event.accepted = true
+            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                if (magazineList.currentIndex >= 0 && root.albumModel && root.albumModel.get) {
+                    var album = root.albumModel.get(magazineList.currentIndex)
+                    root.albumClicked(
+                        album.albumKey || album.album_key || "",
+                        album.title || "",
+                        album.artist || "",
+                        album.year || 0
+                    )
+                } else {
+                    root.openFeatured()
+                }
+                event.accepted = true
+            } else if (event.key === Qt.Key_Space) {
+                if (magazineList.currentIndex >= 0 && root.albumModel &&
+                        root.albumModel.get && root.bridge && root.bridge.playAlbum) {
+                    var selected = root.albumModel.get(magazineList.currentIndex)
+                    root.bridge.playAlbum(selected.albumKey || selected.album_key || "")
+                } else {
+                    root.playFeatured()
+                }
+                event.accepted = true
+            }
+        }
+
+        Timer {
+            id: paginationTimer
+            interval: 90
+            repeat: false
+            onTriggered: root.maybeFetchMore()
+        }
+
+        ScrollBar.vertical: ScrollBar {
+            width: 8
+            policy: ScrollBar.AsNeeded
+        }
+
+        headerPositioning: ListView.InlineHeader
+        header: Column {
+            width: magazineList.width - magazineList.leftMargin - magazineList.rightMargin
             spacing: MichiTheme.spacing.lg
 
             Rectangle {
                 id: hero
                 width: parent.width
-                height: Math.max(300, Math.min(430, flick.height * 0.54))
+                height: root.compact ? 500 : 390
                 radius: MichiTheme.radius.xl
                 color: MichiTheme.colors.surfaceHero
                 border.width: MichiTheme.borderWidth
@@ -87,31 +197,40 @@ Item {
                     anchors.fill: parent
                     gradient: Gradient {
                         GradientStop { position: 0.0; color: MichiTheme.colors.accentSoft }
-                        GradientStop { position: 0.48; color: MichiTheme.colors.surfaceHero }
+                        GradientStop { position: 0.52; color: MichiTheme.colors.surfaceHero }
                         GradientStop { position: 1.0; color: MichiTheme.colors.bgContent }
                     }
                 }
 
                 Rectangle {
-                    width: Math.max(parent.width * 0.42, 360)
+                    width: Math.max(parent.width * 0.42, 340)
                     height: width
                     radius: width / 2
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.rightMargin: -width * 0.28
                     color: MichiTheme.colors.accentSoft
-                    opacity: 0.6
+                    opacity: 0.55
                 }
 
-                RowLayout {
+                GridLayout {
                     anchors.fill: parent
-                    anchors.margins: MichiTheme.spacing.xl
-                    spacing: MichiTheme.spacing.xxl
+                    anchors.margins: root.compact
+                                     ? MichiTheme.spacing.lg
+                                     : MichiTheme.spacing.xl
+                    columns: root.compact ? 1 : 2
+                    rows: root.compact ? 2 : 1
+                    columnSpacing: MichiTheme.spacing.xxl
+                    rowSpacing: MichiTheme.spacing.md
 
                     Item {
-                        Layout.preferredWidth: Math.min(hero.height - 64, hero.width * 0.35)
+                        Layout.row: 0
+                        Layout.column: 0
+                        Layout.alignment: Qt.AlignCenter
+                        Layout.preferredWidth: root.compact
+                                               ? Math.min(240, hero.width * 0.42)
+                                               : Math.min(hero.height - 64, hero.width * 0.34)
                         Layout.preferredHeight: Layout.preferredWidth
-                        Layout.alignment: Qt.AlignVCenter
 
                         Rectangle {
                             anchors.fill: parent
@@ -124,7 +243,9 @@ Item {
                         CoverImage {
                             anchors.fill: parent
                             coverRadius: MichiTheme.radius.lg
-                            coverKey: root.featuredAlbum.coverKey || root.featuredAlbum.albumKey || ""
+                            coverKey: root.featuredAlbum.coverKey ||
+                                      root.featuredAlbum.cover_key ||
+                                      root.albumKeyOf(root.featuredAlbum)
                         }
 
                         Rectangle {
@@ -135,6 +256,7 @@ Item {
                             height: 28
                             radius: MichiTheme.radius.pill
                             color: MichiTheme.colors.surfaceOverlay
+
                             Text {
                                 id: featuredBadge
                                 anchors.centerIn: parent
@@ -148,9 +270,11 @@ Item {
                     }
 
                     ColumnLayout {
+                        Layout.row: root.compact ? 1 : 0
+                        Layout.column: root.compact ? 0 : 1
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignVCenter
-                        spacing: MichiTheme.spacing.md
+                        spacing: MichiTheme.spacing.sm
 
                         Text {
                             text: qsTr("Michi Magazine")
@@ -163,9 +287,15 @@ Item {
 
                         Text {
                             Layout.fillWidth: true
-                            text: root.featuredAlbum.title || qsTr("Tu colección, convertida en portada")
+                            text: root.albumTitleOf(root.featuredAlbum) ||
+                                  qsTr("Tu colección, convertida en portada")
                             color: MichiTheme.colors.textPrimary
-                            font.pixelSize: Math.max(MichiTheme.typography.pageTitleSize, Math.min(38, hero.width * 0.035))
+                            font.pixelSize: root.compact
+                                            ? MichiTheme.typography.pageTitleSize
+                                            : Math.max(
+                                                  MichiTheme.typography.pageTitleSize,
+                                                  Math.min(38, hero.width * 0.035)
+                                              )
                             font.weight: MichiTheme.typography.weightBold
                             wrapMode: Text.WordWrap
                             maximumLineCount: 2
@@ -174,80 +304,58 @@ Item {
 
                         Text {
                             Layout.fillWidth: true
-                            text: root.featuredAlbum.artist || qsTr("Explora álbumes con una presentación editorial de alto impacto")
+                            text: root.albumArtistOf(root.featuredAlbum) ||
+                                  qsTr("Explora álbumes con una presentación editorial")
                             color: MichiTheme.colors.textSecondary
                             font.pixelSize: MichiTheme.typography.sectionTitleSize
                             wrapMode: Text.WordWrap
                             maximumLineCount: 2
+                            elide: Text.ElideRight
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: (root.albumYearOf(root.featuredAlbum) > 0
+                                   ? root.albumYearOf(root.featuredAlbum)
+                                   : qsTr("Año desconocido")) +
+                                  " · " + root.albumTrackCountOf(root.featuredAlbum) +
+                                  " " + qsTr("canciones")
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.bodySize
                         }
 
                         RowLayout {
                             spacing: MichiTheme.spacing.sm
-                            Text {
-                                text: (root.featuredAlbum.year || 0) > 0 ? root.featuredAlbum.year : qsTr("Año desconocido")
-                                color: MichiTheme.colors.textMuted
-                                font.pixelSize: MichiTheme.typography.bodySize
-                            }
-                            Rectangle { width: 4; height: 4; radius: 2; color: MichiTheme.colors.textMuted }
-                            Text {
-                                text: (root.featuredAlbum.trackCount || 0) + " " + qsTr("canciones")
-                                color: MichiTheme.colors.textMuted
-                                font.pixelSize: MichiTheme.typography.bodySize
-                            }
-                        }
 
-                        RowLayout {
-                            spacing: MichiTheme.spacing.sm
                             MichiButton {
                                 text: qsTr("Reproducir álbum")
                                 variant: "primary"
-                                onClicked: {
-                                    if (root.bridge && root.bridge.playAlbum)
-                                        root.bridge.playAlbum(root.featuredAlbum.albumKey || "")
-                                }
+                                enabled: root.albumKeyOf(root.featuredAlbum) !== ""
+                                onClicked: root.playFeatured()
                             }
+
                             MichiButton {
                                 text: qsTr("Abrir detalles")
                                 variant: "ghost"
-                                onClicked: root.albumClicked(root.featuredAlbum.albumKey || "", root.featuredAlbum.title || "",
-                                                             root.featuredAlbum.artist || "", root.featuredAlbum.year || 0)
+                                enabled: root.albumKeyOf(root.featuredAlbum) !== ""
+                                onClicked: root.openFeatured()
                             }
-                        }
-                    }
-                }
 
-                Row {
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    anchors.margins: MichiTheme.spacing.lg
-                    spacing: MichiTheme.spacing.xs
+                            Item { Layout.fillWidth: true }
 
-                    Repeater {
-                        model: [qsTr("Anterior"), qsTr("Siguiente")]
-                        Rectangle {
-                            required property int index
-                            required property string modelData
-                            width: 38; height: 38; radius: 19
-                            color: magazineNavMouse.containsMouse
-                                   ? MichiTheme.colors.surfacePressed
-                                   : MichiTheme.colors.surfaceOverlay
-                            border.width: MichiTheme.borderWidth
-                            border.color: MichiTheme.colors.borderCard
-                            Text {
-                                anchors.centerIn: parent
-                                text: index === 0 ? "‹" : "›"
-                                color: MichiTheme.colors.textPrimary
-                                font.pixelSize: 24
+                            MichiButton {
+                                text: "‹"
+                                variant: "ghost"
+                                onClicked: root.stepFeatured(-1)
+                                Accessible.name: qsTr("Álbum anterior")
                             }
-                            MouseArea {
-                                id: magazineNavMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.stepFeatured(index === 0 ? -1 : 1)
+
+                            MichiButton {
+                                text: "›"
+                                variant: "ghost"
+                                onClicked: root.stepFeatured(1)
+                                Accessible.name: qsTr("Álbum siguiente")
                             }
-                            ToolTip.visible: magazineNavMouse.containsMouse
-                            ToolTip.text: modelData
                         }
                     }
                 }
@@ -256,15 +364,24 @@ Item {
             RowLayout {
                 width: parent.width
                 spacing: MichiTheme.spacing.md
+
                 Text {
                     text: qsTr("Descubrimiento rápido")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightBold
                 }
-                Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: MichiTheme.colors.borderSubtle
+                }
+
                 Text {
-                    text: root.albumModel ? root.albumModel.totalCount + " " + qsTr("álbumes") : ""
+                    text: root.albumModel
+                          ? qsTr("%1 álbumes").arg(root.albumModel.totalCount)
+                          : ""
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.metaSize
                 }
@@ -272,6 +389,7 @@ Item {
 
             ListView {
                 id: discoveryRail
+                objectName: "albumMagazineDiscoveryRail"
                 width: parent.width
                 height: 220
                 orientation: ListView.Horizontal
@@ -282,22 +400,65 @@ Item {
                 snapMode: ListView.SnapToItem
                 activeFocusOnTab: true
                 keyNavigationWraps: false
+                cacheBuffer: 360
 
-                ScrollBar.horizontal: ScrollBar { height: 6; policy: ScrollBar.AsNeeded }
+                ScrollBar.horizontal: ScrollBar {
+                    height: 6
+                    policy: ScrollBar.AsNeeded
+                }
 
                 delegate: Item {
                     id: railCard
+                    required property int index
+                    required property string albumKey
+                    required property string title
+                    required property string artist
+                    required property string coverKey
+                    required property var year
+
                     width: 168
                     height: discoveryRail.height - 12
 
                     Rectangle {
                         anchors.fill: parent
                         radius: MichiTheme.radius.lg
-                        color: railMouse.containsMouse ? MichiTheme.colors.surfaceCardHover : MichiTheme.colors.surfaceCard
-                        border.width: MichiTheme.borderWidth
-                        border.color: railMouse.containsMouse ? MichiTheme.colors.borderHover : MichiTheme.colors.borderCard
-                        scale: railMouse.containsMouse ? 1.018 : 1.0
-                        Behavior on scale { NumberAnimation { duration: MichiTheme.motionFast } }
+                        color: railCard.index === root.featuredIndex
+                               ? MichiTheme.colors.accentSelection
+                               : railMouse.containsMouse
+                                 ? MichiTheme.colors.surfaceCardHover
+                                 : MichiTheme.colors.surfaceCard
+                        border.width: railCard.index === root.featuredIndex
+                                      ? MichiTheme.borderWidthFocus
+                                      : MichiTheme.borderWidth
+                        border.color: railCard.index === root.featuredIndex
+                                      ? MichiTheme.colors.borderFocus
+                                      : railMouse.containsMouse
+                                        ? MichiTheme.colors.borderHover
+                                        : MichiTheme.colors.borderCard
+                        scale: railMouse.containsMouse ? 1.012 : 1.0
+                        clip: true
+
+                        Behavior on scale {
+                            NumberAnimation { duration: MichiTheme.motionFast }
+                        }
+
+                        MouseArea {
+                            id: railMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            acceptedButtons: Qt.LeftButton
+                            onClicked: root.selectFeatured(railCard.index)
+                            onDoubleClicked: {
+                                root.selectFeatured(railCard.index)
+                                root.albumClicked(
+                                    railCard.albumKey,
+                                    railCard.title,
+                                    railCard.artist,
+                                    Number(railCard.year) || 0
+                                )
+                            }
+                        }
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -308,38 +469,25 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: width
                                 coverRadius: MichiTheme.radius.md
-                                coverKey: model.coverKey || model.albumKey || ""
+                                coverKey: railCard.coverKey || railCard.albumKey
                             }
+
                             Text {
                                 Layout.fillWidth: true
-                                text: model.title || qsTr("Álbum sin título")
+                                text: railCard.title || qsTr("Álbum sin título")
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 font.weight: MichiTheme.typography.weightSemiBold
                                 elide: Text.ElideRight
                             }
+
                             Text {
                                 Layout.fillWidth: true
-                                text: model.artist || qsTr("Artista desconocido")
+                                text: railCard.artist || qsTr("Artista desconocido")
                                 color: MichiTheme.colors.textSecondary
                                 font.pixelSize: MichiTheme.typography.metaSize
                                 elide: Text.ElideRight
                             }
-                        }
-                    }
-
-                    MouseArea {
-                        id: railMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            root.featuredIndex = index
-                            flick.contentY = 0
-                        }
-                        onDoubleClicked: {
-                            if (root.bridge && root.bridge.playAlbum)
-                                root.bridge.playAlbum(model.albumKey || "")
                         }
                     }
                 }
@@ -348,139 +496,183 @@ Item {
             RowLayout {
                 width: parent.width
                 spacing: MichiTheme.spacing.md
+
                 Text {
                     text: qsTr("Ediciones de la colección")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightBold
                 }
-                Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: MichiTheme.colors.borderSubtle
+                }
+            }
+        }
+
+        delegate: Rectangle {
+            id: article
+            required property int index
+            required property string albumKey
+            required property string title
+            required property string artist
+            required property string coverKey
+            required property var year
+            required property var trackCount
+
+            width: magazineList.width - magazineList.leftMargin - magazineList.rightMargin
+            height: 108
+            radius: MichiTheme.radius.lg
+            color: ListView.isCurrentItem
+                   ? MichiTheme.colors.accentSelection
+                   : articleMouse.containsMouse
+                     ? MichiTheme.colors.surfaceCardHover
+                     : MichiTheme.colors.surfaceCard
+            border.width: ListView.isCurrentItem
+                          ? MichiTheme.borderWidthFocus
+                          : MichiTheme.borderWidth
+            border.color: ListView.isCurrentItem
+                          ? MichiTheme.colors.borderFocus
+                          : articleMouse.containsMouse
+                            ? MichiTheme.colors.borderHover
+                            : MichiTheme.colors.borderCard
+            clip: true
+
+            Accessible.role: Accessible.Button
+            Accessible.name: article.title || qsTr("Álbum sin título")
+            Accessible.description: qsTr("Doble clic para abrir. Espacio para reproducir.")
+            Accessible.onPressAction: root.albumClicked(
+                                          article.albumKey,
+                                          article.title,
+                                          article.artist,
+                                          Number(article.year) || 0
+                                      )
+
+            MouseArea {
+                id: articleMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                acceptedButtons: Qt.LeftButton
+                onPressed: magazineList.currentIndex = article.index
+                onDoubleClicked: root.albumClicked(
+                                     article.albumKey,
+                                     article.title,
+                                     article.artist,
+                                     Number(article.year) || 0
+                                 )
             }
 
-            ListView {
-                id: articleList
-                width: parent.width
-                height: Math.min(620, root.albumModel ? root.albumModel.count * 112 : 0)
-                model: root.albumModel
-                clip: true
-                boundsBehavior: Flickable.StopAtBounds
-                spacing: MichiTheme.spacing.sm
-                interactive: true
-                activeFocusOnTab: true
-                keyNavigationWraps: false
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: MichiTheme.spacing.sm
+                spacing: MichiTheme.spacing.md
 
-                Keys.onReturnPressed: root.openArticleCurrent()
-                Keys.onEnterPressed: root.openArticleCurrent()
-                Keys.onSpacePressed: {
-                    if (root.albumModel && currentIndex >= 0 && root.bridge && root.bridge.playAlbum) {
-                        var item = root.albumModel.get(currentIndex)
-                        root.bridge.playAlbum(item.albumKey || "")
+                CoverImage {
+                    Layout.preferredWidth: 88
+                    Layout.preferredHeight: 88
+                    coverRadius: MichiTheme.radius.md
+                    coverKey: article.coverKey || article.albumKey
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 3
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: article.title || qsTr("Álbum sin título")
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.sectionTitleSize
+                        font.weight: MichiTheme.typography.weightSemiBold
+                        elide: Text.ElideRight
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: article.artist || qsTr("Artista desconocido")
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        elide: Text.ElideRight
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: (Number(article.year) > 0 ? article.year + " · " : "") +
+                              (Number(article.trackCount) || 0) + " " + qsTr("canciones")
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.metaSize
                     }
                 }
 
-                ScrollBar.vertical: ScrollBar { width: 8; policy: ScrollBar.AsNeeded }
+                Text {
+                    visible: !root.compact
+                    text: qsTr("EDICIÓN") + " " + String(article.index + 1).padStart(2, "0")
+                    color: MichiTheme.colors.accentBlue
+                    font.pixelSize: MichiTheme.typography.captionSize
+                    font.weight: MichiTheme.typography.weightBold
+                    font.letterSpacing: 1.2
+                }
 
-                delegate: Rectangle {
-                    id: article
-                    width: articleList.width
-                    height: 104
-                    radius: MichiTheme.radius.lg
-                    color: articleMouse.containsMouse ? MichiTheme.colors.surfaceCardHover : MichiTheme.colors.surfaceCard
-                    border.width: MichiTheme.borderWidth
-                    border.color: articleMouse.containsMouse ? MichiTheme.colors.borderHover : MichiTheme.colors.borderCard
+                Rectangle {
+                    Layout.preferredWidth: 38
+                    Layout.preferredHeight: 38
+                    radius: 19
+                    color: playMouse.pressed
+                           ? MichiTheme.colors.accentSecondary
+                           : articleMouse.containsMouse || ListView.isCurrentItem
+                             ? MichiTheme.colors.accentPrimary
+                             : MichiTheme.colors.surfaceElevation3
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.sm
-                        spacing: MichiTheme.spacing.md
+                    Accessible.role: Accessible.Button
+                    Accessible.name: qsTr("Reproducir %1").arg(
+                                         article.title || qsTr("álbum")
+                                     )
+                    Accessible.onPressAction: {
+                        if (root.bridge && root.bridge.playAlbum)
+                            root.bridge.playAlbum(article.albumKey)
+                    }
 
-                        CoverImage {
-                            Layout.preferredWidth: 84
-                            Layout.preferredHeight: 84
-                            coverRadius: MichiTheme.radius.md
-                            coverKey: model.coverKey || model.albumKey || ""
-                        }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 3
-                            Text {
-                                Layout.fillWidth: true
-                                text: model.title || qsTr("Álbum sin título")
-                                color: MichiTheme.colors.textPrimary
-                                font.pixelSize: MichiTheme.typography.sectionTitleSize
-                                font.weight: MichiTheme.typography.weightSemiBold
-                                elide: Text.ElideRight
-                            }
-                            Text {
-                                Layout.fillWidth: true
-                                text: model.artist || qsTr("Artista desconocido")
-                                color: MichiTheme.colors.textSecondary
-                                font.pixelSize: MichiTheme.typography.bodySize
-                                elide: Text.ElideRight
-                            }
-                            Text {
-                                Layout.fillWidth: true
-                                text: ((model.year || 0) > 0 ? model.year + " · " : "") +
-                                      (model.trackCount || 0) + " " + qsTr("canciones")
-                                color: MichiTheme.colors.textMuted
-                                font.pixelSize: MichiTheme.typography.metaSize
-                            }
-                        }
-
-                        Text {
-                            text: qsTr("EDICIÓN") + " " + String(index + 1).padStart(2, "0")
-                            color: MichiTheme.colors.accentBlue
-                            font.pixelSize: MichiTheme.typography.captionSize
-                            font.weight: MichiTheme.typography.weightBold
-                            font.letterSpacing: 1.2
-                        }
-
-                        Rectangle {
-                            Layout.preferredWidth: 38
-                            Layout.preferredHeight: 38
-                            radius: 19
-                            color: articleMouse.containsMouse
-                                   ? MichiTheme.colors.accentPrimary
-                                   : MichiTheme.colors.surfaceElevation3
-                            Text {
-                                anchors.centerIn: parent
-                                text: "›"
-                                color: articleMouse.containsMouse
-                                       ? MichiTheme.colors.textOnAccent
-                                       : MichiTheme.colors.textSecondary
-                                font.pixelSize: 22
-                            }
-                        }
+                    Text {
+                        anchors.centerIn: parent
+                        text: "▶"
+                        color: articleMouse.containsMouse || ListView.isCurrentItem
+                               ? MichiTheme.colors.textOnAccent
+                               : MichiTheme.colors.textSecondary
+                        font.pixelSize: 12
                     }
 
                     MouseArea {
-                        id: articleMouse
+                        id: playMouse
                         anchors.fill: parent
-                        hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onPressed: articleList.currentIndex = index
-                        onClicked: root.scheduleOpen(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
-                        onDoubleClicked: {
-                            openTimer.stop()
+                        onClicked: {
+                            magazineList.currentIndex = article.index
                             if (root.bridge && root.bridge.playAlbum)
-                                root.bridge.playAlbum(model.albumKey || "")
+                                root.bridge.playAlbum(article.albumKey)
                         }
                     }
                 }
             }
+        }
 
-            Item {
-                width: parent.width
-                height: root.albumModel && root.albumModel.hasMore ? 54 : MichiTheme.spacing.md
-                MichiButton {
-                    anchors.centerIn: parent
-                    visible: root.albumModel && root.albumModel.hasMore
-                    enabled: root.albumModel && !root.albumModel.loadingMore
-                    text: root.albumModel && root.albumModel.loadingMore ? qsTr("Cargando…") : qsTr("Cargar más ediciones")
-                    variant: "ghost"
-                    onClicked: root.albumModel.fetchMore()
-                }
+        footer: Item {
+            width: magazineList.width
+            height: root.albumModel && root.albumModel.hasMore
+                    ? 56
+                    : MichiTheme.spacing.lg
+
+            MichiButton {
+                anchors.centerIn: parent
+                visible: root.albumModel && root.albumModel.hasMore
+                enabled: root.albumModel && !root.albumModel.loadingMore
+                text: root.albumModel && root.albumModel.loadingMore
+                      ? qsTr("Cargando…")
+                      : qsTr("Cargar más ediciones")
+                variant: "ghost"
+                onClicked: root.albumModel.fetchMore()
             }
         }
     }
