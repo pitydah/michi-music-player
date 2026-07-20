@@ -1,7 +1,7 @@
 """Metadata normalization, validation and catalogue-quality helpers.
 
 The indexer and every batch write use this module as the single normalization
-boundary.  Display values keep their human-readable casing while dedicated
+boundary. Display values keep their human-readable casing while dedicated
 ``normalized_*`` columns provide deterministic grouping, sorting and filters.
 """
 from __future__ import annotations
@@ -14,7 +14,6 @@ import re
 import unicodedata
 from datetime import datetime, timezone
 from typing import Any
-
 
 # ── Filename-to-metadata inference ──
 
@@ -82,7 +81,11 @@ def infer_metadata_from_filename(filepath: str) -> dict[str, str | int]:
     if not stem:
         return result
 
-    parts = [part.strip() for part in _SEPARATORS.split(stem, maxsplit=1) if part.strip()]
+    parts = [
+        part.strip()
+        for part in _SEPARATORS.split(stem, maxsplit=1)
+        if part.strip()
+    ]
     if len(parts) == 2:
         result["artist"], result["title"] = parts
     elif len(parts) == 1:
@@ -109,7 +112,11 @@ def normalize_sort_text(text: Any, max_length: int = 512) -> str:
     if not display:
         return ""
     decomposed = unicodedata.normalize("NFKD", display)
-    without_marks = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+    without_marks = "".join(
+        character
+        for character in decomposed
+        if not unicodedata.combining(character)
+    )
     folded = _SORT_PUNCTUATION.sub(" ", without_marks.casefold())
     return " ".join(folded.split())[:max_length]
 
@@ -136,7 +143,9 @@ def normalize_album_title(title: Any) -> str:
 
 def normalize_genres(value: Any) -> list[str]:
     """Return deduplicated genre values while preserving display casing."""
-    raw = normalize_text(value, 1024)
+    # Split before generic control-character cleanup: NUL is a real separator in
+    # several tag containers and must not be silently converted into whitespace.
+    raw = unicodedata.normalize("NFC", _coerce_scalar(value)).strip()
     if not raw:
         return []
     if raw.startswith("(") and ")" in raw:
@@ -197,13 +206,23 @@ def normalize_disc_track(value: Any) -> tuple[int, int]:
     if isinstance(value, (list, tuple)):
         first = value[0] if value else 0
         second = value[1] if len(value) > 1 else 0
-        value = f"{first}/{second}"
+        # A scanner may already deliver ``3/12`` in the first field with an
+        # empty total. Preserve that fraction instead of producing ``3/12/0``.
+        first_text = _coerce_scalar(first).strip()
+        if ("/" in first_text or "," in first_text) and second in (None, "", 0):
+            value = first_text
+        else:
+            value = f"{first}/{second}"
     text = _coerce_scalar(value).strip().strip("()")
     text = text.replace(",", "/")
     with contextlib.suppress(ValueError, TypeError):
         parts = text.split("/", 1)
         number = int(float(parts[0])) if parts[0].strip() else 0
-        total = int(float(parts[1])) if len(parts) > 1 and parts[1].strip() else 0
+        total = (
+            int(float(parts[1]))
+            if len(parts) > 1 and parts[1].strip()
+            else 0
+        )
         number = number if 0 <= number <= 999 else 0
         total = total if 0 <= total <= 999 else 0
         if total and number > total:
@@ -222,7 +241,11 @@ def normalize_bpm(value: Any) -> int:
     return 0
 
 
-def _safe_int(value: Any, minimum: int = 0, maximum: int | None = None) -> int:
+def _safe_int(
+    value: Any,
+    minimum: int = 0,
+    maximum: int | None = None,
+) -> int:
     with contextlib.suppress(ValueError, TypeError):
         number = int(float(value or 0))
         if number < minimum or (maximum is not None and number > maximum):
@@ -231,8 +254,11 @@ def _safe_int(value: Any, minimum: int = 0, maximum: int | None = None) -> int:
     return 0
 
 
-def _safe_float(value: Any, minimum: float | None = None,
-                maximum: float | None = None) -> float:
+def _safe_float(
+    value: Any,
+    minimum: float | None = None,
+    maximum: float | None = None,
+) -> float:
     with contextlib.suppress(ValueError, TypeError):
         number = float(value or 0.0)
         if minimum is not None and number < minimum:
@@ -288,9 +314,17 @@ def assess_metadata_quality(record: dict[str, Any]) -> tuple[int, list[str]]:
 def _metadata_source(record: dict[str, Any]) -> str:
     stem = normalize_sort_text(os.path.splitext(record.get("filename", ""))[0])
     title = normalize_sort_text(record.get("title"))
-    has_rich_tags = any(record.get(key) for key in (
-        "album", "genre", "composer", "mb_track_id", "mb_album_id", "isrc",
-    ))
+    has_rich_tags = any(
+        record.get(key)
+        for key in (
+            "album",
+            "genre",
+            "composer",
+            "mb_track_id",
+            "mb_album_id",
+            "isrc",
+        )
+    )
     if has_rich_tags:
         return "embedded_tags"
     if title and title == stem:
@@ -301,13 +335,31 @@ def _metadata_source(record: dict[str, Any]) -> str:
 def compute_metadata_hash(record: dict[str, Any]) -> str:
     """Hash semantic metadata only, independent of path and file timestamps."""
     fields = (
-        "title", "artist", "album", "albumartist", "year", "genre",
-        "track_number", "track_total", "disc_number", "disc_total",
-        "composer", "isrc", "mb_track_id", "mb_album_id", "mb_artist_id",
-        "mb_albumartist_id", "mb_releasegroup_id",
+        "title",
+        "artist",
+        "album",
+        "albumartist",
+        "year",
+        "genre",
+        "track_number",
+        "track_total",
+        "disc_number",
+        "disc_total",
+        "composer",
+        "isrc",
+        "mb_track_id",
+        "mb_album_id",
+        "mb_artist_id",
+        "mb_albumartist_id",
+        "mb_releasegroup_id",
     )
     payload = {field: record.get(field, "") for field in fields}
-    encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    encoded = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     return hashlib.sha256(encoded.encode("utf-8", errors="replace")).hexdigest()
 
 
@@ -319,7 +371,10 @@ def enrich_index_record(record: dict[str, Any]) -> dict[str, Any]:
         if field in result:
             result[field] = normalize_text(result.get(field), limit)
 
-    result["title"] = normalize_text(result.get("title"), _TEXT_LIMITS["title"])
+    result["title"] = normalize_text(
+        result.get("title"),
+        _TEXT_LIMITS["title"],
+    )
     result["artist"] = normalize_artist_name(result.get("artist"))
     result["album"] = normalize_display_album_title(result.get("album"))
     result["albumartist"] = normalize_artist_name(result.get("albumartist"))
@@ -328,19 +383,24 @@ def enrich_index_record(record: dict[str, Any]) -> dict[str, Any]:
     result["bpm"] = normalize_bpm(result.get("bpm"))
     result["isrc"] = normalize_isrc(result.get("isrc"))
 
-    track_number, track_total = normalize_disc_track(
-        (result.get("track_number", 0), result.get("track_total", 0))
-    )
-    disc_number, disc_total = normalize_disc_track(
-        (result.get("disc_number", 0), result.get("disc_total", 0))
-    )
+    track_number, track_total = normalize_disc_track((
+        result.get("track_number", 0),
+        result.get("track_total", 0),
+    ))
+    disc_number, disc_total = normalize_disc_track((
+        result.get("disc_number", 0),
+        result.get("disc_total", 0),
+    ))
     result["track_number"] = track_number
     result["track_total"] = track_total
     result["disc_number"] = disc_number
     result["disc_total"] = disc_total
 
     for field in (
-        "mb_track_id", "mb_album_id", "mb_albumartist_id", "mb_artist_id",
+        "mb_track_id",
+        "mb_album_id",
+        "mb_albumartist_id",
+        "mb_artist_id",
         "mb_releasegroup_id",
     ):
         result[field] = normalize_mb_id(result.get(field))
@@ -363,8 +423,13 @@ def enrich_index_record(record: dict[str, Any]) -> dict[str, Any]:
     result["metadata_source"] = source
     result["metadata_completeness"] = completeness
     result["metadata_confidence"] = round(
-        min(1.0, confidence_base * (0.65 + completeness / 285.0)), 4
+        min(1.0, confidence_base * (0.65 + completeness / 285.0)),
+        4,
     )
-    result["metadata_issues"] = json.dumps(issues, ensure_ascii=False, separators=(",", ":"))
+    result["metadata_issues"] = json.dumps(
+        issues,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
     result["metadata_hash"] = compute_metadata_hash(result)
     return result
