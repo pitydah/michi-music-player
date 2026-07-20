@@ -575,7 +575,7 @@ ROUTES: dict[str, dict] = {
         "icon": "processing", "order": 20, "sidebar_visible": True,
         "sidebar_group": "audio_lab", "expandable": False,
         "status": "functional", "capability": "audio_lab",
-        "aliases": ["equalizer", "outputs", "eq"],
+        "aliases": ["outputs"],
         "keywords": ["procesamiento", "ecualizador", "dsp", "perfiles", "normalización", "conversión"],
         "placeholder_state": None,
         "params": None, "category": "tools",
@@ -1064,6 +1064,18 @@ ROUTES: dict[str, dict] = {
     # ═══════════════════════════════════════════════════════════════════
     # SETTINGS (fixed bottom sidebar entry)
     # ═══════════════════════════════════════════════════════════════════
+    "eq": {
+        "route": "eq", "parent": None,
+        "title": "Ecualizador", "breadcrumb_title": "Ecualizador",
+        "source": "../pages/equalizer/EqualizerPage.qml",
+        "icon": "eq", "order": 65, "sidebar_visible": True,
+        "sidebar_group": None, "expandable": False,
+        "status": "functional", "capability": "eq",
+        "aliases": ["equalizer"],
+        "keywords": ["ecualizador", "eq", "dsp", "bandas", "presets"],
+        "placeholder_state": None,
+        "params": None, "category": "tools",
+    },
     "settings": {
         "route": "settings", "parent": None, "title": "Ajustes",
         "breadcrumb_title": "Ajustes",
