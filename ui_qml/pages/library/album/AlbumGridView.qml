@@ -217,7 +217,7 @@ Item {
                                 height: 38
                                 radius: 19
                                 color: playMouse.pressed
-                                       ? MichiTheme.colors.accentPressed
+                                       ? MichiTheme.colors.accentSecondary
                                        : MichiTheme.colors.accentPrimary
                                 opacity: cardMouse.containsMouse || card.selected ? 1 : 0
                                 scale: opacity > 0 ? 1 : 0.88
