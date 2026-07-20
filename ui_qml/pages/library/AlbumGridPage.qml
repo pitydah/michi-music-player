@@ -1,9 +1,6 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
-import "../../theme"
-import "../../components"
-import "../../materials"
+import "album" as AlbumViews
 
 Item {
     id: root
@@ -11,61 +8,33 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Álbumes"
+    Accessible.name: qsTr("Álbumes")
 
-    property var albumModel: null
-    property var bridge: null
+    property var albumModel: typeof libraryBridge !== "undefined" && libraryBridge
+                             ? libraryBridge.albumModel : null
+    property var bridge: typeof libraryBridge !== "undefined" ? libraryBridge : null
+    property int currentView: 0
 
     signal albumClicked(string albumKey, string title, string artist, int year)
 
-    ColumnLayout {
-        anchors.fill: parent; spacing: 0
+    AlbumViews.AlbumViewHost {
+        id: albumHost
+        anchors.fill: parent
+        albumModel: root.albumModel
+        bridge: root.bridge
+        currentView: root.currentView
 
-        Rectangle {
-            Layout.fillWidth: true; Layout.preferredHeight: MichiTheme.spacing.xxxl
-            color: MichiTheme.colors.surfaceCard
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: MichiTheme.spacing.md; anchors.rightMargin: MichiTheme.spacing.md
-
-                LibraryViewSelector {
-                    id: viewSelector
-                    currentView: 0
-                    onViewChanged: function(idx) { albumContainer.currentView = idx }
-                }
-
-                Item { Layout.fillWidth: true }
-
-                Text {
-                    text: root.albumModel ? root.albumModel.totalCount + " álbumes" : ""
-                    color: MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.metaSize
-                    visible: root.albumModel && root.albumModel.totalCount > 0
-                }
-            }
+        onViewChanged: function(index) {
+            root.currentView = index
         }
 
-        Item {
-            Layout.fillWidth: true; Layout.fillHeight: true
-
-            AlbumGridView {
-                id: albumGridView
-                anchors.fill: parent
-                visible: viewSelector.currentView === 0
-                albumModel: root.albumModel
-                bridge: root.bridge
-                onAlbumClicked: function(key, title, artist, year) { root.albumClicked(key, title, artist, year) }
-            }
-
-            AlbumListView {
-                id: albumListView
-                anchors.fill: parent
-                visible: viewSelector.currentView === 1
-                albumModel: root.albumModel
-                bridge: root.bridge
-                onAlbumClicked: function(key, title, artist, year) { root.albumClicked(key, title, artist, year) }
-            }
+        onAlbumClicked: function(key, title, artist, year) {
+            root.albumClicked(key, title, artist, year)
+            if (typeof navigationBridge !== "undefined" && navigationBridge && key)
+                navigationBridge.navigateWithParams(
+                    "library.album_detail",
+                    { album_key: key }
+                )
         }
     }
 }
