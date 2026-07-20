@@ -25,11 +25,11 @@ def _create(engine, relative_path: str, **properties):
     assert component.isReady(), component.errorString()
     item = component.createWithInitialProperties(properties)
     assert item is not None, component.errorString()
-    return item
+    return component, item
 
 
 def test_cover_image_compiles_without_runtime_context_bridge(engine):
-    item = _create(
+    component, item = _create(
         engine,
         "components/CoverImage.qml",
         width=240,
@@ -37,6 +37,7 @@ def test_cover_image_compiles_without_runtime_context_bridge(engine):
         coverKey="album-key",
     )
     try:
+        assert component.isReady()
         assert item.objectName() == "coverImage"
         assert item.property("ready") is False
     finally:
@@ -44,25 +45,32 @@ def test_cover_image_compiles_without_runtime_context_bridge(engine):
 
 
 def test_library_albums_route_uses_premium_host(engine):
-    item = _create(
+    component, item = _create(
         engine,
         "pages/library/AlbumGridPage.qml",
         width=1200,
         height=760,
     )
     try:
+        assert component.isReady()
         assert item.objectName() == "albumGridPage"
         host = item.findChild(QObject, "albumViewHost")
         assert host is not None
         modes_value = host.property("viewModes")
-        modes = modes_value.toVariant() if hasattr(modes_value, "toVariant") else modes_value
+        modes = (
+            modes_value.toVariant()
+            if hasattr(modes_value, "toVariant")
+            else modes_value
+        )
         assert len(modes) == 5
     finally:
         item.deleteLater()
 
 
 def test_compatibility_album_route_no_longer_uses_legacy_selector():
-    source = (QML_ROOT / "pages/library/AlbumGridPage.qml").read_text(encoding="utf-8")
+    source = (QML_ROOT / "pages/library/AlbumGridPage.qml").read_text(
+        encoding="utf-8"
+    )
     assert "AlbumViewHost" in source
     assert "LibraryViewSelector" not in source
     assert "AlbumListView" not in source
@@ -70,13 +78,14 @@ def test_compatibility_album_route_no_longer_uses_legacy_selector():
 
 @pytest.mark.parametrize(("width", "expected_count"), ((900, 5), (1400, 7)))
 def test_coverflow_caps_visible_delegates(engine, qapp, width, expected_count):
-    item = _create(
+    component, item = _create(
         engine,
         "pages/library/album/AlbumCoverFlowView.qml",
         width=width,
         height=760,
     )
     try:
+        assert component.isReady()
         qapp.processEvents()
         path_view = item.findChild(QObject, "albumCoverFlowPathView")
         assert path_view is not None
