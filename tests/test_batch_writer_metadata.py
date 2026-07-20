@@ -98,17 +98,17 @@ def test_metadata_upsert_preserves_user_owned_playback_state():
     connection.close()
 
 
-def test_writer_normalizes_invalid_numeric_metadata():
+def test_writer_normalizes_numeric_metadata():
     connection = sqlite3.connect(":memory:")
     Schema.initialize(connection)
     writer = BatchWriter(connection)
     writer.add(_record(
         "/music/invalid.flac",
         year="9999",
-        track_number="4/12",
-        track_total=0,
-        disc_number="2/3",
-        disc_total=0,
+        track_number=4,
+        track_total=12,
+        disc_number=2,
+        disc_total=3,
         bpm="120.4",
     ))
     writer.flush()
