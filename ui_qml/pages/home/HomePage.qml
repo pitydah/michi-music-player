@@ -245,9 +245,9 @@ Item {
                     GlassCard {
                         required property var modelData
                         Layout.fillWidth: true
-                        Layout.preferredHeight: index === 0 ? 140 : 120
-                        Layout.minimumHeight: index === 0 ? 140 : 120
-                        Layout.maximumHeight: index === 0 ? 140 : 120
+                        Layout.preferredHeight: 120
+                        Layout.minimumHeight: 120
+                        Layout.maximumHeight: 120
                         activeFocusOnTab: true
                         Accessible.name: modelData.title
                         onClicked: root.goToRoute(modelData.route)
