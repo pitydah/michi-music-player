@@ -13,17 +13,22 @@ Item {
 
     Accessible.role: Accessible.Pane
     Accessible.name: qsTr("CoverFlow de álbumes")
+    Accessible.description: qsTr("Usa izquierda y derecha para explorar, Enter para abrir y espacio para reproducir")
 
     property var albumModel: null
     property var bridge: null
-    property var _pendingAlbum: ({})
     property int coverSize: Math.max(
         176,
         Math.min(300, Math.min(width * 0.235, height * 0.44))
     )
     readonly property var currentAlbum: albumModel && albumModel.count > 0 && albumModel.get
-                                        ? albumModel.get(Math.max(0, Math.min(pathView.currentIndex, albumModel.count - 1)))
-                                        : ({})
+                                         ? albumModel.get(
+                                               Math.max(
+                                                   0,
+                                                   Math.min(pathView.currentIndex, albumModel.count - 1)
+                                               )
+                                           )
+                                         : ({})
 
     signal albumClicked(string albumKey, string title, string artist, int year)
 
@@ -48,7 +53,7 @@ Item {
     }
 
     function openCurrent() {
-        const key = root.albumKeyOf(root.currentAlbum)
+        var key = root.albumKeyOf(root.currentAlbum)
         if (!key)
             return
         root.albumClicked(
@@ -60,25 +65,9 @@ Item {
     }
 
     function playCurrent() {
-        const key = root.albumKeyOf(root.currentAlbum)
+        var key = root.albumKeyOf(root.currentAlbum)
         if (root.bridge && root.bridge.playAlbum && key)
             root.bridge.playAlbum(key)
-    }
-
-    function scheduleOpen(key, title, artist, year) {
-        root._pendingAlbum = { key: key, title: title, artist: artist, year: year }
-        openTimer.restart()
-    }
-
-    Timer {
-        id: openTimer
-        interval: Qt.styleHints.mouseDoubleClickInterval
-        onTriggered: root.albumClicked(
-            root._pendingAlbum.key || "",
-            root._pendingAlbum.title || "",
-            root._pendingAlbum.artist || "",
-            root._pendingAlbum.year || 0
-        )
     }
 
     Rectangle {
@@ -150,8 +139,9 @@ Item {
         }
 
         onCurrentIndexChanged: {
-            if (root.albumModel && root.albumModel.hasMore && !root.albumModel.loadingMore
-                    && currentIndex >= Math.max(0, count - 3))
+            if (root.albumModel && root.albumModel.hasMore &&
+                    !root.albumModel.loadingMore &&
+                    currentIndex >= Math.max(0, count - 3))
                 root.albumModel.fetchMore()
         }
 
@@ -202,7 +192,6 @@ Item {
 
         delegate: Item {
             id: flowItem
-
             required property int index
             required property string albumKey
             required property string title
@@ -217,8 +206,8 @@ Item {
             z: PathView.isCurrentItem ? 1000 : Math.round(PathView.itemDepth || 0)
 
             Accessible.role: Accessible.Button
-            Accessible.name: (flowItem.title || qsTr("Álbum sin título"))
-                             + " — " + (flowItem.artist || "")
+            Accessible.name: (flowItem.title || qsTr("Álbum sin título")) +
+                             " — " + (flowItem.artist || qsTr("Artista desconocido"))
             Accessible.description: PathView.isCurrentItem
                                     ? qsTr("Álbum seleccionado. Enter para abrir, espacio para reproducir")
                                     : qsTr("Seleccionar álbum")
@@ -258,19 +247,50 @@ Item {
                 CoverImage {
                     anchors.fill: parent
                     coverRadius: MichiTheme.radius.md
-                    coverKey: flowItem.coverKey || flowItem.albumKey || ""
+                    coverKey: flowItem.coverKey || flowItem.albumKey
+                }
+
+                MouseArea {
+                    id: coverMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    acceptedButtons: Qt.LeftButton
+                    onClicked: pathView.currentIndex = flowItem.index
+                    onDoubleClicked: {
+                        pathView.currentIndex = flowItem.index
+                        root.albumClicked(
+                            flowItem.albumKey,
+                            flowItem.title,
+                            flowItem.artist,
+                            Number(flowItem.year) || 0
+                        )
+                    }
                 }
 
                 Rectangle {
+                    id: playButton
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
                     anchors.margins: MichiTheme.spacing.sm
                     width: 42
                     height: 42
                     radius: 21
-                    color: MichiTheme.colors.accentPrimary
+                    color: playMouse.pressed
+                           ? MichiTheme.colors.accentSecondary
+                           : MichiTheme.colors.accentPrimary
                     opacity: PathView.isCurrentItem ? 1 : 0
                     scale: PathView.isCurrentItem ? 1 : 0.86
+                    z: 3
+
+                    Accessible.role: Accessible.Button
+                    Accessible.name: qsTr("Reproducir %1").arg(
+                                         flowItem.title || qsTr("álbum")
+                                     )
+                    Accessible.onPressAction: {
+                        if (root.bridge && root.bridge.playAlbum)
+                            root.bridge.playAlbum(flowItem.albumKey)
+                    }
 
                     Behavior on opacity {
                         NumberAnimation { duration: MichiTheme.motionFast }
@@ -287,12 +307,13 @@ Item {
                     }
 
                     MouseArea {
+                        id: playMouse
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: function(mouse) {
-                            mouse.accepted = true
+                        onClicked: {
+                            pathView.currentIndex = flowItem.index
                             if (root.bridge && root.bridge.playAlbum)
-                                root.bridge.playAlbum(flowItem.albumKey || "")
+                                root.bridge.playAlbum(flowItem.albumKey)
                         }
                     }
                 }
@@ -327,27 +348,6 @@ Item {
                              ? MichiTheme.typography.weightSemiBold
                              : MichiTheme.typography.weightMedium
                 elide: Text.ElideRight
-            }
-
-            MouseArea {
-                anchors.fill: artContainer
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    if (!PathView.isCurrentItem)
-                        pathView.currentIndex = flowItem.index
-                    else
-                        root.scheduleOpen(
-                            flowItem.albumKey || "",
-                            flowItem.title || "",
-                            flowItem.artist || "",
-                            flowItem.year || 0
-                        )
-                }
-                onDoubleClicked: {
-                    openTimer.stop()
-                    if (root.bridge && root.bridge.playAlbum)
-                        root.bridge.playAlbum(flowItem.albumKey || "")
-                }
             }
 
             Behavior on scale {
@@ -396,11 +396,12 @@ Item {
 
                 Text {
                     Layout.fillWidth: true
-                    text: (root.albumArtistOf(root.currentAlbum) || qsTr("Artista desconocido"))
-                          + (root.albumYearOf(root.currentAlbum) > 0
-                             ? " · " + root.albumYearOf(root.currentAlbum) : "")
-                          + " · " + root.albumTrackCountOf(root.currentAlbum)
-                          + " " + qsTr("canciones")
+                    text: (root.albumArtistOf(root.currentAlbum) || qsTr("Artista desconocido")) +
+                          (root.albumYearOf(root.currentAlbum) > 0
+                           ? " · " + root.albumYearOf(root.currentAlbum)
+                           : "") +
+                          " · " + root.albumTrackCountOf(root.currentAlbum) +
+                          " " + qsTr("canciones")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.metaSize
                     elide: Text.ElideRight
