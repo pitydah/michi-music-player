@@ -54,7 +54,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: MichiTheme.radius.pill
-        color: root.loading ? MichiTheme.colors.surfaceDisabled : MichiTheme.colors.surfaceInput
+        color: MichiTheme.colors.surfaceInput
         border.width: field.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
         border.color: field.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
 
@@ -101,8 +101,7 @@ Item {
                 placeholderText: root.placeholderText
                 placeholderTextColor: MichiTheme.colors.textMuted
                 text: root.text
-                enabled: !root.loading
-                activeFocusOnTab: enabled && visible
+                activeFocusOnTab: visible
                 verticalAlignment: TextInput.AlignVCenter
                 selectByMouse: true
                 background: Item { }
@@ -139,7 +138,6 @@ Item {
                 tooltipText: qsTr("Limpiar búsqueda")
                 btnSize: Math.min(root.height - MichiTheme.spacing.xs * 2, 28)
                 visible: root.text !== ""
-                enabled: !root.loading
                 accessibleName: qsTr("Limpiar búsqueda")
                 transform: Rotation { angle: 45 }
                 onClicked: root.clearSearch(true)
