@@ -83,7 +83,7 @@ Item {
                     text: root.getThumbnailText()
                     color: MichiTheme.colors.accent
                     font.pixelSize: MichiTheme.typography.bodySize
-                    Accessible.role: Accessible.Icon
+                    Accessible.role: Accessible.Graphic
                     Accessible.name: root.rowType === "track" ? "Canción" : root.rowType === "album" ? "Álbum" : root.rowType === "artist" ? "Artista" : root.rowType === "playlist" ? "Lista" : root.rowType === "folder" ? "Carpeta" : root.rowType === "genre" ? "Género" : root.rowType === "radio" ? "Radio" : root.rowType === "device" ? "Dispositivo" : root.rowType === "server" ? "Servidor" : root.rowType === "action" ? "Acción" : root.rowType === "setting" ? "Ajuste" : "Tipo"
                 }
 

@@ -59,7 +59,7 @@ Rectangle {
             text: qsTr("\u26A0")
             color: MichiTheme.colors.error
             font.pixelSize: MichiTheme.typography.bodySize
-            Accessible.role: Accessible.Icon
+            Accessible.role: Accessible.Graphic
             Accessible.name: "Advertencia"
             Accessible.description: "Indicador de error"
         }

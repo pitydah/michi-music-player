@@ -87,7 +87,7 @@ Item {
                             text: qsTr("▶")
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.captionSize
-                            Accessible.role: Accessible.Icon
+                            Accessible.role: Accessible.Graphic
                             Accessible.name: "Abrir género"
                             Accessible.description: "Navegar a este género"
                         }
