@@ -125,3 +125,52 @@
 9. Fix responsive (800x600, 1024x768, 3840x2160)
 10. Microinteracciones (hover/pressed/focus con Behavior, transitions en Loader)
 11. Commit por commit con verificación runtime + tests después de cada cambio
+
+## Wave 3 — Final State
+
+- SHA final: `68aa4276`
+- Rama: `refactor/premium-ui-wave-3-kimi`
+- 34 commits ahead de `origin/main`
+- Árbol: limpio, sincronizado con remoto
+
+### Commits de wave 3
+
+```
+68aa4276 fix(home): remove index reference not available in Repeater scope
+a12d4e73 refactor(audio-lab): fix comparison panel with real bridge method and A/B display
+fbcbc5c9 refactor(home): deliver a cohesive music-first dashboard
+8e57960b refactor(now-playing): finalize playback command center UX
+ea24f495 docs(uiux): establish Kimi wave 3 visual baseline
+```
+
+### Mejoras realizadas
+
+| Área | Cambio |
+|------|--------|
+| Now Playing | Transporte centrado sobre viewport, carátula 68px, acción en empty state, jerarquía tipográfica |
+| Home | Cards más variados, textos concisos, cardHeights tokens, diseño music-first |
+| Audio Lab | ComparisonPanel: previewComparison real, resultados A/B con colores success/warning |
+| Design System | cardHeights tokens (compact, regular, tall, feature, hero, status) |
+| Accesibilidad | 25 roles inválidos corregidos en 22 archivos |
+| Runtime | 0 warnings, 0 errores, READY confirmado |
+
+### Pruebas ejecutadas
+
+| Suite | Pasados | Fallidos |
+|-------|---------|----------|
+| Runtime warning gate | 4 | 0 |
+| All routes runtime | 97 | 0 |
+| Dialogs runtime | 2 | 0 |
+| Shutdown clean | 2 | 0 |
+| Route registry contract | 14 | 0 |
+| Navigation + home + capability | 31 | 0 |
+| Audio lab + worker | 10 | 0 |
+| **Total** | **160** | **0** |
+
+### Limitaciones
+
+- Sin capturas visuales (Xvfb no instalado)
+- Suite global completa con segfault heredado en core/ai/model_manager.py
+- Recorrido manual requiere sesión gráfica interactiva
+- Placeholders (Podcasts, Sync, Chain) usan FeatureStatePage — funcional pero limitado
+- Deuda Ruff global: 315 warnings heredados de main, fuera de scope
