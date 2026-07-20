@@ -67,6 +67,16 @@ QtObject {
     readonly property int rowHeightComfortable: 44
     readonly property int minimumInteractiveSize: 44
 
+    // ── Card and panel heights ──
+    readonly property QtObject cardHeights: QtObject {
+        readonly property int compact: 120
+        readonly property int regular: 180
+        readonly property int tall: 240
+        readonly property int feature: 120
+        readonly property int hero: 200
+        readonly property int status: 88
+    }
+
     // ── Now Playing heights ──
     readonly property QtObject nowPlaying: QtObject {
         readonly property int desktop: 132
