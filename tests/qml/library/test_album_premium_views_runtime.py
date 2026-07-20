@@ -124,3 +124,42 @@ def test_album_view_switch_does_not_requery_database(engine, qapp):
 
     query.assert_not_called()
     host.deleteLater()
+
+
+def test_album_grid_uses_explicit_roles_and_automatic_pagination():
+    source = (
+        QML_ROOT / "pages/library/album/AlbumGridView.qml"
+    ).read_text(encoding="utf-8")
+
+    assert "required property string albumKey" in source
+    assert "required property int trackCount" in source
+    assert "function maybeFetchMore()" in source
+    assert "onMovementEnded: root.maybeFetchMore()" in source
+    assert "openTimer" not in source
+
+
+def test_album_host_has_non_blocking_loading_and_error_states():
+    source = (
+        QML_ROOT / "pages/library/album/AlbumViewHost.qml"
+    ).read_text(encoding="utf-8")
+
+    assert 'objectName: "albumLoadingMoreIndicator"' in source
+    assert "root.albumModel.retry()" in source
+    assert "Ctrl+1…5 · Ctrl+Tab" in source
+    assert "asynchronous: true" in source
+
+
+def test_library_search_and_filters_use_real_interaction_contracts():
+    toolbar = (
+        QML_ROOT / "components/MichiLibraryToolbar.qml"
+    ).read_text(encoding="utf-8")
+    filters = (
+        QML_ROOT / "pages/library/LibraryFilterBar.qml"
+    ).read_text(encoding="utf-8")
+
+    assert "property int searchDebounceMs: 240" in toolbar
+    assert "sequence: StandardKey.Find" in toolbar
+    assert 'sequence: "F5"' in toolbar
+    assert '{ label: "DSF", value: "dsf" }' in filters
+    assert '{ label: "DFF", value: "dff" }' in filters
+    assert 'value: "dsd"' not in filters
