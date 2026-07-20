@@ -27,20 +27,42 @@ Item {
 
     signal albumClicked(string albumKey, string title, string artist, int year)
 
+    function albumKeyOf(album) {
+        return album ? (album.albumKey || album.album_key || "") : ""
+    }
+
+    function albumTitleOf(album) {
+        return album ? (album.title || "") : ""
+    }
+
+    function albumArtistOf(album) {
+        return album ? (album.artist || album.album_artist || "") : ""
+    }
+
+    function albumYearOf(album) {
+        return album ? (album.year || 0) : 0
+    }
+
+    function albumTrackCountOf(album) {
+        return album ? (album.trackCount || album.track_count || 0) : 0
+    }
+
     function openCurrent() {
-        if (!root.currentAlbum || !root.currentAlbum.albumKey)
+        const key = root.albumKeyOf(root.currentAlbum)
+        if (!key)
             return
         root.albumClicked(
-            root.currentAlbum.albumKey || "",
-            root.currentAlbum.title || "",
-            root.currentAlbum.artist || "",
-            root.currentAlbum.year || 0
+            key,
+            root.albumTitleOf(root.currentAlbum),
+            root.albumArtistOf(root.currentAlbum),
+            root.albumYearOf(root.currentAlbum)
         )
     }
 
     function playCurrent() {
-        if (root.bridge && root.bridge.playAlbum && root.currentAlbum.albumKey)
-            root.bridge.playAlbum(root.currentAlbum.albumKey)
+        const key = root.albumKeyOf(root.currentAlbum)
+        if (root.bridge && root.bridge.playAlbum && key)
+            root.bridge.playAlbum(key)
     }
 
     function scheduleOpen(key, title, artist, year) {
@@ -180,7 +202,13 @@ Item {
 
         delegate: Item {
             id: flowItem
+
             required property int index
+            required property string albumKey
+            required property string title
+            required property string artist
+            required property var year
+            required property string coverKey
 
             width: root.coverSize
             height: root.coverSize * 1.18
@@ -189,7 +217,8 @@ Item {
             z: PathView.isCurrentItem ? 1000 : Math.round(PathView.itemDepth || 0)
 
             Accessible.role: Accessible.Button
-            Accessible.name: (model.title || qsTr("Álbum sin título")) + " — " + (model.artist || "")
+            Accessible.name: (flowItem.title || qsTr("Álbum sin título"))
+                             + " — " + (flowItem.artist || "")
             Accessible.description: PathView.isCurrentItem
                                     ? qsTr("Álbum seleccionado. Enter para abrir, espacio para reproducir")
                                     : qsTr("Seleccionar álbum")
@@ -197,7 +226,7 @@ Item {
                 if (PathView.isCurrentItem)
                     root.openCurrent()
                 else
-                    pathView.currentIndex = index
+                    pathView.currentIndex = flowItem.index
             }
 
             Item {
@@ -229,7 +258,7 @@ Item {
                 CoverImage {
                     anchors.fill: parent
                     coverRadius: MichiTheme.radius.md
-                    coverKey: model.coverKey || model.albumKey || ""
+                    coverKey: flowItem.coverKey || flowItem.albumKey || ""
                 }
 
                 Rectangle {
@@ -263,7 +292,7 @@ Item {
                         onClicked: function(mouse) {
                             mouse.accepted = true
                             if (root.bridge && root.bridge.playAlbum)
-                                root.bridge.playAlbum(model.albumKey || "")
+                                root.bridge.playAlbum(flowItem.albumKey || "")
                         }
                     }
                 }
@@ -287,7 +316,7 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: parent.width * 0.94
                 horizontalAlignment: Text.AlignHCenter
-                text: model.title || qsTr("Álbum sin título")
+                text: flowItem.title || qsTr("Álbum sin título")
                 color: PathView.isCurrentItem
                        ? MichiTheme.colors.textPrimary
                        : MichiTheme.colors.textMuted
@@ -305,19 +334,19 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                     if (!PathView.isCurrentItem)
-                        pathView.currentIndex = index
+                        pathView.currentIndex = flowItem.index
                     else
                         root.scheduleOpen(
-                            model.albumKey || "",
-                            model.title || "",
-                            model.artist || "",
-                            model.year || 0
+                            flowItem.albumKey || "",
+                            flowItem.title || "",
+                            flowItem.artist || "",
+                            flowItem.year || 0
                         )
                 }
                 onDoubleClicked: {
                     openTimer.stop()
                     if (root.bridge && root.bridge.playAlbum)
-                        root.bridge.playAlbum(model.albumKey || "")
+                        root.bridge.playAlbum(flowItem.albumKey || "")
                 }
             }
 
@@ -358,7 +387,7 @@ Item {
 
                 Text {
                     Layout.fillWidth: true
-                    text: root.currentAlbum.title || qsTr("Álbum sin título")
+                    text: root.albumTitleOf(root.currentAlbum) || qsTr("Álbum sin título")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -367,9 +396,11 @@ Item {
 
                 Text {
                     Layout.fillWidth: true
-                    text: (root.currentAlbum.artist || qsTr("Artista desconocido"))
-                          + ((root.currentAlbum.year || 0) > 0 ? " · " + root.currentAlbum.year : "")
-                          + " · " + (root.currentAlbum.trackCount || 0) + " " + qsTr("canciones")
+                    text: (root.albumArtistOf(root.currentAlbum) || qsTr("Artista desconocido"))
+                          + (root.albumYearOf(root.currentAlbum) > 0
+                             ? " · " + root.albumYearOf(root.currentAlbum) : "")
+                          + " · " + root.albumTrackCountOf(root.currentAlbum)
+                          + " " + qsTr("canciones")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.metaSize
                     elide: Text.ElideRight
