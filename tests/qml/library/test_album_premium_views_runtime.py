@@ -124,3 +124,84 @@ def test_album_view_switch_does_not_requery_database(engine, qapp):
 
     query.assert_not_called()
     host.deleteLater()
+
+
+def test_album_grid_uses_explicit_roles_and_automatic_pagination():
+    source = (
+        QML_ROOT / "pages/library/album/AlbumGridView.qml"
+    ).read_text(encoding="utf-8")
+
+    assert "required property string albumKey" in source
+    assert "required property int trackCount" in source
+    assert "function maybeFetchMore()" in source
+    assert "onMovementEnded: root.maybeFetchMore()" in source
+    assert "openTimer" not in source
+
+
+def test_album_host_has_non_blocking_loading_and_error_states():
+    source = (
+        QML_ROOT / "pages/library/album/AlbumViewHost.qml"
+    ).read_text(encoding="utf-8")
+
+    assert 'objectName: "albumLoadingMoreIndicator"' in source
+    assert "root.albumModel.retry()" in source
+    assert "Ctrl+1…5 · Ctrl+Tab" in source
+    assert "asynchronous: true" in source
+
+
+def test_library_search_and_filters_use_real_interaction_contracts():
+    toolbar = (
+        QML_ROOT / "components/MichiLibraryToolbar.qml"
+    ).read_text(encoding="utf-8")
+    filters = (
+        QML_ROOT / "pages/library/LibraryFilterBar.qml"
+    ).read_text(encoding="utf-8")
+
+    assert "property int searchDebounceMs: 240" in toolbar
+    assert "sequence: StandardKey.Find" in toolbar
+    assert 'sequence: "F5"' in toolbar
+    assert '{ label: "DSF", value: "dsf" }' in filters
+    assert '{ label: "DFF", value: "dff" }' in filters
+    assert 'value: "dsd"' not in filters
+
+
+@pytest.mark.parametrize(
+    "relative_path",
+    (
+        "pages/library/album/AlbumGridView.qml",
+        "pages/library/album/AlbumCoverFlowView.qml",
+        "pages/library/album/AlbumVinylWallView.qml",
+        "pages/library/album/AlbumTimelineView.qml",
+        "pages/library/album/AlbumMagazineView.qml",
+    ),
+)
+def test_album_views_no_longer_delay_single_click_with_open_timer(relative_path):
+    source = (QML_ROOT / relative_path).read_text(encoding="utf-8")
+
+    assert "openTimer" not in source
+    assert "scheduleOpen" not in source
+
+
+def test_timeline_and_magazine_use_single_virtualized_vertical_scroll():
+    timeline = (
+        QML_ROOT / "pages/library/album/AlbumTimelineView.qml"
+    ).read_text(encoding="utf-8")
+    magazine = (
+        QML_ROOT / "pages/library/album/AlbumMagazineView.qml"
+    ).read_text(encoding="utf-8")
+
+    assert 'objectName: "albumTimelineList"' in timeline
+    assert "function maybeFetchMore()" in timeline
+    assert 'objectName: "albumMagazineList"' in magazine
+    assert "Flickable {" not in magazine
+    assert "function maybeFetchMore()" in magazine
+
+
+def test_coverflow_preserves_bounded_delegate_geometry():
+    source = (
+        QML_ROOT / "pages/library/album/AlbumCoverFlowView.qml"
+    ).read_text(encoding="utf-8")
+
+    assert "pathItemCount: width >= 1200 ? 7 : 5" in source
+    assert "cacheItemCount: pathItemCount + 2" in source
+    assert "onCurrentIndexChanged" in source
