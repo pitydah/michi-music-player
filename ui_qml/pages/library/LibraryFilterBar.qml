@@ -40,6 +40,11 @@ Item {
 
     implicitHeight: root.expanded ? 92 : 46
 
+    function chooseFormat(value) {
+        root.specialFilter = ""
+        root.formatFilterChanged(value)
+    }
+
     function clearAll() {
         var hadFormat = root.activeFormat !== ""
         var hadGenre = root.genreText !== "" || root._appliedGenre !== ""
@@ -136,6 +141,7 @@ Item {
 
                 Row {
                     id: quickFilterRow
+                    width: implicitWidth
                     height: parent.height
                     spacing: MichiTheme.spacing.xs
 
@@ -153,9 +159,11 @@ Item {
                             { label: qsTr("Todos"), value: "" },
                             { label: "FLAC", value: "flac" },
                             { label: "MP3", value: "mp3" },
-                            { label: "AAC", value: "m4a" },
+                            { label: "AAC", value: "aac" },
+                            { label: "M4A", value: "m4a" },
                             { label: "WAV", value: "wav" },
-                            { label: "DSD", value: "dsd" }
+                            { label: "DSF", value: "dsf" },
+                            { label: "DFF", value: "dff" }
                         ]
 
                         Rectangle {
@@ -178,7 +186,7 @@ Item {
                             Accessible.role: Accessible.Button
                             Accessible.name: qsTr("Filtrar por %1").arg(modelData.label)
                             Accessible.checked: selected
-                            Accessible.onPressAction: formatChipMouse.clicked(null)
+                            Accessible.onPressAction: root.chooseFormat(modelData.value)
 
                             Text {
                                 id: formatChipText
@@ -196,10 +204,7 @@ Item {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    root.specialFilter = ""
-                                    root.formatFilterChanged(modelData.value)
-                                }
+                                onClicked: root.chooseFormat(modelData.value)
                             }
                         }
                     }
@@ -238,6 +243,7 @@ Item {
                             Accessible.role: Accessible.Button
                             Accessible.name: modelData.label
                             Accessible.checked: selected
+                            Accessible.onPressAction: root.applySpecial(modelData.value)
 
                             Text {
                                 id: specialChipText
