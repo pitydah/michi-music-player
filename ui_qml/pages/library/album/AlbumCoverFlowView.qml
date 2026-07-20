@@ -97,13 +97,35 @@ Item {
         snapMode: PathView.SnapToItem
         focus: true
 
-        Keys.onLeftPressed: decrementCurrentIndex()
-        Keys.onRightPressed: incrementCurrentIndex()
-        Keys.onHomePressed: currentIndex = 0
-        Keys.onEndPressed: currentIndex = Math.max(0, count - 1)
-        Keys.onReturnPressed: root.openCurrent()
-        Keys.onEnterPressed: root.openCurrent()
-        Keys.onSpacePressed: root.playCurrent()
+        Keys.onPressed: function(event) {
+            switch (event.key) {
+            case Qt.Key_Left:
+                pathView.decrementCurrentIndex()
+                event.accepted = true
+                break
+            case Qt.Key_Right:
+                pathView.incrementCurrentIndex()
+                event.accepted = true
+                break
+            case Qt.Key_Home:
+                pathView.currentIndex = 0
+                event.accepted = true
+                break
+            case Qt.Key_End:
+                pathView.currentIndex = Math.max(0, pathView.count - 1)
+                event.accepted = true
+                break
+            case Qt.Key_Return:
+            case Qt.Key_Enter:
+                root.openCurrent()
+                event.accepted = true
+                break
+            case Qt.Key_Space:
+                root.playCurrent()
+                event.accepted = true
+                break
+            }
+        }
 
         onCurrentIndexChanged: {
             if (root.albumModel && root.albumModel.hasMore && !root.albumModel.loadingMore
