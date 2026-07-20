@@ -1,100 +1,172 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Qt.labs.folderlistmodel
 import "../../theme"
 import "../../components"
-import "../../materials"
 
 Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Folder Browser"
+    id: root
     objectName: "folderBrowserPage"
     focus: true
-    id: root
 
     property var folderModel: null
     property var bridge: null
     property string _currentPath: ""
-    property var _breadcrumbs: []
-    property var _folderStack: []
+    readonly property bool compact: width < 860
+    readonly property string parentPath: root.parentOf(root._currentPath)
 
     signal folderSelected(string path)
     signal playFolderRequested(string path)
 
+    Accessible.role: Accessible.Pane
+    Accessible.name: qsTr("Explorador de carpetas")
+    Accessible.description: root._currentPath || qsTr("Raíz de la biblioteca")
+
+    function normalizePath(value) {
+        var normalized = (value || "").replace(/\\/g, "/")
+        while (normalized.length > 1 && normalized.endsWith("/"))
+            normalized = normalized.slice(0, -1)
+        return normalized
+    }
+
+    function parentOf(value) {
+        var normalized = root.normalizePath(value)
+        if (!normalized)
+            return ""
+        var slash = normalized.lastIndexOf("/")
+        if (slash < 0)
+            return ""
+        if (slash === 0)
+            return ""
+        return normalized.slice(0, slash)
+    }
+
+    function reload() {
+        if (root.folderModel && root.folderModel.refresh)
+            root.folderModel.refresh(root._currentPath)
+        contentView.loadFolder(root._currentPath)
+    }
+
+    function navigateTo(path) {
+        var normalized = root.normalizePath(path)
+        if (normalized === root._currentPath &&
+                root.folderModel && root.folderModel.initialized) {
+            contentView.loadFolder(normalized)
+            return
+        }
+        root._currentPath = normalized
+        treeView.currentPath = normalized
+        treeView.navigateTo(normalized)
+        contentView.currentPath = normalized
+        contentView.loadFolder(normalized)
+        root.folderSelected(normalized)
+    }
+
+    Component.onCompleted: {
+        if (root.folderModel && !root.folderModel.initialized &&
+                !root.folderModel.loading)
+            root.folderModel.refresh("")
+    }
+
     ColumnLayout {
-        anchors.fill: parent; spacing: 0
+        anchors.fill: parent
+        spacing: MichiTheme.spacing.sm
 
         FolderBreadcrumb {
             id: breadcrumb
-            Layout.fillWidth: true; Layout.preferredHeight: 32
+            Layout.fillWidth: true
             path: root._currentPath
-            onNavigate: function(index) {
-                root._breadcrumbs = root._breadcrumbs.slice(0, index + 1)
-                root._currentPath = root._breadcrumbs[index]
-                root._folderStack = root._folderStack.slice(0, index + 1)
-                reload()
-            }
+            onNavigateTo: function(path) { root.navigateTo(path) }
         }
 
         Rectangle {
-            Layout.fillWidth: true; Layout.preferredHeight: 32
-            color: MichiTheme.colors.surfaceCard
+            Layout.fillWidth: true
+            Layout.preferredHeight: 44
+            radius: MichiTheme.radius.md
+            color: MichiTheme.colors.surfaceToolbar
+            border.width: MichiTheme.borderWidth
+            border.color: MichiTheme.colors.borderSubtle
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: MichiTheme.spacing.md; anchors.rightMargin: MichiTheme.spacing.md
+                anchors.leftMargin: MichiTheme.spacing.sm
+                anchors.rightMargin: MichiTheme.spacing.sm
+                spacing: MichiTheme.spacing.xs
 
-                MichiButton { text: qsTr("↑ Subir"); variant: "ghost"; enabled: root._breadcrumbs.length > 1
-                    onClicked: { if (root._breadcrumbs.length > 1) { root._breadcrumbs.pop(); root._currentPath = root._breadcrumbs[root._breadcrumbs.length - 1]; reload() } }
+                MichiButton {
+                    text: qsTr("↑ Subir")
+                    variant: "ghost"
+                    enabled: root._currentPath !== ""
+                    onClicked: root.navigateTo(root.parentPath)
                 }
-                Item { Layout.fillWidth: true }
-                MichiButton { text: qsTr("Escanear carpeta"); variant: "ghost"; onClicked: { if (root.bridge && root.bridge.addFolder) root.bridge.addFolder(root._currentPath) } }
+
+                MichiButton {
+                    text: qsTr("Raíz")
+                    variant: "ghost"
+                    enabled: root._currentPath !== ""
+                    onClicked: root.navigateTo("")
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    text: root._currentPath || qsTr("Raíz de la biblioteca")
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.metaSize
+                    elide: Text.ElideMiddle
+                    horizontalAlignment: Text.AlignHCenter
+                }
+
+                MichiButton {
+                    text: qsTr("Actualizar")
+                    variant: "ghost"
+                    enabled: !root.folderModel || !root.folderModel.loading
+                    onClicked: root.reload()
+                }
+
+                MichiButton {
+                    text: qsTr("Añadir como fuente")
+                    variant: "ghost"
+                    visible: !root.compact
+                    enabled: root._currentPath !== "" && root.bridge && root.bridge.addFolder
+                    onClicked: root.bridge.addFolder(root._currentPath)
+                }
             }
         }
 
         SplitView {
-            Layout.fillWidth: true; Layout.fillHeight: true
-            orientation: Qt.Horizontal
+            id: splitView
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            orientation: root.compact ? Qt.Vertical : Qt.Horizontal
 
             FolderTreeView {
                 id: treeView
-                SplitView.preferredWidth: 280
-                SplitView.minimumWidth: 200
+                SplitView.preferredWidth: root.compact ? splitView.width : 300
+                SplitView.minimumWidth: root.compact ? 0 : 220
+                SplitView.preferredHeight: root.compact ? Math.min(260, splitView.height * 0.42) : splitView.height
+                SplitView.minimumHeight: root.compact ? 150 : 0
                 currentPath: root._currentPath
                 folderModel: root.folderModel
 
                 onFolderSelected: function(path) {
-                    root._breadcrumbs.push(path)
-                    root._currentPath = path
-                    root._folderStack.push(path)
-                    breadcrumb.path = path
-                    contentView.loadFolder(path)
+                    root.navigateTo(path)
                 }
             }
 
             FolderContentView {
                 id: contentView
                 SplitView.fillWidth: true
+                SplitView.fillHeight: true
                 bridge: root.bridge
                 currentPath: root._currentPath
 
-                onPlayFolder: function(path) { root.playFolderRequested(path) }
-                onNavigateToFolder: function(path) { treeView.navigateTo(path); root._currentPath = path }
+                onPlayFolder: function(path) {
+                    root.playFolderRequested(path)
+                }
+                onNavigateToFolder: function(path) {
+                    root.navigateTo(path)
+                }
             }
         }
-    }
-
-    function reload() {
-        if (root.folderModel) {
-            root.folderModel.refresh("parent_path", root._currentPath)
-        }
-        contentView.loadFolder(root._currentPath)
-    }
-
-    function navigateTo(path) {
-        root._breadcrumbs = path.split("/")
-        root._currentPath = path
-        reload()
     }
 }
