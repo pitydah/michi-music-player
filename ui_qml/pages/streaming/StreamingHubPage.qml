@@ -15,6 +15,8 @@ Item {
 
     signal cardSelected(string route)
 
+    property var cap: typeof capabilityBridge !== "undefined" ? capabilityBridge : null
+
     Flickable {
         id: flickable
         anchors.fill: parent
@@ -72,7 +74,7 @@ Item {
                     width: (parent.width - MichiTheme.spacing.md) / 2
                     height: 100
                     title: qsTr("Radio")
-                    subtitle: qsTr("Emisoras de todo el mundo.")
+                    subtitle: qsTr("Emisoras configuradas y descubiertas.")
                     variant: "base"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: clicked()
@@ -81,13 +83,21 @@ Item {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("streaming.radio")
                     }
+
+                    StatusBadge {
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: MichiTheme.spacing.sm
+                        text: root.cap && root.cap.has("radio") ? qsTr("Disponible") : qsTr("No disponible")
+                        kind: root.cap && root.cap.has("radio") ? "success" : "disconnected"
+                    }
                 }
 
                 GlassCard {
                     width: (parent.width - MichiTheme.spacing.md) / 2
                     height: 100
                     title: qsTr("Podcasts")
-                    subtitle: qsTr("El gestor de suscripciones todavia no esta habilitado en esta instalacion.")
+                    subtitle: qsTr("Gestor de suscripciones no disponible aún.")
                     variant: "base"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: clicked()
