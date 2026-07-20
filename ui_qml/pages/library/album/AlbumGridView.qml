@@ -77,14 +77,17 @@ Item {
         Keys.onReturnPressed: root.openCurrentAlbum()
         Keys.onEnterPressed: root.openCurrentAlbum()
         Keys.onSpacePressed: root.playCurrentAlbum()
-        Keys.onHomePressed: {
-            currentIndex = count > 0 ? 0 : -1
-            positionViewAtBeginning()
-        }
-        Keys.onEndPressed: {
-            currentIndex = count > 0 ? count - 1 : -1
-            positionViewAtEnd()
-            root.maybeFetchMore()
+        Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_Home) {
+                currentIndex = count > 0 ? 0 : -1
+                positionViewAtBeginning()
+                event.accepted = true
+            } else if (event.key === Qt.Key_End) {
+                currentIndex = count > 0 ? count - 1 : -1
+                positionViewAtEnd()
+                root.maybeFetchMore()
+                event.accepted = true
+            }
         }
 
         Timer {
