@@ -6,6 +6,7 @@ import time
 from typing import Any
 
 from PySide6.QtCore import QObject, Property, QTimer, Signal, Slot
+from PySide6.QtQml import QJSValue
 
 from .route_registry import CAPABILITY_MAP, ROUTES, get_breadcrumb, resolve_route
 
@@ -81,6 +82,12 @@ class NavigationBridge(QObject):
         if canonical in ROUTES:
             return canonical
         return "placeholder"
+
+    @staticmethod
+    def _params_from_qml(params: Any) -> dict:
+        if isinstance(params, QJSValue):
+            params = params.toVariant()
+        return dict(params) if isinstance(params, dict) else {}
 
     def _validate_params(self, route: str, params: dict) -> str | None:
         info = ROUTES.get(route)
@@ -328,11 +335,29 @@ class NavigationBridge(QObject):
 
     @Slot(str, "QVariant")
     def navigateWithParams(self, route: str, params: dict):
-        params = dict(params or {})
+        params = self._params_from_qml(params)
         resolved = self._resolve(route)
+        if resolved == self._current_route:
+            param_error = self._validate_params(resolved, params)
+            if param_error:
+                self.invalidRouteError.emit(route, param_error)
+                return
+            if params == self._current_params:
+                self.routeRefreshRequested.emit(resolved)
+                return
+            self.updateCurrentParams(params)
+            return
         if self._request_leave("navigate", resolved, params):
             return
         self._navigate_internal(route, params)
+
+    @Slot("QVariant")
+    def updateCurrentParams(self, params: dict):
+        next_params = self._params_from_qml(params)
+        if next_params == self._current_params:
+            return
+        self._current_params = next_params
+        self.routeParamsChanged.emit()
 
     @Slot(str)
     def replace(self, route: str):

@@ -19,7 +19,8 @@ Item {
     property string pendingRoute: ""
     property string previousRoute: ""
     property bool transitionRunning: false
-    readonly property string loadedObjectName: _activeLoader && _activeLoader.item ? _activeLoader.item.objectName : ""
+    readonly property Loader _displayLoader: transitionRunning ? _incomingLoader : _activeLoader
+    readonly property string loadedObjectName: _displayLoader && _displayLoader.item ? _displayLoader.item.objectName : ""
     property bool loading: false
     property string _prevRoute: ""
     property var _prevParams: ({})
@@ -87,36 +88,54 @@ Item {
         }
     }
 
-    Loader {
-        id: loaderA
+    Item {
+        objectName: "pageStackContainer"
         anchors.fill: parent
-        asynchronous: true
-        source: ""
-        opacity: 1.0
-        visible: true
 
-        Behavior on opacity {
-            enabled: !MichiTheme.reducedMotion
-            NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+        Rectangle {
+            anchors.fill: parent
+            color: MichiTheme.colors.bgApp
         }
 
-        onStatusChanged: root._handleLoaderStatus(loaderA, status)
-    }
+        PageSurface {
+            anchors.fill: parent
+            anchors.leftMargin: root.width < MichiTheme.breakpoints.compact ? 0 : MichiTheme.spacing.sm
+            anchors.rightMargin: root.width < MichiTheme.breakpoints.compact ? 0 : MichiTheme.spacing.sm
+            anchors.topMargin: MichiTheme.spacing.sm
+            anchors.bottomMargin: MichiTheme.spacing.sm
 
-    Loader {
-        id: loaderB
-        anchors.fill: parent
-        asynchronous: true
-        source: ""
-        opacity: 0.0
-        visible: false
+            Loader {
+                id: loaderA
+                anchors.fill: parent
+                asynchronous: true
+                source: ""
+                opacity: 1.0
+                visible: true
 
-        Behavior on opacity {
-            enabled: !MichiTheme.reducedMotion
-            NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+                Behavior on opacity {
+                    enabled: !MichiTheme.reducedMotion
+                    NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+                }
+
+                onStatusChanged: root._handleLoaderStatus(loaderA, status)
+            }
+
+            Loader {
+                id: loaderB
+                anchors.fill: parent
+                asynchronous: true
+                source: ""
+                opacity: 0.0
+                visible: false
+
+                Behavior on opacity {
+                    enabled: !MichiTheme.reducedMotion
+                    NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+                }
+
+                onStatusChanged: root._handleLoaderStatus(loaderB, status)
+            }
         }
-
-        onStatusChanged: root._handleLoaderStatus(loaderB, status)
     }
 
     function _handleLoaderStatus(loader, status) {

@@ -55,7 +55,7 @@ Item {
                 Layout.preferredWidth: sidebar.collapsed ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
                 Layout.minimumWidth: Layout.preferredWidth
                 Layout.maximumWidth: Layout.preferredWidth
-                forceCompact: root.width < 1100
+                forceCompact: root.width < MichiTheme.breakpoints.sidebarCompact
                 currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
 
                 onRouteRequested: function(route) {
@@ -70,7 +70,9 @@ Item {
             }
 
             Rectangle {
-                width: 4
+                Layout.preferredWidth: 0
+                Layout.minimumWidth: 0
+                Layout.maximumWidth: 0
                 height: parent.height
                 color: "transparent"
                 MouseArea {
@@ -117,6 +119,18 @@ Item {
                     onBreadcrumbClicked: function(route) {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate(route)
+                    }
+
+                    onSearchRequested: function(query, submitted) {
+                        if (typeof navigationBridge === "undefined" || !navigationBridge)
+                            return
+                        var normalized = query.trim()
+                        if (normalized === "" && navigationBridge.currentRoute !== "search")
+                            return
+                        navigationBridge.navigateWithParams("search", {
+                            query: normalized,
+                            submitted: submitted
+                        })
                     }
                 }
 

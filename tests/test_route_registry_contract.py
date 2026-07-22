@@ -75,3 +75,8 @@ class TestRouteRegistryContract:
                 if parent is not None:
                     assert parent in ROUTES or parent == "audio_lab", \
                         f"{route} has invalid parent {parent}"
+
+    def test_library_collections_route_is_productive(self):
+        route = ROUTES["library.collections"]
+        assert route["status"] == "functional"
+        assert route["source"].endswith("CollectionsPage.qml")

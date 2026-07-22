@@ -39,6 +39,7 @@ QtObject {
     // ── Breakpoints ──
     readonly property QtObject breakpoints: QtObject {
         readonly property int compact: 800
+        readonly property int sidebarCompact: 1024
         readonly property int medium: 1200
         readonly property int wide: 1600
     }

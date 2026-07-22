@@ -4,9 +4,10 @@ import QtQuick.Layouts
 import "../theme"
 import "."
 
-Item {
+ContextToolbar {
     id: root
     objectName: "michiLibraryToolbar"
+    accessibleName: qsTr("Barra de biblioteca")
 
     property string title: qsTr("Biblioteca")
     property var filterModel: []
@@ -28,9 +29,6 @@ Item {
     signal addMusicRequested()
     signal selectionActionRequested(string action)
 
-    Accessible.role: Accessible.ToolBar
-    Accessible.name: qsTr("Barra de biblioteca")
-
     function setSearchText(text) {
         root.searchText = text
         searchField.text = text
@@ -38,18 +36,11 @@ Item {
 
     implicitHeight: 58
 
-    Rectangle {
+    RowLayout {
         anchors.fill: parent
-        radius: MichiTheme.radius.lg
-        color: MichiTheme.colors.surfaceToolbar
-        border.width: MichiTheme.borderWidth
-        border.color: MichiTheme.colors.borderSubtle
-
-        RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: MichiTheme.spacing.lg
-            anchors.rightMargin: MichiTheme.spacing.sm
-            spacing: MichiTheme.spacing.md
+        anchors.leftMargin: MichiTheme.spacing.lg
+        anchors.rightMargin: MichiTheme.spacing.sm
+        spacing: MichiTheme.spacing.md
 
             ColumnLayout {
                 Layout.preferredWidth: 150
@@ -138,6 +129,5 @@ Item {
                     running: root.loading
                 }
             }
-        }
     }
 }

@@ -4,7 +4,7 @@ import "../foundations"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Michi"
+    Accessible.name: root.accessibleName
     objectName: "michiPage"
     focus: true
     id: root
@@ -12,6 +12,7 @@ Item {
     property bool scrollable: true
     property bool constrainContentWidth: true
     property int maximumContentWidth: 1480
+    property string accessibleName: qsTr("Página de Michi")
     property string visualState: "content"
     property alias header: headerHost.data
     property alias stateContent: stateHost.data
@@ -46,13 +47,18 @@ Item {
                 id: headerHost
                 width: parent.width
                 height: childrenRect.height
-                visible: children.length > 0
+                visible: children.length > 0 && height > 0
             }
 
-            Column {
+            Item {
                 id: body
+                objectName: "michiPageBody"
                 width: parent.width
-                spacing: MichiTheme.spacing.lg
+                height: root.scrollable
+                        ? childrenRect.height
+                        : Math.max(0, viewport.height - responsive.pageMargin * 2
+                                      - headerHost.height
+                                      - (headerHost.visible ? pageColumn.spacing : 0))
             }
         }
     }

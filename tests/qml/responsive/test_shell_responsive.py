@@ -58,7 +58,8 @@ def test_shell_runtime_geometry(qapp, width: int, height: int) -> None:
     assert round(sidebar.width()) == expected_sidebar
     assert round(sidebar.width() + header.width()) == width
     assert round(header.height()) == 56
-    assert round(now_playing.height()) in (112, 128)
+    expected_now_playing = 132 if width >= 1200 else 122 if width >= 800 else 108
+    assert round(now_playing.height()) == expected_now_playing
     assert round(header.height() + stack.height() + now_playing.height()) == height
     assert surface.width() <= stack.width()
     assert surface.height() <= stack.height()
@@ -72,3 +73,32 @@ def test_shell_runtime_geometry(qapp, width: int, height: int) -> None:
 
 def test_page_qml_exists() -> None:
     assert (QML_DIR / "shell/AppShell.qml").exists()
+
+
+def test_header_search_navigates_once_and_updates_route_params(qapp) -> None:
+    engine = QQmlEngine()
+    navigation = NavigationBridge(parent=engine)
+    registry = RouteRegistryBridge(parent=engine)
+    engine.rootContext().setContextProperty("navigationBridge", navigation)
+    engine.rootContext().setContextProperty("routeRegistryBridge", registry)
+    component = QQmlComponent(engine)
+    component.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "shell/AppShell.qml")))
+    assert component.isReady(), component.errorString()
+    shell = component.createWithInitialProperties({"width": 1200, "height": 760})
+    assert shell is not None, component.errorString()
+
+    header = _item(shell, "headerBar")
+    header.searchRequested.emit("michi", True)
+    qapp.processEvents()
+    history_size = len(navigation._back_stack)
+
+    assert navigation.currentRoute == "search"
+    assert navigation.currentParams == {"query": "michi", "submitted": True}
+
+    header.searchRequested.emit("music", False)
+    qapp.processEvents()
+    assert navigation.currentParams == {"query": "music", "submitted": False}
+    assert len(navigation._back_stack) == history_size
+
+    shell.deleteLater()
+    engine.deleteLater()

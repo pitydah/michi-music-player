@@ -57,6 +57,16 @@ def test_now_playing_utility_routes_load_functional_pages(qapp) -> None:
 
     for route, object_name in (
         ("library", "libraryPage_control"),
+        ("library.genres", "genresPage"),
+        ("library.composers", "composersPage"),
+        ("library.folders", "folderBrowserPage"),
+        ("library.collections", "libraryCollectionsPage"),
+        ("library.favorites", "favoritesPage"),
+        ("library.recent", "recentPage"),
+        ("library.most_played", "mostPlayedPage"),
+        ("library.unplayed", "unplayedPage"),
+        ("library.years", "yearsPage"),
+        ("library.missing", "missingPage"),
         ("equalizer", "equalizerPage"),
         ("audio_lab.output_profiles", "outputProfilesPage"),
         ("queue", "queuePage_control"),

@@ -5,12 +5,14 @@ import "../../theme"
 import "../../components"
 import "../../materials"
 
-Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Genres"
+LibrarySectionPage {
     objectName: "genresPage"
     focus: true
     id: root
+    sectionTitle: qsTr("Géneros")
+    sectionSubtitle: qsTr("Explora la biblioteca por estilo musical")
+    sectionIcon: "songs"
+    navigationIndex: 3
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property var _genres: []
@@ -21,6 +23,12 @@ Item {
         if (root.lib && root.lib.getGenres) {
             root._genres = root.lib.getGenres() || []
         }
+    }
+
+    function openGenre(genre) {
+        root.genreSelected(genre)
+        if (typeof navigationBridge !== "undefined" && genre)
+            navigationBridge.navigateWithParams("library.genre_detail", {genre: genre})
     }
 
     Component.onCompleted: reload()
@@ -48,6 +56,7 @@ Item {
         }
 
         ListView {
+            id: genreList
             Accessible.role: Accessible.List
 
             Accessible.name: "Lista de géneros"
@@ -61,6 +70,16 @@ Item {
             spacing: MichiTheme.spacing.xs
 
             ScrollBar.vertical: ScrollBar { width: 8; policy: ScrollBar.AsNeeded }
+
+            function activateCurrent() {
+                if (currentIndex < 0 || currentIndex >= root._genres.length) return
+                var value = root._genres[currentIndex]
+                root.openGenre(typeof value === "object" ? value.name || value.genre : value)
+            }
+
+            Keys.onReturnPressed: function(event) { activateCurrent(); event.accepted = true }
+            Keys.onEnterPressed: function(event) { activateCurrent(); event.accepted = true }
+            Keys.onSpacePressed: function(event) { activateCurrent(); event.accepted = true }
 
             delegate: Item {
                 width: parent.width; height: 40
@@ -95,7 +114,7 @@ Item {
                     MouseArea {
                         id: mouse
                         anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: root.genreSelected(typeof modelData === "object" ? modelData.name || modelData.genre : modelData)
+                        onClicked: root.openGenre(typeof modelData === "object" ? modelData.name || modelData.genre : modelData)
                     }
                 }
             }

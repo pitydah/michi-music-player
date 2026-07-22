@@ -126,6 +126,18 @@ ROUTES: dict[str, dict] = {
         "placeholder_state": None,
         "params": None, "category": "library",
     },
+    "library.collections": {
+        "route": "library.collections", "parent": "library", "title": "Colecciones",
+        "breadcrumb_title": "Colecciones",
+        "source": "../pages/library/CollectionsPage.qml",
+        "icon": "library", "order": 60, "sidebar_visible": False,
+        "sidebar_group": None, "expandable": False,
+        "status": "functional", "capability": None,
+        "aliases": [],
+        "keywords": ["colecciones", "favoritos", "recientes", "años"],
+        "placeholder_state": None,
+        "params": None, "category": "library",
+    },
     "library.folder_detail": {
         "route": "library.folder_detail", "parent": "library.folders",
         "title": "Carpeta", "breadcrumb_title": "Carpeta",

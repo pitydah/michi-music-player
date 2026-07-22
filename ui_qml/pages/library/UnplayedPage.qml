@@ -5,12 +5,14 @@ import "../../theme"
 import "../../components"
 import "../library"
 
-Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Unplayed"
+LibrarySectionPage {
     objectName: "unplayedPage"
     focus: true
     id: root
+    sectionTitle: qsTr("Sin reproducir")
+    sectionSubtitle: qsTr("Música pendiente de descubrir")
+    sectionIcon: "songs"
+    navigationIndex: 6
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
 

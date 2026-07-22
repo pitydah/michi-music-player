@@ -8,22 +8,46 @@ import "../../components/foundations"
 import "../../materials"
 import "album"
 
-Item {
+MichiPage {
     id: root
     objectName: "libraryPage_control"
     focus: true
-
-    Accessible.role: Accessible.Pane
-    Accessible.name: qsTr("Biblioteca")
+    accessibleName: qsTr("Biblioteca")
+    scrollable: false
+    constrainContentWidth: false
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property var sel: typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null
     property int _currentLibrarySection: 0
+    readonly property int _navigationSection: _currentLibrarySection === 3 ? 5 : _currentLibrarySection
+    readonly property var _localSectionTitles: [qsTr("Canciones"), qsTr("Álbumes"), qsTr("Artistas"), qsTr("Carpetas")]
     property bool _searchActive: false
     property bool _restoringState: false
 
     MichiResponsive { id: responsive; availableWidth: root.width }
+
+    header: MichiPageHeader {
+        width: parent ? parent.width : 0
+        title: qsTr("Biblioteca")
+        subtitle: qsTr("Explora canciones, álbumes, artistas y carpetas")
+        iconKey: "library"
+        tabs: LibraryNavigationBar {
+            width: parent ? parent.width : 0
+            currentIndex: root._navigationSection
+            onSectionRequested: function(index, route) {
+                if (index <= 2) {
+                    root._currentLibrarySection = index
+                    pageState.currentTab = index
+                } else if (index === 5) {
+                    root._currentLibrarySection = 3
+                    pageState.currentTab = 3
+                } else if (typeof navigationBridge !== "undefined") {
+                    navigationBridge.navigate(route)
+                }
+            }
+        }
+    }
 
     PageStateManager {
         id: pageState
@@ -181,9 +205,9 @@ Item {
             id: toolbar
             Layout.fillWidth: true
             Layout.preferredHeight: implicitHeight
-            title: qsTr("Biblioteca")
-            filterModel: [qsTr("Canciones"), qsTr("Álbumes"), qsTr("Artistas"), qsTr("Carpetas")]
-            currentFilterIndex: root._currentLibrarySection
+            title: root._localSectionTitles[root._currentLibrarySection]
+            filterModel: []
+            currentFilterIndex: root._navigationSection
             selectionActive: selectionBar.visible
             selectedCount: selectionBar.selectedCount
             onFilterChanged: function(index) {
@@ -298,6 +322,7 @@ Item {
                     anchors.fill: parent
                     folderModel: root.lib ? root.lib.folderModel : null
                     bridge: root.lib
+                    embedded: true
                     activeFocusOnTab: true
                 }
             }
@@ -344,81 +369,81 @@ Item {
         }
     }
 
-    LibraryEmptyState {
+    MichiEmptyState {
         anchors.centerIn: parent
         z: 40
         visible: libraryState === LibraryPage.NO_SOURCES
         title: qsTr("Sin fuentes musicales")
         message: qsTr("Configura una o más carpetas para construir tu biblioteca.")
-        actionText: qsTr("Configurar fuentes")
-        onActionRequested: {
+        primaryActionText: qsTr("Configurar fuentes")
+        onPrimaryActionRequested: {
             if (typeof navigationBridge !== "undefined") navigationBridge.navigate("library.sources")
         }
     }
 
-    LibraryEmptyState {
+    MichiEmptyState {
         anchors.centerIn: parent
         z: 40
         visible: libraryState === LibraryPage.SOURCE_EMPTY
         title: qsTr("La fuente está vacía")
         message: qsTr("La carpeta configurada no contiene archivos de audio compatibles.")
-        actionText: qsTr("Reescanear")
-        onActionRequested: root.refreshData()
+        primaryActionText: qsTr("Reescanear")
+        onPrimaryActionRequested: root.refreshData()
     }
 
-    LibraryEmptyState {
+    MichiEmptyState {
         anchors.centerIn: parent
         z: 40
         visible: libraryState === LibraryPage.FILTERED_EMPTY
         title: qsTr("Sin resultados")
         message: qsTr("No se encontraron elementos con los filtros actuales.")
-        actionText: qsTr("Limpiar filtros")
-        onActionRequested: root.clearFilters()
+        primaryActionText: qsTr("Limpiar filtros")
+        onPrimaryActionRequested: root.clearFilters()
     }
 
-    LibraryEmptyState {
+    MichiEmptyState {
         anchors.centerIn: parent
         z: 40
         visible: libraryState === LibraryPage.SOURCE_OFFLINE
         title: qsTr("Fuente no disponible")
         message: qsTr("La unidad, recurso de red o carpeta configurada está desconectada.")
-        actionText: qsTr("Reintentar")
-        onActionRequested: root.refreshData()
+        primaryActionText: qsTr("Reintentar")
+        onPrimaryActionRequested: root.refreshData()
     }
 
-    LibraryErrorState {
+    MichiErrorState {
         anchors.centerIn: parent
         z: 40
         visible: libraryState === LibraryPage.SOURCE_PERMISSION_ERROR
         title: qsTr("Permiso denegado")
         message: qsTr("Michi no puede leer una de las fuentes configuradas. Revisa sus permisos.")
-        actionText: qsTr("Abrir fuentes")
-        onActionRequested: {
+        primaryActionText: qsTr("Abrir fuentes")
+        onPrimaryActionRequested: {
             if (typeof navigationBridge !== "undefined") navigationBridge.navigate("library.sources")
         }
     }
 
-    LibraryErrorState {
+    MichiErrorState {
         anchors.centerIn: parent
         z: 40
         visible: libraryState === LibraryPage.QUERY_ERROR || libraryState === LibraryPage.DATABASE_ERROR
         title: qsTr("Error de biblioteca")
         message: root.lib ? root.lib.errorMessage : qsTr("No fue posible consultar la biblioteca.")
-        actionText: qsTr("Reintentar")
-        onActionRequested: root.refreshData()
+        primaryActionText: qsTr("Reintentar")
+        onPrimaryActionRequested: root.refreshData()
     }
 
-    LibraryEmptyState {
+    MichiEmptyState {
         anchors.centerIn: parent
         z: 40
         visible: libraryState === LibraryPage.CANCELLED
         title: qsTr("Operación cancelada")
         message: qsTr("La carga de la biblioteca fue cancelada antes de completarse.")
-        actionText: qsTr("Reintentar")
-        onActionRequested: root.refreshData()
+        primaryActionText: qsTr("Reintentar")
+        onPrimaryActionRequested: root.refreshData()
     }
 
-    LoadingState {
+    MichiLoadingState {
         anchors.centerIn: parent
         z: 50
         visible: libraryState === LibraryPage.INITIALIZING ||

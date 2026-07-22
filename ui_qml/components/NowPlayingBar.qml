@@ -21,7 +21,8 @@ Item {
     property bool _backendAvailable: root.ps ? root.ps.backendAvailable : false
     property string _lastShownError: ""
     readonly property bool compactLayout: width < MichiTheme.breakpoints.compact
-    readonly property bool mediumLayout: width >= MichiTheme.breakpoints.compact && width < 900
+    readonly property bool mediumLayout: width >= MichiTheme.breakpoints.compact
+                                         && width < MichiTheme.breakpoints.medium
     readonly property string layoutMode: compactLayout ? "compact" : mediumLayout ? "medium" : "desktop"
 
     function bridgeValue(name, fallbackValue) {

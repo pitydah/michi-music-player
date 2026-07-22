@@ -58,7 +58,7 @@ Popup {
         border.width: MichiTheme.borderWidth
         border.color: MichiTheme.colors.borderCard
 
-        Accessible.role: Accessible.Menu
+        Accessible.role: Accessible.PopupMenu
         Accessible.name: qsTr("Acciones de canción")
     }
 

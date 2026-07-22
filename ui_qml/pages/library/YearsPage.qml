@@ -4,12 +4,14 @@ import QtQuick.Layouts
 import "../../theme"
 import "../../components"
 
-Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Years"
+LibrarySectionPage {
     objectName: "yearsPage"
     focus: true
     id: root
+    sectionTitle: qsTr("Años y décadas")
+    sectionSubtitle: qsTr("Explora la colección cronológicamente")
+    sectionIcon: "albums"
+    navigationIndex: 6
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property var _years: []
@@ -20,6 +22,14 @@ Item {
         if (root.lib && root.lib.getYears) {
             root._years = root.lib.getYears() || []
         }
+    }
+
+    function openYear(year) {
+        root.yearSelected(String(year))
+        if (root.lib && root.lib.setYearFilter)
+            root.lib.setYearFilter(String(year))
+        if (typeof navigationBridge !== "undefined")
+            navigationBridge.navigate("library")
     }
 
     Component.onCompleted: reload()
@@ -52,6 +62,9 @@ Item {
                 Rectangle {
                     width: 80; height: 60; radius: MichiTheme.radius.sm
                     color: mouse.containsMouse ? MichiTheme.colors.surfaceHover : MichiTheme.colors.surfaceCard
+                    activeFocusOnTab: true
+                    border.width: activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
+                    border.color: activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
 
                     Column {
                         anchors.centerIn: parent; spacing: 2
@@ -73,8 +86,12 @@ Item {
                     MouseArea {
                         id: mouse
                         anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: root.yearSelected(typeof modelData === "object" ? (modelData.year || modelData.name) : modelData)
+                        onClicked: root.openYear(typeof modelData === "object" ? (modelData.year || modelData.name) : modelData)
                     }
+
+                    Keys.onReturnPressed: root.openYear(typeof modelData === "object" ? (modelData.year || modelData.name) : modelData)
+                    Keys.onEnterPressed: root.openYear(typeof modelData === "object" ? (modelData.year || modelData.name) : modelData)
+                    Keys.onSpacePressed: root.openYear(typeof modelData === "object" ? (modelData.year || modelData.name) : modelData)
                 }
             }
         }
