@@ -63,6 +63,7 @@ class QueueService:
         self._repeat: str = "none"
         self._context: str = ""
         self._revision = 0
+        self._observers: list[Callable[[str, dict], None]] = []
 
     # ── Properties ──
 
@@ -160,6 +161,27 @@ class QueueService:
                 "can_undo": self._can_undo,
             }
 
+    def subscribe(self, callback: Callable[[str, dict], None]) -> Callable[[], None]:
+        """Observe committed canonical changes on the caller's thread."""
+        with self._lock:
+            if callback not in self._observers:
+                self._observers.append(callback)
+
+        def unsubscribe() -> None:
+            with self._lock, contextlib.suppress(ValueError):
+                self._observers.remove(callback)
+
+        return unsubscribe
+
+    def _notify_observers(self, event: str, state: dict) -> None:
+        with self._lock:
+            observers = list(self._observers)
+        for callback in observers:
+            try:
+                callback(event, copy.deepcopy(state))
+            except Exception:
+                logger.exception("Queue observer failed for %s", event)
+
     def _result(self, operation: str, ok: bool = True, **data) -> dict:
         result = {
             "ok": ok,
@@ -216,6 +238,7 @@ class QueueService:
         return tokens
 
     def _commit_mutation(self, operation: str, mutate, *, execute=False) -> dict:
+        """Synchronize a tentative mutation and roll it back on any failure."""
         before = self._capture_snapshot()
         try:
             details = mutate() or {}
@@ -533,6 +556,7 @@ class QueueService:
         return self.set_repeat(modes[self.repeat])
 
     def _shuffle_effective_order(self) -> None:
+        """Shuffle tokenized entries while pinning the active entry in place."""
         if len(self._items) < 2:
             return
         current_token = (
@@ -680,9 +704,20 @@ class QueueService:
         state = self.get_state()
         self._publish("queue.changed", operation=operation, **state)
         self._publish("queue.persist_requested", revision=self.revision)
+        if operation in {"set_repeat", "set_shuffle"}:
+            event = "modesChanged"
+        elif operation == "restore":
+            event = "stateRestored"
+        elif operation in {"play_from_index", "next", "previous",
+                           "compatibility_index", "backend_progress"}:
+            event = "currentIndexChanged"
+        else:
+            event = "queueChanged"
+        self._notify_observers(event, {"operation": operation, **state})
 
     def _publish_failure(self, result: dict):
         self._publish("queue.operation_failed", **result)
+        self._notify_observers("operationFailed", result)
 
     # ── Persistence ──
 
@@ -719,6 +754,7 @@ class QueueService:
             return {"ok": False, "error": str(e)}
 
     def load_state(self, resolve_fn: Callable[[dict], dict | None] | None = None) -> dict:
+        """Restore persisted domain state and synchronize it without autoplay."""
         path = _queue_state_path()
         if not os.path.exists(path):
             return {"ok": False, "error": "NO_SAVED_STATE"}

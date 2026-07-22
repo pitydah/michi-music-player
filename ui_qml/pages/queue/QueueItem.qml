@@ -91,7 +91,6 @@ Item {
                 onClicked: {
                     if (root.qb) {
                         root.qb.removeFromQueue(root.itemIndex)
-                        root.qb.refresh()
                     }
                 }
             }
