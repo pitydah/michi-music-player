@@ -15,6 +15,7 @@ def build(container: ServiceContainer) -> None:
     from core.global_search_service import GlobalSearchService
     from core.metadata_service import MetadataService
     from core.smart_tagging_service import SmartTaggingService
+    from core.track_action_service import TrackActionService
 
     cf = container.get("connection_factory")
     db = container.get("database")
@@ -27,7 +28,17 @@ def build(container: ServiceContainer) -> None:
     container.register("library_mutation_service", MetadataEditorService(db=db))
     container.register("metadata_editor_service", MetadataEditorService(db=db))
     container.register("library_service", LibraryService(db=db, worker_manager=wm, library_query_service=lqs))
-    container.register("playlist_service", PlaylistService(cf))
+    playlist_service = PlaylistService(cf)
+    container.register("playlist_service", playlist_service)
+    container.register(
+        "track_action_service",
+        TrackActionService(
+            query_service=lqs,
+            queue_service=container.require("queue_service"),
+            playlist_service=playlist_service,
+            db=db,
+        ),
+    )
     container.register("history_query_service", HistoryQueryService(cf))
     container.register("global_search_service", GlobalSearchService(cf.db_path))
     container.register("metadata_service", MetadataService())

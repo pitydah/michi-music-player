@@ -486,17 +486,7 @@ class LibraryBridge(QObject):
 
     @Slot(int, result=dict)
     def playTrackById(self, track_id: int):
-        if self._tas:
-            return self._tas.play_track(track_id)
-        if not track_id or not self._query_svc:
-            return {"ok": False, "error": "NOT_FOUND"}
-        try:
-            track = self._query_svc.fetch_track_internal(track_id)
-            if track and track.get("filepath"):
-                return self.play_song(track["filepath"])
-            return {"ok": False, "error": "NOT_FOUND"}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        return self._tas.play_track(track_id)
 
     @Slot(str, result=dict)
     def play_song(self, filepath: str):
@@ -537,30 +527,11 @@ class LibraryBridge(QObject):
 
     @Slot(int, result=dict)
     def enqueueTrackById(self, track_id: int):
-        if not self._query_svc:
-            return {"ok": False, "error": "NO_QUERY_SERVICE"}
-        try:
-            track = self._query_svc.fetch_track_internal(track_id)
-            if not track or not track.get("filepath"):
-                return {"ok": False, "error": "NOT_FOUND"}
-            return self.enqueueSong(track["filepath"])
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        return self._tas.enqueue_track(track_id)
 
     @Slot(int, result=dict)
     def playNextTrackById(self, track_id: int):
-        if not self._query_svc:
-            return {"ok": False, "error": "NO_QUERY_SERVICE"}
-        try:
-            track = self._query_svc.fetch_track_internal(track_id)
-            if not track or not track.get("filepath"):
-                return {"ok": False, "error": "NOT_FOUND"}
-            if not self._playback_ctrl or not hasattr(self._playback_ctrl, 'enqueue_next'):
-                return {"ok": False, "error": "UNSUPPORTED"}
-            self._playback_ctrl.enqueue_next(track["filepath"])
-            return {"ok": True}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        return self._tas.play_next(track_id)
 
     @Slot(int, int, result=dict)
     def addTrackToPlaylistById(self, track_id: int, playlist_id: int):
