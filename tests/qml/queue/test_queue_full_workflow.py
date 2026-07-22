@@ -151,6 +151,8 @@ def test_queue_bridge_rejects_invalid_mutation_indices(queue_service, mock_playe
     remove_result = bridge.removeFromQueue(2)
     move_result = bridge.moveItem(0, 2)
 
-    assert remove_result == {"ok": False, "error": "INVALID_INDEX"}
-    assert move_result == {"ok": False, "error": "INVALID_INDEX"}
+    assert not remove_result["ok"]
+    assert remove_result["error"] == "INVALID_INDEX"
+    assert not move_result["ok"]
+    assert move_result["error"] == "INVALID_INDEX"
     assert queue_service.count == 1

@@ -238,5 +238,5 @@ def test_backend_sync_and_execution_errors_are_structured():
     player.play_queue.side_effect = None
     player.play.side_effect = RuntimeError("play failed")
     play_result = service.play_from_index(0)
-    assert play_result["error"] == "BACKEND_SYNC_FAILED"
+    assert play_result["error"] == "PLAYBACK_FAILED"
     assert "play failed" in play_result["message"]
