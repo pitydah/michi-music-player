@@ -10,6 +10,7 @@ import pytest
 
 from core.queue_service import QueueService
 from ui_qml_bridge.queue_bridge import QueueBridge
+from ui_qml.models.QueueListModel import QueueListModel
 
 pytestmark = [pytest.mark.qml_module("queue")]
 
@@ -151,3 +152,91 @@ def test_canonical_queue_drives_model_playback_and_restore(tmp_path, monkeypatch
     assert restored_bridge.queueCount == 2
     assert [item["title"] for item in restored.items] == ["C", "A"]
     assert restored.current_index == 0
+
+
+def _navigation_service(repeat="none"):
+    player = MagicMock()
+    service = QueueService(player_service=player)
+    service.repeat = repeat
+    service.enqueue([
+        {"track_id": 1, "title": "A", "filepath": "/music/a.flac"},
+        {"track_id": 2, "title": "B", "filepath": "/music/b.flac"},
+        {"track_id": 3, "title": "C", "filepath": "/music/c.flac"},
+    ])
+    return service, player
+
+
+def test_next_and_previous_execute_current_track():
+    service, player = _navigation_service()
+
+    assert service.next()["ok"]
+    assert service.current_index == 1
+    player.play.assert_called_with("/music/b.flac", "B", "", "")
+    assert service.previous()["ok"]
+    assert service.current_index == 0
+    player.play.assert_called_with("/music/a.flac", "A", "", "")
+
+
+def test_navigation_boundaries_and_empty_queue():
+    empty = QueueService(player_service=MagicMock())
+    assert empty.next()["error"] == "EMPTY_QUEUE"
+    assert empty.previous()["error"] == "EMPTY_QUEUE"
+    assert empty.play_from_index(0)["error"] == "EMPTY_QUEUE"
+
+    service, _player = _navigation_service()
+    assert service.previous()["error"] == "START_OF_QUEUE"
+    service.current_index = 2
+    assert service.next()["error"] == "END_OF_QUEUE"
+    assert service.play_from_index(10)["error"] == "INVALID_INDEX"
+
+
+def test_repeat_all_wraps_in_both_directions():
+    service, player = _navigation_service(repeat="all")
+    service.current_index = 2
+
+    assert service.next()["ok"]
+    assert service.current_index == 0
+    assert service.previous()["ok"]
+    assert service.current_index == 2
+    assert player.play.call_count == 2
+
+
+def test_enqueue_next_inserts_without_advancing():
+    service, _player = _navigation_service()
+    service.current_index = 1
+
+    result = service.enqueue_next(
+        {"track_id": 4, "title": "D", "filepath": "/music/d.flac"}
+    )
+
+    assert result["ok"]
+    assert [item["title"] for item in service.items] == ["A", "B", "D", "C"]
+    assert service.current_index == 1
+
+
+def test_queue_model_marks_current_position_from_service():
+    service, _player = _navigation_service()
+    service.current_index = 1
+    model = QueueListModel(queue_service=service)
+
+    page = model._fetch_page(0, 10)
+
+    assert [item["is_current"] for item in page] == [False, True, False]
+
+
+def test_backend_sync_and_execution_errors_are_structured():
+    service, player = _navigation_service()
+    player.play_queue.side_effect = RuntimeError("queue sync failed")
+
+    sync_result = service.enqueue_next(
+        {"track_id": 4, "title": "D", "filepath": "/music/d.flac"}
+    )
+
+    assert sync_result["error"] == "BACKEND_SYNC_FAILED"
+    assert "queue sync failed" in sync_result["message"]
+
+    player.play_queue.side_effect = None
+    player.play.side_effect = RuntimeError("play failed")
+    play_result = service.play_from_index(0)
+    assert play_result["error"] == "BACKEND_SYNC_FAILED"
+    assert "play failed" in play_result["message"]

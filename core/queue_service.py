@@ -159,27 +159,53 @@ class QueueService:
                         self._current_index -= 1
         self._sync()
 
-    def play_next(self, item: dict) -> dict:
-        with self._lock:
-            next_idx = self._current_index + 1 if self._current_index >= 0 else 0
-            if next_idx < len(self._items):
-                next_item = self._items[next_idx]
-                self._current_index = next_idx
-        self._sync()
-        return {"ok": True, "item": next_item}
+    @staticmethod
+    def _normalize_items(items) -> list[dict]:
+        if isinstance(items, (dict, str)):
+            items = [items]
+        return [
+            item if isinstance(item, dict) else {"filepath": str(item)}
+            for item in (items or [])
+        ]
 
-    def enqueue(self, items: list, play_now: bool = False) -> dict:
-        if not items:
-            return {"ok": False, "error": "EMPTY"}
+    def enqueue(self, items, play_now: bool = False) -> dict:
+        normalized = self._normalize_items(items)
+        if not normalized:
+            return {"ok": False, "error": "EMPTY_QUEUE"}
         with self._lock:
-            added = 0
-            for item in items:
-                self._items.append(item if isinstance(item, dict) else {"filepath": str(item)})
-                added += 1
+            self._save_undo()
+            start_index = len(self._items)
+            self._items.extend(normalized)
             if play_now and self._items:
-                self._current_index = len(self._items) - added
-        self._sync()
-        return {"ok": True, "added": added, "total": len(self._items)}
+                self._current_index = start_index
+            elif self._current_index < 0:
+                self._current_index = 0
+        sync_result = self._sync()
+        if not sync_result["ok"]:
+            return sync_result
+        if play_now:
+            play_result = self._execute_current()
+            if not play_result["ok"]:
+                return play_result
+        return {"ok": True, "added": len(normalized), "total": self.count,
+                "current_index": self.current_index}
+
+    def enqueue_next(self, items) -> dict:
+        normalized = self._normalize_items(items)
+        if not normalized:
+            return {"ok": False, "error": "EMPTY_QUEUE"}
+        with self._lock:
+            self._save_undo()
+            insert_at = self._current_index + 1 if self._current_index >= 0 else 0
+            for offset, item in enumerate(normalized):
+                self._items.insert(insert_at + offset, item)
+            if self._current_index < 0:
+                self._current_index = 0
+        sync_result = self._sync()
+        if not sync_result["ok"]:
+            return sync_result
+        return {"ok": True, "added": len(normalized), "index": insert_at,
+                "total": self.count}
 
     def save_as_playlist(self, name: str) -> dict:
         with self._lock:
@@ -201,22 +227,65 @@ class QueueService:
 
     def play_from_index(self, index: int) -> dict:
         with self._lock:
+            if not self._items:
+                return {"ok": False, "error": "EMPTY_QUEUE"}
             if index < 0 or index >= len(self._items):
                 return {"ok": False, "error": "INVALID_INDEX"}
             self._current_index = index
-            item = dict(self._items[index])
-        self._sync()
+        sync_result = self._sync()
+        if not sync_result["ok"]:
+            return sync_result
+        return self._execute_current()
+
+    def next(self) -> dict:
+        with self._lock:
+            if not self._items:
+                return {"ok": False, "error": "EMPTY_QUEUE"}
+            if self._current_index < len(self._items) - 1:
+                target = self._current_index + 1
+            elif self._repeat == "all":
+                target = 0
+            else:
+                return {"ok": False, "error": "END_OF_QUEUE"}
+        return self.play_from_index(target)
+
+    def previous(self) -> dict:
+        with self._lock:
+            if not self._items:
+                return {"ok": False, "error": "EMPTY_QUEUE"}
+            if self._current_index > 0:
+                target = self._current_index - 1
+            elif self._repeat == "all":
+                target = len(self._items) - 1
+            else:
+                return {"ok": False, "error": "START_OF_QUEUE"}
+        return self.play_from_index(target)
+
+    def _execute_current(self) -> dict:
+        with self._lock:
+            if not self._items:
+                return {"ok": False, "error": "EMPTY_QUEUE"}
+            if self._current_index < 0 or self._current_index >= len(self._items):
+                return {"ok": False, "error": "INVALID_INDEX"}
+            item = dict(self._items[self._current_index])
+            index = self._current_index
         filepath = item.get("filepath", "")
         if not filepath:
             return {"ok": False, "error": "MISSING_FILEPATH"}
         if not self._player or not hasattr(self._player, "play"):
             return {"ok": False, "error": "NO_PLAYER"}
-        self._player.play(
-            filepath,
-            item.get("title", ""),
-            item.get("artist", ""),
-            item.get("album", ""),
-        )
+        try:
+            self._player.play(
+                filepath,
+                item.get("title", ""),
+                item.get("artist", ""),
+                item.get("album", ""),
+            )
+        except Exception as exc:
+            logger.exception("Queue playback execution failed")
+            return {"ok": False, "error": "BACKEND_SYNC_FAILED",
+                    "message": str(exc)}
+        self._publish_state()
         return {"ok": True, "item": item, "index": index}
 
     def undo(self) -> bool:
@@ -239,21 +308,37 @@ class QueueService:
             with contextlib.suppress(Exception):
                 self._event_bus.publish(event, **data)
 
-    def _sync(self):
+    def _sync_backend(self) -> dict:
         with self._lock:
             items_snapshot = list(self._items)
             current_index = self._current_index
+        if not self._player:
+            return {"ok": True, "synced": False}
         paths = [item.get("filepath", "") for item in items_snapshot]
-        if self._player and not items_snapshot and hasattr(self._player, "clear_queue"):
-            with contextlib.suppress(Exception):
+        try:
+            if not items_snapshot and hasattr(self._player, "clear_queue"):
                 self._player.clear_queue()
-        elif self._player and paths and all(paths) and hasattr(self._player, "play_queue"):
-            with contextlib.suppress(Exception):
+            elif paths and all(paths) and hasattr(self._player, "play_queue"):
                 self._player.play_queue(paths, current_index)
-        elif self._player and hasattr(self._player, 'set_queue'):
-            with contextlib.suppress(Exception):
+            elif hasattr(self._player, "set_queue"):
                 self._player.set_queue(items_snapshot)
-        self._publish("queue.changed", count=len(items_snapshot))
+            else:
+                return {"ok": False, "error": "BACKEND_SYNC_FAILED",
+                        "message": "Player does not expose a queue synchronization API"}
+        except Exception as exc:
+            logger.exception("Queue backend synchronization failed")
+            return {"ok": False, "error": "BACKEND_SYNC_FAILED",
+                    "message": str(exc)}
+        return {"ok": True, "synced": True}
+
+    def _publish_state(self):
+        self._publish("queue.changed", count=self.count,
+                      current_index=self.current_index, repeat=self.repeat)
+
+    def _sync(self) -> dict:
+        result = self._sync_backend()
+        self._publish_state()
+        return result
 
     # ── Persistence ──
 

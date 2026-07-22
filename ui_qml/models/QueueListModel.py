@@ -83,7 +83,7 @@ class QueueListModel(BasePagedListModel):
                 "album": item.get("album", ""),
                 "album_key": item.get("album_key", ""),
                 "duration": item.get("duration", 0),
-                "is_current": item.get("is_current", False),
+                "is_current": position == self._queue_service.current_index,
                 "position": position,
             }
         return {
@@ -94,6 +94,6 @@ class QueueListModel(BasePagedListModel):
             "album": getattr(item, "album", ""),
             "album_key": getattr(item, "album_key", ""),
             "duration": getattr(item, "duration", 0),
-            "is_current": getattr(item, "is_current", False),
+            "is_current": position == self._queue_service.current_index,
             "position": position,
         }
