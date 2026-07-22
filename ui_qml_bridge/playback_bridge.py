@@ -4,17 +4,16 @@ from __future__ import annotations
 import logging
 
 from PySide6.QtCore import QObject, Property, Signal, Slot
+from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
 
 logger = logging.getLogger(__name__)
-
-from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
 
 
 class PlaybackBridge(QObject):
     stateChanged = Signal()
 
     def __init__(self, player_service=None, playback_ctrl=None, nowplaying_bridge=None,
-                 audio_quality_adapter=None, parent=None):
+                 audio_quality_adapter=None, queue_service=None, parent=None):
         super().__init__(parent)
         logger.debug("PlaybackBridge.__init__ called")
         assert player_service is not None or playback_ctrl is not None, \
@@ -23,7 +22,11 @@ class PlaybackBridge(QObject):
         if nowplaying_bridge is None:
             from ui_qml_bridge.audio_quality_adapter import AudioQualityAdapter
             aqa = audio_quality_adapter or AudioQualityAdapter()
-            self._nowplaying = NowPlayingBridge(player_service=player, audio_quality_adapter=aqa)
+            self._nowplaying = NowPlayingBridge(
+                player_service=player,
+                queue_service=queue_service,
+                audio_quality_adapter=aqa,
+            )
         else:
             self._nowplaying = nowplaying_bridge
         self._nowplaying.stateChanged.connect(self.stateChanged.emit)

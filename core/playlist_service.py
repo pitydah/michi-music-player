@@ -386,25 +386,18 @@ class PlaylistService:
                 return {"ok": False, "error_code": "PLAY_FAILED", "message": str(e)}
         return {"ok": True, "index": index, "filepath": fp}
 
-    def save_queue(self, player_service, name: str) -> dict:
+    def save_queue(self, items, name: str) -> dict:
         if not name or not name.strip():
             return self._error("EMPTY_NAME")
         if not self._can():
             return self._error("NO_DB")
         try:
             fps = []
-            if player_service and hasattr(player_service, 'get_queue'):
-                q = player_service.get_queue()
-                for item in (q or []):
-                    fp = getattr(item, 'filepath', None) if not isinstance(item, dict) else item.get("filepath", "")
-                    if fp:
-                        fps.append(fp)
-            if not fps and player_service and hasattr(player_service, 'current'):
-                cur = player_service.current
-                if cur:
-                    fp = getattr(cur, 'filepath', '') if not isinstance(cur, dict) else cur.get("filepath", "")
-                    if fp:
-                        fps.append(fp)
+            for item in (items or []):
+                fp = (getattr(item, "filepath", None)
+                      if not isinstance(item, dict) else item.get("filepath", ""))
+                if fp:
+                    fps.append(fp)
             if not fps:
                 return self._error("NO_TRACKS")
             pid = self._db.create_playlist(name.strip())

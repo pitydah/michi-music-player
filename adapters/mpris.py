@@ -20,6 +20,8 @@ class MPRISObject(dbus.service.Object):
     def __init__(self, bus_name, obj_path):
         super().__init__(bus_name, obj_path)
         self._engine: PlayerEngine | None = None
+        self._player_service = None
+        self._queue_service = None
         self._metadata = {}
         self._volume = 0.7
 
@@ -44,6 +46,10 @@ class MPRISObject(dbus.service.Object):
     def set_player_service(self, player_service):
         """Listen to PlayerService signals for MPD backend support."""
         self._player_service = player_service
+
+    def set_queue_service(self, queue_service):
+        """Use QueueService as the authority for queue navigation."""
+        self._queue_service = queue_service
 
     @property
     def _playback_state(self):
@@ -77,13 +83,15 @@ class MPRISObject(dbus.service.Object):
 
     @dbus.service.method(dbus_interface="org.mpris.MediaPlayer2.Player")
     def Next(self):
-        api = self._player_api()
-        api and api.play_next()
+        queue = getattr(self, "_queue_service", None)
+        if queue:
+            queue.next()
 
     @dbus.service.method(dbus_interface="org.mpris.MediaPlayer2.Player")
     def Previous(self):
-        api = self._player_api()
-        api and api.play_prev()
+        queue = getattr(self, "_queue_service", None)
+        if queue:
+            queue.previous()
 
     def _player_api(self):
         ps = getattr(self, '_player_service', None)
@@ -255,12 +263,16 @@ class MPRISObject(dbus.service.Object):
 class MPRISAdapter(QObject):
     """Registers MPRIS on the session bus."""
 
-    def __init__(self, parent=None):
+    def __init__(self, player_service=None, queue_service=None, parent=None):
         super().__init__(parent)
         DBusGMainLoop(set_as_default=True)
         bus = dbus.SessionBus()
         bus_name = dbus.service.BusName(SERVICE_NAME, bus)
         self._object = MPRISObject(bus_name, OBJECT_PATH)
+        if player_service is not None:
+            self._object.set_player_service(player_service)
+        if queue_service is not None:
+            self._object.set_queue_service(queue_service)
 
     @property
     def player(self) -> MPRISObject:

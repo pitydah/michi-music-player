@@ -136,8 +136,8 @@ class ApplicationBootstrap:
         ids = [
             ("play", "playback", "playback_service", "play"),
             ("pause", "playback", "playback_service", "pause"),
-            ("next", "playback", "playback_service", "next"),
-            ("previous", "playback", "playback_service", "previous"),
+            ("next", "playback", "queue_service", "next"),
+            ("previous", "playback", "queue_service", "previous"),
             ("stop", "playback", "playback_service", "stop"),
             ("playback.shuffle", "playback", "playback_service", "toggle_shuffle"),
             ("playback.repeat", "playback", "playback_service", "toggle_repeat"),

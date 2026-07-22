@@ -375,13 +375,13 @@ class PlaylistsBridge(QObject):
             "can_rename": self._can(),
         }
 
-    @Slot(str, result=dict)
-    def saveQueueAsPlaylist(self, name: str):
+    @Slot(str, "QVariantList", result=dict)
+    def saveQueueAsPlaylist(self, name: str, items=None):
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         if not name:
             return {"ok": False, "error": "EMPTY_NAME"}
-        result = self._svc.save_queue(self._player, name)
+        result = self._svc.save_queue(items or [], name)
         if result.get("ok"):
             self.refresh()
             self._notify(f"Cola guardada como '{name}'", "success")

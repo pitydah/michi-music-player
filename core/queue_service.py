@@ -136,28 +136,40 @@ class QueueService:
 
     def move(self, from_index: int, to_index: int):
         with self._lock:
+            if (from_index < 0 or from_index >= len(self._items)
+                    or to_index < 0 or to_index >= len(self._items)):
+                return {"ok": False, "error": "INVALID_INDEX"}
             self._save_undo()
-            if 0 <= from_index < len(self._items) and 0 <= to_index < len(self._items):
-                item = self._items.pop(from_index)
-                self._items.insert(to_index, item)
-                if self._current_index == from_index:
-                    self._current_index = to_index
-        self._sync()
+            item = self._items.pop(from_index)
+            self._items.insert(to_index, item)
+            if self._current_index == from_index:
+                self._current_index = to_index
+            elif from_index < self._current_index <= to_index:
+                self._current_index -= 1
+            elif to_index <= self._current_index < from_index:
+                self._current_index += 1
+        return self._sync()
 
     def reorder(self, from_index: int, to_index: int):
-        self.move(from_index, to_index)
+        return self.move(from_index, to_index)
 
     def remove(self, indices: list[int]):
         with self._lock:
+            unique_indices = sorted(set(indices), reverse=True)
+            if not unique_indices or any(
+                index < 0 or index >= len(self._items) for index in unique_indices
+            ):
+                return {"ok": False, "error": "INVALID_INDEX"}
             self._save_undo()
-            for idx in sorted(indices, reverse=True):
-                if 0 <= idx < len(self._items):
-                    self._items.pop(idx)
-                    if self._current_index == idx:
-                        self._current_index = min(idx, len(self._items) - 1) if self._items else -1
-                    elif self._current_index > idx:
-                        self._current_index -= 1
-        self._sync()
+            for idx in unique_indices:
+                self._items.pop(idx)
+                if self._current_index == idx:
+                    self._current_index = (
+                        min(idx, len(self._items) - 1) if self._items else -1
+                    )
+                elif self._current_index > idx:
+                    self._current_index -= 1
+        return self._sync()
 
     @staticmethod
     def _normalize_items(items) -> list[dict]:
@@ -217,7 +229,7 @@ class QueueService:
             self._save_undo()
             self._items = []
             self._current_index = -1
-        self._sync()
+        return self._sync()
 
     def get_current(self) -> dict | None:
         with self._lock:

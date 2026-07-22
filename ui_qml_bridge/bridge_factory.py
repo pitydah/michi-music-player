@@ -157,6 +157,7 @@ class BridgeFactory(QObject):
             )
             self._bridges["nowplaying"] = NowPlayingBridge(
                 player_service=self._get("playback_service"),
+                queue_service=self._get("queue_service"),
                 audio_quality_adapter=quality_adapter,
             )
 
