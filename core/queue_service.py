@@ -199,6 +199,26 @@ class QueueService:
                 return dict(self._items[self._current_index])
         return None
 
+    def play_from_index(self, index: int) -> dict:
+        with self._lock:
+            if index < 0 or index >= len(self._items):
+                return {"ok": False, "error": "INVALID_INDEX"}
+            self._current_index = index
+            item = dict(self._items[index])
+        self._sync()
+        filepath = item.get("filepath", "")
+        if not filepath:
+            return {"ok": False, "error": "MISSING_FILEPATH"}
+        if not self._player or not hasattr(self._player, "play"):
+            return {"ok": False, "error": "NO_PLAYER"}
+        self._player.play(
+            filepath,
+            item.get("title", ""),
+            item.get("artist", ""),
+            item.get("album", ""),
+        )
+        return {"ok": True, "item": item, "index": index}
+
     def undo(self) -> bool:
         with self._lock:
             if self._undo_stack:
@@ -222,7 +242,15 @@ class QueueService:
     def _sync(self):
         with self._lock:
             items_snapshot = list(self._items)
-        if self._player and hasattr(self._player, 'set_queue'):
+            current_index = self._current_index
+        paths = [item.get("filepath", "") for item in items_snapshot]
+        if self._player and not items_snapshot and hasattr(self._player, "clear_queue"):
+            with contextlib.suppress(Exception):
+                self._player.clear_queue()
+        elif self._player and paths and all(paths) and hasattr(self._player, "play_queue"):
+            with contextlib.suppress(Exception):
+                self._player.play_queue(paths, current_index)
+        elif self._player and hasattr(self._player, 'set_queue'):
             with contextlib.suppress(Exception):
                 self._player.set_queue(items_snapshot)
         self._publish("queue.changed", count=len(items_snapshot))

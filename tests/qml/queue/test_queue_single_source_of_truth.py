@@ -45,24 +45,21 @@ def test_queue_service_owns_state_not_player(service, sample_items):
 
 
 def test_queue_bridge_receives_queue_service_by_constructor(service):
-    bridge = QueueBridge(queue_service=service)
+    bridge = QueueBridge(player_service=MagicMock(), queue_service=service)
     assert bridge.queue_service is service
     assert bridge.queue_service is not None
 
 
 def test_queue_bridge_does_not_create_queue_service_internally(service):
-    bridge = QueueBridge(queue_service=service)
+    bridge = QueueBridge(player_service=MagicMock(), queue_service=service)
     assert not hasattr(bridge, '_queue_service') or bridge._queue_service is service
 
 
 def test_queue_listmodel_reads_from_queue_service(service, sample_items):
     service.set_items(sample_items)
-    from unittest.mock import MagicMock
-    player = MagicMock()
-    player.get_queue.return_value = sample_items
     from ui_qml.models.QueueListModel import QueueListModel
 
-    model = QueueListModel(player_service=player)
+    model = QueueListModel(queue_service=service)
     assert model._fetch_count() == 3
     page = model._fetch_page(0, 10)
     assert len(page) == 3
@@ -111,3 +108,46 @@ def test_queue_service_independent_of_player_service(service, sample_items):
     player.get_queue.return_value = []
     assert service.count == 3
     assert player.get_queue() != service.items
+
+
+def test_canonical_queue_drives_model_playback_and_restore(tmp_path, monkeypatch):
+    state_path = tmp_path / "queue_state.json"
+    monkeypatch.setattr("core.queue_service._queue_state_path", lambda: str(state_path))
+    player = MagicMock()
+    service = QueueService(player_service=player)
+    bridge = QueueBridge(player_service=player, queue_service=service)
+    items = [
+        {"track_id": 1, "title": "A", "filepath": "/music/a.flac"},
+        {"track_id": 2, "title": "B", "filepath": "/music/b.flac"},
+        {"track_id": 3, "title": "C", "filepath": "/music/c.flac"},
+    ]
+
+    service.enqueue(items)
+    bridge.refresh()
+    assert bridge.queueCount == 3
+    player.get_queue.assert_not_called()
+    player.play_queue.assert_called()
+    assert bridge.moveItem(0, 2)["ok"]
+    assert bridge.playFromIndex(1)["ok"]
+    player.play.assert_called_once_with(
+        "/music/c.flac",
+        "C",
+        "",
+        "",
+    )
+    assert service.get_current()["title"] == "C"
+    assert bridge.removeFromQueue(0)["ok"]
+    assert [item["title"] for item in service.items] == ["C", "A"]
+    assert service.current_index == 0
+    assert bridge.persist()["ok"]
+
+    restored_player = MagicMock()
+    restored = QueueService(player_service=restored_player)
+    restored_bridge = QueueBridge(
+        player_service=restored_player,
+        queue_service=restored,
+    )
+    assert restored_bridge.restore()["ok"]
+    assert restored_bridge.queueCount == 2
+    assert [item["title"] for item in restored.items] == ["C", "A"]
+    assert restored.current_index == 0

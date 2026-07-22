@@ -1,4 +1,4 @@
-"""QueueListModel — BasePagedListModel reading from PlayerService queue."""
+"""QueueListModel — BasePagedListModel observing the canonical QueueService."""
 from __future__ import annotations
 
 from typing import Any
@@ -19,9 +19,9 @@ class QueueListModel(BasePagedListModel):
     CurrentRole = Qt.UserRole + 8
     PositionRole = Qt.UserRole + 9
 
-    def __init__(self, player_service=None, query_executor=None, parent=None):
+    def __init__(self, queue_service=None, query_executor=None, parent=None):
         super().__init__(page_size=500, query_executor=query_executor, parent=parent)
-        self._player = player_service
+        self._queue_service = queue_service
 
     def _owner(self) -> str:
         return "queue"
@@ -53,19 +53,19 @@ class QueueListModel(BasePagedListModel):
         super().refresh()
 
     def _fetch_count(self, **kwargs) -> int:
-        if not self._player or not hasattr(self._player, 'get_queue'):
+        if not self._queue_service:
             return 0
         try:
-            q = self._player.get_queue()
+            q = self._queue_service.get_items()
             return len(q) if q else 0
         except Exception:
             return 0
 
     def _fetch_page(self, offset: int, limit: int, **kwargs) -> list[dict[str, Any]]:
-        if not self._player or not hasattr(self._player, 'get_queue'):
+        if not self._queue_service:
             return []
         try:
-            q = self._player.get_queue()
+            q = self._queue_service.get_items()
             if not q:
                 return []
             page = q[offset:offset + limit]

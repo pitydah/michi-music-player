@@ -28,12 +28,14 @@ class QueueBridge(QObject):
     def __init__(self, player_service=None, playlists_bridge=None,
                  queue_service=None, parent=None):
         super().__init__(parent)
-        assert player_service is not None, "QueueBridge: player_service is REQUIRED"
+        assert player_service is not None or queue_service is not None, (
+            "QueueBridge: queue_service or player_service is REQUIRED"
+        )
         self._player = player_service
         self._pb = playlists_bridge
         self._queue_service = queue_service
         from ui_qml.models.QueueListModel import QueueListModel
-        self._model = QueueListModel(player_service=player_service, parent=self)
+        self._model = QueueListModel(queue_service=queue_service, parent=self)
 
     @property
     def queue_service(self):
@@ -61,6 +63,11 @@ class QueueBridge(QObject):
 
     @Slot(int, result=dict)
     def playFromIndex(self, index: int):
+        if self._queue_service:
+            result = self._queue_service.play_from_index(index)
+            self._model.refresh()
+            self.dataChanged.emit()
+            return result
         if not self._player or not hasattr(self._player, 'get_queue'):
             return {"ok": False, "error": "NO_PLAYER"}
         try:

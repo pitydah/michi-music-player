@@ -1,7 +1,7 @@
 """Playback composition — player, queue, track actions."""
 from __future__ import annotations
 
-from core.service_container import ServiceContainer, ServicePriority
+from core.service_container import ServiceContainer
 
 
 def build(container: ServiceContainer) -> None:
@@ -12,10 +12,10 @@ def build(container: ServiceContainer) -> None:
     from audio.player import GStreamerEngine
 
     eb = container.get("event_bus")
-    qs = QueueService(event_bus=eb)
     ts = TrackActionService()
     engine = GStreamerEngine()
     ps = PlayerService(engine=engine, event_bus=eb)
+    qs = QueueService(player_service=ps, event_bus=eb)
     ns = NotificationService(event_bus=eb)
 
     container.register("queue_service", qs)
