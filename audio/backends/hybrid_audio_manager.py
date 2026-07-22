@@ -47,6 +47,7 @@ class HybridAudioManager(QObject):
     position_changed = Signal(float)
     state_changed = Signal(str)
     duration_changed = Signal(float)
+    queue_progressed = Signal(int, str, str, object)
 
     def __init__(self, default_backend: "AudioBackend" = None, parent=None):
         super().__init__(parent)
@@ -61,10 +62,10 @@ class HybridAudioManager(QObject):
             self._active_id = default_backend.backend_id
             self._connect_backend_signals(default_backend)
 
-    def register(self, backend: "AudioBackend"):
+    def register(self, backend: "AudioBackend") -> None:
         self._backends[backend.backend_id] = backend
 
-    def unregister(self, backend_id: str):
+    def unregister(self, backend_id: str) -> None:
         self._backends.pop(backend_id, None)
 
     @property
@@ -90,6 +91,10 @@ class HybridAudioManager(QObject):
         if hasattr(backend, 'duration_changed'):
             self._connected_signals.append(
                 backend.duration_changed.connect(self.duration_changed))
+        if hasattr(backend, "queue_progressed"):
+            self._connected_signals.append(
+                backend.queue_progressed.connect(self.queue_progressed)
+            )
 
     def _disconnect_backend_signals(self):
         import contextlib
@@ -149,7 +154,7 @@ class HybridAudioManager(QObject):
         logger.warning("Falling back to GStreamer: %s", reason)
         return self.switch_to("gstreamer")
 
-    def mark_fallback(self, active: bool = True):
+    def mark_fallback(self, active: bool = True) -> None:
         self._fallback_active = active
 
     def _save_switch_state(self):
@@ -170,60 +175,84 @@ class HybridAudioManager(QObject):
 
     # ── Delegated methods ──
 
-    def play(self, path_or_uri: str):
+    def play(self, path_or_uri: str) -> None:
         b = self.active
         if b:
             b.play(path_or_uri)
 
-    def pause(self):
+    def pause(self) -> None:
         b = self.active
         if b:
             b.pause()
 
-    def resume(self):
+    def resume(self) -> None:
         b = self.active
         if b:
             b.resume()
 
-    def toggle(self):
+    def toggle(self) -> None:
         b = self.active
         if b:
             b.toggle()
 
-    def stop(self):
+    def stop(self) -> None:
         b = self.active
         if b:
             b.stop()
 
-    def seek(self, seconds: float):
+    def seek(self, seconds: float) -> None:
         b = self.active
         if b:
             b.seek(seconds)
 
-    def set_volume(self, volume: int):
+    def set_volume(self, volume: int) -> None:
         b = self.active
         if b:
             b.set_volume(volume)
 
-    def set_queue(self, paths: list[str], start_index: int = 0):
+    def set_repeat(self, mode: str) -> str:
+        backend = self.active
+        if backend and hasattr(backend, "set_repeat"):
+            return backend.set_repeat(mode)
+        return mode
+
+    def set_shuffle(self, enabled: bool) -> bool:
+        backend = self.active
+        if backend and hasattr(backend, "set_shuffle"):
+            return backend.set_shuffle(enabled)
+        return bool(enabled)
+
+    def set_queue(self, paths: list[str], start_index: int = 0,
+                  revision: int | None = None) -> None:
         self._switch_state.queue = list(paths)
         self._switch_state.index = start_index
         b = self.active
         if b:
-            b.set_queue(paths, start_index)
+            try:
+                b.set_queue(paths, start_index, revision=revision)
+            except TypeError as exc:
+                if "revision" not in str(exc):
+                    raise
+                b.set_queue(paths, start_index)
 
-    def enqueue(self, paths: list[str], play_now: bool = True):
+    def play_queue_index(self, index: int) -> bool:
+        backend = self.active
+        if backend and hasattr(backend, "play_queue_index"):
+            return bool(backend.play_queue_index(index))
+        return False
+
+    def enqueue(self, paths: list[str], play_now: bool = True) -> None:
         self._switch_state.queue.extend(paths)
         b = self.active
         if b:
             b.enqueue(paths, play_now)
 
-    def enqueue_next(self, paths: list[str]):
+    def enqueue_next(self, paths: list[str]) -> None:
         b = self.active
         if b:
             b.enqueue_next(paths)
 
-    def clear_queue(self):
+    def clear_queue(self) -> None:
         self._switch_state = _SwitchState()
         b = self.active
         if b:
@@ -263,7 +292,7 @@ class HybridAudioManager(QObject):
             return b.capabilities
         return BackendCapabilities(backend_id="none", display_name="None")
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         self._disconnect_backend_signals()
         for bid, backend in self._backends.items():
             logger.info("Shutting down backend: %s", bid)

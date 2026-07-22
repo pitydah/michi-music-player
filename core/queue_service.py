@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import random
+import tempfile
 import threading
 import time
 from dataclasses import dataclass
@@ -40,7 +41,6 @@ def _queue_state_path():
             return str(p / "queue_state.json")
     except Exception:
         pass
-    import tempfile
     return os.path.join(tempfile.gettempdir(), "michi_queue_state.json")
 
 
@@ -246,10 +246,10 @@ class QueueService:
             self._restore_snapshot(before)
             return self._error(operation, "INVALID_ARGUMENT", str(exc))
 
-        sync_result = self._sync_backend()
+        sync_result = self._sync_backend(revision=self.revision + 1)
         if not sync_result.get("ok"):
             self._restore_snapshot(before)
-            self._sync_backend()
+            self._sync_backend(revision=self.revision)
             result = self._error(
                 operation,
                 sync_result.get("error", "BACKEND_SYNC_FAILED"),
@@ -262,7 +262,7 @@ class QueueService:
             execution = self._execute_current()
             if not execution.get("ok"):
                 self._restore_snapshot(before)
-                self._sync_backend()
+                self._sync_backend(revision=self.revision)
                 result = self._error(
                     operation,
                     execution.get("error", "PLAYBACK_FAILED"),
@@ -538,6 +538,57 @@ class QueueService:
 
         return self._commit_mutation(operation, mutate, execute=True)
 
+    def reconcile_backend_progress(
+        self,
+        index: int,
+        filepath: str,
+        reason: str,
+        revision: int | None = None,
+    ) -> dict:
+        """Reconcile a physical backend transition without replaying it."""
+        if reason not in {"manual", "eos", "gapless", "restore",
+                          "backend_reconnect"}:
+            return self._error("reconcile_backend_progress", "INVALID_REASON")
+        with self._lock:
+            if revision is not None and revision != self._revision:
+                return self._error("reconcile_backend_progress", "STALE_EVENT")
+            if index < 0 or index >= len(self._items):
+                return self._error("reconcile_backend_progress", "INVALID_INDEX")
+            expected_path = self._items[index].get("filepath", "")
+            if not filepath or filepath != expected_path:
+                return self._error("reconcile_backend_progress", "TRACK_MISMATCH")
+            current_index = self._current_index
+            current_path = (
+                self._items[current_index].get("filepath", "")
+                if 0 <= current_index < len(self._items) else ""
+            )
+
+        if reason == "eos":
+            if index != current_index or filepath != current_path:
+                return self._error("reconcile_backend_progress", "STALE_EVENT")
+            result = self.next()
+            if result.get("error") == "END_OF_QUEUE":
+                stop = getattr(self._player, "stop", None)
+                if callable(stop):
+                    stop()
+                self._publish("queue.finished", revision=self.revision)
+                return self._result(
+                    "reconcile_backend_progress", ended=True, reason="eos"
+                )
+            return result
+
+        if index == current_index and filepath == current_path:
+            return self._result(
+                "reconcile_backend_progress", ignored=True, reason=reason
+            )
+
+        with self._lock:
+            self._current_index = index
+        self._publish_state("backend_progress")
+        return self._result(
+            "reconcile_backend_progress", reason=reason, reconciled=True
+        )
+
     def set_repeat(self, mode: str) -> dict:
         if mode not in {"none", "all", "one"}:
             return self._error("set_repeat", "INVALID_REPEAT_MODE")
@@ -633,12 +684,29 @@ class QueueService:
         if not self._player or not hasattr(self._player, "play"):
             return self._error("execute_current", "NO_PLAYER")
         try:
-            self._player.play(
-                filepath,
-                item.get("title", ""),
-                item.get("artist", ""),
-                item.get("album", ""),
+            play_queue_index = getattr(self._player, "play_queue_index", None)
+            has_explicit_queue_play = (
+                callable(getattr(type(self._player), "play_queue_index", None))
+                or "play_queue_index" in vars(self._player)
             )
+            if callable(play_queue_index) and has_explicit_queue_play:
+                if not play_queue_index(index):
+                    return self._error(
+                        "execute_current", "PLAYBACK_FAILED",
+                        "Backend rejected queue index",
+                    )
+            else:
+                try:
+                    self._player.play(
+                        filepath,
+                        item.get("title", ""),
+                        item.get("artist", ""),
+                        item.get("album", ""),
+                    )
+                except TypeError as exc:
+                    if "positional" not in str(exc):
+                        raise
+                    self._player.play(filepath)
         except Exception as exc:
             logger.exception("Queue playback execution failed")
             return self._error("execute_current", "PLAYBACK_FAILED", str(exc))
@@ -651,10 +719,10 @@ class QueueService:
             target = self._undo_stack[-1]
         current = self._capture_snapshot()
         self._restore_snapshot(target)
-        sync_result = self._sync_backend()
+        sync_result = self._sync_backend(revision=current.revision + 1)
         if not sync_result.get("ok"):
             self._restore_snapshot(current)
-            self._sync_backend()
+            self._sync_backend(revision=current.revision)
             result = self._error("undo", "BACKEND_SYNC_FAILED",
                                  sync_result.get("message", ""))
             self._publish_failure(result)
@@ -671,7 +739,7 @@ class QueueService:
             with contextlib.suppress(Exception):
                 self._event_bus.publish(event, **data)
 
-    def _sync_backend(self) -> dict:
+    def _sync_backend(self, revision: int | None = None) -> dict:
         with self._lock:
             items_snapshot = list(self._items)
             current_index = self._current_index
@@ -679,12 +747,28 @@ class QueueService:
             return {"ok": True, "synced": False}
         paths = [item.get("filepath", "") for item in items_snapshot]
         try:
-            if not items_snapshot and hasattr(self._player, "clear_queue"):
-                self._player.clear_queue()
-            elif paths and all(paths) and hasattr(self._player, "play_queue"):
-                self._player.play_queue(paths, current_index)
-            elif hasattr(self._player, "set_queue"):
-                self._player.set_queue(items_snapshot)
+            clear_queue = getattr(self._player, "clear_queue", None)
+            play_queue = getattr(self._player, "play_queue", None)
+            set_queue = getattr(self._player, "set_queue", None)
+            if not items_snapshot and callable(clear_queue):
+                clear_queue()
+            elif paths and all(paths) and callable(play_queue):
+                try:
+                    play_queue(paths, current_index, revision=revision)
+                except TypeError as exc:
+                    if "revision" not in str(exc):
+                        raise
+                    play_queue(paths, current_index)
+            elif callable(set_queue):
+                try:
+                    set_queue(paths, current_index, revision=revision)
+                except TypeError as exc:
+                    if "revision" not in str(exc):
+                        if "positional" not in str(exc):
+                            raise
+                        set_queue(items_snapshot)
+                    else:
+                        set_queue(paths, current_index)
             else:
                 return {"ok": False, "error": "BACKEND_SYNC_FAILED",
                         "message": "Player does not expose a queue synchronization API"}

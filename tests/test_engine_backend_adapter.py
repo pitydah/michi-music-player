@@ -15,11 +15,15 @@ class FakeEngine(QObject):
     queue_changed = Signal(list)
     finished = Signal()
     error_occurred = Signal(str)
+    queue_progressed = Signal(int, str, str, object)
 
     def __init__(self):
         super().__init__()
         self.state = PlaybackState.STOPPED
         self._volume = 0.7
+        self._duration = 0.0
+        self._repeat = "none"
+        self._shuffle = False
         self._queue = []
         self._queue_index = -1
         self.current = ""
@@ -61,6 +65,19 @@ class FakeEngine(QObject):
 
     def play_prev(self):
         return True
+
+    def set_queue(self, paths, start_index=0, revision=None):
+        self._queue = list(paths)
+        self._queue_index = start_index
+        self._queue_revision = revision
+
+    def set_repeat(self, mode):
+        self._repeat = mode
+        return mode
+
+    def set_shuffle(self, enabled):
+        self._shuffle = bool(enabled)
+        return self._shuffle
 
 
 @pytest.fixture

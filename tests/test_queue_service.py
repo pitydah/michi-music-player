@@ -12,6 +12,7 @@ class FakePlayer:
         self.played = []
         self.fail_sync = False
         self.fail_play = False
+        self.stopped = False
 
     def play_queue(self, paths, start_index=0):
         if self.fail_sync:
@@ -35,6 +36,9 @@ class FakePlayer:
         if self.fail_play:
             raise RuntimeError("play failed")
         self.played.append(filepath)
+
+    def stop(self):
+        self.stopped = True
 
 
 def _items(*names):
@@ -169,3 +173,52 @@ class TestQueueService:
         restored = svc.get_state()
         for key in ("items", "current_index", "repeat", "shuffle", "context"):
             assert restored[key] == expected[key]
+
+    def test_backend_gapless_progress_reconciles_without_replaying(self):
+        player = FakePlayer()
+        svc = QueueService(player_service=player)
+        svc.replace(_items("a", "b"))
+        revision = svc.revision
+
+        result = svc.reconcile_backend_progress(
+            1, "/b.flac", "gapless", revision
+        )
+        duplicate = svc.reconcile_backend_progress(
+            1, "/b.flac", "gapless", revision
+        )
+
+        assert result["ok"] and result["reconciled"]
+        assert duplicate["ok"] and duplicate["ignored"]
+        assert svc.current_index == 1
+        assert player.played == []
+
+    def test_backend_eos_uses_canonical_repeat_and_end_semantics(self):
+        player = FakePlayer()
+        svc = QueueService(player_service=player)
+        svc.replace(_items("a", "b"))
+
+        advanced = svc.reconcile_backend_progress(
+            0, "/a.flac", "eos", svc.revision
+        )
+        ended = svc.reconcile_backend_progress(
+            1, "/b.flac", "eos", svc.revision
+        )
+
+        assert advanced["ok"]
+        assert svc.current_index == 1
+        assert player.played == ["/b.flac"]
+        assert ended["ok"] and ended["ended"]
+        assert player.stopped is True
+
+    def test_stale_backend_event_is_rejected(self):
+        player = FakePlayer()
+        svc = QueueService(player_service=player)
+        svc.replace(_items("a", "b"))
+
+        result = svc.reconcile_backend_progress(
+            1, "/b.flac", "gapless", svc.revision - 1
+        )
+
+        assert not result["ok"]
+        assert result["error"] == "STALE_EVENT"
+        assert svc.current_index == 0

@@ -14,6 +14,7 @@ def build(container: ServiceContainer) -> None:
     engine = GStreamerEngine()
     ps = PlayerService(engine=engine, event_bus=eb)
     qs = QueueService(player_service=ps, event_bus=eb)
+    ps.queue_progressed.connect(qs.reconcile_backend_progress)
     ns = NotificationService(event_bus=eb)
 
     container.register("queue_service", qs)
