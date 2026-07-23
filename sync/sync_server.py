@@ -12,9 +12,11 @@ Permission map:
     sync.upload_state     → /api/sync/state
 
 Inspired by LocalSend's hyper server architecture (Rust).
-Uses Python stdlib http.server + ThreadPoolExecutor for concurrent requests.
+Uses Python's stdlib HTTP server on a Qt-managed worker thread.
 """
 
+from collections.abc import Callable
+from typing import Any
 import logging
 import os
 import json
@@ -23,7 +25,6 @@ import time
 import secrets
 import urllib.parse
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from concurrent.futures import ThreadPoolExecutor
 
 from sync.sync_protocol import (
     SessionToken, TrackDto, LibraryResponse,
@@ -33,7 +34,7 @@ from sync.sync_protocol import (
     SyncStateRequest, make_track_id, make_cover_id, make_device_id,
 )
 from library.library_db import LibraryDB
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, QThread, Signal
 
 logger = logging.getLogger("michi.sync.server")
 
@@ -42,10 +43,10 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
     """HTTP request handler for sync API."""
     server_ref = None  # reference to SyncServer instance
 
-    def log_message(self, format, *args):
+    def log_message(self, format: str, *args: Any) -> None:
         pass  # suppress logs
 
-    def _send_json(self, data, status=200):
+    def _send_json(self, data: dict[str, Any] | str, status: int = 200) -> None:
         body = json.dumps(data).encode("utf-8") if isinstance(data, dict) else data.encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -54,7 +55,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _send_error(self, msg: str, status=400):
+    def _send_error(self, msg: str, status: int = 400) -> None:
         self._send_json({"error": msg}, status)
 
     def _read_body(self) -> str:
@@ -73,7 +74,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         self._failed_attempts[ip] = attempts
         return len(attempts) < 5
 
-    def _record_failed_attempt(self, ip: str):
+    def _record_failed_attempt(self, ip: str) -> None:
         now = time.time()
         self._failed_attempts.setdefault(ip, []).append(now)
 
@@ -142,14 +143,14 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         srv._device_registry.mark_seen(device_id)
         return True
 
-    def do_OPTIONS(self):
+    def do_OPTIONS(self) -> None:
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type, Range")
         self.end_headers()
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         path = self.path.split("?")[0]
         srv = self.server_ref
 
@@ -367,9 +368,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             cover_hash = path.split("/")[-1]
             if srv is None or srv._db is None:
                 return self._send_error("No library", 503)
-            row = srv._db.conn.execute(
-                "SELECT mime, data FROM album_art_cache WHERE album_hash=?",
-                (cover_hash,)).fetchone()
+            row = srv._db.get_album_art_cache(cover_hash)
             if row:
                 self.send_response(200)
                 self.send_header("Content-Type", row[0] or "image/jpeg")
@@ -384,7 +383,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         else:
             self._send_error("Not found", 404)
 
-    def do_POST(self):
+    def do_POST(self) -> None:
         path = self.path.split("?")[0]
         body = self._read_body()
         srv = self.server_ref
@@ -552,65 +551,86 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             self._send_error("Not found", 404)
 
 
+class _SyncServerThread(QThread):
+    """Run the blocking HTTP request loop outside the Qt main thread."""
+
+    def __init__(self, target: Callable[[], None], parent: QObject | None = None) -> None:
+        super().__init__(parent)
+        self._target = target
+
+    def run(self) -> None:
+        self._target()
+
+
 class SyncServer(QObject):
-    """HTTP server for music sync, runs on a QThread via ThreadPoolExecutor."""
+    """HTTP server for music sync, managed by a Qt worker thread."""
 
     client_connected = Signal(str)     # device alias
     server_started = Signal(int)       # port
     server_stopped = Signal()
     sync_error = Signal(str)
 
-    def __init__(self, db: LibraryDB, port: int = 53318, parent=None,
-                 alias: str = "Michi Music Player"):
+    def __init__(self, db: LibraryDB, port: int = 53318, parent: QObject | None = None,
+                 alias: str = "Michi Music Player") -> None:
         super().__init__(parent)
         self._alias = alias
         self._db = db
         self._port = port
         self._httpd: HTTPServer | None = None
-        self._executor: ThreadPoolExecutor | None = None
         self._running = False
-        self._thread: threading.Thread | None = None
+        self._thread: _SyncServerThread | None = None
         self._sessions: dict[str, SessionToken] = {}
         self._sessions_lock = threading.Lock()
         self._track_index: dict[str, str] = {}
         self._track_index_lock = threading.Lock()
         self._track_index_built = False
-        self._manifest_provider: callable | None = None
-        self._delta_provider: callable | None = None
-        self._local_account: object | None = None
-        self._device_registry: object | None = None
-        self._playback_ctrl: object | None = None
-        self._player_service: object | None = None
+        self._manifest_provider: Callable[[str], dict[str, Any] | None] | None = None
+        self._delta_provider: Callable[[str, float], dict[str, Any] | None] | None = None
+        self._local_account: Any | None = None
+        self._device_registry: Any | None = None
+        self._playback_ctrl: Any | None = None
+        self._player_service: Any | None = None
+        self._queue_service: Any | None = None
 
-    def set_manifest_provider(self, provider):
+    def set_manifest_provider(
+        self, provider: Callable[[str], dict[str, Any] | None]
+    ) -> None:
         """Register a callable that returns public manifest dict for a device_id."""
         self._manifest_provider = provider
 
-    def set_delta_provider(self, provider):
+    def set_delta_provider(
+        self, provider: Callable[[str, float], dict[str, Any] | None]
+    ) -> None:
         """Register a callable for GET /api/sync/manifest/delta."""
         self._delta_provider = provider
 
-    def set_local_account_manager(self, mgr):
+    def set_local_account_manager(self, mgr: Any) -> None:
         """Set LocalAccountManager for pairing auth."""
         self._local_account = mgr
 
-    def set_device_registry(self, registry):
+    def set_device_registry(self, registry: Any) -> None:
         """Set DeviceRegistry for token validation and permissions."""
         self._device_registry = registry
 
-    def set_playback_services(self, playback_controller, player_service):
+    def set_playback_services(
+        self,
+        playback_controller: Any,
+        player_service: Any,
+        queue_service: Any | None = None,
+    ) -> None:
         """Set playback references for remote control API."""
         self._playback_ctrl = playback_controller
         self._player_service = player_service
+        self._queue_service = queue_service
 
-    def _purge_expired_sessions(self):
+    def _purge_expired_sessions(self) -> None:
         """Remove expired sessions to prevent memory leak."""
         with self._sessions_lock:
             expired = [k for k, v in self._sessions.items() if v.is_expired()]
             for k in expired:
                 del self._sessions[k]
 
-    def _build_index(self):
+    def _build_index(self) -> None:
         """Build track_id → filepath lookup (prefers track_uid when available)."""
         if not self._db:
             return
@@ -633,7 +653,7 @@ class SyncServer(QObject):
                 self._track_index_lock.acquire()
             return self._track_index.get(track_id)
 
-    def start(self):
+    def start(self) -> None:
         if self._running:
             return
         self._build_index()
@@ -645,6 +665,7 @@ class SyncServer(QObject):
                 SyncRequestHandler,
                 playback=self._playback_ctrl,
                 player_service=self._player_service,
+                queue_service=self._queue_service,
             )
         except Exception as e:
             logger.warning("MichiLinkServer mount failed: %s", e)
@@ -654,14 +675,14 @@ class SyncServer(QObject):
         except OSError as e:
             self.sync_error.emit(f"SyncServer: {e}")
             return
-        self._executor = ThreadPoolExecutor(max_workers=8)
+        self._httpd.timeout = 0.2
         self._running = True
 
-        self._thread = threading.Thread(target=self._serve, daemon=True)
+        self._thread = _SyncServerThread(self._serve, self)
         self._thread.start()
         self.server_started.emit(self._port)
 
-    def _serve(self):
+    def _serve(self) -> None:
         purge_counter = 0
         while self._running and self._httpd:
             try:
@@ -674,18 +695,17 @@ class SyncServer(QObject):
                 if self._running:
                     self.sync_error.emit(str(e))
 
-    def stop(self):
+    def stop(self) -> None:
         self._running = False
+        if self._thread and self._thread.isRunning():
+            self._thread.wait()
         if self._httpd:
             try:
                 self._httpd.server_close()
             except Exception:
-                import logging
-                logging.getLogger("michi").debug("Sync server close failed")
-        if self._executor:
-            self._executor.shutdown(wait=False)
-        if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=3)
+                logger.debug("Sync server close failed", exc_info=True)
+        self._httpd = None
+        self._thread = None
         self._sessions.clear()
         self.server_stopped.emit()
 
