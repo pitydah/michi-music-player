@@ -4,18 +4,16 @@ from __future__ import annotations
 
 import contextlib
 import copy
-import json
 import logging
 import os
 import random
-import tempfile
 import threading
 import time
 from dataclasses import dataclass
 from typing import Any, Callable
 
-
-from core.paths import app_config_dir
+from core.runtime_persistence import RuntimePersistence
+from core.paths import app_data_dir
 
 logger = logging.getLogger("michi.queue_service")
 
@@ -34,22 +32,23 @@ class _QueueSnapshot:
     next_token: int
 
 
-def _queue_state_path():
-    try:
-        p = app_config_dir()
-        if p:
-            return str(p / "queue_state.json")
-    except Exception:
-        pass
-    return os.path.join(tempfile.gettempdir(), "michi_queue_state.json")
+def _queue_state_path() -> str:
+    """Return the RuntimePersistence queue path for legacy callers."""
+    return os.path.join(app_data_dir(), "runtime", "queue_state.json")
 
 
 class QueueService:
     """Owns queue domain state and commits mutations transactionally."""
 
-    def __init__(self, player_service=None, event_bus=None):
+    def __init__(
+        self,
+        player_service: Any | None = None,
+        event_bus: Any | None = None,
+        runtime_persistence: RuntimePersistence | None = None,
+    ) -> None:
         self._player = player_service
         self._event_bus = event_bus
+        self._persistence = runtime_persistence or RuntimePersistence()
         self._lock = threading.RLock()
         self._items: list[dict] = []
         self._item_tokens: list[int] = []
@@ -809,55 +808,143 @@ class QueueService:
         try:
             with self._lock:
                 state = {
-                    "version": 2,
+                    "version": 3,
                     "timestamp": time.time(),
-                    "current_index": self._current_index if self._current_index >= 0 else 0,
+                    "current_index": self._current_index,
                     "position": position,
                     "source": "queue_service",
                     "shuffle": self._shuffle,
-                    "shuffle_order": self.shuffle_order,
-                    "shuffle_original_tokens": self._shuffle_original_tokens,
+                    "original_order": list(
+                        self._shuffle_original_tokens or self._item_tokens
+                    ),
                     "shuffle_seed": self._shuffle_seed,
-                    "item_tokens": self._item_tokens,
+                    "item_tokens": list(self._item_tokens),
                     "next_token": self._next_token,
-                    "queue_revision": self._revision,
+                    "revision": self._revision,
                     "repeat": self._repeat,
                     "context": self._context,
-                    "items": self._items,
+                    "items": copy.deepcopy(self._items),
                 }
-            path = _queue_state_path()
-            tmp = path + ".tmp"
-            with open(tmp, "w") as f:
-                json.dump(state, f)
-            os.replace(tmp, path)
-            with self._lock:
-                count = len(self._items)
-            return {"ok": True, "path": path, "count": count}
+            self._persistence.write("queue", state)
+            return {
+                "ok": True,
+                "path": _queue_state_path(),
+                "count": len(state["items"]),
+            }
         except Exception as e:
             logger.exception("save_state failed")
             return {"ok": False, "error": str(e)}
 
     def load_state(self, resolve_fn: Callable[[dict], dict | None] | None = None) -> dict:
         """Restore persisted domain state and synchronize it without autoplay."""
-        path = _queue_state_path()
-        if not os.path.exists(path):
-            return {"ok": False, "error": "NO_SAVED_STATE"}
         try:
-            with open(path) as f:
-                state = json.load(f)
-            items = state.get("items", [])
-            if not items:
-                return {"ok": False, "error": "EMPTY_QUEUE"}
+            state = self._persistence.read("queue")
+            if state is None:
+                return {"ok": False, "error": "NO_SAVED_STATE"}
+            if not isinstance(state, dict):
+                raise ValueError("Saved queue state must be an object")
+
+            items = state.get("items")
+            if not isinstance(items, list) or any(
+                not isinstance(item, dict) for item in items
+            ):
+                raise ValueError("Saved queue items must be a list of objects")
+
+            saved_index = state.get("current_index", -1)
+            if not isinstance(saved_index, int) or isinstance(saved_index, bool):
+                raise ValueError("Saved current_index must be an integer")
+            if items and not 0 <= saved_index < len(items):
+                raise ValueError("Saved current_index is out of range")
+            if not items and saved_index not in {-1, 0}:
+                raise ValueError("Saved current_index is out of range")
+
+            repeat = state.get("repeat", "none")
+            if repeat not in {"none", "all", "one"}:
+                raise ValueError("Saved repeat mode is invalid")
+            shuffle = state.get("shuffle", False)
+            if not isinstance(shuffle, bool):
+                raise ValueError("Saved shuffle value must be boolean")
+
+            saved_tokens = state.get("item_tokens")
+            if saved_tokens is None:
+                saved_tokens = list(range(1, len(items) + 1))
+            if (
+                not isinstance(saved_tokens, list)
+                or len(saved_tokens) != len(items)
+                or any(
+                    not isinstance(token, int) or isinstance(token, bool) or token < 1
+                    for token in saved_tokens
+                )
+                or len(set(saved_tokens)) != len(saved_tokens)
+            ):
+                raise ValueError("Saved item_tokens are invalid")
+
+            original_order = state.get(
+                "original_order", state.get("shuffle_original_tokens")
+            )
+            if original_order is None:
+                original_order = list(saved_tokens)
+            if (
+                not isinstance(original_order, list)
+                or len(original_order) != len(saved_tokens)
+                or set(original_order) != set(saved_tokens)
+            ):
+                raise ValueError("Saved original_order is invalid")
+
+            next_token = state.get("next_token", max(saved_tokens, default=0) + 1)
+            if (
+                not isinstance(next_token, int)
+                or isinstance(next_token, bool)
+                or next_token <= max(saved_tokens, default=0)
+            ):
+                raise ValueError("Saved next_token is invalid")
+            revision = state.get("revision", state.get("queue_revision", 0))
+            if (
+                not isinstance(revision, int)
+                or isinstance(revision, bool)
+                or revision < 0
+            ):
+                raise ValueError("Saved revision is invalid")
+            context = state.get("context", "")
+            if not isinstance(context, str):
+                raise ValueError("Saved context is invalid")
+            shuffle_seed = state.get("shuffle_seed")
+            if shuffle_seed is not None and (
+                not isinstance(shuffle_seed, int) or isinstance(shuffle_seed, bool)
+            ):
+                raise ValueError("Saved shuffle_seed is invalid")
+
+            restored_items = copy.deepcopy(items)
+            restored_tokens = list(saved_tokens)
+            restored_original = list(original_order)
             if resolve_fn:
                 resolved = []
+                resolved_tokens = []
                 missing_ids = []
-                for item in items:
+                current_token = (
+                    saved_tokens[saved_index]
+                    if items and saved_index >= 0 else None
+                )
+                for item, token in zip(items, saved_tokens, strict=True):
                     result = resolve_fn(item)
                     if result is not None:
+                        if not isinstance(result, dict):
+                            raise ValueError("Resolved queue items must be objects")
                         resolved.append(result)
+                        resolved_tokens.append(token)
                     else:
                         missing_ids.append(item.get("track_id", item.get("id", "")))
                 restored_items = resolved
+                restored_tokens = resolved_tokens
+                retained = set(resolved_tokens)
+                restored_original = [
+                    token for token in original_order if token in retained
+                ]
+                saved_index = (
+                    resolved_tokens.index(current_token)
+                    if current_token in resolved_tokens
+                    else min(saved_index, len(restored_items) - 1)
+                )
                 result = {
                     "ok": True,
                     "count": len(resolved),
@@ -866,40 +953,37 @@ class QueueService:
                     "missing_track_ids": missing_ids,
                 }
             else:
-                restored_items = list(items)
                 result = {"ok": True, "count": len(items)}
-            with self._lock:
-                self._items = copy.deepcopy(restored_items)
-                saved_tokens = state.get("item_tokens", [])
-                if len(saved_tokens) == len(restored_items) and not resolve_fn:
-                    self._item_tokens = list(saved_tokens)
-                else:
-                    self._item_tokens = self._new_tokens(len(restored_items))
-                saved_index = int(state.get("current_index", 0))
-                self._current_index = (
-                    min(max(saved_index, 0), len(restored_items) - 1)
-                    if restored_items else -1
-                )
-                self._shuffle = bool(state.get("shuffle", False))
-                self._shuffle_original_tokens = (
-                    list(state.get("shuffle_original_tokens") or self._item_tokens)
-                    if self._shuffle else None
-                )
-                self._shuffle_seed = state.get("shuffle_seed")
-                self._repeat = state.get("repeat", "none")
-                self._context = state.get("context", "")
-                self._revision = int(state.get("queue_revision", self._revision))
-                self._next_token = max(
-                    int(state.get("next_token", self._next_token)),
-                    max(self._item_tokens, default=0) + 1,
-                )
+
+            candidate = _QueueSnapshot(
+                items=restored_items,
+                item_tokens=restored_tokens,
+                current_index=saved_index if restored_items else -1,
+                repeat=repeat,
+                shuffle=shuffle,
+                shuffle_original_tokens=restored_original if shuffle else None,
+                shuffle_seed=shuffle_seed,
+                context=context,
+                revision=revision,
+                next_token=next_token,
+            )
+            before = self._capture_snapshot()
+            self._restore_snapshot(candidate)
             sync_result = self._sync_backend()
             if not sync_result.get("ok"):
+                self._restore_snapshot(before)
+                self._sync_backend(revision=before.revision)
                 return self._error("restore", "BACKEND_SYNC_FAILED",
                                    sync_result.get("message", ""))
+            with self._lock:
+                self._undo_stack.clear()
+                self._can_undo = False
             self._publish_state("restore")
             return result
+        except (TypeError, ValueError) as e:
+            return {"ok": False, "error": "INVALID_SAVED_STATE", "message": str(e)}
         except Exception as e:
+            logger.exception("load_state failed")
             return {"ok": False, "error": str(e)}
 
     def persist(self) -> dict:

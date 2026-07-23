@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 from core.queue_service import QueueService
+from core.runtime_persistence import RuntimePersistence
 
 
 class FakePlayer:
@@ -39,6 +40,28 @@ class FakePlayer:
 
     def stop(self):
         self.stopped = True
+
+
+class RestorePlayer(FakePlayer):
+    def __init__(self):
+        super().__init__()
+        self.played_indices = []
+
+    def play_queue_index(self, index):
+        self.played_indices.append(index)
+        return True
+
+
+class FailOnceRestorePlayer(RestorePlayer):
+    def __init__(self):
+        super().__init__()
+        self.fail_next_sync = False
+
+    def play_queue(self, paths, start_index=0):
+        if self.fail_next_sync:
+            self.fail_next_sync = False
+            raise RuntimeError("sync failed")
+        super().play_queue(paths, start_index)
 
 
 def _items(*names):
@@ -222,3 +245,103 @@ class TestQueueService:
         assert not result["ok"]
         assert result["error"] == "STALE_EVENT"
         assert svc.current_index == 0
+
+    def test_runtime_persistence_roundtrip_preserves_duplicate_token_order(
+        self, tmp_path
+    ):
+        persistence = RuntimePersistence(base_dir=str(tmp_path))
+        duplicate = {"track_uid": "same", "filepath": "/same.flac"}
+        original = [duplicate, duplicate, {"filepath": "/other.flac"}]
+        source = QueueService(runtime_persistence=persistence)
+        source.replace(original, start_index=1)
+        source.set_shuffle(True)
+        effective_items = source.get_items()
+        effective_tokens = list(source._item_tokens)
+        original_order = list(source._shuffle_original_tokens)
+
+        assert source.save_state()["ok"]
+        payload = persistence.read("queue")
+        assert payload["original_order"] == original_order
+        assert "shuffle_original_tokens" not in payload
+
+        restored = QueueService(runtime_persistence=persistence)
+        assert restored.load_state()["ok"]
+        assert restored.get_items() == effective_items
+        assert restored._item_tokens == effective_tokens
+        assert restored._shuffle_original_tokens == original_order
+        assert restored.current_index == source.current_index
+        assert restored.set_shuffle(False)["ok"]
+        assert restored.get_items() == original
+
+    def test_restore_syncs_without_autoplay_and_clears_undo(self, tmp_path):
+        persistence = RuntimePersistence(base_dir=str(tmp_path))
+        source = QueueService(runtime_persistence=persistence)
+        source.replace(_items("a", "b"), start_index=1)
+        source.save_state()
+        player = RestorePlayer()
+        restored = QueueService(
+            player_service=player, runtime_persistence=persistence
+        )
+        restored.replace(_items("old"))
+
+        result = restored.load_state()
+
+        assert result["ok"]
+        assert player.queue == ["/a.flac", "/b.flac"]
+        assert player.index == 1
+        assert player.played == []
+        assert player.played_indices == []
+        assert restored.can_undo is False
+        assert restored.undo()["error"] == "NOTHING_TO_UNDO"
+
+    def test_restore_empty_queue(self, tmp_path):
+        persistence = RuntimePersistence(base_dir=str(tmp_path))
+        QueueService(runtime_persistence=persistence).save_state()
+        player = RestorePlayer()
+        restored = QueueService(
+            player_service=player, runtime_persistence=persistence
+        )
+        restored.replace(_items("old"))
+
+        result = restored.load_state()
+
+        assert result == {"ok": True, "count": 0}
+        assert restored.get_items() == []
+        assert restored.current_index == -1
+        assert player.queue == []
+        assert player.played == []
+
+    def test_restore_sync_failure_rolls_back_domain(self, tmp_path):
+        persistence = RuntimePersistence(base_dir=str(tmp_path))
+        source = QueueService(runtime_persistence=persistence)
+        source.replace(_items("saved"))
+        source.save_state()
+        player = FailOnceRestorePlayer()
+        restored = QueueService(
+            player_service=player, runtime_persistence=persistence
+        )
+        restored.replace(_items("current"))
+        before = restored._capture_snapshot()
+        player.fail_next_sync = True
+
+        result = restored.load_state()
+
+        assert not result["ok"]
+        assert result["error"] == "BACKEND_SYNC_FAILED"
+        assert restored._capture_snapshot() == before
+        assert player.queue == ["/current.flac"]
+
+    def test_invalid_saved_state_does_not_mutate_queue(self, tmp_path):
+        persistence = RuntimePersistence(base_dir=str(tmp_path))
+        persistence.write("queue", {
+            "items": _items("saved"),
+            "current_index": 4,
+        })
+        restored = QueueService(runtime_persistence=persistence)
+        restored.replace(_items("current"))
+        before = restored._capture_snapshot()
+
+        result = restored.load_state()
+
+        assert result["error"] == "INVALID_SAVED_STATE"
+        assert restored._capture_snapshot() == before

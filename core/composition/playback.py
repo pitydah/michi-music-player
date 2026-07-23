@@ -11,9 +11,14 @@ def build(container: ServiceContainer) -> None:
     from audio.player import GStreamerEngine
 
     eb = container.get("event_bus")
+    persistence = container.get("runtime_persistence")
     engine = GStreamerEngine()
     ps = PlayerService(engine=engine, event_bus=eb)
-    qs = QueueService(player_service=ps, event_bus=eb)
+    qs = QueueService(
+        player_service=ps,
+        event_bus=eb,
+        runtime_persistence=persistence,
+    )
     ps.queue_progressed.connect(qs.reconcile_backend_progress)
     ns = NotificationService(event_bus=eb)
 

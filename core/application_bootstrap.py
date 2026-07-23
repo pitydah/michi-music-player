@@ -36,6 +36,7 @@ class ApplicationBootstrap:
         self._bridges: dict[str, QObject] = {}
         self._has_built = False
         self._has_started = False
+        self._session_restore_attempted = False
 
     def build(self) -> Self:
         """Build and register each service once in dependency order."""
@@ -68,6 +69,7 @@ class ApplicationBootstrap:
         self.container.start()
         if self.container.state.value in ("ready", "degraded"):
             self._has_started = True
+            self._restore_session_once()
             logger.info("Bootstrap: READY (state=%s)", self.container.state.value)
         else:
             logger.error("Bootstrap: FAILED (state=%s)", self.container.state.value)
@@ -114,6 +116,7 @@ class ApplicationBootstrap:
         self.container.shutdown()
         self._has_built = False
         self._has_started = False
+        self._session_restore_attempted = False
 
     def run(
         self,
@@ -152,6 +155,28 @@ class ApplicationBootstrap:
                         "recoverable": True}
 
         return _call
+
+    def _restore_session_once(self) -> None:
+        """Restore the canonical queue once when session memory is enabled."""
+        if self._session_restore_attempted:
+            return
+        self._session_restore_attempted = True
+        settings = self.container.get("settings_manager")
+        value = settings.value("general/remember_session", True) if settings else True
+        enabled = value if isinstance(value, bool) else str(value).lower() in {
+            "true", "1", "yes"
+        }
+        if not enabled:
+            return
+        queue_service = self.container.get("queue_service")
+        if not queue_service:
+            return
+        try:
+            result = queue_service.restore()
+            if not result.get("ok") and result.get("error") != "NO_SAVED_STATE":
+                logger.warning("Bootstrap: queue session restore skipped: %s", result)
+        except Exception:
+            logger.exception("Bootstrap: queue session restore failed")
 
     def _register_actions(self, ar: ActionRegistry) -> None:
         """Register bootstrap-owned playback actions with their service handlers."""
