@@ -5,13 +5,14 @@ State is only updated after backend confirmation.
 """
 from __future__ import annotations
 
-import hashlib
 import contextlib
 import logging
 import time
 from typing import Any
 
 from PySide6.QtCore import QObject, Property, Signal, Slot
+
+from ui_qml.models.queue_item import _cover_key_for_path
 
 logger = logging.getLogger("michi.nowplaying")
 
@@ -26,12 +27,6 @@ PLAYBACK_ERROR = "PLAYBACK_ERROR"
 QUEUE_UNAVAILABLE = "QUEUE_UNAVAILABLE"
 INTERNAL_ERROR = "INTERNAL_ERROR"
 EMPTY_FILEPATH = "EMPTY_FILEPATH"
-
-
-def _cover_key_for_path(filepath: str) -> str:
-    if not filepath:
-        return ""
-    return f"track_{hashlib.md5(filepath.encode()).hexdigest()[:12]}"
 
 
 def _field(source, *names: str) -> str:
@@ -95,7 +90,7 @@ def _ok(operation: str = "", data: dict | None = None) -> dict:
 
 
 class NowPlayingBridge(QObject):
-    """Expose transport state and observe canonical queue domain state."""
+    """Expose transport, history, and quality state to QML."""
 
     # Legacy signal (kept for compatibility)
     stateChanged = Signal()
@@ -107,13 +102,11 @@ class NowPlayingBridge(QObject):
     positionChanged = Signal()
     durationChanged = Signal()
     volumeChanged = Signal()
-    queueChanged = Signal()
     historyChanged = Signal()
     errorChanged = Signal()
     commandStateChanged = Signal()
     qualityChanged = Signal()
     capabilitiesChanged = Signal()
-    _queueDomainChanged = Signal(str, object)
 
     def __init__(self, player_service=None, queue_service=None,
                  audio_quality_adapter=None, parent=None):
@@ -145,8 +138,6 @@ class NowPlayingBridge(QObject):
         self._quality_error = ""
         self._repeat_mode = "none"
         self._shuffle_enabled = False
-        self._queue: list[dict[str, Any]] = []
-        self._queue_internal_refs: dict[int, dict[str, Any]] = {}
         self._history: list[dict[str, Any]] = []
         self._history_internal_refs: dict[str, dict[str, Any]] = {}
         self._history_max = 50
@@ -160,15 +151,6 @@ class NowPlayingBridge(QObject):
         self._last_command_message = ""
         self._last_command_timestamp = 0.0
         self._command_pending = False
-        self._safe_mode = not self._backend_available
-        self._unsubscribe_queue = None
-
-        self._queueDomainChanged.connect(self._apply_queue_event)
-        if self._queue_service and hasattr(self._queue_service, "subscribe"):
-            self._unsubscribe_queue = self._queue_service.subscribe(
-                self._on_queue_event
-            )
-        self.destroyed.connect(self._disconnect_queue)
         self._connect_player()
         self.refresh()
 
@@ -190,25 +172,6 @@ class NowPlayingBridge(QObject):
                 continue
             with contextlib.suppress(Exception):
                 signal.connect(slot)
-
-    def _on_queue_event(self, event: str, state: dict) -> None:
-        self._queueDomainChanged.emit(event, state)
-
-    @Slot(str, object)
-    def _apply_queue_event(self, event: str, state: dict) -> None:
-        if event == "operationFailed":
-            return
-        items = state.get("items", [])
-        self._queue = self._normalize_queue(items)
-        self._repeat_mode = str(state.get("repeat", "none"))
-        self._shuffle_enabled = bool(state.get("shuffle", False))
-        self._emit_queue()
-
-    @Slot()
-    def _disconnect_queue(self) -> None:
-        if self._unsubscribe_queue:
-            self._unsubscribe_queue()
-            self._unsubscribe_queue = None
 
     def _begin_command(self, operation: str):
         self._last_command = operation
@@ -258,10 +221,6 @@ class NowPlayingBridge(QObject):
         self.volumeChanged.emit()
         self.stateChanged.emit()
 
-    def _emit_queue(self):
-        self.queueChanged.emit()
-        self.stateChanged.emit()
-
     def _emit_history(self):
         self.historyChanged.emit()
         self.stateChanged.emit()
@@ -306,15 +265,6 @@ class NowPlayingBridge(QObject):
             if value:
                 return str(value)
         return ""
-
-    def _player_call(self, *names: str, fallback=None):
-        if not self._player:
-            return fallback
-        for name in names:
-            method = getattr(self._player, name, None)
-            if callable(method):
-                return method
-        return fallback
 
     # ── Signal handlers (update state from backend) ──
 
@@ -385,58 +335,6 @@ class NowPlayingBridge(QObject):
         self._volume = vol
         self._muted = vol == 0
         self._emit_volume()
-
-    def _normalize_queue_item(self, item: Any, index: int) -> dict:
-        if isinstance(item, dict):
-            title = str(item.get("title", item.get("name", "")) or "")
-            artist = str(item.get("artist", "") or "")
-            album = str(item.get("album", "") or "")
-            duration = int(item.get("duration", 0) or 0)
-            track_id = str(item.get("track_id", item.get("id", "")) or "")
-            track_uid = str(item.get("track_uid", "") or "")
-            source = str(item.get("source_type", "local_file") or "local_file")
-            raw_fp = item.get("filepath", item.get("path", item.get("url", "")) or "")
-        else:
-            title = getattr(item, "title", getattr(item, "name", "")) or ""
-            artist = getattr(item, "artist", "") or ""
-            album = getattr(item, "album", "") or ""
-            duration = int(getattr(item, "duration", 0) or 0)
-            track_id = str(getattr(item, "track_id", getattr(item, "id", "")) or "")
-            track_uid = str(getattr(item, "track_uid", "") or "")
-            source = "local_file"
-            raw_fp = getattr(item, "filepath", getattr(item, "path", getattr(item, "url", ""))) or ""
-
-        self._queue_internal_refs[index] = {
-            "filepath": raw_fp,
-            "backend_id": track_id,
-        }
-
-        cover_key = ""
-        if raw_fp:
-            cover_key = _cover_key_for_path(raw_fp)
-
-        return {
-            "queue_index": index,
-            "track_id": track_id,
-            "track_uid": track_uid,
-            "title": title,
-            "artist": artist,
-            "album": album,
-            "duration": duration,
-            "cover_key": cover_key,
-            "source_type": source,
-            "is_current": bool(
-                self._queue_service
-                and index == self._queue_service.current_index
-            ),
-        }
-
-    def _normalize_queue(self, items: list) -> list[dict]:
-        self._queue_internal_refs.clear()
-        result = []
-        for i, item in enumerate(items or []):
-            result.append(self._normalize_queue_item(item, i))
-        return result
 
     def _on_error(self, msg: str):
         safe_msg = str(msg) if msg else "Unknown error"
@@ -603,14 +501,6 @@ class NowPlayingBridge(QObject):
         return self._quality_error
 
     @Property("QVariantList", notify=stateChanged)
-    def queue(self):
-        return list(self._queue)
-
-    @Property(int, notify=stateChanged)
-    def queueIndex(self):
-        return self._queue_service.current_index if self._queue_service else -1
-
-    @Property("QVariantList", notify=stateChanged)
     def history(self):
         return list(self._history)
 
@@ -727,8 +617,6 @@ class NowPlayingBridge(QObject):
                     self._track_artist = _field(current, "artist") or self._track_artist
                     self._track_album = _field(current, "album") or self._track_album
                     self._set_cover_from_current_path()
-            q = self._queue_service.get_items() if self._queue_service else []
-            self._queue = self._normalize_queue(q)
             if hasattr(self._player, 'state'):
                 st = self._player.state
                 if st:
@@ -966,7 +854,7 @@ class NowPlayingBridge(QObject):
         if not self._queue_service:
             self._set_command_failure(op, UNSUPPORTED)
             return _err(op, UNSUPPORTED)
-        if index < 0 or index >= len(self._queue):
+        if index < 0 or index >= self._queue_service.count:
             self._set_command_failure(op, INVALID_INDEX)
             return _err(op, INVALID_INDEX)
         try:
@@ -1009,10 +897,10 @@ class NowPlayingBridge(QObject):
         if not self._queue_service:
             self._set_command_failure(op, UNSUPPORTED)
             return _err(op, UNSUPPORTED)
-        if from_index < 0 or from_index >= len(self._queue):
+        if from_index < 0 or from_index >= self._queue_service.count:
             self._set_command_failure(op, INVALID_INDEX)
             return _err(op, INVALID_INDEX)
-        if to_index < 0 or to_index >= len(self._queue):
+        if to_index < 0 or to_index >= self._queue_service.count:
             self._set_command_failure(op, INVALID_INDEX)
             return _err(op, INVALID_INDEX)
         try:
@@ -1035,7 +923,7 @@ class NowPlayingBridge(QObject):
         if not self._queue_service:
             self._set_command_failure(op, UNSUPPORTED)
             return _err(op, UNSUPPORTED)
-        if index < 0 or index >= len(self._queue):
+        if index < 0 or index >= self._queue_service.count:
             self._set_command_failure(op, INVALID_INDEX)
             return _err(op, INVALID_INDEX)
         try:
@@ -1091,7 +979,8 @@ class NowPlayingBridge(QObject):
 
     @Slot(result=int)
     def queueDuration(self) -> int:
-        return sum(item.get("duration", 0) for item in self._queue)
+        items = self._queue_service.items if self._queue_service else []
+        return sum(item.get("duration", 0) for item in items)
 
     @Slot(result=dict)
     def playbackScore(self) -> dict:
@@ -1107,15 +996,16 @@ class NowPlayingBridge(QObject):
             score += 10
         if self._player and hasattr(self._player, 'state'):
             score += 15
-        if len(self._queue) > 0:
+        queue_count = self._queue_service.count if self._queue_service else 0
+        if queue_count > 0:
             score += 15
         return {
             "score": min(100, score),
             "has_backend": self._backend_available,
             "has_track": self._track_title != "—",
-            "has_queue": len(self._queue) > 0,
+            "has_queue": queue_count > 0,
             "has_position": self._position >= 0,
             "has_duration": self._duration > 0,
-            "queue_count": len(self._queue),
+            "queue_count": queue_count,
             "history_count": len(self._history),
         }

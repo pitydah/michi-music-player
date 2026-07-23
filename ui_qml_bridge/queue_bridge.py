@@ -54,6 +54,30 @@ class QueueBridge(QObject):
     def queueCount(self) -> int:
         return self._model.totalCount if self._model else 0
 
+    @Property(int, notify=dataChanged)
+    def currentIndex(self) -> int:
+        return self._queue_service.current_index
+
+    @Slot("QVariantList", result=dict)
+    def add(self, items: list) -> dict:
+        """Append queue items without interrupting current playback."""
+        try:
+            return self._queue_service.enqueue(items, play_now=False)
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)}
+
+    @Slot("QVariantList", int, result=dict)
+    def replaceAndPlay(self, items: list, start_index: int) -> dict:
+        """Atomically replace the queue and start at a validated index."""
+        if not items:
+            return {"ok": False, "error": "EMPTY_QUEUE"}
+        if start_index < 0 or start_index >= len(items):
+            return {"ok": False, "error": "INVALID_INDEX"}
+        try:
+            return self._queue_service.replace_and_play(items, start_index)
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)}
+
     @Slot(result=dict)
     def refresh(self) -> dict:
         self._model.refresh()
@@ -80,12 +104,16 @@ class QueueBridge(QObject):
 
     @Slot(str, result=dict)
     def saveAsPlaylist(self, name: str) -> dict:
-        if not name:
+        playlist_name = name.strip()
+        if not playlist_name:
             return {"ok": False, "error": "EMPTY_NAME"}
         if not self._pb:
             return {"ok": False, "error": "NO_PLAYLIST_BRIDGE"}
+        items = self._queue_service.items
+        if not items:
+            return {"ok": False, "error": "EMPTY_QUEUE"}
         try:
-            return self._pb.saveQueueAsPlaylist(name, self._queue_service.items)
+            return self._pb.saveQueueAsPlaylist(playlist_name, items)
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -137,15 +165,4 @@ class QueueBridge(QObject):
 
     def shutdown(self) -> None:
         self._unsubscribe_queue()
-
-    def _resolve_track(self, item: dict) -> dict | None:
-        tid = item.get("id", item.get("track_id", ""))
-        if not self._player or not hasattr(self._player, 'get_track_by_id'):
-            return item
-        try:
-            track = self._player.get_track_by_id(tid)
-            if track:
-                return track
-        except Exception:
-            pass
-        return item
+        self._model.shutdown()
