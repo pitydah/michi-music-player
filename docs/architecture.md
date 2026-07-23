@@ -31,6 +31,8 @@
 | `main.py` | Entry point. Delegates to michi/qml_app.py. |
 | `michi/qml_app.py` | QML runtime: QGuiApplication + QQmlApplicationEngine. |
 | `core/application_bootstrap.py` | DI container, builds all services. |
+| `core/queue_service.py` | Canonical queue state, navigation, modes, rollback, reconciliation, and session persistence. |
+| `audio/player_service.py` | Transport/audio facade and physical queue synchronization adapter. |
 | `ui_qml_bridge/*.py` | Python-QML bridges, one per domain. |
 | `ui_qml/shell/AppShell.qml` | Root QML shell with sidebar + page stack. |
 | `audio/player.py` | GStreamerEngine. Play/pause/seek/queue/EQ pipeline. |
@@ -40,14 +42,21 @@
 ## Data Flow
 
 ```
-User clicks play → window._play_file()
-  → player.play(uri)
-    → GStreamer pipeline (playbin → audiochain → alsasink)
-    → player emits state_changed, position_changed, duration_changed
-  → nowplaying_bar updates seek, title, cover
-  → mpris adapter emits PropertiesChanged via DBus
-  → KDE widget/lockscreen updates
+User selects tracks → bridge or external adapter
+  → QueueService mutates canonical items/index/repeat/shuffle transactionally
+    → PlayerService synchronizes the active backend queue
+      → HybridAudioManager → GStreamer or MPD
+  → QueueService publishes one canonical revision to QML observers
+  → backend progression is reconciled by index + filepath + revision
+
+Transport-only commands (pause, stop, seek, volume)
+  → PlayerService → active audio backend
 ```
+
+`QueueService` is the only production queue ingress. QML bridges, MPRIS,
+Michi AI, Michi Link, settings, playlists, library actions, and mixes must not
+call PlayerService queue APIs. `tests/test_queue_ingress_architecture.py`
+enforces this boundary.
 
 ## Persistence
 
@@ -55,7 +64,7 @@ User clicks play → window._play_file()
 |------|---------|------|
 | Library | SQLite | `~/.local/share/michi-music-player/library.db` |
 | Playlists | SQLite | (same DB) |
-| Queue | SQLite | (same DB) |
+| Queue session | Atomic JSON | `~/.local/share/michi-music-player/runtime/queue_state.json` |
 | Radio stations | JSON | `~/.local/share/michi-music-player/radio_stations.json` |
 | Subsonic servers | JSON | `~/.local/share/michi-music-player/subsonic_servers.json` |
 | Transmit devices | JSON | `~/.local/share/michi-music-player/transmit_devices.json` |
