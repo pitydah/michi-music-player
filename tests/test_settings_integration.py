@@ -1,7 +1,4 @@
 """Tests for Settings — runtime coordinator, persistence, rollback."""
-from unittest.mock import MagicMock, patch
-
-import pytest
 
 
 class TestSettingsIntegration:
@@ -15,6 +12,7 @@ class TestSettingsIntegration:
         playback(c)
         settings_b(c)
         coord = c.get("settings_coordinator")
+        assert coord._queue is c.get("queue_service")
         result = coord.execute("appearance/theme", "dark")
         assert result["ok"]
         assert result["persisted"]
