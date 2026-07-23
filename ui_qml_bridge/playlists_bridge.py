@@ -6,35 +6,46 @@ No direct DB access from bridge — delegates to PlaylistService.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 from pathlib import Path
+from typing import Any
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
-import logging
-
-from core.playlist_service import PlaylistService
 
 logger = logging.getLogger("michi.playlists")
 
 
 class PlaylistsBridge(QObject):
+    """Adapt PlaylistService and QueueService operations for QML."""
+
     dataChanged = Signal()
     jobProgress = Signal(str, int)
     partialSuccess = Signal(str, int, int)
 
-    def __init__(self, db=None, selection_context=None, player_service=None,
-                 playlist_service=None, action_registry=None,
-                 confirmation_bridge=None, navigation_bridge=None,
-                 page_state_store=None, capability_bridge=None,
-                 accessibility_bridge=None, notification_bridge=None,
-                 job_bridge=None, parent=None):
+    def __init__(self, db: Any | None = None,
+                 selection_context: Any | None = None,
+                 player_service: Any | None = None,
+                 playlist_service: Any | None = None,
+                 action_registry: Any | None = None,
+                 confirmation_bridge: Any | None = None,
+                 navigation_bridge: Any | None = None,
+                 page_state_store: Any | None = None,
+                 capability_bridge: Any | None = None,
+                 accessibility_bridge: Any | None = None,
+                 notification_bridge: Any | None = None,
+                 job_bridge: Any | None = None,
+                 queue_service: Any | None = None,
+                 parent: QObject | None = None) -> None:
         super().__init__(parent)
         assert db is not None, "PlaylistsBridge: db is REQUIRED"
+        assert playlist_service is not None, "PlaylistsBridge: playlist_service is REQUIRED"
         self._db = db
         self._sel_ctx = selection_context
         self._player = player_service
-        self._svc = playlist_service or PlaylistService(db=db)
+        self._svc = playlist_service
+        self._queue_service = queue_service
         self._action_registry = action_registry
         self._confirmation = confirmation_bridge
         self._navigation = navigation_bridge
@@ -45,9 +56,10 @@ class PlaylistsBridge(QObject):
         self._job_bridge = job_bridge
         self._playlists: list[dict] = []
         self._import_cache: dict[str, dict] = {}
+        self._pending_confirmations: dict[str, tuple[str, int, str]] = {}
         self._operation_counter = 0
 
-    def setSelectionContext(self, ctx):
+    def setSelectionContext(self, ctx: Any) -> None:
         self._sel_ctx = ctx
 
     def _can(self) -> bool:
@@ -56,7 +68,7 @@ class PlaylistsBridge(QObject):
             or (self._db is not None and hasattr(self._db, 'get_playlists'))
         )
 
-    def _notify(self, text: str, kind: str = "info"):
+    def _notify(self, text: str, kind: str = "info") -> None:
         if self._notifications:
             self._notifications.showMessage(text, kind=kind)
 
@@ -70,11 +82,11 @@ class PlaylistsBridge(QObject):
         return False
 
     @Property("QVariantList", notify=dataChanged)
-    def playlists(self):
+    def playlists(self) -> list[dict]:
         return self._playlists
 
     @Slot()
-    def refresh(self):
+    def refresh(self) -> None:
         result = []
         if self._can():
             try:
@@ -107,7 +119,7 @@ class PlaylistsBridge(QObject):
         self.dataChanged.emit()
 
     @Slot(str, result=dict)
-    def createPlaylist(self, name: str):
+    def createPlaylist(self, name: str) -> dict:
         result = self._svc.create(name) if self._can() else {"ok": False, "error": "NO_DB"}
         if result.get("ok"):
             self.refresh()
@@ -115,7 +127,7 @@ class PlaylistsBridge(QObject):
         return result
 
     @Slot(int, str, result=dict)
-    def renamePlaylist(self, pid: int, name: str):
+    def renamePlaylist(self, pid: int, name: str) -> dict:
         result = self._svc.rename(pid, name) if self._can() else {"ok": False, "error": "NO_DB"}
         if result.get("ok"):
             self.refresh()
@@ -123,7 +135,7 @@ class PlaylistsBridge(QObject):
         return result
 
     @Slot(int, result=dict)
-    def duplicatePlaylist(self, pid: int):
+    def duplicatePlaylist(self, pid: int) -> dict:
         result = self._svc.duplicate(pid) if self._can() else {"ok": False, "error": "NO_DB"}
         if result.get("ok"):
             self.refresh()
@@ -131,13 +143,14 @@ class PlaylistsBridge(QObject):
         return result
 
     @Slot(int, result=dict)
-    def deletePlaylist(self, pid: int):
+    def deletePlaylist(self, pid: int) -> dict:
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         plist = next((p for p in self._playlists if p.get("id") == pid), {})
         name = plist.get("title", "sin nombre")
         cid = f"delete_playlist_{pid}_{int(time.time())}"
         if self._confirmation:
+            self._pending_confirmations[cid] = ("delete", pid, name)
             self._confirmation.requestConfirmation(
                 cid, f"Eliminar playlist '{name}'?",
                 {"pid": pid, "name": name, "action": "delete"}
@@ -153,11 +166,12 @@ class PlaylistsBridge(QObject):
         return result
 
     @Slot(int, result=dict)
-    def clearPlaylist(self, pid: int):
+    def clearPlaylist(self, pid: int) -> dict:
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         cid = f"clear_playlist_{pid}_{int(time.time())}"
         if self._confirmation:
+            self._pending_confirmations[cid] = ("clear", pid, "")
             self._confirmation.requestConfirmation(
                 cid, "Borrar todas las pistas de esta playlist?",
                 {"pid": pid, "action": "clear"}
@@ -173,49 +187,25 @@ class PlaylistsBridge(QObject):
         return result
 
     @Slot(str, bool, result=dict)
-    def resolveConfirmation(self, confirmation_id: str, accepted: bool):
+    def resolveConfirmation(self, confirmation_id: str, accepted: bool) -> dict:
+        pending = self._pending_confirmations.pop(confirmation_id, None)
         if not accepted:
             return {"ok": False, "cancelled": True}
-        if confirmation_id.startswith("delete_playlist_"):
-            parts = confirmation_id.split("_")
-            if len(parts) >= 4:
-                try:
-                    pid = int(parts[2])
-                except (ValueError, IndexError):
-                    return {"ok": False, "error": "INVALID_ID"}
-                plist = next((p for p in self._playlists if p.get("id") == pid), {})
-                return self._execute_delete(pid, plist.get("title", ""))
-        if confirmation_id.startswith("clear_playlist_"):
-            parts = confirmation_id.split("_")
-            if len(parts) >= 4:
-                try:
-                    pid = int(parts[2])
-                except (ValueError, IndexError):
-                    return {"ok": False, "error": "INVALID_ID"}
-                return self._execute_clear(pid)
+        if pending is None:
+            return {"ok": False, "error": "UNKNOWN_CONFIRMATION"}
+        action, pid, name = pending
+        if action == "delete":
+            return self._execute_delete(pid, name)
+        if action == "clear":
+            return self._execute_clear(pid)
         return {"ok": False, "error": "UNKNOWN_CONFIRMATION"}
 
     def _get_items_internal(self, pid: int) -> list[dict]:
         if not self._can():
             return []
         try:
-            if self._svc and hasattr(self._svc, '_get_items_internal'):
-                return self._svc._get_items_internal(pid)
-            if self._db and hasattr(self._db, 'get_playlist_items'):
-                items = self._db.get_playlist_items(pid)
-                return [
-                    {
-                        "track_id": getattr(item, 'id', 0) if not isinstance(item, dict) else item.get("id", 0),
-                        "track_uid": "",
-                        "filepath": getattr(item, 'filepath', '') if not isinstance(item, dict) else item.get("filepath", ''),
-                        "title": getattr(item, 'title', '') if not isinstance(item, dict) else item.get("title", ''),
-                        "artist": "",
-                        "album": "",
-                        "duration": 0,
-                        "position": idx,
-                    }
-                    for idx, item in enumerate(items)
-                ]
+            if self._svc and hasattr(self._svc, "get_items_for_queue"):
+                return self._svc.get_items_for_queue(pid)
             return []
         except Exception:
             return []
@@ -229,12 +219,13 @@ class PlaylistsBridge(QObject):
             "artist": item.get("artist", ""),
             "album": item.get("album", ""),
             "duration": item.get("duration", 0),
+            "duration_label": self._format_duration(item.get("duration", 0)),
             "cover_key": item.get("album_key", "") or item.get("album", ""),
             "missing": not bool(item.get("filepath")),
         }
 
     @Slot(int, result=dict)
-    def getPlaylistDetail(self, pid: int):
+    def getPlaylistDetail(self, pid: int) -> dict:
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         result = self._svc.get_detail(pid)
@@ -244,7 +235,8 @@ class PlaylistsBridge(QObject):
         return {"ok": True, "tracks": tracks, "count": len(tracks)}
 
     @Slot(int, str, str, result=dict)
-    def addTrackToPlaylist(self, pid: int, filepath: str = "", track_id: str = ""):
+    def addTrackToPlaylist(self, pid: int, filepath: str = "",
+                           track_id: str = "") -> dict:
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         if not filepath and not track_id and self._sel_ctx:
@@ -272,18 +264,18 @@ class PlaylistsBridge(QObject):
             return {"ok": False, "error": str(e)}
 
     @Slot(int, int, result=dict)
-    def removeTrackFromPlaylist(self, pid: int, track_id: int):
+    def removeTrackFromPlaylist(self, pid: int, track_id: int) -> dict:
         result = self._svc.remove_track(pid, track_id) if self._can() else {"ok": False, "error": "NO_DB"}
         if result.get("ok"):
             self.refresh()
         return result
 
     @Slot(int, result=dict)
-    def addSelectedTrackToPlaylist(self, pid: int):
+    def addSelectedTrackToPlaylist(self, pid: int) -> dict:
         return self.addTrackToPlaylist(pid)
 
     @Slot(int, "QVariantList", result=dict)
-    def batchAddTracks(self, pid: int, tracks: list):
+    def batchAddTracks(self, pid: int, tracks: list[dict]) -> dict:
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         count = 0
@@ -311,7 +303,7 @@ class PlaylistsBridge(QObject):
         return {"ok": True, "count": count, "errors": errors}
 
     @Slot(int, "QVariantList", result=dict)
-    def batchAddTrackIds(self, playlist_id: int, track_ids: list):
+    def batchAddTrackIds(self, playlist_id: int, track_ids: list[int]) -> dict:
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         count = 0
@@ -329,26 +321,27 @@ class PlaylistsBridge(QObject):
         return {"ok": True, "count": count, "errors": errors}
 
     @Slot(int, int, int, result=dict)
-    def reorderTrack(self, pid: int, from_index: int, to_index: int):
+    def reorderTrack(self, pid: int, from_index: int, to_index: int) -> dict:
         result = self._svc.reorder(pid, from_index, to_index) if self._can() else {"ok": False, "error": "NO_DB"}
         if result.get("ok"):
             self.refresh()
         return result
 
     @Slot(int, int, result=dict)
-    def playPlaylistFromIndex(self, pid: int, index: int = 0):
+    def playPlaylistFromIndex(self, pid: int, index: int = 0) -> dict:
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         items = self._get_items_internal(pid)
         if not items:
             return {"ok": False, "error": "NO_TRACKS"}
-        fps = [t["filepath"] for t in items[index:] if t.get("filepath")]
-        if not fps:
+        if index < 0 or index >= len(items):
+            return {"ok": False, "error": "INVALID_INDEX"}
+        tracks = [item for item in items if item.get("filepath")]
+        if len(tracks) != len(items):
             return {"ok": False, "error": "NO_TRACKS"}
-        if self._player and hasattr(self._player, 'enqueue'):
-            self._player.enqueue(fps, play_now=True)
-            return {"ok": True, "count": len(fps)}
-        return {"ok": False, "error": "UNSUPPORTED"}
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
+        return self._queue_service.replace_and_play(tracks, index)
 
     @Slot(result=dict)
     def playlistScore(self) -> dict:
@@ -376,7 +369,8 @@ class PlaylistsBridge(QObject):
         }
 
     @Slot(str, "QVariantList", result=dict)
-    def saveQueueAsPlaylist(self, name: str, items=None):
+    def saveQueueAsPlaylist(self, name: str,
+                            items: list[dict] | None = None) -> dict:
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         if not name:
@@ -388,13 +382,13 @@ class PlaylistsBridge(QObject):
         return result
 
     @Slot(str, result=dict)
-    def previewPlaylistImport(self, filepath: str):
+    def previewPlaylistImport(self, filepath: str) -> dict:
         if self._svc:
             return self._svc.import_preview(filepath)
         return {"ok": False, "error": "NO_SERVICE"}
 
     @Slot(str, str, result=dict)
-    def confirmPlaylistImport(self, filepath: str, name: str = ""):
+    def confirmPlaylistImport(self, filepath: str, name: str = "") -> dict:
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         result = self._svc.import_confirm(filepath, name)
@@ -403,19 +397,12 @@ class PlaylistsBridge(QObject):
             self._notify(f"Importada '{result.get('name', name)}' ({result.get('count', 0)} pistas)", "success")
         return result
 
-    def _run_import_via_job(self, filepath: str, name: str = ""):
-        if self._job_bridge and hasattr(self._job_bridge, '_add_job'):
-            def _import():
-                result = self._svc.import_confirm(filepath, name)
-                if not result.get("ok"):
-                    raise RuntimeError(result.get("message", "Import failed"))
-                return result
-            self._job_bridge._add_job("playlist_import", f"Importando playlist {name or Path(filepath).stem}", _import)
-            return {"ok": True, "async": True}
+    def _run_import_via_job(self, filepath: str, name: str = "") -> dict:
+        # JobBridge has no public API for submitting arbitrary callables.
         return self.confirmPlaylistImport(filepath, name)
 
     @Slot(str, result=dict)
-    def cancelPlaylistImport(self, import_id: str):
+    def cancelPlaylistImport(self, import_id: str) -> dict:
         return self._svc.cancel_import(import_id)
 
     def _export_m3u(self, destination_path: str, items: list[dict]) -> dict:
@@ -430,27 +417,11 @@ class PlaylistsBridge(QObject):
             return {"ok": False, "error": str(e)}
 
     def _export_m3u8(self, destination_path: str, items: list[dict]) -> dict:
-        try:
-            fps = [t.get("filepath", "") for t in items if t.get("filepath")]
-            with open(destination_path, "w", encoding="utf-8") as f:
-                f.write("#EXTM3U\n")
-                for fp in fps:
-                    f.write(f"{fp}\n")
-            return {"ok": True, "count": len(fps)}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        return self._export_m3u(destination_path, items)
 
-    def _run_export_via_job(self, pid: int, destination_path: str, fmt: str = "m3u"):
-        if self._job_bridge and hasattr(self._job_bridge, '_add_job'):
-            def _export():
-                items = self._get_items_internal(pid)
-                if not items:
-                    raise RuntimeError("No tracks to export")
-                if fmt == "m3u8":
-                    return self._export_m3u8(destination_path, items)
-                return self._export_m3u(destination_path, items)
-            self._job_bridge._add_job("playlist_export", "Exportando playlist", _export)
-            return {"ok": True, "async": True}
+    def _run_export_via_job(self, pid: int, destination_path: str,
+                            fmt: str = "m3u") -> dict:
+        # JobBridge has no public API for submitting arbitrary callables.
         return self._export_direct(pid, destination_path, fmt)
 
     def _export_direct(self, pid: int, destination_path: str, fmt: str) -> dict:
@@ -462,42 +433,41 @@ class PlaylistsBridge(QObject):
         return self._export_m3u(destination_path, items)
 
     @Slot(str, result=dict)
-    def importM3U(self, filepath: str):
+    def importM3U(self, filepath: str) -> dict:
         return self._run_import_via_job(filepath)
 
     @Slot(str, result=dict)
-    def importM3U8(self, filepath: str):
+    def importM3U8(self, filepath: str) -> dict:
         return self._run_import_via_job(filepath)
 
     @Slot(int, str, result=dict)
-    def exportM3U(self, pid: int, destination_path: str):
+    def exportM3U(self, pid: int, destination_path: str) -> dict:
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         return self._run_export_via_job(pid, destination_path, "m3u")
 
     @Slot(int, str, result=dict)
-    def exportM3U8(self, pid: int, destination_path: str):
+    def exportM3U8(self, pid: int, destination_path: str) -> dict:
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         return self._run_export_via_job(pid, destination_path, "m3u8")
 
     @Slot(int, result=dict)
-    def playPlaylist(self, pid: int):
+    def playPlaylist(self, pid: int) -> dict:
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         items = self._get_items_internal(pid)
         if not items:
             return {"ok": False, "error": "NO_TRACKS"}
-        fps = [t["filepath"] for t in items if t.get("filepath")]
-        if not fps:
+        tracks = [item for item in items if item.get("filepath")]
+        if len(tracks) != len(items):
             return {"ok": False, "error": "NO_TRACKS"}
-        if self._player and hasattr(self._player, 'enqueue'):
-            self._player.enqueue(fps, play_now=True)
-            return {"ok": True, "count": len(fps)}
-        return {"ok": False, "error": "UNSUPPORTED"}
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
+        return self._queue_service.replace_and_play(tracks, 0)
 
     @Slot(int, str, result=dict)
-    def setCover(self, pid: int, cover_path: str):
+    def setCover(self, pid: int, cover_path: str) -> dict:
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         try:
@@ -508,31 +478,26 @@ class PlaylistsBridge(QObject):
             return {"ok": False, "error": str(e)}
 
     @Slot(int, str, result=dict)
-    def setDescription(self, pid: int, description: str):
+    def setDescription(self, pid: int, description: str) -> dict:
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         try:
-            if self._db and hasattr(self._db, 'update_playlist'):
-                self._db.update_playlist(pid, description=description)
+            result = self._svc.update_description(pid, description)
+            if result.get("ok"):
                 self.refresh()
-                return {"ok": True}
-            if hasattr(self._svc, '_db') and self._svc._db and hasattr(self._svc._db, 'update_playlist'):
-                self._svc._db.update_playlist(pid, description=description)
-                self.refresh()
-                return {"ok": True}
-            return {"ok": False, "error": "NO_DB"}
+            return result
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
     @Slot(int, result=dict)
-    def detectMissingTracks(self, pid: int):
+    def detectMissingTracks(self, pid: int) -> dict:
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         result = self._svc.detect_missing(pid)
         return result
 
     @Slot(int, "QVariantList", result=dict)
-    def removeMissingTracks(self, pid: int, track_ids: list):
+    def removeMissingTracks(self, pid: int, track_ids: list[int]) -> dict:
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         removed = 0
@@ -551,13 +516,13 @@ class PlaylistsBridge(QObject):
         return {"ok": True, "removed": removed, "errors": errors}
 
     @Slot(result=dict)
-    def beginTransaction(self):
+    def beginTransaction(self) -> dict:
         if self._svc:
             return self._svc.begin()
         return {"ok": False, "error": "NO_SERVICE"}
 
     @Slot(result=dict)
-    def commitTransaction(self):
+    def commitTransaction(self) -> dict:
         if self._svc:
             result = self._svc.commit()
             self.refresh()
@@ -565,7 +530,7 @@ class PlaylistsBridge(QObject):
         return {"ok": False, "error": "NO_SERVICE"}
 
     @Slot(result=dict)
-    def rollbackTransaction(self):
+    def rollbackTransaction(self) -> dict:
         if self._svc:
             result = self._svc.rollback()
             self.refresh()
@@ -573,17 +538,19 @@ class PlaylistsBridge(QObject):
         return {"ok": False, "error": "NO_SERVICE"}
 
     @Slot(int, str, result=dict)
-    def setSmartRule(self, pid: int, rule_json: str):
+    def setSmartRule(self, pid: int, rule_json: str) -> dict:
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         try:
             rule = json.loads(rule_json) if rule_json else {}
-            if hasattr(self._db, 'update_playlist'):
-                self._db.update_playlist(pid, smart_rule=json.dumps(rule))
+            if hasattr(self._svc, "set_smart_rule"):
+                result = self._svc.set_smart_rule(pid, rule)
+                if not result.get("ok"):
+                    return result
                 self.refresh()
-                return {"ok": True}
+                return result
             return {"ok": False, "error": "UNSUPPORTED"}
-        except (json.JSONDecodeError, Exception) as e:
+        except Exception as e:
             return {"ok": False, "error": str(e)}
 
     @staticmethod

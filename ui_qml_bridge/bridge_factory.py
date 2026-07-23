@@ -13,30 +13,13 @@ from core.service_container import ServiceContainer
 
 logger = logging.getLogger("michi.bridge_factory")
 
-INFRASTRUCTURE = [
-    "page_state", "route_registry", "navigation", "action_registry",
-    "query_executor", "job_bridge", "confirmation", "theme", "accessibility",
-    "notification", "capability", "app_state",
-]
-
-DOMAIN = [
-    "library_sources", "library", "playback", "nowplaying", "queue",
-    "playlists", "history", "global_search", "mix", "lyrics",
-    "settings", "output_profiles", "eq", "connections",
-    "home_audio", "devices", "radio", "audio_lab", "metadata",
-    "smart_tagging", "disc_lab", "library_doctor", "diagnostics", "michi_ai",
-]
-
-AGGREGATORS = [
-    "command_palette", "home",
-    "app", "desktop", "runtime_quality", "physical_audio",
-]
-
 
 class BridgeFactory(QObject):
     """Creates each bridge with injected dependencies from ServiceContainer."""
 
-    def __init__(self, container: ServiceContainer, parent=None):
+    def __init__(
+        self, container: ServiceContainer, parent: QObject | None = None
+    ) -> None:
         super().__init__(parent)
         self._container = container
         self._bridges: dict[str, QObject] = {}
@@ -130,6 +113,7 @@ class BridgeFactory(QObject):
                 worker_manager=self._get("worker_manager"),
                 job_bridge=self._bridges.get("job_bridge"),
                 track_action_service=self._get("track_action_service"),
+                queue_service=self._get("queue_service"),
                 library_sources_service=self._get("library_sources_service"),
                 library_service=self._get("library_service"),
                 songs_service=self._get("songs_service"),
@@ -191,6 +175,7 @@ class BridgeFactory(QObject):
                 selection_context=sel,
                 player_service=self._get("playback_service"),
                 playlist_service=self._get("playlist_service"),
+                queue_service=self._get("queue_service"),
                 action_registry=self._bridges.get("action_registry"),
                 confirmation_bridge=self._bridges.get("confirmation"),
                 navigation_bridge=self._bridges.get("navigation"),
@@ -558,12 +543,12 @@ class BridgeFactory(QObject):
         self.create_action_registry_bridge()
 
         # 2. Dominio
+        self.create_playlists_bridge()
         self.create_library_bridge()
         self.create_library_sources_bridge()
         self.create_playback_bridge()
         self.create_nowplaying_bridge()
         self.create_queue_bridge()
-        self.create_playlists_bridge()
         self.create_history_bridge()
         self.create_search_bridge()
         self.create_mix_bridge()
@@ -593,7 +578,6 @@ class BridgeFactory(QObject):
         self.create_runtime_quality_bridge()
         self.create_physical_audio_bridge()
         if "cover" not in self._bridges:
-            from PySide6.QtCore import QObject
             self._bridges["cover"] = QObject()
         self.create_cover_provider_bridge()
         self.create_app_state_bridge()
@@ -629,106 +613,46 @@ class BridgeFactory(QObject):
         reg = factory._bridges.get("action_registry")
         if reg is not None:
             container_reg = container.require("action_registry")
-            assert reg is container_reg, "action_registry identity mismatch"
+            if reg is not container_reg:
+                raise RuntimeError("action_registry identity mismatch")
 
         pb = factory._bridges.get("playback")
         if pb is not None:
             np = pb._nowplaying
-            assert np._player is container.require("playback_service"), \
-                "playback_bridge.service identity mismatch"
+            if np._player is not container.require("playback_service"):
+                raise RuntimeError("playback_bridge.service identity mismatch")
 
         qb = factory._bridges.get("queue")
-        if qb is not None:
-            assert qb._queue_service is container.require("queue_service"), \
-                "queue_bridge.queue_service identity mismatch"
+        if (
+            qb is not None
+            and qb._queue_service is not container.require("queue_service")
+        ):
+            raise RuntimeError("queue_bridge.queue_service identity mismatch")
 
         sb = factory._bridges.get("settings")
-        if sb is not None:
-            assert sb._svc is container.require("settings_service"), \
-                "settings_bridge.service identity mismatch"
+        if sb is not None and sb._svc is not container.require("settings_service"):
+            raise RuntimeError("settings_bridge.service identity mismatch")
 
         plb = factory._bridges.get("playlists")
         if plb is not None:
             container_svc = container.require("playlist_service")
-            assert plb._svc is container_svc, \
-                "playlists_bridge.playlist_service identity mismatch"
+            if plb._svc is not container_svc:
+                raise RuntimeError("playlists_bridge.playlist_service identity mismatch")
 
         search = factory._bridges.get("global_search")
-        if search is not None:
-            assert search._svc is container.require("global_search_service"), \
-                "search_bridge.search_service identity mismatch"
+        if (
+            search is not None
+            and search._svc is not container.require("global_search_service")
+        ):
+            raise RuntimeError("search_bridge.search_service identity mismatch")
 
         mix = factory._bridges.get("mix")
-        if mix is not None:
-            assert mix._mix_svc is container.require("mix_service"), \
-                "mix_bridge.mix_service identity mismatch"
+        if mix is not None and mix._mix_svc is not container.require("mix_service"):
+            raise RuntimeError("mix_bridge.mix_service identity mismatch")
 
         ai = factory._bridges.get("michi_ai")
-        if ai is not None:
-            assert ai._registry is container.require("action_registry"), \
-                "ai_bridge.action_registry identity mismatch"
-
-    def _create_infrastructure(self):
-        for name in INFRASTRUCTURE:
-            method_name = {
-                "page_state": "create_page_state_store",
-                "route_registry": "create_route_registry_bridge",
-                "navigation": "create_navigation_bridge",
-                "action_registry": "create_action_registry_bridge",
-                "query_executor": "create_query_executor",
-                "job_bridge": "create_job_bridge",
-                "confirmation": "create_confirmation_bridge",
-                "theme": "create_theme_bridge",
-                "accessibility": "create_accessibility_bridge",
-                "capability": "create_capability_bridge",
-                "notification": "create_notification_bridge",
-                "app_state": "create_app_state_bridge",
-            }[name]
-            getattr(self, method_name)()
-
-    def _create_domain(self):
-        for name in DOMAIN:
-            method_name = {
-                "library_sources": "create_library_sources_bridge",
-                "library": "create_library_bridge",
-                "playback": "create_playback_bridge",
-                "nowplaying": "create_nowplaying_bridge",
-                "queue": "create_queue_bridge",
-                "playlists": "create_playlists_bridge",
-                "history": "create_history_bridge",
-                "global_search": "create_search_bridge",
-                "mix": "create_mix_bridge",
-                "lyrics": "create_lyrics_bridge",
-                "settings": "create_settings_bridge",
-                "output_profiles": "create_output_profiles_bridge",
-                "eq": "create_eq_bridge",
-                "connections": "create_connections_bridge",
-                "home_audio": "create_home_audio_bridge",
-                "devices": "create_devices_bridge",
-                "radio": "create_radio_bridge",
-                "audio_lab": "create_audio_lab_bridge",
-                "metadata": "create_metadata_bridge",
-                "smart_tagging": "create_smart_tagging_bridge",
-                "disc_lab": "create_disc_lab_bridge",
-                "library_doctor": "create_library_doctor_bridge",
-                "diagnostics": "create_diagnostics_bridge",
-                "michi_ai": "create_michi_ai_bridge",
-            }[name]
-            getattr(self, method_name)()
-
-    def _create_aggregators(self):
-        for name in AGGREGATORS:
-            method_name = {
-                "notification": "create_notification_bridge",
-                "command_palette": "create_command_palette_bridge",
-                "home": "create_home_bridge",
-                "capability": "create_capability_bridge",
-                "app": "create_app_bridge",
-                "desktop": "create_desktop_bridge",
-                "runtime_quality": "create_runtime_quality_bridge",
-                "physical_audio": "create_physical_audio_bridge",
-            }[name]
-            getattr(self, method_name)()
+        if ai is not None and ai._registry is not container.require("action_registry"):
+            raise RuntimeError("ai_bridge.action_registry identity mismatch")
 
     def bind_action_handlers(self):
         registry = self._bridges.get("action_registry")
