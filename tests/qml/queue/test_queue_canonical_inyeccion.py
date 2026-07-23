@@ -1,21 +1,36 @@
-from __future__ import annotations
 """DN — QueueService canonical injection tests.
 QueueService is injected into: QueueBridge, AppBridge, PlaybackService,
 MichiAI, Notifications, CommandPalette.
 QueueService is the single source of truth. No parallel queue state.
 """
+from __future__ import annotations
 
 from unittest.mock import MagicMock
 
 import pytest
 
 from core.queue_service import QueueService
+from ui_qml.models.QueueListModel import QueueListModel
 from ui_qml_bridge.queue_bridge import QueueBridge
 from ui_qml_bridge.app_bridge import AppBridge
 from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
 from core.service_container import ServiceContainer
 from ui_qml_bridge.bridge_factory import BridgeFactory
 pytestmark = [pytest.mark.qml_module("queue")]
+
+EXPECTED_QUEUE_ROLES = {
+    b"trackId",
+    b"trackUid",
+    b"title",
+    b"artist",
+    b"album",
+    b"albumKey",
+    b"duration",
+    b"current",
+    b"position",
+    b"coverKey",
+    b"sourceType",
+}
 
 
 @pytest.fixture
@@ -96,7 +111,7 @@ def test_queue_bridge_restore_delegates(service):
     fresh = QueueService()
     fresh_bridge = QueueBridge(queue_service=fresh)
     result = fresh_bridge.restore()
-    assert result["ok"] or not result["ok"]
+    assert isinstance(result["ok"], bool)
 
 
 def test_queue_bridge_undo_delegates(service):
@@ -112,9 +127,74 @@ def test_queue_bridge_undo_delegates(service):
 def test_nowplaying_bridge_queue_does_not_own_state():
     player = MagicMock()
     player.get_queue.return_value = []
-    np = NowPlayingBridge(player_service=player)
-    assert hasattr(np, 'queue')
-    assert isinstance(np.queue, list)
+    np = NowPlayingBridge(
+        player_service=player,
+        audio_quality_adapter=MagicMock(),
+    )
+    assert not hasattr(np, "queue")
+    player.get_queue.assert_not_called()
+
+
+def test_queue_list_model_exposes_complete_typed_role_contract(service):
+    service.set_items(
+        [
+            {
+                "track_id": 7,
+                "track_uid": "uid-7",
+                "title": "Naima",
+                "artist": "John Coltrane",
+                "album": "Giant Steps",
+                "album_key": "giant-steps",
+                "duration": "291",
+                "filepath": "/music/naima.flac",
+                "cover_key": "cover-naima",
+                "source_type": "local_file",
+            }
+        ],
+        current_index=0,
+    )
+    model = QueueListModel(queue_service=service)
+    index = model.index(0)
+
+    assert set(model.roleNames().values()) == EXPECTED_QUEUE_ROLES
+    assert model.data(index, model.TrackIdRole) == "7"
+    assert model.data(index, model.TrackUidRole) == "uid-7"
+    assert model.data(index, model.TitleRole) == "Naima"
+    assert model.data(index, model.ArtistRole) == "John Coltrane"
+    assert model.data(index, model.AlbumRole) == "Giant Steps"
+    assert model.data(index, model.AlbumKeyRole) == "giant-steps"
+    assert model.data(index, model.DurationRole) == 291
+    assert model.data(index, model.CurrentRole) is True
+    assert model.data(index, model.PositionRole) == 0
+    assert model.data(index, model.CoverKeyRole) == "cover-naima"
+    assert model.data(index, model.SourceTypeRole) == "local_file"
+
+
+def test_queue_list_model_positions_and_current_follow_service_state(service):
+    service.set_items(
+        [
+            {"track_id": "a", "title": "A"},
+            {"track_id": "b", "title": "B"},
+            {"track_id": "c", "title": "C"},
+        ],
+        current_index=1,
+    )
+    model = QueueListModel(queue_service=service)
+
+    assert [model.data(model.index(row), model.PositionRole) for row in range(3)] == [0, 1, 2]
+    assert [model.data(model.index(row), model.CurrentRole) for row in range(3)] == [
+        False,
+        True,
+        False,
+    ]
+
+    service.current_index = 2
+
+    assert [model.data(model.index(row), model.CurrentRole) for row in range(3)] == [
+        False,
+        False,
+        True,
+    ]
 
 
 def test_queue_service_no_duplicate_state(service, sample_items):
