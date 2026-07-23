@@ -21,7 +21,9 @@ Item {
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property string _selectedItems: ""
     property bool _multiSelect: false
-    property int pageState: root.qb ? stateReady : stateError
+    property int pageState: root.qb
+                            ? (root.qb.queueCount > 0 ? stateReady : stateEmpty)
+                            : stateError
 
     readonly property int stateLoading: 0
     readonly property int stateReady: 1

@@ -5,11 +5,13 @@ import "../../theme"
 import "../../components"
 
 Item {
+    id: root
     Accessible.role: Accessible.Pane
     Accessible.name: "Now Playing Queue Preview"
     objectName: "npQueuePreview"
     focus: true
     property var ps: null
+    property var qb: typeof queueBridge !== "undefined" ? queueBridge : null
     property var nav: null
 
     ColumnLayout {
@@ -29,7 +31,7 @@ Item {
             Item { Layout.fillWidth: true }
 
             Text {
-                text: root.ps && root.ps.queue ? root.ps.queue.length + " pistas" : ""
+                text: root.qb ? root.qb.queueCount + " pistas" : ""
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
             }
@@ -45,10 +47,10 @@ Item {
             focusPolicy: Qt.StrongFocus
             Layout.fillWidth: true
             Layout.fillHeight: true
-            model: root.ps ? root.ps.queue : []
+            model: root.qb ? root.qb.queueModel : null
             clip: true
             boundsBehavior: Flickable.StopAtBounds
-            visible: root.ps && root.ps.queue && root.ps.queue.length > 0
+            visible: (root.qb ? root.qb.queueCount : 0) > 0
 
             delegate: RowLayout {
                 width: parent.width
@@ -63,15 +65,15 @@ Item {
                 }
 
                 Text {
-                    text: modelData.title || "—"
-                    color: modelData.is_current ? MichiTheme.colors.accentBlue : MichiTheme.colors.textPrimary
+                    text: model.title || "—"
+                    color: model.current ? MichiTheme.colors.accentBlue : MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.metaSize
                     elide: Text.ElideRight
                     Layout.fillWidth: true
                 }
 
                 Text {
-                    text: modelData.artist || ""
+                    text: model.artist || ""
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.metaSize
                     elide: Text.ElideRight
@@ -85,7 +87,7 @@ Item {
             text: qsTr("Cola vacía")
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
-            visible: !root.ps || !root.ps.queue || root.ps.queue.length === 0
+            visible: (root.qb ? root.qb.queueCount : 0) === 0
         }
     }
 }
