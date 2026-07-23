@@ -1,6 +1,8 @@
 """Composition-level queue progression reconciliation tests."""
 from __future__ import annotations
 
+from unittest.mock import patch
+
 from core.composition.playback import build
 from core.service_container import ServiceContainer
 
@@ -38,3 +40,17 @@ def test_playback_composition_rejects_stale_progress() -> None:
     )
 
     assert queue.current_index == 0
+
+
+def test_playback_composition_injects_mpris_services() -> None:
+    container = ServiceContainer()
+    with patch("adapters.mpris.MPRISAdapter") as adapter_class:
+        adapter = adapter_class.return_value
+
+        build(container)
+
+    adapter_class.assert_called_once_with(
+        player_service=container.require("playback_service"),
+        queue_service=container.require("queue_service"),
+    )
+    assert container.get("mpris_adapter") is adapter

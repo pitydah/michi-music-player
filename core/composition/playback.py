@@ -20,3 +20,12 @@ def build(container: ServiceContainer) -> None:
     container.register("queue_service", qs)
     container.register("playback_service", ps)
     container.register("notification_service", ns)
+
+    try:
+        from adapters.mpris import MPRISAdapter
+        container.register(
+            "mpris_adapter",
+            MPRISAdapter(player_service=ps, queue_service=qs),
+        )
+    except Exception:
+        container.register("mpris_adapter", None)
