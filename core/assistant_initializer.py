@@ -1,3 +1,5 @@
+"""Build the dependency composition for the Michi assistant runtime."""
+
 from __future__ import annotations
 
 import logging
@@ -12,11 +14,11 @@ from michi_ai.v2.plan.plan_builder_v2 import PlanBuilderV2
 from michi_ai.v2.plan.plan_executor_v2 import PlanExecutorV2
 from michi_ai.v2.plan.plan_validator import PlanValidator
 from michi_ai.v2.tools.register_builtin import register_builtin_tools
-from core.assistant_gateways import AssistantGateways
 from michi_ai.v2.tools.tool_registry_v2 import ToolRegistryV2
 from michi_ai.v2.trace.trace_recorder import TraceRecorder
 
 from core.assistant_gateways import (
+    AssistantGateways,
     ProductionAudioLabGateway, ProductionDeviceGateway,
     ProductionDiagnosticsGateway, ProductionJobGateway,
     ProductionLibraryGateway, ProductionMixGateway,
@@ -83,7 +85,27 @@ def create_assistant_composition(
     connection_service: Any = None,
     home_audio_service: Any = None,
     library_doctor_service: Any = None,
+    track_action_service: Any = None,
+    library_query_service: Any = None,
 ) -> AssistantComposition:
+    """Compose the assistant engine, gateways, tools, and context providers.
+
+    Args:
+        metadata_service, confirmation_service: Services for metadata operations and
+            their confirmation flow.
+        queue_service, playlist_service, track_action_service, library_query_service:
+            Playback collection and track-operation services injected into gateways.
+        player_service, library_db, settings_service: Core playback, library, and
+            settings dependencies.
+        job_service, sync_manager, diagnostics_service, navigation_service: Runtime
+            infrastructure used by gateways and context providers.
+        audio_lab_service, mix_service: Audio analysis and mix services.
+        lyrics_service, connection_service, home_audio_service,
+            library_doctor_service: Optional capability-specific services.
+
+    Returns:
+        The fully wired assistant composition.
+    """
     from core.ai_engine import MichiAIEngine
     from core.ai.backend_selector import BackendSelector
     from core.ai.model_manager import ModelManager
@@ -98,8 +120,10 @@ def create_assistant_composition(
     PlanBuilderV2(tool_registry, capability_resolver)
 
     gateways = AssistantGateways(
-        playback=ProductionPlaybackGateway(player_service),
-        queue=ProductionQueueGateway(queue_service or player_service),
+        playback=ProductionPlaybackGateway(
+            player_service, queue_service, track_action_service
+        ),
+        queue=ProductionQueueGateway(queue_service, library_query_service),
         library=ProductionLibraryGateway(library_db),
         playlists=ProductionPlaylistGateway(playlist_service or library_db),
         settings=ProductionSettingsGateway(settings_service),
@@ -132,6 +156,7 @@ def create_assistant_composition(
 
     svc_map = {
         "player_service": player_service,
+        "queue_service": queue_service,
         "library_db": library_db,
         "settings_service": settings_service,
         "job_service": job_service,
