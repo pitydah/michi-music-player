@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sqlite3
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -109,12 +110,23 @@ class TestSongsService:
         assert result["ok"] is False
 
     def test_queue_items(self, db):
-        pb = type('_FakePb', (), {'enqueue': lambda self, fps, play_now: None})()
-        svc = SongsService(db=db, playback_service=pb)
+        queue = type('_FakeQueue', (), {'enqueue': lambda self, fps, play_now: None})()
+        svc = SongsService(db=db, queue_service=queue)
         items = [{"filepath": "/music/song1.flac"}, {"filepath": "/music/song2.mp3"}]
         result = svc.queue_items(items)
         assert result["ok"] is True
         assert result["count"] == 2
+
+    def test_queue_items_never_calls_player_service(self, db):
+        playback = MagicMock()
+        queue = MagicMock()
+        svc = SongsService(db=db, playback_service=playback, queue_service=queue)
+
+        result = svc.queue_items([{"filepath": "/music/song1.flac"}])
+
+        assert result["ok"] is True
+        queue.enqueue.assert_called_once_with(["/music/song1.flac"], play_now=False)
+        playback.enqueue.assert_not_called()
 
     def test_queue_items_no_items(self, db):
         svc = SongsService(db=db)
