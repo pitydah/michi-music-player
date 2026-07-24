@@ -236,8 +236,8 @@ class TestDopPipeline:
         route = AudioRoutePlan(dsd_mode="dop")
         factory = PipelineFactory()
 
-        fake_sink = Gst.Pipeline.new("fake-sink")
-        with patch.object(factory, "_make_sink_bin", return_value=fake_sink):
+        fake_sink = Gst.ElementFactory.make("fakesink", "fake-sink")
+        with patch.object(factory, "_make_sink_from_route", return_value=fake_sink):
             with patch.dict("os.environ", {"MICHI_DOP_EXPERIMENTAL": "1"}):
                 result = factory._build_dop("file:///test.dsf", probe_dsd, route)
 
