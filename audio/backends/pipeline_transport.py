@@ -16,7 +16,7 @@ import contextlib
 
 import gi
 gi.require_version("Gst", "1.0")
-from gi.repository import Gst, GLib  # noqa: E402
+from gi.repository import Gst  # noqa: E402
 
 logger = logging.getLogger("michi.audio.transport")
 
