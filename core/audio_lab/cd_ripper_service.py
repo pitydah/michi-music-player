@@ -4,11 +4,10 @@ Permite extraer pistas de CDs de audio a formatos digitales.
 """
 import os
 import subprocess
-import tempfile
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
-from pathlib import Path
 import logging
+import contextlib
 
 logger = logging.getLogger(__name__)
 
@@ -39,18 +38,18 @@ class CDInfo:
 
 class CDRipperService:
     """Servicio para ripeo de CDs de audio."""
-    
+
     def __init__(self):
         self.supported_formats = ['flac', 'wav', 'mp3', 'opus', 'aac']
         self.default_format = 'flac'
         self.default_quality = 'lossless'
         self._cancel_requested = False
         self._rip_process: Any = None
-        
+
     def detect_drives(self) -> List[CDRomDrive]:
         """Detecta unidades de CD/DVD disponibles en el sistema."""
         drives = []
-        
+
         # Linux: /dev/sr*, /dev/cdrom
         if os.name == 'posix':
             for device in ['/dev/sr0', '/dev/sr1', '/dev/cdrom']:
@@ -58,9 +57,9 @@ class CDRipperService:
                     try:
                         # Intentar obtener información del dispositivo
                         result = subprocess.run(
-                            ['cdparanoia', '-V'], 
-                            capture_output=True, 
-                            text=True, 
+                            ['cdparanoia', '-V'],
+                            capture_output=True,
+                            text=True,
                             timeout=5
                         )
                         model = "Unknown Drive"
@@ -70,7 +69,7 @@ class CDRipperService:
                                 if 'drive' in line.lower():
                                     model = line.strip()
                                     break
-                        
+
                         drives.append(CDRomDrive(
                             device=device,
                             model=model,
@@ -78,7 +77,7 @@ class CDRipperService:
                         ))
                     except Exception as e:
                         logger.warning(f"Error al verificar unidad {device}: {e}")
-                        
+
         # Windows: letras de unidad
         elif os.name == 'nt':
             import string
@@ -87,8 +86,8 @@ class CDRipperService:
                 try:
                     # Verificar si es una unidad óptica
                     result = subprocess.run(
-                        ['wmic', 'cdrom', 'get', 'drive'], 
-                        capture_output=True, 
+                        ['wmic', 'cdrom', 'get', 'drive'],
+                        capture_output=True,
                         text=True
                     )
                     if drive_path in result.stdout:
@@ -97,11 +96,11 @@ class CDRipperService:
                             model=f"CD Drive ({drive_letter}:)",
                             is_audio_capable=True
                         ))
-                except Exception as e:
+                except Exception:
                     continue
-                    
+
         return drives
-    
+
     def get_cd_info(self, device: str) -> Optional[CDInfo]:
         """Obtiene información del CD insertado usando cd-discid."""
         try:
@@ -130,10 +129,7 @@ class CDRipperService:
 
             tracks = []
             for i, start in enumerate(offsets):
-                if i + 1 < len(offsets):
-                    end = offsets[i + 1]
-                else:
-                    end = leadout_frame
+                end = offsets[i + 1] if i + 1 < len(offsets) else leadout_frame
                 duration = (end - start) / 75.0
                 if duration <= 0:
                     duration = 2.0
@@ -158,33 +154,23 @@ class CDRipperService:
         except Exception as e:
             logger.error(f"Error al obtener información del CD: {e}")
             return None
-    
+
     def _build_command(self, format: str, device: str, track_number: int,
                        output_path: str) -> list[str] | None:
-        if format == 'flac':
-            return [
-                'ffmpeg', '-f', 'cdaudio', '-i', f'{device}:{track_number}',
-                '-c:a', 'flac', '-compression_level', '8',
-                '-y', output_path
-            ]
-        elif format == 'wav':
-            return [
-                'ffmpeg', '-f', 'cdaudio', '-i', f'{device}:{track_number}',
-                '-c:a', 'pcm_s16le',
-                '-y', output_path
-            ]
-        elif format == 'mp3':
-            return [
-                'ffmpeg', '-f', 'cdaudio', '-i', f'{device}:{track_number}',
-                '-c:a', 'libmp3lame', '-b:a', '320k',
-                '-y', output_path
-            ]
-        return None
+        codec_args = {
+            'flac': ['-c:a', 'flac', '-compression_level', '8'],
+            'wav': ['-c:a', 'pcm_s16le'],
+            'mp3': ['-c:a', 'libmp3lame', '-b:a', '320k'],
+        }
+        args = codec_args.get(format)
+        if args is None:
+            return None
+        return ['ffmpeg', '-f', 'cdaudio', '-i', f'{device}:{track_number}'] + args + ['-y', output_path]
 
     def rip_track(
-        self, 
-        device: str, 
-        track_number: int, 
+        self,
+        device: str,
+        track_number: int,
         output_path: str,
         format: str = 'flac',
         quality: str = 'lossless'
@@ -196,13 +182,13 @@ class CDRipperService:
             'output_file': output_path,
             'log': []
         }
-        
+
         try:
             cmd = self._build_command(format, device, track_number, output_path)
             if cmd is None:
                 result['error'] = f"Formato {format} no soportado"
                 return result
-            
+
             logger.info(f"Ejecutando ripeo: {' '.join(cmd)}")
             self._cancel_requested = False
             self._rip_process = subprocess.Popen(
@@ -228,9 +214,9 @@ class CDRipperService:
         except Exception as e:
             result['error'] = str(e)
             logger.error(f"Error en ripeo de pista {track_number}: {e}")
-            
+
         return result
-    
+
     def rip_full_cd(
         self,
         device: str,
@@ -247,33 +233,33 @@ class CDRipperService:
             'errors': [],
             'log_file': None
         }
-        
+
         # Obtener información del CD
         cd_info = self.get_cd_info(device)
         if not cd_info:
             result['errors'].append("No se pudo obtener información del CD")
             return result
-            
+
         # Crear directorio de salida
         album_dir = os.path.join(output_dir, f"{cd_info.album_artist} - {cd_info.album_title}")
         os.makedirs(album_dir, exist_ok=True)
-        
+
         log_entries = []
-        
+
         # Extraer cada pista
         for i in range(1, cd_info.total_tracks + 1):
             filename = f"{i:02d}. {cd_info.tracks[i-1].title if i <= len(cd_info.tracks) else f'Track {i}'}.{format}"
             output_path = os.path.join(album_dir, filename)
-            
+
             track_result = self.rip_track(device, i, output_path, format, quality)
-            
+
             if track_result['success']:
                 result['tracks_completed'] += 1
                 log_entries.extend(track_result['log'])
             else:
                 result['tracks_failed'] += 1
                 result['errors'].append(f"Pista {i}: {track_result['error']}")
-                
+
         # Generar log si se solicita
         if include_log and log_entries:
             log_path = os.path.join(album_dir, "ripping_log.txt")
@@ -288,7 +274,7 @@ class CDRipperService:
                     for error in result['errors']:
                         f.write(f"- {error}\n")
             result['log_file'] = log_path
-            
+
         result['success'] = result['tracks_failed'] == 0
         return result
 
@@ -300,7 +286,5 @@ class CDRipperService:
                 self._rip_process.terminate()
                 self._rip_process.wait(timeout=5)
             except Exception:
-                try:
+                with contextlib.suppress(Exception):
                     self._rip_process.kill()
-                except Exception:
-                    pass

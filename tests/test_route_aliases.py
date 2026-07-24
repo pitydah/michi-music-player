@@ -1,7 +1,6 @@
 """Test that all navigation calls in QML use valid routes from registry."""
 from __future__ import annotations
 
-import ast
 import os
 
 
@@ -38,4 +37,4 @@ def test_all_navigate_calls_exist_in_registry():
                     rel = os.path.relpath(fpath, ui_qml_dir)
                     missing.append(f"{rel}: navigates to '{route}' (resolved: '{resolved}') not in registry")
 
-    assert not missing, f"Missing routes:\n" + "\n".join(missing[:20])
+    assert not missing, "Missing routes:\n" + "\n".join(missing[:20])

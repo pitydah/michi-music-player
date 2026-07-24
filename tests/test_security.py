@@ -1,5 +1,4 @@
 """Tests for security — keyring, secrets redaction, TLS validation."""
-import pytest
 
 
 class TestSecretsSecurity:
@@ -28,7 +27,8 @@ class TestSecretsSecurity:
 
     def test_no_verify_false(self):
         """No SSL verify=False anywhere in core."""
-        import os, subprocess
+        import os
+        import subprocess
         result = subprocess.run(
             ["grep", "-rn", "verify=False", "--include=*.py"],
             cwd=os.path.join(os.path.dirname(__file__), ".."),
@@ -39,7 +39,6 @@ class TestSecretsSecurity:
         assert len(violations) == 0, f"verify=False found: {violations}"
 
     def test_settings_excludes_secrets(self):
-        from core.settings_schema import SettingsEntry
         # Check that secret entries are properly tagged
         from core.settings_schema import get_entry
         secret_entry = get_entry("home_audio/ha_token")

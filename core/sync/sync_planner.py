@@ -4,7 +4,6 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import Any
 
 logger = logging.getLogger("michi.sync.planner")
 
@@ -43,7 +42,7 @@ class SyncPlanner:
             if not os.path.isfile(src):
                 continue
             rel = os.path.basename(src)
-            ext = os.path.splitext(src)[1]
+            _ext = os.path.splitext(src)[1]
             size = os.path.getsize(src)
 
             # Determine destination path (possibly transcoded)

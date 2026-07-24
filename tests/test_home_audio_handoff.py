@@ -1,5 +1,4 @@
 """Tests for Home Audio — handoff, Snapcast, HA, zone groups."""
-from unittest.mock import MagicMock, patch
 
 import pytest
 

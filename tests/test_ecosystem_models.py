@@ -1,4 +1,4 @@
-from integrations.michi_ecosystem.ecosystem_models import EcosystemService, EcosystemNode, EcosystemEdge
+from integrations.michi_ecosystem.ecosystem_models import EcosystemService, EcosystemNode
 
 
 class TestEcosystemModels:

@@ -1,5 +1,4 @@
 """Tests for Radio — CRUD, repository, bridge."""
-import pytest
 
 
 class TestRadioIntegration:

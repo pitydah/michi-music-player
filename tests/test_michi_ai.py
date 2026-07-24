@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pytest
 
 from michi_ai.intent_classifier import classify
 from michi_ai.recommender import recommend

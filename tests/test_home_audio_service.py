@@ -1,5 +1,4 @@
-from unittest.mock import MagicMock, patch
-from integrations.home_audio_service import SnapcastService, HomeAssistantService, HomeAudioError
+from integrations.home_audio_service import SnapcastService, HomeAssistantService
 
 
 class TestHomeAudioService:

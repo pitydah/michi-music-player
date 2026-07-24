@@ -1,4 +1,4 @@
-from integrations.michi_ecosystem.health_graph import EcosystemHealthNode, EcosystemHealthEdge, EcosystemHealthGraph, build_health_graph
+from integrations.michi_ecosystem.health_graph import EcosystemHealthNode, build_health_graph
 
 
 class TestHealthGraph:

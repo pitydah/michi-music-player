@@ -1,4 +1,4 @@
-from integrations.michi_ecosystem.constants import STATUS_OK, STATUS_ERROR, SYNC_DISABLED
+from integrations.michi_ecosystem.constants import STATUS_OK, SYNC_DISABLED
 
 
 class TestConstants:

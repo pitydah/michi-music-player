@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from PySide6.QtGui import QPixmap, QColor, QPainter, QFont, QPen, QPainterPath
 from PySide6.QtCore import Qt, QRectF, QPointF
 
-from library.library_db import MediaItem
 from library.artwork_cache import get_cached, cache_cover
 
 _MAX_COVER_BYTES = 10 * 1024 * 1024  # 10 MB limit for embedded/external covers

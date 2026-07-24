@@ -5,6 +5,7 @@ cancel() terminates the process and waits for the thread before marking cancelle
 """
 from __future__ import annotations
 
+import contextlib
 import logging
 import threading
 import subprocess
@@ -65,10 +66,8 @@ class AudioLabJobController:
                 job.process_handle.wait(timeout=5)
             except Exception as e:
                 logger.warning("Failed to terminate process for job %s: %s", job_id, e)
-                try:
+                with contextlib.suppress(Exception):
                     job.process_handle.kill()
-                except Exception:
-                    pass
 
         if job.thread and job.thread.is_alive():
             job.thread.join(timeout=3)

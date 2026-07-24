@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from audio_analysis.schemas import AudioFeature, SimilarityResult
+from audio_analysis.schemas import AudioFeature
 from audio_analysis.similarity_index import (
     compute_similarity,
     _bpm_similarity,

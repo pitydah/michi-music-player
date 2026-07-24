@@ -1,8 +1,5 @@
 """Tests for AudioLab batch processing — verification, logs, progress."""
-import os
-import tempfile
-import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

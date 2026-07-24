@@ -21,7 +21,9 @@ def doctor_svc(tmp_path):
         d.mkdir(parents=True)
         fp = d / f"song_{i}.wav"
         with wave.open(str(fp), "w") as w:
-            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100)
 
     from library.indexer import Indexer

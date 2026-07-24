@@ -1,9 +1,6 @@
 """Tests for LibraryDoctorService — scan, detect issues, repair preview."""
 import os
-import tempfile
 import wave
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -29,7 +26,9 @@ def damaged_library(tmp_path):
         d.mkdir(parents=True, exist_ok=True)
         fp = d / f"{title}.wav"
         with wave.open(str(fp), "w") as w:
-            w.setnchannels(2); w.setsampwidth(2); w.setframerate(44100)
+            w.setnchannels(2)
+            w.setsampwidth(2)
+            w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100)
         created_files.append(str(fp))
 

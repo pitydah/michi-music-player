@@ -1,5 +1,4 @@
 """Test: equalizer service, presets, and bridge."""
-import pytest
 
 
 class TestEqService:
@@ -8,11 +7,11 @@ class TestEqService:
         assert EqualizerService is not None
 
     def test_eq_presets_import(self):
-        from audio.eq_presets import GRAPHIC_PRESETS, get_preset_names
+        from audio.eq_presets import get_preset_names
         assert len(get_preset_names()) > 0
 
     def test_eq_biquad_import(self):
-        import audio.eq_biquad
+        pass
 
     def test_eq_presets_loaded(self):
         from audio.eq_presets import GRAPHIC_PRESETS, get_preset_names

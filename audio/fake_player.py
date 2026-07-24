@@ -2,9 +2,7 @@
 from __future__ import annotations
 
 import logging
-import time
 from enum import Enum
-from typing import Any
 
 from PySide6.QtCore import QObject, Signal, QTimer
 

@@ -1,7 +1,5 @@
 """Tests for EQ bridge/server synchronization — state sync, presets persistence."""
-from unittest.mock import MagicMock
 
-import pytest
 
 
 class TestEqStateSync:

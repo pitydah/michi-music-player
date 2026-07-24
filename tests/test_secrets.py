@@ -1,5 +1,4 @@
 """Tests for secrets management — redaction, sensitive key detection."""
-import pytest
 
 
 class TestSecretsRedact:

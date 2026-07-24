@@ -1,4 +1,3 @@
-from unittest.mock import MagicMock
 from integrations.michi_ecosystem.ecosystem_registry import EcosystemRegistry
 from integrations.michi_ecosystem.ecosystem_models import EcosystemService
 

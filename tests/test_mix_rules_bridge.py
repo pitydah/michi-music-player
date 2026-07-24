@@ -1,8 +1,6 @@
 """Tests for MixBridge saveRules and previewRules integration."""
 import json
-from unittest.mock import MagicMock
 
-import pytest
 
 
 class TestMixRulesBridge:

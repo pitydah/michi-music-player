@@ -2,12 +2,10 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import secrets
 import time
-from dataclasses import dataclass, field
-from typing import Any, Callable
+from dataclasses import dataclass
 
 logger = logging.getLogger("michi.mobile_sync")
 

@@ -1,6 +1,6 @@
 """Tests for ArtistExternalInfo dataclass and Wikipedia extraction."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from integrations.artist_metadata.models import ArtistExternalInfo
 

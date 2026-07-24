@@ -85,7 +85,7 @@ class AudioNormalizationService(QObject):
                        destructive: bool = False,
                        confirmation_token: str | None = None) -> dict[str, Any]:
         """Normaliza un archivo con parámetros manuales.
-        
+
         Args:
             filepath: Ruta del archivo a normalizar
             target_loudness: Nivel objetivo LUFS
@@ -96,7 +96,7 @@ class AudioNormalizationService(QObject):
         if not filepath or not os.path.isfile(filepath):
             result["error"] = "FILE_NOT_FOUND"
             return result
-        
+
         if destructive:
             if not confirmation_token:
                 result["requires_confirmation"] = True
