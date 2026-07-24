@@ -220,13 +220,18 @@ class TestDopPipeline:
 
         assert result is None
 
-    @pytest.mark.skipif(
-        not __import__("importlib").util.find_spec("gi"),
-        reason="requires GStreamer (gi)")
     def test_pcm_fallback_dop_env_var_set(self, probe_dsd):
-        import gi
-        gi.require_version("Gst", "1.0")
-        from gi.repository import Gst
+        try:
+            import gi
+            gi.require_version("Gst", "1.0")
+            from gi.repository import Gst
+            # DRIFT: verify GStreamer pipeline element availability before
+            # running; CI has gi but may lack audio output plugins.
+            Gst.init(None)
+            probe = Gst.Pipeline.new("probe")
+            assert probe is not None
+        except (ImportError, Exception):
+            pytest.skip("GStreamer not fully available for pipeline creation")
         from audio.audio_route_plan import AudioRoutePlan
         from audio.pipeline_factory import PipelineFactory
 
