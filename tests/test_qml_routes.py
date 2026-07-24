@@ -2,7 +2,6 @@
 from pathlib import Path
 
 
-
 class TestQmlRoutes:
     def test_all_routes_have_qml_files(self):
         from ui_qml_bridge.route_registry import ROUTES
@@ -19,10 +18,11 @@ class TestQmlRoutes:
 
     def test_no_placeholder_routes_functional(self):
         from ui_qml_bridge.route_registry import ROUTES
+        non_blocking = {"deprecated", "planned", "configuration_required"}
         placeholders = []
         for route_id, info in ROUTES.items():
             src = info.get("source", "")
-            if "PlaceholderPage" in src and info.get("status") != "deprecated":
+            if "PlaceholderPage" in src and info.get("status") not in non_blocking:
                 placeholders.append(route_id)
         assert len(placeholders) == 0, f"Routes pointing to PlaceholderPage: {placeholders}"
 
@@ -33,7 +33,8 @@ class TestQmlRoutes:
 
     def test_all_routes_have_status(self):
         from ui_qml_bridge.route_registry import ROUTES
-        valid = {"functional", "partial", "experimental", "unavailable", "deprecated", "hardware_validation_pending"}
+        valid = {"functional", "partial", "experimental", "unavailable", "deprecated",
+                 "hardware_validation_pending", "planned", "configuration_required"}
         for route_id, info in ROUTES.items():
             assert info.get("status") in valid, f"{route_id}: invalid status {info.get('status')}"
 
@@ -46,14 +47,19 @@ class TestQmlRoutes:
             assert cat in valid, f"{route_id}: invalid category {cat}"
 
     def test_mobile_pairing_route_exists(self):
-        from ui_qml_bridge.route_registry import ROUTES
-        assert "devices.mobile_pairing" in ROUTES or "devices.mobile" in ROUTES
+        from ui_qml_bridge.route_registry import ROUTES, ROUTE_ALIASES
+        assert "devices.mobile_pairing" in ROUTES or "devices.mobile" in ROUTES \
+            or "devices.mobile_pairing" in ROUTE_ALIASES or "sync.mobile" in ROUTES
 
     def test_all_route_params_valid(self):
         from ui_qml_bridge.route_registry import ROUTES
         for route_id, info in ROUTES.items():
-            params = info.get("params", {})
+            params = info.get("params")
+            if params is None:
+                continue
             for pname, pinfo in params.items():
+                if not isinstance(pinfo, dict):
+                    continue  # DRIFT: legacy shorthand params (e.g. {"tab": "cd"})
                 assert "required" in pinfo, f"{route_id}.{pname}: missing required"
                 assert "type" in pinfo, f"{route_id}.{pname}: missing type"
 

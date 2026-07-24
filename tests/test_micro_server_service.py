@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sqlite3
+from unittest.mock import patch
 
 import pytest
 
@@ -31,28 +32,38 @@ def db():
     return fdb
 
 
+_SEND_OK = {"ok": True}
+
+
 class TestMicroServerService:
-    def test_import_tracks(self, db):
+    @patch.object(MicroServerService, "_send_file", return_value=_SEND_OK)
+    @patch("os.path.isfile", return_value=True)
+    def test_import_tracks(self, mock_isfile, mock_send, db):
         svc = MicroServerService(db=db)
         result = svc.import_tracks(["/music/a1.flac"], "http://server")
         assert result["ok"] is True
         assert result["imported"] == 1
 
-    def test_import_album(self, db):
+    @patch.object(MicroServerService, "_send_file", return_value=_SEND_OK)
+    @patch("os.path.isfile", return_value=True)
+    def test_import_album(self, mock_isfile, mock_send, db):
         svc = MicroServerService(db=db)
-        result = svc.import_album("Artist X / Album A")
+        result = svc.import_album("Artist X / Album A", "http://server")
         assert result["ok"] is True
         assert result["imported"] == 2
 
-    def test_import_artist(self, db):
+    @patch.object(MicroServerService, "_send_file", return_value=_SEND_OK)
+    @patch("os.path.isfile", return_value=True)
+    def test_import_artist(self, mock_isfile, mock_send, db):
         svc = MicroServerService(db=db)
-        result = svc.import_artist("Artist X")
+        result = svc.import_artist("Artist X", "http://server")
         assert result["ok"] is True
         assert result["imported"] == 2
 
-    def test_import_artist_no_tracks(self, db):
+    @patch.object(MicroServerService, "_send_file", return_value=_SEND_OK)
+    def test_import_artist_no_tracks(self, mock_send, db):
         svc = MicroServerService(db=db)
-        result = svc.import_artist("Nonexistent")
+        result = svc.import_artist("Nonexistent", "http://server")
         assert result["ok"] is True
         assert result["imported"] == 0
 
