@@ -1,7 +1,7 @@
 """Intelligence composition — Michi AI, mix/recommendation, action registry."""
 from __future__ import annotations
 
-from core.service_container import ServiceContainer, ServicePriority
+from core.service_container import ServiceContainer
 
 
 def build(container: ServiceContainer) -> None:

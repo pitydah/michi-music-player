@@ -5,9 +5,9 @@ import logging
 
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
-logger = logging.getLogger(__name__)
-
 from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
+
+logger = logging.getLogger(__name__)
 
 
 class PlaybackBridge(QObject):

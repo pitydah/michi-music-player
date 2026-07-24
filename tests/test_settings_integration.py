@@ -1,7 +1,5 @@
 """Tests for Settings — runtime coordinator, persistence, rollback."""
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 
 class TestSettingsIntegration:
