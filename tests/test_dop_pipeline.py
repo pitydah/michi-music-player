@@ -234,11 +234,14 @@ class TestDopPipeline:
             import gi
             gi.require_version("Gst", "1.0")
             from gi.repository import Gst
+        except (ImportError, ValueError):
+            pytest.skip("GStreamer bindings not available")
+        try:
+            Gst.init_check(None)
+        except AttributeError:
             Gst.init(None)
-            if not Gst.ElementFactory.make("filesrc", None):
-                pytest.skip("GStreamer filesrc element not available")
-        except (ImportError, Exception):
-            pytest.skip("GStreamer not fully available")
+        if not Gst.ElementFactory.make("filesrc", None):
+            pytest.skip("GStreamer filesrc element not available")
         from audio.audio_route_plan import AudioRoutePlan
         from audio.pipeline_factory import PipelineFactory
 
@@ -246,7 +249,7 @@ class TestDopPipeline:
         factory = PipelineFactory()
 
         with patch.object(factory, "_make_sink_from_route") as mock_sink:
-            mock_sink.return_value = Gst.ElementFactory.make("fakesink", "out")
+            mock_sink.return_value = Gst.Pipeline.new("mock-sink")
             with patch.dict("os.environ", {"MICHI_DOP_EXPERIMENTAL": "1"}):
                 result = factory._build_dop("file:///test.dsf", probe_dsd, route)
 
