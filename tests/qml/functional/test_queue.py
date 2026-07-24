@@ -130,4 +130,5 @@ class TestQueueEdgeCases:
         assert qsvc.count == 1
 
     def test_undo_empty(self, qsvc):
-        assert not qsvc.undo()
+        result = qsvc.undo()
+        assert result["ok"] is False
