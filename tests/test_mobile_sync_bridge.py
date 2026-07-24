@@ -1,5 +1,4 @@
 """Tests for MobileSyncBridge — QR, pairing, verify, unpair."""
-from unittest.mock import MagicMock
 
 import pytest
 

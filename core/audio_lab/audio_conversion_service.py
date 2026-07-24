@@ -77,10 +77,7 @@ class AudioConversionService(QObject):
         """Construye la ruta de destino de forma consistente entre preview y conversion."""
         fmt = profile.format.lower()
         src_path = Path(source)
-        if profile.output_dir:
-            target_dir = Path(profile.output_dir)
-        else:
-            target_dir = src_path.parent
+        target_dir = Path(profile.output_dir) if profile.output_dir else src_path.parent
         if profile.filename_template and "{artist}" in profile.filename_template:
             target_name = profile.filename_template.format(
                 artist="{artist}", title=src_path.stem, album="{album}"
@@ -167,7 +164,6 @@ class AudioConversionService(QObject):
     def _do_convert(self, source: str, profile: ConversionProfile,
                     job: ConversionJob) -> dict[str, Any]:
         try:
-            fmt = profile.format.lower()
             target_path = str(self._build_target_path(source, profile))
             job.target = target_path
 
@@ -289,10 +285,9 @@ class AudioConversionService(QObject):
                 job.process.terminate()
                 job.process.wait(timeout=5)
             except Exception:
-                try:
+                import contextlib
+                with contextlib.suppress(Exception):
                     job.process.kill()
-                except Exception:
-                    pass
         job.status = "cancelled"
         return True
 

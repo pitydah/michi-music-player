@@ -1,7 +1,7 @@
 """Playback composition — player, queue, track actions."""
 from __future__ import annotations
 
-from core.service_container import ServiceContainer, ServicePriority
+from core.service_container import ServiceContainer
 
 
 def build(container: ServiceContainer) -> None:

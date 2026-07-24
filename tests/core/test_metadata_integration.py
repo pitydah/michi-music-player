@@ -1,83 +1,152 @@
-"""Integration tests for Metadata Core V2 — ServiceContainer, Bridge, and Settings."""
+"""Integration tests for MetadataService and ConfirmationService.
 
-import pytest
+Alineado con el contrato canónico real de MetadataService:
+
+    load(filepath)
+    edit_field(filepath, field, value)
+    validate(filepath)
+    preview_changes(filepath)
+    request_confirmation(filepath, message="")
+    confirm_and_apply(filepath, confirmation_token)
+    undo(filepath)
+    load_batch(...)
+    edit_batch(...)
+    cancel_operation(...)
+    refresh_model(...)
+    diff(...)
+    has_conflicts(...)
+
+Los resultados se expresan como dict, no como objetos con .ok / .code.
+"""
+
 import tempfile
 import os
 
 from core.metadata_service import MetadataService
+from core.confirmation_service import ConfirmationService
 
 
-@pytest.fixture
-def svc():
-    return MetadataService()
+# ── MetadataService ────────────────────────────────────────────────────
 
 
-class TestMetadataService:
-    def test_probe_nonexistent(self, svc):
-        result = svc.probe("/nonexistent/file.mp3")
-        assert result.ok is False
-        assert result.code == "FILE_NOT_FOUND"
+class TestMetadataServiceLoad:
+    """Cobertura del contrato load()."""
 
-    def test_probe_empty_path(self, svc):
-        result = svc.probe("")
-        assert result.ok is False
+    def test_load_nonexistent(self):
+        svc = MetadataService()
+        result = svc.load("/nonexistent/file.mp3")
+        assert result["ok"] is False
+        assert result["error"] == "FILE_NOT_FOUND"
 
-    def test_probe_unsupported_format(self, svc):
-        result = svc.probe("test.xyz")
-        assert result.ok is False
+    def test_load_empty_path(self):
+        svc = MetadataService()
+        result = svc.load("")
+        assert result["ok"] is False
+        assert result["error"] == "FILE_NOT_FOUND"
 
-    def test_probe_valid_format(self, svc):
+    def test_load_with_injected_reader(self):
+        """load() con tag_reader inyectado para evitar dependencia externa."""
+        svc = MetadataService(tag_reader=lambda fp: {
+            "title": "Test",
+            "artist": "Artist",
+            "album": "Album",
+        })
         fd, path = tempfile.mkstemp(suffix=".flac")
         os.close(fd)
-        result = svc.probe(path)
-        os.unlink(path)
-        assert result.ok is True
+        try:
+            result = svc.load(path)
+            assert result["ok"] is True
+            assert result["tags"]["title"] == "Test"
+            assert result["tags"]["artist"] == "Artist"
+        finally:
+            os.unlink(path)
 
-    def test_read_nonexistent(self, svc):
-        result = svc.read("/nonexistent/file.flac")
-        assert result.ok is False
 
-    def test_health(self, svc):
-        h = svc.health()
-        assert h["available"] is True
-        assert h["has_library"] is False
+class TestMetadataServiceEditFlow:
+    """Flujo completo: load → edit → validate → preview → confirm → apply."""
 
-    def test_create_confirmation_token(self, svc):
-        review_id = svc.create_confirmation_token("/music/song.flac", 3)
-        assert len(review_id) == 8
-        assert review_id in svc._pending_tokens
+    def test_edit_and_validate(self):
+        svc = MetadataService(tag_reader=lambda fp: {
+            "title": "Original",
+            "artist": "Artist",
+        })
+        fd, path = tempfile.mkstemp(suffix=".flac")
+        os.close(fd)
+        try:
+            svc.load(path)
+            r = svc.edit_field(path, "title", "Updated")
+            assert r["ok"] is True
+            assert r["field"] == "title"
+            assert r["old_value"] == "Original"
+            assert r["new_value"] == "Updated"
 
-    def test_confirm_and_apply_invalid_token(self, svc):
-        from metadata.tag_model import TrackTags
-        tags = TrackTags(filepath="test.flac")
-        result = svc.confirm_and_apply("invalid", tags)
-        assert result.ok is False
-        assert result.code == "INVALID_TOKEN"
+            vr = svc.validate(path)
+            assert vr["ok"] is True
+            assert vr["valid"] is True
 
-    def test_confirm_and_apply_double_use(self, svc):
-        from metadata.tag_model import TrackTags
-        review_id = svc.create_confirmation_token("/music/song.flac", 1)
-        tags = TrackTags(filepath="test.flac")
-        svc._pending_tokens[review_id].used = True
-        result = svc.confirm_and_apply(review_id, tags)
-        assert result.ok is False
-        assert result.code in ("TOKEN_EXPIRED", "INVALID_TOKEN")
+            pr = svc.preview_changes(path)
+            assert pr["ok"] is True
+            assert len(pr["changes"]) == 1
+        finally:
+            os.unlink(path)
 
-    def test_inspect_track_no_library(self, svc):
-        result = svc.inspect_track(1)
-        assert result.ok is False
-        assert result.code == "LIBRARY_UNAVAILABLE"
 
-    def test_shutdown_clears_tokens(self, svc):
-        svc.create_confirmation_token("/music/song.flac", 1)
-        assert len(svc._pending_tokens) == 1
-        svc.shutdown()
-        assert len(svc._pending_tokens) == 0
+class TestMetadataServiceConfirmation:
+    """Confirmación vía request_confirmation / confirm_and_apply."""
+
+    def test_request_confirmation(self):
+        svc = MetadataService()
+        result = svc.request_confirmation("/music/song.flac")
+        assert result["ok"] is True
+        token = result["confirmation_token"]
+        assert token in svc._confirmation_tokens
+
+    def test_confirm_and_apply_invalid_token(self):
+        svc = MetadataService()
+        result = svc.confirm_and_apply("/music/song.flac", "invalid")
+        assert result["ok"] is False
+        assert result["error"] == "INVALID_CONFIRMATION_TOKEN"
+
+    def test_confirm_and_apply_single_use(self):
+        svc = MetadataService()
+        fd, path = tempfile.mkstemp(suffix=".flac")
+        os.close(fd)
+        try:
+            # Inyectar tag_reader para que load funcione
+            svc._tag_reader = lambda fp: {
+                "title": "Test", "artist": "Artist",
+            }
+            svc.load(path)
+
+            # Mock _apply_changes para que retorne éxito sin tocar disco
+            original_apply = svc._apply_changes
+            svc._apply_changes = lambda fp: {"ok": True}
+
+            result = svc.request_confirmation(path)
+            assert result["ok"] is True
+            token = result["confirmation_token"]
+
+            # Primer uso → ok
+            r1 = svc.confirm_and_apply(path, token)
+            assert r1["ok"] is True
+
+            # Segundo uso con mismo token → inválido
+            r2 = svc.confirm_and_apply(path, token)
+            assert r2["ok"] is False
+            assert r2["error"] == "INVALID_CONFIRMATION_TOKEN"
+
+            svc._apply_changes = original_apply
+        finally:
+            os.unlink(path)
+
+
+# ── ConfirmationService ────────────────────────────────────────────────
 
 
 class TestConfirmationService:
+    """Tests contra ConfirmationService real — alineado con API actual."""
+
     def test_request_and_approve(self):
-        from core.confirmation_service import ConfirmationService
         cs = ConfirmationService()
         req = cs.request("op-1", "/music/song.flac", field_count=3)
         assert req.token is not None
@@ -87,15 +156,14 @@ class TestConfirmationService:
         assert approved.approved is True
 
     def test_reject(self):
-        from core.confirmation_service import ConfirmationService
         cs = ConfirmationService()
         req = cs.request("op-1", "/music/song.flac")
         assert cs.reject(req.token) is True
         assert cs.approve(req.token) is None
 
     def test_expired_token(self):
-        from core.confirmation_service import ConfirmationService, ConfirmationRequest
         cs = ConfirmationService()
+        from core.confirmation_service import ConfirmationRequest
         req = ConfirmationRequest("op-1", "/music/song.flac", "test", expiry_s=0)
         cs._pending[req.token] = req
         import time
@@ -103,26 +171,28 @@ class TestConfirmationService:
         assert cs.approve(req.token) is None
 
     def test_revoke(self):
-        from core.confirmation_service import ConfirmationService
         cs = ConfirmationService()
         req = cs.request("op-1", "/music/song.flac")
         cs.revoke("op-1")
         assert cs.approve(req.token) is None
 
+    def test_shutdown(self):
+        cs = ConfirmationService()
+        req = cs.request("op-1", "/music/song.flac")
+        assert req.token in cs._pending
+        cs.shutdown()
+        assert len(cs._pending) == 0
 
-class TestMetadataServiceWithLibrary:
-    def test_with_mock_library(self):
-        class MockLibraryRepo:
-            def get_track(self, track_id):
-                if track_id == 1:
-                    class Track:
-                        filepath = "/tmp/test.flac"
-                    return Track()
-                return None
 
-        svc = MetadataService(library_repo=MockLibraryRepo())
-        result = svc.inspect_track(1)
-        assert result.ok is False  # file doesn't exist
-        result = svc.inspect_track(999)
-        assert result.ok is False
-        assert result.code == "TRACK_NOT_FOUND"
+# ── ServiceContainer integration ────────────────────────────────────────
+# Verifica que MetadataService se construya correctamente via container
+# sin depender del sistema gi/GStreamer (import lazy)
+
+
+class TestMetadataServiceContainer:
+    def test_service_constructable(self):
+        svc = MetadataService()
+        assert svc is not None
+        # Verifica que load funcione sin gi/GStreamer
+        result = svc.load("/nonexistent/file.mp3")
+        assert result["ok"] is False

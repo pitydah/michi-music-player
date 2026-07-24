@@ -1,5 +1,7 @@
 """Benchmark: FTS5 search."""
-import sqlite3, time, pytest
+import sqlite3
+import time
+import pytest
 @pytest.mark.perf
 def test_perf_search():
     conn = sqlite3.connect(":memory:")

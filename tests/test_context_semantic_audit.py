@@ -5,7 +5,7 @@ from pathlib import Path
 
 _EXCLUDED_DIRS = {
     "__pycache__", "audio_lab", "vinyl", "sync", "michi_link",
-    "e2e",
+    "e2e", "build",
 }
 _EXCLUDED_PREFIXES = {
     "core/context",

@@ -4,6 +4,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from audio.format_probe import AudioFormatInfo
+    from audio.output_device_manager import AudioDeviceInfo
+    from audio.output_profiles import AudioOutputProfile
 
 
 @dataclass

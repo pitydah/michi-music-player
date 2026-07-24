@@ -1,5 +1,4 @@
 """Test: radio service operations."""
-import pytest
 
 
 class TestRadioService:

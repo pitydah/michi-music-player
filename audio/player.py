@@ -403,7 +403,7 @@ class GStreamerEngine(QObject):
             caps = Gst.Caps.from_string(caps_str)
             appsrc.set_property("caps", caps)
         self._appsrc = appsrc
-        self._file_handle = open(filepath, "rb")
+        self._file_handle = open(filepath, "rb")  # noqa: SIM115 — stored for lifecycle in stop()
 
         self._setup_bus()
         self._setup_timer()
@@ -719,12 +719,11 @@ class GStreamerEngine(QObject):
                 logging.getLogger("michi.player").debug(
                     "State: %s → %s (pending: %s)",
                     old.value_nick, new.value_nick, pending.value_nick)
-        elif t == Gst.MessageType.DURATION_CHANGED:
-            if pipeline:
-                ok, dur = pipeline.query_duration(Gst.Format.TIME)
-                if ok and dur > 0:
-                    self._duration = dur / 1e9
-                    self.duration_changed.emit(self._duration)
+        elif t == Gst.MessageType.DURATION_CHANGED and pipeline:
+            ok, dur = pipeline.query_duration(Gst.Format.TIME)
+            if ok and dur > 0:
+                self._duration = dur / 1e9
+                self.duration_changed.emit(self._duration)
 
     def _poll(self):
         pipeline = self._transport.get_pipeline()

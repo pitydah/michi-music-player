@@ -1,7 +1,9 @@
 """Settings and accessibility composition — theme, accessibility, background, runtime adapters."""
 from __future__ import annotations
 
-from core.service_container import ServiceContainer, ServicePriority
+import contextlib
+
+from core.service_container import ServiceContainer
 
 
 def build(container: ServiceContainer) -> None:
@@ -30,10 +32,8 @@ def build(container: ServiceContainer) -> None:
                             RadioSettingsAdapter, LyricsSettingsAdapter,
                             DeviceSettingsAdapter, ConnectionSettingsAdapter,
                             HomeAudioSettingsAdapter, LoggingSettingsAdapter):
-            try:
+            with contextlib.suppress(Exception):
                 coordinator.register_adapter(adapter_cls())
-            except Exception:
-                pass
 
     try:
         from core.background_theme_service import BackgroundThemeService

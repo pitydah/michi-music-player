@@ -1,5 +1,4 @@
 """Tests for MobileSyncService — pairing, verification, trust."""
-import time
 from unittest.mock import patch
 
 import pytest

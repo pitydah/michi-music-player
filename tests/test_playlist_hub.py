@@ -4,8 +4,6 @@ No QML or bridge initialization required.
 """
 from __future__ import annotations
 
-import os
-import tempfile
 
 from core.playlist_io import parse_playlist_entries, export_m3u
 

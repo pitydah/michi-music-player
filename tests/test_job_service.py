@@ -1,4 +1,3 @@
-from unittest.mock import MagicMock
 from core.jobs.job_service import DurableJobService, JobState
 
 

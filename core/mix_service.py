@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any
 
 from core.mix_rules import MixRuleEngine
 from core.mix.repository import MixRepository
-from core.mix_rules import MixRuleEngine, MixDefinition as MixEngineDef, MixRuleGroup, MixRule
+from core.mix_rules import MixDefinition as MixEngineDef, MixRuleGroup, MixRule
 from core.mix.repository import MixDefinition as PersistedMix
 
 logger = logging.getLogger("michi.mix_service")

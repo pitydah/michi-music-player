@@ -10,7 +10,6 @@ import struct
 import wave
 import tempfile
 import pytest
-from unittest.mock import patch
 
 pytestmark = pytest.mark.skipif(
     not os.environ.get("QT_QPA_PLATFORM"),

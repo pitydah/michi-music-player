@@ -1,7 +1,5 @@
 """Test: ActionRegistry validation with real container and service checks."""
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 
 class TestActionRegistryReal:
@@ -16,7 +14,13 @@ class TestActionRegistryReal:
         from core.composition.settings import build as settings_b
         from core.composition.intelligence import build as intel
         c = ServiceContainer()
-        infra(c); playback(c); library(c); audio_lab(c); eco(c); settings_b(c); intel(c)
+        infra(c)
+        playback(c)
+        library(c)
+        audio_lab(c)
+        eco(c)
+        settings_b(c)
+        intel(c)
 
         from ui_qml_bridge.action_registry import ActionRegistry
         ar = ActionRegistry()
@@ -40,7 +44,13 @@ class TestActionRegistryReal:
         from core.composition.settings import build as settings_b
         from core.composition.intelligence import build as intel
         c = ServiceContainer()
-        infra(c); playback(c); library(c); audio_lab(c); eco(c); settings_b(c); intel(c)
+        infra(c)
+        playback(c)
+        library(c)
+        audio_lab(c)
+        eco(c)
+        settings_b(c)
+        intel(c)
 
         from ui_qml_bridge.action_registry import ActionRegistry
         ar = ActionRegistry()

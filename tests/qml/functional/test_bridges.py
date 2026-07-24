@@ -1,5 +1,4 @@
 """Test: all bridges instantiate without errors and expose expected signals/slots."""
-from unittest.mock import MagicMock, patch
 
 import pytest
 

@@ -1,9 +1,6 @@
 """Test: QML app startup — bootstrap, bridge creation, engine load, root objects."""
-import os
-import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 
 
 class TestQmlStartup:
@@ -19,7 +16,13 @@ class TestQmlStartup:
             from core.composition.settings import build as settings_b
             from core.composition.intelligence import build as intel
             c = ServiceContainer()
-            infra(c); playback(c); library(c); audio_lab(c); eco(c); settings_b(c); intel(c)
+            infra(c)
+            playback(c)
+            library(c)
+            audio_lab(c)
+            eco(c)
+            settings_b(c)
+            intel(c)
             missing = [n for n in c.list_services() if c.get(n) is None]
             assert len(missing) <= 2, f"Too many missing services: {missing}"
 

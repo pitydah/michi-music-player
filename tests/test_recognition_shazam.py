@@ -1,5 +1,4 @@
 """Tests for ShazamIO recognition provider."""
-import asyncio
 import sys
 import types
 from unittest.mock import AsyncMock, MagicMock, patch

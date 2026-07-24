@@ -1,6 +1,5 @@
 """Tests for AlbumInfoRepository LRU cache — memory + SQLite fallback."""
 
-from collections import OrderedDict
 from unittest.mock import patch, MagicMock
 
 import pytest

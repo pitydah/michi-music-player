@@ -1,14 +1,12 @@
 """ADC Recorder simulation tests — device detection, recording commands, markers."""
 import os
-import subprocess
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
-import pytest
 
 
 class TestADCRecorderDetection:
     def test_detect_usb_devices(self):
-        from core.audio_lab.adc_recorder_service import ADCRecorderService, USBTurntableDetector
+        from core.audio_lab.adc_recorder_service import USBTurntableDetector
         detector = USBTurntableDetector()
         with patch("os.name", "posix"), \
              patch.object(detector, "_scan_linux") as mock_scan:
