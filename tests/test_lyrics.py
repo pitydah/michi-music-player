@@ -1,7 +1,5 @@
 """Tests for lyrics — sidecar .lrc, cache, offset, search fallback."""
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -135,7 +133,9 @@ class TestLyricsService:
         import wave
         audio = tmp_path / "test_song.wav"
         with wave.open(str(audio), "w") as w:
-            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100)
         from unittest.mock import MagicMock
         from ui_qml_bridge.lyrics_bridge import LyricsBridge

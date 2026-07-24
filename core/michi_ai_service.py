@@ -1,7 +1,7 @@
 """MichiAIService — wraps the local AI engine for the QML bridge."""
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Callable
 
 from michi_ai.engine import process
 from michi_ai.recommender import set_library_provider

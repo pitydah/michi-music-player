@@ -62,7 +62,7 @@ def main():
             inventoried.add(p)
 
     if os.path.isdir(legacy_dir):
-        for root, dirs, files in os.walk(legacy_dir):
+        for root, _dirs, files in os.walk(legacy_dir):
             for f in files:
                 if not f.endswith(".py"):
                     continue
@@ -84,7 +84,7 @@ def main():
 
     print(f"✅ All {len(data.get('files', []))} file paths validated")
     print(f"✅ All {len(data.get('functions', []))} function references validated")
-    print(f"✅ No legacy files missing from inventory")
+    print("✅ No legacy files missing from inventory")
     print("✅ LEGACY PRESERVATION DOCS VALIDATED SUCCESSFULLY")
 
 if __name__ == "__main__":

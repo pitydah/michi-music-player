@@ -1,6 +1,5 @@
 """Tests for DurableJobService — job lifecycle, progress, cancellation."""
-import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

@@ -1,7 +1,6 @@
 """Test that QML compiles without errors and app starts correctly."""
 import os
 import sys
-import signal
 import subprocess
 import pytest
 from pathlib import Path

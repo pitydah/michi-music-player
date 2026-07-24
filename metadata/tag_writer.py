@@ -112,10 +112,8 @@ def write_tags(tags: TrackTags) -> bool:
 
     except Exception as e:
         if os.path.isfile(backup_path):
-            try:
+            with contextlib.suppress(OSError):
                 os.replace(backup_path, filepath)
-            except OSError:
-                pass
         tags.error = str(e)
         return False
 

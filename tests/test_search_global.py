@@ -1,7 +1,6 @@
 """Tests for global search service — filters, cancellation, stale protection."""
 import os
 import tempfile
-from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
@@ -41,7 +40,9 @@ def seeded_svc(db_path, tmp_path):
         import wave
         fp = d / f"{title}.wav"
         with wave.open(str(fp), "w") as w:
-            w.setnchannels(2); w.setsampwidth(2); w.setframerate(44100)
+            w.setnchannels(2)
+            w.setsampwidth(2)
+            w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100)
     idx = Indexer.from_db_path(db_path, str(music_dir))
     idx.run()

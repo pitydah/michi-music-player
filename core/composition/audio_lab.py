@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 
-from core.service_container import ServiceContainer, ServicePriority
+from core.service_container import ServiceContainer
 
 logger = logging.getLogger("michi.composition.audio_lab")
 

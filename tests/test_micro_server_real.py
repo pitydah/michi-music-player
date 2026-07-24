@@ -1,9 +1,7 @@
 """Tests for Micro Server — import real, HTTP mock, error handling."""
 import json
-import os
 from unittest.mock import patch, MagicMock
 
-import pytest
 
 
 class TestMicroServerReal:

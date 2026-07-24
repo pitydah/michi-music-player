@@ -4,9 +4,8 @@ from __future__ import annotations
 import hashlib
 import random
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
-from core.models import OperationResult
 
 
 @dataclass
@@ -65,10 +64,7 @@ class MixRuleEngine:
         return any(results)
 
     def matches(self, track: dict, definition: MixDefinition) -> bool:
-        for group in definition.groups:
-            if not self.evaluate(track, group):
-                return False
-        return True
+        return all(self.evaluate(track, group) for group in definition.groups)
 
     def filter(self, tracks: list[dict], definition: MixDefinition) -> list[dict]:
         result = [t for t in tracks if self.matches(t, definition)]

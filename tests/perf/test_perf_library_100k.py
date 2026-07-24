@@ -1,5 +1,7 @@
 """Benchmark: insert 100k tracks."""
-import time, sqlite3, pytest
+import time
+import sqlite3
+import pytest
 @pytest.mark.perf
 def test_perf_library_100k():
     conn = sqlite3.connect(":memory:")

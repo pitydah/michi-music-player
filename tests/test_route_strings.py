@@ -11,7 +11,7 @@ BROKEN_PATTERNS = [
 REQUIRED_TILDES = {
     "Búsqueda", "Análisis", "Conversión", "Normalización",
     "Diagnóstico", "Sección", "Reproducción", "Grabación",
-    "Conexión", "Edición", "Biblioteca", "Búsqueda",
+    "Conexión", "Edición", "Biblioteca",
 }
 
 
@@ -23,7 +23,7 @@ def test_no_broken_utf8():
         for pattern, desc in BROKEN_PATTERNS:
             if re.search(pattern, title):
                 issues.append(f"{route}: {desc} in '{title}'")
-    assert not issues, f"Broken UTF-8 found:\n" + "\n".join(issues)
+    assert not issues, "Broken UTF-8 found:\n" + "\n".join(issues)
 
 
 def test_required_tildes():

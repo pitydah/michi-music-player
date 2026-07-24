@@ -137,7 +137,7 @@ class AudioLabService(QObject):
         replaygain_available = self._check_replaygain()
         musicbrainz_available = self._check_musicbrainz()
         acoustid_available = self._check_acoustid()
-        
+
         # Contar trabajos activos del worker manager
         active_jobs = 0
         if self._wm:
@@ -146,7 +146,7 @@ class AudioLabService(QObject):
                 active_jobs = len([j for j in all_jobs if getattr(j, 'status', None) == 'running'])
             except Exception:
                 active_jobs = 0
-        
+
         # Estado de las 5 áreas principales (especificación sección 3)
         areas = {
             "diagnostics": {
@@ -208,7 +208,7 @@ class AudioLabService(QObject):
                 ]
             }
         }
-        
+
         return {
             "areas": areas,
             "dependencies": {
@@ -220,7 +220,7 @@ class AudioLabService(QObject):
             "active_jobs": active_jobs,
             "last_analysis": self._get_last_analysis_date()
         }
-    
+
     def _check_ffmpeg(self) -> bool:
         """Verifica si FFmpeg está disponible en el sistema."""
         try:
@@ -229,7 +229,7 @@ class AudioLabService(QObject):
             return result.returncode == 0
         except (Exception, FileNotFoundError):
             return False
-    
+
     def _check_replaygain(self) -> bool:
         """Verifica si las herramientas de ReplayGain están disponibles."""
         try:
@@ -239,7 +239,7 @@ class AudioLabService(QObject):
             return result.returncode == 0
         except (Exception, FileNotFoundError):
             return False
-    
+
     def _check_musicbrainz(self) -> bool:
         """Verifica si MusicBrainz está accesible."""
         try:
@@ -248,7 +248,7 @@ class AudioLabService(QObject):
             return True
         except (Exception, ImportError):
             return False
-    
+
     def _check_acoustid(self) -> bool:
         """Verifica si AcoustID está configurado con API key."""
         try:
@@ -257,7 +257,7 @@ class AudioLabService(QObject):
             return hasattr(acoustid, 'api_key') and acoustid.api_key is not None
         except (Exception, ImportError):
             return False
-    
+
     def _get_last_analysis_date(self) -> str | None:
         if self._db is None:
             return None

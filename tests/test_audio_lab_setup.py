@@ -1,5 +1,4 @@
 """Tests for Audio Lab — service available, capabilities, setup."""
-import pytest
 
 
 class TestAudioLabSetup:

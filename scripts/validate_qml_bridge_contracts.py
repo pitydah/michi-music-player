@@ -19,11 +19,10 @@ def get_qml_imports(qml_file: str) -> set[str]:
         content = f.read()
     tree = ast.parse(content)
     for node in ast.walk(tree):
-        if isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Attribute) and node.func.attr == "import":
-                for child in ast.walk(node):
-                    if isinstance(child, ast.Str):
-                        imports.add(child.s)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "import":
+            for child in ast.walk(node):
+                if isinstance(child, ast.Str):
+                    imports.add(child.s)
     return imports
 
 
@@ -59,7 +58,7 @@ def main():
         print(f"Checking: {mod_name}")
         validate_bridge_module(mod_name)
 
-    print(f"\n=== Result ===")
+    print("\n=== Result ===")
     if ERRORS:
         print(f"FAILED: {len(ERRORS)} errors")
         for e in ERRORS:

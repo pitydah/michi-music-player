@@ -120,7 +120,6 @@ class TestFakePlayer:
         assert len(results) == 1
 
     def test_state_transitions(self, player):
-        from audio.fake_player import PlaybackState
         states = []
 
         def on_state(s):

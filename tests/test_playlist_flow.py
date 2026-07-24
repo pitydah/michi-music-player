@@ -18,7 +18,6 @@ def db():
 class TestPlaylistM3U:
     def test_parse_m3u(self, tmp_path):
         from core.playlist_io import parse_m3u
-        from core.playlist_io import parse_playlist_entries
         m3u = tmp_path / "test.m3u"
         m3u.write_text("#EXTM3U\n#EXTINF:123,Test Artist - Test Title\n" + str(tmp_path / "exists.flac") + "\n")
         # Legado: parse_m3u solo devuelve paths existentes
@@ -51,13 +50,12 @@ class TestPlaylistM3U:
 
     def test_parse_pls(self, tmp_path):
         from core.playlist_io import parse_pls
-        from core.playlist_io import parse_playlist_entries
         pls = tmp_path / "test.pls"
         real_file = tmp_path / "real.flac"
         real_file.write_text("dummy")
         pls.write_text("[playlist]\nFile1=" + str(real_file) + "\nTitle1=Test\nLength1=180\nNumberOfEntries=1\n")
         tracks = parse_pls(str(pls))
-        assert len(tracks) == 1      
+        assert len(tracks) == 1
 
     def test_parse_pls_entries(self, tmp_path):
         from core.playlist_io import parse_playlist_entries

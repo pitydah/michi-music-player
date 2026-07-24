@@ -1,7 +1,5 @@
 """Tests for CDRipperService — command building, detection, cancellation."""
-import os
-import subprocess
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch, MagicMock
 
 import pytest
 

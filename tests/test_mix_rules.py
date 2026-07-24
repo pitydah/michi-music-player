@@ -1,5 +1,4 @@
 """Tests for MixRuleEngine — AND/OR operators, seed reproducibility, preview."""
-import random
 
 import pytest
 

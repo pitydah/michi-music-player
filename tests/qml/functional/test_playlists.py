@@ -1,5 +1,4 @@
 """Test: playlist CRUD operations."""
-import tempfile
 
 import pytest
 

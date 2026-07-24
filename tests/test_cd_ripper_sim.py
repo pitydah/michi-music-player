@@ -1,7 +1,6 @@
 """CD Ripper simulation tests — command building, detection with mocks, cancellation, progress."""
-import os
 import subprocess
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 

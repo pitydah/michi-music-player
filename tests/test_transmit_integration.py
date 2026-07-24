@@ -1,10 +1,8 @@
 """Integration tests for TransmitManager and TransmitDevice."""
 
-import json
 import os
 import tempfile
 
-import pytest
 
 
 def test_transmit_device_dataclass():

@@ -1,5 +1,4 @@
 """Test: settings manager read/write and bridge integration."""
-import pytest
 
 
 class TestSettingsManager:

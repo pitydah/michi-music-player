@@ -1,8 +1,6 @@
 """Test: all QML routes load without errors."""
 from pathlib import Path
-from unittest.mock import MagicMock
 
-import pytest
 
 
 class TestQmlRoutes:
@@ -17,7 +15,7 @@ class TestQmlRoutes:
             qml_path = Path("ui_qml") / src.replace("../", "")
             if not qml_path.exists():
                 missing.append(f"{route_id}: {qml_path} not found")
-        assert len(missing) == 0, f"Missing route files:\n" + "\n".join(missing[:10])
+        assert len(missing) == 0, "Missing route files:\n" + "\n".join(missing[:10])
 
     def test_no_placeholder_routes_functional(self):
         from ui_qml_bridge.route_registry import ROUTES

@@ -1,9 +1,5 @@
 """Tests for Metadata — atomic write, batch, rollback."""
-import os
-import tempfile
-import wave
 
-import pytest
 
 
 class TestMetadataIntegration:

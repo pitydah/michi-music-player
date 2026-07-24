@@ -1,7 +1,5 @@
 """Tests for advanced radio — ICY metadata, directory, stream HTTP mock."""
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 
 class TestRadioAdvanced:

@@ -1,6 +1,4 @@
 """Tests for metadata rename engine — patterns, preview, apply, security."""
-import os
-import tempfile
 
 import pytest
 

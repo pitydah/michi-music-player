@@ -5,8 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from PySide6.QtCore import QUrl, QAbstractListModel, Qt, QModelIndex
-from PySide6.QtQml import QQmlComponent, QQmlEngine, QQmlApplicationEngine
-from PySide6.QtQml import qmlRegisterType
+from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 from ui_qml.models.AlbumPagedListModel import AlbumPagedListModel
 
