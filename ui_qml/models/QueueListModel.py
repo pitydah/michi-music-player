@@ -86,12 +86,14 @@ class QueueListModel(BasePagedListModel):
     def data(self, index, role=Qt.DisplayRole) -> Any:
         if not index.isValid() or index.row() >= len(self._items):
             return None
+        if role == self.CurrentRole:
+            return index.row() == int(self._queue_state.get("current_index", -1))
         item = self._items[index.row()]
         mapping = {self.TrackIdRole: "track_id", self.TrackUidRole: "track_uid",
                    self.TitleRole: "title", self.ArtistRole: "artist",
                     self.AlbumRole: "album", self.AlbumKeyRole: "album_key",
                     self.DurationRole: "duration",
-                    self.CurrentRole: "is_current", self.PositionRole: "position",
+                    self.PositionRole: "position",
                     self.CoverKeyRole: "cover_key", self.SourceTypeRole: "source_type"}
         key = mapping.get(role, "")
         if key:
