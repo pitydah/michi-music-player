@@ -36,10 +36,12 @@ class TestMetadataIntegration:
 
     def test_metadata_editor_service_exists(self):
         from core.composition.infrastructure import build as infra
+        from core.composition.playback import build as playback
         from core.composition.library import build as library
         from core.service_container import ServiceContainer
         c = ServiceContainer()
         infra(c)
+        playback(c)  # registra queue_service requerido por library.build()
         library(c)
         es = c.get("metadata_editor_service")
         assert es is not None
