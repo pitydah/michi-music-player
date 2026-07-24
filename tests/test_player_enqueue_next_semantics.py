@@ -4,6 +4,11 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 
+def _insert_after_current(engine, paths):
+    pos = engine._queue_index + 1
+    engine._queue[pos:pos] = paths
+
+
 class TestEngineEnqueueNext:
     def test_inserts_after_current_index(self):
         from audio.player import GStreamerEngine
@@ -15,6 +20,8 @@ class TestEngineEnqueueNext:
         engine._db = None
         engine._state = None
         engine.queue_changed = MagicMock()
+        engine._transport = MagicMock()
+        engine._transport.enqueue_next.side_effect = lambda p: _insert_after_current(engine, p)
 
         engine.enqueue_next(["/x/x1.flac", "/x/x2.flac"])
 
@@ -34,6 +41,8 @@ class TestEngineEnqueueNext:
         engine._db = None
         engine._state = None
         engine.queue_changed = MagicMock()
+        engine._transport = MagicMock()
+        engine._transport.enqueue_next.side_effect = lambda p: _insert_after_current(engine, p)
 
         engine.enqueue_next(["/x/x1.flac"])
 
@@ -52,6 +61,8 @@ class TestEngineEnqueueNext:
         engine._db = None
         engine._state = None
         engine.queue_changed = MagicMock()
+        engine._transport = MagicMock()
+        engine._transport.enqueue_next.side_effect = lambda p: _insert_after_current(engine, p)
 
         engine.enqueue_next(["/x/x1.flac"])
 
@@ -68,6 +79,8 @@ class TestEngineEnqueueNext:
         engine._db = None
         engine._state = None
         engine.queue_changed = MagicMock()
+        engine._transport = MagicMock()
+        engine._transport.enqueue_next.side_effect = lambda p: _insert_after_current(engine, p)
 
         engine.enqueue_next([])
         assert engine._queue == ["/a/1.flac"]
@@ -82,6 +95,8 @@ class TestEngineEnqueueNext:
         engine._db = None
         engine._state = None
         engine.queue_changed = MagicMock()
+        engine._transport = MagicMock()
+        engine._transport.enqueue_next.side_effect = lambda p: _insert_after_current(engine, p)
 
         engine.enqueue_next(["x", "y"])
 
