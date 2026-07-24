@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 env:
   ruff_out: --output-format=github
-  compile_exclude: .venv/|\.tmpl\.'
+  compile_exclude: .venv/|\.tmpl\.
 
 jobs:
   lint:
