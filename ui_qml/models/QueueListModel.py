@@ -45,8 +45,22 @@ class QueueListModel(BasePagedListModel):
     def _on_domain_changed(self, event: str, state: dict) -> None:
         if event == "operationFailed":
             return
+        old_index = int(self._queue_state.get("current_index", -1))
+        new_index = int(state.get("current_index", -1))
         self._queue_state = state
-        self.refresh()
+        if event == "currentIndexChanged" and old_index != new_index:
+            self._emit_current_changed(old_index, new_index)
+        else:
+            self.refresh()
+
+    def _emit_current_changed(self, old_index: int, new_index: int) -> None:
+        """Emit targeted dataChanged for current index rows without full reset."""
+        top = self._page_size if len(self._items) < self._total_count else len(self._items)
+        tl = self.index(0, 0)
+        br = self.index(max(top - 1, 0), 0)
+        self.dataChanged.emit(tl, br, [self.CurrentRole])
+        self.countChanged.emit()
+        self.totalCountChanged.emit()
 
     @Slot()
     def _unsubscribe_queue(self) -> None:

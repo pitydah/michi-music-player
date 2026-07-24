@@ -9,12 +9,11 @@ Item {
     id: root
     Accessible.role: Accessible.Pane
     Accessible.name: "Now Playing Bar"
+    Accessible.description: "Barra de reproducción con controles de play/pause, siguiente, anterior, volumen y seek"
     objectName: "nowPlayingBar"
     focus: true
 
-    property var ps: typeof nowplayingBridge !== "undefined" && nowplayingBridge
-                     ? nowplayingBridge
-                     : (typeof playbackBridge !== "undefined" ? playbackBridge : null)
+    property var ps: typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property var outputBridge: typeof outputProfilesBridge !== "undefined" ? outputProfilesBridge : null
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false

@@ -12,8 +12,7 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Reproducción detallada"
 
-    property var ps: typeof playbackBridge !== "undefined" ? playbackBridge
-                   : (typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null)
+    property var ps: typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null
     property var qb: typeof queueBridge !== "undefined" ? queueBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null

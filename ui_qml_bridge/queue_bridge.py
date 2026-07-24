@@ -13,7 +13,16 @@ class QueueBridge(QObject):
     """Expose canonical queue commands and reactive state to QML."""
 
     dataChanged = Signal()
+    queueChanged = Signal()
+    currentIndexChanged = Signal()
+    modesChanged = Signal()
+    stateRestored = Signal()
     _domainChanged = Signal()
+
+    # Events that trigger a full queue structural reset
+    _STRUCTURAL_EVENTS = frozenset({
+        "queueChanged", "stateRestored", "operationFailed",
+    })
 
     def __init__(self, player_service=None, playlists_bridge=None,
                  queue_service=None, parent=None) -> None:
@@ -29,8 +38,19 @@ class QueueBridge(QObject):
         self.destroyed.connect(self._unsubscribe_queue)
 
     def _on_queue_event(self, event: str, state: dict) -> None:
-        if event != "operationFailed":
-            self._domainChanged.emit()
+        """Route queue events to granular signals based on operation type."""
+        if event == "operationFailed":
+            return
+        if event == "currentIndexChanged":
+            self.currentIndexChanged.emit()
+        elif event == "modesChanged":
+            self.modesChanged.emit()
+        elif event == "stateRestored":
+            self.stateRestored.emit()
+        else:
+            self.queueChanged.emit()
+        # Always emit generic dataChanged for backward compatibility
+        self._domainChanged.emit()
 
     @Slot()
     def _unsubscribe_queue(self) -> None:
