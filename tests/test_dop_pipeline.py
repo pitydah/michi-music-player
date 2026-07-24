@@ -225,21 +225,21 @@ class TestDopPipeline:
             import gi
             gi.require_version("Gst", "1.0")
             from gi.repository import Gst
-            # DRIFT: verify GStreamer pipeline element availability before
-            # running; CI has gi but may lack audio output plugins.
-            Gst.init(None)
-            probe = Gst.Pipeline.new("probe")
-            assert probe is not None
-        except (ImportError, Exception):
-            pytest.skip("GStreamer not fully available for pipeline creation")
+        except (ImportError, ValueError):
+            pytest.skip("GStreamer bindings not available")
+        # DRIFT: mock PipelineFactory._make_sink_bin to avoid requiring
+        # audio output elements on CI. The test validates the DoP pipeline
+        # structure, not the audio output chain.
         from audio.audio_route_plan import AudioRoutePlan
         from audio.pipeline_factory import PipelineFactory
 
         route = AudioRoutePlan(dsd_mode="dop")
         factory = PipelineFactory()
 
-        with patch.dict("os.environ", {"MICHI_DOP_EXPERIMENTAL": "1"}):
-            result = factory._build_dop("file:///test.dsf", probe_dsd, route)
+        fake_sink = Gst.Pipeline.new("fake-sink")
+        with patch.object(factory, "_make_sink_bin", return_value=fake_sink):
+            with patch.dict("os.environ", {"MICHI_DOP_EXPERIMENTAL": "1"}):
+                result = factory._build_dop("file:///test.dsf", probe_dsd, route)
 
         assert result is not None
         assert isinstance(result, Gst.Pipeline)
