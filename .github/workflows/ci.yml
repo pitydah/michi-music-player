@@ -63,7 +63,7 @@ jobs:
           QT_QPA_PLATFORM=offscreen python -m pytest tests/qml/functional/ -q --timeout=120 -x --junitxml=results-functional.xml
       - name: Core tests
         run: |
-          QT_QPA_PLATFORM=offscreen python -m pytest tests/ -q --timeout=300 \
+          QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest tests/ -q --timeout=300 \
             --ignore=tests/qml --ignore=tests/test_large_library.py \
             --ignore=tests/perf -k "not qt_widget and not QtWidget" \
             -x --junitxml=results-core.xml
