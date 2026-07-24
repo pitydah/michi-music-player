@@ -2,6 +2,7 @@
 from pathlib import Path
 
 
+
 class TestQmlRoutes:
     def test_all_routes_have_qml_files(self):
         from ui_qml_bridge.route_registry import ROUTES
