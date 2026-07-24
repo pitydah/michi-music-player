@@ -12,13 +12,6 @@ import contextlib
 import threading
 from pathlib import Path
 
-import gi
-gi.require_version("Gst", "1.0")
-gi.require_version("GstPbutils", "1.0")
-from gi.repository import Gst, GstPbutils  # noqa: E402
-
-Gst.init(None)
-
 AUDIO_EXTS = frozenset({
     ".ogg", ".oga", ".opus", ".flac", ".wav", ".wv", ".spx",
     ".mp3", ".dsf", ".dff", ".aiff", ".aif", ".ape", ".tta",
@@ -50,9 +43,29 @@ _ID3V1_GENRES = [
 ]
 
 
+# ── Lazy GStreamer init — allows import without system gi ──
+_Gst = None
+_GstPbutils = None
+
+def _ensure_gst():
+    """Lazy-init GStreamer, return (Gst, GstPbutils) or raise ImportError."""
+    global _Gst, _GstPbutils
+    if _Gst is not None:
+        return _Gst, _GstPbutils
+    import gi
+    gi.require_version("Gst", "1.0")
+    gi.require_version("GstPbutils", "1.0")
+    from gi.repository import Gst as _Gst_mod, GstPbutils as _GstPbutils_mod  # noqa: E402
+    _Gst_mod.init(None)
+    _Gst = _Gst_mod
+    _GstPbutils = _GstPbutils_mod
+    return _Gst, _GstPbutils
+
+
 def _get_discoverer():
     d = getattr(_thread_local, "discoverer", None)
     if d is None:
+        Gst, GstPbutils = _ensure_gst()
         d = GstPbutils.Discoverer.new(5 * Gst.SECOND)
         _thread_local.discoverer = d
     return d
@@ -538,6 +551,7 @@ def extract_metadata_combined(filepath: str) -> dict:
 
     gst = {}
     try:
+        Gst, GstPbutils = _ensure_gst()
         uri = _safe_uri(filepath)
         d = _get_discoverer()
         disc = d.discover_uri(uri)
