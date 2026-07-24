@@ -42,9 +42,8 @@ def check_file(path):
                 for alias in node.names:
                     if "QtWidgets" in alias.name:
                         ERRORS.append(f"{rel}: QtWidgets import: {alias.name}")
-            elif isinstance(node, ast.ImportFrom):
-                if node.module and "QtWidgets" in node.module:
-                    ERRORS.append(f"{rel}: QtWidgets from-import: {node.module}")
+            elif isinstance(node, ast.ImportFrom) and node.module and "QtWidgets" in node.module:
+                ERRORS.append(f"{rel}: QtWidgets from-import: {node.module}")
     except SyntaxError:
         pass
 

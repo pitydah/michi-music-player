@@ -1,13 +1,16 @@
 """LibraryBridge — connects QML Library page to QueryService with pagination, filters, sort."""
 from __future__ import annotations
 
+import contextlib
+import json
 import logging
 import os
-import subprocess
-from pathlib import Path
 from enum import Enum
+from pathlib import Path
+from typing import Any
 
-from PySide6.QtCore import QObject, Signal, Property, Slot
+from PySide6.QtCore import QObject, Signal, Property, Slot, QUrl
+from PySide6.QtGui import QDesktopServices
 
 logger = logging.getLogger("michi.library_bridge")
 
@@ -31,16 +34,20 @@ class LibraryState(Enum):
 
 
 class LibraryBridge(QObject):
+    """Adapt library queries and canonical track actions for QML."""
+
     dataChanged = Signal()
     stateChanged = Signal()
 
-    def __init__(self, db=None, search_engine=None, playback_ctrl=None,
-                 query_service=None, query_executor=None, worker_manager=None,
-                 job_bridge=None, track_action_service=None,
-                 library_sources_service=None, library_service=None,
-                 songs_service=None, track_service=None, genres_service=None,
-                 playlists_bridge=None, container=None,
-                 parent=None):
+    def __init__(self, db: Any | None = None, search_engine: Any | None = None,
+                 playback_ctrl: Any | None = None, query_service: Any | None = None,
+                 query_executor: Any | None = None, worker_manager: Any | None = None,
+                 job_bridge: Any | None = None, track_action_service: Any | None = None,
+                 library_sources_service: Any | None = None,
+                 library_service: Any | None = None, songs_service: Any | None = None,
+                 track_service: Any | None = None, genres_service: Any | None = None,
+                 playlists_bridge: Any | None = None, container: Any | None = None,
+                 queue_service: Any | None = None, parent: QObject | None = None) -> None:
         assert query_service is not None, "LibraryBridge: query_service is REQUIRED"
         assert track_action_service is not None, "LibraryBridge: track_action_service is REQUIRED"
         super().__init__(parent)
@@ -51,6 +58,7 @@ class LibraryBridge(QObject):
         self._qe = query_executor
         self._job_bridge = job_bridge
         self._tas = track_action_service
+        self._queue_service = queue_service
         self._sources_svc = library_sources_service
         self._playlists_bridge = playlists_bridge
         self._container = container
@@ -486,81 +494,32 @@ class LibraryBridge(QObject):
 
     @Slot(int, result=dict)
     def playTrackById(self, track_id: int):
-        if self._tas:
-            return self._tas.play_track(track_id)
-        if not track_id or not self._query_svc:
-            return {"ok": False, "error": "NOT_FOUND"}
-        try:
-            track = self._query_svc.fetch_track_internal(track_id)
-            if track and track.get("filepath"):
-                return self.play_song(track["filepath"])
-            return {"ok": False, "error": "NOT_FOUND"}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        return self._tas.play_track(track_id)
 
     @Slot(str, result=dict)
     def play_song(self, filepath: str):
         if not filepath:
             return {"ok": False, "error": "EMPTY_FILEPATH"}
-        if not self._playback_ctrl:
-            return {"ok": False, "error": "NO_PLAYER_SERVICE"}
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
         if not filepath.startswith(("http://", "https://", "radio://", "stream://")) and not Path(filepath).is_file():
             return {"ok": False, "error": "FILE_NOT_FOUND"}
-        title = ""
-        artist = ""
-        album = ""
+        track = {"filepath": filepath}
         if self._query_svc:
-            try:
-                conn = self._query_svc._get_conn()
-                row = conn.execute(
-                    "SELECT title, artist, album FROM media_items WHERE filepath=? AND deleted_at IS NULL",
-                    (filepath,)
-                ).fetchone()
-                if row:
-                    title = row[0] or ""
-                    artist = row[1] or ""
-                    album = row[2] or ""
-            except Exception:
-                pass
+            with contextlib.suppress(Exception):
+                track = self._query_svc.fetch_track_by_filepath(filepath) or track
         try:
-            if hasattr(self._playback_ctrl, 'play_file'):
-                self._playback_ctrl.play_file(filepath)
-            elif hasattr(self._playback_ctrl, 'play'):
-                self._playback_ctrl.play(filepath, title, artist, album)
-            elif hasattr(self._playback_ctrl, 'enqueue'):
-                self._playback_ctrl.enqueue([filepath], play_now=True)
-            else:
-                return {"ok": False, "error": "NO_PLAY_METHOD"}
-            return {"ok": True, "title": title, "artist": artist, "album": album}
+            return self._queue_service.replace_and_play([track])
         except Exception as e:
             return {"ok": False, "error": f"PLAYBACK_ERROR: {e}"}
 
     @Slot(int, result=dict)
     def enqueueTrackById(self, track_id: int):
-        if not self._query_svc:
-            return {"ok": False, "error": "NO_QUERY_SERVICE"}
-        try:
-            track = self._query_svc.fetch_track_internal(track_id)
-            if not track or not track.get("filepath"):
-                return {"ok": False, "error": "NOT_FOUND"}
-            return self.enqueueSong(track["filepath"])
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        return self._tas.enqueue_track(track_id)
 
     @Slot(int, result=dict)
     def playNextTrackById(self, track_id: int):
-        if not self._query_svc:
-            return {"ok": False, "error": "NO_QUERY_SERVICE"}
-        try:
-            track = self._query_svc.fetch_track_internal(track_id)
-            if not track or not track.get("filepath"):
-                return {"ok": False, "error": "NOT_FOUND"}
-            if not self._playback_ctrl or not hasattr(self._playback_ctrl, 'enqueue_next'):
-                return {"ok": False, "error": "UNSUPPORTED"}
-            self._playback_ctrl.enqueue_next(track["filepath"])
-            return {"ok": True}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        return self._tas.play_next(track_id)
 
     @Slot(int, int, result=dict)
     def addTrackToPlaylistById(self, track_id: int, playlist_id: int):
@@ -571,9 +530,6 @@ class LibraryBridge(QObject):
             if not track or not track.get("filepath"):
                 return {"ok": False, "error": "NOT_FOUND"}
             pb = getattr(self, '_playlists_bridge', None)
-            if pb is None and self._container:
-                from ui_qml_bridge.playlists_bridge import PlaylistsBridge
-                pb = PlaylistsBridge(db=self._db, container=self._container)
             if pb:
                 return pb.addTrackToPlaylist(playlist_id, filepath=track["filepath"])
             return {"ok": False, "error": "NO_PLAYLISTS_BRIDGE"}
@@ -589,38 +545,22 @@ class LibraryBridge(QObject):
             if not track or not track.get("filepath"):
                 return {"ok": False, "error": "NOT_FOUND"}
             parent = str(Path(track["filepath"]).parent)
-            if os.name == "nt":
-                subprocess.Popen(["explorer", parent])
-            else:
-                subprocess.Popen(["xdg-open", parent])
+            QDesktopServices.openUrl(QUrl.fromLocalFile(parent))
             return {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
     @Slot(int, result=dict)
     def toggleFavoriteById(self, track_id: int):
-        if not self._query_svc or not self._db:
-            return {"ok": False, "error": "NO_DB"}
+        if not self._tas:
+            return {"ok": False, "error": "NO_TRACK_ACTION_SERVICE"}
         try:
-            track = self._query_svc.fetch_track_internal(track_id)
-            if not track or not track.get("filepath"):
-                return {"ok": False, "error": "NOT_FOUND"}
-            fp = track["filepath"]
-            row = self._db.conn.execute(
-                "SELECT 1 FROM favorites WHERE track_id=?", (fp,)
-            ).fetchone()
-            if row:
-                self._db.conn.execute("DELETE FROM favorites WHERE track_id=?", (fp,))
-                fav = False
-            else:
-                self._db.conn.execute(
-                    "INSERT OR IGNORE INTO favorites (track_id) VALUES (?)", (fp,))
-                fav = True
-            self._db.conn.commit()
-            self._refresh_coordinator.refresh_tracks()
-            self._sync_state()
-            self.dataChanged.emit()
-            return {"ok": True, "favorite": fav}
+            result = self._tas.toggle_favorite(track_id)
+            if result.get("ok"):
+                self._refresh_coordinator.refresh_tracks()
+                self._sync_state()
+                self.dataChanged.emit()
+            return result
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -628,15 +568,9 @@ class LibraryBridge(QObject):
     def enqueueSong(self, filepath: str):
         if not filepath:
             return {"ok": False, "error": "EMPTY_FILEPATH"}
-        if not self._playback_ctrl:
-            return {"ok": False, "error": "NO_PLAYER_SERVICE"}
-        if hasattr(self._playback_ctrl, 'enqueue'):
-            try:
-                self._playback_ctrl.enqueue([filepath], play_now=False)
-                return {"ok": True}
-            except Exception as e:
-                return {"ok": False, "error": str(e)}
-        return {"ok": False, "error": "UNSUPPORTED"}
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
+        return self._queue_service.enqueue({"filepath": filepath}, play_now=False)
 
     @Slot(str, result=dict)
     def revealInFileManager(self, filepath: str):
@@ -644,10 +578,7 @@ class LibraryBridge(QObject):
             return {"ok": False, "error": "FILE_NOT_FOUND"}
         parent = str(Path(filepath).parent)
         try:
-            if os.name == "nt":
-                subprocess.Popen(["explorer", parent])
-            else:
-                subprocess.Popen(["xdg-open", parent])
+            QDesktopServices.openUrl(QUrl.fromLocalFile(parent))
             return {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
@@ -678,19 +609,16 @@ class LibraryBridge(QObject):
     def playAlbum(self, album_key: str):
         if not self._query_svc:
             return {"ok": False, "error": "NO_QUERY_SERVICE"}
-        if not self._playback_ctrl:
-            return {"ok": False, "error": "NO_PLAYER_SERVICE"}
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
         try:
             internal = self._query_svc.fetch_album_tracks_internal(album_key)
             if not internal:
                 return {"ok": False, "error": "NO_TRACKS"}
-            fps = [t["filepath"] for t in internal if t.get("filepath")]
-            if not fps:
+            tracks = [t for t in internal if t.get("filepath")]
+            if not tracks:
                 return {"ok": False, "error": "NO_VALID_TRACKS"}
-            if hasattr(self._playback_ctrl, 'enqueue'):
-                self._playback_ctrl.enqueue(fps, play_now=True)
-                return {"ok": True, "count": len(fps)}
-            return self.play_song(fps[0])
+            return self._queue_service.replace_and_play(tracks, 0)
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -698,17 +626,16 @@ class LibraryBridge(QObject):
     def enqueueAlbum(self, album_key: str):
         if not self._query_svc:
             return {"ok": False, "error": "NO_QUERY_SERVICE"}
-        if not self._playback_ctrl:
-            return {"ok": False, "error": "NO_PLAYER_SERVICE"}
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
         try:
             internal = self._query_svc.fetch_album_tracks_internal(album_key)
             if not internal:
                 return {"ok": False, "error": "NO_TRACKS"}
-            if hasattr(self._playback_ctrl, 'enqueue'):
-                fps = [t["filepath"] for t in internal if t.get("filepath")]
-                self._playback_ctrl.enqueue(fps, play_now=False)
-                return {"ok": True, "count": len(fps)}
-            return {"ok": False, "error": "UNSUPPORTED"}
+            tracks = [t for t in internal if t.get("filepath")]
+            if not tracks:
+                return {"ok": False, "error": "NO_VALID_TRACKS"}
+            return self._queue_service.enqueue(tracks, play_now=False)
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -753,19 +680,16 @@ class LibraryBridge(QObject):
     def playArtist(self, artist_name: str):
         if not self._query_svc:
             return {"ok": False, "error": "NO_QUERY_SERVICE"}
-        if not self._playback_ctrl:
-            return {"ok": False, "error": "NO_PLAYER_SERVICE"}
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
         try:
             internal = self._query_svc.fetch_artist_tracks_internal(artist_name)
             if not internal:
                 return {"ok": False, "error": "NO_TRACKS"}
-            fps = [t["filepath"] for t in internal if t.get("filepath")]
-            if not fps:
+            tracks = [t for t in internal if t.get("filepath")]
+            if not tracks:
                 return {"ok": False, "error": "NO_VALID_TRACKS"}
-            if hasattr(self._playback_ctrl, 'enqueue'):
-                self._playback_ctrl.enqueue(fps, play_now=True)
-                return {"ok": True, "count": len(fps)}
-            return self.play_song(fps[0])
+            return self._queue_service.replace_and_play(tracks, 0)
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -787,19 +711,16 @@ class LibraryBridge(QObject):
     def playFolder(self, folder_path: str):
         if not self._query_svc:
             return {"ok": False, "error": "NO_QUERY_SERVICE"}
-        if not self._playback_ctrl:
-            return {"ok": False, "error": "NO_PLAYER_SERVICE"}
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
         try:
             internal = self._query_svc.fetch_folder_tracks_internal(folder_path)
             if not internal:
                 return {"ok": False, "error": "NO_TRACKS"}
-            fps = [t["filepath"] for t in internal if t.get("filepath")]
-            if not fps:
+            tracks = [t for t in internal if t.get("filepath")]
+            if not tracks:
                 return {"ok": False, "error": "NO_VALID_TRACKS"}
-            if hasattr(self._playback_ctrl, 'enqueue'):
-                self._playback_ctrl.enqueue(fps, play_now=True)
-                return {"ok": True, "count": len(fps)}
-            return self.play_song(fps[0])
+            return self._queue_service.replace_and_play(tracks, 0)
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -808,10 +729,7 @@ class LibraryBridge(QObject):
         if not folder_path or not Path(folder_path).is_dir():
             return {"ok": False, "error": "DIR_NOT_FOUND"}
         try:
-            if os.name == "nt":
-                subprocess.Popen(["explorer", folder_path])
-            else:
-                subprocess.Popen(["xdg-open", folder_path])
+            QDesktopServices.openUrl(QUrl.fromLocalFile(folder_path))
             return {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
@@ -881,43 +799,15 @@ class LibraryBridge(QObject):
             return {"ok": False, "error": str(e)}
 
     def _dict_to_qml(self, item: dict) -> dict:
-        return {
-            "track_id": item.get("track_id", 0),
-            "track_uid": item.get("track_uid", ""),
-            "public_ref": f"track_{item.get('track_id', 0)}",
-            "title": item.get("title", "") or "",
-            "artist": item.get("artist", ""),
-            "artist_id": item.get("artist_id", 0),
-            "album": item.get("album", ""),
-            "album_id": item.get("album_id", 0),
-            "album_key": item.get("album_key", ""),
-            "album_artist": item.get("album_artist", ""),
-            "duration": item.get("duration", 0),
-            "format": item.get("format", ""),
-            "codec": item.get("codec", ""),
-            "sample_rate": item.get("sample_rate", 0),
-            "bit_depth": item.get("bit_depth", 0),
-            "bitrate": item.get("bitrate", 0),
-            "channels": item.get("channels", 0),
-            "file_size": item.get("file_size", 0),
-            "cover_key": item.get("album_key", "") or item.get("cover_key", ""),
-            "year": item.get("year", 0),
-            "track_number": item.get("track_number", 0),
-            "disc_number": item.get("disc_number", 0),
-            "genre": item.get("genre", ""),
-            "composer": item.get("composer", ""),
-            "play_count": item.get("play_count", 0),
-            "last_played": item.get("last_played", ""),
-            "date_added": item.get("date_added", ""),
-            "favorite": item.get("favorite", False),
-            "missing": item.get("missing", False),
-            "source_id": item.get("source_id", 0),
-            "folder_id": item.get("folder_id", 0),
-            "directory": item.get("directory", ""),
-            "path": item.get("filepath", ""),
-            "replay_gain": item.get("replay_gain", 0.0),
-            "peak": item.get("peak", 0.0),
-        }
+        result = dict(item)
+        track_id = result.get("track_id")
+        if track_id is not None:
+            result.setdefault("public_ref", f"track_{track_id}")
+        result.setdefault("album_artist", result.get("albumartist", ""))
+        result.setdefault("cover_key", result.get("album_key", ""))
+        if "filepath" in result:
+            result["path"] = result["filepath"]
+        return result
 
     # ── LibraryService bridge ──
 
@@ -941,15 +831,28 @@ class LibraryBridge(QObject):
     def loadSongs(self, filter_json: str = ""):
         svc = getattr(self, '_songs_svc', None)
         if svc and hasattr(svc, 'load'):
-            return svc.load({})
+            try:
+                filters = json.loads(filter_json) if filter_json else {}
+                if not isinstance(filters, dict):
+                    return {"ok": False, "error": "INVALID_FILTERS"}
+                return svc.load(filters)
+            except json.JSONDecodeError as e:
+                return {"ok": False, "error": f"INVALID_JSON: {e}"}
         return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
 
     @Slot(str, result=dict)
     def playSongs(self, items_json: str = ""):
-        svc = getattr(self, '_songs_svc', None)
-        if svc and hasattr(svc, 'play_items'):
-            return svc.play_items([])
-        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
+        try:
+            items = json.loads(items_json) if items_json else []
+            if not isinstance(items, list) or not items:
+                return {"ok": False, "error": "NO_ITEMS"}
+            if not all(isinstance(item, dict) for item in items):
+                return {"ok": False, "error": "INVALID_ITEMS"}
+            return self._queue_service.replace_and_play(items, 0)
+        except json.JSONDecodeError as e:
+            return {"ok": False, "error": f"INVALID_JSON: {e}"}
 
     @Slot(str, result=dict)
     def toggleFavorite(self, filepath: str):
@@ -964,7 +867,7 @@ class LibraryBridge(QObject):
     def editTrackMetadata(self, filepath: str):
         svc = getattr(self, '_track_svc', None)
         if svc and hasattr(svc, 'edit_metadata'):
-            return {"ok": True, "message": "Metadata editor available"}
+            return {"ok": False, "error": "METADATA_REQUIRED", "path": filepath}
         return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
 
     @Slot(str, str, result=dict)
@@ -972,7 +875,6 @@ class LibraryBridge(QObject):
         svc = getattr(self, '_track_svc', None)
         if svc and hasattr(svc, 'edit_metadata'):
             try:
-                import json
                 metadata = json.loads(metadata_json)
                 return svc.edit_metadata(filepath, metadata)
             except json.JSONDecodeError as e:
@@ -1023,15 +925,7 @@ class LibraryBridge(QObject):
         if svc is None:
             return []
         try:
-            conn = svc._get_conn() if hasattr(svc, '_get_conn') else None
-            if conn is None:
-                return []
-            rows = conn.execute(
-                "SELECT DISTINCT composer FROM media_items "
-                "WHERE deleted_at IS NULL AND composer IS NOT NULL AND composer != '' "
-                "ORDER BY composer"
-            ).fetchall()
-            return [r[0] for r in rows]
+            return svc.list_composers()
         except Exception:
             return []
 
@@ -1041,15 +935,7 @@ class LibraryBridge(QObject):
         if svc is None:
             return []
         try:
-            conn = svc._get_conn() if hasattr(svc, '_get_conn') else None
-            if conn is None:
-                return []
-            rows = conn.execute(
-                "SELECT DISTINCT year FROM media_items "
-                "WHERE deleted_at IS NULL AND year IS NOT NULL AND year > 0 "
-                "ORDER BY year"
-            ).fetchall()
-            return [r[0] for r in rows]
+            return svc.list_years()
         except Exception:
             return []
 
@@ -1116,41 +1002,25 @@ class LibraryBridge(QObject):
 
     @Slot(result=dict)
     def playAllFiltered(self):
-        svc = getattr(self, '_playback_ctrl', None)
-        if svc and hasattr(svc, 'play') and hasattr(svc, 'enqueue'):
+        if self._queue_service:
             try:
-                conn = self._query_svc._get_conn() if hasattr(self._query_svc, '_get_conn') else None
-                if conn:
-                    clauses = ["deleted_at IS NULL"]
-                    params = []
-                    for field, val in [("artist", self._filter_artist),
-                                       ("album", self._filter_album),
-                                       ("genre", self._filter_genre),
-                                       ("composer", self._filter_composer),
-                                       ("format", self._filter_format),
-                                       ("folder", self._filter_folder),
-                                       ("year", str(self._filter_year) if self._filter_year else "")]:
-                        if val:
-                            clauses.append(f"{field}=?")
-                            params.append(val)
-                    if self._filter_favorites:
-                        clauses.append("filepath IN (SELECT track_id FROM favorites)")
-                    if self._filter_unplayed:
-                        clauses.append("(filepath NOT IN (SELECT track_id FROM play_history "
-                                        "WHERE played_at IS NOT NULL) OR last_played IS NULL)")
-                    where = " AND ".join(clauses) if clauses else "1=1"
-                    rows = conn.execute(
-                        f"SELECT filepath FROM media_items WHERE {where} ORDER BY title LIMIT 500",
-                        params
-                    ).fetchall()
-                    if rows:
-                        filepaths = [r[0] for r in rows]
-                        svc.enqueue(filepaths, play_now=True)
-                        return {"ok": True, "count": len(filepaths)}
+                tracks = self._query_svc.fetch_filtered_tracks_internal({
+                    "artist": self._filter_artist,
+                    "album": self._filter_album,
+                    "genre": self._filter_genre,
+                    "composer": self._filter_composer,
+                    "format": self._filter_format,
+                    "folder": self._filter_folder,
+                    "year": self._filter_year,
+                    "favorites": self._filter_favorites,
+                    "unplayed": self._filter_unplayed,
+                }, 500)
+                if tracks:
+                    return self._queue_service.replace_and_play(tracks, 0)
                 return {"ok": False, "error": "NO_TRACKS"}
             except Exception as e:
                 return {"ok": False, "error": str(e)}
-        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        return {"ok": False, "error": "NO_QUEUE_SERVICE"}
 
     @Slot(int, result=dict)
     def rescanSource(self, source_id: int = 0):

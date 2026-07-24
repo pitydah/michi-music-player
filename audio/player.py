@@ -10,12 +10,14 @@ DAC: bit-perfect, DoP, standard. EQ: graphic 31-band, parametric biquads.
 """
 
 import os
-import threading
 import logging
 import contextlib
+import time
 import numpy as np
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from enum import Enum
 from dataclasses import dataclass
+from typing import Any
 
 import gi
 gi.require_version("Gst", "1.0")
@@ -64,6 +66,7 @@ class GStreamerEngine(QObject):
     error_occurred = Signal(str)
     spectrum_data = Signal(object)
     queue_changed = Signal(list)
+    queue_progressed = Signal(int, str, str, object)
     audio_route_changed = Signal(object)
     stream_metadata_changed = Signal(str, str, str)  # title, artist, album
     eq_bitperfect_warning = Signal()
@@ -93,7 +96,10 @@ class GStreamerEngine(QObject):
         self._spectrum_sink = None
 
         self._dff_header = None
-        self._dff_thread = None
+        self._dff_executor = ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="michi-dff"
+        )
+        self._dff_future = None
         self._dff_running = False
         self._file_handle = None
         self._appsrc = None
@@ -110,8 +116,14 @@ class GStreamerEngine(QObject):
         self._volume = 0.70
         self._crossfade = 0
         self._replaygain = False
+        self._replaygain_mode = "track"
+        self._replaygain_preamp = 0.0
+        self._replaygain_headroom = 0.0
+        self._replaygain_anticlip = True
         self._gapless_enabled = True
         self._gapless_active = False
+        self._gapless_pending_index = None
+        self._queue_revision = None
         self._audio_profile = "standard"
 
     def _on_backend_state_changed(self, state):
@@ -126,7 +138,7 @@ class GStreamerEngine(QObject):
     def _on_backend_error(self, msg: str):
         self.error_occurred.emit(msg)
 
-    def set_library_db(self, db):
+    def set_library_db(self, db: Any) -> None:
         self._db = db
         queue, idx = db.load_queue()
         if queue:
@@ -136,18 +148,19 @@ class GStreamerEngine(QObject):
 
         self._load_settings()
 
-    def set_audio_profile(self, profile_key: str):
+    def set_audio_profile(self, profile_key: str) -> None:
         self._audio_profile = profile_key
         self._restart_if_playing()
 
-    def set_dsd_mode(self, mode: str):
+    def set_dsd_mode(self, mode: str) -> None:
         self._dac.dsd_mode = mode
 
-    def set_gapless_enabled(self, enabled: bool):
+    def set_gapless_enabled(self, enabled: bool) -> None:
         self._gapless_enabled = enabled
 
-    def set_replaygain_mode(self, mode: str):
-        self._replaygain = (mode != "off")
+    def set_replaygain_mode(self, mode: str) -> None:
+        self._replaygain_mode = mode
+        self._replaygain = mode != "off"
 
     def get_position_ns(self) -> int:
         pipeline = self._transport.get_pipeline()
@@ -161,7 +174,7 @@ class GStreamerEngine(QObject):
     def current(self) -> str:
         return self._current
 
-    def set_output_device_id(self, device_id: str):
+    def set_output_device_id(self, device_id: str) -> None:
         from audio.output_device_manager import get_device
         dev = get_device(device_id)
         if dev:
@@ -174,14 +187,14 @@ class GStreamerEngine(QObject):
     def get_output_device_id(self) -> str:
         return self._dac.device or self._dac.output_device_id
 
-    def set_transmit_device(self, device) -> None:
+    def set_transmit_device(self, device: Any) -> None:
         self._transmit_device = device
         self._restart_if_playing()
 
-    def get_transmit_device(self):
+    def get_transmit_device(self) -> Any:
         return self._transmit_device
 
-    def get_audio_diagnostics(self):
+    def get_audio_diagnostics(self) -> Any:
         from audio.audio_diagnostics import AudioRouteDiagnostics
         from audio.output_profiles import get_profile
         profile = get_profile(self._audio_profile)
@@ -193,8 +206,8 @@ class GStreamerEngine(QObject):
             device_string=self._dac.alsa_device_str,
             bitperfect_status=(
                 "yes" if profile.bitperfect and not self._is_dsd else "no"),
-            dsp_active=self._eq.mode != "bypass" if hasattr(self, '_eq') else False,
-            eq_active=getattr(getattr(self, '_eq', None), 'mode', 'bypass') != 'bypass',
+            dsp_active=self._eq.mode != "bypass",
+            eq_active=self._eq.mode != "bypass",
             replaygain_active=self._replaygain,
             spectrum_active=self._spectrum_enabled,
             resampling_active=self._dac.target_rate > 0,
@@ -226,7 +239,8 @@ class GStreamerEngine(QObject):
             return filepath_or_url
         return GLib.filename_to_uri(os.path.abspath(filepath_or_url), None)
 
-    def play(self, filepath_or_url: str):
+    def play(self, filepath_or_url: str) -> None:
+        """Build the selected audio route and start physical playback."""
         self.stop()
 
         try:
@@ -262,10 +276,10 @@ class GStreamerEngine(QObject):
                     track_gain = meta_full.get("replaygain_track") or 0.0
                     album_gain = meta_full.get("replaygain_album") or 0.0
                     config = ReplayGainConfig(
-                        mode=self._replaygain_mode if hasattr(self, '_replaygain_mode') else "track",
-                        preamp_db=getattr(self, '_replaygain_preamp', 0.0),
-                        headroom_db=getattr(self, '_replaygain_headroom', 0.0),
-                        anti_clip=getattr(self, '_replaygain_anticlip', True),
+                        mode=self._replaygain_mode,
+                        preamp_db=self._replaygain_preamp,
+                        headroom_db=self._replaygain_headroom,
+                        anti_clip=self._replaygain_anticlip,
                     )
                     gain, _label = apply_full(config, track_gain, album_gain)
                     if gain != 1.0:
@@ -275,11 +289,11 @@ class GStreamerEngine(QObject):
                         "ReplayGain extraction failed: %s", e)
 
             dsp = DspState(
-                eq_enabled=(hasattr(self, '_eq') and self._eq.mode != "bypass"),
-                eq_mode=getattr(self._eq, 'mode', 'bypass'),
-                eq_bands_parametric=getattr(self._eq, 'bands_parametric', []),
-                eq_bands_31=getattr(self._eq, 'bands_31', [0.0] * 31),
-                eq_preamp_db=getattr(self._eq, 'preamp_db', 0.0),
+                eq_enabled=self._eq.mode != "bypass",
+                eq_mode=self._eq.mode,
+                eq_bands_parametric=self._eq.bands_parametric,
+                eq_bands_31=self._eq.bands_31,
+                eq_preamp_db=self._eq.preamp_db,
                 replaygain_enabled=(self._replaygain and rg_gain_db is not None),
                 replaygain_db=(rg_gain_db or 0.0),
                 spectrum_enabled=self._spectrum_enabled,
@@ -329,8 +343,8 @@ class GStreamerEngine(QObject):
                 input_bit_depth=fmt.bit_depth,
                 input_channels=fmt.channels,
                 dsd_mode=fmt.dsd_speed if fmt.is_dsd else "",
-                eq_active=(hasattr(self, '_eq') and self._eq.mode != "bypass"),
-                replaygain_active=self._replaygain if hasattr(self, '_replaygain') else False,
+                eq_active=self._eq.mode != "bypass",
+                replaygain_active=self._replaygain,
                 spectrum_active=self._spectrum_enabled,
                 bitperfect_status="yes" if profile.bitperfect and not fmt.is_dsd else "no",
             )
@@ -343,7 +357,7 @@ class GStreamerEngine(QObject):
 
         except Exception as e:
             logging.getLogger("michi.player").exception("Playback failed: %s", filepath_or_url)
-            self.error_occurred.emit(f"No se pudo reproducir: {e}")
+            self.error_occurred.emit(f"Playback failed: {e}")
             self._state = PlaybackState.STOPPED
             self.state_changed.emit(self._state)
 
@@ -376,11 +390,11 @@ class GStreamerEngine(QObject):
         route = dm.select_output_route(fmt, profile, None)
 
         dsp = DspState(
-            eq_enabled=self._eq.enabled if hasattr(self._eq, 'enabled') else False,
+            eq_enabled=self._eq.mode != "bypass",
             eq_mode=self._eq.mode if hasattr(self._eq, 'mode') else "bypass",
             eq_bands_parametric=list(getattr(getattr(self._eq, 'bands_parametric', None) or [], [])),
             eq_bands_31=getattr(self._eq, 'bands_31', [0.0] * 31),
-            eq_preamp_db=getattr(self._eq, 'eq_preamp_db', 0.0),
+            eq_preamp_db=getattr(self._eq, 'preamp_db', 0.0),
             replaygain_enabled=self._replaygain,
             spectrum_enabled=self._spectrum_enabled,
             transmit_enabled=self._transmit_device is not None,
@@ -403,18 +417,26 @@ class GStreamerEngine(QObject):
             caps = Gst.Caps.from_string(caps_str)
             appsrc.set_property("caps", caps)
         self._appsrc = appsrc
-        self._file_handle = open(filepath, "rb")
+        # The appsrc callback owns this handle until playback teardown.
+        self._file_handle = open(filepath, "rb")  # noqa: SIM115
 
-        self._setup_bus()
-        self._setup_timer()
-        self._setup_spectrum()
+        try:
+            self._setup_bus()
+            self._setup_timer()
+            self._setup_spectrum()
+        except Exception:
+            self._file_handle.close()
+            self._file_handle = None
+            raise
 
         self._dff_running = True
-        self._dff_thread = threading.Thread(target=self._dff_feed, daemon=True)
-        self._dff_thread.start()
+        self._dff_future = self._dff_executor.submit(self._dff_feed)
 
         ret = pipeline.set_state(Gst.State.PLAYING)
         if ret == Gst.StateChangeReturn.FAILURE:
+            self._dff_running = False
+            self._file_handle.close()
+            self._file_handle = None
             self.error_occurred.emit("Failed to start DFF playback")
             self._state = PlaybackState.STOPPED
             self.state_changed.emit(self._state)
@@ -434,7 +456,6 @@ class GStreamerEngine(QObject):
             if appsrc:
                 cur_level = appsrc.get_property("current-level-bytes")
                 if cur_level is not None and cur_level > 65536:
-                    import time
                     time.sleep(0.010)
                     continue
             data = fh.read(min(16384, remaining))
@@ -460,17 +481,17 @@ class GStreamerEngine(QObject):
             self._appsrc.emit("end-of-stream")
         return False
 
-    def pause(self):
+    def pause(self) -> None:
         self._transport.pause()
         self._state = PlaybackState.PAUSED
         self.state_changed.emit(self._state)
 
-    def resume(self):
+    def resume(self) -> None:
         self._transport.resume()
         self._state = PlaybackState.PLAYING
         self.state_changed.emit(self._state)
 
-    def toggle(self):
+    def toggle(self) -> None:
         if self._state == PlaybackState.PLAYING:
             self.pause()
         elif self._state == PlaybackState.PAUSED:
@@ -478,7 +499,7 @@ class GStreamerEngine(QObject):
         elif self._current:
             self.play(self._current)
 
-    def stop(self):
+    def stop(self) -> None:
         self._dff_running = False
         pipeline = self._transport.get_pipeline()
         self._transport.adopt_pipeline(None)
@@ -486,8 +507,10 @@ class GStreamerEngine(QObject):
         if pipeline:
             pipeline.set_state(Gst.State.NULL)
             pipeline.get_state(Gst.CLOCK_TIME_NONE)
-        if self._dff_thread and self._dff_thread.is_alive():
-            self._dff_thread.join(timeout=2.0)
+        if self._dff_future:
+            with contextlib.suppress(TimeoutError):
+                self._dff_future.result(timeout=2.0)
+            self._dff_future = None
         if self._file_handle:
             self._file_handle.close()
             self._file_handle = None
@@ -498,22 +521,22 @@ class GStreamerEngine(QObject):
         self._state = PlaybackState.STOPPED
         self.state_changed.emit(self._state)
 
-    def seek(self, seconds: float):
+    def seek(self, seconds: float) -> None:
         self._transport.seek(seconds)
 
-    def set_eq_graphic(self, bands: list[float]):
+    def set_eq_graphic(self, bands: list[float]) -> None:
         self._eq.mode = "graphic"
         self._eq.bands_31 = bands[:31]
         self._check_dsp_vs_bitperfect()
         self._restart_if_playing()
 
-    def set_eq_parametric(self, bands: list[dict]):
+    def set_eq_parametric(self, bands: list[dict]) -> None:
         self._eq.mode = "parametric"
         self._eq.bands_parametric = list(bands)
         self._check_dsp_vs_bitperfect()
         self._restart_if_playing()
 
-    def set_eq_bypass(self, bypass: bool):
+    def set_eq_bypass(self, bypass: bool) -> None:
         self._eq.mode = "bypass" if bypass else (
             "parametric" if self._eq.bands_parametric else "graphic")
         self._restart_if_playing()
@@ -524,7 +547,7 @@ class GStreamerEngine(QObject):
         if profile.bitperfect and self._eq.mode != "bypass":
             self.eq_bitperfect_warning.emit()
 
-    def set_eq_preamp(self, db: float):
+    def set_eq_preamp(self, db: float) -> None:
         self._eq.preamp_db = db
         self._restart_if_playing()
 
@@ -536,7 +559,7 @@ class GStreamerEngine(QObject):
             "preamp_db": self._eq.preamp_db,
         }
 
-    def set_spectrum_enabled(self, enabled: bool):
+    def set_spectrum_enabled(self, enabled: bool) -> None:
         self._spectrum_enabled = enabled
         pipeline = self._transport.get_pipeline()
         if pipeline and self._state == PlaybackState.PLAYING:
@@ -595,6 +618,7 @@ class GStreamerEngine(QObject):
         bus.add_signal_watch()
         self._bus_id = bus.connect("message", self._on_bus_message)
         self._gapless_active = False
+        self._gapless_pending_index = None
         playbin = pipeline.get_by_name("playbin")
         if not playbin:
             playbin = pipeline.get_by_name("player")
@@ -609,28 +633,50 @@ class GStreamerEngine(QObject):
         current_uri = getattr(self, '_current', '')
         if current_uri and (current_uri.startswith("http") or "icy" in current_uri):
             return
-        if (self._queue_index >= 0
-                and self._queue_index < len(self._queue) - 1):
-            next_fp = self._queue[self._queue_index + 1]
+        next_index = None
+        if self._repeat == "one" and self._queue_index >= 0:
+            next_index = self._queue_index
+        elif 0 <= self._queue_index < len(self._queue) - 1:
+            next_index = self._queue_index + 1
+        elif self._repeat == "all" and self._queue:
+            next_index = 0
+        if next_index is not None:
+            next_fp = self._queue[next_index]
             next_uri = self._to_uri(next_fp)
             playbin.set_property("uri", next_uri)
             self._gapless_active = True
+            self._gapless_pending_index = next_index
+
+    def _commit_gapless_progress(self) -> None:
+        """Confirm a preloaded track only after GStreamer starts its stream."""
+        next_index = self._gapless_pending_index
+        if next_index is None or not 0 <= next_index < len(self._queue):
+            return
+        self._queue_index = next_index
+        self._current = self._queue[next_index]
+        self._gapless_pending_index = None
+        self._gapless_active = False
+        self.queue_changed.emit(self._queue)
+        self.queue_progressed.emit(
+            next_index, self._current, "gapless", self._queue_revision
+        )
+        if self._db:
+            self._db.save_queue(self._queue, self._queue_index)
 
     def _classify_and_emit(self, classification: str, details: str):
         self._error_message = f"{classification}: {details}"
         self.error_occurred.emit(self._error_message)
 
     def _on_media_finished_eos(self):
-        if self._gapless_active:
-            self._gapless_active = False
-            next_idx = self._queue_index + 1
-            if 0 <= next_idx < len(self._queue):
-                self._queue_index = next_idx
-                self._current = self._queue[next_idx]
-                self.queue_changed.emit(self._queue)
-                if self._db:
-                    self._db.save_queue(self._queue, self._queue_index)
-                self.state_changed.emit(self._state)
+        if self._gapless_pending_index is not None:
+            return
+        if 0 <= self._queue_index < len(self._queue):
+            self.queue_progressed.emit(
+                self._queue_index,
+                self._queue[self._queue_index],
+                "eos",
+                self._queue_revision,
+            )
         else:
             self._on_media_finished()
 
@@ -646,6 +692,8 @@ class GStreamerEngine(QObject):
         t = message.type
         if t == Gst.MessageType.EOS:
             self._on_media_finished_eos()
+        elif t == Gst.MessageType.STREAM_START:
+            self._commit_gapless_progress()
         elif t == Gst.MessageType.ERROR:
             err, debug = message.parse_error()
             debug_text = debug or ""
@@ -719,12 +767,11 @@ class GStreamerEngine(QObject):
                 logging.getLogger("michi.player").debug(
                     "State: %s → %s (pending: %s)",
                     old.value_nick, new.value_nick, pending.value_nick)
-        elif t == Gst.MessageType.DURATION_CHANGED:
-            if pipeline:
-                ok, dur = pipeline.query_duration(Gst.Format.TIME)
-                if ok and dur > 0:
-                    self._duration = dur / 1e9
-                    self.duration_changed.emit(self._duration)
+        elif t == Gst.MessageType.DURATION_CHANGED and pipeline:
+            ok, dur = pipeline.query_duration(Gst.Format.TIME)
+            if ok and dur > 0:
+                self._duration = dur / 1e9
+                self.duration_changed.emit(self._duration)
 
     def _poll(self):
         pipeline = self._transport.get_pipeline()
@@ -739,26 +786,37 @@ class GStreamerEngine(QObject):
                     self._duration = d
                     self.duration_changed.emit(d)
 
-    def enqueue_next(self, filepaths: list[str]):
-        self._transport.enqueue_next(filepaths)
+    def enqueue_next(self, filepaths: list[str]) -> None:
+        if not filepaths:
+            return
+        insert_at = self._queue_index + 1 if self._queue_index >= 0 else 0
+        self._queue[insert_at:insert_at] = list(filepaths)
         self._sync_queue_from_backend()
         if self._db:
             self._db.save_queue(self._queue, self._queue_index)
 
-    def enqueue(self, filepaths: list[str], play_now: bool = True):
-        self._transport.enqueue(filepaths, play_now)
+    def enqueue(self, filepaths: list[str], play_now: bool = True) -> None:
+        if not filepaths:
+            return
+        start_index = len(self._queue)
+        self._queue.extend(filepaths)
+        if play_now:
+            self._queue_index = start_index
+            self.play(self._queue[self._queue_index])
         self._sync_queue_from_backend()
         if self._db:
             self._db.save_queue(self._queue, self._queue_index)
 
-    def set_queue(self, filepaths: list[str], start_index: int = 0):
+    def set_queue(self, filepaths: list[str], start_index: int = 0,
+                  revision: int | None = None) -> None:
         self._queue = list(filepaths)
         self._queue_index = max(0, min(start_index, len(self._queue) - 1)) if self._queue else -1
+        self._queue_revision = revision
         self._sync_queue_from_backend()
         if self._db:
             self._db.save_queue(self._queue, self._queue_index)
 
-    def clear_queue(self):
+    def clear_queue(self) -> None:
         self._queue = []
         self._queue_index = -1
         self._sync_queue_from_backend()
@@ -767,18 +825,46 @@ class GStreamerEngine(QObject):
             self._db.clear_queue_state()
 
     def play_next(self) -> bool:
-        result = self._transport.play_next()
+        if not self._queue:
+            return False
+        if self._repeat == "one":
+            target = self._queue_index
+        elif self._queue_index < len(self._queue) - 1:
+            target = self._queue_index + 1
+        elif self._repeat == "all":
+            target = 0
+        else:
+            return False
+        self._queue_index = target
+        self.play(self._queue[target])
         self._sync_queue_from_backend()
-        if result and self._db:
+        self.queue_progressed.emit(
+            target, self._queue[target], "manual", self._queue_revision
+        )
+        if self._db:
             self._db.save_queue(self._queue, self._queue_index)
-        return result
+        return True
 
     def play_prev(self) -> bool:
-        result = self._transport.play_prev()
+        if not self._queue:
+            return False
+        if self._repeat == "one":
+            target = self._queue_index
+        elif self._queue_index > 0:
+            target = self._queue_index - 1
+        elif self._repeat == "all":
+            target = len(self._queue) - 1
+        else:
+            return False
+        self._queue_index = target
+        self.play(self._queue[target])
         self._sync_queue_from_backend()
-        if result and self._db:
+        self.queue_progressed.emit(
+            target, self._queue[target], "manual", self._queue_revision
+        )
+        if self._db:
             self._db.save_queue(self._queue, self._queue_index)
-        return result
+        return True
 
     def _sync_queue_from_backend(self):
         self.queue_changed.emit(self._queue)
@@ -789,7 +875,7 @@ class GStreamerEngine(QObject):
     def get_queue_index(self) -> int:
         return self._queue_index
 
-    def reorder_queue(self, filepaths: list[str]):
+    def reorder_queue(self, filepaths: list[str]) -> None:
         current_fp = self._queue[self._queue_index] if self._queue_index >= 0 else None
         self._queue = filepaths
         if current_fp:
@@ -803,11 +889,11 @@ class GStreamerEngine(QObject):
         if self._db:
             self._db.save_queue(self._queue, self._queue_index)
 
-    def play_url(self, url: str, title: str = "", artist: str = ""):
+    def play_url(self, url: str, title: str = "", artist: str = "") -> None:
         self.stop()
         self.play(url)
 
-    def set_volume(self, vol: int):
+    def set_volume(self, vol: int) -> None:
         clamped = max(0, min(100, int(vol)))
         self._volume = clamped
         self._transport.set_volume(clamped / 100.0)
@@ -819,33 +905,29 @@ class GStreamerEngine(QObject):
                 pipeline.set_state(Gst.State.NULL)
                 result = pipeline.get_state(100 * Gst.MSECOND)
                 if result[0] == Gst.StateChangeReturn.FAILURE:
-                    import logging
                     logging.getLogger("michi.player").warning(
                         "Pipeline NULL transition failed in _on_media_finished")
             self._state = PlaybackState.STOPPED
             self.state_changed.emit(self._state)
             self.finished.emit()
 
-    def toggle_shuffle(self):
-        self._shuffle = not self._shuffle
-        if self._shuffle and len(self._queue) > 1:
-            import random
-            current_fp = self._queue[self._queue_index] if self._queue_index >= 0 else None
-            rest = [fp for fp in self._queue if fp != current_fp]
-            random.shuffle(rest)
-            if current_fp:
-                self._queue = [current_fp] + rest
-                self._queue_index = 0
-            else:
-                self._queue = rest
-                self._queue_index = 0
+    def toggle_shuffle(self) -> bool:
+        return self.set_shuffle(not self._shuffle)
+
+    def set_shuffle(self, enabled: bool) -> bool:
+        self._shuffle = bool(enabled)
         if self._db:
             self._db.save_queue(self._queue, self._queue_index)
         return self._shuffle
 
     def toggle_repeat(self) -> str:
         modes = {"none": "all", "all": "one", "one": "none"}
-        self._repeat = modes.get(self._repeat, "none")
+        return self.set_repeat(modes.get(self._repeat, "none"))
+
+    def set_repeat(self, mode: str) -> str:
+        if mode not in {"none", "all", "one"}:
+            raise ValueError("Invalid repeat mode")
+        self._repeat = mode
         return self._repeat
 
 

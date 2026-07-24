@@ -11,11 +11,17 @@ Item {
     id: root
 
     property var cmdPalette: null
+    property var searchTarget: null
     property bool showHints: false
 
     Shortcut {
         sequence: "Ctrl+K"
-        onActivated: { if (root.cmdPalette) root.cmdPalette.open = !root.cmdPalette.open }
+        onActivated: {
+            if (root.searchTarget && root.searchTarget.focusSearch)
+                root.searchTarget.focusSearch()
+            else if (root.cmdPalette)
+                root.cmdPalette.open = !root.cmdPalette.open
+        }
         objectName: "shortcutCtrlK"
     }
 
@@ -87,7 +93,7 @@ Item {
                 leftPadding: MichiTheme.spacing.xs
             }
 
-            KeyboardShortcutHint { label: qsTr("Paleta de comandos"); shortcut: "Ctrl+K"; shortcutSize: MichiTheme.typography.captionSize }
+            KeyboardShortcutHint { label: qsTr("Enfocar búsqueda"); shortcut: "Ctrl+K"; shortcutSize: MichiTheme.typography.captionSize }
             KeyboardShortcutHint { label: qsTr("Ir a Biblioteca"); shortcut: "Ctrl+L"; shortcutSize: MichiTheme.typography.captionSize }
             KeyboardShortcutHint { label: qsTr("Ir a Ajustes"); shortcut: "Ctrl+,"; shortcutSize: MichiTheme.typography.captionSize }
             KeyboardShortcutHint { label: qsTr("Recargar"); shortcut: "Ctrl+R"; shortcutSize: MichiTheme.typography.captionSize }
@@ -102,11 +108,12 @@ Item {
     }
 
     function isInputFocused() {
-        var item = activeFocusItem
+        var window = root.Window.window
+        var item = window ? window.activeFocusItem : null
         if (!item) return false
         var s = item.toString()
         return s.indexOf("TextInput") >= 0 || s.indexOf("TextField") >= 0 || s.indexOf("TextArea") >= 0
     }
 
-    Accessible.description: "Atajos de teclado: Ctrl+K paleta, Ctrl+L biblioteca, Espacio reproducción"
+    Accessible.description: "Atajos de teclado: Ctrl+K búsqueda, Ctrl+L biblioteca, Espacio reproducción"
 }

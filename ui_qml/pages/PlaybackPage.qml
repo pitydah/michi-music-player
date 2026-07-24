@@ -12,8 +12,8 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Reproducción detallada"
 
-    property var ps: typeof playbackBridge !== "undefined" ? playbackBridge
-                   : (typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null)
+    property var ps: typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null
+    property var qb: typeof queueBridge !== "undefined" ? queueBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null
     property var act: typeof actionRegistry !== "undefined" ? actionRegistry : null
@@ -217,7 +217,7 @@ Item {
 
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Math.min(200, (root.ps ? root.ps.queue.length : 0) * 32 + 10)
+                    Layout.preferredHeight: Math.min(200, (root.qb ? root.qb.queueCount : 0) * 32 + 10)
                     radius: MichiTheme.radius.md
                     color: MichiTheme.colors.surfaceCard
                     border.width: 1
@@ -227,7 +227,7 @@ Item {
                         id: queueView
                         anchors.fill: parent
                         anchors.margins: MichiTheme.spacing.sm
-                        model: root.ps ? root.ps.queue : []
+                        model: root.qb ? root.qb.queueModel : null
                         clip: true
                         boundsBehavior: Flickable.StopAtBounds
                         focusPolicy: Qt.StrongFocus
@@ -235,13 +235,13 @@ Item {
                         delegate: Row {
                             width: queueView.width; height: 28; spacing: MichiTheme.spacing.sm
                             Text {
-                                text: modelData.title || "—"
-                                color: modelData.is_current ? MichiTheme.colors.accent : MichiTheme.colors.textPrimary
+                                text: model.title || "—"
+                                color: model.current ? MichiTheme.colors.accent : MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.secondarySize
                                 elide: Text.ElideRight; width: parent.width * 0.55
                             }
                             Text {
-                                text: modelData.artist || ""
+                                text: model.artist || ""
                                 color: MichiTheme.colors.textSecondary
                                 font.pixelSize: MichiTheme.typography.secondarySize
                                 elide: Text.ElideRight; width: parent.width * 0.4
@@ -250,7 +250,7 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: root.ps && root.ps.queue.length === 0 ? "Cola vacía" : ""
+                            text: (root.qb ? root.qb.queueCount : 0) === 0 ? "Cola vacía" : ""
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.metaSize
                             visible: text !== ""

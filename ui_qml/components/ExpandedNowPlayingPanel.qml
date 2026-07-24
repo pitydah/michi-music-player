@@ -12,9 +12,7 @@ Item {
     focus: true
     id: root
 
-    property var ps: typeof nowplayingBridge !== "undefined" && nowplayingBridge
-                     ? nowplayingBridge
-                     : (typeof playbackBridge !== "undefined" ? playbackBridge : null)
+    property var ps: typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null
     property bool expanded: false
     property bool _canPlay: root.ps ? root.ps.backendAvailable : false
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false

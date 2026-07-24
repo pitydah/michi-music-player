@@ -5,6 +5,8 @@ Toggle on/off from the UI, managed here.
 """
 
 import os
+from typing import Any, Callable
+
 from PySide6.QtCore import QObject, Signal
 
 from library.library_db import LibraryDB
@@ -23,7 +25,7 @@ class SyncManager(QObject):
     peer_lost = Signal(str)          # alias
     error_occurred = Signal(str)
 
-    def __init__(self, db: LibraryDB, parent=None):
+    def __init__(self, db: LibraryDB, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._db = db
         self._server = SyncServer(db, parent=self,
@@ -54,7 +56,8 @@ class SyncManager(QObject):
         self._discovery.error_occurred.connect(
             self.error_occurred.emit)
 
-    def start(self):
+    def start(self) -> None:
+        """Start the sync server and peer discovery."""
         if self._active:
             return
         self._active = True
@@ -62,7 +65,8 @@ class SyncManager(QObject):
         self._server.start()
         self._discovery.start()
 
-    def stop(self):
+    def stop(self) -> None:
+        """Stop the sync server and peer discovery."""
         if not self._active:
             return
         self._active = False
@@ -70,7 +74,8 @@ class SyncManager(QObject):
         self._discovery.stop()
         self.sync_stopped.emit()
 
-    def toggle(self):
+    def toggle(self) -> None:
+        """Toggle the sync services between active and inactive states."""
         if self._active:
             self.stop()
         else:
@@ -78,42 +83,52 @@ class SyncManager(QObject):
 
     @property
     def is_active(self) -> bool:
+        """Return whether sync services are active."""
         return self._active
 
-    def set_alias(self, alias: str):
+    def set_alias(self, alias: str) -> None:
+        """Persist and apply the device alias used for discovery."""
         self._save_alias(alias)
         self._discovery.alias = alias
 
-    def set_manifest_provider(self, provider):
+    def set_manifest_provider(self, provider: Callable[..., Any]) -> None:
         """Register a manifest provider for GET /api/sync/manifest."""
         self._server.set_manifest_provider(provider)
 
-    def set_delta_provider(self, provider):
+    def set_delta_provider(self, provider: Callable[..., Any]) -> None:
         """Register a delta manifest provider for GET /api/sync/manifest/delta."""
         self._server.set_delta_provider(provider)
 
-    def set_device_registry(self, registry):
+    def set_device_registry(self, registry: Any) -> None:
         """Register DeviceRegistry for token validation and permission checks."""
         self._device_registry = registry
         self._server.set_device_registry(registry)
 
-    def set_playback_services(self, playback_controller, player_service):
+    def set_playback_services(
+        self,
+        playback_controller: Any,
+        player_service: Any,
+        queue_service: Any | None = None,
+    ) -> None:
         """Register playback services for remote control API."""
-        self._server.set_playback_services(playback_controller, player_service)
+        self._server.set_playback_services(
+            playback_controller, player_service, queue_service
+        )
 
     @property
     def local_account(self) -> LocalAccountManager:
+        """Return the local account manager used by sync authentication."""
         return self._local_account
 
-    def sync_auth_state(self):
+    def sync_auth_state(self) -> None:
         """Synchronize auth_required in discovery with current local account state."""
         self._discovery._auth_required = self._local_account.exists()
 
-    def get_peer_info(self, alias: str) -> dict | None:
+    def get_peer_info(self, alias: str) -> dict[str, Any] | None:
         """Return stored announce info for a discovered peer."""
         return self._discovery.get_peer_info(alias)
 
-    def get_all_peers(self) -> list[dict]:
+    def get_all_peers(self) -> list[dict[str, Any]]:
         """Return list of all discovered peers with their info."""
         return self._discovery.get_all_peers()
 

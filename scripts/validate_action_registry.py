@@ -41,9 +41,8 @@ def validate():
             svc = c.get(svc_name) if hasattr(c, 'get') else None
             if svc is None:
                 ERRORS.append(f"Action '{action_id}': service '{svc_name}' is None")
-            elif method:
-                if not hasattr(svc, method):
-                    ERRORS.append(f"Action '{action_id}': method '{method}' not on {type(svc).__name__}")
+            elif method and not hasattr(svc, method):
+                ERRORS.append(f"Action '{action_id}': method '{method}' not on {type(svc).__name__}")
 
     if not ERRORS:
         print("ACTION REGISTRY VALIDATION PASSED")

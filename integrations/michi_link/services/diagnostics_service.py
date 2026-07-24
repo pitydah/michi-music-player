@@ -9,6 +9,7 @@ import logging
 import time
 import urllib.error
 import urllib.request
+from typing import Any
 
 from integrations.michi_link.client import MichiLinkClient
 
@@ -24,10 +25,10 @@ logger = logging.getLogger("michi.service.diagnostics")
 class DiagnosticsService:
     """Generates structured health reports for Michi services."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._client = MichiLinkClient()
 
-    def check_player_api(self, handler=None) -> dict:
+    def check_player_api(self, handler: Any | None = None) -> dict[str, Any]:
         status = "unknown"
         data = {}
         try:
@@ -46,7 +47,7 @@ class DiagnosticsService:
             data = {"error": str(e)}
         return {"status": status, **data}
 
-    def check_sync_server(self, handler=None) -> dict:
+    def check_sync_server(self, handler: Any | None = None) -> dict[str, Any]:
         status = "unknown"
         data = {}
         try:
@@ -59,7 +60,7 @@ class DiagnosticsService:
             data = {"error": str(e)}
         return {"status": status, **data}
 
-    def check_pairing(self, registry=None) -> dict:
+    def check_pairing(self, registry: Any | None = None) -> dict[str, Any]:
         status = "unknown"
         data = {}
         try:
@@ -77,7 +78,7 @@ class DiagnosticsService:
             data = {"error": str(e)}
         return {"status": status, **data}
 
-    def check_stream(self, handler=None) -> dict:
+    def check_stream(self, handler: Any | None = None) -> dict[str, Any]:
         status = "unknown"
         try:
             if handler and handler.server_ref and handler.server_ref._db:
@@ -87,7 +88,7 @@ class DiagnosticsService:
             status = "error"
         return {"status": status}
 
-    def check_playback(self, ps=None) -> dict:
+    def check_playback(self, ps: Any | None = None) -> dict[str, Any]:
         status = "unknown"
         data = {}
         try:
@@ -100,12 +101,12 @@ class DiagnosticsService:
             data = {"error": str(e)}
         return {"status": status, **data}
 
-    def check_queue(self, ps=None) -> dict:
+    def check_queue(self, queue_service: Any | None = None) -> dict[str, Any]:
         status = "unknown"
         data = {}
         try:
-            if ps:
-                q = ps.get_queue()
+            if queue_service:
+                q = queue_service.get_items()
                 data["queue_length"] = len(q or [])
                 status = "ok"
         except Exception as e:
@@ -113,7 +114,7 @@ class DiagnosticsService:
             data = {"error": str(e)}
         return {"status": status, **data}
 
-    def check_track_identity(self, filepath: str = "") -> dict:
+    def check_track_identity(self, filepath: str = "") -> dict[str, Any]:
         if not filepath:
             return {"status": "skipped", "reason": "no filepath specified"}
         from integrations.michi_link.services.track_identity_service import (
@@ -131,8 +132,9 @@ class DiagnosticsService:
             }
         return {"status": "error", "message": result.message}
 
-    def _check_micro_endpoint(self, host: str, port: int,
-                              path: str, method: str = "GET") -> dict:
+    def _check_micro_endpoint(
+        self, host: str, port: int, path: str, method: str = "GET"
+    ) -> dict[str, Any]:
         try:
             req = urllib.request.Request(
                 f"http://{host}:{port}{path}", method=method,
@@ -148,7 +150,9 @@ class DiagnosticsService:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    def check_import_preflight(self, host: str = "", port: int = 53318) -> dict:
+    def check_import_preflight(
+        self, host: str = "", port: int = 53318
+    ) -> dict[str, Any]:
         if not host:
             return {"status": "skipped"}
         # Check endpoint existence directly
@@ -176,7 +180,9 @@ class DiagnosticsService:
         return {"status": "ok", "preflight_supported": False,
                 "fallback_used": True}
 
-    def check_import_mapping(self, host: str = "", port: int = 53318) -> dict:
+    def check_import_mapping(
+        self, host: str = "", port: int = 53318
+    ) -> dict[str, Any]:
         if not host:
             return {"status": "skipped"}
         from integrations.michi_link.client import RemoteServerInfo
@@ -193,7 +199,9 @@ class DiagnosticsService:
                     "contract_mismatch": True}
         return {"status": "ok", "mapping_supported": False}
 
-    def check_remote_micro(self, host: str = "", port: int = 53318) -> dict:
+    def check_remote_micro(
+        self, host: str = "", port: int = 53318
+    ) -> dict[str, Any]:
         if not host:
             return {"status": "skipped", "reason": "no host specified"}
         start = time.time()
@@ -209,7 +217,9 @@ class DiagnosticsService:
             }
         return {"status": "unreachable", "response_ms": round(elapsed * 1000, 1)}
 
-    def check_micro_import(self, host: str = "", port: int = 53318) -> dict:
+    def check_micro_import(
+        self, host: str = "", port: int = 53318
+    ) -> dict[str, Any]:
         if not host:
             return {"status": "skipped"}
         info = self._client.discover(host, port)
@@ -221,12 +231,14 @@ class DiagnosticsService:
             }
         return {"status": "unreachable"}
 
-    def check_continue_readiness(self, ps=None) -> dict:
+    def check_continue_readiness(
+        self, queue_service: Any | None = None
+    ) -> dict[str, Any]:
         status = "unknown"
         data = {}
         try:
-            if ps:
-                q = ps.get_queue()
+            if queue_service:
+                q = queue_service.get_items()
                 data["has_queue"] = len(q or []) > 0
                 data["queue_length"] = len(q or [])
                 status = "ready" if data["has_queue"] else "no_queue"
@@ -235,16 +247,22 @@ class DiagnosticsService:
             data = {"error": str(e)}
         return {"status": status, **data}
 
-    def check_queue_transfer(self, host: str = "", port: int = 53318) -> dict:
+    def check_queue_transfer(
+        self, host: str = "", port: int = 53318
+    ) -> dict[str, Any]:
         if not host:
             return {"status": "skipped"}
         result = self._check_micro_endpoint(host, port, "/api/v1/queue/transfer", "POST")
         result["path"] = "/api/v1/queue/transfer"
         return result
 
-    def generate_report(self, handler=None, registry=None,
-                        micro_host: str = "",
-                        player_service=None) -> dict:
+    def generate_report(
+        self,
+        handler: Any | None = None,
+        registry: Any | None = None,
+        micro_host: str = "",
+        player_service: Any | None = None,
+    ) -> dict[str, Any]:
         return {
             "player_api": self.check_player_api(handler),
             "sync_server": self.check_sync_server(handler),

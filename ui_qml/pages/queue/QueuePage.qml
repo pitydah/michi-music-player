@@ -13,15 +13,17 @@ Item {
 
     Accessible.role: Accessible.Pane
     Accessible.name: "Cola de reproducción"
+    Accessible.description: "Gestiona la cola de reproducción: reproducir, reordenar, quitar y vaciar pistas"
 
     property var qb: typeof queueBridge !== "undefined" ? queueBridge : null
-    property var ps: typeof nowplayingBridge !== "undefined" ? nowplayingBridge
-                   : (typeof playbackBridge !== "undefined" ? playbackBridge : null)
+    property var ps: typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null
     property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property string _selectedItems: ""
     property bool _multiSelect: false
-    property int pageState: root.qb ? stateReady : stateError
+    property int pageState: root.qb
+                            ? (root.qb.queueCount > 0 ? stateReady : stateEmpty)
+                            : stateError
 
     readonly property int stateLoading: 0
     readonly property int stateReady: 1

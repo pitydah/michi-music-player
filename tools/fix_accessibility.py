@@ -8,7 +8,6 @@ Only ADD properties -- never remove or modify existing ones.
 
 import os
 import re
-import sys
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SEARCH_DIRS = [
@@ -101,7 +100,6 @@ def find_block_end(lines, start):
     opened = False
     while i < len(lines):
         line = lines[i]
-        stripped = line.strip()
         # Count { and }
         for ch in line:
             if ch == "{":
@@ -147,17 +145,16 @@ def ensure_property(lines, insert_line, indent, prop_line, check_fn, start, end)
 
 
 def process_file(filepath):
-    relpath = os.path.relpath(filepath, PROJECT_ROOT)
     with open(filepath, "r") as f:
         content = f.read()
     original = content
     blocks, lines = find_component_blocks(content)
 
     # Track lines we've already modified to avoid conflicts
-    modified_lines = set()
-    insertions = []  # (insert_at_line, line_content) - to be applied in reverse order
+    _modified_lines = set()
+    _insertions = []  # (insert_at_line, line_content) - to be applied in reverse order
 
-    for typename, block_start, block_end, indent, full_decl in blocks:
+    for typename, block_start, block_end, indent, _full_decl in blocks:
         # Determine role mappings
         role_map = {
             "Button": "Accessible.Button",
@@ -220,11 +217,10 @@ def process_file(filepath):
                      "PageStateManager", "LibraryPageStateGuard",
                      "MichiResponsive", "MichiVisualState", "MichiReducedMotion",
                      "MichiFocusRing", "InlineError", "InlineValidation",
-                     "PageStateManager", "LibraryPageStateGuard",
                      "MichiResponsiveGrid", "MichiSplitView", "MichiPage",
                      "MichiToolbar", "MichiMetadataLine", "MichiStatCard",
                      "MichiTrackRow", "MichiListRow", "MichiArtistTile",
-                     "MichiAlbumTile", "MichiListRow", "MichiPageHeader",
+                     "MichiAlbumTile", "MichiPageHeader",
                      "MonoToggle", "ReducedMotionToggle",
                      "IconSlot", "SectionHeader",
                      "ServiceHealthBadge", "TrackQualityBadge",
@@ -314,15 +310,14 @@ def process_file(filepath):
             continue
 
         # --- 1. Accessible.role ---
-        if expected_role.startswith("Accessible."):
-            if not has_accessible_role(lines, block_start, block_end):
-                role_val = expected_role.split(".")[1]
-                insert_at = block_start + 1
-                # Find a good insertion point: after opening brace, before child components
-                lines.insert(insert_at, indent + "    Accessible.role: Accessible." + role_val + "\n")
-                block_end += 1
-                stats["accessible_role"] = stats.get("accessible_role", 0) + 1
-                stats["files_modified"].add(filepath)
+        if expected_role.startswith("Accessible.") and not has_accessible_role(lines, block_start, block_end):
+            role_val = expected_role.split(".")[1]
+            insert_at = block_start + 1
+            # Find a good insertion point: after opening brace, before child components
+            lines.insert(insert_at, indent + "    Accessible.role: Accessible." + role_val + "\n")
+            block_end += 1
+            stats["accessible_role"] = stats.get("accessible_role", 0) + 1
+            stats["files_modified"].add(filepath)
 
         # --- 2. Accessible.name ---
         if typename in {"MichiButton", "MichiIconButton", "MichiSlider", "MichiTextField",
@@ -360,45 +355,46 @@ def process_file(filepath):
                 stats["files_modified"].add(filepath)
 
         # --- 3. activeFocusOnTab: true ---
-        if typename not in {"SidebarItem", "FilterChip", "MonoToggle", "ReducedMotionToggle",
-                             "PageHeader", "DiscoveryResultCard",
-                             "MichiTabBar", "MichiMenuItem",
-                             }:
-            if not has_active_focus_on_tab(lines, block_start, block_end):
-                if typename not in {"Text", "Image", "Rectangle", "Row", "Column",
+        _skip_focus_types = {"SidebarItem", "FilterChip", "MonoToggle", "ReducedMotionToggle",
+                              "PageHeader", "DiscoveryResultCard",
+                              "MichiTabBar", "MichiMenuItem"}
+        _skip_focus_static_types = {"Text", "Image", "Rectangle", "Row", "Column",
                                      "RowLayout", "ColumnLayout", "Item", "FocusScope",
                                      "Repeater", "Behavior", "NumberAnimation",
                                      "ColorAnimation", "SequentialAnimation", "PropertyAnimation",
                                      "HoverHandler", "ToolTip", "BusyIndicator", "Timer",
-                                     "GlassMaterial", "InputMaterial"}:
-                    insert_at = block_start + 1
-                    while insert_at < block_end - 1:
-                        s = lines[insert_at].strip()
-                        if s.startswith("Accessible.") or s.startswith("id:") or s.startswith("objectName:") or s.startswith("property"):
-                            insert_at += 1
-                        else:
-                            break
-                    if not lines[insert_at].strip().startswith("activeFocusOnTab:"):
-                        lines.insert(insert_at, indent + "    activeFocusOnTab: true\n")
-                        block_end += 1
-                        stats["active_focus_on_tab"] = stats.get("active_focus_on_tab", 0) + 1
-                        stats["files_modified"].add(filepath)
+                                     "GlassMaterial", "InputMaterial"}
+        if (typename not in _skip_focus_types
+                and not has_active_focus_on_tab(lines, block_start, block_end)
+                and typename not in _skip_focus_static_types):
+            insert_at = block_start + 1
+            while insert_at < block_end - 1:
+                s = lines[insert_at].strip()
+                if s.startswith("Accessible.") or s.startswith("id:") or s.startswith("objectName:") or s.startswith("property"):
+                    insert_at += 1
+                else:
+                    break
+            if not lines[insert_at].strip().startswith("activeFocusOnTab:"):
+                lines.insert(insert_at, indent + "    activeFocusOnTab: true\n")
+                block_end += 1
+                stats["active_focus_on_tab"] = stats.get("active_focus_on_tab", 0) + 1
+                stats["files_modified"].add(filepath)
 
         # --- 4. Accessible.checked for CheckBox/Switch/RadioButton ---
-        if typename in {"MichiCheckBox", "MichiSwitch", "MichiRadioButton",
-                         "CheckBox", "Switch", "RadioButton", "CheckDelegate"}:
-            if not has_accessible_checked(lines, block_start, block_end):
-                insert_at = block_start + 1
-                while insert_at < block_end - 1:
-                    s = lines[insert_at].strip()
-                    if s.startswith("Accessible."):
-                        insert_at += 1
-                    else:
-                        break
-                lines.insert(insert_at, indent + "    Accessible.checked: root.checked\n")
-                block_end += 1
-                stats["accessible_checked"] = stats.get("accessible_checked", 0) + 1
-                stats["files_modified"].add(filepath)
+        if (typename in {"MichiCheckBox", "MichiSwitch", "MichiRadioButton",
+                         "CheckBox", "Switch", "RadioButton", "CheckDelegate"}
+                and not has_accessible_checked(lines, block_start, block_end)):
+            insert_at = block_start + 1
+            while insert_at < block_end - 1:
+                s = lines[insert_at].strip()
+                if s.startswith("Accessible."):
+                    insert_at += 1
+                else:
+                    break
+            lines.insert(insert_at, indent + "    Accessible.checked: root.checked\n")
+            block_end += 1
+            stats["accessible_checked"] = stats.get("accessible_checked", 0) + 1
+            stats["files_modified"].add(filepath)
 
         # --- 5. Keys handlers for MouseArea items ---
         # Check if this component has a MouseArea but no Keys handlers
@@ -418,69 +414,68 @@ def process_file(filepath):
                 has_on_press = True
 
         # For components with MouseArea but no keyboard handling, add Keys + Accessible.onPressAction
-        if has_ma and not has_return_key and not has_space_key and not has_on_press:
-            if typename not in {"MichiSlider", "MichiCheckBox", "MichiSwitch",
-                                 "MichiRadioButton", "MichiComboBox", "MichiTabBar",
-                                 "MichiButton", "MichiIconButton", "MichiDialog",
-                                 "MichiMenuItem", "MichiMenu"}:
-                # Add Keys.onReturnPressed and Keys.onSpacePressed before closing brace
-                if not has_return_key and not has_space_key:
-                    # Find the closing brace
-                    close_brace_line = block_end - 1
-                    while close_brace_line > block_start and lines[close_brace_line].strip() != "}":
-                        close_brace_line -= 1
-                    if close_brace_line > block_start:
-                        # Check if the handler would be redundant
-                        # Only add if the component has a signal that suggests interactivity
-                        has_clicked = False
-                        has_toggled = False
-                        for j in range(block_start, block_end):
-                            s = lines[j].strip()
-                            if "signal clicked" in s or "signal toggled" in s:
-                                has_clicked = True
-                                break
-                        if has_clicked:
-                            lines.insert(close_brace_line, indent + "    Keys.onSpacePressed: function(event) {\n")
-                            lines.insert(close_brace_line + 1, indent + "        root.clicked()\n")
-                            lines.insert(close_brace_line + 2, indent + "        event.accepted = true\n")
-                            lines.insert(close_brace_line + 3, indent + "    }\n")
-                            lines.insert(close_brace_line + 4, indent + "\n")
-                            lines.insert(close_brace_line + 5, indent + "    Keys.onReturnPressed: function(event) {\n")
-                            lines.insert(close_brace_line + 6, indent + "        root.clicked()\n")
-                            lines.insert(close_brace_line + 7, indent + "        event.accepted = true\n")
-                            lines.insert(close_brace_line + 8, indent + "    }\n")
-                            block_end += 9
-                            stats["keys_handlers"] = stats.get("keys_handlers", 0) + 1
-                            stats["files_modified"].add(filepath)
-
-        # --- 6. Accessible.onPressAction for interactive items ---
-        if has_ma and not has_on_press and not has_return_key:
-            if typename in {"FilterChip", "SidebarItem", "DiscoveryResultCard"}:
-                # Add onPressAction alongside role
+        if (has_ma and not has_return_key and not has_space_key and not has_on_press
+                and typename not in {"MichiSlider", "MichiCheckBox", "MichiSwitch",
+                                     "MichiRadioButton", "MichiComboBox", "MichiTabBar",
+                                     "MichiButton", "MichiIconButton", "MichiDialog",
+                                     "MichiMenuItem", "MichiMenu"}):
+            # Add Keys.onReturnPressed and Keys.onSpacePressed before closing brace
+            # Find the closing brace
+            close_brace_line = block_end - 1
+            while close_brace_line > block_start and lines[close_brace_line].strip() != "}":
+                close_brace_line -= 1
+            if close_brace_line > block_start:
+                # Check if the handler would be redundant
+                # Only add if the component has a signal that suggests interactivity
+                has_clicked = False
+                _has_toggled = False
                 for j in range(block_start, block_end):
                     s = lines[j].strip()
-                    if s.startswith("Accessible.role:"):
-                        # Insert after this line
-                        lines.insert(j + 1, indent + "    Accessible.onPressAction: root.clicked\n")
-                        block_end += 1
-                        stats["accessible_on_press"] = stats.get("accessible_on_press", 0) + 1
-                        stats["files_modified"].add(filepath)
+                    if "signal clicked" in s or "signal toggled" in s:
+                        has_clicked = True
                         break
+                if has_clicked:
+                    lines.insert(close_brace_line, indent + "    Keys.onSpacePressed: function(event) {\n")
+                    lines.insert(close_brace_line + 1, indent + "        root.clicked()\n")
+                    lines.insert(close_brace_line + 2, indent + "        event.accepted = true\n")
+                    lines.insert(close_brace_line + 3, indent + "    }\n")
+                    lines.insert(close_brace_line + 4, indent + "\n")
+                    lines.insert(close_brace_line + 5, indent + "    Keys.onReturnPressed: function(event) {\n")
+                    lines.insert(close_brace_line + 6, indent + "        root.clicked()\n")
+                    lines.insert(close_brace_line + 7, indent + "        event.accepted = true\n")
+                    lines.insert(close_brace_line + 8, indent + "    }\n")
+                    block_end += 9
+                    stats["keys_handlers"] = stats.get("keys_handlers", 0) + 1
+                    stats["files_modified"].add(filepath)
+
+        # --- 6. Accessible.onPressAction for interactive items ---
+        if (has_ma and not has_on_press and not has_return_key
+                and typename in {"FilterChip", "SidebarItem", "DiscoveryResultCard"}):
+            # Add onPressAction alongside role
+            for j in range(block_start, block_end):
+                s = lines[j].strip()
+                if s.startswith("Accessible.role:"):
+                    # Insert after this line
+                    lines.insert(j + 1, indent + "    Accessible.onPressAction: root.clicked\n")
+                    block_end += 1
+                    stats["accessible_on_press"] = stats.get("accessible_on_press", 0) + 1
+                    stats["files_modified"].add(filepath)
+                    break
 
         # --- 7. closePolicy: Popup.CloseOnEscape for Dialogs ---
-        if typename in {"MichiDialog", "Dialog", "Popup"}:
-            if not has_close_policy(lines, block_start, block_end):
-                insert_at = block_start + 1
-                while insert_at < block_end - 1:
-                    s = lines[insert_at].strip()
-                    if s.startswith("Accessible.") or s.startswith("id:") or s.startswith("objectName:") or s.startswith("property"):
-                        insert_at += 1
-                    else:
-                        break
-                lines.insert(insert_at, indent + "    closePolicy: Popup.CloseOnEscape\n")
-                block_end += 1
-                stats["close_on_escape"] = stats.get("close_on_escape", 0) + 1
-                stats["files_modified"].add(filepath)
+        if (typename in {"MichiDialog", "Dialog", "Popup"}
+                and not has_close_policy(lines, block_start, block_end)):
+            insert_at = block_start + 1
+            while insert_at < block_end - 1:
+                s = lines[insert_at].strip()
+                if s.startswith("Accessible.") or s.startswith("id:") or s.startswith("objectName:") or s.startswith("property"):
+                    insert_at += 1
+                else:
+                    break
+            lines.insert(insert_at, indent + "    closePolicy: Popup.CloseOnEscape\n")
+            block_end += 1
+            stats["close_on_escape"] = stats.get("close_on_escape", 0) + 1
+            stats["files_modified"].add(filepath)
 
     # Apply all insertions in reverse order
 
@@ -493,7 +488,7 @@ def process_file(filepath):
 def main():
     qml_files = []
     for d in SEARCH_DIRS:
-        for root, dirs, files in os.walk(d):
+        for root, _dirs, files in os.walk(d):
             for f in files:
                 if f.endswith(".qml"):
                     qml_files.append(os.path.join(root, f))

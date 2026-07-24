@@ -12,9 +12,9 @@ Item {
 
     Accessible.role: Accessible.Pane
     Accessible.name: "Reproducción"
+    Accessible.description: "Control de reproducción actual: play/pause, siguiente/anterior, volumen, seek y controles de calidad"
 
-    property var ps: typeof nowplayingBridge !== "undefined" ? nowplayingBridge
-                   : (typeof playbackBridge !== "undefined" ? playbackBridge : null)
+    property var ps: typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null
     property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false

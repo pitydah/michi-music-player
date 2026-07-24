@@ -1,4 +1,3 @@
-from unittest.mock import MagicMock
 from sync.sync_discovery import DiscoveryServer
 
 

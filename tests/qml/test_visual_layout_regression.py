@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import pytest
@@ -18,11 +17,12 @@ REPO_DIR = QML_DIR.parent
 class HomeBridgeStub(QObject):
     snapshotChanged = Signal()
 
-    def __init__(self, tracks: int, sources: int, jobs: int = 0) -> None:
+    def __init__(self, tracks: int, sources: int, jobs: int = 0, degraded: bool = False) -> None:
         super().__init__()
         self._tracks = tracks
         self._sources = sources
         self._jobs = jobs
+        self._degraded = degraded
 
     @Property(int, notify=snapshotChanged)
     def libraryTracks(self) -> int:  # noqa: N802
@@ -55,6 +55,18 @@ class HomeBridgeStub(QObject):
     @Property(str, notify=snapshotChanged)
     def currentArtist(self) -> str:  # noqa: N802
         return ""
+
+    @Property(bool, notify=snapshotChanged)
+    def degraded(self) -> bool:
+        return self._degraded
+
+    @Property(str, notify=snapshotChanged)
+    def degradedMessage(self) -> str:  # noqa: N802
+        return "Conexiones no disponibles" if self._degraded else ""
+
+    @Property(str, notify=snapshotChanged)
+    def ecosystemState(self) -> str:  # noqa: N802
+        return "not_configured"
 
     @Slot(result=bool)
     def refresh(self) -> bool:
@@ -155,9 +167,9 @@ Window {{
         engine.deleteLater()
 
 
-def _home_page(qapp, tracks: int, sources: int, width: int = 1200):
+def _home_page(qapp, tracks: int, sources: int, width: int = 1200, degraded: bool = False):
     engine = QQmlEngine()
-    bridge = HomeBridgeStub(tracks, sources)
+    bridge = HomeBridgeStub(tracks, sources, degraded=degraded)
     navigation = NavigationStub()
     engine.rootContext().setContextProperty("homeBridge", bridge)
     engine.rootContext().setContextProperty("navigationBridge", navigation)
@@ -175,13 +187,14 @@ def test_home_empty_and_ready_render_real_content(qapp) -> None:
         try:
             assert page.property("state") == expected_state
             hero = _named(page, "homeHero")
-            assert "Centro Michi" in _visible_texts(hero)
             if expected_state == "EMPTY":
                 welcome = _named(page, "homeEmptyWelcome")
                 assert welcome.property("visible") is True
                 assert "Tu música comienza aquí" in _visible_texts(welcome)
+                assert _named(page, "homeHero").property("visible") is False
                 assert _named(page, "homeQuickGrid").property("visible") is False
             else:
+                assert "Centro Michi" in _visible_texts(hero)
                 for card_name in ("libraryStatusCard", "ecosystemCard", "assistantCard"):
                     card = _named(page, card_name)
                     assert card.property("visible") is True
@@ -193,12 +206,28 @@ def test_home_empty_and_ready_render_real_content(qapp) -> None:
             navigation.deleteLater()
 
 
-@pytest.mark.parametrize("width, columns", [(1500, 4), (1499, 2), (900, 2), (899, 1)])
-def test_home_quick_grid_breakpoints(qapp, width: int, columns: int) -> None:
+@pytest.mark.parametrize("width", [500, 700, 900, 1500])
+def test_home_quick_grid_uses_available_width(qapp, width: int) -> None:
     engine, page, bridge, navigation = _home_page(qapp, 120, 1, width)
     try:
         grid = _named(page, "homeQuickGrid")
-        assert grid.property("columns") == columns
+        columns = grid.property("columnCount")
+        assert 1 <= columns <= 4
+        assert grid.property("cellWidth") >= 260 or columns == 1
+    finally:
+        page.deleteLater()
+        engine.deleteLater()
+        bridge.deleteLater()
+        navigation.deleteLater()
+
+
+def test_home_degraded_state_keeps_useful_content(qapp) -> None:
+    engine, page, bridge, navigation = _home_page(qapp, 120, 1, degraded=True)
+    try:
+        assert page.property("state") == "DEGRADED"
+        assert _named(page, "homeDegradedCard").property("visible") is True
+        assert _named(page, "libraryStatusCard").property("visible") is True
+        assert _named(page, "homeQuickGrid").property("visible") is True
     finally:
         page.deleteLater()
         engine.deleteLater()
@@ -242,7 +271,7 @@ def test_sidebar_icon_inventory_exists_and_loads(qapp) -> None:
         assert "gradient" not in svg, f"Gradient in icon {icon_path}"
 
 
-@pytest.mark.parametrize("width,height", [(1366, 96), (700, 112)])
+@pytest.mark.parametrize("width,height", [(1366, 128), (900, 128), (899, 128), (700, 128)])
 def test_now_playing_bar_children_stay_inside(qapp, width: int, height: int) -> None:
     engine = QQmlEngine()
     component = _component(engine, "components/NowPlayingBar.qml")

@@ -23,8 +23,8 @@ Item {
     signal shuffleClicked()
     signal repeatClicked()
 
-    implicitHeight: compact ? 46 : 54
-    implicitWidth: compact ? 222 : 250
+    implicitHeight: compact ? 46 : 58
+    implicitWidth: compact ? 222 : 258
 
     Row {
         anchors.centerIn: parent
@@ -54,7 +54,7 @@ Item {
         }
 
         Item {
-            width: root.compact ? 46 : 54
+            width: root.compact ? 46 : 58
             height: width
 
             Rectangle {
@@ -78,8 +78,8 @@ Item {
                 Image {
                     anchors.centerIn: parent
                     source: root.isPlaying ? "../../icons/nowplaying_clean/warm_pause_32.png" : "../../icons/nowplaying_clean/warm_play_32.png"
-                    sourceSize.width: root.compact ? 28 : (root.isPlaying ? 32 : 34)
-                    sourceSize.height: root.compact ? 28 : (root.isPlaying ? 32 : 34)
+                    sourceSize.width: root.compact ? 28 : (root.isPlaying ? 34 : 36)
+                    sourceSize.height: root.compact ? 28 : (root.isPlaying ? 34 : 36)
                     fillMode: Image.PreserveAspectFit
                 }
 

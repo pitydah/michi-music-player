@@ -5,12 +5,14 @@ import "../../theme"
 import "../../components"
 import "../library"
 
-Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Recent"
+LibrarySectionPage {
     objectName: "recentPage"
     focus: true
     id: root
+    sectionTitle: qsTr("Recientes")
+    sectionSubtitle: qsTr("Incorporaciones recientes de tu biblioteca")
+    sectionIcon: "history"
+    navigationIndex: 6
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
 

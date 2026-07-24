@@ -15,6 +15,8 @@ logger = logging.getLogger("michi.service_container")
 
 
 class ContainerState(Enum):
+    """Lifecycle states for the service container."""
+
     CREATED = "created"
     BUILDING = "building"
     BUILT = "built"
@@ -27,6 +29,8 @@ class ContainerState(Enum):
 
 
 class ServicePriority(Enum):
+    """Availability requirements for a registered service."""
+
     REQUIRED = "required"
     OPTIONAL = "optional"
     CAPABILITY_GATED = "capability_gated"
@@ -38,9 +42,11 @@ BUILTIN_DEPENDENCIES: dict[str, set[str]] = {
     "playlist_service": {"library_query_service", "connection_factory"},
     "history_query_service": {"connection_factory"},
     "global_search_service": {"connection_factory", "library_query_service"},
-    "playback_service": {"queue_service", "worker_manager"},
-    "queue_service": {"playlist_service", "worker_manager"},
-    "track_action_service": {"queue_service", "playback_service"},
+    "playback_service": {"worker_manager"},
+    "queue_service": {"playback_service"},
+    "track_action_service": {
+        "queue_service", "library_query_service", "playlist_service"
+    },
     "audio_lab_service": {"worker_manager", "library_query_service", "metadata_service"},
     "metadata_service": {"worker_manager", "library_mutation_service"},
     "library_doctor_service": {"library_query_service", "library_mutation_service", "worker_manager"},
@@ -49,7 +55,8 @@ BUILTIN_DEPENDENCIES: dict[str, set[str]] = {
     "home_audio_service": {"worker_manager", "playback_service"},
     "diagnostics_service": {"worker_manager", "library_query_service", "settings_service"},
     "michi_ai_service": {
-        "global_search_service", "playback_service", "playlist_service",
+        "global_search_service", "playback_service", "queue_service",
+        "playlist_service",
         "diagnostics_service", "settings_service", "action_registry",
     },
     "notification_service": {"action_registry", "job_service"},
@@ -181,6 +188,8 @@ class ServiceContainer:
         return self._priorities.get(name)
 
     def build_order(self) -> list[str]:
+        """Return service names in dependency-safe startup order."""
+
         deps = {}
         for name in self._all_names():
             deps[name] = set(self._dependencies.get(name, BUILTIN_DEPENDENCIES.get(name, set())))
@@ -188,7 +197,7 @@ class ServiceContainer:
             dep_set.intersection_update(self._all_names())
         ordered = []
         seen = set()
-        def visit(n: str, path: set):
+        def visit(n: str, path: set[str]) -> None:
             if n in seen:
                 return
             if n in path:
@@ -205,6 +214,8 @@ class ServiceContainer:
         return ordered
 
     def validate(self) -> list[str]:
+        """Return registration, dependency, and required-service failures."""
+
         errors = []
         for name in self._required_names():
             svc = self._services.get(name)
@@ -227,103 +238,103 @@ class ServiceContainer:
         return errors
 
     @property
-    def database(self):
+    def database(self) -> Any | None:
         return self._services.get("database")
 
     @property
-    def connection_factory(self):
+    def connection_factory(self) -> Any | None:
         return self._services.get("connection_factory")
 
     @property
-    def worker_manager(self):
+    def worker_manager(self) -> Any | None:
         return self._services.get("worker_manager")
 
     @property
-    def query_executor(self):
+    def query_executor(self) -> Any | None:
         return self._services.get("query_executor")
 
     @property
-    def job_service(self):
+    def job_service(self) -> Any | None:
         return self._services.get("job_service")
 
     @property
-    def event_bus(self):
+    def event_bus(self) -> Any | None:
         return self._services.get("event_bus")
 
     @property
-    def settings_coordinator(self):
+    def settings_coordinator(self) -> Any | None:
         return self._services.get("settings_coordinator")
 
     @property
-    def settings_service(self):
+    def settings_service(self) -> Any | None:
         return self._services.get("settings_service")
 
     @property
-    def theme_service(self):
+    def theme_service(self) -> Any | None:
         return self._services.get("theme_service")
 
     @property
-    def accessibility_service(self):
+    def accessibility_service(self) -> Any | None:
         return self._services.get("accessibility_service")
 
     @property
-    def library_query_service(self):
+    def library_query_service(self) -> Any | None:
         return self._services.get("library_query_service")
 
     @property
-    def library_sources_service(self):
+    def library_sources_service(self) -> Any | None:
         return self._services.get("library_sources_service")
 
     @property
-    def library_mutation_service(self):
+    def library_mutation_service(self) -> Any | None:
         return self._services.get("library_mutation_service")
 
     @property
-    def playlist_service(self):
+    def playlist_service(self) -> Any | None:
         return self._services.get("playlist_service")
 
     @property
-    def history_query_service(self):
+    def history_query_service(self) -> Any | None:
         return self._services.get("history_query_service")
 
     @property
-    def global_search_service(self):
+    def global_search_service(self) -> Any | None:
         return self._services.get("global_search_service")
 
     @property
-    def mix_query_service(self):
+    def mix_query_service(self) -> Any | None:
         return self._services.get("mix_query_service")
 
     @property
-    def mix_service(self):
+    def mix_service(self) -> Any | None:
         return self._services.get("mix_service")
 
     @property
-    def track_action_service(self):
+    def track_action_service(self) -> Any | None:
         return self._services.get("track_action_service")
 
     @property
-    def playback_service(self):
+    def playback_service(self) -> Any | None:
         return self._services.get("playback_service")
 
     @property
-    def queue_service(self):
+    def queue_service(self) -> Any | None:
         return self._services.get("queue_service")
 
     @property
-    def audio_lab_service(self):
+    def audio_lab_service(self) -> Any | None:
         return self._services.get("audio_lab_service")
 
     @property
-    def metadata_service(self):
+    def metadata_service(self) -> Any | None:
         return self._services.get("metadata_service")
 
     @property
-    def smart_tagging_service(self):
+    def smart_tagging_service(self) -> Any | None:
         return self._services.get("smart_tagging_service")
 
     @property
-    def library_doctor_service(self):
+    def library_doctor_service(self) -> Any | None:
         return self._services.get("library_doctor_service")
 
     @property
@@ -344,54 +355,56 @@ class ServiceContainer:
         return self._services["device_sync_service"]
 
     @property
-    def connection_service(self):
+    def connection_service(self) -> Any | None:
         return self._services.get("connection_service")
 
     @property
-    def home_audio_service(self):
+    def home_audio_service(self) -> Any | None:
         return self._services.get("home_audio_service")
 
     @property
-    def diagnostics_service(self):
+    def diagnostics_service(self) -> Any | None:
         return self._services.get("diagnostics_service")
 
     @property
-    def notification_service(self):
+    def notification_service(self) -> Any | None:
         return self._services.get("notification_service")
 
     @property
-    def action_registry(self):
+    def action_registry(self) -> Any | None:
         return self._services.get("action_registry")
 
     @property
-    def confirmation_service(self):
+    def confirmation_service(self) -> Any | None:
         return self._services.get("confirmation_service")
 
     @property
-    def runtime_persistence(self):
+    def runtime_persistence(self) -> Any | None:
         return self._services.get("runtime_persistence")
 
     @property
-    def process_controller(self):
+    def process_controller(self) -> Any | None:
         return self._services.get("process_controller")
 
     @property
-    def radio_service(self):
+    def radio_service(self) -> Any | None:
         return self._services.get("radio_service")
 
     @property
-    def lyrics_service(self):
+    def lyrics_service(self) -> Any | None:
         return self._services.get("lyrics_service")
 
     @property
-    def michi_ai_service(self):
+    def michi_ai_service(self) -> Any | None:
         return self._services.get("michi_ai_service")
 
     @property
     def state(self) -> ContainerState:
         return self._state
 
-    def start(self):
+    def start(self) -> ServiceContainer | None:
+        """Validate and start registered services in dependency order."""
+
         errors = self.validate()
         if errors:
             logger.error("Container start blocked by %d validation error(s)", len(errors))
@@ -403,7 +416,6 @@ class ServiceContainer:
             self._state = ContainerState.BUILDING
         self._state = ContainerState.STARTING
         order = self.build_order()
-        started_required = 0
         for name in order:
             if name not in self._services or self._services[name] is None:
                 prio = self.priority(name)
@@ -411,7 +423,8 @@ class ServiceContainer:
                     self._failures[name] = "missing"
                 continue
             svc = self._services[name]
-            if hasattr(self, '_service_states') and self._service_states.get(name) in ('ready', 'starting', 'running'):
+            if (hasattr(self, '_service_states')
+                    and self._service_states.get(name) in ('ready', 'starting')):
                 continue
             if hasattr(svc, 'start') and callable(svc.start):
                 try:
@@ -422,9 +435,6 @@ class ServiceContainer:
                     prio = self.priority(name)
                     if prio == ServicePriority.REQUIRED:
                         logger.error("REQUIRED '%s' start failed: %s", name, err)
-            else:
-                if self.priority(name) == ServicePriority.REQUIRED:
-                    started_required += 1
         has_missing_required = any(
             name not in self._services or self._services[name] is None
             for name in self._required_names()
@@ -456,7 +466,7 @@ class ServiceContainer:
             "deferred_physical": len(self._deferred_physical_names()),
         }
 
-    def cancel_all(self):
+    def cancel_all(self) -> None:
         for name in list(self._services.keys()):
             svc = self._services[name]
             if hasattr(svc, 'cancel'):
@@ -465,7 +475,9 @@ class ServiceContainer:
                 except Exception as e:
                     logger.debug("cancel %s: %s", name, e)
 
-    def shutdown(self):
+    def shutdown(self) -> None:
+        """Stop registered services in reverse dependency order."""
+
         self._state = ContainerState.STOPPING
         order = self.build_order()
         all_ordered = list(reversed(order))
@@ -490,7 +502,7 @@ class ServiceContainer:
         self._failures.clear()
         self._state = ContainerState.STOPPED
 
-    def report_failure(self, name: str, error: str):
+    def report_failure(self, name: str, error: str) -> None:
         self._failures[name] = error
         priority = self.priority(name)
         if priority == ServicePriority.REQUIRED:
@@ -521,6 +533,8 @@ class ServiceContainer:
 
 
 class ObservableServiceContainer(ServiceContainer, QObject):
+    """Service container that emits Qt signals for service state changes."""
+
     service_state_changed = Signal(str, str)
 
     VALID_STATES = {"registered", "starting", "ready", "degraded", "unavailable", "failed", "stopping", "stopped"}
@@ -546,7 +560,15 @@ class ObservableServiceContainer(ServiceContainer, QObject):
         except (ValueError, TypeError):
             return False
 
-    def register(self, name, service, priority=None, dependencies=None):
+    def register(
+        self,
+        name: str,
+        service: Any,
+        priority: ServicePriority | None = None,
+        dependencies: tuple[str, ...] | None = None,
+    ) -> None:
+        """Register a service, auto-start it when possible, and emit its state."""
+
         self._service_states[name] = "registered"
         ServiceContainer.register(self, name, service, priority, dependencies or ())
         if self._can_auto_start(service):
@@ -556,18 +578,18 @@ class ObservableServiceContainer(ServiceContainer, QObject):
                 self._service_states[name] = "ready"
             except Exception as e:
                 self._service_states[name] = "failed"
-                logger.error(f"Service {name} failed to start: {e}", exc_info=True)
+                logger.error("Service %s failed to start: %s", name, e, exc_info=True)
         else:
             self._service_states[name] = "ready"
         self.service_state_changed.emit(name, self._service_states[name])
 
-    def get_service_state(self, name) -> str:
+    def get_service_state(self, name: str) -> str:
         return self._service_states.get(name, "unavailable")
 
     def get_service_states(self) -> dict[str, str]:
         return dict(self._service_states)
 
-    def get_service_diagnostics(self, name) -> dict:
+    def get_service_diagnostics(self, name: str) -> dict:
         return {
             "name": name,
             "state": self._service_states.get(name, "unavailable"),

@@ -1,7 +1,5 @@
 """Tests for Home Audio — Snapcast, HA adapter, handoff."""
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 
 class TestHomeAudioService:

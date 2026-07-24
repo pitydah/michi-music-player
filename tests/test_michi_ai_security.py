@@ -1,7 +1,5 @@
 """Tests for Michi AI security — no direct DB/FS access, action validation."""
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 
 class TestMichiAIActions:
@@ -17,7 +15,8 @@ class TestMichiAIActions:
         assert len(ar.actions) > 0
 
     def test_no_direct_db_in_tools(self):
-        import ast, os
+        import ast
+        import os
         tools_dir = "michi_ai/v2/tools"
         violations = []
         for fname in os.listdir(tools_dir):
@@ -32,7 +31,7 @@ class TestMichiAIActions:
         assert len(violations) == 0
 
     def test_no_direct_filesystem_in_tools(self):
-        import ast, os
+        import os
         tools_dir = "michi_ai/v2/tools"
         violations = []
         for fname in os.listdir(tools_dir):
@@ -47,7 +46,7 @@ class TestMichiAIActions:
         assert len(violations) == 0
 
     def test_tool_imports_use_registry(self):
-        import ast, os
+        import os
         tools_dir = "michi_ai/v2/tools"
         for fname in os.listdir(tools_dir):
             if not fname.endswith(".py") or fname.startswith("_"):

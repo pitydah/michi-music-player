@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../theme"
 import "../../components"
+import "../../components/foundations"
 
 Item {
     Accessible.role: Accessible.Pane
@@ -27,24 +28,29 @@ Item {
     property bool isShiftPressed: false
     property int lastClickedIndex: -1
     property int rowIndex: 0
+    MichiResponsive { id: responsive; availableWidth: root.width }
 
     signal playClicked()
     signal doubleClicked()
     signal rightClicked(int mx, int my)
     signal selectionToggled(int id, bool ctrl, bool shift)
 
-    height: MichiTheme.rowHeightCompact
+    height: MichiTheme.rowHeightComfortable
+    activeFocusOnTab: true
     Accessible.onPressAction: root.playClicked()
 
     Rectangle {
         anchors.fill: parent
-        color: root.isSelected ? MichiTheme.colors.accentSurface :
-               mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
+        color: root.isSelected ? MichiTheme.colors.accentSelection
+               : mouseArea.pressed ? MichiTheme.colors.surfacePressed
+               : mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
+        border.width: root.activeFocus ? MichiTheme.focusWidth : 0
+        border.color: MichiTheme.colors.borderFocus
 
         Rectangle {
             anchors.left: parent.left
             width: 3; height: parent.height
-            color: MichiTheme.colors.accentBlue
+            color: MichiTheme.colors.accentPrimary
             visible: root.isSelected
         }
     }
@@ -71,7 +77,7 @@ Item {
 
         Text {
             text: root.trackTitle || ""
-            color: root.isSelected ? MichiTheme.colors.accentBlue : MichiTheme.colors.textPrimary
+            color: root.isSelected ? MichiTheme.colors.accentPrimary : MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.bodySize
             font.weight: root.isSelected ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
             Layout.fillWidth: true
@@ -83,7 +89,7 @@ Item {
             text: root.trackArtist || ""
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.bodySize
-            Layout.preferredWidth: 160
+            Layout.preferredWidth: responsive.compact ? 120 : 160
             elide: Text.ElideRight
         }
 
@@ -91,7 +97,7 @@ Item {
             text: root.trackAlbum || ""
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.bodySize
-            Layout.preferredWidth: 160
+            Layout.preferredWidth: responsive.compact ? 120 : 160
             elide: Text.ElideRight
         }
 
@@ -99,6 +105,7 @@ Item {
             format: root.trackFormat
             bitDepth: root.trackQuality
             width: 40
+            visible: !responsive.compact
         }
 
         Text {
@@ -106,6 +113,7 @@ Item {
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
             width: 40
+            visible: !responsive.compact
             horizontalAlignment: Text.AlignRight
         }
 
@@ -114,6 +122,7 @@ Item {
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
             width: 48
+            visible: !responsive.compact
             horizontalAlignment: Text.AlignRight
         }
     }
@@ -137,6 +146,9 @@ Item {
 
         onDoubleClicked: root.playClicked()
     }
+
+    Keys.onReturnPressed: root.playClicked()
+    Keys.onSpacePressed: root.selectionToggled(root.trackId, false, false)
 
     function formatDuration(secs) {
         var m = Math.floor(secs / 60)

@@ -26,8 +26,6 @@ Dialog {
     y: (parent.height - height) / 3
     width: 380
     objectName: "playlistEditorDialog"
-    Accessible.role: Accessible.Dialog
-    Accessible.name: title
     closePolicy: Popup.CloseOnEscape
 
     function validate() {

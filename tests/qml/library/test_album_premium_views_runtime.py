@@ -59,6 +59,15 @@ def test_album_view_host_exposes_all_five_modes(engine):
     host.deleteLater()
 
 
+def test_album_view_selector_supports_keyboard_cycle() -> None:
+    source = (QML_ROOT / "pages/library/album/AlbumViewHost.qml").read_text()
+
+    assert "function cycleView(step)" in source
+    assert "Qt.Key_Tab" in source
+    assert "Keys.onReturnPressed" in source
+    assert "Keys.onSpacePressed" in source
+
+
 @pytest.mark.parametrize("width", (800, 1200, 1600))
 @pytest.mark.parametrize(("relative_path", "object_name"), ALBUM_VIEWS)
 def test_populated_album_view_instantiates_at_supported_widths(

@@ -1,10 +1,9 @@
 """Tests for Michi AI integration with ActionRegistry."""
-import pytest
 
 
 class TestMichiAIActionRegistry:
     def test_action_registry_execute(self):
-        from ui_qml_bridge.action_registry import ActionRegistry, ActionDescriptor
+        from ui_qml_bridge.action_registry import ActionRegistry
         ar = ActionRegistry()
         ar.bind_default_handlers()
         assert hasattr(ar, 'execute')
@@ -27,7 +26,7 @@ class TestMichiAIActionRegistry:
 
     def test_michi_ai_uses_action_registry(self):
         """Verify Michi AI tool calls go through ActionRegistry."""
-        import ast, os
+        import os
         tools_dir = "michi_ai/v2/tools"
         uses_registry = 0
         total = 0
@@ -42,7 +41,7 @@ class TestMichiAIActionRegistry:
         assert uses_registry >= 1, "No Michi AI tools use ActionRegistry"
 
     def test_no_direct_db_in_michi_ai(self):
-        import ast, os
+        import os
         tools_dir = "michi_ai/v2/tools"
         violations = []
         for fname in os.listdir(tools_dir):

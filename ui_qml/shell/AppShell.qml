@@ -55,7 +55,7 @@ Item {
                 Layout.preferredWidth: sidebar.collapsed ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
                 Layout.minimumWidth: Layout.preferredWidth
                 Layout.maximumWidth: Layout.preferredWidth
-                forceCompact: root.width < 1100
+                forceCompact: root.width < MichiTheme.breakpoints.sidebarCompact
                 currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
 
                 onRouteRequested: function(route) {
@@ -70,7 +70,9 @@ Item {
             }
 
             Rectangle {
-                width: 4
+                Layout.preferredWidth: 0
+                Layout.minimumWidth: 0
+                Layout.maximumWidth: 0
                 height: parent.height
                 color: "transparent"
                 MouseArea {
@@ -118,6 +120,18 @@ Item {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate(route)
                     }
+
+                    onSearchRequested: function(query, submitted) {
+                        if (typeof navigationBridge === "undefined" || !navigationBridge)
+                            return
+                        var normalized = query.trim()
+                        if (normalized === "" && navigationBridge.currentRoute !== "search")
+                            return
+                        navigationBridge.navigateWithParams("search", {
+                            query: normalized,
+                            submitted: submitted
+                        })
+                    }
                 }
 
                 PageStack {
@@ -132,9 +146,15 @@ Item {
         NowPlayingBar {
             id: nowPlayingBar
             Layout.fillWidth: true
-            Layout.preferredHeight: implicitHeight
-            Layout.maximumHeight: 112
-            Layout.minimumHeight: 96
+            Layout.preferredHeight: {
+                if (root.width >= MichiTheme.breakpoints.medium)
+                    return MichiTheme.nowPlaying.desktop
+                if (root.width >= MichiTheme.breakpoints.compact)
+                    return MichiTheme.nowPlaying.medium
+                return MichiTheme.nowPlaying.compact
+            }
+            Layout.maximumHeight: MichiTheme.nowPlaying.desktop
+            Layout.minimumHeight: MichiTheme.nowPlaying.minHeight
             z: 10
         }
     }

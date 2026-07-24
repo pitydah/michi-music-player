@@ -5,12 +5,14 @@ import "../../theme"
 import "../../components"
 import "../library"
 
-Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Favorites"
+LibrarySectionPage {
     objectName: "favoritesPage"
     focus: true
     id: root
+    sectionTitle: qsTr("Favoritos")
+    sectionSubtitle: qsTr("Tu música marcada para volver a escuchar")
+    sectionIcon: "songs"
+    navigationIndex: 6
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
 

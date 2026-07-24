@@ -1,4 +1,4 @@
-from core.library.library_query_service import LibraryQueryService, LibraryQueryError
+from core.library.library_query_service import LibraryQueryService
 
 
 class TestLibraryQuery:

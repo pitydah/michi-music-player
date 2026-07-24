@@ -21,7 +21,7 @@ def _resolve_filepaths(db: Any, track_ids: list[int]) -> list[str]:
 
 
 def add_tracks_to_queue(db: Any, track_ids: list[int],
-                        playback: Any = None, play_now: bool = False) -> ToolResult:
+                        queue_service: Any = None, play_now: bool = False) -> ToolResult:
     try:
         if not track_ids:
             return ToolResult(
@@ -34,8 +34,12 @@ def add_tracks_to_queue(db: Any, track_ids: list[int],
                 name="add_tracks_to_queue", success=False,
                 error="No se encontraron las canciones en la biblioteca.",
             )
-        if playback is not None and hasattr(playback, "enqueue"):
-            playback.enqueue(filepaths, play_now=play_now)
+        if queue_service is None:
+            return ToolResult(
+                name="add_tracks_to_queue", success=False,
+                error="Queue service unavailable.",
+            )
+        queue_service.enqueue(filepaths, play_now=play_now)
         return ToolResult(
             name="add_tracks_to_queue", success=True,
             data={
@@ -50,7 +54,7 @@ def add_tracks_to_queue(db: Any, track_ids: list[int],
         )
 
 
-def play_track(db: Any, track_id: int, playback: Any = None) -> ToolResult:
+def play_track(db: Any, track_id: int, queue_service: Any = None) -> ToolResult:
     try:
         filepaths = _resolve_filepaths(db, [track_id])
         if not filepaths:
@@ -58,8 +62,12 @@ def play_track(db: Any, track_id: int, playback: Any = None) -> ToolResult:
                 name="play_track", success=False,
                 error="No se encontro la cancion en la biblioteca.",
             )
-        if playback is not None and hasattr(playback, "enqueue"):
-            playback.enqueue(filepaths, play_now=True)
+        if queue_service is None:
+            return ToolResult(
+                name="play_track", success=False,
+                error="Queue service unavailable.",
+            )
+        queue_service.enqueue(filepaths, play_now=True)
         return ToolResult(
             name="play_track", success=True,
             data={"status": "playing", "track_id": track_id},

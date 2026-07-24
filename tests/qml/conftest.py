@@ -1,4 +1,16 @@
-"""pytest configuration for QML tests — registers V18 markers and user_properties plugin."""
+"""pytest configuration and shared fixtures for QML tests."""
+
+from unittest.mock import MagicMock
+
+import pytest
+
+
+@pytest.fixture
+def audio_quality_adapter():
+    """Provide the required quality adapter dependency without probing audio."""
+    adapter = MagicMock()
+    adapter.probe.return_value = {"ok": False, "error": ""}
+    return adapter
 
 
 def pytest_configure(config):

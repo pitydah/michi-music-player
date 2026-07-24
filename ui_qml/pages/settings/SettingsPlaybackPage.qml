@@ -188,7 +188,6 @@ Item {
                                 to: 100
                                 value: root._loadValue("playback/default_volume", 70)
                                 accessibleName: "Volumen predeterminado"
-                                onMoved: {}
                                 onPressedChanged: {
                                     if (!pressed) root._saveValue("playback/default_volume", value)
                                 }

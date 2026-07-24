@@ -1,7 +1,4 @@
 """Tests for SyncPlanner — plan generation, space, preview, transcode."""
-import os
-import shutil
-import tempfile
 
 import pytest
 

@@ -20,6 +20,8 @@ Item {
     property bool forceCompact: false
     property bool collapsed: forceCompact || _userCollapsed
     property var expandedGroups: ({})
+    property string compactFlyoutRoute: ""
+    property real compactFlyoutY: 0
     property var registry: typeof routeRegistryBridge !== "undefined"
                            ? routeRegistryBridge : null
     readonly property string canonicalCurrentRoute: registry
@@ -40,7 +42,10 @@ Item {
 
     function persistExpandedGroups() {
         if (typeof pageStateStore !== "undefined" && pageStateStore)
-            pageStateStore.saveState("__sidebar__", {"expandedGroups": expandedGroups})
+            pageStateStore.saveState("__sidebar__", {
+                "expandedGroups": expandedGroups,
+                "userCollapsed": _userCollapsed
+            })
     }
 
     function restoreExpandedGroups() {
@@ -50,6 +55,8 @@ Item {
         var saved = pageStateStore.restoreState("__sidebar__")
         if (saved && saved.expandedGroups)
             expandedGroups = saved.expandedGroups
+        if (saved && saved.userCollapsed !== undefined)
+            _userCollapsed = saved.userCollapsed
     }
 
     function toggleGroup(groupRoute) {
@@ -68,22 +75,76 @@ Item {
             return
         var canonical = registry.resolveRoute(route)
         var parent = registry.getParentRoute(canonical)
-        if (!parent || expandedGroups[parent] === true)
+        if (!parent)
             return
-        var updated = {}
-        for (var key in expandedGroups) {
-            if (expandedGroups.hasOwnProperty(key))
-                updated[key] = expandedGroups[key]
+        if (expandedGroups[parent] !== true) {
+            var updated = {}
+            for (var key in expandedGroups) {
+                if (expandedGroups.hasOwnProperty(key))
+                    updated[key] = expandedGroups[key]
+            }
+            updated[parent] = true
+            expandedGroups = updated
+            persistExpandedGroups()
         }
-        updated[parent] = true
-        expandedGroups = updated
-        persistExpandedGroups()
+        Qt.callLater(function() { ensureRouteVisible(canonical) })
+    }
+
+    function ensureRouteVisible(route) {
+        if (!registry || !navigationFlickable)
+            return
+        var sections = registry.sidebarSections
+        var y = MichiTheme.spacing.md
+        for (var sectionIndex = 0; sectionIndex < sections.length; ++sectionIndex) {
+            var section = sections[sectionIndex]
+            if (section.route === route) {
+                break
+            }
+            if (section.children) {
+                for (var childIndex = 0; childIndex < section.children.length; ++childIndex) {
+                    if (section.children[childIndex].route === route) {
+                        y += 44 + childIndex * 44
+                        sectionIndex = sections.length
+                        break
+                    }
+                }
+            }
+            if (sectionIndex < sections.length)
+                y += 44 + (isGroupExpanded(section.route) ? (section.children || []).length * 44 : 0)
+        }
+        if (y < navigationFlickable.contentY)
+            navigationFlickable.contentY = Math.max(0, y - MichiTheme.spacing.sm)
+        else if (y + 44 > navigationFlickable.contentY + navigationFlickable.height)
+            navigationFlickable.contentY = Math.min(
+                navigationFlickable.contentHeight - navigationFlickable.height,
+                y + 44 - navigationFlickable.height)
     }
 
     function isParentActive(parentRoute) {
         return registry
                 ? registry.isChildActive(parentRoute, canonicalCurrentRoute)
                 : canonicalCurrentRoute === parentRoute
+    }
+
+    function toggleCollapsed() {
+        _userCollapsed = !_userCollapsed
+        compactFlyoutRoute = ""
+        persistExpandedGroups()
+    }
+
+    function flyoutItems(groupRoute) {
+        if (!registry)
+            return []
+        var sections = registry.sidebarSections
+        for (var index = 0; index < sections.length; ++index) {
+            var section = sections[index]
+            if (section.route === groupRoute) {
+                var items = [{"route": section.route, "title": section.title,
+                              "icon": section.icon, "status": section.status}]
+                return items.concat(section.children || [])
+            }
+        }
+        return []
     }
 
     onCurrentRouteChanged: autoExpandForRoute(currentRoute)
@@ -115,23 +176,36 @@ Item {
                 height: root.collapsed ? 48 : 44
                 radius: MichiTheme.radius.sm
                 color: root.isParentActive(section.sectionRoute) && !root.collapsed
-                       ? MichiTheme.colors.accentSelection : "transparent"
+                       ? MichiTheme.colors.accentSelection
+                       : mainAction.pressed ? MichiTheme.colors.surfacePressed
+                       : mainAction.containsMouse ? MichiTheme.colors.surfaceHover
+                       : "transparent"
+                border.width: mainAction.activeFocus ? MichiTheme.focusWidth : 0
+                border.color: MichiTheme.colors.borderFocus
+
+                Rectangle {
+                    visible: root.isParentActive(section.sectionRoute)
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 3
+                    height: 22
+                    radius: MichiTheme.radius.xs
+                    color: MichiTheme.colors.accentPrimary
+                }
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: root.collapsed ? 10 : MichiTheme.spacing.md
-                    anchors.rightMargin: root.collapsed ? 10 : MichiTheme.spacing.sm
+                    anchors.leftMargin: root.collapsed ? (parent.width - 20) / 2 : MichiTheme.spacing.md
+                    anchors.rightMargin: root.collapsed ? (parent.width - 20) / 2 : MichiTheme.spacing.sm
                     spacing: MichiTheme.spacing.sm
 
-                    Image {
+                    MichiIcon {
                         Layout.preferredWidth: 20
                         Layout.preferredHeight: 20
                         Layout.alignment: Qt.AlignVCenter
-                        source: root.iconPath(section.sectionIcon)
-                        sourceSize.width: 20
-                        sourceSize.height: 20
-                        fillMode: Image.PreserveAspectFit
-                        opacity: root.isParentActive(section.sectionRoute) ? 1.0 : 0.82
+                        iconKey: section.sectionIcon
+                        size: 20
+                        active: root.isParentActive(section.sectionRoute)
                     }
 
                     Text {
@@ -148,13 +222,17 @@ Item {
                         elide: Text.ElideRight
                     }
 
-                    Text {
+                    MichiIcon {
                         Layout.preferredWidth: 20
+                        Layout.preferredHeight: 20
                         visible: section.expandable && !root.collapsed && section.children.length > 0
-                        text: section.expanded ? "▾" : "▸"
+                        source: "../../icons/nav_forward.svg"
+                        size: 14
                         color: MichiTheme.colors.textMuted
-                        font.pixelSize: 10
-                        horizontalAlignment: Text.AlignHCenter
+                        rotation: section.expanded ? 90 : 0
+                        Behavior on rotation {
+                            NumberAnimation { duration: MichiTheme.motion.fast; easing.type: Easing.OutCubic }
+                        }
                     }
                 }
 
@@ -169,7 +247,19 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     Accessible.role: Accessible.Button
                     Accessible.name: section.sectionTitle
-                    onClicked: root.routeRequested(section.sectionRoute)
+                    activeFocusOnTab: true
+                    function activate() {
+                        if (root.collapsed && section.expandable && section.children.length > 0) {
+                            root.compactFlyoutRoute = section.sectionRoute
+                            root.compactFlyoutY = mainRow.mapToItem(root, 0, 0).y
+                            compactFlyout.open()
+                        } else {
+                            root.routeRequested(section.sectionRoute)
+                        }
+                    }
+                    Keys.onReturnPressed: activate()
+                    Keys.onSpacePressed: activate()
+                    onClicked: activate()
                 }
 
                 MouseArea {
@@ -211,7 +301,7 @@ Item {
                     delegate: Item {
                         id: child
                         width: root.width
-                        height: 38
+                        height: 44
                         property var childSpec: modelData
                         property string childRoute: childSpec.route || ""
                         property string childTitle: childSpec.title || ""
@@ -226,7 +316,12 @@ Item {
                             anchors.centerIn: parent
                             radius: MichiTheme.radius.sm
                             color: root.canonicalCurrentRoute === child.childRoute
-                                   ? MichiTheme.colors.accentSelection : "transparent"
+                                   ? MichiTheme.colors.accentSelection
+                                   : childAction.pressed ? MichiTheme.colors.surfacePressed
+                                   : childAction.containsMouse ? MichiTheme.colors.surfaceHover
+                                   : "transparent"
+                            border.width: childAction.activeFocus ? MichiTheme.focusWidth : 0
+                            border.color: MichiTheme.colors.borderFocus
 
                             Rectangle {
                                 visible: root.canonicalCurrentRoute === child.childRoute
@@ -236,7 +331,7 @@ Item {
                                 anchors.leftMargin: 4
                                 anchors.verticalCenter: parent.verticalCenter
                                 radius: 1
-                                color: MichiTheme.colors.accentBlue
+                                color: MichiTheme.colors.accentPrimary
                             }
 
                             RowLayout {
@@ -245,14 +340,12 @@ Item {
                                 anchors.rightMargin: MichiTheme.spacing.sm
                                 spacing: MichiTheme.spacing.sm
 
-                                Image {
+                                MichiIcon {
                                     Layout.preferredWidth: 16
                                     Layout.preferredHeight: 16
-                                    source: root.iconPath(child.childIcon)
-                                    sourceSize.width: 16
-                                    sourceSize.height: 16
-                                    fillMode: Image.PreserveAspectFit
-                                    opacity: root.canonicalCurrentRoute === child.childRoute ? 1.0 : 0.78
+                                    iconKey: child.childIcon
+                                    size: 16
+                                    active: root.canonicalCurrentRoute === child.childRoute
                                 }
 
                                 Text {
@@ -268,16 +361,23 @@ Item {
                                     elide: Text.ElideRight
                                 }
 
-                                StatusBadge {
+                                Rectangle {
                                     visible: child.childStatus !== "functional"
-                                    text: child.childStatus === "planned" ? qsTr("Planificado")
-                                          : child.childStatus === "experimental" ? qsTr("Experimental")
-                                          : child.childStatus === "partial" ? qsTr("Parcial")
-                                          : child.childStatus === "configuration_required" ? qsTr("Configurar")
-                                          : ""
-                                    kind: child.childStatus === "experimental" ? "experimental"
-                                          : child.childStatus === "configuration_required" ? "warning"
-                                          : "info"
+                                    Layout.preferredWidth: 7
+                                    Layout.preferredHeight: 7
+                                    radius: width / 2
+                                    color: child.childStatus === "experimental"
+                                           ? MichiTheme.colors.accentExperimental
+                                           : child.childStatus === "configuration_required"
+                                             ? MichiTheme.colors.warning
+                                             : MichiTheme.colors.accentInfo
+
+                                    ToolTip.visible: statusHover.containsMouse
+                                    ToolTip.text: child.childStatus === "planned" ? qsTr("Planificado")
+                                                  : child.childStatus === "experimental" ? qsTr("Experimental")
+                                                  : child.childStatus === "partial" ? qsTr("Parcial")
+                                                  : qsTr("Configuración requerida")
+                                    MouseArea { id: statusHover; anchors.fill: parent; hoverEnabled: true }
                                 }
                             }
 
@@ -286,6 +386,7 @@ Item {
                                 objectName: "sidebarChildAction_" + child.childRoute
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
+                                hoverEnabled: true
                                 activeFocusOnTab: true
                                 Accessible.role: Accessible.Button
                                 Accessible.name: qsTr("%1, subsección de %2")
@@ -308,7 +409,55 @@ Item {
             anchors.fill: parent
             spacing: 0
 
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 64
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: root.collapsed ? 21 : MichiTheme.spacing.lg
+                    anchors.rightMargin: MichiTheme.spacing.sm
+                    spacing: MichiTheme.spacing.sm
+
+                    MichiIcon {
+                        Layout.preferredWidth: 28
+                        Layout.preferredHeight: 28
+                        source: "../../icons/app_icon.svg"
+                        size: 28
+                        color: MichiTheme.colors.accentPrimary
+                        accessibleName: qsTr("Michi Music Player")
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: !root.collapsed
+                        text: "Michi Music Player"
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        font.weight: MichiTheme.typography.weightSemiBold
+                        elide: Text.ElideRight
+                    }
+
+                    MichiIconButton {
+                        visible: !root.forceCompact
+                        iconSource: "../../icons/nav_back.svg"
+                        rotation: root.collapsed ? 180 : 0
+                        tooltipText: root.collapsed ? qsTr("Expandir sidebar") : qsTr("Contraer sidebar")
+                        accessibleName: tooltipText
+                        onClicked: root.toggleCollapsed()
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                height: MichiTheme.borderWidth
+                color: MichiTheme.colors.borderSubtle
+            }
+
             Flickable {
+                id: navigationFlickable
+                objectName: "sidebarNavigationFlickable"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 contentWidth: width
@@ -365,12 +514,11 @@ Item {
                                 anchors.rightMargin: MichiTheme.spacing.md
                                 spacing: MichiTheme.spacing.sm
 
-                                Image {
+                                MichiIcon {
                                     Layout.preferredWidth: 20
                                     Layout.preferredHeight: 20
-                                    source: root.iconPath(fixedItem.spec.icon || "")
-                                    sourceSize.width: 20
-                                    sourceSize.height: 20
+                                    iconKey: fixedItem.spec.icon || ""
+                                    size: 20
                                 }
 
                                 Text {
@@ -393,6 +541,69 @@ Item {
                                 onClicked: root.routeRequested(fixedItem.spec.route)
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    Popup {
+        id: compactFlyout
+        parent: Overlay.overlay
+        x: root.width - 2
+        y: Math.max(MichiTheme.spacing.sm,
+                    Math.min(root.compactFlyoutY, root.height - height - MichiTheme.spacing.sm))
+        width: 260
+        height: Math.min(360, flyoutColumn.implicitHeight + MichiTheme.spacing.md * 2)
+        modal: false
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        padding: MichiTheme.spacing.md
+
+        background: Rectangle {
+            radius: MichiTheme.radius.lg
+            color: MichiTheme.colors.surfacePopup
+            border.width: MichiTheme.borderWidth
+            border.color: MichiTheme.colors.borderCard
+        }
+
+        contentItem: Column {
+            id: flyoutColumn
+            spacing: MichiTheme.spacing.xs
+
+            Repeater {
+                model: root.flyoutItems(root.compactFlyoutRoute)
+
+                delegate: Item {
+                    id: flyoutItem
+                    width: flyoutColumn.width
+                    height: MichiTheme.minimumInteractiveSize
+                    property var spec: modelData
+
+                    RowLayout {
+                        anchors.fill: parent
+                        spacing: MichiTheme.spacing.sm
+                        MichiIcon { iconKey: flyoutItem.spec.icon || ""; size: 18 }
+                        Text {
+                            Layout.fillWidth: true
+                            text: flyoutItem.spec.title || ""
+                            color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.bodySize
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        activeFocusOnTab: true
+                        cursorShape: Qt.PointingHandCursor
+                        Accessible.role: Accessible.Button
+                        Accessible.name: flyoutItem.spec.title || ""
+                        function activate() {
+                            root.routeRequested(flyoutItem.spec.route)
+                            compactFlyout.close()
+                        }
+                        Keys.onReturnPressed: activate()
+                        Keys.onSpacePressed: activate()
+                        onClicked: activate()
                     }
                 }
             }

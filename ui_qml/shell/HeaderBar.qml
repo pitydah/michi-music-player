@@ -22,6 +22,11 @@ Item {
     signal backClicked()
     signal forwardClicked()
     signal breadcrumbClicked(string route)
+    signal searchRequested(string query, bool submitted)
+
+    function focusSearch() {
+        searchField.forceInputFocus()
+    }
 
     height: MichiTheme.headerHeight
 
@@ -76,8 +81,10 @@ Item {
                             color: index === breadcrumbs.length - 1
                                 ? MichiTheme.colors.textPrimary
                                 : MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.pageTitleSize
-                            font.weight: MichiTheme.typography.weightSemiBold
+                            font.pixelSize: MichiTheme.typography.bodySize
+                            font.weight: index === breadcrumbs.length - 1
+                                         ? MichiTheme.typography.weightSemiBold
+                                         : MichiTheme.typography.weightNormal
                             elide: Text.ElideRight
                             maximumLineCount: 1
                             Layout.maximumWidth: index === breadcrumbs.length - 1 ? 200 : 120
@@ -87,6 +94,7 @@ Item {
                                 anchors.margins: -4
                                 cursorShape: index < breadcrumbs.length - 1 ? Qt.PointingHandCursor : Qt.ArrowCursor
                                 enabled: index < breadcrumbs.length - 1
+                                activeFocusOnTab: enabled
                                 Accessible.role: Accessible.Button
                                 Accessible.name: qsTr("Ir a ") + modelData.title
                                 onClicked: {
@@ -94,13 +102,15 @@ Item {
                                         root.breadcrumbClicked(modelData.route)
                                     }
                                 }
+                                Keys.onReturnPressed: if (enabled) root.breadcrumbClicked(modelData.route)
+                                Keys.onSpacePressed: if (enabled) root.breadcrumbClicked(modelData.route)
                             }
                         }
 
                         Text {
                             text: "/"
                             color: MichiTheme.colors.textMuted
-                            font.pixelSize: MichiTheme.typography.pageTitleSize
+                            font.pixelSize: MichiTheme.typography.bodySize
                             font.weight: MichiTheme.typography.weightNormal
                             opacity: 0.4
                             visible: index < breadcrumbs.length - 1
@@ -113,8 +123,8 @@ Item {
                 visible: breadcrumbs.length <= 1
                 text: root.pageTitle
                 color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.pageTitleSize
-                font.weight: MichiTheme.typography.weightSemiBold
+                font.pixelSize: MichiTheme.typography.bodySize
+                font.weight: MichiTheme.typography.weightMedium
                 elide: Text.ElideRight
                 maximumLineCount: 1
                 Layout.alignment: Qt.AlignVCenter
@@ -143,8 +153,17 @@ Item {
                 Layout.preferredWidth: Math.min(340, Math.max(220, root.width * 0.28))
                 Layout.maximumWidth: 340
                 placeholderText: qsTr("Buscar en Michi...")
-                objectName: "searchField"
-                Accessible.name: qsTr("Buscar en Michi")
+                controlObjectName: "searchField"
+                accessibleName: qsTr("Buscar en Michi")
+                debounceMs: 300
+                onSearchTextChanged: function(query) {
+                    root.searchRequested(query, false)
+                }
+                onSearchSubmitted: function(query) {
+                    if (query.trim().length > 0)
+                        root.searchRequested(query.trim(), true)
+                }
+                onClearRequested: root.searchRequested("", false)
             }
 
             MichiIconButton {
@@ -153,8 +172,23 @@ Item {
                 iconSource: MichiTheme.darkMode ? "../../icons/theme_sun.svg" : "../../icons/theme_moon.svg"
                 tooltipText: MichiTheme.darkMode ? qsTr("Modo claro") : qsTr("Modo oscuro")
                 accessibleName: tooltipText
-                onClicked: MichiTheme.setDarkMode(!MichiTheme.darkMode)
+                onClicked: {
+                    var dark = !MichiTheme.darkMode
+                    MichiTheme.setDarkMode(dark)
+                    if (typeof themeBridge !== "undefined" && themeBridge)
+                        themeBridge.darkMode = dark
+                }
             }
         }
+    }
+
+    Component.onCompleted: {
+        if (typeof themeBridge !== "undefined" && themeBridge)
+            MichiTheme.setDarkMode(themeBridge.darkMode)
+    }
+
+    Connections {
+        target: typeof themeBridge !== "undefined" ? themeBridge : null
+        function onThemeChanged() { MichiTheme.setDarkMode(themeBridge.darkMode) }
     }
 }

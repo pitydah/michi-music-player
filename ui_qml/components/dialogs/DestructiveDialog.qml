@@ -84,7 +84,7 @@ BaseDialog {
                     text: qsTr("\u26A0")
                     color: MichiTheme.colors.error
                     font.pixelSize: MichiTheme.typography.cardTitleSize
-                    Accessible.role: Accessible.Icon
+                    Accessible.role: Accessible.Graphic
                     Accessible.name: "Advertencia"
                     Accessible.description: "Esta acción no se puede deshacer"
                 }

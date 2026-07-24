@@ -2,10 +2,8 @@
 
 import json
 import hashlib
-import random
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
 
 from sources.base_source import TrackRef
 from sources.subsonic_source import SubsonicSource

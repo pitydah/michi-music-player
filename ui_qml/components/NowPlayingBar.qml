@@ -9,18 +9,20 @@ Item {
     id: root
     Accessible.role: Accessible.Pane
     Accessible.name: "Now Playing Bar"
+    Accessible.description: "Barra de reproducción con controles de play/pause, siguiente, anterior, volumen y seek"
     objectName: "nowPlayingBar"
     focus: true
 
-    property var ps: typeof nowplayingBridge !== "undefined" && nowplayingBridge
-                     ? nowplayingBridge
-                     : (typeof playbackBridge !== "undefined" ? playbackBridge : null)
+    property var ps: typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property var outputBridge: typeof outputProfilesBridge !== "undefined" ? outputProfilesBridge : null
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false
     property bool _backendAvailable: root.ps ? root.ps.backendAvailable : false
     property string _lastShownError: ""
-    readonly property bool compactLayout: width < 900
+    readonly property bool compactLayout: width < MichiTheme.breakpoints.compact
+    readonly property bool mediumLayout: width >= MichiTheme.breakpoints.compact
+                                         && width < MichiTheme.breakpoints.medium
+    readonly property string layoutMode: compactLayout ? "compact" : mediumLayout ? "medium" : "desktop"
 
     function bridgeValue(name, fallbackValue) {
         if (!root.ps) return fallbackValue
@@ -28,7 +30,11 @@ Item {
         return typeof value === "undefined" ? fallbackValue : value
     }
 
-    implicitHeight: compactLayout ? 112 : 96
+    implicitHeight: {
+        if (compactLayout) return MichiTheme.nowPlaying.compact
+        if (mediumLayout) return MichiTheme.nowPlaying.medium
+        return MichiTheme.nowPlaying.desktop
+    }
     height: implicitHeight
     clip: true
 
@@ -83,18 +89,25 @@ Item {
                 visible: !root.compactLayout
                 spacing: MichiTheme.spacing.md
 
+                // Left: metadata (fills equally to center transport)
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.minimumWidth: 220
-                    Layout.maximumWidth: 360
+                    Layout.preferredWidth: 1
                     spacing: MichiTheme.spacing.md
 
                     CoverImage {
-                        Layout.preferredWidth: 56
-                        Layout.preferredHeight: 56
+                        Layout.preferredWidth: 68
+                        Layout.preferredHeight: 68
                         coverRadius: MichiTheme.radius.sm
                         coverKey: root.ps ? root.ps.coverPath : ""
                         showPlaceholder: true
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: if (typeof navigationBridge !== "undefined") navigationBridge.navigate("playback")
+                            Accessible.name: qsTr("Abrir reproducción")
+                        }
                     }
 
                     ColumnLayout {
@@ -106,46 +119,58 @@ Item {
                             Layout.fillWidth: true
                             text: root._hasTrack && root.ps ? root.ps.trackTitle : qsTr("Sin reproducción")
                             color: root._hasTrack ? MichiTheme.colors.textPrimary : MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.bodySize
+                            font.pixelSize: MichiTheme.typography.cardTitleSize
                             font.weight: MichiTheme.typography.weightSemiBold
                             elide: Text.ElideRight
+
+                            MouseArea {
+                                anchors.fill: parent
+                                enabled: root._hasTrack
+                                onClicked: if (typeof navigationBridge !== "undefined") navigationBridge.navigate("playback")
+                                Accessible.name: qsTr("Abrir reproducción")
+                            }
                         }
                         Text {
                             Layout.fillWidth: true
-                            text: root._hasTrack && root.ps ? root.ps.trackArtist : qsTr("Selecciona una canción para comenzar")
+                            text: root._hasTrack && root.ps ? root.ps.trackArtist : qsTr("Abre la biblioteca para elegir")
                             color: MichiTheme.colors.textSecondary
                             font.pixelSize: MichiTheme.typography.secondarySize
                             elide: Text.ElideRight
                         }
                     }
-                }
 
-                Item {
-                    Layout.preferredWidth: 258
-                    Layout.fillHeight: true
-
-                    NowPlayingTransport {
-                        anchors.centerIn: parent
-                        compact: false
-                        isPlaying: root.ps ? root.ps.isPlaying : false
-                        shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
-                        repeatMode: root.ps ? root.ps.repeatMode : "none"
-                        playPauseSupported: root._hasTrack && (root.ps ? root.ps.playPauseSupported : false)
-                        previousSupported: root._hasTrack && (root.ps ? root.ps.previousSupported : false)
-                        nextSupported: root._hasTrack && (root.ps ? root.ps.nextSupported : false)
-                        shuffleSupported: root._hasTrack && (root.ps ? root.ps.shuffleSupported : false)
-                        repeatSupported: root._hasTrack && (root.ps ? root.ps.repeatSupported : false)
-                        onPlayClicked: if (root.ps) root.ps.togglePlay()
-                        onPrevClicked: if (root.ps) root.ps.previous()
-                        onNextClicked: if (root.ps) root.ps.next()
-                        onShuffleClicked: if (root.ps) root.ps.toggleShuffle()
-                        onRepeatClicked: if (root.ps) root.ps.toggleRepeat()
+                    MichiButton {
+                        text: qsTr("Explorar")
+                        variant: "ghost"
+                        visible: !root._hasTrack
+                        onClicked: if (typeof navigationBridge !== "undefined") navigationBridge.navigate("library")
+                        Accessible.name: qsTr("Explorar biblioteca")
                     }
                 }
 
+                // Center: transport (truly centered on viewport)
+                NowPlayingTransport {
+                    Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+                    compact: false
+                    isPlaying: root.ps ? root.ps.isPlaying : false
+                    shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
+                    repeatMode: root.ps ? root.ps.repeatMode : "none"
+                    playPauseSupported: root._hasTrack && (root.ps ? root.ps.playPauseSupported : false)
+                    previousSupported: root._hasTrack && (root.ps ? root.ps.previousSupported : false)
+                    nextSupported: root._hasTrack && (root.ps ? root.ps.nextSupported : false)
+                    shuffleSupported: root._hasTrack && (root.ps ? root.ps.shuffleSupported : false)
+                    repeatSupported: root._hasTrack && (root.ps ? root.ps.repeatSupported : false)
+                    onPlayClicked: if (root.ps) root.ps.togglePlay()
+                    onPrevClicked: if (root.ps) root.ps.previous()
+                    onNextClicked: if (root.ps) root.ps.next()
+                    onShuffleClicked: if (root.ps) root.ps.toggleShuffle()
+                    onRepeatClicked: if (root.ps) root.ps.toggleRepeat()
+                }
+
+                // Right: utilities (fills equally to center transport)
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.minimumWidth: 310
+                    Layout.preferredWidth: 1
                     Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                     spacing: MichiTheme.spacing.xs
 

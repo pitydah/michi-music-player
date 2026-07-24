@@ -1,4 +1,3 @@
-from unittest.mock import MagicMock
 from ui_qml_bridge.command_palette_bridge import CommandPaletteBridge
 
 

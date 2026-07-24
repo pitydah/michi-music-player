@@ -9,11 +9,11 @@ QtObject {
 
     // ── Radius ──
     readonly property QtObject radius: QtObject {
-        readonly property int xs: 2
-        readonly property int sm: 4
-        readonly property int md: 8
-        readonly property int lg: 12
-        readonly property int xl: 16
+        readonly property int xs: 4
+        readonly property int sm: 8
+        readonly property int md: 12
+        readonly property int lg: 16
+        readonly property int xl: 20
         readonly property int pill: 999
     }
 
@@ -39,6 +39,7 @@ QtObject {
     // ── Breakpoints ──
     readonly property QtObject breakpoints: QtObject {
         readonly property int compact: 800
+        readonly property int sidebarCompact: 1024
         readonly property int medium: 1200
         readonly property int wide: 1600
     }
@@ -56,10 +57,37 @@ QtObject {
     readonly property int pageMarginCompact: spacing.lg
     readonly property int pageMarginRegular: spacing.xl
     readonly property int pageMarginWide: spacing.page
-    readonly property int toolbarHeight: 48
+    readonly property int pageSurfaceInset: spacing.md
+    readonly property int pageMaximumWidth: 1680
+    readonly property int sectionSpacing: spacing.xl
+    readonly property int controlHeight: 36
+    readonly property int toolbarHeight: 56
+    readonly property int tableRowHeight: 42
+    readonly property int cardMinimumWidth: 220
     readonly property int rowHeightCompact: 36
     readonly property int rowHeightComfortable: 44
     readonly property int minimumInteractiveSize: 44
+
+    // ── Card and panel heights ──
+    readonly property QtObject cardHeights: QtObject {
+        readonly property int compact: 120
+        readonly property int regular: 180
+        readonly property int tall: 240
+        readonly property int feature: 120
+        readonly property int hero: 200
+        readonly property int status: 88
+    }
+
+    // ── Now Playing heights ──
+    readonly property QtObject nowPlaying: QtObject {
+        readonly property int desktop: 132
+        readonly property int medium: 122
+        readonly property int compact: 108
+        readonly property int minHeight: 96
+    }
+
+    // ── Reduced motion ──
+    property bool reducedMotion: false
 
     // ── Covers ──
     readonly property int coverSizeSmall: 48
@@ -68,9 +96,9 @@ QtObject {
     readonly property int coverRadius: radius.sm
 
     // ── Shell ──
-    readonly property int sidebarWidth: 232
-    readonly property int sidebarWidthCompact: 68
-    readonly property int nowPlayingHeight: 96
+    readonly property int sidebarWidth: 244
+    readonly property int sidebarWidthCompact: 70
+    readonly property int nowPlayingHeight: nowPlaying.desktop
     readonly property int headerHeight: 56
 
     // ── Shortcuts ──

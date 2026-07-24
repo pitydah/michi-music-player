@@ -11,7 +11,7 @@ Rectangle {
     objectName: "libraryTrackHeader"
     focus: true
     id: root
-    width: parent.width; height: 28
+    width: parent.width; height: 36
 
     MichiResponsive { id: responsive; availableWidth: root.width }
 
@@ -31,47 +31,37 @@ Rectangle {
 
         Item { width: 30; height: 1 }
 
-        Repeater {
-            model: responsive.compact ? [
-                {label: qsTr("Título"), key: "title", width: 0.40},
-                {label: qsTr("Artista"), key: "artist", width: 0.30},
-                {label: qsTr("Álbum"), key: "album", width: 0.30},
-            ] : [
-                {label: qsTr("Título"), key: "title", width: 0.28},
-                {label: qsTr("Artista"), key: "artist", width: 0.22},
-                {label: qsTr("Álbum"), key: "album", width: 0.22},
-                {label: qsTr("Cal."), key: "", width: 40},
-                {label: qsTr("Año"), key: "year", width: 40, right: true},
-                {label: qsTr("Dur."), key: "duration", width: 48, right: true},
-            ]
+        HeaderCell { Layout.fillWidth: true; label: qsTr("Título"); sortField: "title" }
+        HeaderCell { Layout.preferredWidth: responsive.compact ? 120 : 160; label: qsTr("Artista"); sortField: "artist" }
+        HeaderCell { Layout.preferredWidth: responsive.compact ? 120 : 160; label: qsTr("Álbum"); sortField: "album" }
+        HeaderCell { visible: !responsive.compact; Layout.preferredWidth: 40; label: qsTr("Cal.") }
+        HeaderCell { visible: !responsive.compact; Layout.preferredWidth: 40; label: qsTr("Año"); sortField: "year"; alignRight: true }
+        HeaderCell { visible: !responsive.compact; Layout.preferredWidth: 48; label: qsTr("Dur."); sortField: "duration"; alignRight: true }
+    }
 
-            Rectangle {
-                width: modelData.width.toString().indexOf(".") >= 0 ? parent.width * parseFloat(modelData.width) : parseInt(modelData.width)
-                height: parent.height
-                color: "transparent"
-
-                Text {
-                    anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                    anchors.rightMargin: MichiTheme.spacing.xs
-                    horizontalAlignment: modelData.right ? Text.AlignRight : Text.AlignLeft
-                    text: modelData.label
-                    color: root.bridge && root.bridge.activeSortKey === modelData.key ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.metaSize
-                    font.weight: root.bridge && root.bridge.activeSortKey === modelData.key ? MichiTheme.typography.weightSemiBold : MichiTheme.typography.weightMedium
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (modelData.key && root.bridge && typeof root.bridge.sortBy !== "undefined")
-                            root.bridge.sortBy(modelData.key)
-                    }
-                }
-            }
+    component HeaderCell: Item {
+        property string label: ""
+        property string sortField: ""
+        property bool alignRight: false
+        height: parent ? parent.height : 36
+        Text {
+            anchors.fill: parent
+            text: parent.label
+            color: root.bridge && root.bridge.activeSortKey === parent.sortField
+                   ? MichiTheme.colors.accentPrimary : MichiTheme.colors.textMuted
+            font.pixelSize: MichiTheme.typography.metaSize
+            font.weight: root.bridge && root.bridge.activeSortKey === parent.sortField
+                         ? MichiTheme.typography.weightSemiBold : MichiTheme.typography.weightMedium
+            verticalAlignment: Text.AlignVCenter
+            horizontalAlignment: parent.alignRight ? Text.AlignRight : Text.AlignLeft
+            elide: Text.ElideRight
         }
-
-        Item { Layout.fillWidth: true }
+        MouseArea {
+            anchors.fill: parent
+            enabled: parent.sortField !== ""
+            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onClicked: if (root.bridge && typeof root.bridge.sortBy !== "undefined") root.bridge.sortBy(parent.sortField)
+        }
     }
 
     Rectangle {

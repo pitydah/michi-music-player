@@ -2,31 +2,52 @@
 from __future__ import annotations
 
 import contextlib
+import logging
 import os
+from typing import Any
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QModelIndex, QPoint, Qt
 from PySide6.QtGui import QPixmap
 
 from audio.player import PlaybackState
+from audio.quality_classifier import classify_audio_quality
 from sources.base_source import TrackRef
 from library.trackref_model import TrackRefTableModel
 from library.cover_art_service import CoverArtService
 
 
+logger = logging.getLogger("michi.playback")
+
+
 class PlaybackController:
-    def __init__(self, window):
+    """Coordinate playback requests and their UI/context presentation."""
+
+    def __init__(self, window: Any, queue_service: Any | None = None,
+                 player_service: Any | None = None) -> None:
         self._win = window
+        self._queue = queue_service
+        self._player = player_service
 
-    def on_table_menu(self, pos):
+    def _require_queue(self) -> Any:
+        if self._queue is None:
+            raise RuntimeError("PlaybackController requires QueueService for queue operations")
+        return self._queue
+
+    def _require_player(self) -> Any:
+        if self._player is None:
+            raise RuntimeError("PlaybackController requires PlayerService for transport")
+        return self._player
+
+    def on_table_menu(self, pos: QPoint) -> None:
         pass
 
-    def _add_to_new_playlist(self, filepath: str):
+    def _add_to_new_playlist(self, filepath: str) -> None:
         pass
 
-    def edit_tags(self, filepath: str):
+    def edit_tags(self, filepath: str) -> None:
         pass
 
-    def on_table_dbl(self, idx):
+    def on_table_dbl(self, idx: QModelIndex) -> None:
         if self._win._ctx.current_section_key == "artists":
             artist_name = self._win._ctx.model.data(
                 self._win._ctx.model.index(idx.row(), TrackRefTableModel.COL_TITLE),
@@ -57,14 +78,28 @@ class PlaybackController:
         if track:
             self.play_trackref(track)
 
-    def play_trackref(self, track: TrackRef):
+    def play_trackref(self, track: TrackRef) -> None:
+        self._start_track_playback(track)
+        self._present_track(track)
+
+    def _start_track_playback(self, track: TrackRef) -> None:
         self._win._ctx.current_ref = track
 
         if track.uri.startswith("http"):
-            self._win._ctx.playback.play_url(track.uri, track.title, track.artist)
+            self._require_player().play_url(track.uri, track.title, track.artist)
         else:
-            self._win._ctx.playback.enqueue([track.uri], play_now=True)
+            self._require_queue().enqueue([track.uri], play_now=True)
 
+    def _present_track(self, track: TrackRef) -> None:
+        name, artist, album, quality_str, item = self._track_presentation_data(track)
+        self._update_player_bar(track, item, quality_str)
+        self._update_route_diagnostics()
+        self._update_background(track)
+        self._update_mpris_metadata(track, name, artist, album)
+        self._show_track_notification(name, artist)
+        self._update_playback_context(track, name, artist, album)
+
+    def _track_presentation_data(self, track: TrackRef) -> tuple[str, str, str, str, Any | None]:
         name = track.title or os.path.basename(track.uri)
         artist = track.artist or ""
         quality_str = ""
@@ -89,25 +124,28 @@ class PlaybackController:
             qual, _ = CoverArtService.quality_label(track.uri)
             quality_str = qual
 
+        return name, artist, album, quality_str, item
+
+    def _update_player_bar(self, track: TrackRef, item: Any | None, quality_str: str) -> None:
         self._win._ctx.player_bar.set_track_from_ref(track)
         self._win._ctx.player_bar.set_quality(quality_str)
 
-        from audio.quality_classifier import classify_audio_quality
         qc = classify_audio_quality(item) if item else {"category": "unknown", "label": quality_str, "tooltip": ""}
         self._win._ctx.player_bar.set_quality_info(
             qc.get("label", quality_str),
             qc.get("category", "unknown"),
             qc.get("tooltip", ""))
 
+    def _update_route_diagnostics(self) -> None:
         try:
             diag = self._win._ctx.player.get_audio_diagnostics() if hasattr(
                 self._win._ctx.player, 'get_audio_diagnostics') else None
             if diag and hasattr(self._win, '_player_bar_ctrl') and self._win._player_bar_ctrl:
                 self._win._player_bar_ctrl.set_route_tooltip(diag)
         except Exception:
-            import logging
-            logging.getLogger("michi.playback").debug("audio diagnostics not available")
+            logger.debug("audio diagnostics not available")
 
+    def _update_background(self, track: TrackRef) -> None:
         if track.uri.startswith("http") and track.cover_path:
             pix = QPixmap(track.cover_path)
             if not pix.isNull():
@@ -123,6 +161,13 @@ class PlaybackController:
             else:
                 self._win._ctx.bg_theme.reset()
 
+    def _update_mpris_metadata(
+        self,
+        track: TrackRef,
+        name: str,
+        artist: str,
+        album: str,
+    ) -> None:
         dur = int(track.duration)
         if dur <= 0:
             idx_item = self._win._ctx.items_index.get(track.uri)
@@ -135,9 +180,17 @@ class PlaybackController:
                 title=name, artist=artist or "",
                 album=album, duration=dur)
 
+    def _show_track_notification(self, name: str, artist: str) -> None:
         self._win._ctx.notify_track(name, artist)
         self._win._ctx.set_window_title(f"Michi Music Player — {name}")
 
+    def _update_playback_context(
+        self,
+        track: TrackRef,
+        name: str,
+        artist: str,
+        album: str,
+    ) -> None:
         ctx_svc = getattr(self._win._ctx, "context_svc", None)
         if ctx_svc:
             ctx_svc.update_selection(
@@ -168,37 +221,41 @@ class PlaybackController:
             )
         return TrackRef(uri=filepath, title=os.path.basename(filepath))
 
-    def play_file(self, filepath: str, add_to_queue: bool = False):
+    def play_file(self, filepath: str, add_to_queue: bool = False) -> None:
         track = self._trackref_from_filepath(filepath)
         self.play_trackref(track)
 
-    def play_filepaths(self, filepaths: list[str], play_now: bool = True):
+    def play_filepaths(self, filepaths: list[str], play_now: bool = True) -> None:
         if not filepaths:
             return
         if play_now:
             self.play_file(filepaths[0])
             for fp in filepaths[1:]:
-                self._win._ctx.playback.enqueue([fp], play_now=False)
+                self._require_queue().enqueue([fp], play_now=False)
         else:
-            self._win._ctx.playback.enqueue(filepaths, play_now=False)
+            self._require_queue().enqueue(filepaths, play_now=False)
 
-    def on_state(self, state: PlaybackState):
+    def on_state(self, state: PlaybackState) -> None:
         s = ("playing" if state == PlaybackState.PLAYING else
              "paused" if state == PlaybackState.PAUSED else "stopped")
         self._win._ctx.player_bar.set_state(s)
         if state == PlaybackState.STOPPED:
             self._win._ctx.player_bar.set_position(0)
 
-    def on_stop(self):
-        self._win._ctx.playback.stop()
+    def on_stop(self) -> None:
+        self._require_player().stop()
         self._win._ctx.player_bar.reset()
         self._win._ctx.bg_theme.reset()
         self._win._ctx.set_window_title("Michi Music Player")
 
-    def open_eq(self):
+    def open_eq(self) -> None:
         pass
 
-    def connect_context_events(self, playback=None, context_svc=None):
+    def connect_context_events(
+        self,
+        playback: Any | None = None,
+        context_svc: Any | None = None,
+    ) -> None:
         playback = playback or getattr(self._win, "_playback", None)
         ctx = context_svc or getattr(self._win, "_context_svc", None)
         if not playback or not ctx:
@@ -216,7 +273,7 @@ class PlaybackController:
         )
         playback.queue_changed.connect(self._on_queue_changed_for_context)
 
-    def _on_track_changed_for_context(self, title: str, artist: str):
+    def _on_track_changed_for_context(self, title: str, artist: str) -> None:
         ctx = getattr(self, "_context_svc_for_events", None)
         if not ctx:
             return
@@ -228,7 +285,7 @@ class PlaybackController:
         ctx.record_now_playing_updated(title=title, artist=artist)
         ctx.record_track_played_title_artist(title=title, artist=artist)
 
-    def _on_queue_changed_for_context(self, queue):
+    def _on_queue_changed_for_context(self, queue: Any) -> None:
         ctx = getattr(self, "_context_svc_for_events", None)
         if not ctx:
             return
@@ -242,62 +299,62 @@ class PlaybackController:
         self._context_queue_was_active = True
         ctx.record_queue_updated(count=count, source="playback")
 
-    def _context(self):
+    def _context(self) -> Any | None:
         return (
             getattr(getattr(self._win, "_services", None), "context_svc", None)
             or getattr(self._win._ctx, "context_svc", None)
         )
 
     @staticmethod
-    def _read_attr(playback, *attrs):
+    def _read_attr(playback: Any, *attrs: str) -> Any | None:
         for attr in attrs:
             if hasattr(playback, attr):
                 value = getattr(playback, attr)
                 return value() if callable(value) else value
         return None
 
-    def _read_shuffle_state(self):
-        return self._read_attr(self._win._playback, "shuffle", "shuffle_enabled", "_shuffle")
+    def _read_shuffle_state(self) -> Any | None:
+        return self._read_attr(self._require_queue(), "shuffle", "shuffle_enabled", "_shuffle")
 
-    def _read_repeat_state(self):
-        return self._read_attr(self._win._playback, "repeat", "repeat_mode", "_repeat")
+    def _read_repeat_state(self) -> Any | None:
+        return self._read_attr(self._require_queue(), "repeat", "repeat_mode", "_repeat")
 
-    def toggle_shuffle_with_context(self):
-        self._win._playback.toggle_shuffle()
+    def toggle_shuffle_with_context(self) -> None:
+        self._require_queue().toggle_shuffle()
         ctx = self._context()
         if ctx:
             ctx.record_playback_mode_changed(shuffle=self._read_shuffle_state())
 
-    def toggle_repeat_with_context(self):
-        new_mode = self._win._playback.toggle_repeat()
+    def toggle_repeat_with_context(self) -> None:
+        result = self._require_queue().toggle_repeat()
+        new_mode = result.get("mode") if isinstance(result, dict) else None
         ctx = self._context()
         if ctx:
             ctx.record_playback_mode_changed(repeat=new_mode or self._read_repeat_state())
 
-    def enqueue_with_context(self, filepaths, play_now=True, source="library",
-                             title="", artist=""):
+    def enqueue_with_context(
+        self,
+        filepaths: list[str],
+        play_now: bool = True,
+        source: str = "library",
+        title: str = "",
+        artist: str = "",
+    ) -> None:
         ctx = self._context()
+        queue = self._require_queue()
         if not ctx or not filepaths:
-            self._win._playback.enqueue(filepaths, play_now)
+            queue.enqueue(filepaths, play_now=play_now)
             return
         if len(filepaths) == 1 and (title or artist):
             ctx.record_track_queued(title=title, artist=artist, source=source)
         else:
             ctx.record_track_queued(source=source)
-        self._win._playback.enqueue(filepaths, play_now)
-        final_count = None
-        for attr in ("queue", "_queue", "current_queue"):
-            q = getattr(self._win._playback, attr, None)
-            if q is not None:
-                try:
-                    final_count = len(q)
-                    break
-                except TypeError:
-                    pass
+        queue.enqueue(filepaths, play_now=play_now)
+        final_count = self._read_attr(queue, "count")
         payload_count = final_count if final_count is not None else len(filepaths)
         ctx.record_queue_updated(count=payload_count, source=source, added_count=len(filepaths))
 
-    def _resolve_track_model_and_row(self, current):
+    def _resolve_track_model_and_row(self, current: QModelIndex) -> tuple[Any | None, int]:
         if not current or not current.isValid():
             return None, -1
         model = None
@@ -332,12 +389,16 @@ class PlaybackController:
             return model, current.row()
         return None, -1
 
-    def _ensure_table_model_registry(self):
+    def _ensure_table_model_registry(self) -> dict[int, Any]:
         if not hasattr(self, "_track_table_models"):
             self._track_table_models = {}
         return self._track_table_models
 
-    def attach_track_table(self, table=None, model=None):
+    def attach_track_table(
+        self,
+        table: Any | None = None,
+        model: Any | None = None,
+    ) -> Any | None:
         table = table or self._win._ctx.table
         if table is None:
             return None
@@ -351,7 +412,7 @@ class PlaybackController:
         self.connect_table_selection(table=table)
         return table
 
-    def detach_track_table(self, table=None):
+    def detach_track_table(self, table: Any | None = None) -> None:
         table = table or getattr(self, "_active_context_table", None)
         if table is None:
             return
@@ -359,7 +420,7 @@ class PlaybackController:
         if getattr(self, "_active_context_table", None) is table:
             self._active_context_table = None
 
-    def connect_table_selection(self, table=None):
+    def connect_table_selection(self, table: Any | None = None) -> None:
         table = table or self._win._ctx.table
         if not table:
             return
@@ -371,7 +432,7 @@ class PlaybackController:
             sel.currentChanged.disconnect(self._on_table_selection)
         sel.currentChanged.connect(self._on_table_selection)
 
-    def _on_table_selection(self, current, previous):
+    def _on_table_selection(self, current: QModelIndex, previous: QModelIndex) -> None:
         model, row = self._resolve_track_model_and_row(current)
         if model is None or row < 0:
             return

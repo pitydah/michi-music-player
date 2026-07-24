@@ -87,7 +87,7 @@ Item {
 
     Menu {
         id: contextMenu
-        Accessible.role: Accessible.PopupMenu
+        Accessible.role: Accessible.Menu
         Accessible.name: "Opciones de lista"
 
         MenuItem {

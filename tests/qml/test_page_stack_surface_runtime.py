@@ -1,0 +1,85 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from PySide6.QtCore import QObject, QUrl
+from PySide6.QtQml import QQmlComponent, QQmlEngine
+from PySide6.QtTest import QTest
+
+from ui_qml_bridge.route_registry_bridge import RouteRegistryBridge
+
+
+QML_ROOT = Path(__file__).resolve().parents[2] / "ui_qml"
+
+
+def test_page_stack_loads_route_inside_canonical_surface(qapp) -> None:
+    engine = QQmlEngine()
+    registry = RouteRegistryBridge()
+    engine.rootContext().setContextProperty("routeRegistryBridge", registry)
+    component = QQmlComponent(engine)
+    component.loadUrl(QUrl.fromLocalFile(str(QML_ROOT / "shell/PageStack.qml")))
+    assert component.isReady(), component.errorString()
+    stack = component.createWithInitialProperties({"width": 1000, "height": 700})
+    assert stack is not None, component.errorString()
+
+    stack.loadRoute("home")
+    for _ in range(100):
+        qapp.processEvents()
+        if stack.property("lastLoadedRoute") == "home":
+            break
+        QTest.qWait(10)
+
+    container = stack.findChild(QObject, "pageStackContainer")
+    surface = stack.findChild(QObject, "pageSurface")
+    content = stack.findChild(QObject, "pageContentViewport")
+    assert stack.property("lastLoadedRoute") == "home"
+    assert stack.property("loadedObjectName") == "homePage"
+    assert container is not None
+    assert surface is not None
+    assert content is not None
+    assert surface.property("width") < stack.property("width")
+    assert surface.property("height") < stack.property("height")
+
+    stack.deleteLater()
+    registry.deleteLater()
+    engine.deleteLater()
+
+
+def test_now_playing_utility_routes_load_functional_pages(qapp) -> None:
+    engine = QQmlEngine()
+    registry = RouteRegistryBridge()
+    engine.rootContext().setContextProperty("routeRegistryBridge", registry)
+    component = QQmlComponent(engine)
+    component.loadUrl(QUrl.fromLocalFile(str(QML_ROOT / "shell/PageStack.qml")))
+    assert component.isReady(), component.errorString()
+    stack = component.createWithInitialProperties({"width": 1000, "height": 700})
+    assert stack is not None, component.errorString()
+
+    for route, object_name in (
+        ("library", "libraryPage_control"),
+        ("library.genres", "genresPage"),
+        ("library.composers", "composersPage"),
+        ("library.folders", "folderBrowserPage"),
+        ("library.collections", "libraryCollectionsPage"),
+        ("library.favorites", "favoritesPage"),
+        ("library.recent", "recentPage"),
+        ("library.most_played", "mostPlayedPage"),
+        ("library.unplayed", "unplayedPage"),
+        ("library.years", "yearsPage"),
+        ("library.missing", "missingPage"),
+        ("equalizer", "equalizerPage"),
+        ("audio_lab.output_profiles", "outputProfilesPage"),
+        ("queue", "queuePage_control"),
+    ):
+        stack.loadRoute(route)
+        for _ in range(100):
+            qapp.processEvents()
+            if stack.property("loadedObjectName") == object_name:
+                break
+            QTest.qWait(10)
+        assert stack.property("loadedObjectName") == object_name
+        assert stack.property("lastError") == ""
+
+    stack.deleteLater()
+    registry.deleteLater()
+    engine.deleteLater()

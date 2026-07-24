@@ -1,7 +1,5 @@
 """Tests for Michi AI advanced — intents, action validation, download as job, fallback."""
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 
 class TestMichiAIIntents:
@@ -21,7 +19,7 @@ class TestMichiAIIntents:
 
     def test_no_direct_file_access(self):
         """Verify Michi AI tools don't access filesystem directly."""
-        import ast, os
+        import os
         tools_dir = "michi_ai/v2/tools"
         violations = []
         for fname in os.listdir(tools_dir):

@@ -13,7 +13,7 @@ QQC2.Popup {
 
     objectName: "ContextActionMenu"
 
-    Accessible.role: Accessible.PopupMenu
+    Accessible.role: Accessible.Menu
     Accessible.name: "Menú contextual"
 
     width: Math.min(280, parent ? parent.width * 0.8 : 280)

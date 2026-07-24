@@ -5,16 +5,33 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import QObject, QUrl
 from PySide6.QtQml import QJSEngine, QQmlComponent, QQmlEngine
 
 pytestmark = [pytest.mark.qml_module("library")]
 
 QML_ROOT = Path(__file__).resolve().parents[3] / "ui_qml"
 
+SECTION_PAGES = (
+    ("pages/library/GenresPage.qml", "genresPage", 3),
+    ("pages/library/ComposersPage.qml", "composersPage", 4),
+    ("pages/library/FolderBrowserPage.qml", "folderBrowserPage", 5),
+    ("pages/library/CollectionsPage.qml", "libraryCollectionsPage", 6),
+    ("pages/library/FavoritesPage.qml", "favoritesPage", 6),
+    ("pages/library/RecentPage.qml", "recentPage", 6),
+    ("pages/library/MostPlayedPage.qml", "mostPlayedPage", 6),
+    ("pages/library/UnplayedPage.qml", "unplayedPage", 6),
+    ("pages/library/YearsPage.qml", "yearsPage", 6),
+    ("pages/library/MissingPage.qml", "missingPage", 6),
+)
+
 COMPONENTS = (
+    ("components/ContextToolbar.qml", "contextToolbar"),
+    ("components/layout/MichiPage.qml", "michiPage"),
+    ("components/layout/MichiPageHeader.qml", "michiPageHeader"),
     ("components/MichiLibraryToolbar.qml", "michiLibraryToolbar"),
     ("pages/library/LibraryPage.qml", "libraryPage_control"),
+    ("pages/library/LibraryNavigationBar.qml", "libraryNavigationBar"),
     ("pages/library/LibraryFilterBar.qml", "libraryFilterBar"),
     ("pages/library/LibraryTrackTable.qml", "libraryTrackTable"),
     ("pages/library/LibrarySelectionBar.qml", "librarySelectionBar"),
@@ -22,7 +39,7 @@ COMPONENTS = (
     ("pages/library/AlbumDetailPage.qml", "albumDetailPage"),
     ("pages/library/ArtistDetailPage.qml", "artistDetailPage"),
     ("shell/PageStack.qml", "pageStack"),
-)
+) + tuple((path, name) for path, name, _index in SECTION_PAGES)
 
 
 @pytest.fixture
@@ -47,6 +64,98 @@ def test_premium_library_component_compiles_and_instantiates(
     assert instance is not None, component.errorString()
     assert instance.objectName() == object_name
     instance.deleteLater()
+
+
+@pytest.mark.parametrize("width", (800, 1200))
+def test_library_uses_canonical_page_surface_at_supported_widths(engine, width):
+    component = QQmlComponent(engine)
+    component.loadUrl(QUrl.fromLocalFile(str(QML_ROOT / "pages/library/LibraryPage.qml")))
+    assert component.isReady(), component.errorString()
+
+    instance = component.createWithInitialProperties({"width": width, "height": 700})
+    assert instance is not None, component.errorString()
+
+    header = instance.findChild(QObject, "michiPageHeader")
+    body = instance.findChild(QObject, "michiPageBody")
+    toolbar = instance.findChild(QObject, "michiLibraryToolbar")
+    visible_headers = [
+        item for item in instance.findChildren(QObject, "michiPageHeader")
+        if item.property("visible")
+    ]
+    assert header is not None
+    assert header.property("title") == "Biblioteca"
+    assert body is not None
+    assert body.property("height") > 0
+    assert toolbar is not None
+    assert toolbar.property("title") == "Canciones"
+    assert len(visible_headers) == 1
+
+    instance.deleteLater()
+
+
+def test_library_uses_shared_page_states() -> None:
+    source = (QML_ROOT / "pages/library/LibraryPage.qml").read_text()
+
+    assert "MichiLoadingState {" in source
+    assert source.count("MichiEmptyState {") == 5
+    assert source.count("MichiErrorState {") == 2
+    assert "LibraryEmptyState {" not in source
+    assert "LibraryErrorState {" not in source
+
+
+def test_library_secondary_navigation_exposes_target_information_architecture() -> None:
+    source = (QML_ROOT / "pages/library/LibraryNavigationBar.qml").read_text()
+
+    for route in (
+        "library.songs",
+        "library.albums",
+        "library.artists",
+        "library.genres",
+        "library.composers",
+        "library.folders",
+        "library.collections",
+    ):
+        assert route in source
+
+
+@pytest.mark.parametrize(("relative_path", "object_name", "expected_index"), SECTION_PAGES)
+def test_library_section_pages_share_secondary_navigation(
+    engine,
+    relative_path,
+    object_name,
+    expected_index,
+):
+    component = QQmlComponent(engine)
+    component.loadUrl(QUrl.fromLocalFile(str(QML_ROOT / relative_path)))
+    assert component.isReady(), component.errorString()
+    instance = component.createWithInitialProperties({"width": 1000, "height": 700})
+    assert instance is not None, component.errorString()
+
+    navigation = instance.findChild(QObject, "libraryNavigationBar")
+    header = instance.findChild(QObject, "michiPageHeader")
+    assert navigation is not None
+    assert navigation.property("currentIndex") == expected_index
+    assert header is not None
+    assert header.property("visible") is True
+    assert header.property("title") != ""
+
+    instance.deleteLater()
+
+
+def test_library_section_actions_use_canonical_routes_and_model_api() -> None:
+    genres = (QML_ROOT / "pages/library/GenresPage.qml").read_text()
+    composers = (QML_ROOT / "pages/library/ComposersPage.qml").read_text()
+    years = (QML_ROOT / "pages/library/YearsPage.qml").read_text()
+    folders = (QML_ROOT / "pages/library/FolderBrowserPage.qml").read_text()
+
+    assert 'navigateWithParams("library.genre_detail"' in genres
+    assert 'navigateWithParams("library.composer_detail"' in composers
+    assert "root.lib.setYearFilter(String(year))" in years
+    assert "root.folderModel.refresh(root._currentPath)" in folders
+    assert 'refresh("parent_path"' not in folders
+    assert "Keys.onReturnPressed" in genres
+    assert "Keys.onReturnPressed" in composers
+    assert "Keys.onReturnPressed" in years
 
 
 def _query_service(track_count: int = 1):

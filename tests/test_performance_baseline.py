@@ -3,7 +3,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -13,7 +12,6 @@ class TestPerformance:
         """Full bootstrap should complete quickly."""
         import time
         start = time.time()
-        import importlib
         # Import and build services (no GUI)
         from core.service_container import ServiceContainer
         from core.composition.infrastructure import build

@@ -1,5 +1,4 @@
 """Tests for Michi Micro Server interaction — discovery, health, capabilities."""
-from unittest.mock import MagicMock, patch
 
 import pytest
 

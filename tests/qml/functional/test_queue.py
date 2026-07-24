@@ -122,8 +122,13 @@ class TestQueueEdgeCases:
         assert qsvc.get_current() is None
 
     def test_play_next_empty(self, qsvc):
-        with pytest.raises((KeyError, UnboundLocalError, IndexError)):
-            qsvc.play_next({"filepath": "/test/x.flac"})
+        result = qsvc.next()
+        assert result["ok"] is False
+        assert result["error"] == "EMPTY_QUEUE"
+        result = qsvc.enqueue_next({"filepath": "/test/x.flac"})
+        assert result["ok"]
+        assert qsvc.count == 1
 
     def test_undo_empty(self, qsvc):
-        assert not qsvc.undo()
+        result = qsvc.undo()
+        assert result["ok"] is False

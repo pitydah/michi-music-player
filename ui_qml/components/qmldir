@@ -30,7 +30,9 @@ MichiMenuItem 1.0 MichiMenuItem.qml
 MichiTabBar 1.0 MichiTabBar.qml
 MichiTooltip 1.0 MichiTooltip.qml
 JobStatusBanner 1.0 JobStatusBanner.qml
-MichiIcon 1.0 IconSlot.qml
+MichiIcon 1.0 MichiIcon.qml
+MichiFeatureCard 1.0 MichiFeatureCard.qml
+ContextToolbar 1.0 ContextToolbar.qml
 
 AsyncStateView 1.0 AsyncStateView.qml
 LoadingState 1.0 LoadingState.qml
@@ -67,6 +69,7 @@ MichiVisualState 1.0 foundations/MichiVisualState.qml
 MichiPage 1.0 layout/MichiPage.qml
 MichiPageHeader 1.0 layout/MichiPageHeader.qml
 MichiResponsiveGrid 1.0 layout/MichiResponsiveGrid.qml
+PageSurface 1.0 layout/PageSurface.qml
 MichiSection 1.0 layout/MichiSection.qml
 MichiSplitView 1.0 layout/MichiSplitView.qml
 MichiToolbar 1.0 layout/MichiToolbar.qml

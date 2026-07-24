@@ -1,5 +1,4 @@
 """Tests for canonical route registry — all routes point to existing QML files."""
-import os
 from pathlib import Path
 
 import pytest

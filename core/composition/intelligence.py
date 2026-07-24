@@ -1,7 +1,11 @@
 """Intelligence composition — Michi AI, mix/recommendation, action registry."""
 from __future__ import annotations
 
-from core.service_container import ServiceContainer, ServicePriority
+import logging
+
+from core.service_container import ServiceContainer
+
+logger = logging.getLogger(__name__)
 
 
 def build(container: ServiceContainer) -> None:
@@ -26,6 +30,7 @@ def build(container: ServiceContainer) -> None:
         container.register("mix_query_service", mqs)
         container.register("mix_service", mix_svc)
     except Exception:
+        logger.warning("Mix composition failed", exc_info=True)
         container.register("mix_query_service", None)
         container.register("mix_service", None)
 
@@ -50,6 +55,8 @@ def build(container: ServiceContainer) -> None:
             connection_service=container.get("connection_service"),
             home_audio_service=container.get("home_audio_service"),
             library_doctor_service=container.get("library_doctor_service"),
+            track_action_service=container.get("track_action_service"),
+            library_query_service=container.get("library_query_service"),
         )
         container.register("michi_ai_service", comp.core_service)
 
@@ -67,6 +74,5 @@ def build(container: ServiceContainer) -> None:
                     return []
             set_library_provider(_provider)
     except Exception as e:
-        import logging
-        logging.getLogger("michi.bootstrap.intelligence").warning(
+        logger.warning(
             "Michi AI composition failed: %s", e)

@@ -1,5 +1,4 @@
 """Tests for i18n — translator loading, locale, qrcode availability."""
-import os
 from pathlib import Path
 
 import pytest
