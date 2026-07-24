@@ -227,7 +227,6 @@ class TestDopPipeline:
         import gi
         gi.require_version("Gst", "1.0")
         from gi.repository import Gst
-        import os
         # DRIFT: mock all ElementFactory.make calls to avoid requiring
         # GStreamer plugins not available on CI. Test validates the
         # DoP pipeline structure (linking, env gating), not real elements.
