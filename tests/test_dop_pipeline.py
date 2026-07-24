@@ -234,7 +234,9 @@ class TestDopPipeline:
         from audio.audio_route_plan import AudioRoutePlan
         from audio.pipeline_factory import PipelineFactory
 
-        make = MagicMock(return_value=Gst.ElementFactory.make("fakesink", "mock"))
+        make = MagicMock()
+        mock_elem = MagicMock()
+        make.return_value = mock_elem
         route = AudioRoutePlan(dsd_mode="dop")
         factory = PipelineFactory()
 
