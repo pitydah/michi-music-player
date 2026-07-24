@@ -220,6 +220,9 @@ class TestDopPipeline:
 
         assert result is None
 
+    @pytest.mark.skipif(
+        not __import__("importlib").util.find_spec("gi"),
+        reason="requires GStreamer (gi)")
     def test_pcm_fallback_dop_env_var_set(self, probe_dsd):
         import gi
         gi.require_version("Gst", "1.0")
