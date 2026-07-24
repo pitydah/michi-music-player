@@ -56,7 +56,8 @@ jobs:
       - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libgstreamer1.0-0 gstreamer1.0-plugins-base gir1.2-gst-plugins-base-1.0 python3-gi
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libgstreamer1.0-0 gstreamer1.0-plugins-base gir1.2-gst-plugins-base-1.0 libgirepository1.0-dev libcairo2-dev
+          pip install PyGObject
           pip install -e ".[dev]" build
       - name: Functional tests
         run: |
