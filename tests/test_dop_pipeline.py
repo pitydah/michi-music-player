@@ -225,11 +225,12 @@ class TestDopPipeline:
             import gi
             gi.require_version("Gst", "1.0")
             from gi.repository import Gst
-        except (ImportError, ValueError):
-            pytest.skip("GStreamer bindings not available")
-        # DRIFT: mock PipelineFactory._make_sink_bin to avoid requiring
-        # audio output elements on CI. The test validates the DoP pipeline
-        # structure, not the audio output chain.
+            if not Gst.ElementFactory.make("filesrc", None):
+                raise RuntimeError("GStreamer elements not available")
+        except (ImportError, ValueError, RuntimeError):
+            pytest.skip("GStreamer not fully available (needs base elements)")
+        # DRIFT: mock sink creation to avoid requiring audio output
+        # elements on CI that has only gst-plugins-base.
         from audio.audio_route_plan import AudioRoutePlan
         from audio.pipeline_factory import PipelineFactory
 
