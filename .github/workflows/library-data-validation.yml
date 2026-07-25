@@ -1,0 +1,99 @@
+name: Library Data Validation
+
+on:
+  push:
+    branches: [feat/library-sql-metadata-consolidation]
+    paths:
+      - "core/library/library_filtered_query_service.py"
+      - "library/batch_writer.py"
+      - "library/metadata_normalizer.py"
+      - "library/migrations.py"
+      - "ui_qml/components/CoverImage.qml"
+      - "ui_qml/pages/library/**"
+      - "ui_qml_bridge/cover_provider_bridge.py"
+      - "tests/test_batch_writer.py"
+      - "tests/test_batch_writer_metadata.py"
+      - "tests/test_cover_provider_bridge.py"
+      - "tests/test_metadata_normalizer.py"
+      - "tests/test_migrations.py"
+      - "tests/qml/library/**"
+      - ".github/workflows/library-data-validation.yml"
+  pull_request:
+    paths:
+      - "core/library/library_filtered_query_service.py"
+      - "library/batch_writer.py"
+      - "library/metadata_normalizer.py"
+      - "library/migrations.py"
+      - "ui_qml/components/CoverImage.qml"
+      - "ui_qml/pages/library/**"
+      - "ui_qml_bridge/cover_provider_bridge.py"
+      - "tests/test_batch_writer.py"
+      - "tests/test_batch_writer_metadata.py"
+      - "tests/test_cover_provider_bridge.py"
+      - "tests/test_metadata_normalizer.py"
+      - "tests/test_migrations.py"
+      - "tests/qml/library/**"
+      - ".github/workflows/library-data-validation.yml"
+
+jobs:
+  validate-library-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libegl1 libgl1 libxkbcommon0 libfontconfig1 xvfb
+      - name: Install project
+        run: pip install -e ".[dev]"
+      - name: Lint modified Python surface
+        run: |
+          ruff check \
+            core/library/library_filtered_query_service.py \
+            library/batch_writer.py \
+            library/metadata_normalizer.py \
+            library/migrations.py \
+            ui_qml_bridge/cover_provider_bridge.py \
+            tests/test_batch_writer.py \
+            tests/test_batch_writer_metadata.py \
+            tests/test_cover_provider_bridge.py \
+            tests/test_metadata_normalizer.py \
+            tests/test_migrations.py \
+            tests/qml/library/test_library_filtered_query_service.py \
+            tests/qml/library/test_library_data_consolidation_runtime.py \
+            tests/qml/library/test_album_pathview.py
+      - name: Compile modified Python surface
+        run: |
+          python -m py_compile \
+            core/library/library_filtered_query_service.py \
+            library/batch_writer.py \
+            library/metadata_normalizer.py \
+            library/migrations.py \
+            ui_qml_bridge/cover_provider_bridge.py
+      - name: Run library SQL metadata and QML tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          set -o pipefail
+          python -m pytest -q --timeout=120 \
+            tests/test_batch_writer.py \
+            tests/test_batch_writer_metadata.py \
+            tests/test_cover_provider_bridge.py \
+            tests/test_metadata_normalizer.py \
+            tests/test_migrations.py \
+            tests/qml/library/test_library_filtered_query_service.py \
+            tests/qml/library/test_library_data_consolidation_runtime.py \
+            tests/qml/library/test_album_premium_views_runtime.py \
+            tests/qml/library/test_album_pathview.py \
+            2>&1 | tee library-data-tests.log
+      - name: Upload library data diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: library-data-tests-${{ github.sha }}
+          path: library-data-tests.log
+          retention-days: 5
