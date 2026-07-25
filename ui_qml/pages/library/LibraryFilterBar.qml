@@ -11,6 +11,7 @@ Item {
 
     Accessible.role: Accessible.ToolBar
     Accessible.name: qsTr("Filtros de biblioteca")
+    Accessible.description: qsTr("Filtros por formato, estado y metadatos")
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property bool expanded: false
@@ -18,28 +19,61 @@ Item {
     property string genreText: ""
     property string composerText: ""
     property string yearText: ""
+    property string _appliedGenre: ""
+    property string _appliedComposer: ""
+    property string _appliedYear: ""
+
+    readonly property string activeFormat: root.lib && root.lib.activeFormatFilter
+                                                    ? root.lib.activeFormatFilter
+                                                    : ""
+    readonly property int activeFilterCount:
+        (root.activeFormat !== "" ? 1 : 0) +
+        (root.specialFilter !== "" ? 1 : 0) +
+        (root.genreText !== "" ? 1 : 0) +
+        (root.composerText !== "" ? 1 : 0) +
+        (root.yearText !== "" ? 1 : 0)
 
     signal formatFilterChanged(string fmt)
     signal genreFilterChanged(string genre)
     signal composerFilterChanged(string composer)
     signal yearFilterChanged(string year)
 
-    implicitHeight: root.expanded ? 88 : 44
+    implicitHeight: root.expanded ? 92 : 46
+
+    function chooseFormat(value) {
+        root.specialFilter = ""
+        root.formatFilterChanged(value)
+    }
 
     function clearAll() {
+        var hadFormat = root.activeFormat !== ""
+        var hadGenre = root.genreText !== "" || root._appliedGenre !== ""
+        var hadComposer = root.composerText !== "" || root._appliedComposer !== ""
+        var hadYear = root.yearText !== "" || root._appliedYear !== ""
+
         root.specialFilter = ""
         root.genreText = ""
         root.composerText = ""
         root.yearText = ""
-        root.formatFilterChanged("")
-        root.genreFilterChanged("")
-        root.composerFilterChanged("")
-        root.yearFilterChanged("")
+        root._appliedGenre = ""
+        root._appliedComposer = ""
+        root._appliedYear = ""
+
+        if (root.lib && root.lib.clearFilters) {
+            root.lib.clearFilters()
+            return
+        }
+
+        if (hadFormat) root.formatFilterChanged("")
+        if (hadGenre) root.genreFilterChanged("")
+        if (hadComposer) root.composerFilterChanged("")
+        if (hadYear) root.yearFilterChanged("")
     }
 
     function applySpecial(name) {
         root.specialFilter = root.specialFilter === name ? "" : name
-        if (!root.lib) return
+        if (!root.lib)
+            return
         if (root.specialFilter === "favorites" && root.lib.setFavoritesFilter)
             root.lib.setFavoritesFilter()
         else if (root.specialFilter === "unplayed" && root.lib.setUnplayedFilter)
@@ -48,6 +82,29 @@ Item {
             root.lib.setMissingFilter()
         else if (root.specialFilter === "" && root.lib.clearSpecialFilters)
             root.lib.clearSpecialFilters()
+    }
+
+    function applyAdvanced() {
+        var genre = genreField.text.trim()
+        var composer = composerField.text.trim()
+        var year = yearField.text.trim()
+
+        root.genreText = genre
+        root.composerText = composer
+        root.yearText = year
+
+        if (genre !== root._appliedGenre) {
+            root._appliedGenre = genre
+            root.genreFilterChanged(genre)
+        }
+        if (composer !== root._appliedComposer) {
+            root._appliedComposer = composer
+            root.composerFilterChanged(composer)
+        }
+        if (year !== root._appliedYear) {
+            root._appliedYear = year
+            root.yearFilterChanged(year)
+        }
     }
 
     Rectangle {
@@ -65,117 +122,190 @@ Item {
             anchors.bottomMargin: 4
             spacing: 4
 
-            RowLayout {
+            Flickable {
+                id: quickFilters
                 Layout.fillWidth: true
-                Layout.preferredHeight: 34
-                spacing: MichiTheme.spacing.xs
+                Layout.preferredHeight: 36
+                contentWidth: quickFilterRow.width
+                contentHeight: height
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                flickableDirection: Flickable.HorizontalFlick
 
-                Text {
-                    text: qsTr("Formato")
-                    color: MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.captionSize
-                    font.weight: MichiTheme.typography.weightSemiBold
-                    font.capitalization: Font.AllUppercase
+                ScrollBar.horizontal: ScrollBar {
+                    policy: quickFilters.contentWidth > quickFilters.width
+                            ? ScrollBar.AsNeeded
+                            : ScrollBar.AlwaysOff
+                    height: 4
                 }
 
-                Repeater {
-                    model: [
-                        { label: qsTr("Todos"), value: "" },
-                        { label: "FLAC", value: "flac" },
-                        { label: "MP3", value: "mp3" },
-                        { label: "WAV", value: "wav" },
-                        { label: "DSD", value: "dsd" }
-                    ]
+                Row {
+                    id: quickFilterRow
+                    width: implicitWidth
+                    height: parent.height
+                    spacing: MichiTheme.spacing.xs
 
-                    Rectangle {
-                        required property var modelData
-                        Layout.preferredWidth: chipText.implicitWidth + MichiTheme.spacing.lg
-                        Layout.preferredHeight: 28
-                        radius: MichiTheme.radius.pill
-                        readonly property bool selected: root.specialFilter === "" &&
-                                                         ((!root.lib && modelData.value === "") ||
-                                                          (root.lib && root.lib.activeFormatFilter === modelData.value))
-                        color: selected
-                               ? MichiTheme.colors.accentSelection
-                               : chipMouse.containsMouse
-                                 ? MichiTheme.colors.surfaceHover
-                                 : MichiTheme.colors.surfaceInput
-                        border.width: MichiTheme.borderWidth
-                        border.color: selected ? MichiTheme.colors.borderActive : MichiTheme.colors.borderSubtle
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("Formato")
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.captionSize
+                        font.weight: MichiTheme.typography.weightSemiBold
+                        font.capitalization: Font.AllUppercase
+                    }
 
-                        Text {
-                            id: chipText
-                            anchors.centerIn: parent
-                            text: modelData.label
-                            color: parent.selected ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.captionSize
-                            font.weight: MichiTheme.typography.weightSemiBold
-                        }
-                        MouseArea {
-                            id: chipMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                root.specialFilter = ""
-                                root.formatFilterChanged(modelData.value)
+                    Repeater {
+                        model: [
+                            { label: qsTr("Todos"), value: "" },
+                            { label: "FLAC", value: "flac" },
+                            { label: "MP3", value: "mp3" },
+                            { label: "AAC", value: "aac" },
+                            { label: "M4A", value: "m4a" },
+                            { label: "WAV", value: "wav" },
+                            { label: "DSF", value: "dsf" },
+                            { label: "DFF", value: "dff" }
+                        ]
+
+                        Rectangle {
+                            required property var modelData
+                            width: formatChipText.implicitWidth + MichiTheme.spacing.lg
+                            height: 28
+                            anchors.verticalCenter: parent.verticalCenter
+                            radius: MichiTheme.radius.pill
+                            readonly property bool selected: root.activeFormat === modelData.value
+                            color: selected
+                                   ? MichiTheme.colors.accentSelection
+                                   : formatChipMouse.containsMouse
+                                     ? MichiTheme.colors.surfaceHover
+                                     : MichiTheme.colors.surfaceInput
+                            border.width: MichiTheme.borderWidth
+                            border.color: selected
+                                          ? MichiTheme.colors.borderActive
+                                          : MichiTheme.colors.borderSubtle
+
+                            Accessible.role: Accessible.Button
+                            Accessible.name: qsTr("Filtrar por %1").arg(modelData.label)
+                            Accessible.checked: selected
+                            Accessible.onPressAction: root.chooseFormat(modelData.value)
+
+                            Text {
+                                id: formatChipText
+                                anchors.centerIn: parent
+                                text: modelData.label
+                                color: parent.selected
+                                       ? MichiTheme.colors.accentBlue
+                                       : MichiTheme.colors.textSecondary
+                                font.pixelSize: MichiTheme.typography.captionSize
+                                font.weight: MichiTheme.typography.weightSemiBold
+                            }
+
+                            MouseArea {
+                                id: formatChipMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.chooseFormat(modelData.value)
                             }
                         }
                     }
-                }
 
-                Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 22; color: MichiTheme.colors.borderSubtle }
-
-                Repeater {
-                    model: [
-                        { label: qsTr("Favoritos"), value: "favorites" },
-                        { label: qsTr("No reproducidos"), value: "unplayed" },
-                        { label: qsTr("Ausentes"), value: "missing" }
-                    ]
                     Rectangle {
-                        required property var modelData
-                        Layout.preferredWidth: specialText.implicitWidth + MichiTheme.spacing.lg
-                        Layout.preferredHeight: 28
+                        width: 1
+                        height: 22
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: MichiTheme.colors.borderSubtle
+                    }
+
+                    Repeater {
+                        model: [
+                            { label: qsTr("Favoritos"), value: "favorites" },
+                            { label: qsTr("No reproducidos"), value: "unplayed" },
+                            { label: qsTr("Ausentes"), value: "missing" }
+                        ]
+
+                        Rectangle {
+                            required property var modelData
+                            width: specialChipText.implicitWidth + MichiTheme.spacing.lg
+                            height: 28
+                            anchors.verticalCenter: parent.verticalCenter
+                            radius: MichiTheme.radius.pill
+                            readonly property bool selected: root.specialFilter === modelData.value
+                            color: selected
+                                   ? MichiTheme.colors.accentSelection
+                                   : specialChipMouse.containsMouse
+                                     ? MichiTheme.colors.surfaceHover
+                                     : "transparent"
+                            border.width: MichiTheme.borderWidth
+                            border.color: selected
+                                          ? MichiTheme.colors.borderActive
+                                          : MichiTheme.colors.borderSubtle
+
+                            Accessible.role: Accessible.Button
+                            Accessible.name: modelData.label
+                            Accessible.checked: selected
+                            Accessible.onPressAction: root.applySpecial(modelData.value)
+
+                            Text {
+                                id: specialChipText
+                                anchors.centerIn: parent
+                                text: modelData.label
+                                color: parent.selected
+                                       ? MichiTheme.colors.accentBlue
+                                       : MichiTheme.colors.textSecondary
+                                font.pixelSize: MichiTheme.typography.captionSize
+                                font.weight: MichiTheme.typography.weightSemiBold
+                            }
+
+                            MouseArea {
+                                id: specialChipMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.applySpecial(modelData.value)
+                            }
+                        }
+                    }
+
+                    MichiButton {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.expanded ? qsTr("Ocultar avanzados") : qsTr("Filtros avanzados")
+                        variant: "ghost"
+                        onClicked: root.expanded = !root.expanded
+                    }
+
+                    Rectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: activeCountText.implicitWidth + MichiTheme.spacing.md
+                        height: 26
                         radius: MichiTheme.radius.pill
-                        readonly property bool selected: root.specialFilter === modelData.value
-                        color: selected
-                               ? MichiTheme.colors.accentSelection
-                               : specialMouse.containsMouse
-                                 ? MichiTheme.colors.surfaceHover
-                                 : "transparent"
+                        color: MichiTheme.colors.surfaceInput
                         border.width: MichiTheme.borderWidth
-                        border.color: selected ? MichiTheme.colors.borderActive : MichiTheme.colors.borderSubtle
+                        border.color: MichiTheme.colors.borderSubtle
+                        visible: root.activeFilterCount > 0
 
                         Text {
-                            id: specialText
+                            id: activeCountText
                             anchors.centerIn: parent
-                            text: modelData.label
-                            color: parent.selected ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary
+                            text: qsTr("%1 activos").arg(root.activeFilterCount)
+                            color: MichiTheme.colors.textSecondary
                             font.pixelSize: MichiTheme.typography.captionSize
                             font.weight: MichiTheme.typography.weightSemiBold
                         }
-                        MouseArea {
-                            id: specialMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.applySpecial(modelData.value)
-                        }
                     }
-                }
 
-                Item { Layout.fillWidth: true }
-
-                MichiButton {
-                    text: root.expanded ? qsTr("Ocultar") : qsTr("Avanzados")
-                    variant: "ghost"
-                    onClicked: root.expanded = !root.expanded
+                    MichiButton {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("Limpiar todo")
+                        variant: "ghost"
+                        visible: root.activeFilterCount > 0
+                        onClicked: root.clearAll()
+                    }
                 }
             }
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 34
+                Layout.preferredHeight: 36
                 visible: root.expanded
                 spacing: MichiTheme.spacing.sm
 
@@ -189,16 +319,19 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     placeholderTextColor: MichiTheme.colors.textMuted
                     selectByMouse: true
+                    activeFocusOnTab: visible
+                    Accessible.name: qsTr("Género")
                     background: Rectangle {
                         radius: MichiTheme.radius.md
                         color: MichiTheme.colors.surfaceInput
-                        border.width: genreField.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
-                        border.color: genreField.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderSubtle
+                        border.width: genreField.activeFocus
+                                      ? MichiTheme.borderWidthFocus
+                                      : MichiTheme.borderWidth
+                        border.color: genreField.activeFocus
+                                      ? MichiTheme.colors.borderFocus
+                                      : MichiTheme.colors.borderSubtle
                     }
-                    onAccepted: {
-                        root.genreText = text.trim()
-                        root.genreFilterChanged(root.genreText)
-                    }
+                    onAccepted: root.applyAdvanced()
                 }
 
                 TextField {
@@ -211,21 +344,24 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     placeholderTextColor: MichiTheme.colors.textMuted
                     selectByMouse: true
+                    activeFocusOnTab: visible
+                    Accessible.name: qsTr("Compositor")
                     background: Rectangle {
                         radius: MichiTheme.radius.md
                         color: MichiTheme.colors.surfaceInput
-                        border.width: composerField.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
-                        border.color: composerField.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderSubtle
+                        border.width: composerField.activeFocus
+                                      ? MichiTheme.borderWidthFocus
+                                      : MichiTheme.borderWidth
+                        border.color: composerField.activeFocus
+                                      ? MichiTheme.colors.borderFocus
+                                      : MichiTheme.colors.borderSubtle
                     }
-                    onAccepted: {
-                        root.composerText = text.trim()
-                        root.composerFilterChanged(root.composerText)
-                    }
+                    onAccepted: root.applyAdvanced()
                 }
 
                 TextField {
                     id: yearField
-                    Layout.preferredWidth: 88
+                    Layout.preferredWidth: 96
                     Layout.fillHeight: true
                     placeholderText: qsTr("Año")
                     text: root.yearText
@@ -233,39 +369,42 @@ Item {
                     placeholderTextColor: MichiTheme.colors.textMuted
                     inputMethodHints: Qt.ImhDigitsOnly
                     selectByMouse: true
+                    activeFocusOnTab: visible
+                    Accessible.name: qsTr("Año de publicación")
+                    validator: IntValidator {
+                        bottom: 1000
+                        top: new Date().getFullYear() + 1
+                    }
                     background: Rectangle {
                         radius: MichiTheme.radius.md
                         color: MichiTheme.colors.surfaceInput
-                        border.width: yearField.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
-                        border.color: yearField.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderSubtle
+                        border.width: yearField.activeFocus
+                                      ? MichiTheme.borderWidthFocus
+                                      : MichiTheme.borderWidth
+                        border.color: yearField.activeFocus
+                                      ? MichiTheme.colors.borderFocus
+                                      : MichiTheme.colors.borderSubtle
                     }
-                    onAccepted: {
-                        root.yearText = text.trim()
-                        root.yearFilterChanged(root.yearText)
-                    }
+                    onAccepted: root.applyAdvanced()
                 }
 
                 MichiButton {
                     text: qsTr("Aplicar")
                     variant: "primary"
-                    onClicked: {
-                        root.genreText = genreField.text.trim()
-                        root.composerText = composerField.text.trim()
-                        root.yearText = yearField.text.trim()
-                        root.genreFilterChanged(root.genreText)
-                        root.composerFilterChanged(root.composerText)
-                        root.yearFilterChanged(root.yearText)
-                    }
+                    onClicked: root.applyAdvanced()
                 }
+
                 MichiButton {
                     text: qsTr("Limpiar")
                     variant: "ghost"
+                    enabled: root.genreText !== "" || root.composerText !== "" || root.yearText !== ""
                     onClicked: {
-                        root.clearAll()
-                        if (root.lib && root.lib.clearFilters) root.lib.clearFilters()
+                        root.genreText = ""
+                        root.composerText = ""
+                        root.yearText = ""
+                        root.applyAdvanced()
                     }
                 }
-                Item { Layout.fillWidth: true }
             }
         }
     }
