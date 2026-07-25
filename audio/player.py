@@ -158,6 +158,17 @@ class GStreamerEngine(QObject):
                 return pos_ns
         return 0
 
+    def set_repeat(self, mode: str) -> str:
+        valid = {"none", "all", "one"}
+        if mode not in valid:
+            return "none"
+        self._repeat = mode
+        return self._repeat
+
+    def set_shuffle(self, enabled: bool) -> bool:
+        self._shuffle = bool(enabled)
+        return self._shuffle
+
     @property
     def current(self) -> str:
         return self._current
