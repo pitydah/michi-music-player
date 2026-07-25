@@ -124,7 +124,7 @@ def test_no_model_duplication_on_multiple_access(_qt_app):
 
 def test_artwork_cache_bounded(_qt_app):
     from ui_qml_bridge.cover_provider_bridge import CoverProviderBridge
-    bridge = CoverProviderBridge(db=MagicMock())
+    bridge = CoverProviderBridge(artwork_service=MagicMock())
     cache_size = getattr(bridge, '_cache_size', None) or getattr(bridge, 'max_cache', None)
     if cache_size is not None:
         assert cache_size <= 500, f"Cover cache size {cache_size} exceeds 500"

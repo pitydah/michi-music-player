@@ -54,3 +54,9 @@ def build(container: ServiceContainer) -> None:
         container.register("smart_tagging_service", sts)
     except Exception:
         container.register("smart_tagging_service", None)
+
+    try:
+        from core.library.artwork_resolver import CoverArtService
+        container.register("artwork_service", CoverArtService(db=db))
+    except Exception:
+        container.register("artwork_service", None)
