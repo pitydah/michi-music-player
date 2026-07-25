@@ -13,7 +13,6 @@ import re
 import shutil
 import subprocess
 import time
-from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -21,7 +20,6 @@ from typing import Any, Callable
 from PySide6.QtCore import QObject, Signal
 
 from core.worker_manager import WorkerManager
-from core.audio_lab.audio_lab_contracts import ConversionProfile
 
 logger = logging.getLogger("michi.audio_lab.conversion")
 
@@ -43,6 +41,22 @@ class ConversionJob:
     finished_at: float = 0.0
     process: subprocess.Popen | None = None
     cancelled: bool = False
+
+
+@dataclass
+class ConversionProfile:
+    name: str = "Custom"
+    format: str = "FLAC"
+    codec: str = ""
+    bitrate: int = 0
+    sample_rate: int = 0
+    bit_depth: int = 0
+    channels: int = 0
+    copy_metadata: bool = True
+    copy_artwork: bool = True
+    apply_replaygain: bool = False
+    filename_template: str = "{artist} - {title}"
+    output_dir: str = ""
 
 
 class AudioConversionService(QObject):
@@ -271,7 +285,8 @@ class AudioConversionService(QObject):
                 job.process.terminate()
                 job.process.wait(timeout=5)
             except Exception:
-                with suppress(Exception):
+                import contextlib
+                with contextlib.suppress(Exception):
                     job.process.kill()
         job.status = "cancelled"
         return True

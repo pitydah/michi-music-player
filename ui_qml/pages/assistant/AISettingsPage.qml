@@ -150,7 +150,6 @@ Item {
                             onClicked: { if (root.ai) root.ai.cancelDownload() }
                         }
                     }
-                    }
 
                     MouseArea {
                         anchors.fill: parent

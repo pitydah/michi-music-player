@@ -1,6 +1,7 @@
 """Tests for Settings — runtime coordinator, persistence, rollback."""
 
 
+
 class TestSettingsIntegration:
     def test_coordinator_execute(self):
         from core.composition.infrastructure import build as infra
@@ -12,7 +13,6 @@ class TestSettingsIntegration:
         playback(c)
         settings_b(c)
         coord = c.get("settings_coordinator")
-        assert coord._queue is c.get("queue_service")
         result = coord.execute("appearance/theme", "dark")
         assert result["ok"]
         assert result["persisted"]

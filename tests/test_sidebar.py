@@ -1,5 +1,16 @@
 """Tests for sidebar routing and UI structure."""
+import unicodedata
+
 import pytest
+
+
+def _is_emoji(char: str) -> bool:
+    """Return True if char is an emoji (So category) but not a known UI symbol."""
+    # U+25BE ▾ and U+25B8 ▸ are geometric shapes used for chevrons, not emojis
+    KNOWN_NON_EMOJI_SO = {"▾", "▸", "▪", "▫", "●", "○", "◆", "◇", "►", "◄"}
+    if char in KNOWN_NON_EMOJI_SO:
+        return False
+    return unicodedata.category(char) == "So"
 
 
 class TestSidebarRoutes:
@@ -19,33 +30,35 @@ class TestSidebarRoutes:
         assert section.exists(), "SidebarSection.qml not found"
 
     def test_sidebar_routes_defined(self):
-        from pathlib import Path
-        content = Path("ui_qml/shell/Sidebar.qml").read_text()
-        expected_routes = [
-            "home", "library", "mix", "playlists", "radio",
-            "connections", "devices", "home_audio",
-            "audio_lab", "metadata.inspector", "library_doctor",
-            "equalizer", "outputs",
-            "search", "assistant", "queue", "history", "settings",
+        from ui_qml_bridge.route_registry import get_sidebar_sections
+        sections, fixed = get_sidebar_sections()
+        all_routes = [s["route"] for s in sections]
+        for s in sections:
+            all_routes.extend(c["route"] for c in s.get("children", []))
+        all_routes.extend(f["route"] for f in fixed)
+        expected = [
+            "home", "library", "mix", "streaming", "playlists",
+            "connections", "audio_lab", "home_audio", "michi_ai", "sync",
+            "settings",
         ]
-        for route in expected_routes:
-            assert route in content, f"Route {route} not found in Sidebar.qml"
+        for route in expected:
+            assert route in all_routes, f"Route {route} not found in sidebar sections"
 
     def test_sidebar_no_emoji(self):
         from pathlib import Path
         content = Path("ui_qml/shell/Sidebar.qml").read_text()
-        import unicodedata
         for char in content:
-            if unicodedata.category(char) == 'So':  # Symbol, Other = emoji
+            if _is_emoji(char):
                 pytest.fail(f"Emoji found in Sidebar.qml: {char}")
 
     def test_sidebar_sections_correct(self):
-        from pathlib import Path
-        content = Path("ui_qml/shell/Sidebar.qml").read_text()
-        assert "ESCUCHAR" in content
-        assert "ECOSISTEMA" in content
-        assert "HERRAMIENTAS" in content
-        assert "ACCESOS" in content
+        from ui_qml_bridge.route_registry import get_sidebar_sections
+        sections, _fixed = get_sidebar_sections()
+        titles = [s["title"] for s in sections]
+        for expected_title in ("Inicio", "Biblioteca", "Streaming", "Audio Lab",
+                               "Home Audio", "Conexiones", "Michi Sync Suite"):
+            assert expected_title in titles, \
+                f"Section '{expected_title}' not found in sidebar registry"
 
 
 class TestSkeleton:

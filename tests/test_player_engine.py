@@ -1,9 +1,9 @@
-"""Tests for GStreamerEngine — fully mocked, no GStreamer dependency."""
+"""Tests for GStreamerEngine — transport delegation pattern, no GStreamer dep."""
+import sys
 import pytest
 from unittest.mock import MagicMock, patch
 
 
-# Build mock Gst module once for all tests
 class _MockGst:
     class State:
         NULL = 1
@@ -11,15 +11,19 @@ class _MockGst:
         PAUSED = 3
         PLAYING = 4
         VOID_PENDING = 5
+
     class StateChangeReturn:
         FAILURE = 0
         SUCCESS = 1
         ASYNC = 2
+
     class Format:
         TIME = 0
+
     class SeekFlags:
         FLUSH = 1
         KEY_UNIT = 2
+
     class MessageType:
         EOS = 1
         ERROR = 2
@@ -28,71 +32,104 @@ class _MockGst:
         TAG = 16
         STATE_CHANGED = 64
         DURATION_CHANGED = 262144
+
     class FlowReturn:
         OK = 0
+
     class MapFlags:
         READ = 1
+
     MSECOND = 1000000
     SECOND = 1000000000
     CLOCK_TIME_NONE = 0
+
     class Element:
         new = staticmethod(MagicMock(return_value=MagicMock()))
+
     class Bin:
         new = staticmethod(MagicMock(return_value=MagicMock()))
+
     class Pad:
         pass
+
     class Sample:
         pass
+
     class Memory:
         pass
+
     class BufferPool:
         pass
+
     class Allocator:
         pass
+
     class AllocationParams:
         pass
+
     class MapInfo:
         pass
+
     class BufferFlags:
         pass
+
     class PadLinkReturn:
         pass
+
     class PadLinkInfo:
         pass
+
     class PadTemplate:
         pass
+
     class CapsFeatures:
         pass
+
     class CapsIntersectMode:
         pass
+
     class DebugLevel:
         pass
+
     class DebugCategory:
         pass
+
     class DebugMessage:
         pass
+
     class Toc:
         pass
+
     class TocEntry:
         pass
+
     class Value:
         pass
+
     class Structure:
         pass
+
     class TagList:
         pass
+
     class Event:
         pass
+
     class Query:
         pass
+
     class Iterator:
         pass
+
     class Clock:
         pass
+
     class Bus:
         pass
+
     class Message:
         pass
+
     Buffer = MagicMock()
     Caps = MagicMock()
     Pipeline = MagicMock()
@@ -104,9 +141,15 @@ class _MockGst:
 MOCK_GST = _MockGst()
 
 
-def _patch_player_module():
-    """Patch audio.player module-level Gst/GLib with mocks."""
+@pytest.fixture(scope="module")
+def _fake_gst_module():
+    """Inject fake gi/Gst into sys.modules and pre-import dependents.
 
+    Only touches the 5 gi-related keys; saves and restores them at teardown
+    instead of wiping the entire sys.modules dict. Pre-imports
+    audio.backends.pipeline_transport and audio.player so that all
+    module-level gi/Gst imports resolve to fakes.
+    """
     glib_mock = MagicMock()
     glib_mock.filename_to_uri.side_effect = lambda p, _: "file://" + p
 
@@ -125,40 +168,72 @@ def _patch_player_module():
         "gi.repository.GLib": glib_mock,
         "gi.repository.GstPbutils": gi_repo_mock.GstPbutils,
     }
-    sys_modules_patch = patch.dict("sys.modules", fake_modules, clear=False)
 
-    patches = [
-        sys_modules_patch,
-        patch("audio.player.Gst", MOCK_GST),
-        patch("audio.player.GLib", glib_mock),
-        patch("audio.player.gi", gi_mock),
-        patch("audio.player.QObject", MagicMock()),
-        patch("audio.player.QTimer", MagicMock()),
-    ]
-    for p in patches:
-        p.start()
-    return patches
+    saved = {k: sys.modules.get(k) for k in fake_modules}
+    sys.modules.update(fake_modules)
+
+    import audio.backends.pipeline_transport  # noqa: F811
+    import audio.player  # noqa: F811, F401
+
+    yield
+
+    for mod_key in ["audio.backends.pipeline_transport", "audio.player"]:
+        sys.modules.pop(mod_key, None)
+    for k, v in saved.items():
+        if v is None:
+            sys.modules.pop(k, None)
+        else:
+            sys.modules[k] = v
+
+
+class FakeTransport:
+    """Fake transport that records calls for assertion.
+
+    Implements every method GStreamerEngine calls on self._transport
+    per the origin/main contract.
+    """
+
+    def __init__(self):
+        self.set_callbacks = MagicMock()
+        self.get_pipeline = MagicMock(return_value=None)
+        self.adopt_pipeline = MagicMock()
+        self.pause = MagicMock()
+        self.resume = MagicMock()
+        self.stop = MagicMock()
+        self.seek = MagicMock()
+        self.set_volume = MagicMock()
+        self.get_position = MagicMock(return_value=0.0)
+        self.get_duration = MagicMock(return_value=0.0)
+        self.setup_bus = MagicMock()
+        self.shutdown = MagicMock()
+        self.enqueue = MagicMock()
+        self.enqueue_next = MagicMock()
+        self.play_next = MagicMock(return_value=False)
+        self.play_prev = MagicMock(return_value=False)
 
 
 class TestGStreamerEngine:
-    """Test every public method on GStreamerEngine with mocked GStreamer."""
+    """Test GStreamerEngine — every assertion verifies transport delegation."""
 
     @pytest.fixture(autouse=True)
-    def _patch_gst(self):
-        """Patch audio.player Gst/GLib before each test."""
-        patches = _patch_player_module()
-        yield
-        for p in patches:
-            p.stop()
+    def _patch_transport(self, _fake_gst_module):
+        """Replace GStreamerPipelineTransport with FakeTransport.
 
-    # ── engine factory ──
+        Patches audio.backends.pipeline_transport.GStreamerPipelineTransport
+        so that GStreamerEngine.__init__ receives a FakeTransport.
+        The __init__ import is ``from audio.backends.pipeline_transport
+        import GStreamerPipelineTransport``, so we patch the source module.
+        """
+        import audio.backends.pipeline_transport
+
+        self._transport = FakeTransport()
+        audio.backends.pipeline_transport.GStreamerPipelineTransport = MagicMock(
+            return_value=self._transport
+        )
+        yield
 
     @pytest.fixture
     def engine(self):
-        """Create GStreamerEngine instance with mocked dependencies."""
-        import audio.player
-        import importlib
-        importlib.reload(audio.player)
         from audio.player import GStreamerEngine
 
         result = GStreamerEngine()
@@ -173,7 +248,7 @@ class TestGStreamerEngine:
         result.eq_bitperfect_warning = MagicMock()
         return result
 
-    # ── Initialization ──
+    # ── Initialisation ──
 
     def test_init_defaults(self, engine):
         assert engine._state.value == 0
@@ -194,12 +269,14 @@ class TestGStreamerEngine:
 
     def test_player_engine_alias(self, engine):
         import audio.player
+
         assert audio.player.PlayerEngine is audio.player.GStreamerEngine
 
     # ── Properties ──
 
     def test_state_property(self, engine):
         from audio.player import PlaybackState
+
         engine._state = PlaybackState.PLAYING
         assert engine.state == PlaybackState.PLAYING
 
@@ -212,138 +289,165 @@ class TestGStreamerEngine:
 
     # ── play() ──
 
-    def _mock_play_internals(self):
-        """Patch all imports that play() uses internally.
-
-        Since play() does `from X import Y` inside the function body,
-        we use patch.dict('sys.modules') to inject fake modules so
-        those imports return our mocks instead of loading real modules.
-        """
-
-        pf_instance = MagicMock()
-        pf_instance.build_for_uri.return_value = None  # caller sets this
-        pf_module = MagicMock()
-        pf_module.PipelineFactory = MagicMock(return_value=pf_instance)
-
-        probe_mock = MagicMock(return_value=MagicMock(
-            codec="flac", sample_rate=44100, bit_depth=16, channels=2, is_dsd=False))
-
-        get_profile_mock = MagicMock(return_value=MagicMock(
-            key="standard", allows_replaygain=False, allows_transmit=True,
-            bitperfect=False))
-
-        dev = MagicMock(display_name="dev", device_string="hw:0", backend="alsa")
-        get_device_mock = MagicMock(return_value=dev)
-
-        dm_instance = MagicMock()
-        dm_instance.select_output_route.return_value = MagicMock()
-        dm_mock = MagicMock(return_value=dm_instance)
-
-        fake_modules = {
-            "audio.pipeline_factory": pf_module,
-            "audio.format_probe": MagicMock(probe_format=probe_mock),
-            "audio.output_profiles": MagicMock(get_profile=get_profile_mock),
-            "audio.output_device_manager": MagicMock(get_device=get_device_mock),
-            "audio.dac_manager": MagicMock(DacManager=dm_mock),
-            "audio.audio_diagnostics": MagicMock(AudioRouteDiagnostics=MagicMock()),
-            "audio.dsp_state": MagicMock(DspState=MagicMock()),
-        }
-        return patch.dict("sys.modules", fake_modules, clear=False), pf_instance
-
-    def test_play_sets_state_playing(self, engine):
-        module_patch, pf_instance = self._mock_play_internals()
+    def test_play_adopts_pipeline_and_starts(self, engine):
         pipeline = MagicMock()
         pipeline.set_state.return_value = MOCK_GST.StateChangeReturn.SUCCESS
         pipeline.get_bus.return_value = MagicMock()
-        pf_instance.build_for_uri.return_value = pipeline
-        engine._setup_bus = MagicMock()
-        engine._setup_timer = MagicMock()
-        engine.set_library_db = MagicMock()
 
-        with module_patch:
+        with (
+            patch("audio.format_probe.probe_format") as mock_probe,
+            patch("audio.output_profiles.get_profile") as mock_get_profile,
+            patch("audio.output_device_manager.get_device") as mock_get_device,
+            patch("audio.pipeline_factory.PipelineFactory") as mock_pf_class,
+            patch("audio.dsp_state.DspState") as mock_dsp_class,
+            patch("audio.dac_manager.DacManager") as mock_dm_class,
+        ):
+            mock_probe.return_value = MagicMock(
+                codec="flac",
+                sample_rate=44100,
+                bit_depth=16,
+                channels=2,
+                is_dsd=False,
+            )
+            mock_get_profile.return_value = MagicMock(
+                key="standard",
+                allows_replaygain=False,
+                allows_transmit=True,
+                bitperfect=False,
+            )
+            mock_get_device.return_value = MagicMock(
+                display_name="dev", device_string="hw:0", backend="alsa"
+            )
+            mock_pf = MagicMock()
+            mock_pf.build_for_uri.return_value = pipeline
+            mock_pf_class.return_value = mock_pf
+            mock_dsp_class.return_value = MagicMock()
+            mock_dm = MagicMock()
+            mock_dm.refresh_devices = MagicMock()
+            mock_dm.select_output_route.return_value = MagicMock()
+            mock_dm_class.return_value = mock_dm
+
+            engine._setup_bus = MagicMock()
+            engine._setup_timer = MagicMock()
+            engine.set_library_db = MagicMock()
+
             engine.play("/tmp/test.flac")
 
+        self._transport.adopt_pipeline.assert_called_with(pipeline)
         pipeline.set_state.assert_called_with(MOCK_GST.State.PLAYING)
         from audio.player import PlaybackState
+
         signals = [c[0][0] for c in engine.state_changed.emit.call_args_list]
         assert any(s == PlaybackState.PLAYING for s in signals)
 
     def test_play_pipeline_failure(self, engine):
-        module_patch, pf_instance = self._mock_play_internals()
-        pf_instance.build_for_uri.return_value = None
-        engine._setup_bus = MagicMock()
-        engine._setup_timer = MagicMock()
-        engine.set_library_db = MagicMock()
+        mock_pf = MagicMock()
+        mock_pf.build_for_uri.return_value = None
 
-        with module_patch:
+        with (
+            patch("audio.format_probe.probe_format") as mock_probe,
+            patch("audio.output_profiles.get_profile") as mock_get_profile,
+            patch("audio.output_device_manager.get_device") as mock_get_device,
+            patch("audio.pipeline_factory.PipelineFactory") as mock_pf_class,
+            patch("audio.dsp_state.DspState"),
+            patch("audio.dac_manager.DacManager") as mock_dm_class,
+        ):
+            mock_probe.return_value = MagicMock(
+                codec="flac", sample_rate=44100, bit_depth=16, channels=2, is_dsd=False
+            )
+            mock_get_profile.return_value = MagicMock(
+                key="standard",
+                allows_replaygain=False,
+                allows_transmit=True,
+                bitperfect=False,
+            )
+            mock_get_device.return_value = MagicMock(
+                display_name="dev", device_string="hw:0", backend="alsa"
+            )
+            mock_pf_class.return_value = mock_pf
+            mock_dm = MagicMock()
+            mock_dm.refresh_devices = MagicMock()
+            mock_dm.select_output_route.return_value = MagicMock()
+            mock_dm_class.return_value = mock_dm
+
+            engine._setup_bus = MagicMock()
+            engine._setup_timer = MagicMock()
+            engine.set_library_db = MagicMock()
+
             engine.play("/tmp/test.flac")
 
         engine.error_occurred.emit.assert_called_with("Failed to create pipeline")
 
     def test_play_set_state_failure(self, engine):
-        module_patch, pf_instance = self._mock_play_internals()
         pipeline = MagicMock()
         pipeline.set_state.return_value = MOCK_GST.StateChangeReturn.FAILURE
-        pf_instance.build_for_uri.return_value = pipeline
-        engine._setup_bus = MagicMock()
-        engine._setup_timer = MagicMock()
-        engine.set_library_db = MagicMock()
+        pipeline.get_bus.return_value = MagicMock()
 
-        with module_patch:
+        with (
+            patch("audio.format_probe.probe_format") as mock_probe,
+            patch("audio.output_profiles.get_profile") as mock_get_profile,
+            patch("audio.output_device_manager.get_device") as mock_get_device,
+            patch("audio.pipeline_factory.PipelineFactory") as mock_pf_class,
+            patch("audio.dsp_state.DspState"),
+            patch("audio.dac_manager.DacManager") as mock_dm_class,
+        ):
+            mock_probe.return_value = MagicMock(
+                codec="flac",
+                sample_rate=44100,
+                bit_depth=16,
+                channels=2,
+                is_dsd=False,
+            )
+            mock_get_profile.return_value = MagicMock(
+                key="standard",
+                allows_replaygain=False,
+                allows_transmit=True,
+                bitperfect=False,
+            )
+            mock_get_device.return_value = MagicMock(
+                display_name="dev", device_string="hw:0", backend="alsa"
+            )
+            mock_pf = MagicMock()
+            mock_pf.build_for_uri.return_value = pipeline
+            mock_pf_class.return_value = mock_pf
+            mock_dm = MagicMock()
+            mock_dm.refresh_devices = MagicMock()
+            mock_dm.select_output_route.return_value = MagicMock()
+            mock_dm_class.return_value = mock_dm
+
+            engine._setup_bus = MagicMock()
+            engine._setup_timer = MagicMock()
+            engine.set_library_db = MagicMock()
+
             engine.play("/tmp/test.flac")
 
         engine.error_occurred.emit.assert_called_with("Failed to start playback")
 
     # ── pause / resume / toggle / stop ──
 
-    def test_pause(self, engine):
-        pipeline = MagicMock()
-        pipeline.set_state.return_value = MOCK_GST.StateChangeReturn.SUCCESS
-        engine._pipeline = pipeline
-        from audio.player import PlaybackState
-        engine._state = PlaybackState.PLAYING
-
+    def test_pause_delegates_to_transport(self, engine):
+        """DRIFT: origin/main pause() has no state guard — always delegates."""
         engine.pause()
 
-        pipeline.set_state.assert_called_with(MOCK_GST.State.PAUSED)
-        engine.state_changed.emit.assert_called()
-
-    def test_pause_when_not_playing_does_nothing(self, engine):
-        pipeline = MagicMock()
-        engine._pipeline = pipeline
+        self._transport.pause.assert_called_once()
         from audio.player import PlaybackState
-        engine._state = PlaybackState.STOPPED
-        engine.state_changed = MagicMock()
 
-        engine.pause()
+        signals = [c[0][0] for c in engine.state_changed.emit.call_args_list]
+        assert any(s == PlaybackState.PAUSED for s in signals)
 
-        pipeline.set_state.assert_not_called()
-        engine.state_changed.emit.assert_not_called()
-
-    def test_resume(self, engine):
-        pipeline = MagicMock()
-        pipeline.set_state.return_value = MOCK_GST.StateChangeReturn.SUCCESS
-        engine._pipeline = pipeline
-        from audio.player import PlaybackState
-        engine._state = PlaybackState.PAUSED
-
+    def test_resume_delegates_to_transport(self, engine):
+        """DRIFT: origin/main resume() has no state guard — always delegates."""
         engine.resume()
 
-        pipeline.set_state.assert_called_with(MOCK_GST.State.PLAYING)
-        engine.state_changed.emit.assert_called()
-
-    def test_resume_when_not_paused_does_nothing(self, engine):
-        pipeline = MagicMock()
-        engine._pipeline = pipeline
+        self._transport.resume.assert_called_once()
         from audio.player import PlaybackState
-        engine._state = PlaybackState.STOPPED
 
-        engine.resume()
-
-        pipeline.set_state.assert_not_called()
+        signals = [c[0][0] for c in engine.state_changed.emit.call_args_list]
+        assert any(s == PlaybackState.PLAYING for s in signals)
 
     def test_toggle_playing_pauses(self, engine):
         from audio.player import PlaybackState
+
         engine._state = PlaybackState.PLAYING
         engine.pause = MagicMock()
         engine.resume = MagicMock()
@@ -355,6 +459,7 @@ class TestGStreamerEngine:
 
     def test_toggle_paused_resumes(self, engine):
         from audio.player import PlaybackState
+
         engine._state = PlaybackState.PAUSED
         engine.pause = MagicMock()
         engine.resume = MagicMock()
@@ -366,6 +471,7 @@ class TestGStreamerEngine:
 
     def test_toggle_stopped_plays_current(self, engine):
         from audio.player import PlaybackState
+
         engine._state = PlaybackState.STOPPED
         engine._current = "/tmp/song.mp3"
         engine.play = MagicMock()
@@ -374,102 +480,93 @@ class TestGStreamerEngine:
 
         engine.play.assert_called_once_with("/tmp/song.mp3")
 
-    def test_stop(self, engine):
+    def test_stop_cleans_up_pipeline_and_transport(self, engine):
+        """DRIFT: origin/main stop() uses transport.get_pipeline(),
+        transport.adopt_pipeline(None), then transport.stop()."""
         pipeline = MagicMock()
-        bus = MagicMock()
-        pipeline.get_bus.return_value = bus
-        pipeline.get_state.return_value = (MOCK_GST.StateChangeReturn.SUCCESS,
-                                            MOCK_GST.State.NULL)
-        engine._pipeline = pipeline
-        engine._bus_id = 123
-        engine._timer = MagicMock()
+        pipeline.get_state.return_value = (
+            MOCK_GST.StateChangeReturn.SUCCESS,
+            MOCK_GST.State.NULL,
+        )
+        self._transport.get_pipeline.return_value = pipeline
+        timer = MagicMock()
+        engine._timer = timer
         from audio.player import PlaybackState
 
         engine.stop()
 
+        self._transport.get_pipeline.assert_called()
+        self._transport.adopt_pipeline.assert_called_with(None)
         pipeline.set_state.assert_called_with(MOCK_GST.State.NULL)
-        bus.disconnect.assert_called_with(123)
-        bus.remove_signal_watch.assert_called()
-        assert engine._pipeline is None
+        timer.stop.assert_called_once()
+        assert engine._timer is None
+        self._transport.stop.assert_called_once()
+        signals = [c[0][0] for c in engine.state_changed.emit.call_args_list]
+        assert any(s == PlaybackState.STOPPED for s in signals)
+
+    def test_stop_without_timer(self, engine):
+        engine._timer = None
+        from audio.player import PlaybackState
+
+        engine.stop()
+
+        self._transport.stop.assert_called_once()
         signals = [c[0][0] for c in engine.state_changed.emit.call_args_list]
         assert any(s == PlaybackState.STOPPED for s in signals)
 
     # ── seek ──
 
-    def test_seek(self, engine):
-        pipeline = MagicMock()
-        engine._pipeline = pipeline
-
+    def test_seek_delegates_to_transport(self, engine):
+        """DRIFT: origin/main seek() delegates to transport.seek()."""
         engine.seek(42.5)
+        self._transport.seek.assert_called_once_with(42.5)
 
-        pipeline.seek_simple.assert_called_once()
-        args = pipeline.seek_simple.call_args[0]
-        assert args[0] == MOCK_GST.Format.TIME
-        assert args[2] == int(42.5 * 1e9)
-
-    def test_seek_no_pipeline(self, engine):
-        engine._pipeline = None
-        engine.seek(10)
+    def test_seek_negative(self, engine):
+        engine.seek(-10)
+        # DRIFT: transport receives raw value; clamping happens in transport
+        self._transport.seek.assert_called_once_with(-10)
 
     # ── set_volume ──
 
-    def test_set_volume(self, engine):
-        pipeline = MagicMock()
-        vol_elem = MagicMock()
-        pipeline.get_by_name.return_value = vol_elem
-        engine._pipeline = pipeline
-
+    def test_set_volume_stores_int_delegates_float(self, engine):
+        """DRIFT: origin/main stores int 0-100, sends 0.0-1.0 to transport."""
         engine.set_volume(75)
+        assert engine._volume == 75
+        self._transport.set_volume.assert_called_with(0.75)
 
-        assert engine._volume == 0.75
-        vol_elem.set_property.assert_called_with("volume", 0.75)
-
-    def test_set_volume_clamps(self, engine):
+    def test_set_volume_clamps_top(self, engine):
         engine.set_volume(200)
-        assert engine._volume == 1.0
-        engine.set_volume(-50)
-        assert engine._volume == 0.0
+        assert engine._volume == 100
 
-    def test_set_volume_no_pipeline(self, engine):
-        engine._pipeline = None
-        engine.set_volume(50)
-        assert engine._volume == 0.5
+    def test_set_volume_clamps_bottom(self, engine):
+        engine.set_volume(-50)
+        assert engine._volume == 0
+
+    def test_set_volume_rounds_float(self, engine):
+        """int(vol) cast truncates; origin/main accepts int."""
+        engine.set_volume(75.9)
+        assert engine._volume == 75
 
     # ── Queue operations ──
 
-    def test_enqueue_play_now(self, engine):
-        engine.play = MagicMock()
-        engine._db = None
+    def test_enqueue_delegates_to_transport(self, engine):
+        """DRIFT: origin/main enqueue() delegates to transport.enqueue()."""
+        engine.enqueue(["/tmp/a.flac", "/tmp/b.flac"])
+        self._transport.enqueue.assert_called_once_with(
+            ["/tmp/a.flac", "/tmp/b.flac"], True
+        )
+        engine.queue_changed.emit.assert_called_once()
 
-        engine.enqueue(["/tmp/a.flac", "/tmp/b.flac"], play_now=True)
-
-        assert engine._queue == ["/tmp/a.flac", "/tmp/b.flac"]
-        assert engine._queue_index == 0
-        engine.play.assert_called_once_with("/tmp/a.flac")
-        engine.queue_changed.emit.assert_called_with(engine._queue)
-
-    def test_enqueue_no_play_now(self, engine):
-        engine.play = MagicMock()
-        engine._queue = ["existing.flac"]
-        engine._queue_index = 0
-        engine._db = None
-
+    def test_enqueue_play_now_false(self, engine):
         engine.enqueue(["/tmp/c.flac"], play_now=False)
+        self._transport.enqueue.assert_called_once_with(
+            ["/tmp/c.flac"], False
+        )
 
-        assert engine._queue == ["existing.flac", "/tmp/c.flac"]
-        engine.play.assert_not_called()
-
-    def test_enqueue_no_play_now_empty_queue_plays(self, engine):
-        engine.play = MagicMock()
-        engine._queue = []
-        engine._queue_index = -1
-        engine._db = None
-
-        engine.enqueue(["/tmp/a.flac"], play_now=False)
-
-        assert engine._queue == ["/tmp/a.flac"]
-        assert engine._queue_index == 0
-        engine.play.assert_called_once_with("/tmp/a.flac")
+    def test_enqueue_next_delegates(self, engine):
+        engine.enqueue_next(["/tmp/d.flac"])
+        self._transport.enqueue_next.assert_called_once_with(["/tmp/d.flac"])
+        engine.queue_changed.emit.assert_called_once()
 
     def test_clear_queue(self, engine):
         engine._queue = ["a.flac", "b.flac"]
@@ -487,17 +584,19 @@ class TestGStreamerEngine:
         engine.clear_queue()
         engine._db.clear_queue_state.assert_called_once()
 
-    def test_get_queue(self, engine):
+    def test_get_queue_returns_filepath_only(self, engine):
+        """DRIFT: origin/main get_queue() returns [{'filepath': fp}] only."""
         engine._queue = ["/tmp/a.flac", "/tmp/b.flac"]
-        engine._queue_index = 0
 
         items = engine.get_queue()
 
         assert len(items) == 2
         assert items[0]["filepath"] == "/tmp/a.flac"
-        assert items[0]["title"] == "a.flac"
-        assert items[0]["is_current"] is True
-        assert items[1]["is_current"] is False
+        assert "title" not in items[0]
+        assert "is_current" not in items[0]
+
+    def test_get_queue_empty(self, engine):
+        assert engine.get_queue() == []
 
     def test_get_queue_index(self, engine):
         assert engine.get_queue_index() == -1
@@ -525,73 +624,33 @@ class TestGStreamerEngine:
 
     # ── play_next / play_prev ──
 
-    def test_play_next_simple(self, engine):
-        engine._queue = ["a.flac", "b.flac", "c.flac"]
-        engine._queue_index = 0
-        engine.play = MagicMock()
-        engine._db = None
-
+    def test_play_next_delegates(self, engine):
+        """DRIFT: origin/main play_next() delegates to transport.play_next()."""
+        self._transport.play_next.return_value = True
         result = engine.play_next()
-
         assert result is True
-        assert engine._queue_index == 1
-        engine.play.assert_called_once_with("b.flac")
+        self._transport.play_next.assert_called_once()
+        engine.queue_changed.emit.assert_called_once()
 
     def test_play_next_at_end(self, engine):
-        engine._queue = ["a.flac", "b.flac"]
-        engine._queue_index = 1
-        engine.play = MagicMock()
-
+        self._transport.play_next.return_value = False
         result = engine.play_next()
-
         assert result is False
+        self._transport.play_next.assert_called_once()
 
-    def test_play_next_repeat_one(self, engine):
-        engine._queue = ["a.flac"]
-        engine._queue_index = 0
-        engine._repeat = "one"
-        engine.play = MagicMock()
-        engine._db = None
-
-        result = engine.play_next()
-
-        assert result is True
-        engine.play.assert_called_once_with("a.flac")
-
-    def test_play_next_repeat_all(self, engine):
-        engine._queue = ["a.flac", "b.flac"]
-        engine._queue_index = 1
-        engine._repeat = "all"
-        engine.play = MagicMock()
-        engine._db = None
-
-        result = engine.play_next()
-
-        assert result is True
-        assert engine._queue_index == 0
-        engine.play.assert_called_once_with("a.flac")
-
-    def test_play_prev(self, engine):
-        engine._queue = ["a.flac", "b.flac", "c.flac"]
-        engine._queue_index = 2
-        engine.play = MagicMock()
-        engine._db = None
-
+    def test_play_prev_delegates(self, engine):
+        """DRIFT: origin/main play_prev() delegates to transport.play_prev()."""
+        self._transport.play_prev.return_value = True
         result = engine.play_prev()
-
         assert result is True
-        assert engine._queue_index == 1
-        engine.play.assert_called_once_with("b.flac")
+        self._transport.play_prev.assert_called_once()
+        engine.queue_changed.emit.assert_called_once()
 
     def test_play_prev_at_start(self, engine):
-        engine._queue = ["a.flac", "b.flac"]
-        engine._queue_index = 0
-        engine.play = MagicMock()
-
+        self._transport.play_prev.return_value = False
         result = engine.play_prev()
-
         assert result is False
-        engine.play.assert_not_called()
+        self._transport.play_prev.assert_called_once()
 
     # ── shuffle / repeat ──
 
@@ -699,16 +758,19 @@ class TestGStreamerEngine:
         message.type = MOCK_GST.MessageType.ERROR
         message.parse_error.return_value = ("some error", "debug info")
         pipeline = MagicMock()
-        pipeline.get_state.return_value = (MOCK_GST.StateChangeReturn.SUCCESS,
-                                            MOCK_GST.State.NULL)
-        engine._pipeline = pipeline
-        engine._bus_id = 123
+        pipeline.get_state.return_value = (
+            MOCK_GST.StateChangeReturn.SUCCESS,
+            MOCK_GST.State.NULL,
+        )
+        self._transport.get_pipeline.return_value = pipeline
         engine._timer = MagicMock()
 
         engine._on_bus_message(bus, message)
 
         engine.error_occurred.emit.assert_called()
+        self._transport.adopt_pipeline.assert_called_with(None)
         pipeline.set_state.assert_called_with(MOCK_GST.State.NULL)
+        engine._timer.stop.assert_called_once()
 
     def test_bus_message_warning_does_not_emit_error(self, engine):
         bus = MagicMock()
@@ -720,30 +782,32 @@ class TestGStreamerEngine:
 
         engine.error_occurred.emit.assert_not_called()
 
-    def test_bus_message_buffering(self, engine):
+    def test_bus_message_buffering_pauses_pipeline(self, engine):
         bus = MagicMock()
         message = MagicMock()
         message.type = MOCK_GST.MessageType.BUFFERING
         message.parse_buffering.return_value = 50
         pipeline = MagicMock()
         pipeline.set_state.return_value = MOCK_GST.StateChangeReturn.SUCCESS
-        engine._pipeline = pipeline
+        self._transport.get_pipeline.return_value = pipeline
         from audio.player import PlaybackState
+
         engine._state = PlaybackState.PLAYING
 
         engine._on_bus_message(bus, message)
 
         pipeline.set_state.assert_called_with(MOCK_GST.State.PAUSED)
 
-    def test_bus_message_buffering_complete(self, engine):
+    def test_bus_message_buffering_complete_resumes(self, engine):
         bus = MagicMock()
         message = MagicMock()
         message.type = MOCK_GST.MessageType.BUFFERING
         message.parse_buffering.return_value = 100
         pipeline = MagicMock()
         pipeline.set_state.return_value = MOCK_GST.StateChangeReturn.SUCCESS
-        engine._pipeline = pipeline
+        self._transport.get_pipeline.return_value = pipeline
         from audio.player import PlaybackState
+
         engine._state = PlaybackState.PLAYING
 
         engine._on_bus_message(bus, message)
@@ -756,34 +820,48 @@ class TestGStreamerEngine:
         message.type = MOCK_GST.MessageType.DURATION_CHANGED
         pipeline = MagicMock()
         pipeline.query_duration.return_value = (True, 123456789000)
-        engine._pipeline = pipeline
+        self._transport.get_pipeline.return_value = pipeline
 
         engine._on_bus_message(bus, message)
 
         assert engine._duration == 123.456789
         engine.duration_changed.emit.assert_called_with(123.456789)
 
-    def test_bus_message_state_changed(self, engine):
+    def test_bus_message_state_changed_non_pipeline_src(self, engine):
         bus = MagicMock()
         message = MagicMock()
         message.type = MOCK_GST.MessageType.STATE_CHANGED
         message.src = "not_pipeline"
         engine._pipeline = MagicMock()
+        # no crash expected
+
         engine._on_bus_message(bus, message)
 
     # ── _to_uri ──
 
     def test_to_uri_preserves_http(self, engine):
-        assert engine._to_uri("http://example.com/stream") == "http://example.com/stream"
+        assert (
+            engine._to_uri("http://example.com/stream")
+            == "http://example.com/stream"
+        )
 
     def test_to_uri_preserves_https(self, engine):
-        assert engine._to_uri("https://example.com/stream") == "https://example.com/stream"
+        assert (
+            engine._to_uri("https://example.com/stream")
+            == "https://example.com/stream"
+        )
 
     def test_to_uri_preserves_icy(self, engine):
-        assert engine._to_uri("icy://example.com/stream") == "icy://example.com/stream"
+        assert (
+            engine._to_uri("icy://example.com/stream")
+            == "icy://example.com/stream"
+        )
 
     def test_to_uri_preserves_file_protocol(self, engine):
-        assert engine._to_uri("file:///home/test.flac") == "file:///home/test.flac"
+        assert (
+            engine._to_uri("file:///home/test.flac")
+            == "file:///home/test.flac"
+        )
 
     def test_to_uri_converts_filepath(self, engine):
         result = engine._to_uri("/home/test.flac")
@@ -791,31 +869,37 @@ class TestGStreamerEngine:
 
     # ── _on_media_finished / _on_media_finished_eos ──
 
-    def test_on_media_finished_plays_next(self, engine):
-        engine._queue = ["a.flac", "b.flac"]
-        engine._queue_index = 0
-        engine.play = MagicMock()
-        engine._db = None
+    def test_on_media_finished_delegates_to_play_next(self, engine):
+        """DRIFT: origin/main _on_media_finished uses play_next() for
+        transport delegation."""
+        self._transport.play_next.return_value = True
 
         engine._on_media_finished()
 
-        engine.play.assert_called_once_with("b.flac")
+        self._transport.play_next.assert_called_once()
+        engine.finished.emit.assert_not_called()
 
-    def test_on_media_finished_at_end(self, engine):
+    def test_on_media_finished_at_end_stops(self, engine):
         pipeline = MagicMock()
-        pipeline.get_state.return_value = (MOCK_GST.StateChangeReturn.SUCCESS,
-                                            MOCK_GST.State.NULL)
-        engine._pipeline = pipeline
-        engine._queue = ["a.flac"]
-        engine._queue_index = 0
-        engine.play = MagicMock()
-        engine._db = None
+        pipeline.get_state.return_value = (
+            MOCK_GST.StateChangeReturn.SUCCESS,
+            MOCK_GST.State.NULL,
+        )
+        self._transport.get_pipeline.return_value = pipeline
+        self._transport.play_next.return_value = False
+        from audio.player import PlaybackState
 
         engine._on_media_finished()
 
+        self._transport.play_next.assert_called_once()
+        pipeline.set_state.assert_called_with(MOCK_GST.State.NULL)
+        signals = [c[0][0] for c in engine.state_changed.emit.call_args_list]
+        assert any(s == PlaybackState.STOPPED for s in signals)
         engine.finished.emit.assert_called_once()
 
-    def test_on_media_finished_eos_gapless(self, engine):
+    def test_on_media_finished_eos_gapless_advances_index(self, engine):
+        """DRIFT: origin/main _on_media_finished_eos sets _current and
+        emits state_changed."""
         engine._gapless_active = True
         engine._queue = ["a.flac", "b.flac"]
         engine._queue_index = 0
@@ -824,8 +908,11 @@ class TestGStreamerEngine:
 
         assert engine._gapless_active is False
         assert engine._queue_index == 1
+        assert engine._current == "b.flac"
+        engine.queue_changed.emit.assert_called_with(["a.flac", "b.flac"])
+        engine.state_changed.emit.assert_called()
 
-    def test_on_media_finished_eos_no_gapless(self, engine):
+    def test_on_media_finished_eos_no_gapless_falls_through(self, engine):
         engine._gapless_active = False
         engine._on_media_finished = MagicMock()
 
@@ -898,11 +985,12 @@ class TestGStreamerEngine:
     def test_get_position_ns(self, engine):
         pipeline = MagicMock()
         pipeline.query_position.return_value = (True, 5000000000)
-        engine._pipeline = pipeline
+        self._transport.get_pipeline.return_value = pipeline
+
         assert engine.get_position_ns() == 5000000000
 
     def test_get_position_ns_no_pipeline(self, engine):
-        engine._pipeline = None
+        """DRIFT: origin/main reads pipeline from transport.get_pipeline()."""
         assert engine.get_position_ns() == 0
 
     # ── transmit ──

@@ -7,6 +7,7 @@ Many tests use platform checks and skip if not on Windows.
 import os
 import platform
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -122,6 +123,7 @@ class TestWindowsFFmpeg:
         result = subprocess.run(["where", ffprobe], capture_output=True, text=True, timeout=10)
         assert result.returncode == 0 or "ffprobe" in os.environ.get("PATH", "")
 
+    @pytest.mark.skipif(sys.platform != 'win32', reason="Windows-only test")
     def test_ffmpeg_discovery_with_env(self):
         from core.external_process import find_executable
         path = find_executable("ffmpeg")
@@ -129,6 +131,7 @@ class TestWindowsFFmpeg:
             assert isinstance(path, str)
             assert os.path.isfile(path) or os.access(path, os.X_OK)
 
+    @pytest.mark.skipif(sys.platform != 'win32', reason="Windows-only test")
     def test_ffprobe_discovery_with_env(self):
         from core.external_process import find_executable
         path = find_executable("ffprobe")
