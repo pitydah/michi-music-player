@@ -56,7 +56,7 @@ Reproductor audiófilo premium para Linux · PySide6/Qt6 · GStreamer · pytest 
 - 📱 **Sincronización Android** — API REST + UDP multicast discovery
 
 ### Arquitectura
-- 🏛️ **AppContext DI** — Inyección de dependencias centralizada vía `AppContext`, controladores acceden a servicios por interfaz
+- 🏛️ **ServiceContainer DI** — Inyección de dependencias vía `ServiceContainer`, bridges reciben servicios tipados
 - 🧩 **14 controladores** — Transmit, AudioOutput, Snapcast, HomeAudio, Cast, LocalMediaServer, MiniPlayer, PlayerBar, Playlist, Artist, Album, Expanded, MPRIS, Tray
 - 🔒 **Encapsulación reforzada** — PlayerService como facade único al engine, CoverFlow con API pública, progresiva eliminación de accesos privados desde window.py
 - 🧹 **Código activo** — módulos cableados a flujos reales, servicios opcionales con degradación segura
@@ -294,7 +294,7 @@ michi-music-player/
 ├── core/                             # Infraestructura
 │   ├── settings_manager.py           # QSettings wrapper
 │   ├── interfaces.py                 # IPlaybackController, IViewController
-│   ├── app_context.py                # AppContext DI container
+│   ├── app_services.py               # AppServices (legacy — removed in v1)
 │   ├── playback_controller.py        # Control de reproducción + EQ
 │   ├── file_actions.py               # Open, scan, drop, folder import
 │   ├── file_manager_service.py       # Detección DE + apertura en gestor/terminal
@@ -367,7 +367,7 @@ michi-music-player/
 | Géneros (grid + detalle interno) | 🔄 En validación |
 | Playlist Hub (crear, M3U import/export) | 🔄 En validación |
 | PlayerService wrappers públicos | ✅ Implementado |
-| AppContext DI (migración en progreso) | 🔄 En estabilización |
+| ServiceContainer DI (QML bridges) | ✅ Implementado |
 | MPRIS DBus (KDE Plasma) | ✅ Implementado |
 | Subsonic / Navidrome / Jellyfin | 🔄 En validación |
 | Radio por Internet (HTTP/ICY) | 🔄 En validación |

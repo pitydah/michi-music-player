@@ -12,11 +12,7 @@ BRIDGE_FACTORY_PATH = (
     / "ui_qml_bridge"
     / "bridge_factory.py"
 )
-SERVICE_BUNDLE_PATH = (
-    Path(__file__).resolve().parent.parent.parent
-    / "ui_qml_bridge"
-    / "service_bundle.py"
-)
+# SERVICE_BUNDLE_PATH removed in qml-single-authority-v1
 
 
 def _make_container(**overrides) -> ServiceContainer:
@@ -108,9 +104,9 @@ class TestNoServiceBundleImports:
 
         assert violations == []
 
-    def test_service_bundle_is_legacy_only(self):
-        content = SERVICE_BUNDLE_PATH.read_text()
-        assert "LEGACY_ONLY" in content
+    def test_service_bundle_is_removed(self):
+        """ServiceBundle was removed in qml-single-authority-v1."""
+        assert not (BRIDGE_FACTORY_PATH.parent / "service_bundle.py").exists()
 
 
 class TestContainerAccess:

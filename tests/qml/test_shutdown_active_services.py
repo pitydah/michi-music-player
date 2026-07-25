@@ -4,11 +4,10 @@ from unittest.mock import MagicMock
 
 from ui_qml_bridge.app_bridge import AppBridge
 from ui_qml_bridge.bridge_factory import BridgeFactory
-from ui_qml_bridge.service_bundle import ServiceBundle
 
 
-def _make_bundle_with_active_tasks() -> ServiceBundle:
-    bundle = ServiceBundle()
+def _make_bundle_with_active_tasks():
+    bundle = MagicMock()
     bundle.worker_manager = MagicMock()
     bundle.worker_manager.active_tasks.return_value = [
         {"task_id": "task_1", "state": "running"},

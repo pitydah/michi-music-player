@@ -103,7 +103,7 @@ Typed service registry with lifecycle and capability tracking.
 
 Creates bridge objects exactly once. Does NOT open databases, construct backends, or start services.
 
-- Receives `ServiceBundle` (extracted from `ServiceContainer`)
+- Receives services (extracted from `ServiceContainer`)
 - Creates bridges in 5 phases:
   - **Phase 0:** Settings migrations
   - **Phase B:** Fundamental bridges (navigation, app, theme, notification, accessibility, app_state, route_registry, action_registry, capability, playlists, selection_context, job)
@@ -112,7 +112,7 @@ Creates bridge objects exactly once. Does NOT open databases, construct backends
   - **Phase E:** Wiring assertions (`_assert_wiring`) + action handler binding
 - Capability tracking: `_capabilities[bridge_name]` = all required services exist
 
-**Rule:** Bridges never import core services directly. All dependencies injected via `ServiceBundle`.
+**Rule:** Bridges never import core services directly. All dependencies injected from `ServiceContainer`.
 
 ---
 
@@ -298,7 +298,7 @@ michi.app_launcher.launch()
 │   │   │   ├─ _build_action_registry() [play/pause/next…] │
 │   │   │   ├─ _build_bridges()                             │
 │   │   │   │   └─ create_all_bridges(container)            │
-│   │   │   │       ├─ ServiceBundle(container extracts)    │
+│   │   │   │       ├─ ServiceContainer extracts            │
 │   │   │   │       └─ BridgeFactory(services).create_all() │
 │   │   │   │           ├─ Phase 0: settings migrations     │
 │   │   │   │           ├─ Phase B: fundamental bridges     │

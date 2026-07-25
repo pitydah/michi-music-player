@@ -34,6 +34,8 @@ jobs:
         run: ruff check . ${{ env.ruff_out }}
       - name: Compileall
         run: python -m compileall -q -x '${{ env.compile_exclude }}' .
+      - name: Single authority gate
+        run: python scripts/check_single_authority.py
       - name: QML-only gate
         run: python scripts/qml_only_gate.py
 

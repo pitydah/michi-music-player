@@ -46,7 +46,7 @@ michi-music-player/
 │                     style_tokens.py, qss.py, icon_registry.py, icon_loader.py,
 │                     central/ (central_styles.py, central_tokens.py),
 │                     sidebar/ (7 módulos: tokens, styles, item, section, panel, brand, search)
-├── core/           → app_context.py (DI container), interfaces.py, settings_manager.py,
+├── core/           → interfaces.py, settings_manager.py,
 │                     playback_controller.py, file_actions.py,
 │                     file_manager_service.py, safe_file_ops.py,
 │                     home/ (home_status.py dataclasses, home_dashboard_service.py),
@@ -69,10 +69,9 @@ michi-music-player/
 ## 3. Architectural Patterns — MUST FOLLOW (migration in progress)
 
 ### Dependency Injection
-- Preferred: `AppContext` (`core/app_context.py`) and `AppServices` (`core/app_services.py`)
-- Current state: controllers store `self._ctx` directly; `self._win` retained for Qt parent/widget needs
-- Pattern: `self._ctx.playback.toggle()`
-- Migration: controllers that receive `ctx` should stop accessing `self._win._ctx`
+- Controllers use `ServiceContainer` (QML bridge) or direct service injection
+- Pattern: bridges receive typed service references from `ServiceContainer`
+- Migration complete: no legacy DI containers remain
 
 ### Hybrid Audio Engine Architecture
 ```
@@ -102,7 +101,7 @@ UI → PlayerService → HybridAudioManager
 
 ### Controllers (ui/controllers/)
 - One controller per functional domain (14 total)
-- Progressive migration toward `AppContext` + `AppServices` DI
+- QML bridges receive dependencies from `ServiceContainer`
 - Emit Qt `Signal` for communication — never call UI methods directly
 - NO business logic in controllers — delegate to services
 - `window.py` is still the main orchestrator; avoid massive refactors without tests
@@ -117,7 +116,7 @@ UI → PlayerService → HybridAudioManager
 |------|------|
 | `ui/window.py:937-1212` | `_on_sidebar_navigate()` — dispatches ALL sidebar clicks to views (giant if/elif chain) |
 | `ui/sidebar_controller.py:18-69` | `rebuild()` — builds 7 sidebar sections and all items in order |
-| `core/app_context.py` | DI container — all controllers access services via `ctx` |
+| `core/` | Services — all services accessed via `ServiceContainer` from bridges |
 | `ui/icon_registry.py` | Source of truth for all 38+ icons (key, path, family, render_mode) |
 | `core/settings_manager.py` | QSettings wrapper — `DEFAULTS` dict has all config keys; `get()`/`set_()` API |
 | `ui/window.py:110-127` | `SECTION_CONFIG` — header titles, icons, views, search visibility per section |
@@ -309,7 +308,7 @@ PySide6 mutagen numpy shazamio pyaudio requests
 | Stubs | **0** |
 | Dead code | **0** |
 | Audio profiles | **9** |
-| Controllers | **15** (with Qt Signals, DI via AppContext/AppServices) |
+| Controllers | **15** (with Qt Signals, DI via ServiceContainer) |
 | Recognition providers | **3 real** (ShazamIO, AudD, AcoustID) |
 | Icons registered | **38+** |
 | NAV_ROUTES validated | ✅ startup `RuntimeError` on stale routes |
