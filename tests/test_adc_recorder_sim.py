@@ -57,7 +57,7 @@ class TestADCRecorderCommands:
         svc.active_session = RecordingSession(
             session_id="test", input_device=device, output_path="/tmp/test.wav",
             format="wav", start_time=0.0, end_time=None, duration=0.0,
-            file_size=0, markers=[], status="idle",
+            file_size=0, markers=[], status="recording",
         )
         svc._recording = True  # DRIFT: is_recording is now a read-only property
         result = svc.add_marker(label="Test Marker")
