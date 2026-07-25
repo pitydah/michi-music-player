@@ -281,7 +281,13 @@ Item {
         visible: pageStack.lastError !== "" && !root.fatalError
         showRetry: true
         message: pageStack.lastError
-        onRetryRequested: pageStack.loadRoute(pageStack.currentRoute)
+        secondaryActionText: qsTr("Ir a Inicio")
+        onRetryRequested: pageStack.loadRoute(pageStack.pendingRoute)
+        onSecondaryActionRequested: {
+            if (typeof navigationBridge !== "undefined" && navigationBridge)
+                navigationBridge.navigate("home")
+            pageStack.lastError = ""
+        }
     }
 
     ErrorState {

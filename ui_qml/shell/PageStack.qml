@@ -221,7 +221,7 @@ Item {
         color: MichiTheme.colors.bgApp
         opacity: 0.6
         visible: false
-        z: 50
+        z: 100
 
         Column {
             anchors.centerIn: parent
@@ -244,57 +244,4 @@ Item {
         Accessible.name: qsTr("Cargando contenido")
     }
 
-    Rectangle {
-        anchors.fill: parent
-        color: MichiTheme.colors.bgApp
-        visible: root.lastError !== ""
-        z: 100
-
-        Column {
-            anchors.centerIn: parent
-            spacing: MichiTheme.spacing.md
-            width: Math.min(400, parent.width * 0.8)
-
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: qsTr("Error de ruta")
-                color: MichiTheme.colors.error
-                font.pixelSize: MichiTheme.typography.pageTitleSize
-                font.weight: MichiTheme.typography.weightBold
-            }
-
-            Text {
-                width: parent.width
-                text: root.lastError
-                color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.bodySize
-                wrapMode: Text.WordWrap
-                horizontalAlignment: Text.AlignHCenter
-            }
-
-            Row {
-                anchors.horizontalCenter: parent.horizontalCenter
-                spacing: MichiTheme.spacing.sm
-
-                MichiButton {
-                    text: qsTr("Reintentar")
-                    variant: "primary"
-                    onClicked: {
-                        root.lastError = ""
-                        root.loadRoute(root.pendingRoute)
-                    }
-                }
-
-                MichiButton {
-                    text: qsTr("Ir a Inicio")
-                    variant: "ghost"
-                    onClicked: {
-                        if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.navigate("home")
-                        root.lastError = ""
-                    }
-                }
-            }
-        }
-    }
 }
