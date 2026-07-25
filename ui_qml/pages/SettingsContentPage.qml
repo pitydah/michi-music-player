@@ -12,7 +12,7 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Ajustes"
 
-    property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : (typeof settingsBridge !== "undefined" ? settingsBridge : null)
+    property var bridge: typeof settingsBridge !== "undefined" ? settingsBridge : null
     property int pageState: root.bridge ? stateReady : stateError
 
     readonly property int stateLoading: 0

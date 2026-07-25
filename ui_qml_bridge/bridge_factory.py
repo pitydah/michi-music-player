@@ -107,7 +107,7 @@ class BridgeFactory(QObject):
             self._bridges["library"] = LibraryBridge(
                 db=self._get("database"),
                 search_engine=self._get("global_search_service"),
-                playback_ctrl=self._get("playback_service"),
+                player_service=self._get("playback_service"),
                 query_service=self._get("library_query_service"),
                 query_executor=self._get("query_executor"),
                 worker_manager=self._get("worker_manager"),
@@ -143,16 +143,6 @@ class BridgeFactory(QObject):
                 player_service=self._get("playback_service"),
                 queue_service=self._get("queue_service"),
                 audio_quality_adapter=quality_adapter,
-            )
-
-    def create_playback_bridge(self):
-        if "playback" not in self._bridges:
-            self.create_nowplaying_bridge()
-            npb = self._bridges.get("nowplaying")
-            from ui_qml_bridge.playback_bridge import PlaybackBridge
-            self._bridges["playback"] = PlaybackBridge(
-                player_service=self._get("playback_service"),
-                nowplaying_bridge=npb,
             )
 
     def create_queue_bridge(self):
@@ -247,7 +237,6 @@ class BridgeFactory(QObject):
             from ui_qml_bridge.settings_bridge_v2 import SettingsBridgeV2
             bridge = SettingsBridgeV2(service=self._get("settings_service"))
             self._bridges["settings"] = bridge
-            self._bridges["settings_v2"] = bridge
             navigation = self._bridges.get("navigation")
             if navigation is not None:
                 navigation.registerLeaveGuard("settings", bridge)
@@ -274,7 +263,6 @@ class BridgeFactory(QObject):
                 nav = self._bridges["navigation"]
             from ui_qml_bridge.connections_bridge import ConnectionsBridge
             self._bridges["connections"] = ConnectionsBridge(
-                michi_link_ctrl=self._get("connection_service"),
                 connection_service=self._get("connection_service"),
                 navigation_bridge=nav,
             )
@@ -503,11 +491,7 @@ class BridgeFactory(QObject):
 
     def create_query_executor(self):
         if "query_executor" not in self._bridges:
-            from ui_qml_bridge.query_executor import QueryExecutor
-            self._bridges["query_executor"] = QueryExecutor(
-                worker_manager=self._get("worker_manager"),
-                owns_worker_manager=False,
-            )
+            self._bridges["query_executor"] = self._container.require("query_executor")
 
     def create_app_state_bridge(self):
         if "app_state" not in self._bridges:
@@ -546,7 +530,6 @@ class BridgeFactory(QObject):
         self.create_playlists_bridge()
         self.create_library_bridge()
         self.create_library_sources_bridge()
-        self.create_playback_bridge()
         self.create_nowplaying_bridge()
         self.create_queue_bridge()
         self.create_history_bridge()
@@ -590,11 +573,6 @@ class BridgeFactory(QObject):
 
         self.bind_action_handlers()
 
-        lib = self._bridges.get("library")
-        pl = self._bridges.get("playlists")
-        if lib is not None and pl is not None:
-            lib._playlists_bridge = pl
-
         self._validate_bridge_identities()
         self._assert_wiring()
         return self._bridges
@@ -615,12 +593,6 @@ class BridgeFactory(QObject):
             container_reg = container.require("action_registry")
             if reg is not container_reg:
                 raise RuntimeError("action_registry identity mismatch")
-
-        pb = factory._bridges.get("playback")
-        if pb is not None:
-            np = pb._nowplaying
-            if np._player is not container.require("playback_service"):
-                raise RuntimeError("playback_bridge.service identity mismatch")
 
         qb = factory._bridges.get("queue")
         if (

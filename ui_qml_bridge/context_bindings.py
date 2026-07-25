@@ -40,7 +40,7 @@ from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
 from ui_qml_bridge.output_profiles_bridge import OutputProfilesBridge
 from ui_qml_bridge.page_state_store import PageStateStore
 from ui_qml_bridge.physical_audio_bridge import PhysicalAudioBridge
-from ui_qml_bridge.playback_bridge import PlaybackBridge
+
 from ui_qml_bridge.playlists_bridge import PlaylistsBridge
 from ui_qml_bridge.queue_bridge import QueueBridge
 from ui_qml_bridge.radio_bridge import RadioBridge
@@ -76,7 +76,7 @@ CONTEXT_BINDINGS: list[ContextBinding] = [
     ContextBinding(JobBridge,           "jobBridge",       required_services=("worker_manager", "connection_factory")),
     ContextBinding(SelectionContextBridge, "selectionContextBridge"),
     ContextBinding(LibraryBridge,       "libraryBridge",   required_services=("connection_factory", "worker_manager", "global_search_service", "library_query_service", "query_executor", "track_action_service"), optional_services=("playback_service",)),
-    ContextBinding(PlaybackBridge,      "playbackBridge",  required_services=("playback_service",)),
+
     ContextBinding(NowPlayingBridge,    "nowplayingBridge", required_services=("playback_service", "worker_manager")),
     ContextBinding(QueueBridge,         "queueBridge",     required_services=("playback_service",)),
     ContextBinding(HistoryBridge,       "historyBridge",   required_services=("connection_factory",), optional_services=("history_query_service", "query_executor", "playback_service")),
@@ -84,7 +84,6 @@ CONTEXT_BINDINGS: list[ContextBinding] = [
     ContextBinding(LyricsBridge,        "lyricsBridge",    required_services=("worker_manager",)),
     ContextBinding(GlobalSearchBridge,  "globalSearchBridge", required_services=("global_search_service", "query_executor")),
     ContextBinding(SettingsBridgeV2,    "settingsBridge",  required_services=("settings_service",)),
-    ContextBinding(SettingsBridgeV2,    "settingsBridgeV2", required_services=("settings_service",)),
     ContextBinding(OutputProfilesBridge,"outputProfilesBridge", required_services=("playback_service",)),
     ContextBinding(EqBridge,            "eqBridge",        required_services=("playback_service",)),
     ContextBinding(ConnectionsBridge,   "connectionsBridge", optional_services=("connection_service",)),
@@ -120,7 +119,6 @@ def _camel_to_snake(name: str) -> str:
 
 
 _EXPLICIT_BRIDGE_KEYS: dict[str, str] = {
-    "settingsBridgeV2": "settings_v2",
     "actionRegistry": "action_registry",
     "jobBridge": "job_bridge",
     "pageStateStore": "page_state",

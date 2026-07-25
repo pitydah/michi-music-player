@@ -9,7 +9,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
-from ui_qml_bridge.playback_bridge import PlaybackBridge
 
 pytestmark = [pytest.mark.qml_module("playback")]
 
@@ -76,8 +75,4 @@ def test_no_player_service_on_all_commands(mock_player):
     assert not bridge.setVolume(50)["ok"]
 
 
-def test_playback_bridge_error_propagation(mock_player):
-    np_bridge = NowPlayingBridge(player_service=mock_player)
-    pb_bridge = PlaybackBridge(nowplaying_bridge=np_bridge)
-    assert hasattr(pb_bridge, 'stateChanged')
-    assert pb_bridge.backendAvailable is not None
+

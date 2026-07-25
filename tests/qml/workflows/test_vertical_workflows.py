@@ -340,7 +340,7 @@ class TestWorkflow1LibraryToPlayback:
         track = qs.fetch_track_internal(1)
         assert track is not None
 
-        lb = LibraryBridge(db=real_db, query_service=qs, playback_ctrl=playback_ctrl)
+        lb = LibraryBridge(db=real_db, query_service=qs, player_service=playback_ctrl)
         result = lb.play_song(track["filepath"])
         assert result.get("ok"), f"play failed: {result}"
         assert playback_ctrl.current_track == track["filepath"]
@@ -351,7 +351,7 @@ class TestWorkflow1LibraryToPlayback:
         from ui_qml_bridge.library_query_service import LibraryQueryService
 
         qs = LibraryQueryService(db=real_db)
-        lb = LibraryBridge(db=real_db, query_service=qs, playback_ctrl=playback_ctrl)
+        lb = LibraryBridge(db=real_db, query_service=qs, player_service=playback_ctrl)
 
         for i in range(1, 4):
             track = qs.fetch_track_internal(i)
@@ -409,7 +409,7 @@ class TestWorkflow2AlbumToPlaylist:
         from ui_qml_bridge.library_bridge import LibraryBridge
         from ui_qml_bridge.library_query_service import LibraryQueryService
         qs = LibraryQueryService(db=real_db)
-        lb = LibraryBridge(db=real_db, query_service=qs, playback_ctrl=playback_ctrl)
+        lb = LibraryBridge(db=real_db, query_service=qs, player_service=playback_ctrl)
 
         result = lb.enqueueAlbum("album_alpha")
         assert result.get("ok"), f"enqueueAlbum failed: {result}"
@@ -468,7 +468,7 @@ class TestWorkflow3ArtistMix:
         from ui_qml_bridge.library_bridge import LibraryBridge
         from ui_qml_bridge.library_query_service import LibraryQueryService
         qs = LibraryQueryService(db=real_db)
-        lb = LibraryBridge(db=real_db, query_service=qs, playback_ctrl=playback_ctrl)
+        lb = LibraryBridge(db=real_db, query_service=qs, player_service=playback_ctrl)
         r = lb.playArtist("Artist A")
         assert r.get("ok"), f"playArtist failed: {r}"
         assert r.get("count") == 4

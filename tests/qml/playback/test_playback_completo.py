@@ -10,7 +10,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
-from ui_qml_bridge.playback_bridge import PlaybackBridge
 from core.queue_service import QueueService
 
 pytestmark = [pytest.mark.qml_module("playback")]
@@ -137,19 +136,6 @@ class TestPlaybackCompleto:
         result = bridge.playQueueItem(1)
         assert result["ok"]
         mock_player.play_queue_item.assert_not_called()
-
-    def test_playback_bridge_delegates(self):
-        p = MagicMock()
-        p.current = None
-        p.state = "stopped"
-        p.duration = 0
-        p.get_queue.return_value = []
-        p.set_queue = MagicMock()
-        pb = PlaybackBridge(
-            player_service=p,
-            queue_service=QueueService(player_service=p),
-        )
-        assert pb.trackTitle == "—"
 
     def test_bridge_error_no_player(self):
         with pytest.raises(AssertionError):

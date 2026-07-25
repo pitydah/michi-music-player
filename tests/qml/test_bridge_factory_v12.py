@@ -209,17 +209,15 @@ class TestIndividualBridges:
 
 
 class TestSettingsIdentity:
-    def test_create_settings_bridge_uses_shared_identity(self):
+    def test_create_settings_bridge(self):
         factory = BridgeFactory(_make_container())
-
         factory.create_settings_bridge()
+        assert factory.get("settings") is not None
 
-        assert factory.get("settings") is factory.get("settings_v2")
-
-    def test_create_all_uses_shared_settings_identity(self):
+    def test_create_all_uses_settings(self):
         result = BridgeFactory(_make_container()).create_all()
-
-        assert result["settings"] is result["settings_v2"]
+        assert "settings" in result
+        assert "settings_v2" not in result
 
 
 class TestEdgeCases:

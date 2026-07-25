@@ -536,7 +536,7 @@ class TestLibraryBridgeContract:
         db.conn.execute.return_value.fetchone.return_value = ["Song Title", "Song Artist", "Song Album"]
         from ui_qml_bridge.library_query_service import LibraryQueryService
         qs = LibraryQueryService(db=db)
-        bridge = LibraryBridge(playback_ctrl=playback, query_service=qs)
+        bridge = LibraryBridge(player_service=playback, query_service=qs)
 
         result = bridge.play_song("http://example.com/song.flac")
         assert result["ok"] is True
@@ -968,18 +968,8 @@ class TestMixComponents:
 
 
 class TestPlaybackComponents:
-    def test_playback_bridge_importable(self):
-        from ui_qml_bridge.playback_bridge import PlaybackBridge
-        assert PlaybackBridge is not None
-
     def test_playback_page_exists(self):
         assert (QML_DIR / "pages" / "PlaybackPage.qml").exists()
-
-    def test_playback_bridge_has_properties(self):
-        from ui_qml_bridge.playback_bridge import PlaybackBridge
-        bridge = PlaybackBridge()
-        assert bridge.isPlaying is False
-        assert bridge.volume == 80
 
 
 class TestRadioComponents:
@@ -1258,26 +1248,9 @@ class TestNowPlayingBar:
         assert bridge.shuffleEnabled is True
         assert bridge.repeatMode == "all"
 
-    def test_playback_bridge_has_nowplaying_props(self):
-        from ui_qml_bridge.playback_bridge import PlaybackBridge
-        bridge = PlaybackBridge()
-        assert hasattr(bridge, 'coverPath')
-        assert hasattr(bridge, 'sourceType')
-        assert hasattr(bridge, 'qualityLabel')
-        assert hasattr(bridge, 'repeatMode')
-        assert hasattr(bridge, 'shuffleEnabled')
-
-    def test_playback_bridge_advanced_slots(self):
-        from ui_qml_bridge.playback_bridge import PlaybackBridge
-        bridge = PlaybackBridge()
-        assert hasattr(bridge, 'toggleShuffle')
-        assert hasattr(bridge, 'toggleRepeat')
-        assert hasattr(bridge, 'seekRelative')
-
     def test_nowplaying_bar_uses_nowplaying_bridge_first(self):
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
         assert "nowplayingBridge" in content
-        assert "playbackBridge" in content
         assert "notificationBridge" in content
 
     def test_nowplaying_bar_no_emojis(self):

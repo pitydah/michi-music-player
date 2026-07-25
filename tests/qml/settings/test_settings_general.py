@@ -70,7 +70,7 @@ def bridge():
 
 class TestSettingsGeneralPage:
     def _load_page(self, engine, bridge):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/SettingsGeneralPage.qml")))
@@ -202,7 +202,7 @@ def bridge():
 
 class TestSettingsGeneralPage:
     def _load_page(self, engine, bridge):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/SettingsGeneralPage.qml")))

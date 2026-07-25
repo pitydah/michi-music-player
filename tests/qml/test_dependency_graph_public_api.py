@@ -66,11 +66,9 @@ def test_factory_creates_bridges_with_public_api():
     factory._bridges["diagnostics"] = diag
 
     factory._bridges["settings"] = MagicMock()
-    factory._bridges["settings_v2"] = factory._bridges["settings"]
 
     assert factory.bridges["global_search"] is gs
     assert factory.bridges["diagnostics"] is diag
-    assert factory.bridges["settings"] is factory.bridges["settings_v2"]
 
 
 def test_mix_bridge_receives_query_service():

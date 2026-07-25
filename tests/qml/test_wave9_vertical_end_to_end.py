@@ -663,7 +663,7 @@ class TestWave10RealVerticalFlow:
                 s.enqueued = list(paths)
 
         player = FakePlayer()
-        bridge = LibraryBridge(db=db, playback_ctrl=player,
+        bridge = LibraryBridge(db=db, player_service=player,
                                query_service=qs, query_executor=qe)
         result = bridge.playAlbum("key_0_0")
         assert result.get("ok") is True

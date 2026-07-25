@@ -40,27 +40,27 @@ def mock_ctrl():
 
 @pytest.fixture
 def bridge(mock_ctrl):
-    return ConnectionsBridge(michi_link_ctrl=mock_ctrl)
+    return ConnectionsBridge(connection_service=mock_ctrl)
 
 
 class TestNoControllerTypedError:
     def test_no_controller_scan_returns_error(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.scanForServers()
         assert result["ok"] is False
         assert result["error"] == "SERVICE_UNAVAILABLE"
 
     def test_no_controller_scan_state(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         assert b.microServerState == "service_unavailable"
 
     def test_no_controller_reconnect_returns_error(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.reconnect()
         assert result["ok"] is False
 
     def test_no_controller_confirm_pair_paired(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         b.requestPair()
         result = b.confirmPair()
         assert result["ok"] is True
@@ -172,6 +172,6 @@ class TestErrors:
     def test_scan_unsupported_no_discovery_method(self):
         ctrl = MagicMock()
         ctrl.discover_servers = None
-        b = ConnectionsBridge(michi_link_ctrl=ctrl)
+        b = ConnectionsBridge(connection_service=ctrl)
         result = b.scanForServers()
         assert result["ok"] is False

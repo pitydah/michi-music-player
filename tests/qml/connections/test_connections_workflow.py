@@ -36,7 +36,7 @@ def mock_ctrl():
 
 @pytest.fixture
 def bridge(mock_ctrl):
-    return ConnectionsBridge(michi_link_ctrl=mock_ctrl)
+    return ConnectionsBridge(connection_service=mock_ctrl)
 
 
 class TestInitialState:
@@ -182,16 +182,16 @@ class TestCapabilities:
 
 class TestIsolatedBridge:
     def test_no_controller_state(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         assert b.microServerState == "service_unavailable"
 
     def test_no_controller_scan_handled(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.scanForServers()
         assert result["ok"] is False
 
     def test_no_controller_reconnect_handled(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.reconnect()
         assert result["ok"] is False
 

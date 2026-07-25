@@ -34,7 +34,7 @@ class TestQmlStartup:
             b.build()
             bridges = b.create_bridges()
             assert bridges is not None
-            essential = ["navigation", "app", "library", "queue", "playback"]
+            essential = ["navigation", "app", "library", "queue"]
             for name in essential:
                 assert name in bridges, f"Missing essential bridge: {name}"
 

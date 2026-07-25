@@ -12,7 +12,7 @@ def build(container: ServiceContainer) -> None:
     from core.process_controller import ProcessController
     from core.event_bus import EventBus
     from core.worker_manager import WorkerManager
-    from ui_qml_bridge.query_executor import QueryExecutor
+    from core.query_executor import QueryExecutor
     from core.job_service import JobService
     from core.confirmation_service import ConfirmationService
     from core.settings_service import SettingsService

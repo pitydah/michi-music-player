@@ -7,7 +7,7 @@ from ui_qml_bridge.connections_bridge import ConnectionsBridge
 
 @pytest.fixture
 def bridge_no_ctrl():
-    return ConnectionsBridge(michi_link_ctrl=None)
+    return ConnectionsBridge(connection_service=None)
 
 
 @pytest.fixture
@@ -15,7 +15,7 @@ def bridge_with_ctrl():
     ctrl = MagicMock()
     ctrl.discover_servers.return_value = []
     ctrl.reconnect.return_value = {"ok": False, "error": "UNREACHABLE"}
-    return ConnectionsBridge(michi_link_ctrl=ctrl)
+    return ConnectionsBridge(connection_service=ctrl)
 
 
 class TestConnectionsUnavailable:

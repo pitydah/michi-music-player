@@ -23,7 +23,6 @@ _REQUIRED_ASSERTS: dict[str, set[str]] = {
     "DiscLabBridge": {"worker_manager"},
     "EqBridge": {"player_service"},
     "OutputProfilesBridge": {"player_service"},
-    "PlaybackBridge": {"player_service"},
     "NowPlayingBridge": {"player_service", "audio_quality_adapter"},
     "QueueBridge": {"player_service"},
     "HistoryBridge": {"db"},
@@ -43,7 +42,6 @@ _REQUIRED_ASSERTS: dict[str, set[str]] = {
 
 # Params that have valid alias defaults (at least one must be non-None)
 _ALIAS_GROUPS: dict[str, list[set[str]]] = {
-    "PlaybackBridge": [{"player_service", "playback_ctrl"}],
     "ThemeBridge": [{"coordinator", "service"}],
     "AccessibilityBridge": [{"playback_service"}, {"service", "settings_service"}],
     "DevicesBridge": [{"device_sync_service"}, {"job_service"}],

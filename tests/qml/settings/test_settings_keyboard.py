@@ -70,7 +70,7 @@ def bridge():
 class TestSettingsKeyboardNavigation:
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_all_pages_have_escape_signal(self, engine, bridge, page_file):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
@@ -81,7 +81,7 @@ class TestSettingsKeyboardNavigation:
 
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_all_pages_have_object_name(self, engine, bridge, page_file):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
@@ -92,7 +92,7 @@ class TestSettingsKeyboardNavigation:
 
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_all_pages_initial_state_ready(self, engine, bridge, page_file):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
@@ -103,7 +103,7 @@ class TestSettingsKeyboardNavigation:
 
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_all_pages_have_accessible_role(self, engine, bridge, page_file):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
@@ -182,7 +182,7 @@ def bridge():
 class TestSettingsKeyboardNavigation:
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_all_pages_have_escape_signal(self, engine, bridge, page_file):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
@@ -193,7 +193,7 @@ class TestSettingsKeyboardNavigation:
 
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_all_pages_have_object_name(self, engine, bridge, page_file):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
@@ -204,7 +204,7 @@ class TestSettingsKeyboardNavigation:
 
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_all_pages_initial_state_ready(self, engine, bridge, page_file):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
@@ -215,7 +215,7 @@ class TestSettingsKeyboardNavigation:
 
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_all_pages_have_accessible_role(self, engine, bridge, page_file):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
@@ -231,7 +231,7 @@ class TestSettingsKeyboardNavigation:
 
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_all_pages_create_successfully(self, engine, bridge, page_file):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))

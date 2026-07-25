@@ -91,7 +91,7 @@ class TestSettingsNegative:
 
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_error_state_can_be_set(self, engine, bridge, page_file):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
@@ -102,7 +102,7 @@ class TestSettingsNegative:
 
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_loading_state_can_be_set(self, engine, bridge, page_file):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
@@ -113,7 +113,7 @@ class TestSettingsNegative:
 
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_error_message_property(self, engine, bridge, page_file):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
@@ -125,7 +125,7 @@ class TestSettingsNegative:
 
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_error_details_property(self, engine, bridge, page_file):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
@@ -136,7 +136,7 @@ class TestSettingsNegative:
             assert obj.property("errorDetails") == test_details
 
     def test_library_destructive_confirmation_dialog(self, engine, bridge):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/SettingsLibraryPage.qml")))
@@ -146,7 +146,7 @@ class TestSettingsNegative:
             assert confirm_dialog is not None
 
     def test_general_clear_cache_confirmation(self, engine, bridge):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/SettingsLibraryPage.qml")))
@@ -236,7 +236,7 @@ class TestSettingsNegative:
 
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_error_state_can_be_set(self, engine, bridge, page_file):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
@@ -247,7 +247,7 @@ class TestSettingsNegative:
 
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_loading_state_can_be_set(self, engine, bridge, page_file):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
@@ -258,7 +258,7 @@ class TestSettingsNegative:
 
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_error_message_property(self, engine, bridge, page_file):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
@@ -270,7 +270,7 @@ class TestSettingsNegative:
 
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_error_details_property(self, engine, bridge, page_file):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
@@ -281,7 +281,7 @@ class TestSettingsNegative:
             assert obj.property("errorDetails") == test_details
 
     def test_library_destructive_confirmation_dialog(self, engine, bridge):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/SettingsLibraryPage.qml")))
@@ -291,7 +291,7 @@ class TestSettingsNegative:
             assert confirm_dialog is not None
 
     def test_general_clear_cache_confirmation(self, engine, bridge):
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/SettingsLibraryPage.qml")))
@@ -303,7 +303,7 @@ class TestSettingsNegative:
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_bridge_save_failure_handled_gracefully(self, engine, failing_bridge, page_file):
         failing_bridge._fail_set = True
-        engine.rootContext().setContextProperty("settingsBridgeV2", failing_bridge)
+        engine.rootContext().setContextProperty("settingsBridge", failing_bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))

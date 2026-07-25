@@ -12,7 +12,7 @@ Rectangle {
     focus: true
     id: root
     property var entry: null
-    property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
+    property var bridge: typeof settingsBridge !== "undefined" ? settingsBridge : null
     property bool dirty: false
     property var originalValue: null
     property var editedValue: null

@@ -26,7 +26,7 @@ def mock_ctrl():
 
 @pytest.fixture
 def bridge(mock_ctrl):
-    return ConnectionsBridge(michi_link_ctrl=mock_ctrl)
+    return ConnectionsBridge(connection_service=mock_ctrl)
 
 
 class TestManualConnection:
@@ -57,12 +57,12 @@ class TestManualConnection:
         assert bridge.microServerState == "detected"
 
     def test_connect_manual_no_controller(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.connectManual("10.0.0.1", 53318, "Standalone")
         assert result["ok"] is True
 
     def test_add_manual_no_controller(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.addManualServer("10.0.0.1", 53318, "Standalone")
         assert result["ok"] is True
 
@@ -84,7 +84,7 @@ class TestPairingSetup:
         assert bridge.microServerState == "not_configured"
 
     def test_confirm_pair_no_controller(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         b.requestPair()
         result = b.confirmPair()
         assert result["ok"] is True

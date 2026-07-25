@@ -37,32 +37,32 @@ def mock_ctrl():
 
 @pytest.fixture
 def bridge(mock_ctrl):
-    return ConnectionsBridge(michi_link_ctrl=mock_ctrl)
+    return ConnectionsBridge(connection_service=mock_ctrl)
 
 
 class TestSERVICE_UNAVAILABLE:
     def test_no_controller_state(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         assert b.microServerState == "service_unavailable"
 
     def test_scan_no_controller(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.scanForServers()
         assert result["ok"] is False
         assert result["error"] == "SERVICE_UNAVAILABLE"
 
     def test_reconnect_no_controller(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.reconnect()
         assert result["ok"] is False
 
     def test_add_manual_no_controller(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.addManualServer("10.0.0.1", 53318, "Test")
         assert result["ok"] is True
 
     def test_diagnose_no_controller(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.diagnose()
         assert result["ok"] is True
 
@@ -153,7 +153,7 @@ class TestPairingAuth:
         assert bridge.microServerContract == "contract_ok"
 
     def test_confirm_pair_no_ctrl(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         b.requestPair()
         result = b.confirmPair()
         assert result["ok"] is True
@@ -190,7 +190,7 @@ class TestReconnectRetry:
         assert mock_ctrl.reconnect.called
 
     def test_reconnect_no_controller(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.reconnect()
         assert result["ok"] is False
         assert result["error"] == "UNSUPPORTED"

@@ -116,24 +116,12 @@ class TestBridgeCreation:
 
 
 class TestSettingsIdentity:
-    def test_settings_identity(self):
-        f = BridgeFactory(_make_container())
-        f._bridges["settings"] = MagicMock()
-        f._bridges["settings_v2"] = f._bridges["settings"]
-
-    def test_settings_both_created_by_create_all(self):
+    def test_settings_created_by_create_all(self):
         c = _make_container()
         f = BridgeFactory(c)
         created = f.create_all()
         assert "settings" in created
-        assert "settings_v2" in created
-        assert created["settings"] is created["settings_v2"]
-
-    def test_settings_identity_fails_when_different(self):
-        f = BridgeFactory(_make_container())
-        f._bridges["settings"] = MagicMock()
-        f._bridges["settings_v2"] = MagicMock()
-        assert f._bridges["settings"] is not f._bridges["settings_v2"]
+        assert "settings_v2" not in created
 
 
 class TestBridgeCreationOrder:

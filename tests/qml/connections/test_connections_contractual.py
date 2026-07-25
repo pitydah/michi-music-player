@@ -14,30 +14,30 @@ pytestmark = pytest.mark.isolation
 
 class TestNoControllerTypedError:
     def test_scan_returns_error(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.scanForServers()
         assert result["ok"] is False
         assert result["error"] == "SERVICE_UNAVAILABLE"
 
     def test_connect_manual_no_ctrl_ok(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.connectManual("10.0.0.1", 53318, "Test")
         assert result["ok"] is True
 
     def test_request_pair_no_ctrl_ok(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.requestPair()
         assert result["ok"] is True
 
     def test_confirm_pair_no_ctrl_paired(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         b.requestPair()
         result = b.confirmPair()
         assert result["ok"] is True
         assert b.microServerState == "paired"
 
     def test_diagnose_no_ctrl_ok(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.diagnose()
         assert result["ok"] is True
 
@@ -69,7 +69,7 @@ class TestConnectionWorkflows:
 
     @pytest.fixture
     def bridge(self, mock_ctrl):
-        return ConnectionsBridge(michi_link_ctrl=mock_ctrl)
+        return ConnectionsBridge(connection_service=mock_ctrl)
 
     def test_scan_returns_ok(self, bridge, mock_ctrl):
         if mock_ctrl:
@@ -161,7 +161,7 @@ class TestConnectionWorkflows:
         assert result["ok"] is False
 
     def test_reconnect_no_controller(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.reconnect()
         assert result["ok"] is False
 
