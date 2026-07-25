@@ -57,13 +57,6 @@ class HistoryBridge(QObject):
     def historyQueryService(self):
         return self._hqs
 
-    @Property("QVariant", notify=dataChanged)
-    def playbackBridge(self):
-        return getattr(self, '_playback_bridge', None)
-
-    def setPlaybackBridge(self, bridge):
-        self._playback_bridge = bridge
-
     def _notify(self, text: str, kind: str = "info"):
         if self._notifications:
             self._notifications.showMessage(text, kind=kind)

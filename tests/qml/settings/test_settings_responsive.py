@@ -81,7 +81,7 @@ class TestSettingsResponsiveLayouts:
                 ]
             }
         ]
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/SettingsPage.qml")))

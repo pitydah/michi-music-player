@@ -27,7 +27,7 @@ def mock_ctrl():
 
 @pytest.fixture
 def bridge(mock_ctrl):
-    return ConnectionsBridge(michi_link_ctrl=mock_ctrl)
+    return ConnectionsBridge(connection_service=mock_ctrl)
 
 
 class TestKeyboardAccessible:
@@ -95,7 +95,7 @@ def mock_ctrl():
 
 @pytest.fixture
 def bridge(mock_ctrl):
-    return ConnectionsBridge(michi_link_ctrl=mock_ctrl)
+    return ConnectionsBridge(connection_service=mock_ctrl)
 
 
 class TestKeyboardAccessible:

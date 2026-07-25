@@ -9,7 +9,7 @@ Item {
     objectName: "settingsPage"
     focus: true
 
-    property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
+    property var bridge: typeof settingsBridge !== "undefined" ? settingsBridge : null
     property var navigation: typeof navigationBridge !== "undefined" ? navigationBridge : null
     property string transactionMessage: ""
     property bool transactionBusy: false

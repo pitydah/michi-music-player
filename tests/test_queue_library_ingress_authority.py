@@ -27,7 +27,7 @@ def test_library_aggregate_actions_use_canonical_queue() -> None:
         query_service=query,
         query_executor=MagicMock(),
         track_action_service=MagicMock(),
-        playback_ctrl=player,
+        player_service=player,
         queue_service=queue,
     )
 

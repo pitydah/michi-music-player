@@ -71,7 +71,7 @@ def _make_entry_props(entry_type, **kwargs):
 class TestSettingsRowControls:
     def _create_qml(self, engine, bridge, entry_props):
         bridge._values[entry_props["key"]] = entry_props.get("default", "")
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "components/settings/SettingsRow.qml")))

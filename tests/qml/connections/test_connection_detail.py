@@ -36,7 +36,7 @@ def mock_ctrl():
 
 @pytest.fixture
 def bridge(mock_ctrl):
-    return ConnectionsBridge(michi_link_ctrl=mock_ctrl)
+    return ConnectionsBridge(connection_service=mock_ctrl)
 
 
 class TestDetailState:
@@ -107,7 +107,7 @@ class TestDetailActions:
 
     def test_forget_server(self):
         ctrl = MagicMock()
-        bridge = ConnectionsBridge(michi_link_ctrl=ctrl)
+        bridge = ConnectionsBridge(connection_service=ctrl)
         result = bridge.forgetServer()
         assert result["ok"] is True
 """Test Connection detail page behavior with mock connection."""
@@ -145,7 +145,7 @@ def mock_ctrl():
 
 @pytest.fixture
 def bridge(mock_ctrl):
-    return ConnectionsBridge(michi_link_ctrl=mock_ctrl)
+    return ConnectionsBridge(connection_service=mock_ctrl)
 
 
 class TestDetailState:
@@ -221,15 +221,15 @@ class TestDetailActions:
 
 class TestDetailNoController:
     def test_state_not_configured(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         assert b.microServerState == "not_configured"
 
     def test_scan_empty(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         b.scanForServers()
         assert b.discoveredServers == []
 
     def test_reconnect_fails(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.reconnect()
         assert result["ok"] is False

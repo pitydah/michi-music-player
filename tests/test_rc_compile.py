@@ -19,7 +19,7 @@ def test_qml_compile_zero_errors() -> None:
     class D:
         pass
     for n in ['appBridge','navigationBridge','themeBridge','queueBridge',
-              'libraryBridge','playbackBridge','playlistsBridge','historyBridge',
+              'libraryBridge','playlistsBridge','historyBridge',
               'globalSearchBridge','settingsBridge','devicesBridge',
               'notificationBridge','michiAiBridge','commandPaletteBridge',
               'capabilityBridge','jobBridge','desktopBridge','homeBridge']:

@@ -231,7 +231,7 @@ class QmlTestHarness:
     def _register_null_bridges(self, ctx: QQmlContext):
         required = [
             "appBridge", "navigationBridge", "themeBridge", "libraryBridge",
-            "playbackBridge", "nowplayingBridge", "settingsBridge",
+            "nowplayingBridge", "settingsBridge",
             "actionRegistry",
         ]
         missing = [n for n in required if n not in self._bridges]

@@ -29,7 +29,7 @@ def _create_context(engine, comp):
     ctx = engine.rootContext()
     bridge = MagicMock()
     bridge.getValue.return_value = None
-    ctx.setContextProperty("settingsBridgeV2", bridge)
+    ctx.setContextProperty("settingsBridge", bridge)
     ctx.setContextProperty("themeBridge", MagicMock())
     ctx.setContextProperty("librarySourcesBridge", MagicMock())
     ctx.setContextProperty("notificationBridge", MagicMock())

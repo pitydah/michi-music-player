@@ -276,7 +276,7 @@ class TestWorkflow1Library:
         qs = LibraryQueryService(db=real_db)
         track = qs.fetch_track_internal(1)
         assert track is not None
-        lb = LibraryBridge(db=real_db, query_service=qs, playback_ctrl=player)
+        lb = LibraryBridge(db=real_db, query_service=qs, player_service=player)
         result = lb.play_song(track["filepath"])
         assert result.get("ok"), f"play failed: {result}"
         assert player.state == "playing"
@@ -319,7 +319,7 @@ class TestWorkflow1Library:
         from ui_qml_bridge.library_bridge import LibraryBridge
         from ui_qml_bridge.library_query_service import LibraryQueryService
         qs = LibraryQueryService(db=real_db)
-        lb = LibraryBridge(db=real_db, query_service=qs, playback_ctrl=player)
+        lb = LibraryBridge(db=real_db, query_service=qs, player_service=player)
         r = lb.playArtist("Artist A")
         assert r.get("ok")
         assert r.get("count") == 4

@@ -34,7 +34,7 @@ def test_global_search_no_search_service():
 
 def test_connections_no_controller():
     from ui_qml_bridge.connections_bridge import ConnectionsBridge
-    bridge = ConnectionsBridge(michi_link_ctrl=None)
+    bridge = ConnectionsBridge(connection_service=None)
     result = bridge.refresh()
     assert result.get("ok") is True
 

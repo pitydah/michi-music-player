@@ -106,9 +106,9 @@ class TestNameNormalization:
         binding = next(b for b in CONTEXT_BINDINGS if b.context_name == "michiAiBridge")
         assert binding.bridge_class.__name__ == "MichiAIBridge"
 
-    def test_settings_not_settingsBridgeV2_in_qml_map(self):
+    def test_settings_not_settingsBridge_in_qml_map(self):
         assert QML_CONTEXT_BINDINGS.get("settingsBridge") == "settings"
-        assert QML_CONTEXT_BINDINGS.get("settingsBridgeV2") == "settings_v2"
+        assert QML_CONTEXT_BINDINGS.get("settingsBridge") is None
 
     def test_mix_not_mix_query_service(self):
         assert QML_CONTEXT_BINDINGS.get("mixBridge") == "mix"
@@ -116,9 +116,7 @@ class TestNameNormalization:
         assert "mix_query_service" not in mix_binding.required_services
 
     def test_playback_not_player_service(self):
-        assert QML_CONTEXT_BINDINGS.get("playbackBridge") == "playback"
-        pb_binding = next(b for b in CONTEXT_BINDINGS if b.context_name == "playbackBridge")
-        assert pb_binding.bridge_class.__name__ == "PlaybackBridge"
+        assert QML_CONTEXT_BINDINGS.get("playbackBridge") is None
 
     def test_settings_bridge_class_is_settings_bridge_v2(self):
         sb = next(b for b in CONTEXT_BINDINGS if b.context_name == "settingsBridge")
@@ -173,8 +171,8 @@ class TestFactoryMatchesBindings:
         c = _mock_container()
         f = BridgeFactory(c)
         created = f.create_all()
-        if "settings" in created and "settings_v2" in created:
-            assert created["settings"] is created["settings_v2"]
+        assert "settings" in created
+        assert "settings_v2" not in created
 
     def test_no_bridge_created_twice(self):
         c = _mock_container()
@@ -185,7 +183,7 @@ class TestFactoryMatchesBindings:
             for v in created.values():
                 if v is bridge:
                     count += 1
-            if key in ("settings", "settings_v2"):
+            if key in ("settings",):
                 assert count == 2
             else:
                 assert count == 1, f"{key} bridge appears {count} times"

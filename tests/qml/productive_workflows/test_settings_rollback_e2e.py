@@ -10,12 +10,12 @@ pytestmark = [
 
 class TestSettingsRollbackE2E:
     def test_settings_get_value(self, bootstrap, bridges):
-        ss = bridges.get("settings_v2")
+        ss = bridges.get("settings")
         assert ss is not None
         assert callable(getattr(ss, 'getValue', None))
 
     def test_settings_validate_key(self, bootstrap, bridges):
-        ss = bridges.get("settings_v2")
+        ss = bridges.get("settings")
         assert ss is not None
         assert callable(getattr(ss, 'validate', None))
         result = ss.validate("audio/volume")

@@ -32,7 +32,7 @@ class ActionRegistryBinder(QObject):
         return self._bridges.get("navigation")
 
     def _playback(self):
-        return self._bridges.get("playback")
+        return self._bridges.get("nowplaying")
 
     def _library(self):
         return self._bridges.get("library")

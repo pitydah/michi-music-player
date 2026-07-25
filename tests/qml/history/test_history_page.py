@@ -148,9 +148,4 @@ class TestHistoryPage:
         result = bridge.setHistoryLimit(5000)
         assert result["ok"] is True
 
-    def test_bridge_playback_bridge_property(self):
-        bridge = HistoryBridge()
-        assert bridge.playbackBridge is None
-        mock_pb = MagicMock()
-        bridge.setPlaybackBridge(mock_pb)
-        assert bridge.playbackBridge is mock_pb
+

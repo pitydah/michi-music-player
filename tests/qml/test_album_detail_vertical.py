@@ -176,7 +176,7 @@ class TestAlbumDetailBridge:
             def enqueue(self, paths, play_now=False):
                 self.enqueued = list(paths)
         player = FakePlayer()
-        bridge = LibraryBridge(query_service=qs, playback_ctrl=player)
+        bridge = LibraryBridge(query_service=qs, player_service=player)
         result = bridge.playAlbum("key")
         assert result.get("ok") is True
         assert result.get("count") == 2
@@ -192,7 +192,7 @@ class TestAlbumDetailBridge:
         from ui_qml_bridge.library_bridge import LibraryBridge
         qs = MagicMock()
         qs.fetch_album_tracks_internal.return_value = []
-        bridge = LibraryBridge(query_service=qs, playback_ctrl=MagicMock())
+        bridge = LibraryBridge(query_service=qs, player_service=MagicMock())
         result = bridge.playAlbum("key")
         assert result.get("ok") is False
         assert result.get("error") == "NO_TRACKS"
@@ -208,7 +208,7 @@ class TestAlbumDetailBridge:
             def enqueue(self, paths, play_now=False):
                 self.enqueued = list(paths)
         player = FakePlayer()
-        bridge = LibraryBridge(query_service=qs, playback_ctrl=player)
+        bridge = LibraryBridge(query_service=qs, player_service=player)
         result = bridge.enqueueAlbum("key")
         assert result.get("ok") is True
         assert result.get("count") == 2

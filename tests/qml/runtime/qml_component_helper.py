@@ -127,10 +127,6 @@ class MockNotificationBridge(QObject):
         pass
 
 
-class MockPlaybackBridge(QObject):
-    pass
-
-
 class MockQueueBridge(QObject):
     pass
 
@@ -201,7 +197,6 @@ class MockEqBridge(QObject):
 
 BRIDGE_DEFAULTS: dict[str, type[QObject]] = {
     "navigationBridge": MockNavigationBridge,
-    "playbackBridge": MockPlaybackBridge,
     "queueBridge": MockQueueBridge,
     "notificationBridge": MockNotificationBridge,
     "nowplayingBridge": MockNowPlayingBridge,

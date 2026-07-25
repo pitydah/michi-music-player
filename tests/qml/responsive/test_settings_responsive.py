@@ -57,7 +57,7 @@ class TestSettingsResponsive:
                            "entries": [{"key": "general/music_folder", "label": "Carpeta",
                                         "type": "text", "default": "~/Música"}]}]}
         ]
-        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.rootContext().setContextProperty("settingsBridge", bridge)
         engine.addImportPath(str(QML_DIR))
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/SettingsPage.qml")))

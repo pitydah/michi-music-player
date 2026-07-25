@@ -76,20 +76,20 @@ class TestConnectionsPage:
         assert "Accessible" in content
 
     def test_page_state_unavailable_without_bridge(self):
-        bridge = ConnectionsBridge(michi_link_ctrl=None)
+        bridge = ConnectionsBridge(connection_service=None)
         assert bridge.microServerState == "service_unavailable"
 
     def test_page_state_configured_with_bridge(self, mock_ctrl):
-        bridge = ConnectionsBridge(michi_link_ctrl=mock_ctrl)
+        bridge = ConnectionsBridge(connection_service=mock_ctrl)
         assert bridge.microServerState == "not_configured"
 
     def test_scan_servers(self, mock_ctrl):
-        bridge = ConnectionsBridge(michi_link_ctrl=mock_ctrl)
+        bridge = ConnectionsBridge(connection_service=mock_ctrl)
         result = bridge.scanForServers()
         assert result["ok"] is True
 
     def test_disconnect_resets_state(self, mock_ctrl):
-        bridge = ConnectionsBridge(michi_link_ctrl=mock_ctrl)
+        bridge = ConnectionsBridge(connection_service=mock_ctrl)
         bridge.connectManual("10.0.0.1", 53318, "Test")
         bridge.disconnect()
         assert bridge.microServerState == "not_configured"

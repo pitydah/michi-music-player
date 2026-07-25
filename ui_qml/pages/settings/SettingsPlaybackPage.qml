@@ -11,7 +11,7 @@ Item {
     id: root
     objectName: "settingsPlaybackPage_control"
 
-    property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
+    property var bridge: typeof settingsBridge !== "undefined" ? settingsBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
 
     property int pageState: AsyncStateView.READY

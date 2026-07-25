@@ -40,7 +40,7 @@ class LibraryBridge(QObject):
     stateChanged = Signal()
 
     def __init__(self, db: Any | None = None, search_engine: Any | None = None,
-                 playback_ctrl: Any | None = None, query_service: Any | None = None,
+                 player_service: Any | None = None, query_service: Any | None = None,
                  query_executor: Any | None = None, worker_manager: Any | None = None,
                  job_bridge: Any | None = None, track_action_service: Any | None = None,
                  library_sources_service: Any | None = None,
@@ -53,7 +53,7 @@ class LibraryBridge(QObject):
         super().__init__(parent)
         self._db = db
         self._search_engine = search_engine
-        self._playback_ctrl = playback_ctrl
+        self._playback_ctrl = player_service
         self._query_svc = query_service
         self._qe = query_executor
         self._job_bridge = job_bridge

@@ -10,7 +10,7 @@ def _make_lib_bridge(**overrides):
     defaults = dict(
         db=MagicMock(),
         search_engine=MagicMock(),
-        playback_ctrl=MagicMock(),
+        player_service=MagicMock(),
         query_service=MagicMock(),
         query_executor=MagicMock(),
         worker_manager=MagicMock(),

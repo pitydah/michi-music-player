@@ -11,7 +11,7 @@ Item {
     id: root
     objectName: "settingsAppearancePage"
 
-    property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
+    property var bridge: typeof settingsBridge !== "undefined" ? settingsBridge : null
     property var themeBridge: typeof themeBridge !== "undefined" ? themeBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
 

@@ -34,6 +34,6 @@ class TestStartupHomeLibrary:
         nb = bootstrap._bridges.get("navigation")
         assert nb is not None, "NavigationBridge should exist"
 
-    def test_playback_bridge_exists(self, bootstrap):
-        pb = bootstrap._bridges.get("playback")
-        assert pb is not None, "PlaybackBridge should exist"
+    def test_nowplaying_bridge_exists(self, bootstrap):
+        np = bootstrap._bridges.get("nowplaying")
+        assert np is not None, "NowPlayingBridge should exist"

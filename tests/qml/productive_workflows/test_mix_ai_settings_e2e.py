@@ -58,19 +58,19 @@ class TestMixAiSettingsE2E:
         assert ss is not None, "SettingsBridge should exist"
 
     def test_settings_get(self, all_bridges):
-        ss = all_bridges.get("settings_v2")
+        ss = all_bridges.get("settings")
         assert ss is not None
         result = ss.getValue("audio/volume")
         assert result is None or isinstance(result, (str, dict))
 
     def test_settings_validate_key(self, all_bridges):
-        ss = all_bridges.get("settings_v2")
+        ss = all_bridges.get("settings")
         assert ss is not None
         result = ss.validate("audio/volume")
         assert isinstance(result, dict)
 
     def test_settings_apply(self, all_bridges):
-        ss = all_bridges.get("settings_v2")
+        ss = all_bridges.get("settings")
         assert ss is not None
         result = ss.apply("audio/volume", 50)
         assert isinstance(result, dict)

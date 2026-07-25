@@ -37,7 +37,7 @@ def mock_ctrl():
 
 @pytest.fixture
 def bridge(mock_ctrl):
-    return ConnectionsBridge(michi_link_ctrl=mock_ctrl)
+    return ConnectionsBridge(connection_service=mock_ctrl)
 
 
 class TestConnectNoFalseOk:
@@ -51,7 +51,7 @@ class TestConnectNoFalseOk:
         assert result["ok"] is True
 
     def test_connect_manual_no_controller_saves_settings(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.connectManual("192.168.1.1", 53318, "Test")
         assert result["ok"] is True
 
@@ -62,7 +62,7 @@ class TestConnectNoFalseOk:
         assert mock_ctrl.get_capabilities.called
 
     def test_confirm_pair_no_controller(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         b.requestPair()
         result = b.confirmPair()
         assert result["ok"] is True
@@ -82,6 +82,6 @@ class TestConnectNoFalseOk:
         assert mock_ctrl.reconnect.called
 
     def test_reconnect_failure_when_no_controller(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
+        b = ConnectionsBridge(connection_service=None)
         result = b.reconnect()
         assert result["ok"] is False

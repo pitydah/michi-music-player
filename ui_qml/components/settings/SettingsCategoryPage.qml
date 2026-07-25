@@ -10,7 +10,7 @@ Item {
     objectName: "settingsCategoryPage"
     focus: true
     id: root
-    property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
+    property var bridge: typeof settingsBridge !== "undefined" ? settingsBridge : null
     property string categoryId: ""
     property var categoryData: null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null

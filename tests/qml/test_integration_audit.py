@@ -69,7 +69,7 @@ class TestCanonicalContextCoverage:
     def test_context_bindings_present(self):
         import scripts.qml_integration_audit as mod
         core = {"appBridge", "navigationBridge", "themeBridge",
-                "libraryBridge", "playbackBridge", "nowplayingBridge"}
+                "libraryBridge", "nowplayingBridge"}
         for c in core:
             assert c in mod.CANONICAL_CONTEXTS, f"Missing context: {c}"
 

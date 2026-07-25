@@ -30,11 +30,11 @@ def _method_unavailable(name: str = "") -> dict:
 class ConnectionsBridge(QObject):
     stateChanged = Signal()
 
-    def __init__(self, michi_link_ctrl=None,
+    def __init__(self, connection_service=None,
                  navigation_bridge: NavigationBridge | None = None,
-                 connection_service=None, parent=None):
+                 parent=None):
         super().__init__(parent)
-        self._connection_service = connection_service or michi_link_ctrl
+        self._connection_service = connection_service
         self._nav_bridge = navigation_bridge
         self._state = _SERVICE_UNAVAILABLE if self._connection_service is None else "not_configured"
         self._alias = ""
@@ -306,9 +306,9 @@ class ConnectionsBridge(QObject):
             except Exception as e:
                 self._set_state("error", str(e))
                 return {"ok": False, "error": str(e)}
-        if self._ctrl and hasattr(self._ctrl, 'reconnect'):
+        if self._connection_service and hasattr(self._connection_service, 'reconnect'):
             try:
-                raw = self._ctrl.reconnect()
+                raw = self._connection_service.reconnect()
                 result = _normalise(raw)
                 if result.get("ok"):
                     self._state = "connected"

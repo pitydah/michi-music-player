@@ -35,7 +35,6 @@ def harness():
 def real_harness(harness):
     harness.setup_db()
     fake_player = FakePlayerService()
-    harness.register_bridge("playbackBridge", QObject(parent=harness.engine.rootContext()))
     harness.register_bridge("nowplayingBridge", QObject(parent=harness.engine.rootContext()))
     harness.register_bridge("libraryBridge", QObject(parent=harness.engine.rootContext()))
     harness.register_bridge("navigationBridge", QObject(parent=harness.engine.rootContext()))

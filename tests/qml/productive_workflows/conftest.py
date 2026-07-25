@@ -167,7 +167,7 @@ def library_bridge(bootstrap):
 
 @pytest.fixture(scope="session")
 def playback_bridge(bootstrap):
-    return bootstrap._bridges.get("playback")
+    return bootstrap._bridges.get("nowplaying")
 
 
 @pytest.fixture(scope="session")

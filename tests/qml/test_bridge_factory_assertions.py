@@ -39,19 +39,8 @@ def _make_container(**overrides) -> ServiceContainer:
 
 
 class TestSettingsIdentity:
-    def test_settings_identity(self):
-        f = BridgeFactory(_make_container())
-        f._bridges["settings"] = MagicMock()
-        f._bridges["settings_v2"] = f._bridges["settings"]
-
-    def test_settings_identity_fails(self):
-        f = BridgeFactory(_make_container())
-        f._bridges["settings"] = MagicMock()
-        f._bridges["settings_v2"] = MagicMock()
-        assert f._bridges["settings"] is not f._bridges["settings_v2"]
-
-    def test_create_all_creates_shared_settings(self):
+    def test_create_all_creates_settings(self):
         c = _make_container()
         f = BridgeFactory(c)
         created = f.create_all()
-        assert created["settings"] is created["settings_v2"]
+        assert "settings" in created
