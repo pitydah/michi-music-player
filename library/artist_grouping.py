@@ -160,7 +160,7 @@ def build_artist_albums(items: list[MediaItem]) -> dict[str, tuple[list[ArtistAl
             # Best cover path
             cover = ""
             for t in atracks_album:
-                from library.album_art import find_cover_in_dir
+                from library.cover_art_service import find_cover_in_dir
                 d = getattr(t, "directory", "") or ""
                 c = find_cover_in_dir(d) if d else ""
                 if c:

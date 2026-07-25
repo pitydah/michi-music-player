@@ -27,7 +27,7 @@ class AlbumInfoRepository:
                 self._put(album_key, summary)
                 return summary
 
-        # 3. Build from fallback data (CoverFlowItem tracks)
+        # 3. Build from fallback tracks
         if fallback_data:
             summary = self._build_from_tracks(album_key, fallback_data)
             self._put(album_key, summary)

@@ -212,7 +212,7 @@ class _MichiHandler(BaseHTTPRequestHandler):
 
         elif parent_id == "albums":
             all_items = getattr(self, '_all_items', []) or db.get_all()
-            from library.album_art import group_by_album
+            from library.album_cover_service import group_by_album
             groups = group_by_album(all_items)
             for album, artist, _tracks in groups[:50]:
                 items.append({

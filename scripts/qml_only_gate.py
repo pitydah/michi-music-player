@@ -26,6 +26,11 @@ def check_file(path):
         ("michi.widgets_app", "widgets_app reference"),
         ("QMainWindow", "QMainWindow reference"),
         ("MICHI_UI=widgets", "widgets mode"),
+        ("core.library.album_art", "core.library.album_art import"),
+        ("_CoverLoaderWorker", "_CoverLoaderWorker class reference"),
+        ("load_covers_for_albums", "load_covers_for_albums function call"),
+        (".py.skip", ".py.skip file detected"),
+        ("qwidget_decommission_matrix.yaml", "qwidget_decommission_matrix.yaml reference"),
 
     ]:
         if pat in text:
@@ -55,6 +60,16 @@ def main():
         if any(pat in str(path) for pat in EXCLUDE_PATTERNS):
             continue
         check_file(path)
+
+    # Check for .py.skip files in tests/
+    py_skip_count = len(list(REPO.rglob("*.py.skip")))
+    if py_skip_count > 0:
+        ERRORS.append(f"Found {py_skip_count} .py.skip files in repo — legacy test artifacts must be removed")
+
+    # Check for qwidget_decommission_matrix.yaml
+    matrix_yaml = REPO / "config/qwidget_decommission_matrix.yaml"
+    if matrix_yaml.exists():
+        ERRORS.append("config/qwidget_decommission_matrix.yaml still exists — outdated matrix")
 
     if ERRORS:
         print(f"QML-ONLY GATE FAILED: {len(ERRORS)} violations")
