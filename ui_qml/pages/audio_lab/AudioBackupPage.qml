@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Dialogs
 import "../../theme"
 import "../../components"
 import "../../materials"
@@ -12,663 +11,404 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: qsTr("Respaldar audio")
+    Accessible.name: "Respaldar audio"
 
     property var bridge: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
-
-    property var cdCapability: ({ available: false, missing_tools: [] })
-    property var captureCapability: ({ available: false, formats: [], dsp_filters: [] })
-
     property var cdDrives: []
     property var audioDevices: []
-    property var cdInfo: null
-    property string selectedDrive: ""
-    property int selectedDeviceId: -1
-    property string selectedFormat: "flac"
-    property int sampleRate: 44100
-    property int bitDepth: 16
-    property int channels: 2
-    property var activeFilters: []
-    property string outputDir: ""
+    property var cdCapability: ({ available: false, missing_tools: [] })
+    property var captureCapability: ({ available: false, formats: [], dsp_filters: [] })
+    property var recordingStatus: ({ active: false, paused: false, status: "idle" })
     property string message: ""
     property string messageKind: "info"
-    property bool busy: false
-    property var recordingStatus: ({ active: false })
-    property real _jobProgress: 0
-    property string _jobLabel: ""
-
-    enum Tab { CD, ADC }
-
-    function statusKind(state) {
-        if (state === "available" || state === "active" || state === true) return "success"
-        if (state === "unavailable" || state === false) return "error"
-        return "warning"
-    }
+    property string currentJobId: ""
 
     function showResult(result, successText) {
-        root.message = result && result.ok ? successText
-                      : qsTr("Error: %1").arg(result && result.error ? result.error : qsTr("desconocido"))
-        root.messageKind = result && result.ok ? "success" : "error"
+        if (result && result.ok) {
+            root.message = successText
+            root.messageKind = "success"
+            if (result.job_id)
+                root.currentJobId = result.job_id
+        } else {
+            root.message = result && (result.detail || result.error)
+                ? (result.detail || result.error)
+                : "La operación no pudo iniciarse."
+            root.messageKind = "error"
+        }
     }
 
-    function toggleDsp(filter) {
-        var next = root.activeFilters.slice()
-        var idx = next.indexOf(filter)
-        if (idx >= 0) next.splice(idx, 1)
-        else next.push(filter)
-        root.activeFilters = next
-    }
-
-    Component.onCompleted: {
-        if (!root.bridge) return
+    function refreshCapabilities() {
+        if (!root.bridge)
+            return
         root.cdCapability = root.bridge.getCDRippingCapability()
         root.captureCapability = root.bridge.getCaptureCapabilities()
+        root.cdDrives = root.bridge.detectCDDrives()
+        root.audioDevices = root.bridge.detectAudioDevices()
+        root.recordingStatus = root.bridge.getRecordingStatus()
     }
+
+    Component.onCompleted: root.refreshCapabilities()
 
     Connections {
         target: root.bridge
         function onJobCompleted(jobId, jobType, result) {
-            root.busy = false
-            root._jobProgress = 0
-            root._jobLabel = ""
-            root.showResult({ ok: true }, qsTr("Tarea completada."))
+            if (jobId !== root.currentJobId)
+                return
+            root.message = jobType === "cd_rip" ? "Extracción de CD completada." : "Trabajo completado."
+            root.messageKind = "success"
+            root.currentJobId = ""
         }
         function onJobFailed(jobId, error) {
-            root.busy = false
-            root._jobProgress = 0
-            root._jobLabel = ""
-            root.showResult({ ok: false, error: error }, "")
-        }
-        function onJobProgress(jobId, jobType, progress) {
-            root._jobProgress = Math.min(1, Math.max(0, progress || 0))
-            root._jobLabel = jobType || qsTr("Procesando…")
+            if (jobId !== root.currentJobId)
+                return
+            root.message = error
+            root.messageKind = "error"
+            root.currentJobId = ""
         }
     }
 
-    ColumnLayout {
+    Timer {
+        interval: 500
+        repeat: true
+        running: root.recordingStatus.active || root.recordingStatus.paused
+        onTriggered: {
+            if (root.bridge)
+                root.recordingStatus = root.bridge.getRecordingStatus()
+        }
+    }
+
+    Flickable {
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
-        spacing: MichiTheme.spacing.md
+        contentHeight: contentColumn.height + MichiTheme.spacing.xl
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: MichiTheme.spacing.md
+        ColumnLayout {
+            id: contentColumn
+            width: parent.width
+            spacing: MichiTheme.spacing.lg
 
-            ColumnLayout {
+            Text {
                 Layout.fillWidth: true
-                Label {
-                    text: qsTr("Respaldar audio")
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.pageTitleSize
-                    font.weight: MichiTheme.typography.weightSemiBold
-                }
-                Label {
-                    Layout.fillWidth: true
-                    text: qsTr("Ripeo de CD y grabación analógica desde vinilo o cinta.")
-                    color: MichiTheme.colors.textSecondary
-                    font.pixelSize: MichiTheme.typography.bodySize
-                    wrapMode: Text.WordWrap
-                }
+                text: "Respaldar audio"
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.pageTitleSize
+                font.weight: MichiTheme.typography.weightBold
             }
 
-            StatusBadge {
-                text: cdCapability.available ? qsTr("CD listo") : qsTr("CD parcial")
-                kind: statusKind(cdCapability.available)
-            }
-            StatusBadge {
-                text: captureCapability.available ? qsTr("ADC listo") : qsTr("ADC no disponible")
-                kind: statusKind(captureCapability.available)
-            }
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            implicitHeight: msgLabel.implicitHeight + MichiTheme.spacing.md * 2
-            visible: root.message !== ""
-            radius: MichiTheme.radius.md
-            color: MichiTheme.colors.surfaceCard
-            border.width: 1
-            border.color: messageKind === "error" ? MichiTheme.colors.error : MichiTheme.colors.success
-            Label {
-                id: msgLabel
-                anchors.fill: parent
-                anchors.margins: MichiTheme.spacing.md
-                text: root.message
-                color: messageKind === "error" ? MichiTheme.colors.error : MichiTheme.colors.textPrimary
+            Text {
+                Layout.fillWidth: true
+                text: "Digitaliza CD de audio y fuentes analógicas. Estas funciones permanecen experimentales hasta completar validación con hardware real."
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
                 wrapMode: Text.WordWrap
             }
-        }
 
-        BusyIndicator {
-            Layout.alignment: Qt.AlignHCenter
-            running: root.busy
-            visible: root.busy
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            implicitHeight: progressRow.implicitHeight + MichiTheme.spacing.md * 2
-            visible: root.busy || root._jobProgress > 0
-            radius: MichiTheme.radius.md
-            color: MichiTheme.colors.surfaceCard
-            border.width: 1
-            border.color: MichiTheme.colors.borderCard
-
-            RowLayout {
-                id: progressRow
-                anchors.fill: parent
-                anchors.margins: MichiTheme.spacing.md
-                spacing: MichiTheme.spacing.sm
-
-                Label {
-                    text: root._jobLabel || qsTr("Procesando…")
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.bodySize
-                }
-
-                Item { Layout.fillWidth: true }
-
-                ProgressBar {
-                    Layout.preferredWidth: 200
-                    from: 0
-                    to: 1
-                    value: root._jobProgress
-                    visible: root._jobProgress > 0
-                }
-
-                MichiButton {
-                    text: qsTr("Cancelar")
-                    variant: "danger"
-                    visible: root.busy
-                    onClicked: {
-                        if (tabs.currentIndex === 0)
-                            root.showResult(root.bridge.cancelCDRip(), qsTr("Cancelado."))
-                        else
-                            root.showResult(root.bridge.stopRecording(), qsTr("Cancelado."))
-                    }
-                }
+            MichiBanner {
+                Layout.fillWidth: true
+                visible: root.message !== ""
+                message: root.message
+                kind: root.messageKind
+                dismissible: true
+                onDismissed: root.message = ""
             }
-        }
 
-        TabBar {
-            id: tabs
-            Layout.fillWidth: true
-            TabButton { text: qsTr("Ripeo de CD") }
-            TabButton { text: qsTr("Grabación analógica") }
-        }
+            TabBar {
+                id: tabs
+                Layout.fillWidth: true
+                TabButton { text: "CD de audio" }
+                TabButton { text: "Fuente analógica / ADC" }
+            }
 
-        StackLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            currentIndex: tabs.currentIndex
-
-            // ── CD Tab ──
-            ScrollView {
-                clip: true
-                contentWidth: availableWidth
+            StackLayout {
+                Layout.fillWidth: true
+                currentIndex: tabs.currentIndex
 
                 ColumnLayout {
-                    width: parent.width
-                    spacing: MichiTheme.spacing.md
+                    spacing: MichiTheme.spacing.lg
 
-                    SectionHeader { Layout.fillWidth: true; text: qsTr("Unidad de CD") }
-
-                    RowLayout {
+                    GlassMaterial {
                         Layout.fillWidth: true
-                        spacing: MichiTheme.spacing.sm
-                        MichiButton {
-                            text: qsTr("Detectar unidades")
-                            variant: "ghost"
-                            enabled: root.cdCapability.available && !root.busy
-                            onClicked: {
-                                root.cdDrives = root.bridge.detectCDDrives()
-                                root.showResult(root.cdDrives.length > 0 ? { ok: true } : { ok: false, error: "No se detectaron unidades" },
-                                    qsTr("%1 unidad(es) detectada(s)").arg(root.cdDrives.length))
-                            }
-                        }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        visible: root.cdDrives.length > 0
-                        spacing: MichiTheme.spacing.sm
-
-                        ComboBox {
-                            id: driveCombo
-                            Layout.fillWidth: true
-                            model: root.cdDrives
-                            textRole: "device"
-                            onActivated: {
-                                var d = root.cdDrives[currentIndex]
-                                root.selectedDrive = d ? d.device : ""
-                            }
-                            Accessible.name: qsTr("Seleccionar unidad de CD")
-                        }
-
-                        MichiButton {
-                            text: qsTr("Leer CD")
-                            variant: "primary"
-                            enabled: root.selectedDrive !== "" && !root.busy
-                            onClicked: {
-                                root.busy = true
-                                root.cdInfo = root.bridge.getCDInfo(root.selectedDrive)
-                                root.busy = false
-                                root.showResult(root.cdInfo,
-                                    qsTr("CD: %1").arg(root.cdInfo && root.cdInfo.album_title ? root.cdInfo.album_title : qsTr("sin título")))
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        implicitHeight: cdInfoCol.implicitHeight + MichiTheme.spacing.md * 2
-                        visible: root.cdInfo !== null
-                        radius: MichiTheme.radius.md
-                        color: MichiTheme.colors.surfaceCard
-                        border.width: 1
-                        border.color: MichiTheme.colors.borderCard
+                        implicitHeight: cdStatusColumn.implicitHeight + MichiTheme.spacing.lg * 2
+                        variant: root.cdCapability.available ? "accent" : "base"
 
                         ColumnLayout {
-                            id: cdInfoCol
+                            id: cdStatusColumn
                             anchors.fill: parent
-                            anchors.margins: MichiTheme.spacing.md
-                            spacing: MichiTheme.spacing.xs
+                            anchors.margins: MichiTheme.spacing.lg
+                            spacing: MichiTheme.spacing.sm
 
-                            Label {
-                                text: root.cdInfo ? root.cdInfo.album_title || qsTr("Sin título") : ""
-                                color: MichiTheme.colors.textPrimary
-                                font.weight: Font.DemiBold
-                            }
-                            Label {
-                                text: root.cdInfo ? root.cdInfo.album_artist || "" : ""
-                                color: MichiTheme.colors.textSecondary
-                            }
-                            Label {
-                                text: root.cdInfo
-                                    ? qsTr("%1 pistas · %2 · %3").arg(root.cdInfo.total_tracks || 0).arg(root.cdInfo.year || "").arg(root.cdInfo.genre || "")
-                                    : ""
-                                color: MichiTheme.colors.textMeta
-                            }
-                        }
-                    }
-
-                    SectionHeader {
-                        Layout.fillWidth: true
-                        text: qsTr("Opciones de extracción")
-                        visible: root.cdInfo !== null
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        visible: root.cdInfo !== null
-                        spacing: MichiTheme.spacing.sm
-
-                        Label { text: qsTr("Formato:"); color: MichiTheme.colors.textSecondary }
-                        ComboBox {
-                            model: ["flac", "wav", "mp3", "opus", "aac"]
-                            currentIndex: 0
-                            onActivated: root.selectedFormat = currentText
-                            Accessible.name: qsTr("Formato de extracción")
-                        }
-
-                        Label { text: qsTr("Calidad:"); color: MichiTheme.colors.textSecondary }
-                        ComboBox {
-                            model: [qsTr("sin pérdida"), qsTr("alta"), qsTr("estándar")]
-                            currentIndex: 0
-                            Accessible.name: qsTr("Calidad de extracción")
-                        }
-
-                        Item { Layout.fillWidth: true }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        visible: root.cdInfo !== null
-                        spacing: MichiTheme.spacing.sm
-
-                        Label { text: qsTr("Carpeta:"); color: MichiTheme.colors.textSecondary }
-                        TextField {
-                            id: cdOutputDir
-                            Layout.fillWidth: true
-                            placeholderText: "/tmp/michi_cd"
-                            Accessible.name: qsTr("Carpeta de salida del CD")
-                        }
-
-                        MichiButton {
-                            text: qsTr("Examinar")
-                            variant: "ghost"
-                            onClicked: folderDialog.open()
-                        }
-
-                        FolderDialog {
-                            id: folderDialog
-                            onAccepted: {
-                                cdOutputDir.text = selectedFolder.toString().replace("file://", "")
-                                root.outputDir = cdOutputDir.text
-                            }
-                        }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        visible: root.cdInfo !== null
-                        spacing: MichiTheme.spacing.sm
-
-                        MichiButton {
-                            text: qsTr("Extraer CD completo")
-                            variant: "primary"
-                            enabled: root.cdInfo !== null && cdOutputDir.text !== "" && !root.busy
-                            onClicked: {
-                                root.busy = true
-                                var dir = cdOutputDir.text || "/tmp/michi_cd"
-                                var result = root.bridge.ripFullCD(root.selectedDrive, dir, root.selectedFormat, "lossless", true)
-                                root.showResult(result, qsTr("Ripeo iniciado."))
-                                root.busy = false
-                            }
-                        }
-
-                        MichiButton {
-                            text: qsTr("Cancelar")
-                            variant: "danger"
-                            enabled: root.busy
-                            onClicked: root.showResult(root.bridge.cancelCDRip(), qsTr("Ripeo cancelado."))
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        visible: !root.cdCapability.available && root.cdCapability.missing_tools
-                        spacing: MichiTheme.spacing.xs
-
-                        Label {
-                            Layout.fillWidth: true
-                            text: qsTr("Faltan dependencias:")
-                            color: MichiTheme.colors.warning
-                            font.weight: Font.DemiBold
-                            wrapMode: Text.WordWrap
-                        }
-                        Repeater {
-                            model: root.cdCapability.missing_tools || []
-                            Label {
-                                Layout.fillWidth: true
-                                text: "  • " + modelData
-                                color: MichiTheme.colors.textSecondary
-                            }
-                        }
-                        Label {
-                            Layout.fillWidth: true
-                            text: qsTr("Instala: sudo apt install cdparanoia cd-discid ffmpeg")
-                            color: MichiTheme.colors.textMeta
-                            wrapMode: Text.WordWrap
-                        }
-                    }
-
-                    Item { Layout.fillHeight: true }
-                }
-            }
-
-            // ── ADC Tab ──
-            ScrollView {
-                clip: true
-                contentWidth: availableWidth
-
-                ColumnLayout {
-                    width: parent.width
-                    spacing: MichiTheme.spacing.md
-
-                    SectionHeader { Layout.fillWidth: true; text: qsTr("Dispositivo de captura") }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: MichiTheme.spacing.sm
-
-                        MichiButton {
-                            text: qsTr("Detectar dispositivos")
-                            variant: "ghost"
-                            enabled: root.captureCapability.available && !root.busy
-                            onClicked: {
-                                root.audioDevices = root.bridge.detectAudioDevices()
-                                root.showResult(root.audioDevices.length > 0 ? { ok: true } : { ok: false, error: "No se detectaron dispositivos" },
-                                    qsTr("%1 dispositivo(s) detectado(s)").arg(root.audioDevices.length))
-                            }
-                        }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        visible: root.audioDevices.length > 0
-                        spacing: MichiTheme.spacing.sm
-
-                        ComboBox {
-                            id: deviceCombo
-                            Layout.fillWidth: true
-                            model: root.audioDevices
-                            textRole: "name"
-                            onActivated: {
-                                var d = root.audioDevices[currentIndex]
-                                root.selectedDeviceId = d ? d.device_id : -1
-                            }
-                            Accessible.name: qsTr("Seleccionar dispositivo de audio")
-                        }
-                    }
-
-                    SectionHeader { Layout.fillWidth: true; text: qsTr("Formato de grabación") }
-
-                    GridLayout {
-                        Layout.fillWidth: true
-                        columns: 3
-                        columnSpacing: MichiTheme.spacing.md
-                        rowSpacing: MichiTheme.spacing.sm
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Label { text: qsTr("Formato"); color: MichiTheme.colors.textSecondary }
-                            ComboBox {
-                                Layout.fillWidth: true
-                                model: root.captureCapability.formats || ["wav"]
-                                currentIndex: 0
-                                onActivated: root.selectedFormat = currentText
-                                Accessible.name: qsTr("Formato de grabación")
-                            }
-                        }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Label { text: qsTr("Frecuencia"); color: MichiTheme.colors.textSecondary }
-                            ComboBox {
-                                Layout.fillWidth: true
-                                model: ["44100", "48000", "96000", "192000"]
-                                currentIndex: 0
-                                onActivated: root.sampleRate = parseInt(currentText)
-                                Accessible.name: qsTr("Frecuencia de muestreo")
-                            }
-                        }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Label { text: qsTr("Bits"); color: MichiTheme.colors.textSecondary }
-                            ComboBox {
-                                Layout.fillWidth: true
-                                model: ["16", "24", "32"]
-                                currentIndex: 0
-                                onActivated: root.bitDepth = parseInt(currentText)
-                                Accessible.name: qsTr("Profundidad de bits")
-                            }
-                        }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Label { text: qsTr("Canales"); color: MichiTheme.colors.textSecondary }
-                            ComboBox {
-                                Layout.fillWidth: true
-                                model: ["2 (estéreo)", "1 (mono)"]
-                                currentIndex: 0
-                                onActivated: root.channels = currentIndex === 0 ? 2 : 1
-                                Accessible.name: qsTr("Canales de audio")
-                            }
-                        }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Label { text: qsTr("Carpeta salida"); color: MichiTheme.colors.textSecondary }
                             RowLayout {
                                 Layout.fillWidth: true
-                                TextField {
-                                    id: adcOutputDir
+                                Text {
                                     Layout.fillWidth: true
-                                    placeholderText: "/tmp/michi_adc"
-                                    Accessible.name: qsTr("Carpeta de salida ADC")
+                                    text: "Backend de extracción"
+                                    color: MichiTheme.colors.textPrimary
+                                    font.pixelSize: MichiTheme.typography.sectionTitleSize
+                                    font.weight: MichiTheme.typography.weightSemiBold
                                 }
-                                MichiButton {
-                                    text: qsTr("...")
-                                    variant: "ghost"
-                                    onClicked: adcFolderDialog.open()
-                                }
-                            }
-                            FolderDialog {
-                                id: adcFolderDialog
-                                onAccepted: {
-                                    adcOutputDir.text = selectedFolder.toString().replace("file://", "")
-                                    root.outputDir = adcOutputDir.text
+                                StatusBadge {
+                                    text: root.cdCapability.available ? "Disponible · experimental" : "No disponible"
+                                    kind: root.cdCapability.available ? "warning" : "disconnected"
                                 }
                             }
-                        }
-                    }
-
-                    SectionHeader { Layout.fillWidth: true; text: qsTr("Filtros DSP") }
-
-                    Label {
-                        Layout.fillWidth: true
-                        text: qsTr("Los filtros RIAA y declicker se recomiendan para vinilo. Aplica RIAA solo si tu preamplificador no lo hace.")
-                        color: MichiTheme.colors.textSecondary
-                        wrapMode: Text.WordWrap
-                    }
-
-                    GridLayout {
-                        Layout.fillWidth: true
-                        columns: 3
-                        columnSpacing: MichiTheme.spacing.sm
-                        rowSpacing: MichiTheme.spacing.xs
-
-                        Repeater {
-                            model: root.captureCapability.dsp_filters || []
-                            CheckBox {
-                                text: modelData.replace(/_/g, " ").toUpperCase()
-                                checked: root.activeFilters.indexOf(modelData) >= 0
-                                onClicked: root.toggleDsp(modelData)
-                                Accessible.name: qsTr("Filtro %1").arg(modelData)
+                            Text {
+                                Layout.fillWidth: true
+                                text: root.cdCapability.available
+                                    ? "Linux · cdparanoia + cd-discid + FFmpeg"
+                                    : "Dependencias pendientes: " + ((root.cdCapability.missing_tools || []).join(", ") || "plataforma sin backend")
+                                color: MichiTheme.colors.textSecondary
+                                font.pixelSize: MichiTheme.typography.metaSize
+                                wrapMode: Text.WordWrap
                             }
                         }
                     }
-
-                    SectionHeader { Layout.fillWidth: true; text: qsTr("Controles de grabación") }
 
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: MichiTheme.spacing.sm
-
+                        ComboBox {
+                            id: cdDriveCombo
+                            Layout.fillWidth: true
+                            model: root.cdDrives
+                            displayText: currentIndex >= 0 && root.cdDrives[currentIndex]
+                                ? root.cdDrives[currentIndex].model + " · " + root.cdDrives[currentIndex].device
+                                : "Sin unidad detectada"
+                            delegate: ItemDelegate {
+                                required property var modelData
+                                width: ListView.view ? ListView.view.width : implicitWidth
+                                text: modelData.model + " · " + modelData.device
+                            }
+                        }
                         MichiButton {
-                            text: root.recordingStatus.active
-                                  ? (root.recordingStatus.paused ? qsTr("Reanudar") : qsTr("Pausar"))
-                                  : qsTr("Iniciar grabación")
-                            variant: "primary"
-                            enabled: root.selectedDeviceId >= 0 && adcOutputDir.text !== "" && !root.busy
+                            text: "Detectar"
+                            variant: "secondary"
+                            onClicked: root.refreshCapabilities()
+                        }
+                    }
+
+                    TextField {
+                        id: cdOutputDir
+                        Layout.fillWidth: true
+                        placeholderText: "Carpeta de destino, por ejemplo /home/usuario/Música/Rips"
+                        Accessible.name: "Carpeta de destino del CD"
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ComboBox {
+                            id: cdFormat
+                            model: ["flac", "wav", "mp3", "opus", "aac"]
+                            Accessible.name: "Formato de extracción"
+                        }
+                        MichiButton {
+                            text: "Leer TOC"
+                            variant: "secondary"
+                            enabled: cdDriveCombo.currentIndex >= 0
                             onClicked: {
-                                if (root.recordingStatus.active && !root.recordingStatus.paused) {
-                                    root.showResult(root.bridge.pauseRecording(), qsTr("Pausada."))
-                                } else if (root.recordingStatus.active && root.recordingStatus.paused) {
-                                    root.showResult(root.bridge.resumeRecording(), qsTr("Reanudada."))
+                                var drive = root.cdDrives[cdDriveCombo.currentIndex]
+                                var result = root.bridge.getCDInfo(drive.device)
+                                if (result && result.ok) {
+                                    root.message = "CD detectado: " + result.total_tracks + " pista(s)."
+                                    root.messageKind = "success"
                                 } else {
-                                    root.busy = true
-                                    var dir = adcOutputDir.text || "/tmp/michi_adc"
-                                    var result = root.bridge.startRecording(
-                                        root.selectedDeviceId, dir, root.selectedFormat,
-                                        root.sampleRate, root.bitDepth, root.channels,
-                                        root.activeFilters)
-                                    root.showResult(result, qsTr("Grabación iniciada."))
-                                    root.busy = false
+                                    root.showResult(result, "")
                                 }
                             }
                         }
-
                         MichiButton {
-                            text: qsTr("Detener")
+                            text: "Extraer CD"
+                            variant: "primary"
+                            enabled: root.cdCapability.available
+                                && cdDriveCombo.currentIndex >= 0
+                                && cdOutputDir.text.trim() !== ""
+                                && root.currentJobId === ""
+                            onClicked: {
+                                var drive = root.cdDrives[cdDriveCombo.currentIndex]
+                                root.showResult(
+                                    root.bridge.ripFullCD(drive.device, cdOutputDir.text.trim(), cdFormat.currentText, "lossless", true),
+                                    "Extracción iniciada en segundo plano."
+                                )
+                            }
+                        }
+                        MichiButton {
+                            text: "Cancelar"
                             variant: "danger"
-                            enabled: root.recordingStatus.active && !root.busy
-                            onClicked: root.showResult(root.bridge.stopRecording(), qsTr("Grabación detenida."))
+                            enabled: root.currentJobId !== ""
+                            onClicked: {
+                                root.showResult(root.bridge.cancelCDRip(), "Cancelación solicitada.")
+                                root.currentJobId = ""
+                            }
                         }
-
-                        MichiButton {
-                            text: qsTr("Marcar")
-                            variant: "ghost"
-                            enabled: root.recordingStatus.active && !root.busy
-                            onClicked: root.showResult(root.bridge.addMarker(""), qsTr("Marcador añadido."))
-                        }
-
-                        Item { Layout.fillWidth: true }
                     }
+                }
 
-                    Rectangle {
+                ColumnLayout {
+                    spacing: MichiTheme.spacing.lg
+
+                    GlassMaterial {
                         Layout.fillWidth: true
-                        implicitHeight: statusCol.implicitHeight + MichiTheme.spacing.md * 2
-                        visible: root.recordingStatus.active
-                        radius: MichiTheme.radius.md
-                        color: MichiTheme.colors.surfaceCard
-                        border.width: 1
-                        border.color: MichiTheme.colors.borderCard
+                        implicitHeight: adcStatusColumn.implicitHeight + MichiTheme.spacing.lg * 2
+                        variant: root.captureCapability.available ? "accent" : "base"
 
                         ColumnLayout {
-                            id: statusCol
+                            id: adcStatusColumn
                             anchors.fill: parent
-                            anchors.margins: MichiTheme.spacing.md
-                            spacing: 2
+                            anchors.margins: MichiTheme.spacing.lg
+                            spacing: MichiTheme.spacing.sm
 
-                            Label {
-                                text: qsTr("Estado: %1").arg(root.recordingStatus.status || "idle")
-                                color: MichiTheme.colors.textPrimary
-                                font.weight: Font.DemiBold
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Captura analógica"
+                                    color: MichiTheme.colors.textPrimary
+                                    font.pixelSize: MichiTheme.typography.sectionTitleSize
+                                    font.weight: MichiTheme.typography.weightSemiBold
+                                }
+                                StatusBadge {
+                                    text: root.captureCapability.available ? "Disponible · experimental" : "FFmpeg no disponible"
+                                    kind: root.captureCapability.available ? "warning" : "disconnected"
+                                }
                             }
-                            Label {
-                                text: qsTr("Duración: %1 s · Marcadores: %2")
-                                    .arg(root.recordingStatus.duration || 0)
-                                    .arg(root.recordingStatus.markers_count || 0)
+                            Text {
+                                Layout.fillWidth: true
+                                text: "La detección de marca solo ayuda a elegir una entrada. La ecualización RIAA nunca se aplica automáticamente."
                                 color: MichiTheme.colors.textSecondary
+                                font.pixelSize: MichiTheme.typography.metaSize
+                                wrapMode: Text.WordWrap
                             }
-                            Label {
-                                visible: root.recordingStatus.error
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ComboBox {
+                            id: audioDeviceCombo
+                            Layout.fillWidth: true
+                            model: root.audioDevices
+                            displayText: currentIndex >= 0 && root.audioDevices[currentIndex]
+                                ? root.audioDevices[currentIndex].name
+                                : "Sin entrada detectada"
+                            delegate: ItemDelegate {
+                                required property var modelData
+                                width: ListView.view ? ListView.view.width : implicitWidth
+                                text: modelData.name + (modelData.is_turntable ? " · posible tocadiscos" : "")
+                            }
+                        }
+                        MichiButton {
+                            text: "Detectar"
+                            variant: "secondary"
+                            onClicked: root.refreshCapabilities()
+                        }
+                    }
+
+                    TextField {
+                        id: recordingOutput
+                        Layout.fillWidth: true
+                        placeholderText: "Archivo de destino, por ejemplo /home/usuario/Música/captura.flac"
+                        Accessible.name: "Archivo de grabación"
+                    }
+
+                    RowLayout {
+                        ComboBox { id: recordingFormat; model: ["wav", "flac", "mp3", "opus"] }
+                        ComboBox { id: sampleRate; model: [44100, 48000, 96000] }
+                        ComboBox { id: bitDepth; model: [16, 24, 32] }
+                    }
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: MichiTheme.spacing.sm
+                        CheckBox { id: riaa; text: "RIAA (solo señal phono sin preamplificar)" }
+                        CheckBox { id: declick; text: "Reducir clics" }
+                        CheckBox { id: dehiss; text: "Reducir hiss" }
+                        CheckBox { id: gate; text: "Puerta de ruido" }
+                        CheckBox { id: normalize; text: "Normalizar" }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        MichiButton {
+                            text: "Grabar"
+                            variant: "primary"
+                            enabled: root.captureCapability.available
+                                && audioDeviceCombo.currentIndex >= 0
+                                && recordingOutput.text.trim() !== ""
+                                && !root.recordingStatus.active
+                            onClicked: {
+                                var filters = []
+                                if (riaa.checked) filters.push("riaa_eq")
+                                if (declick.checked) filters.push("declicker")
+                                if (dehiss.checked) filters.push("dehisser")
+                                if (gate.checked) filters.push("noise_gate")
+                                if (normalize.checked) filters.push("normalize")
+                                var device = root.audioDevices[audioDeviceCombo.currentIndex]
+                                root.showResult(root.bridge.startRecording(
+                                    String(device.device_id), recordingOutput.text.trim(), recordingFormat.currentText,
+                                    Number(sampleRate.currentText), Number(bitDepth.currentText), 2, filters
+                                ), "Grabación iniciada.")
+                                root.recordingStatus = root.bridge.getRecordingStatus()
+                            }
+                        }
+                        MichiButton {
+                            text: root.recordingStatus.paused ? "Reanudar" : "Pausar"
+                            variant: "secondary"
+                            enabled: root.recordingStatus.active || root.recordingStatus.paused
+                            onClicked: {
+                                var wasPaused = root.recordingStatus.paused
+                                var result = wasPaused ? root.bridge.resumeRecording() : root.bridge.pauseRecording()
+                                root.showResult(result, wasPaused ? "Grabación reanudada." : "Grabación pausada.")
+                                root.recordingStatus = root.bridge.getRecordingStatus()
+                            }
+                        }
+                        MichiButton {
+                            text: "Marcar pista"
+                            variant: "secondary"
+                            enabled: root.recordingStatus.active || root.recordingStatus.paused
+                            onClicked: root.showResult(root.bridge.addMarker(""), "Marcador añadido.")
+                        }
+                        MichiButton {
+                            text: "Detener"
+                            variant: "danger"
+                            enabled: root.recordingStatus.active || root.recordingStatus.paused
+                            onClicked: {
+                                root.showResult(root.bridge.stopRecording(), "Grabación detenida.")
+                                root.recordingStatus = root.bridge.getRecordingStatus()
+                            }
+                        }
+                    }
+
+                    GlassMaterial {
+                        Layout.fillWidth: true
+                        implicitHeight: recordingStateColumn.implicitHeight + MichiTheme.spacing.lg * 2
+                        variant: root.recordingStatus.status === "error" ? "danger" : "status"
+                        ColumnLayout {
+                            id: recordingStateColumn
+                            anchors.fill: parent
+                            anchors.margins: MichiTheme.spacing.lg
+                            Text {
+                                text: "Estado: " + (root.recordingStatus.status || "idle")
+                                color: MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                            }
+                            Text {
+                                text: "Duración: " + Number(root.recordingStatus.duration || 0).toFixed(1)
+                                    + " s · Marcadores: " + String(root.recordingStatus.markers_count || 0)
+                                color: MichiTheme.colors.textSecondary
+                                font.pixelSize: MichiTheme.typography.metaSize
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                visible: Boolean(root.recordingStatus.error)
                                 text: root.recordingStatus.error || ""
                                 color: MichiTheme.colors.error
+                                font.pixelSize: MichiTheme.typography.metaSize
+                                wrapMode: Text.WordWrap
                             }
                         }
                     }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        visible: !root.captureCapability.available
-                        spacing: MichiTheme.spacing.xs
-
-                        Label {
-                            Layout.fillWidth: true
-                            text: qsTr("FFmpeg no está disponible.")
-                            color: MichiTheme.colors.warning
-                            font.weight: Font.DemiBold
-                        }
-                        Label {
-                            Layout.fillWidth: true
-                            text: qsTr("Instala: sudo apt install ffmpeg")
-                            color: MichiTheme.colors.textMeta
-                            wrapMode: Text.WordWrap
-                        }
-                    }
-
-                    Item { Layout.fillHeight: true }
                 }
             }
         }
-    }
-
-    Component.onDestruction: {
-        if (root.recordingStatus.active && root.bridge)
-            root.bridge.stopRecording()
     }
 }

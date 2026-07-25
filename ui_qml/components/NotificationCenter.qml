@@ -1,333 +1,245 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import "../theme"
 
 Item {
+    id: root
     objectName: "notificationCenter"
     focus: true
-    id: root
 
     property var bridge: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property var nb: bridge
     property bool reducedMotion: false
     property bool pinned: false
+    property bool _open: false
+    property var notificationItems: []
+    readonly property int count: notificationItems.length
+    readonly property bool hovered: hoverHandler.hovered
 
     signal dismissAllRequested()
     signal notificationActivated(string notificationId)
 
-    property var notificationItems: []
-    readonly property int count: notificationItems.length
-
     Accessible.role: Accessible.Pane
     Accessible.name: "Centro de notificaciones"
-    Accessible.description: "Lista de notificaciones activas"
+    Accessible.description: count === 1 ? "1 notificación activa" : count + " notificaciones activas"
 
     implicitWidth: 360
+    implicitHeight: Math.min(400, contentColumn.implicitHeight + MichiTheme.spacing.md * 2)
     visible: opacity > 0.001
     enabled: _open && count > 0
+    opacity: _open && count > 0 ? 1 : 0
+    scale: _open && count > 0 ? 1 : 0.98
 
-    property bool _open: false
-    property bool _hovered: false
+    transform: Translate {
+        x: root._open && root.count > 0 ? 0 : root.width + MichiTheme.spacing.lg
+    }
+
+    Behavior on opacity {
+        NumberAnimation { duration: root.reducedMotion ? 1 : MichiTheme.motion.durationNormal }
+    }
+    Behavior on scale {
+        NumberAnimation { duration: root.reducedMotion ? 1 : MichiTheme.motion.durationNormal }
+    }
+
+    HoverHandler {
+        id: hoverHandler
+        onHoveredChanged: {
+            if (hovered)
+                autoCloseTimer.stop()
+            else if (!root.pinned && root._open)
+                autoCloseTimer.restart()
+        }
+    }
 
     Timer {
         id: autoCloseTimer
         interval: 5000
         repeat: false
         onTriggered: {
-            if (!root._hovered && !root.pinned)
-                root.close()
+            if (!root.pinned && !root.hovered)
+                root._open = false
+        }
+    }
+
+    function notificationId(item) {
+        return item && item.id !== undefined ? String(item.id) : ""
+    }
+
+    function refresh() {
+        if (!root.nb) {
+            root.notificationItems = []
+            root._open = false
+            return
+        }
+
+        var merged = []
+        var seen = ({})
+        var current = root.nb.currentNotification
+        if (current) {
+            var currentId = root.notificationId(current)
+            if (currentId !== "")
+                seen[currentId] = true
+            merged.push(current)
+        }
+
+        var persistent = root.nb.persistentNotifications || []
+        for (var index = 0; index < persistent.length; index++) {
+            var item = persistent[index]
+            var itemId = root.notificationId(item)
+            if (itemId !== "" && seen[itemId])
+                continue
+            if (itemId !== "")
+                seen[itemId] = true
+            merged.push(item)
+        }
+
+        root.notificationItems = merged
+        if (merged.length > 0) {
+            root._open = true
+            if (!root.pinned && !root.hovered)
+                autoCloseTimer.restart()
+        } else {
+            autoCloseTimer.stop()
+            root._open = false
         }
     }
 
     function open() {
-        _open = true
         root.refresh()
-        if (!root.pinned)
-            autoCloseTimer.restart()
+        if (root.count > 0)
+            root._open = true
     }
 
     function close() {
-        _open = false
         autoCloseTimer.stop()
+        root._open = false
     }
 
     function toggle() {
-        if (_open) close()
-        else open()
+        if (root._open)
+            root.close()
+        else
+            root.open()
     }
 
-    x: parent ? parent.width : 0
-    y: MichiTheme.headerHeight + MichiTheme.spacing.sm
-    width: 360
-    height: Math.min(420, parent ? parent.height * 0.55 : 420)
-    z: 9997
-
-    opacity: 0
-    Behavior on opacity {
-        enabled: !root.reducedMotion
-        PropertyAnimation { duration: MichiTheme.motion.durationNormal }
+    function clearAll() {
+        if (root.nb && typeof root.nb.clear === "function")
+            root.nb.clear()
+        root.notificationItems = []
+        root._open = false
+        root.dismissAllRequested()
     }
 
-    on_OpenChanged: {
-        if (_open) {
-            opacity = 1
-        } else {
-            opacity = 0
-        }
+    Connections {
+        target: root.nb
+        function onNotificationChanged() { root.refresh() }
+        function onNotificationCountChanged() { root.refresh() }
     }
 
-    HoverHandler {
-        id: hoverHandler
-        onHoveredChanged: {
-            root._hovered = hoverHandler.hovered
-            if (hoverHandler.hovered)
-                autoCloseTimer.stop()
-            else if (_open && !root.pinned)
-                autoCloseTimer.restart()
-        }
-    }
+    Component.onCompleted: root.refresh()
 
     Rectangle {
         anchors.fill: parent
-        color: MichiTheme.colors.surfacePopup
         radius: MichiTheme.radius.lg
+        color: MichiTheme.colors.surfacePopup
         border.width: MichiTheme.borderWidth
         border.color: MichiTheme.colors.borderCard
-        clip: true
 
         ColumnLayout {
+            id: contentColumn
             anchors.fill: parent
-            spacing: 0
+            anchors.margins: MichiTheme.spacing.md
+            spacing: MichiTheme.spacing.sm
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 48
-                Layout.leftMargin: MichiTheme.spacing.md
-                Layout.rightMargin: MichiTheme.spacing.sm
                 spacing: MichiTheme.spacing.sm
 
-                Label {
-                    text: qsTr("Notificaciones")
+                Text {
+                    Layout.fillWidth: true
+                    text: "Notificaciones"
                     color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.cardTitleSize
+                    font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
-                    Layout.alignment: Qt.AlignVCenter
                 }
 
                 StatusBadge {
-                    Layout.alignment: Qt.AlignVCenter
-                    visible: root.count > 0
                     text: String(root.count)
                     kind: root.count > 0 ? "info" : "disconnected"
-                }
-
-                Item { Layout.fillWidth: true }
-
-                MichiButton {
-                    text: root.pinned ? qsTr("Fijado") : qsTr("Fijar")
-                    variant: "ghost"
-                    onClicked: root.pinned = !root.pinned
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-                MichiButton {
-                    text: qsTr("Limpiar")
-                    variant: "ghost"
                     visible: root.count > 0
-                    onClicked: root.clearAll()
-                    Layout.alignment: Qt.AlignVCenter
                 }
 
                 MichiButton {
-                    text: qsTr("Cerrar")
+                    text: root.pinned ? "Fijado" : "Fijar"
+                    variant: "ghost"
+                    onClicked: {
+                        root.pinned = !root.pinned
+                        if (root.pinned)
+                            autoCloseTimer.stop()
+                        else if (root._open)
+                            autoCloseTimer.restart()
+                    }
+                }
+
+                MichiButton {
+                    text: "Limpiar"
+                    variant: "ghost"
+                    enabled: root.count > 0
+                    onClicked: root.clearAll()
+                }
+
+                MichiButton {
+                    text: "Cerrar"
                     variant: "ghost"
                     onClicked: root.close()
-                    Layout.alignment: Qt.AlignVCenter
                 }
             }
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 1
+                height: 1
                 color: MichiTheme.colors.borderSubtle
-            }
-
-            Item {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                visible: root.count === 0
-
-                Label {
-                    anchors.centerIn: parent
-                    text: qsTr("No hay notificaciones")
-                    color: MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.bodySize
-                }
             }
 
             ListView {
                 id: notificationList
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                model: root.notificationItems
-                visible: root.count > 0
+                implicitHeight: Math.min(contentHeight, 320)
                 clip: true
-                focus: true
-                keyNavigationEnabled: true
-                highlightMoveDuration: root.reducedMotion ? 1 : MichiTheme.motion.fast
+                spacing: MichiTheme.spacing.sm
+                model: root.notificationItems
                 boundsBehavior: Flickable.StopAtBounds
 
-                delegate: Item {
-                    id: delegateRoot
+                delegate: NotificationItem {
+                    required property var modelData
                     width: notificationList.width
-                    height: modelData.kind === "progress" ? 120 : 80
-
-                    Rectangle {
-                        id: sectionHeader
-                        width: parent.width
-                        height: 28
-                        color: "transparent"
-                        visible: {
-                            if (index === 0) return true
-                            var items = root.notificationItems
-                            var prev = items[index - 1]
-                            if (!prev || !modelData) return false
-                            return (prev.kind || "") !== (modelData.kind || "")
-                        }
-
-                        Label {
-                            anchors.left: parent.left
-                            anchors.leftMargin: MichiTheme.spacing.md
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: {
-                                if (!modelData || !modelData.kind) return "NOTIFICACIONES"
-                                if (modelData.kind === "error") return qsTr("Errores")
-                                if (modelData.kind === "warning") return qsTr("Advertencias")
-                                return qsTr("Información")
-                            }
-                            color: MichiTheme.colors.textMuted
-                            font.pixelSize: MichiTheme.typography.badgeSize
-                            font.weight: MichiTheme.typography.weightSemiBold
-                        }
-                    }
-
-                    Loader {
-                        anchors.fill: parent
-                        anchors.topMargin: sectionHeader.visible ? sectionHeader.height : 0
-                        sourceComponent: modelData.kind === "progress"
-                            ? progressItemComponent
-                            : notificationItemComponent
-
-                        onLoaded: {
-                            item.notification = modelData
-                            item.bridge = root.bridge
-                            item.reducedMotion = root.reducedMotion
-                            item.dismissed.connect(function() {
-                                notificationList.currentIndex = -1
-                            })
-                            item.actionTriggered.connect(function(actionId) {
-                                root.notificationActivated(modelData.id || "")
-                            })
-                        }
-                    }
-
-                    Label {
-                        anchors.right: parent.right
-                        anchors.rightMargin: MichiTheme.spacing.md
-                        anchors.bottom: parent.bottom
-                        anchors.bottomMargin: MichiTheme.spacing.xs
-                        text: {
-                            if (!modelData || !modelData.timestamp) return ""
-                            var elapsed = Math.round((Date.now() / 1000) - modelData.timestamp)
-                            if (elapsed < 60) return elapsed + "s"
-                            if (elapsed < 3600) return Math.floor(elapsed / 60) + "m"
-                            return Math.floor(elapsed / 3600) + "h"
-                        }
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.metaSize
-                    }
-
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        height: 1
-                        color: MichiTheme.colors.borderSubtle
+                    notification: modelData
+                    bridge: root.nb
+                    reducedMotion: root.reducedMotion
+                    onDismissed: root.refresh()
+                    onActionTriggered: function(actionId) {
+                        root.notificationActivated(root.notificationId(modelData))
+                        root.refresh()
                     }
                 }
 
-                highlight: Rectangle {
-                    color: MichiTheme.colors.surfaceHover
-                    radius: MichiTheme.radius.sm
-                }
+                QQC2.ScrollBar.vertical: QQC2.ScrollBar { policy: QQC2.ScrollBar.AsNeeded }
+            }
 
-                Keys.onUpPressed: {
-                    if (notificationList.currentIndex > 0) notificationList.currentIndex--
-                }
-                Keys.onDownPressed: {
-                    if (notificationList.currentIndex < notificationList.count - 1) notificationList.currentIndex++
-                }
-                Keys.onReturnPressed: {
-                    var item = notificationList.currentItem
-                    if (item && item.children[1] && item.children[1].item)
-                        item.children[1].item.activatePrimaryAction()
-                }
-                Keys.onEscapePressed: root.close()
+            Text {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: root.count === 0
+                text: "No hay notificaciones"
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.bodySize
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
             }
         }
     }
 
-    Component {
-        id: notificationItemComponent
-        NotificationItem {}
-    }
-
-    Component {
-        id: progressItemComponent
-        NotificationProgressItem {}
-    }
-
-    function refresh() {
-        if (!root.bridge) return
-        var persistent = root.bridge.persistentNotifications || []
-        var current = root.bridge.currentNotification
-        var merged = []
-        var seen = {}
-        for (var i = 0; i < persistent.length; i++) {
-            var item = persistent[i]
-            var itemId = item.id || ""
-            if (itemId && !seen[itemId]) {
-                merged.push(item)
-                seen[itemId] = true
-            } else if (!itemId) {
-                merged.push(item)
-            }
-        }
-        if (current) {
-            var curId = current.id || ""
-            if (!curId || !seen[curId])
-                merged.push(current)
-        }
-        root.notificationItems = merged
-
-        if (root.count > 0 && !root._open && !root.reducedMotion) {
-            _open = true
-        }
-    }
-
-    function clearAll() {
-        root.notificationItems = []
-        _open = false
-        if (root.bridge) root.bridge.clear()
-        root.dismissAllRequested()
-    }
-
-    Connections {
-        target: root.bridge
-        function onNotificationChanged() { root.refresh() }
-        function onNotificationCountChanged() { root.refresh() }
-    }
-
-    Component.onCompleted: root.refresh()
+    Keys.onEscapePressed: root.close()
 }

@@ -32,7 +32,7 @@ class TestADCRecorderCommands:
         fd, path = tempfile.mkstemp(suffix=".wav")
         os.close(fd)
         svc = ADCRecorderService()
-        device = AudioDevice(device_id=0, name="Test USB", is_usb=True, is_turntable=False, brand=None, channels=2, sample_rate=44100)
+        device = AudioDevice(device_id=0, name="Test USB", is_usb=True, is_turntable=False, brand=None, channels=2, sample_rate=44100, backend="alsa", capture_spec={})
         # Verify the service can start without crash (will fail on no hardware)
         try:
             result = svc.start_recording(device, output_file=path)
@@ -44,7 +44,7 @@ class TestADCRecorderCommands:
     def test_stop_recording(self):
         from core.audio_lab.adc_recorder_service import ADCRecorderService
         svc = ADCRecorderService()
-        svc.is_recording = True
+        svc._recording = True  # DRIFT: is_recording is now a read-only property
         svc.recording_thread = MagicMock()
         svc.stop_recording()
         assert not svc.is_recording
@@ -53,13 +53,13 @@ class TestADCRecorderCommands:
         from core.audio_lab.adc_recorder_service import ADCRecorderService, RecordingSession
         svc = ADCRecorderService()
         from core.audio_lab.adc_recorder_service import RecordingSession, AudioDevice
-        device = AudioDevice(device_id=0, name="Test", is_usb=True, is_turntable=False, brand=None, channels=2, sample_rate=44100)
+        device = AudioDevice(device_id=0, name="Test", is_usb=True, is_turntable=False, brand=None, channels=2, sample_rate=44100, backend="alsa", capture_spec={})
         svc.active_session = RecordingSession(
             session_id="test", input_device=device, output_path="/tmp/test.wav",
             format="wav", start_time=0.0, end_time=None, duration=0.0,
-            file_size=0, markers=[], status="idle",
+            file_size=0, markers=[], status="recording",
         )
-        svc.is_recording = True
+        svc._recording = True  # DRIFT: is_recording is now a read-only property
         result = svc.add_marker(label="Test Marker")
         assert result["success"]
         assert len(svc.active_session.markers) == 1
@@ -67,7 +67,7 @@ class TestADCRecorderCommands:
     def test_split_by_markers(self):
         from core.audio_lab.adc_recorder_service import ADCRecorderService, RecordingSession, AudioDevice
         svc = ADCRecorderService()
-        device = AudioDevice(device_id=0, name="Test", is_usb=True, is_turntable=False, brand=None, channels=2, sample_rate=44100)
+        device = AudioDevice(device_id=0, name="Test", is_usb=True, is_turntable=False, brand=None, channels=2, sample_rate=44100, backend="alsa", capture_spec={})
         svc.active_session = RecordingSession(
             session_id="test", input_device=device, output_path="/tmp/test.wav",
             format="wav", start_time=0.0, end_time=None, duration=60.0,
