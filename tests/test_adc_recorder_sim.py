@@ -44,7 +44,7 @@ class TestADCRecorderCommands:
     def test_stop_recording(self):
         from core.audio_lab.adc_recorder_service import ADCRecorderService
         svc = ADCRecorderService()
-        svc.is_recording = True
+        svc._recording = True  # DRIFT: is_recording is now a read-only property
         svc.recording_thread = MagicMock()
         svc.stop_recording()
         assert not svc.is_recording
@@ -59,7 +59,7 @@ class TestADCRecorderCommands:
             format="wav", start_time=0.0, end_time=None, duration=0.0,
             file_size=0, markers=[], status="idle",
         )
-        svc.is_recording = True
+        svc._recording = True  # DRIFT: is_recording is now a read-only property
         result = svc.add_marker(label="Test Marker")
         assert result["success"]
         assert len(svc.active_session.markers) == 1
