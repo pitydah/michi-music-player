@@ -214,7 +214,7 @@ def test_active_jobs_is_list_and_callable_for_legacy_contract():
 
 
 @pytest.mark.skip(reason="AudioLabOverviewPage still uses AreaCard")
-    def test_audio_lab_overview_uses_real_components_and_retry_signal():
+def test_audio_lab_overview_uses_real_components_and_retry_signal():
     source = Path("ui_qml/pages/audio_lab/AudioLabOverviewPage.qml").read_text(encoding="utf-8")
 
     assert "AudioLabAreaCard" in source
