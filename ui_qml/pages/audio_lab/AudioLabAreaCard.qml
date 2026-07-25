@@ -11,7 +11,7 @@ GlassMaterial {
     property string areaKey: ""
     property string title: ""
     property string description: ""
-    property string iconText: ""
+    property string iconText: "♪"
     property string status: "unavailable"
     property var tools: []
 
@@ -21,60 +21,101 @@ GlassMaterial {
     implicitWidth: 320
     variant: status === "available" ? "accent" : "base"
     interactive: status !== "unavailable"
+    hovered: hoverHandler.hovered
+    pressed: tapHandler.pressed
     activeFocusOnTab: interactive
 
     Accessible.role: Accessible.Button
-    Accessible.name: title
-    Accessible.description: description || qsTr("Área de Audio Lab")
+    Accessible.name: title + ". " + description
+    Accessible.description: status === "available" ? "Disponible" : status === "partial" ? "Disponibilidad parcial" : "No disponible"
+    Accessible.onPressAction: {
+        if (root.interactive)
+            root.activated(root.areaKey)
+    }
+
+    Keys.onReturnPressed: {
+        if (root.interactive)
+            root.activated(root.areaKey)
+    }
+    Keys.onSpacePressed: {
+        if (root.interactive)
+            root.activated(root.areaKey)
+    }
 
     HoverHandler { id: hoverHandler }
-    TapHandler { id: tapHandler; onTapped: if (interactive) root.activated(areaKey) }
+    TapHandler {
+        id: tapHandler
+        enabled: root.interactive
+        onTapped: root.activated(root.areaKey)
+    }
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: MichiTheme.spacing.md
+        anchors.margins: MichiTheme.spacing.lg
         spacing: MichiTheme.spacing.sm
 
         RowLayout {
             Layout.fillWidth: true
             spacing: MichiTheme.spacing.sm
 
-            Label {
-                text: root.iconText || "♪"
-                font.pixelSize: MichiTheme.typography.sectionTitleSize
-                color: MichiTheme.colors.textPrimary
+            Text {
+                text: root.iconText
+                font.pixelSize: 28
+                Accessible.ignored: true
             }
 
-            Label {
+            Text {
+                Layout.fillWidth: true
                 text: root.title
                 color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.bodySize
-                font.weight: Font.DemiBold
-                Layout.fillWidth: true
+                font.pixelSize: MichiTheme.typography.cardTitleSize
+                font.weight: MichiTheme.typography.weightSemiBold
                 elide: Text.ElideRight
             }
 
             StatusBadge {
-                text: root.status === "available" ? qsTr("Disponible")
-                      : root.status === "partial" ? qsTr("Parcial") : qsTr("No disponible")
+                text: root.status === "available" ? "Disponible"
+                    : root.status === "partial" ? "Parcial"
+                    : "No disponible"
                 kind: root.status === "available" ? "success"
-                      : root.status === "partial" ? "warning" : "info"
+                    : root.status === "partial" ? "warning"
+                    : "disconnected"
             }
         }
 
-        Label {
+        Text {
             Layout.fillWidth: true
             text: root.description
             color: MichiTheme.colors.textSecondary
-            font.pixelSize: MichiTheme.typography.captionSize
+            font.pixelSize: MichiTheme.typography.bodySize
             wrapMode: Text.WordWrap
-            maximumLineCount: 3
-            elide: Text.ElideRight
+        }
+
+        Flow {
+            Layout.fillWidth: true
+            spacing: MichiTheme.spacing.xs
+
+            Repeater {
+                model: root.tools || []
+
+                StatusBadge {
+                    text: modelData.name || modelData.id || "Herramienta"
+                    kind: modelData.status === "available" ? "success"
+                        : modelData.status === "experimental" ? "warning"
+                        : modelData.status === "missing_dependency" ? "disconnected"
+                        : "info"
+                }
+            }
         }
 
         Item { Layout.fillHeight: true }
-    }
 
-    Keys.onReturnPressed: if (interactive) root.activated(areaKey)
-    Keys.onSpacePressed: if (interactive) root.activated(areaKey)
+        Text {
+            Layout.alignment: Qt.AlignRight
+            text: root.interactive ? "Abrir  ›" : "Dependencia pendiente"
+            color: root.interactive ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
+            font.pixelSize: MichiTheme.typography.metaSize
+            font.weight: MichiTheme.typography.weightMedium
+        }
+    }
 }
