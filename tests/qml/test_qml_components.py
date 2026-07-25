@@ -512,7 +512,10 @@ class TestRuntimeBlockerFixes:
 
     def test_glass_card_has_interactive_property(self):
         content = (QML_DIR / "components" / "GlassCard.qml").read_text()
-        assert "property bool interactive" in content, "GlassCard missing interactive property"
+        canonical = (QML_DIR / "components" / "MichiCard.qml").read_text()
+        assert "MichiCard" in content
+        assert "property bool interactive" in canonical
+        assert "interactive: true" in content
 
     def test_metadata_inspector_no_duplicate_width(self):
         lines = (QML_DIR / "pages" / "metadata" / "MetadataInspectorPage.qml").read_text().split("\n")

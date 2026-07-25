@@ -1,6 +1,7 @@
-from __future__ import annotations
 """EE — Settings runtime completo: schema, control, validation, adapter, backend, result,
 persistence, consumer update, rollback, restart policy, layouts, no adapter without applied."""
+
+from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
@@ -21,7 +22,9 @@ pytestmark = [pytest.mark.qml_module("settings")]
 
 @pytest.fixture
 def coordinator():
-    c = SettingsRuntimeCoordinator(player_service=MagicMock())
+    c = SettingsRuntimeCoordinator(
+        player_service=MagicMock(), queue_service=MagicMock()
+    )
     register_all_adapters(c)
     return c
 
@@ -156,7 +159,15 @@ class TestConsumerUpdate:
         with patch("core.settings_runtime_coordinator.SETTINGS") as ms:
             ms.value.return_value = "none"
             coordinator.execute("playback/repeat_mode", "all")
-            coordinator._player.set_repeat_mode.assert_called_once_with("all")
+            coordinator._queue.set_repeat.assert_called_once_with("all")
+            coordinator._player.set_repeat_mode.assert_not_called()
+
+    def test_shuffle_default_emits_to_queue_only(self, coordinator):
+        with patch("core.settings_runtime_coordinator.SETTINGS") as ms:
+            ms.value.return_value = False
+            coordinator.execute("playback/shuffle_default", True)
+            coordinator._queue.set_shuffle.assert_called_once_with(True)
+            coordinator._player.set_shuffle.assert_not_called()
 
     def test_log_level_emits(self, coordinator):
         with patch("core.settings_runtime_coordinator.SETTINGS") as ms:

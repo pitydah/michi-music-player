@@ -277,14 +277,16 @@ class TestE2EMobilePlayerFlow:
     # ── queue ──
     def test_queue_no_filepath(self):
         v1 = self._get_v1()
-        ps = MagicMock()
-        ps.get_queue.return_value = [
-            {"filepath": "/secret/s.mp3", "title": "Q",
-             "artist": "A", "album": "B", "track_uid": ""},
-        ]
-        v1._player_service = ps
-        v1._playback = MagicMock()
-        v1._playback.get_queue_index.return_value = 0
+        queue = MagicMock()
+        queue.get_state.return_value = {
+            "items": [{"filepath": "/secret/s.mp3", "title": "Q",
+                       "artist": "A", "album": "B", "track_uid": ""}],
+            "current_index": 0,
+            "repeat": "none",
+            "shuffle": False,
+            "revision": 1,
+        }
+        v1._queue_service = queue
         result = v1._build_queue(MagicMock())
         for t in result.get("tracks", []):
             assert "filepath" not in t
@@ -292,13 +294,15 @@ class TestE2EMobilePlayerFlow:
     def test_queue_jump(self):
         v1 = self._get_v1()
         ps = MagicMock()
-        ps.get_queue_state = MagicMock(return_value=(["/s1.flac", "/s2.flac"], 0))
-        ps.play_queue = MagicMock()
+        queue = MagicMock()
+        queue.play_from_index.return_value = {"ok": True}
         v1._player_service = ps
         v1._playback = ps
+        v1._queue_service = queue
         handler = _make_handler("/api/v1/queue/jump")
         handler._read_body = lambda: json.dumps({"index": 1})
         results = []
         handler._send_json = lambda data, status=200: results.append((data, status))
         v1.handle_post(handler)
-        ps.play_queue.assert_called_once()
+        queue.play_from_index.assert_called_once_with(1)
+        ps.play_queue.assert_not_called()

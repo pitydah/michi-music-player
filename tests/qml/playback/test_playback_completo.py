@@ -11,6 +11,7 @@ import pytest
 
 from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
 from ui_qml_bridge.playback_bridge import PlaybackBridge
+from core.queue_service import QueueService
 
 pytestmark = [pytest.mark.qml_module("playback")]
 
@@ -29,7 +30,17 @@ def mock_player():
 
 @pytest.fixture
 def bridge(mock_player):
-    return NowPlayingBridge(player_service=mock_player)
+    queue = QueueService(player_service=mock_player)
+    queue.enqueue([
+        {"title": "A", "filepath": "/a.flac"},
+        {"title": "B", "filepath": "/b.flac"},
+        {"title": "C", "filepath": "/c.flac"},
+    ])
+    return NowPlayingBridge(
+        player_service=mock_player,
+        queue_service=queue,
+        audio_quality_adapter=MagicMock(),
+    )
 
 
 class TestPlaybackCompleto:
@@ -48,13 +59,13 @@ class TestPlaybackCompleto:
         mock_player.play_next = MagicMock()
         result = bridge.next()
         assert result["ok"]
-        mock_player.play_next.assert_called_once()
+        mock_player.play_next.assert_not_called()
 
     def test_previous_track(self, bridge, mock_player):
-        mock_player.play_prev = MagicMock()
+        bridge._queue_service.current_index = 1
         result = bridge.previous()
         assert result["ok"]
-        mock_player.play_prev.assert_called_once()
+        mock_player.play_prev.assert_not_called()
 
     def test_seek(self, bridge, mock_player):
         mock_player.seek = MagicMock()
@@ -104,32 +115,28 @@ class TestPlaybackCompleto:
         assert result["ok"]
 
     def test_enqueue_song(self, bridge, mock_player):
-        mock_player.enqueue = MagicMock()
         result = bridge.enqueueSong("/test.flac")
         assert result["ok"]
+        mock_player.enqueue.assert_not_called()
 
     def test_remove_from_queue(self, bridge, mock_player):
-        mock_player.remove_queue_item = MagicMock()
-        bridge._queue = [{"title": "A"}, {"title": "B"}]
         result = bridge.removeFromQueue(0)
         assert result["ok"]
+        mock_player.remove_queue_item.assert_not_called()
 
     def test_clear_queue(self, bridge, mock_player):
-        mock_player.clear_queue = MagicMock()
         result = bridge.clearQueue()
         assert result["ok"]
 
     def test_move_queue_item(self, bridge, mock_player):
-        mock_player.move_queue_item = MagicMock()
-        bridge._queue = [{"title": "A"}, {"title": "B"}, {"title": "C"}]
         result = bridge.moveQueueItem(0, 2)
         assert result["ok"]
+        mock_player.move_queue_item.assert_not_called()
 
     def test_play_queue_item(self, bridge, mock_player):
-        mock_player.play_queue_item = MagicMock()
-        bridge._queue = [{"title": "A"}, {"title": "B"}]
         result = bridge.playQueueItem(1)
         assert result["ok"]
+        mock_player.play_queue_item.assert_not_called()
 
     def test_playback_bridge_delegates(self):
         p = MagicMock()
@@ -138,13 +145,15 @@ class TestPlaybackCompleto:
         p.duration = 0
         p.get_queue.return_value = []
         p.set_queue = MagicMock()
-        pb = PlaybackBridge(player_service=p)
+        pb = PlaybackBridge(
+            player_service=p,
+            queue_service=QueueService(player_service=p),
+        )
         assert pb.trackTitle == "—"
 
     def test_bridge_error_no_player(self):
-        b = NowPlayingBridge()
-        result = b.togglePlay()
-        assert not result["ok"]
+        with pytest.raises(AssertionError):
+            NowPlayingBridge()
 
     def test_quality_probe(self, bridge, mock_player):
         qa = MagicMock()

@@ -2,45 +2,51 @@
 from __future__ import annotations
 
 import logging
+import json
 from pathlib import Path
+from typing import Any
 
 
 logger = logging.getLogger("michi.playlist_service")
 
 
 class PlaylistTransaction:
-    def __init__(self, db):
+    """Snapshot used to roll playlist mutations back as one unit."""
+
+    def __init__(self, db: Any) -> None:
         self._db = db
         self._active = False
 
-    def begin(self):
+    def begin(self) -> None:
         if not self._active:
             self._db.conn.execute("BEGIN")
             self._active = True
 
-    def commit(self):
+    def commit(self) -> None:
         if self._active:
             self._db.conn.commit()
             self._active = False
 
-    def rollback(self):
+    def rollback(self) -> None:
         if self._active:
             self._db.conn.rollback()
             self._active = False
 
 
 class PlaylistService:
-    def __init__(self, db=None):
+    """Own playlist persistence and ordered track membership."""
+
+    def __init__(self, db: Any | None = None) -> None:
         self._db = db
         self._txn = PlaylistTransaction(db) if db else None
 
     def _can(self) -> bool:
         return self._db is not None and hasattr(self._db, 'get_playlists')
 
-    def _error(self, code: str, message: str = "") -> dict:
+    def _error(self, code: str, message: str = "") -> dict[str, Any]:
         return {"ok": False, "error_code": code, "message": message}
 
-    def _ok(self, **kw) -> dict:
+    def _ok(self, **kw: Any) -> dict[str, Any]:
         result = {"ok": True}
         result.update(kw)
         return result
@@ -94,15 +100,15 @@ class PlaylistService:
         valid = [e.resolved_path for e in entries if e.exists and not e.is_remote]
         if not valid:
             return {"ok": False, "error": "NO_VALID_TRACKS"}
-        name = path.split("/")[-1].rsplit(".", 1)[0][:80] or "Imported"
+        name = Path(path).stem[:80] or "Imported"
         r = self.create(name)
         if not r.get("ok"):
             return r
         pid = r["id"]
         added = 0
         for fp in valid:
-            self.add_track(pid, fp)
-            added += 1
+            if self.add_track(pid, filepath=fp).get("ok"):
+                added += 1
         return {"ok": True, "playlist_id": pid, "added": added}
 
     def export_m3u(self, pid: int, output_path: str = "") -> dict:
@@ -255,13 +261,33 @@ class PlaylistService:
         except Exception:
             return []
 
+    def get_items_for_queue(self, pid: int) -> list[dict]:
+        """Return ordered, metadata-rich playlist entries for QueueService."""
+        return self._get_items_internal(pid)
+
+    def update_description(self, pid: int, description: str) -> dict:
+        if not self._can() or not hasattr(self._db, "update_playlist"):
+            return self._error("NO_DB")
+        self._db.update_playlist(pid, description=description)
+        return self._ok(id=pid)
+
+    def set_smart_rule(self, pid: int, rule: dict[str, Any]) -> dict:
+        """Persist a validated smart-playlist rule through the service boundary."""
+        if not self._can() or not hasattr(self._db, "update_playlist"):
+            return self._error("NO_DB")
+        try:
+            self._db.update_playlist(pid, rules_json=json.dumps(rule))
+            return self._ok(id=pid)
+        except Exception as e:
+            return self._error("SMART_RULE_FAILED", str(e))
+
     def import_preview(self, filepath: str) -> dict:
         if not filepath or not Path(filepath).is_file():
             return self._error("FILE_NOT_FOUND")
         try:
             from core.playlist_io import parse_playlist_entries
             entries = parse_playlist_entries(filepath)
-            valid = sum(1 for e in entries if Path(e.filepath if hasattr(e, 'filepath') else str(e)).is_file())
+            valid = sum(1 for entry in entries if entry.exists and not entry.is_remote)
             return self._ok(
                 format=Path(filepath).suffix,
                 name=Path(filepath).stem,
@@ -278,22 +304,18 @@ class PlaylistService:
         if not self._can():
             return self._error("NO_DB")
         try:
-            entries = []
             p = Path(filepath)
-            if p.is_file():
-                from core.playlist_io import parse_playlist_entries
-                entries = parse_playlist_entries(filepath)
+            if not p.is_file():
+                return self._error("FILE_NOT_FOUND")
+            from core.playlist_io import parse_playlist_entries
+            entries = parse_playlist_entries(filepath)
             playlist_name = name or p.stem
             pid = self._db.create_playlist(playlist_name)
             count = 0
             for entry in entries:
-                fp = entry.filepath if hasattr(entry, 'filepath') else str(entry)
-                if Path(fp).is_file():
-                    self._db.add_track_to_playlist(pid, filepath=fp)
+                if entry.exists and not entry.is_remote:
+                    self._db.add_track_to_playlist(pid, filepath=entry.resolved_path)
                     count += 1
-            if count == 0 and p.is_file():
-                self._db.add_track_to_playlist(pid, filepath=str(p))
-                count = 1
             return self._ok(id=pid, count=count, name=playlist_name)
         except Exception as e:
             return self._error("IMPORT_CONFIRM_FAILED", str(e))
@@ -316,7 +338,8 @@ class PlaylistService:
         except Exception as e:
             return self._error("EXPORT_FAILED", str(e))
 
-    def batch_add(self, pid: int, track_ids: list[int], filepaths: list[str] = None) -> dict:
+    def batch_add(self, pid: int, track_ids: list[int],
+                  filepaths: list[str] | None = None) -> dict:
         if not track_ids and not filepaths:
             return {"ok": False, "error_code": "EMPTY", "message": "No tracks to add"}
         added = 0
@@ -370,7 +393,8 @@ class PlaylistService:
                 missing.append({"track_id": item.get("id") if isinstance(item, dict) else getattr(item, 'id', ''), "filepath": fp})
         return {"ok": True, "count": len(missing), "missing_count": len(missing), "missing": missing}
 
-    def play_from_index(self, pid: int, index: int, player_service=None) -> dict:
+    def play_from_index(self, pid: int, index: int,
+                        player_service: Any | None = None) -> dict:
         items = self._get_items_internal(pid)
         if index < 0 or index >= len(items):
             return {"ok": False, "error_code": "INVALID_INDEX", "message": "Índice fuera de rango"}
@@ -386,25 +410,18 @@ class PlaylistService:
                 return {"ok": False, "error_code": "PLAY_FAILED", "message": str(e)}
         return {"ok": True, "index": index, "filepath": fp}
 
-    def save_queue(self, player_service, name: str) -> dict:
+    def save_queue(self, items: list[dict[str, Any]], name: str) -> dict:
         if not name or not name.strip():
             return self._error("EMPTY_NAME")
         if not self._can():
             return self._error("NO_DB")
         try:
             fps = []
-            if player_service and hasattr(player_service, 'get_queue'):
-                q = player_service.get_queue()
-                for item in (q or []):
-                    fp = getattr(item, 'filepath', None) if not isinstance(item, dict) else item.get("filepath", "")
-                    if fp:
-                        fps.append(fp)
-            if not fps and player_service and hasattr(player_service, 'current'):
-                cur = player_service.current
-                if cur:
-                    fp = getattr(cur, 'filepath', '') if not isinstance(cur, dict) else cur.get("filepath", "")
-                    if fp:
-                        fps.append(fp)
+            for item in (items or []):
+                fp = (getattr(item, "filepath", None)
+                      if not isinstance(item, dict) else item.get("filepath", ""))
+                if fp:
+                    fps.append(fp)
             if not fps:
                 return self._error("NO_TRACKS")
             pid = self._db.create_playlist(name.strip())

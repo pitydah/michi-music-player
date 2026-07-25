@@ -14,6 +14,7 @@ def _make_mock_engine():
         queue_changed = Signal(list)
         finished = Signal()
         error_occurred = Signal(str)
+        queue_progressed = Signal(int, str, str, object)
 
         def __init__(self):
             super().__init__()

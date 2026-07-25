@@ -3,47 +3,51 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from core.queue_service import QueueService
+
 
 class TestQueueBridgeCreation:
-    def test_requires_player_service(self):
+    def test_requires_queue_service(self):
         from ui_qml_bridge.queue_bridge import QueueBridge
         with pytest.raises(Exception):
             QueueBridge()
 
-    def test_creation_with_player(self):
+    def test_creation_with_queue_service(self):
         from ui_qml_bridge.queue_bridge import QueueBridge
-        qb = QueueBridge(player_service=MagicMock())
+        qb = QueueBridge(queue_service=QueueService())
         assert qb is not None
 
     def test_has_queue_model(self):
         from ui_qml_bridge.queue_bridge import QueueBridge
-        qb = QueueBridge(player_service=MagicMock())
+        qb = QueueBridge(queue_service=QueueService())
         assert qb.queueModel is not None
 
     def test_queue_count_default(self):
         from ui_qml_bridge.queue_bridge import QueueBridge
-        qb = QueueBridge(player_service=MagicMock())
+        qb = QueueBridge(queue_service=QueueService())
         assert qb.queueCount >= 0
 
 
 class TestQueueOperations:
     def test_refresh(self):
         from ui_qml_bridge.queue_bridge import QueueBridge
-        qb = QueueBridge(player_service=MagicMock())
+        qb = QueueBridge(queue_service=QueueService())
         result = qb.refresh()
         assert result.get("ok")
 
     def test_play_from_index(self):
         from ui_qml_bridge.queue_bridge import QueueBridge
-        qb = QueueBridge(player_service=MagicMock())
+        qb = QueueBridge(queue_service=QueueService())
         result = qb.playFromIndex(0)
         assert isinstance(result, dict)
 
     def test_clear_queue(self):
         from ui_qml_bridge.queue_bridge import QueueBridge
-        qb = QueueBridge(player_service=MagicMock(), queue_service=MagicMock())
+        queue_service = MagicMock()
+        queue_service.clear.return_value = {"ok": True}
+        qb = QueueBridge(player_service=MagicMock(), queue_service=queue_service)
         result = qb.clearQueue()
-        assert isinstance(result, dict)
+        assert result == {"ok": True}
 
     def test_save_state(self):
         from ui_qml_bridge.queue_bridge import QueueBridge

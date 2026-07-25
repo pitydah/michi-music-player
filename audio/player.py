@@ -64,6 +64,7 @@ class GStreamerEngine(QObject):
     error_occurred = Signal(str)
     spectrum_data = Signal(object)
     queue_changed = Signal(list)
+    queue_progressed = Signal(int, str, str, object)
     audio_route_changed = Signal(object)
     stream_metadata_changed = Signal(str, str, str)  # title, artist, album
     eq_bitperfect_warning = Signal()

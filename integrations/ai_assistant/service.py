@@ -87,14 +87,15 @@ from integrations.ai_assistant.schemas import PendingAction, ToolResult
 from core.context.context_events import AppEvent
 
 
-def _inject_context_snapshot(messages: list, context_service=None) -> list:
+def _inject_context_snapshot(
+    messages: list[dict[str, Any]], context_service: Any = None
+) -> list[dict[str, Any]]:
     if not context_service:
         return messages
     try:
         snap = context_service.get_assistant_snapshot()
         if not snap:
             return messages
-        import json
         context_text = (
             "Contexto actual de Michi Music Player:\n"
             f"{json.dumps(snap, ensure_ascii=False, default=str)}"
@@ -109,18 +110,21 @@ logger = logging.getLogger("michi.ai_assistant.service")
 
 
 class AIAssistantService:
+    """Coordinate assistant intent detection, tools, and action confirmation."""
+
     def __init__(self, db: Any, model: str = "llama3.1:8b",
                  base_url: str = "http://127.0.0.1:11434",
                  save_history: bool = False, max_results: int = 30,
                  allow_write: bool = False, offline_strict: bool = True,
                  ollama_timeout: int = 30,
                  playback: Any = None,
+                 queue_service: Any = None,
                  allow_reversible: bool = True,
                  require_confirmation: bool = True,
                  action_log_enabled: bool = True,
                  max_action_tracks: int = 100,
                  max_playlist_tracks: int = 50,
-                 context_service: Any = None):
+                 context_service: Any = None) -> None:
         self._db = db
         self._model = model
         self._max_results = max_results
@@ -130,6 +134,7 @@ class AIAssistantService:
         self._max_action_tracks = max_action_tracks
         self._max_playlist_tracks = max_playlist_tracks
         self._playback = playback
+        self._queue_service = queue_service
         self._context_svc = context_service
         self._ollama = OllamaClient(base_url=base_url, timeout=ollama_timeout,
                                      offline_strict=offline_strict)
@@ -206,7 +211,7 @@ class AIAssistantService:
     def ollama_available(self) -> bool:
         return self._ollama.check_health()
 
-    def process_message(self, text: str) -> dict:
+    def process_message(self, text: str) -> dict[str, Any]:
         """Process a user message. Returns {"reply": str, "pending": dict|None}."""
         try:
             tool_name, tool_args, query_text = self._detect_intent(text)
@@ -219,6 +224,7 @@ class AIAssistantService:
         if tool_name:
             tool_result = self._tools.execute(
                 tool_name, db=self._db, playback=self._playback,
+                queue_service=self._queue_service,
                 limit=self._max_results, **tool_args,
             )
             if tool_result.success:
@@ -273,7 +279,7 @@ class AIAssistantService:
 
         return result
 
-    def confirm_action(self, action_id: str) -> dict:
+    def confirm_action(self, action_id: str) -> dict[str, Any]:
         pending = self._pending.get(action_id)
         if not pending:
             return {"reply": "La accion ha expirado o no existe.", "pending": None}
@@ -281,6 +287,7 @@ class AIAssistantService:
         result = self._tools.execute_direct(
             pending.tool_name, db=self._db,
             playback=self._playback,
+            queue_service=self._queue_service,
             **pending.arguments,
         )
         self._pending.remove(action_id)
@@ -315,7 +322,7 @@ class AIAssistantService:
         self._conversation.add("assistant", reply)
         return {"reply": reply, "pending": None}
 
-    def cancel_action(self, action_id: str) -> dict:
+    def cancel_action(self, action_id: str) -> dict[str, Any]:
         pending = self._pending.get(action_id)
         if pending:
             self._pending.remove(action_id)
@@ -325,13 +332,13 @@ class AIAssistantService:
         self._conversation.add("assistant", reply)
         return {"reply": reply, "pending": None}
 
-    def list_pending_actions(self) -> list[dict]:
+    def list_pending_actions(self) -> list[dict[str, Any]]:
         return [_pending_to_dict(a) for a in self._pending.list_all()]
 
-    def clear_pending_actions(self):
+    def clear_pending_actions(self) -> None:
         self._pending.clear()
 
-    def clear(self):
+    def clear(self) -> None:
         self._conversation.clear()
         self._conversation.add("system", SYSTEM_PROMPT)
         self._pending.clear()
@@ -383,8 +390,19 @@ class AIAssistantService:
             )
         return None
 
-    def _create_pending_for(self, tool_name: str, tool_args: dict,
+    def _create_pending_for(self, tool_name: str, tool_args: dict[str, Any],
                             result: ToolResult, user_text: str) -> PendingAction:
+        """Create a confirmation request for a denied reversible tool call.
+
+        Args:
+            tool_name: Name of the tool awaiting confirmation.
+            tool_args: Arguments to retain for confirmed execution.
+            result: Permission-denied result that triggered confirmation.
+            user_text: Original user request associated with the action.
+
+        Returns:
+            The stored pending action.
+        """
         titles = {
             "mark_favorite": "Marcar favoritos",
             "unmark_favorite": "Desmarcar favoritos",
@@ -412,6 +430,18 @@ class AIAssistantService:
 
     def _call_ollama(self, tool_result: ToolResult | None,
                      query_text: str) -> str:
+        """Build contextual messages and request an Ollama response.
+
+        Args:
+            tool_result: Optional tool output to include in the prompt.
+            query_text: User query associated with the response.
+
+        Returns:
+            The assistant response text.
+
+        Raises:
+            OllamaError: If the Ollama request cannot be completed.
+        """
         if tool_result and tool_result.success:
             safe_data = sanitize_for_prompt(tool_result.data) if isinstance(tool_result.data, (dict, list)) else tool_result.data
             tool_data = json.dumps(safe_data, ensure_ascii=False,
@@ -465,7 +495,15 @@ class AIAssistantService:
         return json.dumps(data, ensure_ascii=False, indent=2, default=str)
 
     def _detect_intent(self, text: str
-                       ) -> tuple[str | None, dict, str]:
+                       ) -> tuple[str | None, dict[str, Any], str]:
+        """Map user text to a tool call without executing it.
+
+        Args:
+            text: Raw user message to classify.
+
+        Returns:
+            A tuple of tool name, tool arguments, and original query text.
+        """
         t = text.lower().strip()
 
         if re.search(

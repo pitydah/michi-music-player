@@ -126,6 +126,18 @@ ROUTES: dict[str, dict] = {
         "placeholder_state": None,
         "params": None, "category": "library",
     },
+    "library.collections": {
+        "route": "library.collections", "parent": "library", "title": "Colecciones",
+        "breadcrumb_title": "Colecciones",
+        "source": "../pages/library/CollectionsPage.qml",
+        "icon": "library", "order": 60, "sidebar_visible": False,
+        "sidebar_group": None, "expandable": False,
+        "status": "functional", "capability": None,
+        "aliases": [],
+        "keywords": ["colecciones", "favoritos", "recientes", "años"],
+        "placeholder_state": None,
+        "params": None, "category": "library",
+    },
     "library.folder_detail": {
         "route": "library.folder_detail", "parent": "library.folders",
         "title": "Carpeta", "breadcrumb_title": "Carpeta",
@@ -575,7 +587,7 @@ ROUTES: dict[str, dict] = {
         "icon": "processing", "order": 20, "sidebar_visible": True,
         "sidebar_group": "audio_lab", "expandable": False,
         "status": "functional", "capability": "audio_lab",
-        "aliases": ["equalizer", "outputs", "eq"],
+        "aliases": ["outputs"],
         "keywords": ["procesamiento", "ecualizador", "dsp", "perfiles", "normalización", "conversión"],
         "placeholder_state": None,
         "params": None, "category": "tools",
@@ -749,7 +761,7 @@ ROUTES: dict[str, dict] = {
         "aliases": [],
         "keywords": [],
         "placeholder_state": None,
-        "params": {"tab": "cd"}, "category": "tools",
+        "params": {"tab": {"required": False, "type": "string"}}, "category": "tools",
     },
     "audio_lab.adc_recorder": {
         "route": "audio_lab.adc_recorder", "parent": "audio_lab",
@@ -761,7 +773,7 @@ ROUTES: dict[str, dict] = {
         "aliases": [],
         "keywords": [],
         "placeholder_state": None,
-        "params": {"tab": "adc"}, "category": "tools",
+        "params": {"tab": {"required": False, "type": "string"}}, "category": "tools",
     },
 
     # ═══════════════════════════════════════════════════════════════════
@@ -1064,6 +1076,18 @@ ROUTES: dict[str, dict] = {
     # ═══════════════════════════════════════════════════════════════════
     # SETTINGS (fixed bottom sidebar entry)
     # ═══════════════════════════════════════════════════════════════════
+    "eq": {
+        "route": "eq", "parent": None,
+        "title": "Ecualizador", "breadcrumb_title": "Ecualizador",
+        "source": "../pages/equalizer/EqualizerPage.qml",
+        "icon": "eq", "order": 65, "sidebar_visible": True,
+        "sidebar_group": None, "expandable": False,
+        "status": "functional", "capability": "eq",
+        "aliases": ["equalizer"],
+        "keywords": ["ecualizador", "eq", "dsp", "bandas", "presets"],
+        "placeholder_state": None,
+        "params": None, "category": "tools",
+    },
     "settings": {
         "route": "settings", "parent": None, "title": "Ajustes",
         "breadcrumb_title": "Ajustes",

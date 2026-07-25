@@ -29,8 +29,6 @@ Dialog {
     y: (parent.height - height) / 3
     width: 420
     objectName: "playlistImportDialog"
-    Accessible.role: Accessible.Dialog
-    Accessible.name: "Importar playlist"
     closePolicy: Popup.NoAutoClose
 
     function resetDialog() {

@@ -55,8 +55,6 @@ Item {
                     var result = root.qb.saveAsPlaylist("Cola")
                     if (!result.ok && root.notif)
                         root.notif.showMessage(result.error || "Error al guardar", "error")
-                    else if (typeof playlistsBridge !== "undefined" && playlistsBridge)
-                        playlistsBridge.createFromQueue()
                 }
             }
         }

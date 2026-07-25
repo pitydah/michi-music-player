@@ -236,10 +236,10 @@ Item {
 
                 Repeater {
                     model: [
-                        { title: qsTr("Recién añadido"), description: qsTr("Explora los últimos álbumes incorporados a tu biblioteca"), action: qsTr("Ver recientes"), route: "library.recent" },
-                        { title: qsTr("Favoritos"), description: qsTr("Vuelve a las canciones que has marcado como favoritas"), action: qsTr("Ver favoritos"), route: "library.favorites" },
-                        { title: qsTr("Sin reproducir"), description: qsTr("Descubre música de tu biblioteca que aún no has escuchado"), action: qsTr("Explorar"), route: "library.unplayed" },
-                        { title: qsTr("Mixes"), description: qsTr("Escucha selecciones inteligentes construidas para ti"), action: qsTr("Ver mixes"), route: "mix" }
+                        { title: qsTr("Recién añadido"), description: qsTr("Últimos álbumes añadidos"), action: qsTr("Ver recientes"), route: "library.recent" },
+                        { title: qsTr("Favoritos"), description: qsTr("Tus canciones favoritas"), action: qsTr("Ver favoritos"), route: "library.favorites" },
+                        { title: qsTr("Sin reproducir"), description: qsTr("Música sin escuchar"), action: qsTr("Explorar"), route: "library.unplayed" },
+                        { title: qsTr("Mixes"), description: qsTr("Selecciones inteligentes"), action: qsTr("Ver mixes"), route: "mix" }
                     ]
 
                     GlassCard {

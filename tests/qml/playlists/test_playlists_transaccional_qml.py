@@ -242,17 +242,15 @@ def test_detect_missing(svc, tmp_path):
     assert result["count"] == 1
 
 
-def test_save_queue_from_player(svc):
-    from unittest.mock import MagicMock
-
+def test_save_queue_from_canonical_items(svc):
     svc.create("SaveQueue")
-    mock_player = MagicMock()
-    mock_player.get_queue.return_value = [
+    items = [
         {"filepath": "/a.flac"},
         {"filepath": "/b.flac"},
     ]
-    result = svc.save_queue(mock_player, "From Queue")
-    assert result["ok"] or not result["ok"]
+    result = svc.save_queue(items, "From Queue")
+    assert result["ok"]
+    assert result["count"] == 2
 
 
 def test_description_and_cover(svc):
@@ -278,7 +276,7 @@ def test_export(svc, tmp_path):
     svc.add_track(pid, filepath="/path/a.flac")
     dest = tmp_path / "out.m3u"
     with patch("core.playlist_service.Path.is_file", return_value=True), \
-         patch("ui.playlist_io.export_m3u") as mock_export:
+         patch("core.playlist_io.export_m3u") as mock_export:
         result = svc.export(pid, str(dest))
         assert result["ok"]
         mock_export.assert_called_once()

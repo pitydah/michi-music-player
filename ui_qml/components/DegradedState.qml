@@ -49,7 +49,7 @@ Item {
                     text: qsTr("\u26A0")
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     color: MichiTheme.colors.warning
-                    Accessible.role: Accessible.Icon
+                    Accessible.role: Accessible.Graphic
                     Accessible.name: "Rendimiento degradado"
                 }
 

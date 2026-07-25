@@ -61,7 +61,7 @@ Item {
                     color: MichiTheme.colors.accent
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
-                    Accessible.role: Accessible.Icon
+                    Accessible.role: Accessible.Graphic
                     Accessible.name: root.sectionType === "track" ? "Canción" : root.sectionType === "album" ? "Álbum" : root.sectionType === "artist" ? "Artista" : root.sectionType === "playlist" ? "Lista" : root.sectionType === "folder" ? "Carpeta" : root.sectionType === "genre" ? "Género" : root.sectionType === "radio" ? "Radio" : root.sectionType === "device" ? "Dispositivo" : root.sectionType === "server" ? "Servidor" : root.sectionType === "action" ? "Acción" : root.sectionType === "setting" ? "Ajuste" : "Tipo"
                 }
                 Text {

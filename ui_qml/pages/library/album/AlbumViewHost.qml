@@ -34,9 +34,17 @@ Item {
         root.viewChanged(index)
     }
 
+    function cycleView(step) {
+        var count = root.viewModes.length
+        root.selectView((root.currentView + step + count) % count)
+    }
+
     Keys.onPressed: function(event) {
         if ((event.modifiers & Qt.ControlModifier) && event.key >= Qt.Key_1 && event.key <= Qt.Key_5) {
             root.selectView(event.key - Qt.Key_1)
+            event.accepted = true
+        } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Tab) {
+            root.cycleView((event.modifiers & Qt.ShiftModifier) ? -1 : 1)
             event.accepted = true
         }
     }
@@ -106,6 +114,15 @@ Item {
                                          : "transparent"
                                 border.width: index === root.currentView ? MichiTheme.borderWidth : 0
                                 border.color: MichiTheme.colors.borderActive
+                                activeFocusOnTab: true
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: parent.radius
+                                    color: "transparent"
+                                    border.width: parent.activeFocus ? MichiTheme.focusWidth : 0
+                                    border.color: MichiTheme.colors.borderFocus
+                                }
 
                                 Accessible.role: Accessible.Button
                                 Accessible.name: modelData.name
@@ -132,6 +149,9 @@ Item {
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: root.selectView(index)
                                 }
+
+                                Keys.onReturnPressed: root.selectView(index)
+                                Keys.onSpacePressed: root.selectView(index)
 
                                 ToolTip.visible: modeMouse.containsMouse
                                 ToolTip.text: modelData.description + "  ·  Ctrl+" + (index + 1)

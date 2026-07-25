@@ -1,9 +1,11 @@
+"""MixBridge adapts generated mixes to canonical queue operations."""
 from __future__ import annotations
 
 import contextlib
 import json
 import logging
 from enum import Enum
+from typing import Any
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
 
@@ -12,19 +14,14 @@ logger = logging.getLogger("michi.mix")
 
 class MixErrorCode:
     EMPTY_RESULT = "EMPTY_RESULT"
-    NO_MATCHES = "NO_MATCHES"
     SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
     QUERY_FAILED = "QUERY_FAILED"
     CANCELLED = "CANCELLED"
     INVALID_STATE = "INVALID_STATE"
     UNKNOWN_CATEGORY = "UNKNOWN_CATEGORY"
     NO_MIX_SELECTED = "NO_MIX_SELECTED"
-    GENERATION_FAILED = "GENERATION_FAILED"
     EMPTY_MIX = "EMPTY_MIX"
-    NO_TRACK_ID = "NO_TRACK_ID"
     NO_PLAYBACK = "NO_PLAYBACK"
-    PLAY_FAILED = "PLAY_FAILED"
-    ENQUEUE_FAILED = "ENQUEUE_FAILED"
     EMPTY_NAME = "EMPTY_NAME"
     NO_PLAYLIST_SERVICE = "NO_PLAYLIST_SERVICE"
     CREATE_FAILED = "CREATE_FAILED"
@@ -63,36 +60,35 @@ MIX_CATEGORIES = [
 
 
 class MixBridge(QObject):
+    """Expose mix generation while delegating playback to QueueService."""
+
     dataChanged = Signal()
     generationProgress = Signal(int, int)
     generationError = Signal(str)
     stateChanged = Signal(str)
 
-    def __init__(self, mix_service=None, job_service=None,
-                 action_registry=None, navigation_bridge=None,
-                 page_state_store=None, capability_bridge=None,
-                 accessibility_bridge=None, playlist_service=None,
-                 playback_service=None, queue_service=None,
-                 query_executor=None, parent=None):
+    def __init__(self, mix_service: Any = None, job_service: Any = None,
+                 action_registry: Any = None, navigation_bridge: Any = None,
+                 page_state_store: Any = None, capability_bridge: Any = None,
+                 accessibility_bridge: Any = None, playlist_service: Any = None,
+                  playback_service: Any = None, queue_service: Any = None,
+                  query_executor: Any = None, parent: QObject | None = None) -> None:
         super().__init__(parent)
+        # Retained for bridge-factory and caller compatibility; this bridge no longer uses them.
+        del action_registry, capability_bridge, accessibility_bridge, playback_service, query_executor
         self._mix_svc = mix_service
         self._job_svc = job_service
-        self._action_registry = action_registry
         self._nav = navigation_bridge
         self._page_state = page_state_store
-        self._cap = capability_bridge
-        self._access = accessibility_bridge
         self._playlist_svc = playlist_service
-        self._playback_svc = playback_service
         self._queue_svc = queue_service
-        self._query_executor = query_executor
 
         self._state = MixState.IDLE
         self._current_mix_id = ""
         self._current_mix_title = ""
+        self._config_params = ""
         self._current_songs: list[dict] = []
         self._error_message = ""
-        self._ai_enabled = False
         self._generation = 0
         self._validation_errors: list[str] = []
 
@@ -100,13 +96,14 @@ class MixBridge(QObject):
     def state(self) -> MixState:
         return self._state
 
-    def _set_state(self, new_state: MixState):
+    def _set_state(self, new_state: MixState) -> None:
         if self._state != new_state:
             self._state = new_state
             self.stateChanged.emit(new_state.value)
             self.dataChanged.emit()
 
     def _can_transition(self, target: MixState) -> bool:
+        """Return whether the state machine permits the requested transition."""
         valid = {
             MixState.IDLE: {MixState.CONFIGURING, MixState.GENERATING},
             MixState.CONFIGURING: {MixState.VALIDATING, MixState.IDLE, MixState.FAILED},
@@ -128,10 +125,7 @@ class MixBridge(QObject):
 
     @Property("QVariantList", notify=dataChanged)
     def categories(self):
-        cats = list(MIX_CATEGORIES)
-        if not self._ai_enabled:
-            cats = [c for c in cats if c["id"] not in ("ai_recommended",)]
-        return cats
+        return list(MIX_CATEGORIES)
 
     @Property("QVariantList", notify=dataChanged)
     def currentSongs(self):
@@ -154,7 +148,7 @@ class MixBridge(QObject):
         return self._validation_errors
 
     @Slot(str, result=dict)
-    def configure(self, mix_id: str, params: str = ""):
+    def configure(self, mix_id: str, params: str = "") -> dict[str, Any]:
         if not self._can_transition(MixState.CONFIGURING):
             return {"ok": False, "error_code": MixErrorCode.INVALID_STATE, "state": self._state.value}
         self._set_state(MixState.CONFIGURING)
@@ -172,7 +166,7 @@ class MixBridge(QObject):
         return {"ok": True, "mix_id": mix_id, "title": category["title"]}
 
     @Slot(result=dict)
-    def validate(self):
+    def validate(self) -> dict[str, Any]:
         if not self._can_transition(MixState.VALIDATING):
             return {"ok": False, "error_code": MixErrorCode.INVALID_STATE, "state": self._state.value}
         self._set_state(MixState.VALIDATING)
@@ -188,7 +182,8 @@ class MixBridge(QObject):
         self._set_state(MixState.QUEUED)
         return {"ok": True, "valid": True}
 
-    def _run_generation(self, mix_id: str, params: str):
+    def _run_generation(self, mix_id: str, params: str) -> dict[str, Any]:
+        """Load a mix and normalize service failures into the bridge result contract."""
         try:
             songs = self._load_mix_items(mix_id, seed=params)
         except Exception as e:
@@ -201,19 +196,20 @@ class MixBridge(QObject):
         return {"ok": True, "songs": songs}
 
     @Slot(result=dict)
-    def generate(self):
+    def generate(self) -> dict[str, Any]:
         if not self._can_transition(MixState.GENERATING):
             return {"ok": False, "error_code": MixErrorCode.INVALID_STATE, "state": self._state.value}
         self._set_state(MixState.QUEUED)
         self._generation += 1
         gen = self._generation
         mix_id = self._current_mix_id
-        params = getattr(self, '_config_params', "")
+        params = self._config_params
         self._set_state(MixState.GENERATING)
 
         result = self._run_generation(mix_id, params)
         if not result.get("ok"):
             self._error_message = result.get("detail", "Error de generacion")
+            self.generationError.emit(self._error_message)
             self._set_state(MixState.FAILED)
             return result
 
@@ -238,8 +234,9 @@ class MixBridge(QObject):
         self._set_state(MixState.READY)
         return {"ok": True, "count": len(songs), "partial": False}
 
-    @Slot(result=dict)
-    def loadMix(self, mix_id: str, seed: str = ""):
+    @Slot(str, result=dict)
+    @Slot(str, str, result=dict)
+    def loadMix(self, mix_id: str, seed: str = "") -> dict[str, Any]:
         cfg = self.configure(mix_id, seed)
         if not cfg.get("ok"):
             return cfg
@@ -249,13 +246,13 @@ class MixBridge(QObject):
         return self.generate()
 
     @Slot(result=dict)
-    def regenerate(self):
+    def regenerate(self) -> dict[str, Any]:
         if self._state not in (MixState.READY, MixState.PARTIAL_SUCCESS, MixState.FAILED):
             return {"ok": False, "error_code": MixErrorCode.INVALID_STATE, "state": self._state.value}
         return self.generate()
 
     @Slot(result=dict)
-    def cancelGeneration(self):
+    def cancelGeneration(self) -> dict[str, Any]:
         if self._state == MixState.GENERATING:
             self._set_state(MixState.CANCELLING)
         if self._job_svc and hasattr(self._job_svc, 'cancel_all'):
@@ -268,38 +265,38 @@ class MixBridge(QObject):
         return {"ok": True, "cancelled": gen}
 
     @Slot(str, result=dict)
-    def saveRules(self, rules_json: str):
+    def saveRules(self, rules_json: str) -> dict[str, Any]:
         if self._mix_svc is None:
             return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
         mix_id = self._current_mix_id or "custom"
         return self._mix_svc.save_rules(mix_id, rules_json)
 
     @Slot(str, result=dict)
-    def previewRules(self, rules_json: str):
+    def previewRules(self, rules_json: str) -> dict[str, Any]:
         if self._mix_svc is None:
             return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
         return self._mix_svc.preview_rules(rules_json, limit=10)
 
     @Slot(str, result=dict)
-    def loadRules(self, mix_id: str):
+    def loadRules(self, mix_id: str) -> dict[str, Any]:
         if self._mix_svc is None:
             return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
         return self._mix_svc.load_rules(mix_id)
 
     @Slot(result=dict)
-    def listRules(self):
+    def listRules(self) -> dict[str, Any]:
         if self._mix_svc is None:
             return {"ok": False, "error": "SERVICE_UNAVAILABLE", "mixes": []}
         return self._mix_svc.list_rules()
 
     @Slot(str, result=dict)
-    def deleteRules(self, mix_id: str):
+    def deleteRules(self, mix_id: str) -> dict[str, Any]:
         if self._mix_svc is None:
             return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
         return self._mix_svc.delete_rules(mix_id)
 
     @Slot(result=dict)
-    def reset(self):
+    def reset(self) -> dict[str, Any]:
         self._current_mix_id = ""
         self._current_mix_title = ""
         self._current_songs = []
@@ -309,6 +306,7 @@ class MixBridge(QObject):
         return {"ok": True}
 
     def _load_mix_items(self, mix_id: str, seed: str = "") -> list[dict] | None:
+        """Dispatch a mix category to its loader and apply common result limits."""
         if self._mix_svc is None:
             return None
 
@@ -341,12 +339,13 @@ class MixBridge(QObject):
             logger.debug("mix %s failed: %s", mix_id, e)
             return []
 
-    def _deduplicate_and_apply_limits(self, items: list[dict],
-                                       artist_limit: int = 5,
-                                       max_total: int = 50) -> list[dict]:
-        seen_ids = set()
+    def _deduplicate_and_apply_limits(self, items: list[dict[str, Any]],
+                                      artist_limit: int = 5,
+                                      max_total: int = 50) -> list[dict[str, Any]]:
+        """Deduplicate identified tracks and enforce artist and total limits."""
+        seen_ids: set[Any] = set()
         artist_counts: dict[str, int] = {}
-        result = []
+        result: list[dict[str, Any]] = []
         for item in items:
             tid = item.get("track_id", 0) or item.get("id", 0)
             if tid and tid in seen_ids:
@@ -365,7 +364,8 @@ class MixBridge(QObject):
             self._set_state(MixState.PARTIAL_SUCCESS)
         return result
 
-    def _build_daily_mix(self) -> list[dict]:
+    def _build_daily_mix(self) -> list[dict[str, Any]]:
+        """Combine recent and unplayed tracks into a bounded daily mix."""
         if not self._mix_svc:
             return []
         try:
@@ -386,7 +386,8 @@ class MixBridge(QObject):
             logger.debug("daily_mix failed: %s", e)
             return []
 
-    def _build_custom_mix(self, params: str = "") -> list[dict]:
+    def _build_custom_mix(self, params: str = "") -> list[dict[str, Any]]:
+        """Build a field-filtered mix from JSON-encoded custom rules."""
         if not params or not self._mix_svc:
             return []
         try:
@@ -400,76 +401,41 @@ class MixBridge(QObject):
             if genre:
                 result = self._mix_svc.by_field("genre", value=genre, limit=limit)
                 return result or []
-        except (json.JSONDecodeError, Exception):
-            pass
+        except Exception as e:
+            logger.debug("custom mix failed: %s", e, exc_info=True)
         return []
 
-    def _try_play_track(self, tid):
-        if self._playback_svc and hasattr(self._playback_svc, 'play'):
-            self._playback_svc.play(tid)
-            return True
-        return False
-
-    def _try_enqueue_track(self, tid):
-        if self._queue_svc and hasattr(self._queue_svc, 'enqueue'):
-            self._queue_svc.enqueue(tid)
-            return True
-        if self._playback_svc and hasattr(self._playback_svc, 'enqueue'):
-            self._playback_svc.enqueue([tid])
-            return True
-        return False
-
     @Slot(result=dict)
-    def playMix(self):
+    def playMix(self) -> dict[str, Any]:
         if not self._current_songs:
             return {"ok": False, "error_code": MixErrorCode.EMPTY_MIX}
-        first = self._current_songs[0]
-        tid = first.get("track_id") or first.get("id")
-        if not tid:
-            return {"ok": False, "error_code": MixErrorCode.NO_TRACK_ID}
-        try:
-            ok = self._try_play_track(tid)
-            if ok:
-                return {"ok": True, "track_id": tid}
+        if not self._queue_svc:
             return {"ok": False, "error_code": MixErrorCode.NO_PLAYBACK}
-        except Exception as e:
-            return {"ok": False, "error_code": MixErrorCode.PLAY_FAILED, "detail": str(e)}
+        return self._queue_svc.replace_and_play(self._current_songs, 0)
 
     @Slot(result=dict)
-    def enqueueMix(self):
+    def enqueueMix(self) -> dict[str, Any]:
         if not self._current_songs:
             return {"ok": False, "error_code": MixErrorCode.EMPTY_MIX}
-        count = 0
-        errors = []
-        for s in self._current_songs:
-            tid = s.get("track_id") or s.get("id")
-            if tid:
-                try:
-                    if self._try_enqueue_track(tid):
-                        count += 1
-                except Exception as e:
-                    errors.append({"track_id": tid, "error": str(e)})
-        result = {"ok": count > 0, "count": count}
-        if errors:
-            result["errors"] = errors
-            result["error_count"] = len(errors)
-        return result
+        if not self._queue_svc:
+            return {"ok": False, "error_code": MixErrorCode.NO_PLAYBACK}
+        return self._queue_svc.enqueue(self._current_songs, play_now=False)
 
-    def _try_create_playlist(self, name):
+    def _try_create_playlist(self, name: str) -> Any | None:
         if self._playlist_svc and hasattr(self._playlist_svc, 'create'):
             pid = self._playlist_svc.create(name)
             if pid:
                 return pid
         return None
 
-    def _try_add_to_playlist(self, pid, tid):
+    def _try_add_to_playlist(self, pid: Any, tid: Any) -> bool:
         if self._playlist_svc and hasattr(self._playlist_svc, 'add_track'):
             self._playlist_svc.add_track(pid, tid)
             return True
         return False
 
     @Slot(str, result=dict)
-    def saveMixAsPlaylist(self, name: str):
+    def saveMixAsPlaylist(self, name: str) -> dict[str, Any]:
         if not name:
             return {"ok": False, "error_code": MixErrorCode.EMPTY_NAME}
         if not self._current_songs:
@@ -487,8 +453,11 @@ class MixBridge(QObject):
                     try:
                         if self._try_add_to_playlist(pid, tid):
                             count += 1
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(
+                            "Failed to add track %s to playlist %s: %s",
+                            tid, pid, e, exc_info=True,
+                        )
             if self._playlist_svc and hasattr(self._playlist_svc, 'refresh'):
                 self._playlist_svc.refresh()
             return {"ok": True, "id": pid, "count": count}
@@ -496,39 +465,23 @@ class MixBridge(QObject):
             return {"ok": False, "error_code": MixErrorCode.SAVE_FAILED, "detail": str(e)}
 
     @Slot(int, result=dict)
-    def playFromIndex(self, index: int):
+    def playFromIndex(self, index: int) -> dict[str, Any]:
         if not self._current_songs or index < 0 or index >= len(self._current_songs):
             return {"ok": False, "error_code": MixErrorCode.INVALID_INDEX}
-        song = self._current_songs[index]
-        tid = song.get("track_id") or song.get("id")
-        if not tid:
-            return {"ok": False, "error_code": MixErrorCode.NO_TRACK_ID}
-        try:
-            ok = self._try_play_track(tid)
-            if ok:
-                return {"ok": True, "track_id": tid, "index": index}
+        if not self._queue_svc:
             return {"ok": False, "error_code": MixErrorCode.NO_PLAYBACK}
-        except Exception as e:
-            return {"ok": False, "error_code": MixErrorCode.PLAY_FAILED, "detail": str(e)}
+        return self._queue_svc.replace_and_play(self._current_songs, index)
 
     @Slot(int, result=dict)
-    def enqueueTrack(self, index: int):
+    def enqueueTrack(self, index: int) -> dict[str, Any]:
         if not self._current_songs or index < 0 or index >= len(self._current_songs):
             return {"ok": False, "error_code": MixErrorCode.INVALID_INDEX}
-        song = self._current_songs[index]
-        tid = song.get("track_id") or song.get("id")
-        if not tid:
-            return {"ok": False, "error_code": MixErrorCode.NO_TRACK_ID}
-        try:
-            ok = self._try_enqueue_track(tid)
-            if ok:
-                return {"ok": True, "track_id": tid, "index": index}
+        if not self._queue_svc:
             return {"ok": False, "error_code": MixErrorCode.NO_PLAYBACK}
-        except Exception as e:
-            return {"ok": False, "error_code": MixErrorCode.ENQUEUE_FAILED, "detail": str(e)}
+        return self._queue_svc.enqueue(self._current_songs[index], play_now=False)
 
     @Slot(result=dict)
-    def explainCurrentMix(self):
+    def explainCurrentMix(self) -> dict[str, Any]:
         if not self._current_songs:
             return {"ok": False, "error_code": MixErrorCode.EMPTY_MIX}
         reasons = set()
@@ -541,21 +494,21 @@ class MixBridge(QObject):
                 "has_reasons": len(reasons) > 0}
 
     @Slot(result=dict)
-    def partialFailureReport(self):
+    def partialFailureReport(self) -> dict[str, Any]:
         failures = [s.get('_error', '') for s in (self._current_songs or []) if s.get('_error', '')]
         if not failures:
             return {"ok": True, "has_failures": False, "failures": []}
         return {"ok": True, "has_failures": True, "failures": failures[:10], "total": len(failures)}
 
     @Slot(result=dict)
-    def refresh(self):
+    def refresh(self) -> dict[str, Any]:
         if self._current_mix_id:
             return self.loadMix(self._current_mix_id)
         self.dataChanged.emit()
         return {"ok": bool(self._current_mix_id), "has_mix": bool(self._current_mix_id)}
 
     @Slot(str, result=dict)
-    def navigateTo(self, route: str):
+    def navigateTo(self, route: str) -> dict[str, Any]:
         if self._nav:
             return self._nav.navigate(route)
         return {"ok": False, "error_code": MixErrorCode.NAVIGATION_UNAVAILABLE}

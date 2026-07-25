@@ -1,0 +1,42 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Python 3.11+, PySide6 (Qt 6) QML, GStreamer 1.28 + MPD, SQLite FTS5
+  Architecture: Hexagonal/clean — QML → Bridges → Services → Backends → GStreamer/MPD
+  DI: AppContext container, PlayerService as single audio facade
+  Testing: pytest + pytest-qt, ~3500 tests, unit/integration/E2E/QML layers
+  Style: Ruff (line-length 100, py311), Google docstrings, type hints, f-strings
+  Linter: ruff check — 303 current errors (non-zero, pre-existing)
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Reference affected controllers/services by name
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Reference AGENTS.md architectural constraints
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+    - Reference existing patterns in core/, audio/backends/, ui_qml_bridge/
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+    - Each task must include test verification command
+  apply:
+    guidelines:
+      - Follow existing code patterns (AGENTS.md conventions)
+      - Use AppContext/AppServices for DI
+      - Never bypass PlayerService for audio operations
+      - Never use QIcon(path) — use get_qicon()/get_pixmap()
+      - Never inline QSS — use centralized style functions
+    tdd: true
+    test_command: "QT_QPA_PLATFORM=offscreen python -m pytest tests/ -q --timeout=120"
+  verify:
+    test_command: "QT_QPA_PLATFORM=offscreen python -m pytest tests/ -q --timeout=300"
+    build_command: "ruff check . && python -m compileall -q -x '.venv/|\\.tmpl\\.' ."
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
+    - Update openspec/specs/ with merged delta requirements

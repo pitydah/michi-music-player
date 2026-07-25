@@ -5,12 +5,14 @@ import "../../theme"
 import "../../components"
 import "../library"
 
-Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Missing"
+LibrarySectionPage {
     objectName: "missingPage"
     focus: true
     id: root
+    sectionTitle: qsTr("Archivos faltantes")
+    sectionSubtitle: qsTr("Contenido indexado que ya no está disponible")
+    sectionIcon: "library_health"
+    navigationIndex: 6
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
 

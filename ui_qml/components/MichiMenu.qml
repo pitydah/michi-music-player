@@ -19,7 +19,7 @@ Item {
     implicitWidth: 200
     implicitHeight: root.open ? Math.min(root.model.length * rowHeight + MichiTheme.spacing.xs * 2, 400) : 0
 
-    Accessible.role: Accessible.PopupMenu
+    Accessible.role: Accessible.Menu
     Accessible.name: root.accessibleName
     Accessible.description: root.accessibleDescription
 

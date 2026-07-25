@@ -1,3 +1,5 @@
+"""Provide bounded application-state snapshots to the Michi assistant."""
+
 from __future__ import annotations
 
 import logging
@@ -5,15 +7,14 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_MAX_TRACKS = 50
 _MAX_QUEUE_ITEMS = 50
 _MAX_SELECTED = 100
 _MAX_JOBS = 20
-_MAX_ERRORS = 20
-_MAX_TEXT_CHARS = 32000
 
 
 class PlaybackContextProvider:
+    """Provide the assistant with the current playback state."""
+
     def __init__(self, player_service: Any = None) -> None:
         self._ps = player_service
 
@@ -38,14 +39,16 @@ class PlaybackContextProvider:
 
 
 class QueueContextProvider:
-    def __init__(self, player_service: Any = None) -> None:
-        self._ps = player_service
+    """Provide the assistant with a bounded snapshot of the playback queue."""
+
+    def __init__(self, queue_service: Any = None) -> None:
+        self._queue = queue_service
 
     def get_context(self) -> dict[str, Any]:
-        if self._ps is None:
+        if self._queue is None:
             return {"available": False}
         try:
-            q = self._ps.get_queue()
+            q = self._queue.get_items()
             q = q or []
             limited = q[:_MAX_QUEUE_ITEMS]
             return {"count": len(q), "total_count": len(q), "items": limited}
@@ -55,6 +58,8 @@ class QueueContextProvider:
 
 
 class LibraryContextProvider:
+    """Provide the assistant with aggregate music library statistics."""
+
     def __init__(self, db: Any = None) -> None:
         self._db = db
 
@@ -79,6 +84,8 @@ class LibraryContextProvider:
 
 
 class SelectionContextProvider:
+    """Provide the assistant with the active selection summary."""
+
     def __init__(self, selection_service: Any = None) -> None:
         self._ss = selection_service
 
@@ -101,6 +108,8 @@ class SelectionContextProvider:
 
 
 class NavigationContextProvider:
+    """Provide the assistant with the current navigation section."""
+
     def __init__(self, navigation_service: Any = None) -> None:
         self._nav = navigation_service
 
@@ -117,6 +126,8 @@ class NavigationContextProvider:
 
 
 class DeviceContextProvider:
+    """Provide the assistant with paired device information."""
+
     def __init__(self, sync_manager: Any = None) -> None:
         self._sm = sync_manager
 
@@ -132,6 +143,8 @@ class DeviceContextProvider:
 
 
 class ServerContextProvider:
+    """Provide the assistant with music server availability context."""
+
     def __init__(self, subsonic: Any = None) -> None:
         self._subsonic = subsonic
 
@@ -140,6 +153,8 @@ class ServerContextProvider:
 
 
 class SettingsContextProvider:
+    """Provide the assistant with relevant playback and AI settings."""
+
     def __init__(self, settings_service: Any = None) -> None:
         self._ss = settings_service
 
@@ -161,6 +176,8 @@ class SettingsContextProvider:
 
 
 class JobContextProvider:
+    """Provide the assistant with a bounded summary of active jobs."""
+
     def __init__(self, job_service: Any = None) -> None:
         self._js = job_service
 
@@ -177,6 +194,8 @@ class JobContextProvider:
 
 
 class DiagnosticsContextProvider:
+    """Provide the assistant with the application's diagnostic status."""
+
     def __init__(self, diagnostics_service: Any = None) -> None:
         self._ds = diagnostics_service
 
@@ -186,7 +205,7 @@ class DiagnosticsContextProvider:
 
 def register_all_context_providers(assembler: Any, services: dict[str, Any]) -> None:
     assembler.register("playback", PlaybackContextProvider(services.get("player_service")))
-    assembler.register("queue", QueueContextProvider(services.get("player_service")))
+    assembler.register("queue", QueueContextProvider(services.get("queue_service")))
     assembler.register("library", LibraryContextProvider(services.get("library_db")))
     assembler.register("selection", SelectionContextProvider(services.get("selection_service")))
     assembler.register("navigation", NavigationContextProvider(services.get("navigation_service")))

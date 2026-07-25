@@ -5,14 +5,15 @@ from unittest.mock import MagicMock
 
 class TestPlaybackContextEvents:
 
-    def test_play_trackreg_calls_update_selection(self):
+    def test_play_trackref_calls_update_selection(self):
         ctx = MagicMock()
         window = MagicMock()
         window._ctx.context_svc = ctx
         window._ctx.items_index = {}
+        queue = MagicMock()
 
         from core.playback_controller import PlaybackController
-        ctrl = PlaybackController(window)
+        ctrl = PlaybackController(window, queue_service=queue)
 
         track = MagicMock()
         track.uri = "/music/song.flac"
@@ -25,20 +26,23 @@ class TestPlaybackContextEvents:
         ctrl.play_trackref(track)
 
         ctx.update_selection.assert_called_once()
+        queue.enqueue.assert_called_once_with(["/music/song.flac"], play_now=True)
+        window._ctx.playback.enqueue.assert_not_called()
         args = ctx.update_selection.call_args
         kwargs = args[1]
         assert kwargs.get("scope") == "track"
         assert kwargs.get("album") == "Album"
         assert kwargs.get("artist") == "Artist"
 
-    def test_play_trackreg_calls_record_now_playing(self):
+    def test_play_trackref_calls_record_now_playing(self):
         ctx = MagicMock()
         window = MagicMock()
         window._ctx.context_svc = ctx
         window._ctx.items_index = {}
+        queue = MagicMock()
 
         from core.playback_controller import PlaybackController
-        ctrl = PlaybackController(window)
+        ctrl = PlaybackController(window, queue_service=queue)
 
         track = MagicMock()
         track.uri = "/music/song.flac"

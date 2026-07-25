@@ -6,12 +6,14 @@ import "../../theme"
 import "../../components"
 import "../../materials"
 
-Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Folder Browser"
+LibrarySectionPage {
     objectName: "folderBrowserPage"
     focus: true
     id: root
+    sectionTitle: qsTr("Carpetas")
+    sectionSubtitle: qsTr("Explora las ubicaciones indexadas de tu biblioteca")
+    sectionIcon: "folders"
+    navigationIndex: 5
 
     property var folderModel: null
     property var bridge: null
@@ -87,7 +89,7 @@ Item {
 
     function reload() {
         if (root.folderModel) {
-            root.folderModel.refresh("parent_path", root._currentPath)
+            root.folderModel.refresh(root._currentPath)
         }
         contentView.loadFolder(root._currentPath)
     }

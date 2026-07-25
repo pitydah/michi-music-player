@@ -64,7 +64,7 @@ Item {
                     Keys.onSpacePressed: clicked()
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.navigate("audio_lab.processing")
+                            navigationBridge.navigate("audio_lab.equalizer")
                     }
                 }
 

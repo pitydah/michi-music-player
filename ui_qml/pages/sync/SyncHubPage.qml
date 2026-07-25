@@ -13,6 +13,8 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Michi Sync Suite"
 
+    property var cap: typeof capabilityBridge !== "undefined" ? capabilityBridge : null
+
     Flickable {
         id: flickable
         anchors.fill: parent
@@ -84,8 +86,8 @@ Item {
                         anchors.right: parent.right
                         anchors.top: parent.top
                         anchors.margins: MichiTheme.spacing.sm
-                        text: qsTr("Disponible")
-                        kind: "success"
+                        text: root.cap && root.cap.has("sync") ? qsTr("Disponible") : qsTr("No disponible")
+                        kind: root.cap && root.cap.has("sync") ? "success" : "disconnected"
                     }
                 }
 

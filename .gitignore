@@ -54,3 +54,5 @@ MagicMock/
 tests/ai/
 docs/archive/
 tests/qml/negative/results/
+# Local AI runtime state
+.atl/

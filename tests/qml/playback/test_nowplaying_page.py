@@ -1,8 +1,8 @@
-from __future__ import annotations
 """Test NowPlaying Bridge/QML state propagation.
 Verifies that NowPlayingBridge correctly exposes all required properties
 from PlayerService without duplicating playback control logic.
 """
+from __future__ import annotations
 
 from unittest.mock import MagicMock
 
@@ -32,8 +32,15 @@ def mock_player():
     return player
 
 
-def test_nowplaying_bridge_has_all_properties(mock_player):
-    bridge = NowPlayingBridge(player_service=mock_player)
+@pytest.fixture
+def bridge(mock_player, audio_quality_adapter):
+    return NowPlayingBridge(
+        player_service=mock_player,
+        audio_quality_adapter=audio_quality_adapter,
+    )
+
+
+def test_nowplaying_bridge_has_all_properties(bridge):
     assert hasattr(bridge, 'trackTitle')
     assert hasattr(bridge, 'trackArtist')
     assert hasattr(bridge, 'trackAlbum')
@@ -46,13 +53,12 @@ def test_nowplaying_bridge_has_all_properties(mock_player):
     assert hasattr(bridge, 'repeatMode')
     assert hasattr(bridge, 'shuffleEnabled')
     assert hasattr(bridge, 'sourceType')
-    assert hasattr(bridge, 'queue')
+    assert not hasattr(bridge, 'queue')
     assert hasattr(bridge, 'history')
     assert hasattr(bridge, 'errorMessage')
 
 
-def test_nowplaying_bridge_has_quality_info(mock_player):
-    bridge = NowPlayingBridge(player_service=mock_player)
+def test_nowplaying_bridge_has_quality_info(bridge):
     assert hasattr(bridge, 'formatLabel')
     assert hasattr(bridge, 'sampleRate')
     assert hasattr(bridge, 'bitDepth')
@@ -61,8 +67,7 @@ def test_nowplaying_bridge_has_quality_info(mock_player):
     assert hasattr(bridge, 'qualityInfoAvailable')
 
 
-def test_nowplaying_bridge_has_capabilities(mock_player):
-    bridge = NowPlayingBridge(player_service=mock_player)
+def test_nowplaying_bridge_has_capabilities(bridge):
     assert hasattr(bridge, 'playPauseSupported')
     assert hasattr(bridge, 'seekSupported')
     assert hasattr(bridge, 'volumeSupported')
@@ -74,42 +79,36 @@ def test_nowplaying_bridge_has_capabilities(mock_player):
     assert hasattr(bridge, 'backendAvailable')
 
 
-def test_nowplaying_bridge_commands_return_dict(mock_player):
-    bridge = NowPlayingBridge(player_service=mock_player)
+def test_nowplaying_bridge_commands_return_dict(bridge):
     result = bridge.togglePlay()
     assert isinstance(result, dict)
     assert "ok" in result
 
 
-def test_nowplaying_bridge_toggle_play_calls_player(mock_player):
-    bridge = NowPlayingBridge(player_service=mock_player)
+def test_nowplaying_bridge_toggle_play_calls_player(bridge):
     bridge._is_playing = False
     result = bridge.togglePlay()
-    assert result["ok"] or not result["ok"]
+    assert isinstance(result["ok"], bool)
 
 
-def test_nowplaying_bridge_seek_validates(mock_player):
+def test_nowplaying_bridge_seek_validates(mock_player, bridge):
     mock_player.duration = 200
-    bridge = NowPlayingBridge(player_service=mock_player)
     bridge._duration = 200
     result = bridge.seek(50)
     assert isinstance(result, dict)
 
 
-def test_nowplaying_bridge_set_volume_clamps(mock_player):
-    bridge = NowPlayingBridge(player_service=mock_player)
+def test_nowplaying_bridge_set_volume_clamps(bridge):
     result = bridge.setVolume(150)
     assert isinstance(result, dict)
 
 
-def test_nowplaying_bridge_enqueue_validates(mock_player):
-    bridge = NowPlayingBridge(player_service=mock_player)
+def test_nowplaying_bridge_enqueue_validates(bridge):
     result = bridge.enqueueSong("")
     assert not result["ok"]
     assert result["error_code"] == "EMPTY_FILEPATH"
 
 
-def test_nowplaying_bridge_error_propagation(mock_player):
-    bridge = NowPlayingBridge(player_service=mock_player)
+def test_nowplaying_bridge_error_propagation(bridge):
     bridge._on_error("Backend not available")
     assert bridge.errorMessage != ""

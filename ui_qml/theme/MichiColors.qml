@@ -41,15 +41,15 @@ QtObject {
     // ── Controles ──
     readonly property color controlTrack: lightMode ? Qt.rgba(0, 0, 0, 0.10) : Qt.rgba(1.0, 1.0, 1.0, 0.08)
     readonly property color controlThumb: lightMode ? Qt.rgba(0, 0, 0, 0.80) : Qt.rgba(1.0, 1.0, 1.0, 0.90)
-    readonly property color focusHalo: lightMode ? Qt.rgba(0.561, 0.718, 1.0, 0.30) : Qt.rgba(0.561, 0.718, 1.0, 0.18)
+    readonly property color focusHalo: lightMode ? Qt.rgba(0.976, 0.129, 0.255, 0.24) : Qt.rgba(0.976, 0.129, 0.255, 0.20)
 
     // ── Bordes ──
     readonly property color borderSubtle: lightMode ? Qt.rgba(0, 0, 0, 0.08) : Qt.rgba(1.0, 1.0, 1.0, 0.05)
     readonly property color borderCard: lightMode ? Qt.rgba(0, 0, 0, 0.10) : Qt.rgba(1.0, 1.0, 1.0, 0.07)
     readonly property color borderInner: lightMode ? Qt.rgba(0, 0, 0, 0.04) : Qt.rgba(1.0, 1.0, 1.0, 0.03)
-    readonly property color borderActive: "#8FB7FF"
+    readonly property color borderActive: "#F92141"
     readonly property color borderHover: lightMode ? Qt.rgba(0, 0, 0, 0.18) : Qt.rgba(1.0, 1.0, 1.0, 0.15)
-    readonly property color borderFocus: "#8FB7FF"
+    readonly property color borderFocus: "#F92141"
     readonly property color borderError: "#F87171"
 
     // ── Texto ──
@@ -63,23 +63,25 @@ QtObject {
     readonly property color textOnError: lightMode ? "#FFFFFF" : bgBase
     readonly property color textOnSuccess: lightMode ? "#FFFFFF" : bgBase
 
-    readonly property color accentPrimary: "#8FB7FF"
-    readonly property color accentSecondary: "#A78BFA"
-    readonly property color accentSoft: Qt.rgba(0.561, 0.718, 1.0, lightMode ? 0.15 : 0.10)
-    readonly property color accentSelection: Qt.rgba(0.561, 0.718, 1.0, lightMode ? 0.20 : 0.18)
+    readonly property color accentPrimary: "#F92141"
+    readonly property color accentInfo: "#8FB7FF"
+    readonly property color accentExperimental: "#A78BFA"
+    readonly property color accentSecondary: accentExperimental
+    readonly property color accentSoft: Qt.rgba(0.976, 0.129, 0.255, lightMode ? 0.13 : 0.11)
+    readonly property color accentSelection: Qt.rgba(0.976, 0.129, 0.255, lightMode ? 0.17 : 0.15)
     readonly property color accent: accentPrimary
-    readonly property color accentBlue: accentPrimary
+    readonly property color accentBlue: accentInfo
     readonly property color accentSurface: accentSoft
-    readonly property color experimental: accentSecondary
+    readonly property color experimental: accentExperimental
 
     readonly property color success: "#4ADE80"
     readonly property color warning: "#FBBF24"
     readonly property color error: "#F87171"
-    readonly property color info: accentPrimary
+    readonly property color info: accentInfo
     readonly property color disconnected: lightMode ? "#9CA3AF" : "#6B7280"
 
     readonly property color badgeInfoBg: Qt.rgba(0.561, 0.718, 1.0, 0.12)
-    readonly property color badgeInfoText: accentPrimary
+    readonly property color badgeInfoText: accentInfo
     readonly property color badgeActiveBg: Qt.rgba(0.29, 0.87, 0.50, 0.20)
     readonly property color badgeActiveText: success
     readonly property color badgeExperimentalBg: Qt.rgba(0.655, 0.545, 0.980, 0.15)
@@ -102,9 +104,9 @@ QtObject {
     readonly property color nowPlayingTrack: lightMode ? "#D0D4DC" : "#24272E"
     readonly property color nowPlayingThumb: "#F92141"
     readonly property color nowPlayingThumbBorder: lightMode ? "#FFFFFF" : "#FFFFFF"
-    readonly property color nowPlayingGradientStart: "#FF7903"
-    readonly property color nowPlayingGradientMiddle: "#FF5D1C"
-    readonly property color nowPlayingGradientEnd: "#FA393E"
+    readonly property color nowPlayingGradientStart: accentPrimary
+    readonly property color nowPlayingGradientMiddle: "#D53672"
+    readonly property color nowPlayingGradientEnd: accentExperimental
     readonly property color nowPlayingTransportBg: lightMode ? "#E8EAF0" : "#1B1D23"
     readonly property color nowPlayingTransportBorder: lightMode ? Qt.rgba(0, 0, 0, 0.10) : Qt.rgba(255, 255, 255, 0.09)
     readonly property color nowPlayingTransportHover: lightMode ? Qt.rgba(0, 0, 0, 0.06) : Qt.rgba(255, 255, 255, 0.12)

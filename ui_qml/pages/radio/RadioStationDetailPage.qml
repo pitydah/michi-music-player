@@ -86,7 +86,7 @@ Item {
                         text: qsTr("\u25E2")
                         color: MichiTheme.colors.accent
                         font.pixelSize: 28
-                        Accessible.role: Accessible.Icon
+                        Accessible.role: Accessible.Graphic
                         Accessible.name: "Icono de emisora de radio"
                     }
 

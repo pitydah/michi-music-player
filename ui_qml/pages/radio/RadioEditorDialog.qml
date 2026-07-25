@@ -130,7 +130,7 @@ Dialog {
                     color: MichiTheme.colors.success
                     font.pixelSize: MichiTheme.typography.bodySize
                     visible: urlField.text.trim() !== ""
-                    Accessible.role: Accessible.Icon
+                    Accessible.role: Accessible.Graphic
                     Accessible.name: urlField.text.match(/^https?:\/\//) ? "URL válida" : "URL inválida"
                 }
             }

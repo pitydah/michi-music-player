@@ -11,6 +11,7 @@ import logging
 import os
 import secrets
 import urllib.parse
+from typing import Any
 
 from sync.sync_protocol import SessionToken, make_track_id, make_cover_id, make_device_id
 from integrations.michi_link.models import (
@@ -40,39 +41,55 @@ class MichiLinkServer:
     """
     _playback: object | None = None
     _player_service: object | None = None
+    _queue_service: object | None = None
     _window_ref: object | None = None
 
     @classmethod
-    def mount(cls, handler_class: type, playback=None, player_service=None, window=None):
+    def mount(
+        cls,
+        handler_class: type[Any],
+        playback: Any = None,
+        player_service: Any = None,
+        queue_service: Any = None,
+        window: Any = None,
+    ) -> None:
         cls._playback = playback
         cls._player_service = player_service
+        cls._queue_service = queue_service
         cls._window_ref = window
-        V1_MIXIN._playback = playback
-        V1_MIXIN._player_service = player_service
-        V1_MIXIN._window_ref = window
+        V1Mixin._playback = playback
+        V1Mixin._player_service = player_service
+        V1Mixin._queue_service = queue_service
+        V1Mixin._window_ref = window
+        if getattr(handler_class, "_michi_link_mounted", False):
+            return
         _orig_get = handler_class.do_GET
         _orig_post = handler_class.do_POST
 
         def do_get(self):
             if self.path.startswith("/api/v1/"):
-                V1_MIXIN.handle_get(self)
+                V1Mixin.handle_get(self)
                 return
             _orig_get(self)
 
         def do_post(self):
             if self.path.startswith("/api/v1/"):
-                V1_MIXIN.handle_post(self)
+                V1Mixin.handle_post(self)
                 return
             _orig_post(self)
 
         handler_class.do_GET = do_get
         handler_class.do_POST = do_post
-        handler_class._v1_mixin = V1_MIXIN
+        handler_class._v1_mixin = V1Mixin
+        handler_class._michi_link_mounted = True
 
 
-class V1_MIXIN:
+class V1Mixin:
+    """Handle Michi Link API v1 requests for a mounted sync server."""
+
     _playback: object | None = None
     _player_service: object | None = None
+    _queue_service: object | None = None
     _window_ref: object | None = None
 
     @classmethod
@@ -90,7 +107,12 @@ class V1_MIXIN:
     # ── GET /api/v1/* ──
 
     @classmethod
-    def handle_get(cls, handler):
+    def handle_get(cls, handler: Any) -> None:
+        """Handle a Michi Link API v1 GET request.
+
+        Args:
+            handler: Mounted HTTP request handler.
+        """
         path = handler.path.split("?")[0].rstrip("/")
         srv = handler.server_ref
 
@@ -319,7 +341,12 @@ class V1_MIXIN:
     # ── POST /api/v1/* ──
 
     @classmethod
-    def handle_post(cls, handler):
+    def handle_post(cls, handler: Any) -> None:
+        """Handle a Michi Link API v1 POST request.
+
+        Args:
+            handler: Mounted HTTP request handler.
+        """
         path = handler.path.split("?")[0].rstrip("/")
         body = handler._read_body()
         srv = handler.server_ref
@@ -464,6 +491,14 @@ class V1_MIXIN:
 
     @classmethod
     def _build_playback_state(cls, srv) -> dict:
+        """Build the public playback-state payload.
+
+        Args:
+            srv: Sync server used to resolve current-track metadata.
+
+        Returns:
+            Serialized playback state.
+        """
         ps = cls._player_service
         pb = cls._playback
         state = "stopped"
@@ -500,7 +535,11 @@ class V1_MIXIN:
                         }
                         break
 
-        if pb:
+        queue_service = cls._queue_service
+        if queue_service:
+            shuffle = queue_service.shuffle
+            repeat = queue_service.repeat
+        elif pb:
             # Use public API where possible
             volume = getattr(pb, 'volume', None)
             if volume is not None:
@@ -516,13 +555,16 @@ class V1_MIXIN:
 
     @classmethod
     def _build_queue(cls, srv) -> dict:
-        ps = cls._player_service
-        pb = cls._playback
+        queue_service = cls._queue_service
         tracks = []
         current_index = -1
 
-        if ps:
-            queue_data = ps.get_queue()
+        repeat = "none"
+        shuffle = False
+        revision = 0
+        if queue_service:
+            state = queue_service.get_state()
+            queue_data = state["items"]
             if queue_data:
                 for q in queue_data:
                     fp = q.get("filepath", "")
@@ -537,22 +579,30 @@ class V1_MIXIN:
                         "album": album,
                         "download_path": f"/api/v1/stream/{make_track_id(fp, tuid)}",
                     })
-            try:
-                current_index = pb.get_queue_index() if pb else -1
-            except Exception:
-                current_index = -1
+            current_index = state["current_index"]
+            repeat = state["repeat"]
+            shuffle = state["shuffle"]
+            revision = state["revision"]
 
         return QueueDto(
             tracks=tracks, current_index=current_index,
+            repeat=repeat, shuffle=shuffle, revision=revision,
         ).to_dict()
 
     # ── Playback control ──
 
     @classmethod
     def _handle_control(cls, handler, body):
+        """Route a remote playback command to the canonical service.
+
+        Args:
+            handler: Mounted HTTP request handler.
+            body: JSON request body.
+        """
         ps = cls._player_service
         pb = cls._playback
-        if not ps and not pb:
+        queue_service = cls._queue_service
+        if not ps and not pb and not queue_service:
             return _send_v1_error(handler, "PLAYBACK_UNAVAILABLE",
                                   "Playback service not available", 503)
         try:
@@ -587,12 +637,12 @@ class V1_MIXIN:
                     ps.play_or_resume()
 
         elif action in ("next", "skip"):
-            if ps and hasattr(ps, "play_next"):
-                ps.play_next()
+            if queue_service:
+                queue_service.next()
 
         elif action in ("previous", "prev"):
-            if ps and hasattr(ps, "play_prev"):
-                ps.play_prev()
+            if queue_service:
+                queue_service.previous()
 
         elif action == "stop":
             if ps and hasattr(ps, "stop"):
@@ -618,12 +668,12 @@ class V1_MIXIN:
                 ps.set_volume(70)
 
         elif action == "shuffle":
-            if pb and hasattr(pb, "toggle_shuffle"):
-                pb.toggle_shuffle()
+            if queue_service:
+                queue_service.toggle_shuffle()
 
         elif action == "repeat":
-            if pb and hasattr(pb, "toggle_repeat"):
-                pb.toggle_repeat()
+            if queue_service:
+                queue_service.toggle_repeat()
 
         else:
             return _send_v1_error(handler, "UNKNOWN_COMMAND",
@@ -635,9 +685,8 @@ class V1_MIXIN:
 
     @classmethod
     def _handle_queue_jump(cls, handler, body):
-        ps = cls._player_service
-        pb = cls._playback
-        if not ps and not pb:
+        queue_service = cls._queue_service
+        if not queue_service:
             return _send_v1_error(handler, "PLAYBACK_UNAVAILABLE",
                                   "Playback service not available", 503)
         try:
@@ -648,12 +697,12 @@ class V1_MIXIN:
         if index < 0:
             return _send_v1_error(handler, "INVALID_INDEX", "Invalid index", 400)
         try:
-            if ps and hasattr(ps, "play_queue"):
-                queue, _ = ps.get_queue_state()
-                ps.play_queue(queue, start_index=index)
-            elif pb and hasattr(pb, "play_queue"):
-                queue, _ = pb.get_queue_state()
-                pb.play_queue(queue, start_index=index)
+            result = queue_service.play_from_index(index)
+            if not result.get("ok"):
+                return _send_v1_error(
+                    handler, result.get("error", "JUMP_FAILED"),
+                    "Jump failed", 400,
+                )
         except Exception as e:
             logger.warning("Queue jump failed: %s", e)
             return _send_v1_error(handler, "JUMP_FAILED", "Jump failed", 500)
@@ -661,8 +710,8 @@ class V1_MIXIN:
 
     @classmethod
     def _handle_queue_items(cls, handler, body, srv):
-        ps = cls._player_service
-        if not ps:
+        queue_service = cls._queue_service
+        if not queue_service:
             return _send_v1_error(handler, "PLAYBACK_UNAVAILABLE",
                                   "Playback service not available", 503)
         try:
@@ -678,14 +727,17 @@ class V1_MIXIN:
             if fp:
                 filepaths.append(fp)
         if filepaths:
-            ps.enqueue(filepaths, play_now=data.get("play_now", False))
+            queue_service.enqueue(
+                [{"filepath": filepath} for filepath in filepaths],
+                play_now=data.get("play_now", False),
+            )
         handler._send_json({"added": len(filepaths)})
 
     @classmethod
     def _handle_queue_transfer(cls, handler, body, srv):
         ps = cls._player_service
-        pb = cls._playback
-        if not ps:
+        queue_service = cls._queue_service
+        if not queue_service:
             return _send_v1_error(handler, "PLAYBACK_UNAVAILABLE", "Playback service not available", 503)
         try:
             data = json.loads(body)
@@ -702,13 +754,20 @@ class V1_MIXIN:
             if fp:
                 filepaths.append(fp)
         if filepaths:
-            ps.enqueue(filepaths, play_now=False)
+            result = queue_service.replace_and_play(
+                [{"filepath": filepath} for filepath in filepaths], 0
+            )
+            if not result.get("ok"):
+                return _send_v1_error(
+                    handler, result.get("error", "TRANSFER_FAILED"),
+                    "Transfer failed", 400,
+                )
         if position_ms > 0:
             import contextlib
             with contextlib.suppress(Exception):
                 ps.seek(position_ms / 1000.0)
-        if pb and hasattr(pb, "play_or_resume"):
-            pb.play_or_resume()
-        elif ps and hasattr(ps, "play_or_resume"):
-            ps.play_or_resume()
         handler._send_json({"ok": True, "transferred": len(filepaths), "playback_started": True})
+
+
+# Public compatibility for existing integrations and tests.
+V1_MIXIN = V1Mixin

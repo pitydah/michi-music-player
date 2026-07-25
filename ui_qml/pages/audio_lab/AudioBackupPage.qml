@@ -34,6 +34,8 @@ Item {
     property string messageKind: "info"
     property bool busy: false
     property var recordingStatus: ({ active: false })
+    property real _jobProgress: 0
+    property string _jobLabel: ""
 
     enum Tab { CD, ADC }
 
@@ -67,11 +69,19 @@ Item {
         target: root.bridge
         function onJobCompleted(jobId, jobType, result) {
             root.busy = false
+            root._jobProgress = 0
+            root._jobLabel = ""
             root.showResult({ ok: true }, qsTr("Tarea completada."))
         }
         function onJobFailed(jobId, error) {
             root.busy = false
+            root._jobProgress = 0
+            root._jobLabel = ""
             root.showResult({ ok: false, error: error }, "")
+        }
+        function onJobProgress(jobId, jobType, progress) {
+            root._jobProgress = Math.min(1, Math.max(0, progress || 0))
+            root._jobLabel = jobType || qsTr("Procesando…")
         }
     }
 
@@ -133,6 +143,51 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             running: root.busy
             visible: root.busy
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: progressRow.implicitHeight + MichiTheme.spacing.md * 2
+            visible: root.busy || root._jobProgress > 0
+            radius: MichiTheme.radius.md
+            color: MichiTheme.colors.surfaceCard
+            border.width: 1
+            border.color: MichiTheme.colors.borderCard
+
+            RowLayout {
+                id: progressRow
+                anchors.fill: parent
+                anchors.margins: MichiTheme.spacing.md
+                spacing: MichiTheme.spacing.sm
+
+                Label {
+                    text: root._jobLabel || qsTr("Procesando…")
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                }
+
+                Item { Layout.fillWidth: true }
+
+                ProgressBar {
+                    Layout.preferredWidth: 200
+                    from: 0
+                    to: 1
+                    value: root._jobProgress
+                    visible: root._jobProgress > 0
+                }
+
+                MichiButton {
+                    text: qsTr("Cancelar")
+                    variant: "danger"
+                    visible: root.busy
+                    onClicked: {
+                        if (tabs.currentIndex === 0)
+                            root.showResult(root.bridge.cancelCDRip(), qsTr("Cancelado."))
+                        else
+                            root.showResult(root.bridge.stopRecording(), qsTr("Cancelado."))
+                    }
+                }
+            }
         }
 
         TabBar {

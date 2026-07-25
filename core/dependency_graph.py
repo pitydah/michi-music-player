@@ -1,6 +1,4 @@
-import logging
-
-logger = logging.getLogger(__name__)
+"""Define and resolve the service initialization dependency graph."""
 
 SERVICE_ORDER = [
     "configuration", "database_factory", "repository_factory",
@@ -19,8 +17,8 @@ SERVICE_DEPENDENCIES = {
     "playlist_service": {"library_query_service", "database_factory"},
     "history_query_service": {"database_factory"},
     "search_service": {"database_factory", "library_query_service"},
-    "playback_service": {"queue_service", "worker_manager"},
-    "queue_service": {"playlist_service", "worker_manager"},
+    "playback_service": {"worker_manager"},
+    "queue_service": {"playback_service"},
     "audio_lab_service": {"worker_manager", "library_query_service", "metadata_service"},
     "metadata_service": {"worker_manager", "library_mutation_service"},
     "library_doctor_service": {"library_query_service", "library_mutation_service", "worker_manager"},
@@ -28,16 +26,26 @@ SERVICE_DEPENDENCIES = {
     "connection_service": {"worker_manager"},
     "home_audio_service": {"worker_manager", "playback_service"},
     "diagnostics_service": {"worker_manager", "library_query_service", "settings_service"},
-    "michi_ai_service": {"search_service", "playback_service", "playlist_service", "diagnostics_service", "settings_service", "action_registry"},
+    "michi_ai_service": {"search_service", "playback_service", "queue_service",
+                         "playlist_service", "diagnostics_service",
+                         "settings_service", "action_registry"},
     "notification_service": {"action_registry", "job_manager"},
 }
 
 
 def resolve_order() -> list[str]:
-    seen = set()
-    ordered = []
+    """Resolve services into a dependency-safe initialization order.
 
-    def visit(name: str, path: set):
+    Returns:
+        Service names ordered so each dependency precedes its dependent.
+
+    Raises:
+        ValueError: If the service dependency graph contains a cycle.
+    """
+    seen: set[str] = set()
+    ordered: list[str] = []
+
+    def visit(name: str, path: set[str]) -> None:
         if name in seen:
             return
         if name in path:

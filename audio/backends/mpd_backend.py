@@ -29,6 +29,7 @@ class MpdBackend(QObject):
     position_changed = Signal(float)
     state_changed = Signal(str)
     duration_changed = Signal(float)
+    queue_progressed = Signal(int, str, str, object)
 
     backend_id = "mpd"
     display_name = "MPD"
@@ -45,6 +46,7 @@ class MpdBackend(QObject):
         self._dsd_mode: str = "pcm"
         self._dop_enabled: bool = False
         self._last_snapshot: PlaybackSnapshot | None = None
+        self._queue_revision: int | None = None
         self._poll_timer = QTimer(self)
         self._poll_timer.setInterval(500)
         self._poll_timer.timeout.connect(self._poll_snapshot)
@@ -70,11 +72,11 @@ class MpdBackend(QObject):
     def connected(self) -> bool:
         return self._client.connected
 
-    def connect(self):
+    def connect(self) -> None:
         if not self._client.connected:
             self._client.connect()
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         self._client.disconnect()
 
     def _ensure(self):
@@ -101,6 +103,14 @@ class MpdBackend(QObject):
             if snap.duration_seconds != self._last_snapshot.duration_seconds:
                 self.duration_changed.emit(snap.duration_seconds)
             if snap.current_path != self._last_snapshot.current_path:
+                if snap.queue_index >= 0 and snap.current_path:
+                    self._queue_index = snap.queue_index
+                    self.queue_progressed.emit(
+                        snap.queue_index,
+                        snap.current_path,
+                        "gapless",
+                        self._queue_revision,
+                    )
                 self.state_changed.emit(snap.state)
         else:
             self.state_changed.emit(snap.state)
@@ -108,10 +118,10 @@ class MpdBackend(QObject):
             self.duration_changed.emit(snap.duration_seconds)
         self._last_snapshot = snap
 
-    def set_profile(self, profile_key: str):
+    def set_profile(self, profile_key: str) -> None:
         self._profile_key = profile_key
 
-    def configure_dsd(self, mode: str, dop: bool = False):
+    def configure_dsd(self, mode: str, dop: bool = False) -> None:
         """Configure MPD for DSD playback.
 
         Args:
@@ -124,7 +134,7 @@ class MpdBackend(QObject):
 
     # ── AudioBackend API ──
 
-    def play(self, path_or_uri: str):
+    def play(self, path_or_uri: str) -> None:
         with self._lock:
             mpd_path = self._mapper.to_mpd_path(path_or_uri)
             try:
@@ -136,14 +146,14 @@ class MpdBackend(QObject):
             except MpdConnectionError as e:
                 raise BackendPlaybackError(str(e)) from e
 
-    def pause(self):
+    def pause(self) -> None:
         try:
             self._ensure()
             self._client.pause(1)
         except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
             raise BackendPlaybackError(str(e)) from e
 
-    def resume(self):
+    def resume(self) -> None:
         try:
             self._ensure()
             self._client.pause(0)
@@ -151,7 +161,7 @@ class MpdBackend(QObject):
         except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
             raise BackendPlaybackError(str(e)) from e
 
-    def toggle(self):
+    def toggle(self) -> None:
         try:
             self._ensure()
             st = self._client.status()
@@ -166,7 +176,7 @@ class MpdBackend(QObject):
         except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
             raise BackendPlaybackError(str(e)) from e
 
-    def stop(self):
+    def stop(self) -> None:
         try:
             self._ensure()
             self._client.stop()
@@ -174,33 +184,59 @@ class MpdBackend(QObject):
         except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
             raise BackendPlaybackError(str(e)) from e
 
-    def seek(self, seconds: float):
+    def seek(self, seconds: float) -> None:
         try:
             self._ensure()
             self._client.seekcur(seconds)
         except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
             raise BackendPlaybackError(str(e)) from e
 
-    def set_volume(self, volume: int):
+    def set_volume(self, volume: int) -> None:
         raise BackendCapabilityError("Volumen digital bloqueado en MPD bit-perfect")
 
-    def set_queue(self, paths: list[str], start_index: int = 0):
+    def set_repeat(self, mode: str) -> str:
+        if mode not in {"none", "all", "one"}:
+            raise ValueError("Invalid repeat mode")
+        self._ensure()
+        self._client.repeat(1 if mode in {"all", "one"} else 0)
+        self._repeat = mode
+        return mode
+
+    def set_shuffle(self, enabled: bool) -> bool:
+        self._ensure()
+        # QueueService already supplies the effective order; MPD must not randomize it.
+        self._client.random(0)
+        self._shuffle = bool(enabled)
+        return self._shuffle
+
+    def set_queue(self, paths: list[str], start_index: int = 0,
+                  revision: int | None = None) -> None:
         with self._lock:
             self._local_paths = list(paths)
             self._queue_index = max(0, min(start_index, len(paths) - 1)) if paths else -1
+            self._queue_revision = revision
             try:
                 self._ensure()
                 self._client.clear()
                 for p in paths:
                     mpd_path = self._mapper.to_mpd_path(p)
                     self._client.add(mpd_path)
-                if self._queue_index >= 0:
-                    self._client.playpos(self._queue_index)
-                self._start_poll()
             except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
                 raise BackendPlaybackError(str(e)) from e
 
-    def enqueue(self, paths: list[str], play_now: bool = True):
+    def play_queue_index(self, index: int) -> bool:
+        if index < 0 or index >= len(self._local_paths):
+            return False
+        try:
+            self._ensure()
+            self._client.playpos(index)
+            self._queue_index = index
+            self._start_poll()
+            return True
+        except (MpdConnectionError, MpdAckError, MpdProtocolError) as exc:
+            raise BackendPlaybackError(str(exc)) from exc
+
+    def enqueue(self, paths: list[str], play_now: bool = True) -> None:
         with self._lock:
             self._local_paths.extend(paths)
             try:
@@ -215,7 +251,7 @@ class MpdBackend(QObject):
             except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
                 raise BackendPlaybackError(str(e)) from e
 
-    def enqueue_next(self, paths: list[str]):
+    def enqueue_next(self, paths: list[str]) -> None:
         with self._lock:
             try:
                 self._ensure()
@@ -231,7 +267,7 @@ class MpdBackend(QObject):
             except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
                 raise BackendPlaybackError(str(e)) from e
 
-    def clear_queue(self):
+    def clear_queue(self) -> None:
         with self._lock:
             self._local_paths = []
             self._queue_index = -1
@@ -357,7 +393,7 @@ class MpdBackend(QObject):
             input_sample_rate=out_rate,
         )
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         self._stop_poll()
         if self._client.connected:
             self._client.stop()

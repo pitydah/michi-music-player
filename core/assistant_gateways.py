@@ -1,3 +1,5 @@
+"""Adapters that expose application services to the Michi assistant."""
+
 from __future__ import annotations
 
 import logging
@@ -26,6 +28,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AssistantGateways:
+    """Collect the optional capability gateways available to the assistant."""
+
     playback: PlaybackGateway | None = None
     queue: QueueGateway | None = None
     library: LibraryGateway | None = None
@@ -71,15 +75,23 @@ def _unavailable_response(name: str) -> dict[str, Any]:
 
 
 class ProductionPlaybackGateway(PlaybackGateway):
-    def __init__(self, player_service: Any) -> None:
-        self._ps = player_service
+    """Adapt playback commands while preserving service ownership boundaries.
+
+    Transport uses PlayerService, queue navigation and modes use QueueService,
+    and direct track playback uses TrackActionService.
+    """
+
+    def __init__(self, player_service: Any, queue_service: Any = None,
+                 track_action_service: Any = None) -> None:
+        self._player = player_service
+        self._queue = queue_service
+        self._track_actions = track_action_service
 
     def play_track(self, track_id: str, **kwargs: Any) -> dict[str, Any]:
-        if self._ps is None:
-            return _unavailable_response("PlayerService")
+        if self._track_actions is None:
+            return _unavailable_response("TrackActionService")
         try:
-            self._ps.play(track_id)
-            return {"ok": True, "status": "REQUEST_ACCEPTED"}
+            return self._track_actions.play_track(int(track_id))
         except Exception as e:
             return {"ok": False, "error": str(e), "code": "PLAYBACK_FAILED"}
 
@@ -90,120 +102,115 @@ class ProductionPlaybackGateway(PlaybackGateway):
         return _unavailable_response("play_artist (route not yet wired)")
 
     def play_playlist(self, playlist_id: str, **kwargs: Any) -> dict[str, Any]:
-        if self._ps is None:
-            return _unavailable_response("PlayerService")
         return _unavailable_response("play_playlist (route not yet wired)")
 
     def pause(self, **kwargs: Any) -> dict[str, Any]:
-        if self._ps is None:
+        if self._player is None:
             return _unavailable_response("PlayerService")
         try:
-            if self._ps.state == "playing":
-                self._ps.pause()
+            if self._player.state == "playing":
+                self._player.pause()
                 return {"ok": True, "status": "COMPLETED"}
             return {"ok": False, "error": "NOT_PLAYING", "code": "NOT_PLAYING"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
     def resume(self, **kwargs: Any) -> dict[str, Any]:
-        if self._ps is None:
+        if self._player is None:
             return _unavailable_response("PlayerService")
         try:
-            if self._ps.state == "paused":
-                self._ps.resume()
+            if self._player.state == "paused":
+                self._player.resume()
                 return {"ok": True, "status": "COMPLETED"}
             return {"ok": False, "error": "NOT_PAUSED"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
     def stop(self, **kwargs: Any) -> dict[str, Any]:
-        if self._ps is None:
+        if self._player is None:
             return _unavailable_response("PlayerService")
         try:
-            self._ps.stop()
+            self._player.stop()
             return {"ok": True, "status": "COMPLETED"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
     def next(self, **kwargs: Any) -> dict[str, Any]:
-        if self._ps is None:
-            return _unavailable_response("PlayerService")
+        if self._queue is None:
+            return _unavailable_response("QueueService")
         try:
-            self._ps.play_next()
-            return {"ok": True, "status": "COMPLETED"}
+            return self._queue.next()
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
     def previous(self, **kwargs: Any) -> dict[str, Any]:
-        if self._ps is None:
-            return _unavailable_response("PlayerService")
+        if self._queue is None:
+            return _unavailable_response("QueueService")
         try:
-            self._ps.play_prev()
-            return {"ok": True, "status": "COMPLETED"}
+            return self._queue.previous()
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
     def seek(self, position_seconds: float, **kwargs: Any) -> dict[str, Any]:
-        if self._ps is None:
+        if self._player is None:
             return _unavailable_response("PlayerService")
-        if self._ps.state == "stopped":
+        if self._player.state == "stopped":
             return {"ok": False, "error": "NOT_PLAYING"}
         try:
-            self._ps.seek(position_seconds)
+            self._player.seek(position_seconds)
             return {"ok": True, "status": "COMPLETED"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
     def set_volume(self, volume: float, **kwargs: Any) -> dict[str, Any]:
-        if self._ps is None:
+        if self._player is None:
             return _unavailable_response("PlayerService")
         if volume < 0 or volume > 100:
             return {"ok": False, "error": "INVALID_VOLUME"}
         try:
-            self._ps.set_volume(int(volume))
+            self._player.set_volume(int(volume))
             return {"ok": True, "status": "COMPLETED", "volume": int(volume)}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
     def set_repeat(self, mode: str, **kwargs: Any) -> dict[str, Any]:
-        if self._ps is None:
-            return _unavailable_response("PlayerService")
+        if self._queue is None:
+            return _unavailable_response("QueueService")
         if mode not in ("none", "one", "all"):
             return {"ok": False, "error": "INVALID_MODE"}
         try:
-            self._ps.set_repeat(mode)
-            return {"ok": True, "status": "COMPLETED"}
+            return self._queue.set_repeat(mode)
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
     def set_shuffle(self, enabled: bool, **kwargs: Any) -> dict[str, Any]:
-        if self._ps is None:
-            return _unavailable_response("PlayerService")
+        if self._queue is None:
+            return _unavailable_response("QueueService")
         try:
-            if enabled:
-                self._ps.toggle_shuffle()
-            return {"ok": True, "status": "COMPLETED"}
+            return self._queue.set_shuffle(enabled)
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
     def get_state(self) -> dict[str, Any]:
-        if self._ps is None:
+        if self._player is None:
             return _unavailable_response("PlayerService")
         try:
             return {"ok": True, "state": {
-                "is_playing": self._ps.state == "playing",
-                "is_paused": self._ps.state == "paused",
-                "current_track": self._ps.current_title,
-                "volume": self._ps.get_volume() if hasattr(self._ps, "get_volume") else None,
+                "is_playing": self._player.state == "playing",
+                "is_paused": self._player.state == "paused",
+                "current_track": self._player.current_title,
+                "volume": (self._player.get_volume()
+                           if hasattr(self._player, "get_volume") else None),
             }}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
 
 class ProductionLibraryGateway(LibraryGateway):
-    def __init__(self, db: Any, global_search: Any = None) -> None:
+    """Expose library lookup and catalog operations to the assistant."""
+
+    def __init__(self, db: Any) -> None:
         self._db = db
-        self._search = global_search
 
     def search(self, query: str, **filters: Any) -> dict[str, Any]:
         if self._db is None:
@@ -268,83 +275,88 @@ class ProductionLibraryGateway(LibraryGateway):
 
 
 class ProductionQueueGateway(QueueGateway):
-    def __init__(self, player_service: Any) -> None:
-        self._ps = player_service
+    """Adapt queue state, navigation, and mutations through QueueService."""
+
+    def __init__(self, queue_service: Any, query_service: Any = None) -> None:
+        self._queue = queue_service
+        self._query = query_service
+
+    def _resolve(self, track_ids: list[str]) -> list[dict]:
+        if self._query is None:
+            return []
+        resolved = []
+        for track_id in track_ids:
+            try:
+                track = self._query.fetch_track_internal(int(track_id))
+            except (TypeError, ValueError):
+                track = None
+            if track and track.get("filepath"):
+                resolved.append(track)
+        return resolved
 
     def get_queue(self) -> dict[str, Any]:
-        if self._ps is None:
-            return _unavailable_response("PlayerService")
-        try:
-            q = self._ps.get_queue()
-            return {"ok": True, "queue": q or [], "count": len(q or [])}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        if self._queue is None:
+            return _unavailable_response("QueueService")
+        state = self._queue.get_state()
+        return {"ok": True, "queue": state["items"], "count": len(state["items"]),
+                "current_index": state["current_index"], "repeat": state["repeat"],
+                "shuffle": state["shuffle"], "revision": state["revision"]}
 
     def add_to_queue(self, track_ids: list[str], **kwargs: Any) -> dict[str, Any]:
-        if self._ps is None:
-            return _unavailable_response("PlayerService")
-        try:
-            self._ps.enqueue(track_ids, play_now=False)
-            return {"ok": True, "added": len(track_ids), "status": "COMPLETED"}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        if self._queue is None:
+            return _unavailable_response("QueueService")
+        tracks = self._resolve(track_ids)
+        if len(tracks) != len(track_ids):
+            return {"ok": False, "error": "TRACK_NOT_FOUND"}
+        return self._queue.enqueue(tracks, play_now=False)
 
     def play_next(self, track_ids: list[str], **kwargs: Any) -> dict[str, Any]:
-        if self._ps is None:
-            return _unavailable_response("PlayerService")
-        try:
-            self._ps.enqueue_next(track_ids)
-            return {"ok": True, "status": "COMPLETED"}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        if self._queue is None:
+            return _unavailable_response("QueueService")
+        tracks = self._resolve(track_ids)
+        if len(tracks) != len(track_ids):
+            return {"ok": False, "error": "TRACK_NOT_FOUND"}
+        return self._queue.insert_next(tracks)
 
     def replace_queue(self, track_ids: list[str], **kwargs: Any) -> dict[str, Any]:
-        if self._ps is None:
-            return _unavailable_response("PlayerService")
-        try:
-            self._ps.play_queue(track_ids, start_index=0)
-            return {"ok": True, "count": len(track_ids), "status": "COMPLETED"}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        if self._queue is None:
+            return _unavailable_response("QueueService")
+        tracks = self._resolve(track_ids)
+        if len(tracks) != len(track_ids):
+            return {"ok": False, "error": "TRACK_NOT_FOUND"}
+        return self._queue.replace(tracks)
 
     def remove_from_queue(self, position: int, **kwargs: Any) -> dict[str, Any]:
-        if self._ps is None:
-            return _unavailable_response("PlayerService")
-        try:
-            q = self._ps.get_queue()
-            if 0 <= position < len(q):
-                q.pop(position)
-                self._ps.reorder_queue(q)
-                return {"ok": True}
-            return {"ok": False, "error": "INVALID_POSITION"}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        if self._queue is None:
+            return _unavailable_response("QueueService")
+        return self._queue.remove([position])
 
     def clear_queue(self, **kwargs: Any) -> dict[str, Any]:
-        if self._ps is None:
-            return _unavailable_response("PlayerService")
-        try:
-            self._ps.clear_queue()
-            return {"ok": True, "status": "COMPLETED"}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        if self._queue is None:
+            return _unavailable_response("QueueService")
+        return self._queue.clear()
 
     def reorder_queue(self, from_pos: int, to_pos: int, **kwargs: Any) -> dict[str, Any]:
-        if self._ps is None:
-            return _unavailable_response("PlayerService")
-        try:
-            q = self._ps.get_queue()
-            if 0 <= from_pos < len(q) and 0 <= to_pos < len(q):
-                item = q.pop(from_pos)
-                q.insert(to_pos, item)
-                self._ps.reorder_queue(q)
-                return {"ok": True}
-            return {"ok": False, "error": "INVALID_POSITION"}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        if self._queue is None:
+            return _unavailable_response("QueueService")
+        return self._queue.reorder(from_pos, to_pos)
+
+    def next(self, **kwargs: Any) -> dict[str, Any]:
+        return (self._queue.next() if self._queue is not None
+                else _unavailable_response("QueueService"))
+
+    def previous(self, **kwargs: Any) -> dict[str, Any]:
+        return (self._queue.previous() if self._queue is not None
+                else _unavailable_response("QueueService"))
+
+    def play_from_index(self, index: int, **kwargs: Any) -> dict[str, Any]:
+        return (self._queue.play_from_index(index) if self._queue is not None
+                else _unavailable_response("QueueService"))
 
 
 class ProductionPlaylistGateway(PlaylistGateway):
+    """Expose playlist persistence operations to the assistant."""
+
     def __init__(self, db: Any, playlist_service: Any = None) -> None:
         self._db = db
         self._pl_svc = playlist_service
@@ -397,6 +409,8 @@ class ProductionPlaylistGateway(PlaylistGateway):
 
 
 class ProductionSettingsGateway(SettingsGateway):
+    """Expose readable and applicable settings operations to the assistant."""
+
     def __init__(self, settings_service: Any = None) -> None:
         self._ss = settings_service
 
@@ -444,6 +458,8 @@ class ProductionSettingsGateway(SettingsGateway):
 
 
 class ProductionAudioLabGateway(AudioLabGateway):
+    """Expose supported audio analysis jobs to the assistant."""
+
     def __init__(self, analysis_service: Any = None) -> None:
         self._as = analysis_service
 
@@ -498,6 +514,8 @@ class ProductionAudioLabGateway(AudioLabGateway):
 
 
 class ProductionDeviceGateway(DeviceGateway):
+    """Expose available device and synchronization capabilities."""
+
     def __init__(self, sync_manager: Any = None) -> None:
         self._sm = sync_manager
 
@@ -533,6 +551,8 @@ class ProductionDeviceGateway(DeviceGateway):
 
 
 class ProductionDiagnosticsGateway(DiagnosticsGateway):
+    """Report application, audio, and network diagnostic status."""
+
     def __init__(self, diagnostics_service: Any = None) -> None:
         self._ds = diagnostics_service
 
@@ -547,6 +567,8 @@ class ProductionDiagnosticsGateway(DiagnosticsGateway):
 
 
 class ProductionMixGateway(MixGateway):
+    """Represent assistant-facing mix operations pending service wiring."""
+
     def __init__(self, mix_service: Any = None) -> None:
         self._ms = mix_service
 
@@ -564,6 +586,8 @@ class ProductionMixGateway(MixGateway):
 
 
 class ProductionJobGateway(JobGateway):
+    """Expose background job inspection and cancellation operations."""
+
     def __init__(self, job_service: Any = None) -> None:
         self._js = job_service
 
@@ -598,6 +622,8 @@ class ProductionJobGateway(JobGateway):
 
 
 class ProductionNavigationGateway(NavigationRequestGateway):
+    """Forward assistant navigation requests to the navigation service."""
+
     def __init__(self, nav_service: Any = None) -> None:
         self._nav = nav_service
 
@@ -608,11 +634,15 @@ class ProductionNavigationGateway(NavigationRequestGateway):
 
 
 class UnavailableNavigationGateway(NavigationRequestGateway):
+    """Reject navigation requests when no navigation service is available."""
+
     def request_navigation(self, target: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         return {"ok": False, "code": "CAPABILITY_UNAVAILABLE", "message": "NavigationService not available"}
 
 
 class UnavailableRadioGateway:
+    """Return capability errors for unavailable radio operations."""
+
     def search_stations(self, query: str) -> dict[str, Any]:
         return _unavailable_response("RadioService")
     def list_favorites(self) -> dict[str, Any]:
@@ -624,6 +654,8 @@ class UnavailableRadioGateway:
 
 
 class UnavailableMetadataGateway:
+    """Return capability errors for unavailable metadata operations."""
+
     def inspect_metadata(self, track_id: str) -> dict[str, Any]:
         return _unavailable_response("MetadataService")
     def build_proposal(self, track_id: str) -> dict[str, Any]:
@@ -631,6 +663,8 @@ class UnavailableMetadataGateway:
 
 
 class UnavailableLibraryDoctorGateway:
+    """Return capability errors for unavailable library repair operations."""
+
     def scan(self) -> dict[str, Any]:
         return _unavailable_response("LibraryDoctorService")
     def preview_repair(self, scan_id: str) -> dict[str, Any]:
@@ -638,15 +672,21 @@ class UnavailableLibraryDoctorGateway:
 
 
 class UnavailableConnectionsGateway:
+    """Return capability errors when connection services are unavailable."""
+
     def list_connections(self) -> dict[str, Any]:
         return _unavailable_response("ConnectionsService")
 
 
 class UnavailableHomeAudioGateway:
+    """Return capability errors when home audio services are unavailable."""
+
     def get_status(self) -> dict[str, Any]:
         return _unavailable_response("HomeAudioService")
 
 
 class UnavailableLyricsGateway:
+    """Return capability errors when lyrics services are unavailable."""
+
     def get_current_lyrics(self) -> dict[str, Any]:
         return _unavailable_response("LyricsService")

@@ -230,7 +230,6 @@ Dialog {
             pathInput.text = root._exportPath
             root._estimateSize()
         }
-        onRejected: { }
     }
 
     onOpened: {

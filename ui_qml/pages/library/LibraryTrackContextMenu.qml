@@ -19,7 +19,7 @@ Menu {
     property var trackModel: null
 
     objectName: "library.trackContextMenu"
-    Accessible.role: Accessible.PopupMenu
+    Accessible.role: Accessible.Menu
     Accessible.name: "Menú contextual"
 
     function _selectedIds() {

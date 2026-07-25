@@ -1,6 +1,6 @@
 """Tests: Playback context bridge — connect_context_events."""
 
-from unittest.mock import MagicMock, PropertyMock
+from unittest.mock import MagicMock
 
 
 class TestPlaybackContextBridge:
@@ -12,8 +12,10 @@ class TestPlaybackContextBridge:
         win._services = None
         win._ctx.context_svc = ctx
         win._playback = pb
+        queue = MagicMock()
+        queue.count = 2
         from core.playback_controller import PlaybackController
-        ctrl = PlaybackController(win)
+        ctrl = PlaybackController(win, queue_service=queue)
         ctrl.connect_context_events(playback=pb, context_svc=ctx)
         return ctrl, ctx, pb, win
 
@@ -105,14 +107,16 @@ class TestPlaybackContextBridge:
 
     def test_enqueue_with_context_added_count(self):
         ctrl, ctx, pb, win = self._make_ctrl()
-        type(pb).queue = PropertyMock(return_value=["a.flac", "b.flac"])
         ctrl.enqueue_with_context(["/new/a.flac", "/new/b.flac"], source="test")
+        ctrl._queue.enqueue.assert_called_once_with(
+            ["/new/a.flac", "/new/b.flac"], play_now=True
+        )
+        pb.enqueue.assert_not_called()
         ctx.record_queue_updated.assert_called_once_with(
             count=2, source="test", added_count=2)
 
     def test_enqueue_with_context_single_track_title(self):
         ctrl, ctx, pb, _ = self._make_ctrl()
-        type(pb).queue = PropertyMock(return_value=["/new/a.flac"])
         ctrl.enqueue_with_context(["/new/a.flac"], source="album",
                                   title="Song", artist="Artist")
         ctx.record_track_queued.assert_called_once_with(
@@ -120,7 +124,6 @@ class TestPlaybackContextBridge:
 
     def test_enqueue_with_context_batch_no_title(self):
         ctrl, ctx, pb, _ = self._make_ctrl()
-        type(pb).queue = PropertyMock(return_value=["/a.flac", "/b.flac"])
         ctrl.enqueue_with_context(["/a.flac", "/b.flac"], source="genre")
         ctx.record_track_queued.assert_called_once()
         call_kwargs = ctx.record_track_queued.call_args[1]

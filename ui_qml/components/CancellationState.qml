@@ -9,7 +9,7 @@ Item {
     property string message: qsTr("Cancelando...")
     property string objectName: "cancellationState"
 
-    Accessible.role: Accessible.Alert
+    Accessible.role: Accessible.AlertMessage
     Accessible.name: root.message
 
     Rectangle {

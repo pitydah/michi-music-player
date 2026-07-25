@@ -150,7 +150,7 @@ Item {
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.cardTitleSize
                         visible: root.iconText !== ""
-                        Accessible.role: Accessible.Icon
+                        Accessible.role: Accessible.Graphic
                         Accessible.name: root.titleText + " icono"
                     }
 

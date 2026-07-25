@@ -118,6 +118,45 @@ class TestNavigationState:
         assert nav.currentRoute == "library.album_detail"
         assert nav.currentParams == {"album_key": "test123"}
 
+    def test_same_route_params_replace_without_history_entry(self, nav):
+        routes = []
+        params_changed = []
+        nav.routeChanged.connect(routes.append)
+        nav.routeParamsChanged.connect(lambda: params_changed.append(True))
+
+        nav.navigateWithParams("search", {"query": "michi", "submitted": True})
+        history_size = len(nav._back_stack)
+        nav.navigateWithParams("search", {"query": "music", "submitted": True})
+
+        assert nav.currentParams == {"query": "music", "submitted": True}
+        assert len(nav._back_stack) == history_size
+        assert routes == ["search"]
+        assert len(params_changed) == 2
+
+    def test_lightweight_params_do_not_navigate_or_change_history(self, nav):
+        nav.navigateWithParams("search", {"query": "first"})
+        nav.back()
+        assert nav.canGoForward is True
+        routes = []
+        nav.routeChanged.connect(routes.append)
+        history_size = len(nav._back_stack)
+
+        params = {"query": "preview"}
+        nav.updateCurrentParams(params)
+        params["query"] = "mutated"
+
+        assert nav.currentRoute == "home"
+        assert nav.currentParams == {"query": "preview"}
+        assert len(nav._back_stack) == history_size
+        assert nav.canGoForward is True
+        assert routes == []
+
+    def test_identical_lightweight_params_are_noop(self, nav):
+        signals = []
+        nav.routeParamsChanged.connect(lambda: signals.append(True))
+        nav.updateCurrentParams({})
+        assert signals == []
+
     def test_navigate_without_required_params_errors(self, nav):
         errors = []
         nav.invalidRouteError.connect(lambda r, m: errors.append(m))

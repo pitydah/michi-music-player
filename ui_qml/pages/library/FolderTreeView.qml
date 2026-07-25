@@ -42,7 +42,7 @@ Item {
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.badgeSize
                         width: 16
-                        Accessible.role: Accessible.Icon
+                        Accessible.role: Accessible.Graphic
                         Accessible.name: model.isExpandable ? (model.expanded ? "Expandido" : "Colapsado") : ""
                     }
 

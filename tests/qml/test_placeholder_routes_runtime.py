@@ -204,7 +204,7 @@ def test_placeholder_route_loads_through_navigation_and_page_stack(
         ("assistant", "michi_ai"),
         ("metadata.inspector", "audio_lab.metadata"),
         ("library_doctor", "audio_lab.library_health"),
-        ("equalizer", "audio_lab.processing"),
+        ("equalizer", "audio_lab.equalizer"),
         ("outputs", "audio_lab.processing"),
     ),
 )
@@ -228,10 +228,6 @@ def test_registry_aliases_return_canonical_metadata(alias: str, canonical: str) 
             "connections.home_assistant",
             "homeAssistantPlaceholderPage",
         ),
-        ("home_audio.stream", "home_audio.chain_planner", "chainPlannerPlaceholderPage"),
-        ("sync.mobile", "sync.portable_players", "portablePlayersPlaceholderPage"),
-        ("sync.mobile", "sync.plans", "syncPlansPlaceholderPage"),
-        ("sync.mobile", "sync.history", "syncHistoryPlaceholderPage"),
     ),
 )
 def test_sidebar_child_click_navigates_and_loads_placeholder(
@@ -275,6 +271,20 @@ def test_sidebar_child_click_navigates_and_loads_placeholder(
         window.contentItem(), f"sidebarChildAction_{target_route}"
     )
     assert action is not None
+    flickable = _find_visual_item(
+        window.contentItem(), "sidebarNavigationFlickable"
+    )
+    assert flickable is not None
+    action_scene_y = action.mapToScene(QPoint(0, 0)).y()
+    viewport_scene_y = flickable.mapToScene(QPoint(0, 0)).y()
+    viewport_bottom = viewport_scene_y + flickable.height()
+    if (action_scene_y < viewport_scene_y
+            or action_scene_y + action.height() > viewport_bottom):
+        scroll_delta = action_scene_y + action.height() - viewport_bottom + 8
+        flickable.setProperty(
+            "contentY", max(0.0, float(flickable.property("contentY")) + scroll_delta)
+        )
+        gui_app.processEvents()
     scene_point = action.mapToScene(
         QPoint(int(action.width() / 2), int(action.height() / 2))
     ).toPoint()

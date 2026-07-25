@@ -30,7 +30,7 @@ Item {
             text: root.iconText || "\u2699"
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.heroTitleSize
-            Accessible.role: Accessible.Icon
+            Accessible.role: Accessible.Graphic
             Accessible.name: "Icono de configuración"
             Accessible.description: "Estado que requiere hardware físico"
         }

@@ -325,7 +325,6 @@ Item {
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.metaSize
                     Layout.alignment: Qt.AlignVCenter
-                    anchors.verticalCenter: parent.verticalCenter
                 }
                 Item { Layout.fillWidth: true }
 
@@ -333,7 +332,6 @@ Item {
                     text: qsTr("Ordenar por:")
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
-                    anchors.verticalCenter: parent.verticalCenter
                 }
                 ComboBox {
                     focusPolicy: Qt.StrongFocus

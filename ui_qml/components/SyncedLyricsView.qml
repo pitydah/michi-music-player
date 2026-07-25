@@ -109,7 +109,7 @@ Item {
                 text: root.autoScroll ? "\u25C0\u25B6" : qsTr("\u25B6\u25C0")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.captionSize
-                Accessible.role: Accessible.Icon
+                Accessible.role: Accessible.Graphic
                 Accessible.name: root.autoScroll ? "Desplazamiento automático activado" : "Desplazamiento manual activado"
                 Accessible.description: "Haz clic para cambiar modo de desplazamiento"
             }

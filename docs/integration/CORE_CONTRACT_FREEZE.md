@@ -39,6 +39,10 @@ OperationResult(ok, code, message, data, warnings, partial, retryable).to_dict()
 - AppBridge.shutdown is now idempotent with 14+ tracked steps (was simple iteration)
 - core/result.py OperationResult added; legacy core/results.py OperationResult retained for backwards compat
 - core/protocols/ added; existing core/interfaces.py ABCs retained
+- QueueService now exclusively owns queue content, index, navigation, repeat,
+  shuffle, backend progression reconciliation, and session restoration.
+- PlayerService remains the transport/audio facade and backend synchronization
+  adapter; production ingress must not call its legacy queue methods directly.
 
 ---
 
@@ -60,16 +64,14 @@ OperationResult(ok, code, message, data, warnings, partial, retryable).to_dict()
 
 Single productive startup sequence for QML application. Orchestrates in order:
 
-1. `_build_config()` — register `settings_manager`
-2. `_open_database()` — register `connection_factory`
-3. `_build_repositories()` — register `track_repository`, `album_repository`, `artist_repository`
-4. `_build_workers()` — register `worker_manager`, `query_executor`, `job_service`
-5. `_build_settings()` — run migrations, register `settings_coordinator`, `settings_service`
-6. `_build_domain_services()` — register all domain services (playlist, history, search, queue, audio_lab, metadata, etc.)
-7. `_build_action_registry()` — register action handlers (play, pause, next, queue_add, favorite)
-8. `_build_bridges()` — call `BridgeFactory.create_all()` via `create_all_bridges()`
-9. `_register_contexts()` — register QML context properties from `QML_CONTEXT_BINDINGS`
-10. `container.start()` — transition to READY/DEGRADED
+1. Infrastructure composition registers settings, persistence, database, and workers.
+2. Playback composition registers PlayerService and QueueService.
+3. Library, Audio Lab, ecosystem, and settings compositions register their domains.
+4. Intelligence composition registers the action registry and Michi AI gateways.
+5. `container.start()` transitions services to READY/DEGRADED.
+6. `QueueService.restore()` restores the canonical session without autoplay.
+7. `create_bridges()` creates observers after queue restoration.
+8. `register_context()` publishes bridge instances through `QML_CONTEXT_BINDINGS`.
 
 **Rule:** Bootstrap does NOT create windows, QML engines, or Qt event loops. It only populates the container. The caller (`michi.qml_app` or `main.py`) owns the Qt event loop and engine.
 
@@ -167,7 +169,7 @@ Atomic, crash-safe JSON persistence for runtime state. 7 domains:
 
 | Domain | Data Class | File |
 |---|---|---|
-| queue | `PersistedQueue` | `queue_state.json` |
+| queue | Canonical QueueService snapshot dict | `queue_state.json` |
 | page_state | `PersistedPageState` | `page_state.json` |
 | jobs | `PersistedJob` | `jobs.json` |
 | notifications | `PersistedNotification` | `notifications.json` |
@@ -177,6 +179,30 @@ Atomic, crash-safe JSON persistence for runtime state. 7 domains:
 
 **Write strategy:** temp → fsync → atomic rename. Never writes partially.
 **Schema versioning:** `_migrate()` / `_rollback()` with per-version migrators in `_MIGRATORS` / `_ROLLBACKS`.
+
+The queue snapshot preserves effective item order, current index, repeat,
+shuffle, stable entry tokens, original pre-shuffle token order, context, and
+revision. Stable tokens preserve duplicate entries. Bootstrap restores it after
+service startup and before bridge creation; synchronization never autoplays.
+
+---
+
+## 8.1 Queue Authority
+
+**File:** `core/queue_service.py`
+
+- All queue mutations are transactional and roll back domain/backend state on
+  synchronization failure.
+- Backend progression is accepted only when index, filepath, and revision match
+  the canonical state.
+- Repeat and shuffle are domain state, not backend-owned state.
+- Queue observers receive canonical snapshots from QueueService directly.
+- PlayerService owns pause, resume, stop, seek, volume, and backend execution.
+- Physical queue implementation is restricted to PlayerService and
+  `audio/backends/`.
+- The dependency edge is `queue_service -> playback_service`; the reverse edge
+  is forbidden.
+- `tests/test_queue_ingress_architecture.py` rejects new production bypasses.
 
 ---
 

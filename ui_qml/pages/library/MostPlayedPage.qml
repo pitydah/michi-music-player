@@ -5,12 +5,14 @@ import "../../theme"
 import "../../components"
 import "../library"
 
-Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Most Played"
+LibrarySectionPage {
     objectName: "mostPlayedPage"
     focus: true
     id: root
+    sectionTitle: qsTr("Más reproducidas")
+    sectionSubtitle: qsTr("Las canciones que más escuchas")
+    sectionIcon: "songs"
+    navigationIndex: 6
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
 

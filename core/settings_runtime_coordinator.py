@@ -13,11 +13,13 @@ logger = logging.getLogger("michi.settings_runtime")
 
 
 class SettingsApplyResult:
+    """Describe the outcome of one transactional settings change."""
+
     def __init__(self, ok: bool = True, key: str = "", requested_value: Any = None,
                  previous_value: Any = None, persisted: bool = False,
                  applied: bool = False, requires_restart: bool = False,
                  error_code: str = "", message: str = "",
-                 affected_service: str = ""):
+                  affected_service: str = "") -> None:
         self.ok = ok
         self.key = key
         self.requested_value = requested_value
@@ -29,7 +31,7 @@ class SettingsApplyResult:
         self.message = message
         self.affected_service = affected_service
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "ok": self.ok,
             "key": self.key,
@@ -45,15 +47,19 @@ class SettingsApplyResult:
 
 
 class SettingsRuntimeCoordinator:
-    def __init__(self, player_service=None, worker_manager=None):
+    """Validate, apply, persist, and roll back runtime settings."""
+
+    def __init__(self, player_service: Any = None, queue_service: Any = None,
+                 worker_manager: Any = None) -> None:
         self._player = player_service
+        self._queue = queue_service
         self._wm = worker_manager
         self._adapters = []
 
-    def register_adapter(self, adapter):
+    def register_adapter(self, adapter: Any) -> None:
         self._adapters.append(adapter)
 
-    def execute(self, key: str, value: Any) -> dict:
+    def execute(self, key: str, value: Any) -> dict[str, Any]:
         """Full transaction: validate → capture previous → apply service change → persist → emit."""
         entry = get_entry(key)
         if not entry:
@@ -158,7 +164,7 @@ class SettingsRuntimeCoordinator:
 
         return result.to_dict()
 
-    def revert(self, key: str) -> dict:
+    def revert(self, key: str) -> dict[str, Any]:
         """Revert a key to its previous value (before last change)."""
         entry = get_entry(key)
         if not entry:
@@ -169,39 +175,34 @@ class SettingsRuntimeCoordinator:
         previous = SETTINGS.value(key, entry.default)
         return self.execute(key, previous)
 
-    def _find_adapter(self, key: str):
-        for adapter in self._adapters:
-            if key in adapter.supported_keys():
-                return adapter
-        return None
-
-    def _emit_change(self, key: str, value: Any):
-        if key.startswith("playback/") and self._player:
+    def _emit_change(self, key: str, value: Any) -> None:
+        if key.startswith("playback/") and (self._player or self._queue):
             self._apply_playback_hot(key, value)
         elif key == "advanced/log_level":
             self._apply_log_level(value)
 
-    def _apply_playback_hot(self, key: str, value: Any):
+    def _apply_playback_hot(self, key: str, value: Any) -> None:
         if key == "playback/default_volume" and hasattr(self._player, "set_volume"):
             self._player.set_volume(int(value))
-        elif key == "playback/repeat_mode" and hasattr(self._player, "set_repeat_mode"):
-            self._player.set_repeat_mode(str(value))
-        elif key == "playback/shuffle_default" and hasattr(self._player, "set_shuffle"):
-            self._player.set_shuffle(bool(value))
+        elif key == "playback/repeat_mode" and self._queue:
+            self._queue.set_repeat(str(value))
+        elif key == "playback/shuffle_default" and self._queue:
+            self._queue.set_shuffle(bool(value))
 
-    def _apply_log_level(self, value: Any):
+    def _apply_log_level(self, value: Any) -> None:
         try:
-            import logging as _logging
             level_map = {
-                "debug": _logging.DEBUG, "info": _logging.INFO,
-                "warning": _logging.WARNING, "error": _logging.ERROR,
-                "critical": _logging.CRITICAL,
+                "debug": logging.DEBUG, "info": logging.INFO,
+                "warning": logging.WARNING, "error": logging.ERROR,
+                "critical": logging.CRITICAL,
             }
-            _logging.getLogger("michi").setLevel(level_map.get(str(value).lower(), _logging.WARNING))
+            logging.getLogger("michi").setLevel(
+                level_map.get(str(value).lower(), logging.WARNING)
+            )
         except Exception:
             logger.exception("Unable to apply log level %r", value)
 
-    def adapter_for(self, key: str):
+    def adapter_for(self, key: str) -> Any | None:
         for adapter in self._adapters:
             if key in adapter.supported_keys():
                 return adapter

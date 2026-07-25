@@ -7,7 +7,7 @@ QtObject {
     readonly property int durationInstant: reducedMotion ? 0 : 80
     readonly property int durationFast: reducedMotion ? 0 : 120
     readonly property int durationNormal: reducedMotion ? 0 : 200
-    readonly property int durationSlow: reducedMotion ? 0 : 300
+    readonly property int durationSlow: reducedMotion ? 0 : 240
 
     readonly property int fast: durationFast
     readonly property int normal: durationNormal
@@ -17,8 +17,8 @@ QtObject {
 
     readonly property QtObject easing: QtObject {
         readonly property int standard: Easing.OutCubic
-        readonly property int emphasis: Easing.OutBack
-        readonly property int entrance: Easing.OutCubic
+        readonly property int emphasis: Easing.OutQuart
+        readonly property int entrance: Easing.OutQuart
         readonly property int exit: Easing.InCubic
         readonly property int inOut: Easing.InOutCubic
         readonly property int out: Easing.OutCubic

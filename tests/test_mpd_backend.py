@@ -71,6 +71,9 @@ class TestMpdBackend:
         backend.set_queue(["a.flac", "b.flac"], start_index=1)
         mock_client.clear.assert_called_once()
         assert mock_client.add.call_count == 2
+        mock_client.playpos.assert_not_called()
+
+        assert backend.play_queue_index(1) is True
         mock_client.playpos.assert_called_once_with(1)
 
     def test_clear_queue(self, backend, mock_client):

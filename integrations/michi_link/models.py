@@ -8,6 +8,8 @@ from typing import Any
 
 @dataclass
 class ServerInfo:
+    """Describe this player's Michi Link identity and advertised capabilities."""
+
     service: str = "michi-music-player"
     name: str = "Michi Music Player"
     api_version: str = "v1"
@@ -36,6 +38,8 @@ class ServerInfo:
 
 @dataclass
 class PlaybackStateDto:
+    """Represent the player's current playback state for API responses."""
+
     state: str = "stopped"  # playing | paused | stopped
     current_track: dict | None = None
     position_ms: float = 0.0
@@ -54,9 +58,14 @@ class PlaybackStateDto:
 
 @dataclass
 class QueueDto:
+    """Represent the ordered playback queue and its current selection."""
+
     tracks: list[dict] = field(default_factory=list)
     current_index: int = -1
     queue_id: str = ""
+    repeat: str = "none"
+    shuffle: bool = False
+    revision: int = 0
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -64,6 +73,8 @@ class QueueDto:
 
 @dataclass
 class TrackDto:
+    """Represent track metadata exposed through the Michi Link API."""
+
     track_id: str = ""
     title: str = ""
     artist: str = ""
@@ -78,6 +89,8 @@ class TrackDto:
 
 @dataclass
 class ControlRequest:
+    """Describe a remote playback control action and its optional value."""
+
     action: str = ""
     value: Any = None
     seek_ms: float = 0.0
@@ -86,6 +99,8 @@ class ControlRequest:
 
 @dataclass
 class V1PairStartRequest:
+    """Carry client device details when starting a v1 pairing session."""
+
     client_device_id: str = ""
     alias: str = ""
     device_model: str = ""
@@ -101,6 +116,8 @@ class V1PairStartRequest:
 
 @dataclass
 class V1PairStartResponse:
+    """Return pairing session details and supported authentication methods."""
+
     pairing_id: str = ""
     auth_methods: list[str] = field(default_factory=lambda: ["password"])
     server_alias: str = "Michi Music Player"
@@ -114,6 +131,8 @@ class V1PairStartResponse:
 
 @dataclass
 class V1PairConfirmRequest:
+    """Carry client credentials and device details to confirm v1 pairing."""
+
     client_device_id: str = ""
     username: str = ""
     password: str = ""
@@ -131,6 +150,8 @@ class V1PairConfirmRequest:
 
 @dataclass
 class V1PairConfirmResponse:
+    """Report the result, token, and permissions granted by v1 pairing."""
+
     success: bool = False
     device_id: str = ""
     device_token: str = ""

@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import logging
+import sqlite3
 import threading
 from pathlib import Path
 from typing import Any
+
+from core.connection_factory import LibraryConnectionFactory
+from core.library_sources_service import LibrarySourcesService
+from core.settings_manager import get as get_setting
 
 logger = logging.getLogger("michi.library_query")
 
@@ -11,7 +16,9 @@ _local_conn = threading.local()
 
 
 class LibraryQueryError(Exception):
-    def __init__(self, code: str, operation: str, safe_message: str = ""):
+    """Error raised when a library query cannot be completed safely."""
+
+    def __init__(self, code: str, operation: str, safe_message: str = "") -> None:
         self.code = code
         self.operation = operation
         self.safe_message = safe_message or code
@@ -42,6 +49,7 @@ _ARTIST_SORT = {
 
 
 def _sort_col(sort: str, table: str = "tracks") -> str:
+    """Return the allowlisted SQL expression for a sort key."""
     if table == "albums":
         return _ALBUM_SORT.get(sort, "MIN(year)")
     if table == "artists":
@@ -50,23 +58,24 @@ def _sort_col(sort: str, table: str = "tracks") -> str:
 
 
 def _album_key_sql() -> str:
+    """Return the canonical album identity SQL expression."""
     return "COALESCE(NULLIF(album_key, ''), album, '')"
 
 
 def _artist_key_sql() -> str:
+    """Return the canonical artist identity SQL expression."""
     return "COALESCE(NULLIF(albumartist, ''), artist, '')"
 
 
 def _lib_sources() -> list[str]:
+    """Return configured library roots, falling back to the legacy setting."""
     try:
-        from core.library_sources_service import LibrarySourcesService
         svc = LibrarySourcesService()
         return svc.root_paths()
     except Exception:
         pass
     try:
-        from core.settings_manager import get
-        folder = get("general/music_folder")
+        folder = get_setting("general/music_folder")
         if folder and Path(folder).is_dir():
             return [folder]
     except Exception:
@@ -75,14 +84,16 @@ def _lib_sources() -> list[str]:
 
 
 class LibraryQueryService:
-    def __init__(self, db=None, db_path: str = ""):
+    """Provide read-only, parameterized access to the canonical music library."""
+
+    def __init__(self, db: Any | None = None, db_path: str = "") -> None:
         self._db = db
         self._db_path = db_path
 
-    def _get_conn(self):
+    def _get_conn(self) -> sqlite3.Connection:
+        """Return the current thread's library connection."""
         if self._db_path:
             if not hasattr(_local_conn, "conn") or _local_conn.conn is None:
-                from core.connection_factory import LibraryConnectionFactory
                 factory = LibraryConnectionFactory(self._db_path)
                 _local_conn.conn = factory.get_connection()
             return _local_conn.conn
@@ -90,24 +101,29 @@ class LibraryQueryService:
             return self._db.conn
         raise LibraryQueryError("NO_DB", "query", "Base de datos no disponible")
 
-    def _check_db(self):
+    def _check_db(self) -> None:
+        """Fail fast when no database source was configured."""
         if not self._db and not self._db_path:
             raise LibraryQueryError("NO_DB", "query", "Base de datos no disponible")
 
     def _build_where(self, search: str = "", artist: str = "", album: str = "",
                      genre: str = "", fmt: str = "", folder: str = "",
                      year: str = "", quality: str = "",
-                     missing_artist: bool = False, missing_album: bool = False,
-                     missing_file: bool = False,
-                     _use_fts: bool = False) -> tuple[str, list]:
-        clauses = []
-        params: list = []
+                      missing_artist: bool = False, missing_album: bool = False,
+                      missing_file: bool = False,
+                      _use_fts: bool = False) -> tuple[str, list[Any]]:
+        """Build parameterized predicates shared by library aggregate queries."""
+        clauses: list[str] = []
+        params: list[Any] = []
         if search and _use_fts and self.search_backend == "fts5":
             fts_query = " OR ".join(f"{w}*" for w in search.split() if w)
             clauses.append("id IN (SELECT rowid FROM media_fts WHERE media_fts MATCH ?)")
             params.append(fts_query)
         elif search:
-            clauses.append("(title LIKE ? OR artist LIKE ? OR album LIKE ? COLLATE NOCASE)")
+            clauses.append(
+                "(title LIKE ? COLLATE NOCASE OR artist LIKE ? COLLATE NOCASE "
+                "OR album LIKE ? COLLATE NOCASE)"
+            )
             p = f"%{search}%"
             params.extend([p, p, p])
         if artist:
@@ -132,10 +148,18 @@ class LibraryQueryService:
             clauses.append(f"({_artist_key_sql()} = '' OR {_artist_key_sql()} IS NULL)")
         if missing_album:
             clauses.append("(album = '' OR album IS NULL)")
+        if missing_file:
+            clauses.append(
+                "LOWER(COALESCE(scan_status, '')) IN "
+                "('missing', 'not_found', 'offline', 'unavailable')"
+            )
         where = "AND " + " AND ".join(clauses) if clauses else ""
         return where, params
 
-    def _exec(self, sql: str, params: list = None):
+    def _exec(
+        self, sql: str, params: list[Any] | tuple[Any, ...] | None = None
+    ) -> sqlite3.Cursor:
+        """Execute a parameterized query on the service connection."""
         conn = self._get_conn()
         return conn.execute(sql, params or [])
 
@@ -323,6 +347,51 @@ class LibraryQueryService:
         except Exception as e:
             raise LibraryQueryError("NOT_FOUND", "fetch_track_internal", str(e)) from e
 
+    def fetch_track_by_filepath(self, filepath: str) -> dict[str, Any] | None:
+        """Return queue-safe metadata for an indexed filepath."""
+        self._check_db()
+        try:
+            row = self._exec(
+                "SELECT id, filepath, title, artist, album, duration, track_uid, album_key "
+                "FROM media_items WHERE filepath=? AND deleted_at IS NULL",
+                (filepath,),
+            ).fetchone()
+            if not row:
+                return None
+            return {
+                "track_id": row[0], "filepath": row[1], "title": row[2] or "",
+                "artist": row[3] or "", "album": row[4] or "",
+                "duration": row[5] or 0, "track_uid": row[6] or "",
+                "album_key": row[7] or "",
+            }
+        except Exception as e:
+            raise LibraryQueryError("QUERY_FAILED", "fetch_track_by_filepath", str(e)) from e
+
+    def list_composers(self) -> list[str]:
+        """Return non-empty composers in display order."""
+        self._check_db()
+        try:
+            rows = self._exec(
+                "SELECT DISTINCT composer FROM media_items "
+                "WHERE deleted_at IS NULL AND COALESCE(composer, '') != '' "
+                "ORDER BY composer COLLATE NOCASE"
+            ).fetchall()
+            return [str(row[0]) for row in rows]
+        except Exception as e:
+            raise LibraryQueryError("QUERY_FAILED", "list_composers", str(e)) from e
+
+    def list_years(self) -> list[int]:
+        """Return positive release years in ascending order."""
+        self._check_db()
+        try:
+            rows = self._exec(
+                "SELECT DISTINCT year FROM media_items "
+                "WHERE deleted_at IS NULL AND year IS NOT NULL AND year > 0 ORDER BY year"
+            ).fetchall()
+            return [int(row[0]) for row in rows]
+        except Exception as e:
+            raise LibraryQueryError("QUERY_FAILED", "list_years", str(e)) from e
+
     def fetch_album_tracks_internal(self, album_key: str) -> list[dict]:
         self._check_db()
         try:
@@ -377,6 +446,41 @@ class LibraryQueryService:
         except Exception as e:
             raise LibraryQueryError("QUERY_FAILED", "fetch_folder_tracks_internal", str(e)) from e
 
+    def fetch_filtered_tracks_internal(self, filters: dict,
+                                       limit: int = 500) -> list[dict]:
+        """Return metadata-rich tracks matching exact library filters."""
+        self._check_db()
+        clauses = ["deleted_at IS NULL"]
+        params = []
+        for field in ("artist", "album", "genre", "composer", "format", "year"):
+            value = filters.get(field)
+            if value:
+                clauses.append(f"{field}=?")
+                params.append(value)
+        if filters.get("folder"):
+            clauses.append("(directory=? OR instr(directory, ? || '/')=1)")
+            params.extend([filters["folder"], filters["folder"]])
+        if filters.get("favorites"):
+            clauses.append("filepath IN (SELECT track_id FROM favorites)")
+        if filters.get("unplayed"):
+            clauses.append(
+                "(filepath NOT IN (SELECT track_id FROM play_history "
+                "WHERE played_at IS NOT NULL) OR last_played IS NULL)"
+            )
+        params.append(limit)
+        rows = self._exec(
+            "SELECT id, track_uid, filepath, title, artist, album, duration "
+            f"FROM media_items WHERE {' AND '.join(clauses)} "
+            "ORDER BY title LIMIT ?",
+            params,
+        ).fetchall()
+        return [{
+            "track_id": row[0], "track_uid": row[1] or "",
+            "filepath": row[2], "title": row[3] or "",
+            "artist": row[4] or "", "album": row[5] or "",
+            "duration": row[6] or 0,
+        } for row in rows if row[2]]
+
     def fetch_album_detail(self, album_key: str) -> dict | None:
         try:
             internal = self.fetch_album_tracks_internal(album_key)
@@ -412,7 +516,8 @@ class LibraryQueryService:
         except Exception as e:
             raise LibraryQueryError("QUERY_FAILED", "fetch_artist_detail", str(e)) from e
 
-    def _row_to_public(self, r) -> dict[str, Any]:
+    def _row_to_public(self, r: sqlite3.Row | tuple[Any, ...]) -> dict[str, Any]:
+        """Convert a canonical track row to the public QML representation."""
         album_key = r[21] or r[7] or ""
         composer = (r[24] or "") if len(r) > 24 else ""
         favorite = bool(r[25]) if len(r) > 25 else False
@@ -430,7 +535,8 @@ class LibraryQueryService:
             "missing": missing, "date_added": r[23] or 0, "source_type": "local_file",
         }
 
-    def _album_row_to_dict(self, r) -> dict:
+    def _album_row_to_dict(self, r: sqlite3.Row | tuple[Any, ...]) -> dict[str, Any]:
+        """Convert an aggregate album row to a dictionary."""
         year = r[3] or 0
         decade = (year // 10 * 10) if year else 0
         return {
@@ -439,7 +545,8 @@ class LibraryQueryService:
             "genre": r[6] or "", "cover_key": r[0] or "", "decade": decade,
         }
 
-    def _artist_row_to_dict(self, r) -> dict:
+    def _artist_row_to_dict(self, r: sqlite3.Row | tuple[Any, ...]) -> dict[str, Any]:
+        """Convert an aggregate artist row to a dictionary."""
         return {
             "name": r[0] or "", "track_count": r[1] or 0,
             "album_count": r[2] or 0, "duration": r[3] or 0,
@@ -480,41 +587,20 @@ class LibraryQueryService:
     def recently_played(self, limit: int = 30) -> list[dict]:
         """Obtiene canciones reproducidas recientemente."""
         try:
-            conn = self._get_conn()
-            if not conn:
-                return []
-            cursor = conn.cursor()
-            sql = """
-                SELECT t.id as track_id, t.title, t.artist, t.album, t.duration, t.path,
-                       h.played_at
-                FROM tracks t
-                JOIN playback_history h ON t.id = h.track_id
-                ORDER BY h.played_at DESC
-                LIMIT ?
-            """
-            cursor.execute(sql, [limit])
-            rows = cursor.fetchall()
-            return [self._row_to_track_dict(r) for r in rows]
+            rows = self._exec(
+                "SELECT m.id, m.filepath, m.title, m.artist, m.album, m.duration, "
+                "m.track_uid, m.album_key, h.played_at "
+                "FROM media_items m JOIN play_history h "
+                "ON h.track_id = m.filepath OR h.track_id = CAST(m.id AS TEXT) "
+                "WHERE m.deleted_at IS NULL ORDER BY h.played_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+            return [{
+                "track_id": row[0], "filepath": row[1], "title": row[2] or "",
+                "artist": row[3] or "", "album": row[4] or "",
+                "duration": row[5] or 0, "track_uid": row[6] or "",
+                "album_key": row[7] or "", "played_at": row[8] or 0,
+            } for row in rows]
         except Exception as e:
             logger.debug("recently_played failed: %s", e)
             return []
-
-    def _row_to_track_dict(self, row: tuple) -> dict:
-        """Convierte una fila de SQL a diccionario de track."""
-        result = {
-            "track_id": row[0],
-            "title": row[1] or "",
-            "artist": row[2] or "",
-            "album": row[3] or "",
-        }
-        if len(row) > 4:
-            result["duration"] = row[4] if len(row) > 4 else 0
-        if len(row) > 5:
-            result["path"] = row[5] if len(row) > 5 else ""
-        if len(row) > 6:
-            extra_idx = 6
-            for extra in ["play_count", "year", "bitrate", "played_at", "last_played"]:
-                if extra_idx < len(row):
-                    result[extra] = row[extra_idx]
-                    extra_idx += 1
-        return result

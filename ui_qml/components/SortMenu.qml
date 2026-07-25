@@ -16,7 +16,7 @@ QQC2.Popup {
 
     objectName: "SortMenu"
 
-    Accessible.role: Accessible.PopupMenu
+    Accessible.role: Accessible.Menu
     Accessible.name: title
 
     width: Math.min(300, parent ? parent.width * 0.8 : 300)
@@ -61,7 +61,7 @@ QQC2.Popup {
                     color: MichiTheme.colors.accentBlue
                     font.pixelSize: MichiTheme.typography.captionSize
                     font.weight: MichiTheme.typography.weightMedium
-                    Accessible.role: Accessible.Icon
+                    Accessible.role: Accessible.Graphic
                     Accessible.name: root.ascending ? "Orden ascendente" : "Orden descendente"
                 }
 
@@ -110,7 +110,7 @@ QQC2.Popup {
                     font.pixelSize: MichiTheme.typography.bodySize
                     font.weight: modelData === root.currentOption
                                  ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
-                    Accessible.role: Accessible.Icon
+                    Accessible.role: Accessible.Graphic
                     Accessible.name: (modelData === root.currentOption ? (root.ascending ? "Ascendente: " : "Descendente: ") : "") + modelData
                 }
 

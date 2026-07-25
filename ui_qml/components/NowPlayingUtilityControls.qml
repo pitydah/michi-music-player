@@ -11,6 +11,7 @@ Item {
     property bool transmitActive: false
     property string transmitDeviceName: ""
     property bool transmitSupported: true
+    property bool outputSupported: true
     property bool queueSupported: true
     property bool showMiniPlayer: true
 
@@ -42,7 +43,6 @@ Item {
             btnSize: 40
             tooltipText: root.transmitActive && root.transmitDeviceName ? root.transmitDeviceName : "Transmitir a dispositivo"
             enabled: root.transmitSupported
-            visible: root.transmitSupported
             active: root.transmitActive
             activeColor: MichiTheme.colors.nowPlayingTransmitActive
             activeBorderColor: MichiTheme.colors.nowPlayingTransmitActiveBorder
@@ -54,6 +54,7 @@ Item {
             iconVisualSize: 22
             btnSize: 44
             tooltipText: "Seleccionar salida de audio"
+            enabled: root.outputSupported
             onClicked: root.outputClicked()
         }
 
