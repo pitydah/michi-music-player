@@ -487,7 +487,9 @@ class BridgeFactory(QObject):
     def create_cover_provider_bridge(self):
         if "cover_provider" not in self._bridges:
             from ui_qml_bridge.cover_provider_bridge import CoverProviderBridge
-            self._bridges["cover_provider"] = CoverProviderBridge(cover_bridge=self._bridges.get("cover"))
+            self._bridges["cover_provider"] = CoverProviderBridge(
+                artwork_service=self._get("artwork_service"),
+            )
 
     def create_query_executor(self):
         if "query_executor" not in self._bridges:
@@ -560,8 +562,6 @@ class BridgeFactory(QObject):
 
         self.create_runtime_quality_bridge()
         self.create_physical_audio_bridge()
-        if "cover" not in self._bridges:
-            self._bridges["cover"] = QObject()
         self.create_cover_provider_bridge()
         self.create_app_state_bridge()
         self.create_selection_context_bridge()

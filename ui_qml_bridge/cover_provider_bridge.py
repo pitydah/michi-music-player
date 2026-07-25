@@ -1,17 +1,13 @@
-"""CoverProviderBridge — bounded LRU access to repository-backed cover art.
+"""CoverProviderBridge — bounded LRU access to service-backed cover art.
 
-The previous bridge delegated to a placeholder QObject and therefore cached an
-empty string for every album. This implementation preserves delegation when a
-real cover service is injected and otherwise reads the canonical
-``album_art_cache`` table using a short-lived read-only SQLite connection.
+Delegates all cover resolution to CoverArtService (pure domain service).
+No direct SQLite connections — the service handles all persistence.
 """
 from __future__ import annotations
 
 import base64
 import logging
-import sqlite3
 from collections import OrderedDict
-from pathlib import Path
 
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
@@ -26,9 +22,9 @@ class CoverProviderBridge(QObject):
     coverReady = Signal(str, str)  # cover_key, data_url
     cacheChanged = Signal()
 
-    def __init__(self, cover_bridge=None, parent=None):
+    def __init__(self, artwork_service=None, parent=None):
         super().__init__(parent)
-        self._cover_bridge = cover_bridge
+        self._artwork_service = artwork_service
         self._cache: OrderedDict[str, str] = OrderedDict()
         self._max_cache = _MAX_CACHE
 
@@ -62,43 +58,22 @@ class CoverProviderBridge(QObject):
             self._cache[key] = value
             return value
 
-        data_url = self._request_from_delegate(key)
-        if not data_url:
-            data_url = self._request_from_database(key)
+        data_url = self._request_from_service(key)
         self._insert_cache(key, data_url)
         self.coverReady.emit(key, data_url)
         return data_url
 
-    def _request_from_delegate(self, cover_key: str) -> str:
-        delegate = self._cover_bridge
-        if delegate is None or not hasattr(delegate, "get_cover_data_url"):
+    def _request_from_service(self, cover_key: str) -> str:
+        service = self._artwork_service
+        if service is None:
             return ""
         try:
-            return str(delegate.get_cover_data_url(cover_key) or "")
-        except Exception as error:
-            logger.debug("Cover delegate failed for %s: %s", cover_key, error)
-            return ""
-
-    def _request_from_database(self, cover_key: str) -> str:
-        connection = None
-        try:
-            from core.paths import database_path
-
-            path = Path(database_path())
-            if not path.exists():
+            mime, data = service.resolve_cover_with_mime(cover_key)
+            if not data:
                 return ""
-            uri = f"file:{path.as_posix()}?mode=ro"
-            connection = sqlite3.connect(uri, uri=True, timeout=1.0)
-            row = connection.execute(
-                "SELECT mime, data FROM album_art_cache WHERE album_hash=?",
-                (cover_key,),
-            ).fetchone()
-            if not row or not row[1]:
-                return ""
-            mime = str(row[0] or "image/jpeg").lower()
+            mime = str(mime or "image/jpeg").lower()
             if mime not in _SUPPORTED_MIME:
                 mime = "image/jpeg"
-            data = bytes(row[1])
             if len(data) > _MAX_COVER_BYTES:
                 logger.warning(
                     "Ignoring oversized cover %s (%d bytes)", cover_key, len(data)
@@ -107,11 +82,8 @@ class CoverProviderBridge(QObject):
             encoded = base64.b64encode(data).decode("ascii")
             return f"data:{mime};base64,{encoded}"
         except Exception as error:
-            logger.debug("Cover database lookup failed for %s: %s", cover_key, error)
+            logger.debug("Cover service lookup failed for %s: %s", cover_key, error)
             return ""
-        finally:
-            if connection is not None:
-                connection.close()
 
     def _insert_cache(self, key: str, data_url: str) -> None:
         if key in self._cache:

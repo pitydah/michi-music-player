@@ -37,7 +37,7 @@ _REQUIRED_ASSERTS: dict[str, set[str]] = {
     "PlaylistsBridge": {"db"},
     "RadioBridge": {"player_service"},
     "DevicesBridge": {"device_sync_service", "job_service"},
-    "CoverProviderBridge": {"cover_bridge"},
+    "CoverProviderBridge": {"artwork_service"},
 }
 
 # Params that have valid alias defaults (at least one must be non-None)
