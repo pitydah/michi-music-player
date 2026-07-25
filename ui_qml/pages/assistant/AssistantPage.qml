@@ -18,7 +18,10 @@ Item {
     property string _aiStatus: root.ai ? root.ai.status || "idle" : "unavailable"
     property string _lastError: root.ai ? root.ai.lastError || "" : "No disponible"
     property var _chatHistory: root.ai ? parseChatHistory(root.ai.getChatHistory()) : []
+    property string selectedAiModelId: "calico"
     property int pageState: root.ai ? stateReady : stateError
+
+    signal aiModelSelectionRequested(string modelId)
 
     readonly property int stateLoading: 0
     readonly property int stateReady: 1
@@ -163,6 +166,17 @@ Item {
                         width: parent.width * 0.70
                         wrapMode: Text.WordWrap
                     }
+                }
+            }
+
+            AIModelSelector {
+                id: aiModelSelector
+                width: parent.width
+                selectedModelId: root.selectedAiModelId
+                integrationReady: false
+                onModelSelectionRequested: function(modelId) {
+                    root.selectedAiModelId = modelId
+                    root.aiModelSelectionRequested(modelId)
                 }
             }
 
