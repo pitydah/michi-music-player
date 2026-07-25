@@ -16,6 +16,7 @@ Item {
     property bool interactive: false
     property bool elevated: false
     property bool selected: false
+    property bool animateInteraction: interactive
     readonly property bool pressed: cardAction.pressed
     property string accessibleName: title
     property string accessibleDescription: subtitle
@@ -76,6 +77,13 @@ Item {
                                                       : root.baseBorderColor()
         Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
         Behavior on border.color { ColorAnimation { duration: MichiTheme.motion.fast } }
+        scale: root.pressed && root.animateInteraction ? 0.992 : 1.0
+        Behavior on scale {
+            NumberAnimation {
+                duration: MichiTheme.motion.fast
+                easing.type: MichiTheme.motion.easing.emphasis
+            }
+        }
     }
 
     Rectangle {
@@ -86,6 +94,20 @@ Item {
         border.width: MichiTheme.borderWidth
         border.color: MichiTheme.colors.borderInner
         visible: root.variant === "glass"
+    }
+
+    Rectangle {
+        anchors.left: background.left
+        anchors.right: background.right
+        anchors.top: background.top
+        anchors.margins: MichiTheme.borderWidth
+        height: Math.max(1, background.height * 0.42)
+        radius: Math.max(0, background.radius - MichiTheme.borderWidth)
+        color: "transparent"
+        border.width: MichiTheme.borderWidth
+        border.color: root.variant === "glass"
+                      ? MichiTheme.colors.borderInner : "transparent"
+        opacity: root.variant === "glass" ? 0.8 : 0
     }
 
     MouseArea {

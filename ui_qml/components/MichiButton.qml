@@ -42,12 +42,23 @@ QQC2.Button {
         radius: MichiTheme.radius.md
         color: {
             if (!root.enabled || root.loading) return MichiTheme.colors.surfaceDisabled
+            if (root.variant === "primary" || root.variant === "accent") {
+                if (root.down) return Qt.darker(MichiTheme.colors.accentPrimary, 1.18)
+                if (root.hovered) return Qt.lighter(MichiTheme.colors.accentPrimary, 1.08)
+                return MichiTheme.colors.accentPrimary
+            }
+            if (root.variant === "danger") {
+                if (root.down) return Qt.darker(MichiTheme.colors.error, 1.16)
+                if (root.hovered) return Qt.lighter(MichiTheme.colors.error, 1.06)
+                return MichiTheme.colors.error
+            }
+            if (root.variant === "success") {
+                if (root.down) return Qt.darker(MichiTheme.colors.success, 1.16)
+                if (root.hovered) return Qt.lighter(MichiTheme.colors.success, 1.06)
+                return MichiTheme.colors.success
+            }
             if (root.down) return MichiTheme.colors.surfacePressed
-            if (root.hovered) return MichiTheme.colors.surfaceHover
-            if (root.variant === "primary") return MichiTheme.colors.accentBlue
-            if (root.variant === "accent") return MichiTheme.colors.accentBlue
-            if (root.variant === "danger") return MichiTheme.colors.error
-            if (root.variant === "success") return MichiTheme.colors.success
+            if (root.hovered) return MichiTheme.colors.surfaceCardHover
             if (root.variant === "ghost") return "transparent"
             return MichiTheme.colors.surfaceCard
         }
@@ -55,8 +66,22 @@ QQC2.Button {
         border.color: {
             if (!root.enabled || root.loading) return "transparent"
             if (root.activeFocus) return MichiTheme.colors.borderFocus
-            if (root.variant === "secondary") return MichiTheme.colors.borderCard
+            if (root.variant === "secondary") return root.hovered
+                    ? MichiTheme.colors.borderHover : MichiTheme.colors.borderCard
             return "transparent"
+        }
+        scale: root.down ? 0.985 : 1.0
+        Behavior on color {
+            ColorAnimation {
+                duration: MichiTheme.motion.fast
+                easing.type: MichiTheme.motion.easing.standard
+            }
+        }
+        Behavior on scale {
+            NumberAnimation {
+                duration: MichiTheme.motion.fast
+                easing.type: MichiTheme.motion.easing.emphasis
+            }
         }
     }
 

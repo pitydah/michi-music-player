@@ -5,28 +5,32 @@ QtObject {
     property bool lightMode: false
 
     // ── Fondo ──
-    readonly property color bgBase: lightMode ? "#F5F6FA" : "#070A10"
-    readonly property color bgCanvas: lightMode ? "#EEF0F5" : "#090B11"
+    readonly property color bgBase: lightMode ? "#F6F8FC" : "#06080D"
+    readonly property color bgCanvas: lightMode ? "#EEF2F8" : "#090B11"
     readonly property color bgApp: bgBase
     readonly property color bgContent: bgCanvas
 
     // ── Superficies ── Elevation 0-5
     readonly property color surfaceElevation0: lightMode ? "#FAFAFE" : bgCanvas
-    readonly property color surfaceElevation1: lightMode ? "#F0F2F7" : "#0D0F16"
-    readonly property color surfaceElevation2: lightMode ? "#E8EAF0" : "#11131C"
-    readonly property color surfaceElevation3: lightMode ? "#E0E3EA" : "#141620"
-    readonly property color surfaceElevation4: lightMode ? "#D8DBE3" : "#17191F"
-    readonly property color surfaceElevation5: lightMode ? "#D0D4DC" : "#1A1C24"
+    readonly property color surfaceElevation1: lightMode ? "#F2F5FA" : "#0D111A"
+    readonly property color surfaceElevation2: lightMode ? "#E9EEF6" : "#111722"
+    readonly property color surfaceElevation3: lightMode ? "#E1E8F2" : "#151C28"
+    readonly property color surfaceElevation4: lightMode ? "#D8E1ED" : "#192230"
+    readonly property color surfaceElevation5: lightMode ? "#CFDAE8" : "#1D2838"
 
-    readonly property color surfaceCard: surfaceElevation1
-    readonly property color surfaceCardHover: surfaceElevation2
+    readonly property color surfaceCard: lightMode ? Qt.rgba(1.0, 1.0, 1.0, 0.72)
+                                                   : Qt.rgba(0.075, 0.094, 0.133, 0.78)
+    readonly property color surfaceCardHover: lightMode ? Qt.rgba(1.0, 1.0, 1.0, 0.94)
+                                                        : Qt.rgba(0.102, 0.129, 0.184, 0.88)
     readonly property color surfaceCardElevated: surfaceElevation3
-    readonly property color surfaceToolbar: lightMode ? Qt.rgba(0.96, 0.97, 0.98, 0.92) : Qt.rgba(0.027, 0.039, 0.063, 0.92)
-    readonly property color surfaceSidebar: lightMode ? "#F0F2F7" : "#080A10"
+    readonly property color surfaceToolbar: lightMode ? Qt.rgba(0.965, 0.976, 0.996, 0.90)
+                                                      : Qt.rgba(0.035, 0.051, 0.082, 0.88)
+    readonly property color surfaceSidebar: lightMode ? "#EEF3F9" : "#080B12"
     readonly property color surfacePopup: lightMode ? "#FAFAFE" : "#0F1219"
     readonly property color surfaceInput: lightMode ? "#FFFFFF" : "#0C0E15"
-    readonly property color surfaceHero: lightMode ? "#F0F2F7" : "#0A0D14"
-    readonly property color surfaceHeroGlow: lightMode ? Qt.rgba(0.561, 0.718, 1.0, 0.06) : Qt.rgba(0.561, 0.718, 1.0, 0.03)
+    readonly property color surfaceHero: lightMode ? "#EDF3FB" : "#0A101A"
+    readonly property color surfaceHeroGlow: lightMode ? Qt.rgba(0.561, 0.718, 1.0, 0.10)
+                                                       : Qt.rgba(0.561, 0.718, 1.0, 0.07)
     readonly property color surfaceInspector: lightMode ? "#F5F6FA" : "#0B0D14"
     readonly property color surfaceNowPlaying: surfaceElevation3
     readonly property color surfacePlaybackPanel: surfaceElevation3
@@ -41,15 +45,18 @@ QtObject {
     // ── Controles ──
     readonly property color controlTrack: lightMode ? Qt.rgba(0, 0, 0, 0.10) : Qt.rgba(1.0, 1.0, 1.0, 0.08)
     readonly property color controlThumb: lightMode ? Qt.rgba(0, 0, 0, 0.80) : Qt.rgba(1.0, 1.0, 1.0, 0.90)
-    readonly property color focusHalo: lightMode ? Qt.rgba(0.976, 0.129, 0.255, 0.24) : Qt.rgba(0.976, 0.129, 0.255, 0.20)
+    readonly property color focusHalo: lightMode ? Qt.rgba(0.561, 0.718, 1.0, 0.26)
+                                                 : Qt.rgba(0.561, 0.718, 1.0, 0.22)
 
     // ── Bordes ──
     readonly property color borderSubtle: lightMode ? Qt.rgba(0, 0, 0, 0.08) : Qt.rgba(1.0, 1.0, 1.0, 0.05)
-    readonly property color borderCard: lightMode ? Qt.rgba(0, 0, 0, 0.10) : Qt.rgba(1.0, 1.0, 1.0, 0.07)
+    readonly property color borderCard: lightMode ? Qt.rgba(0.15, 0.24, 0.38, 0.12)
+                                                  : Qt.rgba(0.72, 0.82, 1.0, 0.10)
     readonly property color borderInner: lightMode ? Qt.rgba(0, 0, 0, 0.04) : Qt.rgba(1.0, 1.0, 1.0, 0.03)
-    readonly property color borderActive: "#F92141"
-    readonly property color borderHover: lightMode ? Qt.rgba(0, 0, 0, 0.18) : Qt.rgba(1.0, 1.0, 1.0, 0.15)
-    readonly property color borderFocus: "#F92141"
+    readonly property color borderActive: "#8FB7FF"
+    readonly property color borderHover: lightMode ? Qt.rgba(0.24, 0.42, 0.70, 0.28)
+                                                   : Qt.rgba(0.561, 0.718, 1.0, 0.28)
+    readonly property color borderFocus: "#8FB7FF"
     readonly property color borderError: "#F87171"
 
     // ── Texto ──
@@ -63,12 +70,14 @@ QtObject {
     readonly property color textOnError: lightMode ? "#FFFFFF" : bgBase
     readonly property color textOnSuccess: lightMode ? "#FFFFFF" : bgBase
 
-    readonly property color accentPrimary: "#F92141"
+    // Cool blue is Michi's navigation and interaction accent. Warm colors are
+    // intentionally scoped to playback and equalizer controls below.
+    readonly property color accentPrimary: "#8FB7FF"
     readonly property color accentInfo: "#8FB7FF"
     readonly property color accentExperimental: "#A78BFA"
     readonly property color accentSecondary: accentExperimental
-    readonly property color accentSoft: Qt.rgba(0.976, 0.129, 0.255, lightMode ? 0.13 : 0.11)
-    readonly property color accentSelection: Qt.rgba(0.976, 0.129, 0.255, lightMode ? 0.17 : 0.15)
+    readonly property color accentSoft: Qt.rgba(0.561, 0.718, 1.0, lightMode ? 0.16 : 0.12)
+    readonly property color accentSelection: Qt.rgba(0.561, 0.718, 1.0, lightMode ? 0.20 : 0.16)
     readonly property color accent: accentPrimary
     readonly property color accentBlue: accentInfo
     readonly property color accentSurface: accentSoft
@@ -93,8 +102,10 @@ QtObject {
     readonly property color badgeMutedBg: lightMode ? Qt.rgba(0, 0, 0, 0.06) : Qt.rgba(1, 1, 1, 0.06)
     readonly property color badgeMutedText: textSecondary
 
-    readonly property color shadowSoft: lightMode ? Qt.rgba(0, 0, 0, 0.10) : Qt.rgba(0.0, 0.0, 0.0, 0.30)
-    readonly property color shadowFloating: lightMode ? Qt.rgba(0, 0, 0, 0.15) : Qt.rgba(0.0, 0.0, 0.0, 0.45)
+    readonly property color shadowSoft: lightMode ? Qt.rgba(0.08, 0.14, 0.24, 0.12)
+                                                  : Qt.rgba(0.0, 0.0, 0.0, 0.34)
+    readonly property color shadowFloating: lightMode ? Qt.rgba(0.08, 0.14, 0.24, 0.18)
+                                                      : Qt.rgba(0.0, 0.0, 0.0, 0.52)
 
     readonly property color skeletonBase: surfaceCard
     readonly property color skeletonHighlight: surfaceCardHover
@@ -102,11 +113,11 @@ QtObject {
     readonly property color nowPlayingBackground: lightMode ? "#F5F6FA" : bgBase
     readonly property color nowPlayingBorder: lightMode ? Qt.rgba(0, 0, 0, 0.08) : Qt.rgba(1, 1, 1, 0.06)
     readonly property color nowPlayingTrack: lightMode ? "#D0D4DC" : "#24272E"
-    readonly property color nowPlayingThumb: "#F92141"
+    readonly property color nowPlayingThumb: "#FF7A00"
     readonly property color nowPlayingThumbBorder: lightMode ? "#FFFFFF" : "#FFFFFF"
-    readonly property color nowPlayingGradientStart: accentPrimary
-    readonly property color nowPlayingGradientMiddle: "#D53672"
-    readonly property color nowPlayingGradientEnd: accentExperimental
+    readonly property color nowPlayingGradientStart: "#FF7A00"
+    readonly property color nowPlayingGradientMiddle: "#FF4F72"
+    readonly property color nowPlayingGradientEnd: "#C65CFF"
     readonly property color nowPlayingTransportBg: lightMode ? "#E8EAF0" : "#1B1D23"
     readonly property color nowPlayingTransportBorder: lightMode ? Qt.rgba(0, 0, 0, 0.10) : Qt.rgba(255, 255, 255, 0.09)
     readonly property color nowPlayingTransportHover: lightMode ? Qt.rgba(0, 0, 0, 0.06) : Qt.rgba(255, 255, 255, 0.12)
