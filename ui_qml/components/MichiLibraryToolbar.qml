@@ -18,6 +18,7 @@ ContextToolbar {
     property int searchDebounceMs: 240
     property var viewModes: []
     property int currentViewMode: 0
+    property int activeFilterCount: 0
     property string sortField: "title"
     property bool sortAscending: true
     property bool selectionActive: false
@@ -31,6 +32,7 @@ ContextToolbar {
     signal searchChanged(string text)
     signal searchSubmitted(string text)
     signal viewModeChanged(int index)
+    signal filtersRequested()
     signal sortChanged(string field, bool ascending)
     signal refreshRequested()
     signal addMusicRequested()
@@ -178,7 +180,7 @@ ContextToolbar {
 
                 RowLayout {
                     spacing: MichiTheme.spacing.xs
-                    visible: root.viewModes.length > 0 && !root.compact
+                    visible: root.viewModes.length > 0
 
                     Repeater {
                         model: root.viewModes
@@ -195,8 +197,19 @@ ContextToolbar {
                 }
 
                 MichiIconButton {
+                    iconSource: "../../icons/view/filter.svg"
+                    tooltipText: root.activeFilterCount > 0
+                                 ? qsTr("Filtros (%1 activos)").arg(root.activeFilterCount)
+                                 : qsTr("Filtros")
+                    accessibleName: tooltipText
+                    btnSize: 36
+                    selected: root.activeFilterCount > 0
+                    onClicked: root.filtersRequested()
+                }
+
+                MichiIconButton {
                     id: refreshButton
-                    iconSource: "../../icons/nav_back.svg"
+                    iconSource: "../../icons/refresh.svg"
                     tooltipText: root.loading
                                  ? qsTr("Actualizando biblioteca…")
                                  : qsTr("Actualizar biblioteca (F5)")
