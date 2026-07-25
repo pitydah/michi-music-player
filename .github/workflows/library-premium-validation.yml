@@ -2,7 +2,7 @@ name: Library Premium Validation
 
 on:
   push:
-    branches: [feat/library-premium-views]
+    branches: [feat/library-premium-views, feat/library-sql-metadata-consolidation]
     paths:
       - "core/composition/library.py"
       - "core/library/library_filtered_query_service.py"
@@ -49,6 +49,7 @@ jobs:
             ui_qml_bridge/library_refresh_coordinator.py \
             tests/qml/library/test_album_premium_views_runtime.py \
             tests/qml/library/test_library_filtered_query_service.py \
+            tests/qml/library/test_library_navigation_views_runtime.py \
             tests/qml/library/test_library_premium_runtime.py
       - name: Compile modified Python surface
         run: |
@@ -64,7 +65,9 @@ jobs:
           set -o pipefail
           python -m pytest -q --timeout=120 \
             tests/qml/library/test_album_premium_views_runtime.py \
+            tests/qml/library/test_album_pathview.py \
             tests/qml/library/test_library_filtered_query_service.py \
+            tests/qml/library/test_library_navigation_views_runtime.py \
             tests/qml/library/test_library_premium_runtime.py \
             tests/qml/library/test_library_track_table.py \
             tests/qml/library/test_library_fetch_more.py \
