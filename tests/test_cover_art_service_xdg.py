@@ -39,11 +39,11 @@ class TestCoverArtServiceXDG:
         importlib.reload(library.cover_art_service)
         cas = library.cover_art_service.CoverArtService
 
-        with patch("library.album_art.find_cover_in_dir", return_value=""):
+        with patch("library.cover_art_service.find_cover_in_dir", return_value=""):
             mock_pix = MagicMock()
             mock_pix.isNull.return_value = False
             mock_pix.save.return_value = True
-            with patch("library.album_art._extract_embedded_cover_from_file", return_value=mock_pix):
+            with patch("library.cover_art_service._extract_embedded_cover_from_file", return_value=mock_pix):
                 result = cas.find_cover("/music/test.flac")
 
         assert result
@@ -59,11 +59,11 @@ class TestCoverArtServiceXDG:
         importlib.reload(library.cover_art_service)
         cas = library.cover_art_service.CoverArtService
 
-        with patch("library.album_art.find_cover_in_dir", return_value=""):
+        with patch("library.cover_art_service.find_cover_in_dir", return_value=""):
             mock_pix = MagicMock()
             mock_pix.isNull.return_value = False
             mock_pix.save.return_value = True
-            with patch("library.album_art._extract_embedded_cover_from_file", return_value=mock_pix):
+            with patch("library.cover_art_service._extract_embedded_cover_from_file", return_value=mock_pix):
                 result = cas.find_cover("/music/test.flac")
 
         assert result is not None

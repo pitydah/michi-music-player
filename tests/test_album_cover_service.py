@@ -18,7 +18,7 @@ class TestAlbumCoverService:
     def test_resolve_cover_no_tracks(self):
         from library.album_cover_service import AlbumCoverService
         svc = AlbumCoverService()
-        with patch("library.album_art.make_default_cover") as mock_fb:
+        with patch("library.album_cover_service.make_default_cover") as mock_fb:
             mock_fb.return_value = None
             result = svc.resolve_cover([])
             assert result is not None
@@ -33,7 +33,7 @@ class TestAlbumCoverService:
         try:
             with patch("library.album_cover_service._find_local_cover",
                        return_value=cover_path), \
-                 patch("PySide6.QtGui.QPixmap") as mock_pix:
+                 patch("library.album_cover_service.QPixmap") as mock_pix:
                 mock_pix.return_value.isNull.return_value = False
                 tracks = [_make_track(filepath="/music/song.flac")]
                 result = svc.resolve_cover(tracks)
@@ -46,7 +46,7 @@ class TestAlbumCoverService:
         from library.album_cover_service import AlbumCoverService
         svc = AlbumCoverService()
         with patch("library.album_cover_service._find_local_cover", return_value=None), \
-             patch("library.album_art.make_default_cover") as mock_fb:
+             patch("library.album_cover_service.make_default_cover") as mock_fb:
             mock_fb.return_value = None
             tracks = [_make_track(filepath="/nonexistent/song.flac")]
             result = svc.resolve_cover(tracks)

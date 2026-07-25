@@ -166,27 +166,7 @@ class _TaskWorker(QRunnable):
                 self._error_cb(str(exc), ERR_FAILED)
 
 
-# ── Cover/Identify workers ──
-
-class _CoverLoaderWorker(QRunnable):
-    def __init__(self, items, cover_size, existing_groups=None):
-        super().__init__()
-        self._signals = _WorkerSignals()
-        self._items = items
-        self._cover_size = cover_size
-        self._existing = existing_groups
-
-    def run(self):
-        try:
-            if self._items:
-                from library.album_art import load_covers_for_albums
-                result = load_covers_for_albums(self._items, self._cover_size)
-                self._signals.done.emit(result)
-            else:
-                self._signals.done.emit([])
-        except Exception as e:
-            self._signals.error.emit(str(e))
-
+# ── Identify workers ──
 
 class _IdentifyWorker(QRunnable):
     def __init__(self, capture_service, recognizer):
@@ -223,7 +203,6 @@ class WorkerManager(QObject):
     taskFailed = Signal(str, str, str)
     taskStateChanged = Signal(str, str)
 
-    covers_ready = Signal(list)
     identify_done = Signal(object)
     identify_error = Signal(str)
     task_done = Signal(str, object)
@@ -368,19 +347,6 @@ class WorkerManager(QObject):
         with self._lock:
             self._handles.clear()
             self._callbacks.clear()
-
-    def load_covers(self, items, cover_size):
-        worker = _CoverLoaderWorker(items, cover_size)
-        worker._signals.done.connect(self._on_covers_done, type=Qt.ConnectionType.QueuedConnection)
-        worker._signals.error.connect(lambda e: self._log.warning("Cover load failed: %s", e))
-        self._pool.start(worker)
-
-    @Slot(object)
-    def _on_covers_done(self, result):
-        if isinstance(result, list):
-            self.covers_ready.emit(result)
-        else:
-            self._log.warning("Cover loader returned invalid result: %r", type(result))
 
     def identify(self, capture_service, recognizer):
         worker = _IdentifyWorker(capture_service, recognizer)
