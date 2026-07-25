@@ -124,8 +124,9 @@ class EngineBackendAdapter(QObject):
         )
 
     def _normalized_volume(self) -> int:
-        volume = float(getattr(self._engine, "_volume", 70))
-        return int(volume * 100) if 0.0 <= volume <= 1.0 else int(volume)
+        # DRIFT: engine._volume is always 0-100 int (clamped by engine.set_volume).
+        # Do NOT re-normalize 0.0-1.0 floats — the int IS the canonical value.
+        return int(getattr(self._engine, "_volume", 70))
 
     def set_queue(self, paths: list[str], start_index: int = 0,
                   revision: int | None = None) -> None:
