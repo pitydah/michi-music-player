@@ -1,7 +1,7 @@
 import QtQuick
 import "../../theme"
 
-Rectangle {
+Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Michi Focus Ring"
     objectName: "michiFocusRing"
@@ -14,10 +14,23 @@ Rectangle {
 
     anchors.fill: control
     anchors.margins: -MichiTheme.focusOffset
-    radius: controlRadius + MichiTheme.focusOffset
-    color: "transparent"
-    border.width: MichiTheme.focusWidth
-    border.color: MichiTheme.colors.borderFocus
     visible: keyboardFocusVisible
     z: 100
+
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: -2
+        radius: root.controlRadius + MichiTheme.focusOffset + 2
+        color: "transparent"
+        border.width: 4
+        border.color: MichiTheme.colors.focusHalo
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        radius: root.controlRadius + MichiTheme.focusOffset
+        color: "transparent"
+        border.width: MichiTheme.focusWidth
+        border.color: MichiTheme.colors.borderFocus
+    }
 }
