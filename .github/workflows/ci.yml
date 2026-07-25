@@ -68,6 +68,9 @@ jobs:
             --ignore=tests/perf -k "not qt_widget and not QtWidget" \
             -x --deselect tests/test_context_semantic_audit.py::TestContextSemanticAudit::test_no_appevent_import_outside_context \
             --junitxml=results-core.xml
+      - name: Runtime route matrix
+        run: |
+          QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest tests/qml/runtime/test_runtime_route_matrix.py -q --timeout=120 --junitxml=results-runtime.xml
       - name: Build wheel
         run: python -m build --wheel
       - name: Upload results
