@@ -2,11 +2,10 @@
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.bridge_factory import BridgeFactory
-from ui_qml_bridge.service_bundle import ServiceBundle
 
 
-def _make_bundle() -> ServiceBundle:
-    bundle = ServiceBundle()
+def _make_bundle():
+    bundle = MagicMock()
     bundle.worker_manager = MagicMock()
     bundle.db = MagicMock()
     bundle.player_service = MagicMock()
@@ -21,10 +20,6 @@ def _make_bundle() -> ServiceBundle:
     bundle.metadata_service = MagicMock()
     bundle.playlist_controller = MagicMock()
     return bundle
-
-
-def _has_private_access(obj, attr: str) -> bool:
-    return any(attr in str(m) for m in getattr(obj, '_bridges', {}).values())
 
 
 def test_global_search_uses_public_query_executor_property():

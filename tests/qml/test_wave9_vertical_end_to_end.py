@@ -19,8 +19,7 @@ class TestWave9CoreBridges:
 
     def test_factory_creates_all_bridges(self):
         from ui_qml_bridge.bridge_factory import BridgeFactory
-        from ui_qml_bridge.service_bundle import ServiceBundle
-        svc = ServiceBundle()
+        svc = MagicMock()
         factory = BridgeFactory(svc)
         bridges = factory.create_all()
         assert "library" in bridges

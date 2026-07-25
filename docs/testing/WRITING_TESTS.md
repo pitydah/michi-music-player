@@ -22,7 +22,7 @@ For `productive_workflows/` tests:
 
 | Fixture | Scope | Purpose |
 |---------|-------|---------|
-| `bootstrap` | module | Creates AppContext and bridge container |
+| `bootstrap` | module | Creates bridge container |
 | `bridges` | function | Dict of bridges for the test |
 | `all_bridges` | function | Full bridge registry |
 | `nav` | function | NavigationBridge for route asserts |
