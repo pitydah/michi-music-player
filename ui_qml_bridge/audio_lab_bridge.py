@@ -7,6 +7,7 @@ from dataclasses import asdict, is_dataclass
 from typing import Any, Callable
 
 from PySide6.QtCore import QObject, Property, Signal, Slot
+import contextlib
 
 logger = logging.getLogger("michi.audio_lab.bridge")
 
@@ -95,28 +96,22 @@ class AudioLabBridge(QObject):
         failed = getattr(conversion, "conversionFailed", None)
         progress = getattr(conversion, "conversionProgress", None)
         if completed is not None:
-            try:
+            with contextlib.suppress(RuntimeError, TypeError):
                 completed.connect(
                     lambda job_id, target: self._finish_job(
                         str(job_id), "conversion", {"target": str(target)}
                     )
                 )
-            except (RuntimeError, TypeError):
-                pass
         if failed is not None:
-            try:
+            with contextlib.suppress(RuntimeError, TypeError):
                 failed.connect(
                     lambda job_id, error: self._fail_job(
                         str(job_id), "conversion", str(error)
                     )
                 )
-            except (RuntimeError, TypeError):
-                pass
         if progress is not None:
-            try:
+            with contextlib.suppress(RuntimeError, TypeError):
                 progress.connect(self._on_conversion_progress)
-            except (RuntimeError, TypeError):
-                pass
 
     def _on_conversion_progress(self, job_id: str, progress: float) -> None:
         normalized = str(job_id)
@@ -612,10 +607,8 @@ class AudioLabBridge(QObject):
                 cancel(normalized)
         cancel = getattr(self._jobs, "cancel", None)
         if callable(cancel):
-            try:
+            with contextlib.suppress(Exception):
                 cancel(normalized)
-            except Exception:
-                pass
         with self._lock:
             info["status"] = "cancelled"
         self.dataChanged.emit()
