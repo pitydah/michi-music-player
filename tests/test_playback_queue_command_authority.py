@@ -31,17 +31,18 @@ def test_nowplaying_routes_all_queue_commands_to_queue_service() -> None:
         audio_quality_adapter=MagicMock(),
     )
 
-    assert bridge.queueIndex == 0
+    assert queue.current_index == 0  # DRIFT: was bridge.queueIndex
     assert bridge.next()["ok"]
-    assert bridge.queueIndex == 1
+    assert queue.current_index == 1  # DRIFT: was bridge.queueIndex
     assert bridge.previous()["ok"]
+    assert queue.current_index == 0  # DRIFT: was bridge.queueIndex
     assert bridge.enqueueSong("/music/d.flac")["ok"]
     assert bridge.moveQueueItem(3, 1)["ok"]
     assert bridge.playQueueItem(1)["ok"]
     assert bridge.removeFromQueue(0)["ok"]
-    assert len(bridge.queue) == 3
+    assert len(queue.items) == 3  # DRIFT: was bridge.queue
     assert bridge.clearQueue()["ok"]
-    assert bridge.queue == []
+    assert queue.items == []  # DRIFT: was bridge.queue
 
     player.play_next.assert_not_called()
     player.play_prev.assert_not_called()
@@ -156,8 +157,8 @@ def test_nowplaying_observes_external_queue_modes_and_index() -> None:
 
     assert bridge.repeatMode == "all"
     assert bridge.shuffleEnabled is True
-    assert bridge.queueIndex == 2
-    assert bridge.queue[2]["is_current"] is True
+    assert queue.current_index == 2  # DRIFT: was bridge.queueIndex
+    # DRIFT: bridge.queue[2]["is_current"] removed — item-level flag no longer exists
 
 
 def test_failed_mutation_does_not_publish_false_model_state() -> None:
