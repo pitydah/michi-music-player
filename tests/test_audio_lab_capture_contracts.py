@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
+
 from core.audio_lab.adc_recorder_service import AudioDevice
 from core.audio_lab.audio_lab_service import AudioLabService
 from core.audio_lab.cd_ripper_service import CDRipperService
