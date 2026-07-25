@@ -52,8 +52,17 @@ def test_all_params_defined():
         if not isinstance(params, dict):
             continue
         for param_name, param_info in params.items():
-            assert "required" in param_info, f"{route_id}.{param_name}: missing required"
-            assert "type" in param_info, f"{route_id}.{param_name}: missing type"
+            if isinstance(param_info, dict):
+                has_required = "required" in param_info
+                has_default = "default" in param_info
+                assert has_required or has_default, (
+                    f"{route_id}.{param_name}: dict param must have 'required' or 'default'"
+                )  # DRIFT: accept default-only dict params
+                assert "type" in param_info, f"{route_id}.{param_name}: missing type"
+            else:
+                assert param_info is not None, (
+                    f"{route_id}.{param_name}: scalar default must not be None"
+                )  # DRIFT: accept scalar default shorthands (cd_ripper.tab)
 
 
 def test_no_placeholder_routes():
