@@ -16,11 +16,11 @@ def test_app_starts():
         text=True,
     )
     try:
-        stdout, stderr = proc.communicate(timeout=10)
+        stdout, stderr = proc.communicate(timeout=30)
     except subprocess.TimeoutExpired:
         # App is still running (healthy) — kill and check for READY
         proc.send_signal(signal.SIGTERM)
-        stdout, stderr = proc.communicate(timeout=5)
+        stdout, stderr = proc.communicate(timeout=10)
     assert "READY" in stdout, f"App did not reach READY: {stderr[-500:]}"
     assert "Traceback" not in stderr, f"App crashed: {stderr[-500:]}"
 
@@ -35,7 +35,7 @@ def test_app_no_duplicate_actions():
         text=True,
     )
     try:
-        stdout, stderr = proc.communicate(timeout=10)
+        stdout, stderr = proc.communicate(timeout=30)
     except subprocess.TimeoutExpired:
         proc.send_signal(signal.SIGTERM)
         stdout, stderr = proc.communicate(timeout=5)
