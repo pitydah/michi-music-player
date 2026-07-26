@@ -70,12 +70,18 @@ class DiscLabBridge(QObject):
             self.dataChanged.emit()
             return {"ok": False, "error": "UNSUPPORTED", "dependencies_ok": self._dependencies_ok}
         try:
-            drives = self._svc.detect_drives()
-            self._drives = drives or []
-            if drives:
-                default_drive = self._svc.get_default_drive() or drives[0]
-                has_cd = self._svc.detect_audio_cd(default_drive)
-                self._status = "ready" if has_cd else "no_disc"
+            if hasattr(self._svc, 'detect_drives'):
+                drives = self._svc.detect_drives()
+                self._drives = [d.device if hasattr(d, 'device') else str(d) for d in (drives or [])]
+            else:
+                self._drives = []
+            if self._drives:
+                default_drive = self._drives[0]
+                if hasattr(self._svc, 'get_cd_info'):
+                    info = self._svc.get_cd_info(default_drive)
+                    self._status = "ready" if info else "no_disc"
+                else:
+                    self._status = "ready"
                 self._drive_info = default_drive
             else:
                 self._status = "no_drive"
