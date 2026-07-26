@@ -100,12 +100,12 @@ class QueryExecutor(QObject):
             rec = RequestRecord(request_id, owner, 0, request_context, cancellable)
             rec.state = STATE_SHUTDOWN
             rec.finished_at = __import__('time').time()
+            rec.on_error = on_error
             with self._lock:
                 self._requests[request_id] = rec
                 self._prune_locked()
             self._finalize(rec, STATE_SHUTDOWN, error_code=ERR_QUERY_SHUTDOWN,
-                           message="QueryExecutor en shutdown",
-                           on_error=on_error)
+                           message="QueryExecutor en shutdown")
             return request_id
 
         with self._lock:
@@ -147,21 +147,27 @@ class QueryExecutor(QObject):
                 r = self._requests.get(request_id)
                 if not r or r.terminal_emitted:
                     return
-                if r.generation != self._generations.get(owner):
+                stale = r.generation != self._generations.get(owner)
+                if stale:
                     r.state = STATE_STALE
-                    self._finalize(r, STATE_STALE, error_code=ERR_QUERY_STALE,
-                                   message="Resultado obsoleto")
-                    return
-                if not task_result or not task_result.get("ok"):
+                elif not task_result or not task_result.get("ok"):
                     code = task_result.get("error", ERR_QUERY_FAILED) if task_result else ERR_QUERY_CANCELLED
                     msg = task_result.get("message", "") if task_result else ""
-                    state = STATE_CANCELLED if code == ERR_QUERY_CANCELLED else STATE_FAILED
-                    r.state = state
-                    self._finalize(r, state, error_code=code, message=msg)
-                    return
-                r.state = STATE_COMPLETED
-                result = task_result["result"]
-            self._finalize(r, STATE_COMPLETED, result=result)
+                    r.state = STATE_CANCELLED if code == ERR_QUERY_CANCELLED else STATE_FAILED
+                else:
+                    r.state = STATE_COMPLETED
+                    result = task_result["result"]
+            # _finalize emits Qt signals — call outside lock to avoid reentrancy
+            if stale:
+                self._finalize(r, STATE_STALE, error_code=ERR_QUERY_STALE,
+                               message="Resultado obsoleto")
+            elif not task_result or not task_result.get("ok"):
+                code = task_result.get("error", ERR_QUERY_FAILED) if task_result else ERR_QUERY_CANCELLED
+                msg = task_result.get("message", "") if task_result else ""
+                state = STATE_CANCELLED if code == ERR_QUERY_CANCELLED else STATE_FAILED
+                self._finalize(r, state, error_code=code, message=msg)
+            else:
+                self._finalize(r, STATE_COMPLETED, result=result)
 
         if self._wm and hasattr(self._wm, 'run_task'):
             handle = self._wm.run_task(

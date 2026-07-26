@@ -145,12 +145,13 @@ class ConnectionsBridge(QObject):
     @Slot(str, int, str, result=dict)
     def connectManual(self, host: str, port: int, alias: str):
         svc = self._connection_service
-        if svc is not None:
-            try:
-                svc.connect_manual(host, port, alias)
-            except Exception as e:
-                self._set_state("error", str(e))
-                return {"ok": False, "error": str(e)}
+        if svc is None:
+            return _method_unavailable("connectManual")
+        try:
+            svc.connect_manual(host, port, alias)
+        except Exception as e:
+            self._set_state("error", str(e))
+            return {"ok": False, "error": str(e)}
         self._state = "detected"
         self._alias = alias
         self.stateChanged.emit()
@@ -171,12 +172,13 @@ class ConnectionsBridge(QObject):
     @Slot(result=dict)
     def pair(self):
         svc = self._connection_service
-        if svc is not None:
-            try:
-                svc.pair()
-            except Exception as e:
-                self._set_state("error", str(e))
-                return {"ok": False, "error": str(e)}
+        if svc is None:
+            return _method_unavailable("pair")
+        try:
+            svc.pair()
+        except Exception as e:
+            self._set_state("error", str(e))
+            return {"ok": False, "error": str(e)}
         self._state = "pairing_required"
         self.stateChanged.emit()
         return {"ok": True}
@@ -196,19 +198,17 @@ class ConnectionsBridge(QObject):
     @Slot(result=dict)
     def confirmPair(self):
         svc = self._connection_service
-        if svc is not None:
-            try:
-                svc.confirm_pair()
-            except Exception as e:
-                self._set_state("error", str(e))
-                return {"ok": False, "error": str(e)}
-            self._set_connected()
-            self._contract = "contract_ok"
-            if isinstance(getattr(svc, 'capabilities', None), dict):
-                self._capabilities = svc.capabilities
-        else:
-            self._state = "paired"
-            self._last_contact = time.time()
+        if svc is None:
+            return _method_unavailable("confirmPair")
+        try:
+            svc.confirm_pair()
+        except Exception as e:
+            self._set_state("error", str(e))
+            return {"ok": False, "error": str(e)}
+        self._set_connected()
+        self._contract = "contract_ok"
+        if isinstance(getattr(svc, 'capabilities', None), dict):
+            self._capabilities = svc.capabilities
         self.stateChanged.emit()
         return {"ok": True}
 
@@ -229,12 +229,13 @@ class ConnectionsBridge(QObject):
     @Slot(result=dict)
     def diagnose(self):
         svc = self._connection_service
-        if svc is not None:
-            try:
-                svc.diagnose()
-            except Exception as e:
-                self._set_state("error", str(e))
-                return {"ok": False, "error": str(e)}
+        if svc is None:
+            return _method_unavailable("diagnose")
+        try:
+            svc.diagnose()
+        except Exception as e:
+            self._set_state("error", str(e))
+            return {"ok": False, "error": str(e)}
         self._state = "connected"
         self._server_version = "Michi Server"
         self.stateChanged.emit()
@@ -243,12 +244,13 @@ class ConnectionsBridge(QObject):
     @Slot(result=dict)
     def connect(self):
         svc = self._connection_service
-        if svc is not None:
-            try:
-                svc.connect()
-            except Exception as e:
-                self._set_state("error", str(e))
-                return {"ok": False, "error": str(e)}
+        if svc is None:
+            return {"ok": False, "error": "NO_CONNECTION_SERVICE"}
+        try:
+            svc.connect()
+        except Exception as e:
+            self._set_state("error", str(e))
+            return {"ok": False, "error": str(e)}
         self._state = "connected"
         self.stateChanged.emit()
         return {"ok": True}
