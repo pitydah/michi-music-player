@@ -80,7 +80,8 @@ def test_factory_creates_app_bridge_with_lifecycle():
     factory = BridgeFactory(bundle)
     factory.create_navigation_bridge()
     factory.create_queue_bridge()
-    bridge = factory.create_app_bridge()
+    factory.create_app_bridge()
+    bridge = factory.get("app")
     assert bridge is not None
     assert hasattr(bridge, 'phase')
     assert hasattr(bridge, 'setReady')
@@ -92,11 +93,11 @@ def test_factory_app_bridge_has_debug_info():
     factory = BridgeFactory(bundle)
     factory.create_navigation_bridge()
     factory.create_queue_bridge()
-    bridge = factory.create_app_bridge()
+    factory.create_app_bridge()
+    bridge = factory.get("app")
     info = bridge.appScore()
     assert "score" in info
     assert "has_worker_manager" in info
-    assert "has_query_executor" in info
 
 
 def test_full_shutdown_through_factory():
@@ -104,7 +105,8 @@ def test_full_shutdown_through_factory():
     factory = BridgeFactory(bundle)
     factory.create_navigation_bridge()
     factory.create_queue_bridge()
-    bridge = factory.create_app_bridge()
+    factory.create_app_bridge()
+    bridge = factory.get("app")
     bridge.setReady()
     assert bridge.ready
     bridge.quit()

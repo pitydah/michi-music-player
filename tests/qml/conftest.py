@@ -6,14 +6,15 @@ import pytest
 
 
 @pytest.fixture
-def audio_quality_adapter():
+def audio_quality_adapter() -> MagicMock:
     """Provide the required quality adapter dependency without probing audio."""
     adapter = MagicMock()
     adapter.probe.return_value = {"ok": False, "error": ""}
     return adapter
 
 
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config) -> None:
+    """Register custom QML markers."""
     config.addinivalue_line("markers", "qml_module(name): mark test as belonging to a QML module")
     config.addinivalue_line("markers", "qml_dimension(name): mark test as covering a QML dimension")
     config.addinivalue_line("markers", "qml_route(name): mark test as covering a QML route")
@@ -21,7 +22,7 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "widget_replacement(name): mark test as covering a widget replacement")
 
 
-def pytest_itemcollected(item):
+def pytest_itemcollected(item: pytest.Item) -> None:
     """Inject user_properties from markers for JUnit XML evidence collection."""
     markers = item.iter_markers()
     has_qml = False
@@ -32,12 +33,12 @@ def pytest_itemcollected(item):
     if has_qml:
         props = {}
         for marker in item.iter_markers():
-            if marker.name == "qml_module":
+            if marker.name == "qml_module" and "qml_module" not in props:
                 props["qml_module"] = marker.args[0] if marker.args else ""
-            elif marker.name == "qml_dimension":
+            elif marker.name == "qml_dimension" and "qml_dimension" not in props:
                 val = marker.args[0] if marker.args else ""
                 existing = props.get("qml_dimension", "")
                 props["qml_dimension"] = f"{existing},{val}" if existing else val
-            elif marker.name == "qml_route":
+            elif marker.name == "qml_route" and "qml_route" not in props:
                 props["qml_route"] = marker.args[0] if marker.args else ""
         item.user_properties = list(props.items())

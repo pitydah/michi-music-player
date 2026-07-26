@@ -1,0 +1,43 @@
+version: v19
+modules:
+  home: {title: Inicio, primary_route: home, status: functional, weight: 10, dimensions: [qml_compile, qml_instance, productive_context, service_wiring]}
+  library: {title: Biblioteca, primary_route: library, status: functional, weight: 20, dimensions: [qml_compile, qml_instance, productive_context, primary_interaction]}
+  queue: {title: Cola, primary_route: queue, status: functional, weight: 5, dimensions: [qml_compile, qml_instance, state_model]}
+  playlists: {title: Playlists, primary_route: playlists, status: functional, weight: 10, dimensions: [qml_compile, qml_instance, primary_interaction, job_integration]}
+  history: {title: Historial, primary_route: history, status: functional, weight: 5, dimensions: [qml_compile, qml_instance, state_model]}
+  mix: {title: Mix, primary_route: mix, status: functional, weight: 10, dimensions: [qml_compile, qml_instance, productive_context]}
+  search: {title: Busqueda, primary_route: search, status: functional, weight: 5, dimensions: [qml_compile, qml_instance]}
+  radio: {title: Radio, primary_route: radio, status: functional, weight: 8, dimensions: [qml_compile, qml_instance, primary_interaction]}
+  lyrics: {title: Letras, primary_route: lyrics, status: functional, weight: 3, dimensions: [qml_compile, qml_instance]}
+  audio_lab: {title: Audio Lab, primary_route: audio_lab, status: functional, weight: 15, dimensions: [qml_compile, qml_instance, productive_context, service_wiring]}
+  equalizer: {title: Ecualizador, primary_route: equalizer, status: functional, weight: 5, dimensions: [qml_compile, qml_instance]}
+  outputs: {title: Salidas, primary_route: outputs, status: functional, weight: 5, dimensions: [qml_compile, qml_instance]}
+  devices: {title: Dispositivos, primary_route: devices.list, status: functional, weight: 8, dimensions: [qml_compile, qml_instance]}
+  connections: {title: Conexiones, primary_route: connections, status: functional, weight: 10, dimensions: [qml_compile, qml_instance, service_wiring]}
+  home_audio: {title: Home Audio, primary_route: home_audio, status: functional, weight: 10, dimensions: [qml_compile, qml_instance, productive_context]}
+  metadata: {title: Metadatos, primary_route: metadata.inspector, status: functional, weight: 8, dimensions: [qml_compile, qml_instance]}
+  tagging: {title: Smart Tagging, primary_route: tagging, status: functional, weight: 5, dimensions: [qml_compile, qml_instance]}
+  doctor: {title: Library Doctor, primary_route: library_doctor, status: functional, weight: 5, dimensions: [qml_compile, qml_instance]}
+  diagnostics: {title: Diagnostico, primary_route: diagnostics, status: functional, weight: 5, dimensions: [qml_compile, qml_instance]}
+  assistant: {title: Michi AI, primary_route: assistant, status: functional, weight: 10, dimensions: [qml_compile, qml_instance, productive_context]}
+  disc_lab: {title: Disc Lab, primary_route: disc_lab, status: experimental, weight: 3, dimensions: [qml_compile, qml_instance]}
+  settings: {title: Ajustes, primary_route: settings, status: functional, weight: 10, dimensions: [qml_compile, qml_instance, service_wiring]}
+  playback: {title: Reproduccion, primary_route: playback, status: functional, weight: 8, dimensions: [qml_compile, qml_instance]}
+  nowplaying: {title: Now Playing, primary_route: nowplaying, status: functional, weight: 5, dimensions: [qml_compile, qml_instance]}
+dimensions:
+  - qml_compile
+  - qml_instance
+  - productive_context
+  - service_wiring
+  - primary_interaction
+  - state_model
+  - error_model
+  - job_integration
+  - cancellation
+  - confirmation
+  - capability
+  - navigation
+  - vertical_workflow
+  - negative_paths
+  - runtime_cleanup
+  - widget_independence
