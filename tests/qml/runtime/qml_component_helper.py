@@ -275,6 +275,8 @@ def load_qml_component(
 
     deadline = time.monotonic() + (timeout_ms / 1000)
     while time.monotonic() < deadline:
+        QCoreApplication.processEvents()
+        time.sleep(0.01)
         status = component.status()
         if status != QQmlComponent.Loading:
             break
