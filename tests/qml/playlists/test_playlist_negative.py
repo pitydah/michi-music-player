@@ -236,7 +236,7 @@ def test_import_preview_invalid_file(svc_with_db, tmp_path):
 
 def test_import_confirm_missing_file(svc_with_db):
     result = svc_with_db.import_confirm("/nonexistent/file.m3u")
-    assert result is None or result.get("count", 999) == 0
+    assert result.get("ok") is False
 
 
 @pytest.fixture

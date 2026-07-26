@@ -4,6 +4,7 @@ import pytest
 import sqlite3
 from unittest.mock import MagicMock
 
+from core.playlist_service import PlaylistService
 from ui_qml_bridge.playlists_bridge import PlaylistsBridge
 
 
@@ -214,7 +215,7 @@ def fake_db(db_conn):
 
 @pytest.fixture
 def bridge(fake_db):
-    return PlaylistsBridge(db=fake_db)
+    return PlaylistsBridge(db=fake_db, playlist_service=PlaylistService(db=fake_db))
 
 
 def test_refresh_playlists(bridge):

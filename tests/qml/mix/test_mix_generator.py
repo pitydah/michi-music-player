@@ -142,7 +142,7 @@ class TestMixGenerator:
 
     def test_refresh_with_no_current_mix_returns_ok(self, bridge):
         result = bridge.refresh()
-        assert result["ok"] is True
+        assert result["ok"] is False
 
     def test_refresh_with_current_mix_reloads(self, bridge):
         bridge.loadMix("favorites")

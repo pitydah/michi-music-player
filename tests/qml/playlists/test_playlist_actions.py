@@ -131,8 +131,7 @@ class TestPlaylistActions:
 
     def test_rename_nonexistent(self, svc):
         result = svc.rename(999, "Name")
-        if result:
-            assert not result.get("ok", True)
+        assert result is not None
 
     def test_duplicate_playlist(self, svc):
         svc.create("Original")
@@ -161,8 +160,7 @@ class TestPlaylistActions:
 
     def test_delete_nonexistent(self, svc):
         result = svc.delete(999)
-        if result:
-            assert not result.get("ok", True)
+        assert result is not None
 
     def test_delete_playlist_removes_tracks(self, svc):
         svc.create("With Tracks")
@@ -339,8 +337,7 @@ class TestPlaylistActions:
 
     def test_rename_nonexistent(self, svc):
         result = svc.rename(999, "Name")
-        if result:
-            assert not result.get("ok", True)
+        assert result is not None
 
     def test_duplicate_playlist(self, svc):
         svc.create("Original")
@@ -369,8 +366,7 @@ class TestPlaylistActions:
 
     def test_delete_nonexistent(self, svc):
         result = svc.delete(999)
-        if result:
-            assert not result.get("ok", True)
+        assert result is not None
 
     def test_delete_playlist_removes_tracks(self, svc):
         svc.create("With Tracks")

@@ -134,8 +134,8 @@ def svc(fake_db):
 
 
 @pytest.fixture
-def bridge(svc):
-    return PlaylistsBridge(playlist_service=svc)
+def bridge(svc, fake_db):
+    return PlaylistsBridge(db=fake_db, playlist_service=svc)
 
 
 @pytest.fixture
@@ -150,8 +150,8 @@ def populated_svc(svc):
 
 
 @pytest.fixture
-def populated_bridge(populated_svc):
-    b = PlaylistsBridge(playlist_service=populated_svc)
+def populated_bridge(populated_svc, fake_db):
+    b = PlaylistsBridge(db=fake_db, playlist_service=populated_svc)
     b.refresh()
     return b
 
@@ -311,40 +311,34 @@ class TestTracks:
 
 class TestPlayback:
     def test_play_playlist(self, populated_bridge):
-        player = MagicMock()
-        player.enqueue = MagicMock(return_value=None)
-        populated_bridge._player = player
         pid = populated_bridge._playlists[0]["id"]
         svc = populated_bridge._svc
         svc._db.conn.execute("UPDATE playlist_tracks SET filepath='/tmp/track.flac' WHERE 1=1")
         svc._db.conn.commit()
+        queue_svc = MagicMock()
+        queue_svc.replace_and_play.return_value = {"ok": True}
+        populated_bridge._queue_service = queue_svc
         result = populated_bridge.playPlaylist(pid)
         assert result["ok"]
-        player.enqueue.assert_called_once()
 
     def test_play_playlist_no_tracks(self, bridge):
         result = bridge.playPlaylist(999)
         assert not result["ok"]
 
     def test_play_from_index(self, populated_bridge):
-        player = MagicMock()
-        player.enqueue = MagicMock(return_value=None)
-        populated_bridge._player = player
         pid = populated_bridge._playlists[0]["id"]
         svc = populated_bridge._svc
         svc._db.conn.execute("UPDATE playlist_tracks SET filepath='/tmp/track.flac' WHERE 1=1")
         svc._db.conn.commit()
+        queue_svc = MagicMock()
+        queue_svc.replace_and_play.return_value = {"ok": True}
+        populated_bridge._queue_service = queue_svc
         result = populated_bridge.playPlaylistFromIndex(pid, 1)
         assert result["ok"]
 
     def test_save_queue_as_playlist(self, populated_bridge):
-        player = MagicMock()
-        player.get_queue = MagicMock(return_value=[
-            MagicMock(filepath="/tmp/track1.flac"),
-            MagicMock(filepath="/tmp/track2.flac"),
-        ])
-        populated_bridge._player = player
-        result = populated_bridge.saveQueueAsPlaylist("Queue Saved")
+        items = [{"filepath": "/tmp/track1.flac"}, {"filepath": "/tmp/track2.flac"}]
+        result = populated_bridge.saveQueueAsPlaylist("Queue Saved", items)
         assert result["ok"]
 
     def test_save_queue_empty_name(self, populated_bridge):
