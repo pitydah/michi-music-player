@@ -94,14 +94,18 @@ def mock_qs():
 
 @pytest.fixture
 def bridge(mock_qs):
-    bridge = LibraryBridge(query_service=mock_qs, query_executor=None)
+    tas = MagicMock()
+    tas.play_track.return_value = {"ok": False}
+    tas.enqueue_track.return_value = {"ok": False}
+    tas.toggle_favorite.return_value = {"ok": False}
+    bridge = LibraryBridge(query_service=mock_qs, query_executor=None, track_action_service=tas)
     bridge._album_model._qe = None
     bridge._artist_model._qe = None
     return bridge
 
 
 def test_initial_state():
-    bridge = LibraryBridge()
+    bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
     assert bridge.state == "INITIALIZING"
 
 

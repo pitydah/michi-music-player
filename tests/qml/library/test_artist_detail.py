@@ -33,7 +33,7 @@ class TestArtistDetail:
              "duration": 180, "filepath": "/m/b.flac", "disc_number": 1,
              "track_number": 1, "format": "FLAC", "missing": False},
         ]
-        return LibraryBridge(query_service=qs)
+        return LibraryBridge(query_service=qs, track_action_service=MagicMock())
 
     def test_artist_detail_loads(self, bridge):
         detail = bridge.getArtistDetail("Test Artist")
@@ -66,8 +66,13 @@ class TestArtistDetail:
         assert albums[0]["album_key"] == "ak1"
 
     def test_play_artist(self, bridge):
-        pb = MagicMock()
-        bridge._playback_ctrl = pb
+        qs = bridge._query_svc
+        qs.fetch_artist_tracks_internal.return_value = [
+            {"track_id": 1, "filepath": "/m/a.flac", "title": "Song A"},
+            {"track_id": 2, "filepath": "/m/b.flac", "title": "Song B"},
+        ]
+        bridge._queue_service = MagicMock()
+        bridge._queue_service.replace_and_play.return_value = {"ok": True, "count": 2}
         result = bridge.playArtist("Test Artist")
         assert result["ok"] is True
         assert result["count"] == 2
@@ -76,7 +81,7 @@ class TestArtistDetail:
         qs = MagicMock()
         qs.fetch_artist_detail.return_value = {"name": "Empty Artist", "album_count": 0, "track_count": 0}
         qs.fetch_artist_tracks_internal.return_value = []
-        bridge = LibraryBridge(query_service=qs)
+        bridge = LibraryBridge(query_service=qs, track_action_service=MagicMock())
         result = bridge.playArtist("Empty Artist")
         assert result["ok"] is False
 
@@ -87,12 +92,15 @@ class TestArtistDetail:
     def test_artist_detail_not_found(self):
         qs = MagicMock()
         qs.fetch_artist_detail.return_value = None
-        bridge = LibraryBridge(query_service=qs)
+        bridge = LibraryBridge(query_service=qs, track_action_service=MagicMock())
         result = bridge.getArtistDetail("Unknown")
         assert result["ok"] is False
 
     def test_artist_detail_no_query_service(self):
-        bridge = LibraryBridge()
+        qs = MagicMock()
+        qs.fetch_artist_detail.return_value = None
+        bridge = LibraryBridge(query_service=qs, track_action_service=MagicMock())
+        bridge._query_svc = None
         result = bridge.getArtistDetail("Test")
         assert result["ok"] is False
 
@@ -113,8 +121,12 @@ class TestArtistDetail:
             bridge.playTrackById(tracks[0]["track_id"])
 
     def test_artist_enqueue(self, bridge):
-        pb = MagicMock()
-        bridge._playback_ctrl = pb
+        qs = bridge._query_svc
+        qs.fetch_artist_tracks_internal.return_value = [
+            {"track_id": 1, "filepath": "/m/a.flac", "title": "Song A"},
+        ]
+        bridge._queue_service = MagicMock()
+        bridge._queue_service.replace_and_play.return_value = {"ok": True, "count": 1}
         result = bridge.playArtist("Test Artist")
         assert result["ok"] is True
 

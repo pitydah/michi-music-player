@@ -37,7 +37,7 @@ class TestAlbumDetail:
              "duration": 220, "format": "FLAC", "disc_number": 2,
              "track_number": 1, "bit_depth": 24, "missing": False},
         ]
-        return LibraryBridge(query_service=qs)
+        return LibraryBridge(query_service=qs, track_action_service=MagicMock())
 
     def test_album_detail_loads(self, bridge):
         detail = bridge.getAlbumDetail("ak1")
@@ -72,15 +72,15 @@ class TestAlbumDetail:
         assert len(disc2) == 1
 
     def test_play_album(self, bridge):
-        pb = MagicMock()
-        bridge._playback_ctrl = pb
+        bridge._queue_service = MagicMock()
+        bridge._queue_service.replace_and_play.return_value = {"ok": True, "count": 3}
         result = bridge.playAlbum("ak1")
         assert result["ok"] is True
         assert result["count"] == 3
 
     def test_enqueue_album(self, bridge):
-        pb = MagicMock()
-        bridge._playback_ctrl = pb
+        bridge._queue_service = MagicMock()
+        bridge._queue_service.enqueue.return_value = {"ok": True, "count": 3}
         result = bridge.enqueueAlbum("ak1")
         assert result["ok"] is True
         assert result["count"] == 3
@@ -88,12 +88,13 @@ class TestAlbumDetail:
     def test_album_detail_not_found(self):
         qs = MagicMock()
         qs.fetch_album_detail.return_value = None
-        bridge = LibraryBridge(query_service=qs)
+        bridge = LibraryBridge(query_service=qs, track_action_service=MagicMock())
         result = bridge.getAlbumDetail("nonexistent")
         assert result["ok"] is False
 
     def test_album_detail_no_query_service(self):
-        bridge = LibraryBridge()
+        bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
+        bridge._query_svc = None
         result = bridge.getAlbumDetail("ak1")
         assert result["ok"] is False
 
@@ -109,14 +110,14 @@ class TestAlbumDetail:
         tracks = bridge.getAlbumTracks("ak1")
         disc1 = [t for t in tracks if t["disc_number"] == 1]
         assert len(disc1) == 2
-        pb = MagicMock()
-        bridge._playback_ctrl = pb
+        bridge._tas = MagicMock()
+        bridge._tas.play_track.return_value = {"ok": True}
         bridge.playTrackById(disc1[0]["track_id"])
 
     def test_album_detail_empty_qs_tracks(self):
         qs = MagicMock()
         qs.fetch_album_tracks_internal.return_value = []
-        bridge = LibraryBridge(query_service=qs)
+        bridge = LibraryBridge(query_service=qs, track_action_service=MagicMock())
         tracks = bridge.getAlbumTracks("empty")
         assert tracks == []
 

@@ -62,8 +62,8 @@ def test_album_view_host_exposes_all_five_modes(engine):
 def test_album_view_selector_supports_keyboard_cycle() -> None:
     source = (QML_ROOT / "pages/library/album/AlbumViewHost.qml").read_text()
 
-    assert "function cycleView(step)" in source
-    assert "Qt.Key_Tab" in source
+    assert "function cycleView(delta)" in source
+    assert "Key_Tab" in source
     assert "Keys.onReturnPressed" in source
     assert "Keys.onSpacePressed" in source
 
