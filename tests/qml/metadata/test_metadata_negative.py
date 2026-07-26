@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from unittest.mock import MagicMock
 
 pytestmark = [pytest.mark.qml_module("metadata")]
 
@@ -9,7 +10,7 @@ class TestMetadataNegative:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
-        return MetadataBridge()
+        return MetadataBridge(metadata_service=MagicMock())
 
     def test_load_metadata_empty_string(self, bridge):
         result = bridge.loadMetadata("")

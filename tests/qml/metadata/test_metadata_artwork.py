@@ -4,6 +4,7 @@ from __future__ import annotations
 import time
 
 import pytest
+from unittest.mock import MagicMock
 from PySide6.QtCore import QCoreApplication
 
 pytestmark = [pytest.mark.qml_module("metadata")]
@@ -24,7 +25,7 @@ class TestMetadataArtwork:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
-        return MetadataBridge(worker_manager=None)
+        return MetadataBridge(metadata_service=MagicMock())
 
     def test_has_artwork_no_file(self, bridge):
         result = bridge.hasArtwork()

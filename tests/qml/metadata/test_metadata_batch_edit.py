@@ -4,6 +4,7 @@ from __future__ import annotations
 import time
 
 import pytest
+from unittest.mock import MagicMock
 from PySide6.QtCore import QCoreApplication
 
 pytestmark = [pytest.mark.qml_module("metadata")]
@@ -31,7 +32,7 @@ class TestMetadataBatchEdit:
     @pytest.fixture
     def bridge(self, worker_manager):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
-        return MetadataBridge(worker_manager=worker_manager)
+        return MetadataBridge(metadata_service=MagicMock())
 
     def test_batch_set_field_async(self, bridge):
         result = bridge.batchSetField(["/fake/file.flac"], "artist", "Batch Artist")
@@ -53,7 +54,7 @@ class TestMetadataBatchEdit:
 
     def test_batch_sync_fallback(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
-        bridge = MetadataBridge(worker_manager=None)
+        bridge = MetadataBridge(metadata_service=MagicMock())
         result = bridge.batchSetField(["/fake/file.flac"], "title", "Sync")
         assert result.get("ok") is None or result.get("ok") is not None
 

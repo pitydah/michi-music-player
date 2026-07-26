@@ -2,6 +2,7 @@ from __future__ import annotations
 """Tests for single-track metadata editing."""
 
 import time
+from unittest.mock import MagicMock
 
 import pytest
 from PySide6.QtCore import QCoreApplication
@@ -24,7 +25,7 @@ class TestMetadataSingleEdit:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
-        return MetadataBridge(worker_manager=None)
+        return MetadataBridge(metadata_service=MagicMock())
 
     def test_load_metadata_returns_ok(self, bridge):
         result = bridge.loadMetadata("/nonexistent/file.flac")

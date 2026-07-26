@@ -20,7 +20,7 @@ class TestMetadataBridgeCreation:
     def test_requires_metadata_service(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
         with pytest.raises(Exception):
-            MetadataBridge()
+            MetadataBridge(metadata_service=MagicMock())
 
     def test_creation(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
