@@ -37,11 +37,11 @@ def mock_mqs():
 
 
 @pytest.fixture
-def mock_tas():
-    tas = MagicMock()
-    tas.play_track.return_value = {"ok": True}
-    tas.enqueue_track.return_value = {"ok": True}
-    return tas
+def mock_qs():
+    qs = MagicMock()
+    qs.replace_and_play.return_value = {"ok": True}
+    qs.enqueue.return_value = {"ok": True}
+    return qs
 
 
 def test_bridge_creation(empty_bridge):
@@ -91,8 +91,8 @@ def test_load_unknown_mix(mock_mqs):
     assert not result["ok"]
 
 
-def test_play_mix(mock_mqs, mock_tas):
-    bridge = MixBridge(query_service=mock_mqs, track_action_service=mock_tas)
+def test_play_mix(mock_mqs, mock_qs):
+    bridge = MixBridge(query_service=mock_mqs, queue_service=mock_qs)
     bridge.loadMix("favorites")
     result = bridge.playMix()
     assert result["ok"]
@@ -104,8 +104,8 @@ def test_play_mix_empty():
     assert not result["ok"]
 
 
-def test_play_from_index(mock_mqs, mock_tas):
-    bridge = MixBridge(query_service=mock_mqs, track_action_service=mock_tas)
+def test_play_from_index(mock_mqs, mock_qs):
+    bridge = MixBridge(query_service=mock_mqs, queue_service=mock_qs)
     bridge.loadMix("favorites")
     result = bridge.playFromIndex(1)
     assert result["ok"]
@@ -118,8 +118,9 @@ def test_play_from_index_invalid(mock_mqs):
     assert not result["ok"]
 
 
-def test_enqueue_mix(mock_mqs, mock_tas):
-    bridge = MixBridge(query_service=mock_mqs, track_action_service=mock_tas)
+def test_enqueue_mix(mock_mqs, mock_qs):
+    mock_qs.enqueue.return_value = {"ok": True, "count": 2}
+    bridge = MixBridge(query_service=mock_mqs, queue_service=mock_qs)
     bridge.loadMix("favorites")
     result = bridge.enqueueMix()
     assert result["ok"]
@@ -157,22 +158,21 @@ def test_save_mix_as_playlist_with_rollback(mock_mqs):
     assert result["ok"] or not result.get("ok")
 
 
-def test_partial_failure_report(mock_mqs):
-    tas = MagicMock()
-    tas.enqueue_track.side_effect = [{"ok": True}, {"ok": False, "error": "NOT_FOUND"}]
-    bridge = MixBridge(query_service=mock_mqs, track_action_service=tas)
+def test_partial_failure_report(mock_mqs, mock_qs):
+    mock_qs.enqueue.return_value = {"ok": False, "error_code": "PARTIAL", "errors": [{"error": "NOT_FOUND"}]}
+    bridge = MixBridge(query_service=mock_mqs, queue_service=mock_qs)
     bridge.loadMix("favorites")
     result = bridge.enqueueMix()
     assert "errors" in result
     assert len(result["errors"]) == 1
 
 
-def test_no_track_action_service():
+def test_no_queue_service():
     bridge = MixBridge()
     bridge._current_songs = [{"track_id": 1}]
     result = bridge.playMix()
     assert not result["ok"]
-    assert result["error_code"] in ("NO_PLAYBACK", "NO_ACTION_SERVICE")
+    assert result["error_code"] == "NO_PLAYBACK"
 
 
 def test_stale_protection():

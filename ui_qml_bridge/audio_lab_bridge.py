@@ -274,6 +274,10 @@ class AudioLabBridge(QObject):
             for key, value in caps.items()
         )
 
+    @Property(int, notify=dataChanged)
+    def totalTracks(self) -> int:
+        return len(self._results)
+
     @Slot(result=dict)
     def capabilityMap(self) -> dict[str, bool]:
         if not self._svc:

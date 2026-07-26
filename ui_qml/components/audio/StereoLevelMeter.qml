@@ -64,7 +64,7 @@ Item {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
-                        anchors.margins: 4
+                        anchors.margins: MichiTheme.spacing.xs
                         height: Math.max(0,
                             (parent.height - 8) * root.normalized(modelData.peak))
                         radius: MichiTheme.radius.xs
@@ -85,8 +85,8 @@ Item {
                         anchors.bottom: parent.bottom
                         anchors.bottomMargin: Math.max(4,
                             (parent.height - 8) * root.normalized(modelData.rms))
-                        anchors.leftMargin: 3
-                        anchors.rightMargin: 3
+                        anchors.leftMargin: MichiTheme.spacing.xxs
+                        anchors.rightMargin: MichiTheme.spacing.xxs
                         height: 2
                         color: MichiTheme.colors.textPrimary
                     }

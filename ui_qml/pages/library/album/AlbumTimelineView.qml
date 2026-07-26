@@ -120,7 +120,7 @@ Item {
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.margins: 3
+                        anchors.margins: MichiTheme.spacing.xxs
                         spacing: 2
 
                         Repeater {
@@ -330,7 +330,7 @@ Item {
                     Rectangle {
                         id: rowSurface
                         anchors.left: parent.left
-                        anchors.leftMargin: 58
+                        anchors.leftMargin: MichiTheme.coverSizeSmall + MichiTheme.spacing.xs
                         anchors.right: parent.right
                         anchors.rightMargin: MichiTheme.spacing.sm
                         anchors.top: parent.top

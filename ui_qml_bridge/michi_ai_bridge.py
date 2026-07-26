@@ -31,6 +31,7 @@ class MichiAIBridge(QObject):
         michi_ai_service=None,
         job_service=None,
         confirmation_service=None,
+        device_sync_service=None,
         action_registry: ActionRegistry | None = None,
         navigation_bridge: NavigationBridge | None = None,
         capability_bridge: CapabilityBridge | None = None,
@@ -39,6 +40,8 @@ class MichiAIBridge(QObject):
         parent=None,
     ):
         super().__init__(parent)
+        self._dev_svc = device_sync_service
+        self._ai_svc = michi_ai_service
         self._ai_engine = michi_ai_service
         self._job_svc = job_service
         self._confirm_svc = confirmation_service
@@ -214,6 +217,10 @@ class MichiAIBridge(QObject):
     @Slot(str)
     def sendMessage(self, text: str):
         self._chat_history.append({"role": "user", "text": text})
+        normalized = text.strip().lower()
+        if normalized in ("cancel", "detener", "parar"):
+            self.cancel()
+            return
         self._set_status("PLANNING")
 
         if not self._ai_engine:

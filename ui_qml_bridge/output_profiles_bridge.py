@@ -16,7 +16,6 @@ class OutputProfilesBridge(QObject):
     appliedStateChanged = Signal(str)
 
     def __init__(self, player_service=None, parent=None):
-        assert player_service is not None, "OutputProfilesBridge: player_service is REQUIRED"
         super().__init__(parent)
         logger.debug("OutputProfilesBridge.__init__ called")
         self._player = player_service

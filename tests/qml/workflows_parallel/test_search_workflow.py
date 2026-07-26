@@ -16,22 +16,14 @@ def mock_service():
     svc.search.return_value = {
         "ok": True, "request_id": 1,
         "results": [
-            {"type": "track", "id": 1, "title": "Bohemian Rhapsody",
-             "subtitle": "Queen · A Night at the Opera", "section": "track", "score": 1.0},
-            {"type": "album", "id": 10, "title": "A Night at the Opera",
-             "subtitle": "Queen", "section": "album", "score": 0.9},
-            {"type": "artist", "id": 20, "title": "Queen", "subtitle": "",
-             "section": "artist", "score": 0.85},
+            {"type": "track", "id": 1, "title": "Supper's Ready",
+             "subtitle": "Genesis · Foxtrot", "section": "Canciones", "score": 1.0},
+            {"type": "album", "id": "key1", "title": "Foxtrot",
+             "subtitle": "Genesis · 1972", "section": "Álbumes", "score": 0.90},
             {"type": "playlist", "id": 30, "title": "Queen Essentials",
              "subtitle": "20 canciones", "section": "playlist", "score": 0.7},
-            {"type": "track", "id": 1, "title": "Supper's Ready", "subtitle": "Genesis · Foxtrot",
-             "section": "Canciones", "score": 1.0},
-            {"type": "track", "id": 2, "title": "Firth of Fifth", "subtitle": "Genesis · Selling England",
-             "section": "Canciones", "score": 0.95},
-            {"type": "album", "id": "key1", "title": "Foxtrot", "subtitle": "Genesis · 1972",
-             "section": "Álbumes", "score": 0.90},
-            {"type": "artist", "id": 10, "title": "Genesis", "subtitle": "Rock progresivo",
-             "section": "Artistas", "score": 0.85},
+            {"type": "artist", "id": 10, "title": "Genesis",
+             "subtitle": "Rock progresivo", "section": "Artistas", "score": 0.85},
         ],
         "count": 4,
     }
@@ -43,12 +35,6 @@ def bridge(mock_service):
     return GlobalSearchBridge(search_service=mock_service)
 
 
-class TestFullSearchWorkflow:
-    def test_type_query_returns_results(self, bridge):
-        result = bridge.search("Genesis")
-        assert result["ok"]
-        assert result["count"] == 4
-        assert len(bridge.results) == 4
 class TestSearchWorkflow:
     """Complete search workflow: query  debounce  navigate  activate."""
 
@@ -104,7 +90,7 @@ class TestSearchWorkflow:
         assert len(bridge.results) == 0
 
     def test_wf_result_has_score(self, bridge):
-        bridge.search("Queen")
+        bridge.search("Genesis")
         for r in bridge.results:
             assert r["score"] > 0
 class TestFullSearchWorkflow:
