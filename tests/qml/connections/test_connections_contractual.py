@@ -46,25 +46,11 @@ class TestConnectionWorkflows:
     @pytest.fixture
     def mock_ctrl(self):
         ctrl = MagicMock()
-        s1, s2 = MagicMock(), MagicMock()
-        s1.name = "Server1"
-        s1.host = "10.0.0.1"
-        s2.name = "Server2"
-        s2.host = "10.0.0.2"
-        ctrl.discover_servers.return_value = [s1, s2]
-        ctrl.get_capabilities.return_value = {
-            "micro_server_state": "connected",
-            "micro_server_name": "Micro Server",
-            "contract_ok": True,
-            "can_continue_playback": True,
-            "can_import": True,
-        }
+        ctrl.discover.return_value = [
+            {"name": "Server1", "host": "10.0.0.1"},
+            {"name": "Server2", "host": "10.0.0.2"},
+        ]
         ctrl.reconnect.return_value = True
-        ctrl.get_connection_state.return_value = {
-            "micro_server_state": "connected",
-            "micro_server_name": "My Server",
-        }
-        ctrl.is_connected = True
         return ctrl
 
     @pytest.fixture
@@ -75,7 +61,7 @@ class TestConnectionWorkflows:
         if mock_ctrl:
             result = bridge.scanForServers()
             assert result["ok"] is True
-            assert mock_ctrl.discover_servers.called
+            assert mock_ctrl.discover.called
 
     def test_scan_populates_discovered(self, bridge, mock_ctrl):
         if mock_ctrl:

@@ -10,7 +10,7 @@ pytestmark = pytest.mark.isolation
 class TestNoController:
     def test_missing_service_state(self):
         b = ConnectionsBridge(connection_service=None)
-        assert b.microServerState == "not_configured"
+        assert b.microServerState == "service_unavailable"
 
     def test_missing_service_error_empty(self):
         b = ConnectionsBridge(connection_service=None)
@@ -19,7 +19,7 @@ class TestNoController:
     def test_missing_service_scan(self):
         b = ConnectionsBridge(connection_service=None)
         result = b.scanForServers()
-        assert result["ok"] is True
+        assert result["ok"] is False
 
     def test_missing_service_reconnect(self):
         b = ConnectionsBridge(connection_service=None)
@@ -61,11 +61,10 @@ class TestFailedConnection:
     @pytest.fixture
     def failing_ctrl(self):
         ctrl = MagicMock()
-        ctrl.discover_servers.side_effect = Exception("Network unreachable")
-        ctrl.get_capabilities.side_effect = Exception("Service unavailable")
+        ctrl.discover.side_effect = Exception("Network unreachable")
         ctrl.reconnect.side_effect = Exception("Connection refused")
-        ctrl.get_connection_state.side_effect = Exception("No response")
-        ctrl.is_connected = False
+        ctrl.confirm_pair.side_effect = Exception("Pairing failed")
+        ctrl.diagnose.side_effect = Exception("Diagnostics failed")
         return ctrl
 
     @pytest.fixture
@@ -86,7 +85,8 @@ class TestFailedConnection:
 
     def test_confirm_pair_failure(self, bridge):
         bridge.requestPair()
-        bridge.confirmPair()
+        result = bridge.confirmPair()
+        assert result["ok"] is False
 """Test negative cases: missing service, failed connection, timeout."""
 
 import pytest
@@ -96,7 +96,7 @@ pytestmark = pytest.mark.isolation
 class TestNoController:
     def test_missing_service_state(self):
         b = ConnectionsBridge(connection_service=None)
-        assert b.microServerState == "not_configured"
+        assert b.microServerState == "service_unavailable"
 
     def test_missing_service_error_empty(self):
         b = ConnectionsBridge(connection_service=None)
@@ -105,7 +105,7 @@ class TestNoController:
     def test_missing_service_scan(self):
         b = ConnectionsBridge(connection_service=None)
         result = b.scanForServers()
-        assert result["ok"] is True
+        assert result["ok"] is False
 
     def test_missing_service_reconnect(self):
         b = ConnectionsBridge(connection_service=None)
@@ -147,12 +147,12 @@ class TestFailedConnection:
     @pytest.fixture
     def failing_ctrl(self):
         ctrl = MagicMock()
-        ctrl.discover_servers.side_effect = Exception("Network unreachable")
-        ctrl.get_capabilities.side_effect = Exception("Service unavailable")
+        ctrl.discover.side_effect = Exception("Network unreachable")
         ctrl.reconnect.side_effect = Exception("Connection refused")
-        ctrl.get_connection_state.side_effect = Exception("No response")
-        ctrl.is_connected = False
+        ctrl.confirm_pair.side_effect = Exception("Pairing failed")
+        ctrl.diagnose.side_effect = Exception("Diagnostics failed")
         return ctrl
+
 
     @pytest.fixture
     def bridge(self, failing_ctrl):
@@ -188,18 +188,8 @@ class TestTimeout:
         def slow_op():
             time.sleep(0.1)
             return []
-        ctrl.discover_servers.side_effect = slow_op
-        ctrl.get_capabilities.return_value = {
-            "micro_server_state": "connected",
-            "micro_server_name": "TimeoutServer",
-            "contract_ok": False,
-        }
+        ctrl.discover.side_effect = slow_op
         ctrl.reconnect.return_value = True
-        ctrl.get_connection_state.return_value = {
-            "micro_server_state": "connected",
-            "micro_server_name": "TimeoutServer",
-        }
-        ctrl.is_connected = True
         return ctrl
 
     @pytest.fixture

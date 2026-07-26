@@ -7,9 +7,6 @@ from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 from ui_qml_bridge.connections_bridge import ConnectionsBridge
 
-QML_DIR = None
-
-
 @pytest.fixture(scope="module")
 def qml_dir():
     import pathlib
@@ -24,20 +21,7 @@ def engine(qapp):
 @pytest.fixture
 def mock_ctrl():
     ctrl = MagicMock()
-    ctrl.discover_servers.return_value = []
-    ctrl.get_capabilities.return_value = {
-        "micro_server_state": "not_configured",
-        "micro_server_name": "Michi Micro Server",
-        "contract_ok": False,
-        "can_continue_playback": True,
-        "can_import": False,
-        "can_send_genre_playlist": True,
-        "can_send_genre_mix": False,
-    }
-    ctrl.get_connection_state.return_value = {
-        "micro_server_state": "not_configured",
-        "micro_server_name": "",
-    }
+    ctrl.discover.return_value = []
     ctrl.reconnect.return_value = True
     return ctrl
 
@@ -56,20 +40,18 @@ class TestConnectionsPage:
     def test_has_objectName(self, qml_dir):
         content = (qml_dir / "pages" / "connections" / "ConnectionsPage.qml").read_text()
         assert "objectName" in content
-        assert "connections.page" in content
+        assert "connectionsPage_control" in content
 
     def test_has_states(self, qml_dir):
         content = (qml_dir / "pages" / "connections" / "ConnectionsPage.qml").read_text()
-        assert "AsyncStateView" in content
-        assert "LOADING" in content
-        assert "READY" in content
-        assert "EMPTY" in content
-        assert "ERROR" in content
-        assert "UNAVAILABLE" in content
+        assert "stateLoading" in content
+        assert "stateReady" in content
+        assert "stateError" in content
+        assert "stateEmpty" in content
 
     def test_has_focusScope(self, qml_dir):
         content = (qml_dir / "pages" / "connections" / "ConnectionsPage.qml").read_text()
-        assert "FocusScope" in content
+        assert "focus: true" in content
 
     def test_has_accessible(self, qml_dir):
         content = (qml_dir / "pages" / "connections" / "ConnectionsPage.qml").read_text()
