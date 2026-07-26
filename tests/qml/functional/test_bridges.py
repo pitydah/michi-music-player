@@ -42,7 +42,7 @@ BRIDGE_MODULES = [
     "ui_qml_bridge.michi_ai_bridge",
     "ui_qml_bridge.output_profiles_bridge",
     "ui_qml_bridge.accessibility_bridge",
-    "ui_qml_bridge.settings_bridge_v2",
+    "ui_qml_bridge.settings_bridge",
     "ui_qml_bridge.capability_bridge",
     "ui_qml_bridge.confirmation_bridge",
     "ui_qml_bridge.command_palette_bridge",

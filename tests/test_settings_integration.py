@@ -84,7 +84,7 @@ class TestSettingsIntegration:
         assert "public" in str(r)
 
     def test_settings_bridge_has_execute(self):
-        from ui_qml_bridge.settings_bridge_v2 import SettingsBridgeV2
+        from ui_qml_bridge.settings_bridge import SettingsBridgeV2
         assert hasattr(SettingsBridgeV2, 'setValue')
 
     def test_settings_schema_has_entries(self):

@@ -234,7 +234,7 @@ class BridgeFactory(QObject):
 
     def create_settings_bridge(self):
         if "settings" not in self._bridges:
-            from ui_qml_bridge.settings_bridge_v2 import SettingsBridgeV2
+            from ui_qml_bridge.settings_bridge import SettingsBridgeV2
             bridge = SettingsBridgeV2(service=self._get("settings_service"))
             self._bridges["settings"] = bridge
             navigation = self._bridges.get("navigation")

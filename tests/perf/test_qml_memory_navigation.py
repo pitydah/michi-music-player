@@ -41,7 +41,7 @@ def test_page_state_store_memory_bound(_qt_app):
 
 
 def test_settings_bridge_no_growth(_qt_app):
-    from ui_qml_bridge.settings_bridge_v2 import SettingsBridgeV2
+    from ui_qml_bridge.settings_bridge import SettingsBridgeV2
     bridges = []
     for _ in range(20):
         svc = MagicMock()

@@ -47,7 +47,7 @@ from ui_qml_bridge.radio_bridge import RadioBridge
 from ui_qml_bridge.route_registry_bridge import RouteRegistryBridge
 from ui_qml_bridge.runtime_quality_bridge import RuntimeQualityBridge
 from ui_qml_bridge.selection_context_bridge import SelectionContextBridge
-from ui_qml_bridge.settings_bridge_v2 import SettingsBridgeV2
+from ui_qml_bridge.settings_bridge import SettingsBridgeV2
 from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
 from ui_qml_bridge.theme_bridge import ThemeBridge
 

@@ -118,7 +118,7 @@ class TestNameNormalization:
     def test_playback_not_player_service(self):
         assert QML_CONTEXT_BINDINGS.get("playbackBridge") is None
 
-    def test_settings_bridge_class_is_settings_bridge_v2(self):
+    def test_settings_bridge_class_is_settings_bridge(self):
         sb = next(b for b in CONTEXT_BINDINGS if b.context_name == "settingsBridge")
         assert sb.bridge_class.__name__ == "SettingsBridgeV2"
 

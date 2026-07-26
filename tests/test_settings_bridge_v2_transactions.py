@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ui_qml_bridge.settings_bridge_v2 import SettingsBridgeV2
+from ui_qml_bridge.settings_bridge import SettingsBridgeV2
 
 
 class FakeSettingsService:
