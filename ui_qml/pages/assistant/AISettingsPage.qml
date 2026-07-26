@@ -46,11 +46,11 @@ Item {
 
             Repeater {
                 model: [
-                    {id: "calico", name: "Michi Calico 🐱", desc: "Siempre disponible. Sin descarga. Reglas + plantillas en español.", size: "0 MB", ram: "< 50 MB", cpu: "Cualquiera", status: "always"},
-                    {id: "munchkin", name: "Michi Munchkin 🐈", desc: "Pequeño y rápido. Para PCs básicos.", size: "350 MB", ram: "~500 MB", cpu: "2 núcleos", status: ""},
-                    {id: "carey", name: "Michi Carey 🐈‍⬛", desc: "Equilibrado. Para PCs de gama media.", size: "1 GB", ram: "~1.5 GB", cpu: "4 núcleos", status: ""},
-                    {id: "maine_coon", name: "Michi Maine Coon 🐱‍👓", desc: "El más capaz. Para PCs potentes.", size: "2 GB", ram: "~3 GB", cpu: "6+ núcleos", status: ""},
-                    {id: "sphynx", name: "Michi Sphynx 🐱‍💻", desc: "Usa Ollama (modelo externo).", size: "Variable", ram: "Variable", cpu: "Variable", status: ""},
+                    {id: "calico", name: "Michi Calico ", desc: "Siempre disponible. Sin descarga. Reglas + plantillas en español.", size: "0 MB", ram: "< 50 MB", cpu: "Cualquiera", status: "always"},
+                    {id: "munchkin", name: "Michi Munchkin ", desc: "Pequeño y rápido. Para PCs básicos.", size: "350 MB", ram: "~500 MB", cpu: "2 núcleos", status: ""},
+                    {id: "carey", name: "Michi Carey ⬛", desc: "Equilibrado. Para PCs de gama media.", size: "1 GB", ram: "~1.5 GB", cpu: "4 núcleos", status: ""},
+                    {id: "maine_coon", name: "Michi Maine Coon ", desc: "El más capaz. Para PCs potentes.", size: "2 GB", ram: "~3 GB", cpu: "6+ núcleos", status: ""},
+                    {id: "sphynx", name: "Michi Sphynx ", desc: "Usa Ollama (modelo externo).", size: "Variable", ram: "Variable", cpu: "Variable", status: ""},
                 ]
 
                 delegate: GlassCard {
