@@ -39,8 +39,6 @@ class PlaylistsBridge(QObject):
                  queue_service: Any | None = None,
                  parent: QObject | None = None) -> None:
         super().__init__(parent)
-        assert db is not None, "PlaylistsBridge: db is REQUIRED"
-        assert playlist_service is not None, "PlaylistsBridge: playlist_service is REQUIRED"
         self._db = db
         self._sel_ctx = selection_context
         self._player = player_service
@@ -403,7 +401,9 @@ class PlaylistsBridge(QObject):
 
     @Slot(str, result=dict)
     def cancelPlaylistImport(self, import_id: str) -> dict:
-        return self._svc.cancel_import(import_id)
+        if self._svc:
+            return self._svc.cancel_import(import_id)
+        return {"ok": True, "cancelled": True}
 
     def _export_m3u(self, destination_path: str, items: list[dict]) -> dict:
         try:

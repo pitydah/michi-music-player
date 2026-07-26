@@ -20,10 +20,13 @@ def mock_mix_svc():
 
 @pytest.fixture
 def bridge(mock_mix_svc):
+    queue_svc = MagicMock()
+    queue_svc.replace_and_play.return_value = {"ok": True}
+    queue_svc.enqueue.return_value = {"ok": True, "count": 5}
     return MixBridge(
         mix_service=mock_mix_svc,
         playback_service=MagicMock(),
-        queue_service=MagicMock(),
+        queue_service=queue_svc,
         playlist_service=MagicMock(),
     )
 

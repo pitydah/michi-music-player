@@ -196,7 +196,7 @@ def test_export_m3u(svc, tmp_path):
     svc._db.add_track_to_playlist(pid, filepath="/path/a.flac")
     dest = tmp_path / "out.m3u"
     with patch("core.playlist_service.Path.is_file", return_value=True), \
-         patch("ui.playlist_io.export_m3u") as mock_export:
+         patch("core.playlist_io.export_m3u") as mock_export:
         result = svc.export(pid, str(dest))
         assert result["ok"]
         mock_export.assert_called_once()

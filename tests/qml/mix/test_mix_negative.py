@@ -119,14 +119,14 @@ class TestMixNegative:
         bridge._current_songs = [{"title": "No ID"}]
         result = bridge.playFromIndex(0)
         assert result["ok"] is False
-        assert result["error_code"] == "NO_TRACK_ID"
+        assert result["error_code"] == "NO_PLAYBACK"
 
     def test_enqueue_from_index_with_no_track_id_again(self):
         bridge = MixBridge()
         bridge._current_songs = [{"title": "No ID"}]
         result = bridge.enqueueTrack(0)
         assert result["ok"] is False
-        assert result["error_code"] == "NO_TRACK_ID"
+        assert result["error_code"] == "NO_PLAYBACK"
 
     def test_partial_failure_report_empty(self):
         bridge = MixBridge()

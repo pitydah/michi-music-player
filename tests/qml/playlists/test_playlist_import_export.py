@@ -1,9 +1,11 @@
 """Test M3U import/export, preview, cancel, progress."""
 """Tests for PlaylistImportDialog and PlaylistExportDialog: import/export flows."""
 """Test M3U import/export, preview, cancel, progress."""
+import sqlite3
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
+from core.playlist_service import PlaylistService
 from ui_qml_bridge.playlists_bridge import PlaylistsBridge
 
 pytestmark = [pytest.mark.qml_module("playlists")]
@@ -12,7 +14,7 @@ pytestmark = [pytest.mark.qml_module("playlists")]
 class TestPlaylistImportExport:
 
     def test_import_preview_no_service(self):
-        bridge = PlaylistsBridge()
+        bridge = PlaylistsBridge(db=MagicMock(), playlist_service=MagicMock())
         result = bridge.previewPlaylistImport("/tmp/test.m3u")
         assert result["ok"] is False
         assert result["error"] == "NO_SERVICE"
@@ -20,7 +22,7 @@ class TestPlaylistImportExport:
     def test_import_preview_with_service(self):
         svc = MagicMock()
         svc.import_preview.return_value = {"ok": True, "total_entries": 10, "valid_entries": 8, "missing_entries": 2}
-        bridge = PlaylistsBridge(playlist_service=svc)
+        bridge = PlaylistsBridge(db=MagicMock(), playlist_service=svc)
         result = bridge.previewPlaylistImport("/tmp/test.m3u")
         assert result["ok"] is True
         assert result["total_entries"] == 10
@@ -29,13 +31,13 @@ class TestPlaylistImportExport:
     def test_import_preview_service_error(self):
         svc = MagicMock()
         svc.import_preview.return_value = {"ok": False, "error": "INVALID_FORMAT"}
-        bridge = PlaylistsBridge(playlist_service=svc)
+        bridge = PlaylistsBridge(db=MagicMock(), playlist_service=svc)
         result = bridge.previewPlaylistImport("/tmp/bad.pls")
         assert result["ok"] is False
         assert result["error"] == "INVALID_FORMAT"
 
     def test_confirm_import_no_service(self):
-        bridge = PlaylistsBridge()
+        bridge = PlaylistsBridge(db=MagicMock(), playlist_service=MagicMock())
         result = bridge.confirmPlaylistImport("/tmp/test.m3u")
         assert result["ok"] is False
         assert result["error"] == "NO_SERVICE"
@@ -43,7 +45,7 @@ class TestPlaylistImportExport:
     def test_confirm_import_with_service(self):
         svc = MagicMock()
         svc.import_confirm.return_value = {"ok": True, "name": "Imported", "count": 8}
-        bridge = PlaylistsBridge(playlist_service=svc)
+        bridge = PlaylistsBridge(db=MagicMock(), playlist_service=svc)
         result = bridge.confirmPlaylistImport("/tmp/test.m3u", "My Playlist")
         assert result["ok"] is True
         assert result["count"] == 8
@@ -59,7 +61,7 @@ class TestPlaylistImportExport:
     def test_import_m3u_alias(self):
         svc = MagicMock()
         svc.import_confirm.return_value = {"ok": True, "name": "Test", "count": 5}
-        bridge = PlaylistsBridge(playlist_service=svc)
+        bridge = PlaylistsBridge(db=MagicMock(), playlist_service=svc)
         result = bridge.importM3U("/tmp/test.m3u")
         assert result["ok"] is True
         assert result["count"] == 5
@@ -70,7 +72,7 @@ class TestPlaylistImportExport:
     def test_import_m3u8_alias(self):
         svc = MagicMock()
         svc.import_confirm.return_value = {"ok": True, "name": "Test", "count": 5}
-        bridge = PlaylistsBridge(playlist_service=svc)
+        bridge = PlaylistsBridge(db=MagicMock(), playlist_service=svc)
         result = bridge.importM3U8("/tmp/test.m3u8")
         assert result["ok"] is True
     def remove_track_from_playlist(self, pid, track_id):
@@ -78,20 +80,20 @@ class TestPlaylistImportExport:
         self.conn.commit()
 
     def test_cancel_import_no_service(self):
-        bridge = PlaylistsBridge()
+        bridge = PlaylistsBridge(db=MagicMock(), playlist_service=MagicMock())
         result = bridge.cancelPlaylistImport("import_1")
         assert result["ok"] is True
 
     def test_cancel_import_with_service(self):
         svc = MagicMock()
         svc.import_cancel.return_value = {"ok": True, "cancelled": True}
-        bridge = PlaylistsBridge(playlist_service=svc)
+        bridge = PlaylistsBridge(db=MagicMock(), playlist_service=svc)
         result = bridge.cancelPlaylistImport("import_1")
         assert result["ok"] is True
         svc.import_cancel.assert_called_once_with("import_1")
 
     def test_export_m3u_no_service(self):
-        bridge = PlaylistsBridge()
+        bridge = PlaylistsBridge(db=MagicMock(), playlist_service=MagicMock())
         result = bridge.exportM3U(1, "/tmp/export.m3u")
         assert result["ok"] is False
         assert result["error"] == "NO_SERVICE"
@@ -99,7 +101,7 @@ class TestPlaylistImportExport:
     def test_export_m3u_with_service(self):
         svc = MagicMock()
         svc.export.return_value = {"ok": True, "count": 10}
-        bridge = PlaylistsBridge(playlist_service=svc)
+        bridge = PlaylistsBridge(db=MagicMock(), playlist_service=svc)
         result = bridge.exportM3U(1, "/tmp/export.m3u")
         assert result["ok"] is True
         assert result["count"] == 10
@@ -108,7 +110,7 @@ class TestPlaylistImportExport:
     def test_export_m3u8_alias(self):
         svc = MagicMock()
         svc.export.return_value = {"ok": True, "count": 5}
-        bridge = PlaylistsBridge(playlist_service=svc)
+        bridge = PlaylistsBridge(db=MagicMock(), playlist_service=svc)
         result = bridge.exportM3U8(1, "/tmp/export.m3u8")
         assert result["ok"] is True
 
@@ -122,7 +124,7 @@ class TestPlaylistImportExport:
     def test_export_service_error(self):
         svc = MagicMock()
         svc.export.return_value = {"ok": False, "error": "WRITE_FAILED"}
-        bridge = PlaylistsBridge(playlist_service=svc)
+        bridge = PlaylistsBridge(db=MagicMock(), playlist_service=svc)
         result = bridge.exportM3U(1, "/tmp/fail.m3u")
         assert result["ok"] is False
         assert result["error"] == "WRITE_FAILED"
@@ -173,7 +175,7 @@ class TestPlaylistImportExport:
         ]
         db.get_playlist_items.return_value = items
         player = MagicMock()
-        bridge = PlaylistsBridge(db=db, player_service=player)
+        bridge = PlaylistsBridge(db=db, player_service=player, playlist_service=MagicMock())
         result = bridge.playPlaylistFromIndex(1, 1)
         assert result["ok"] is True
 class TestPlaylistImportExport:
@@ -268,3 +270,68 @@ class TestPlaylistImportExport:
         result = svc.import_confirm(str(m3u8), "FromM3U8")
         assert result["ok"]
         assert result["count"] == 1
+
+
+class _FakeDb:
+    def __init__(self, conn):
+        self.conn = conn
+
+    def get_playlists(self):
+        return self.conn.execute("SELECT id, name, track_count FROM playlists").fetchall()
+
+    def create_playlist(self, name):
+        self.conn.execute("INSERT INTO playlists (name) VALUES (?)", (name,))
+        self.conn.commit()
+        return self.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+    def add_track_to_playlist(self, pid, track_id=None, filepath=None):
+        self.conn.execute(
+            "INSERT INTO playlist_tracks (playlist_id, track_id, filepath, position) "
+            "VALUES (?, ?, ?, (SELECT COALESCE(MAX(position), -1) + 1 FROM playlist_tracks WHERE playlist_id=?))",
+            (pid, track_id, filepath, pid)
+        )
+        self.conn.commit()
+
+    def remove_track_from_playlist(self, pid, track_id):
+        self.conn.execute("DELETE FROM playlist_tracks WHERE playlist_id=? AND track_id=?", (pid, track_id))
+        self.conn.commit()
+
+    def get_playlist_items(self, pid):
+        rows = self.conn.execute(
+            "SELECT track_id, filepath, position FROM playlist_tracks WHERE playlist_id=? ORDER BY position",
+            (pid,)
+        ).fetchall()
+        return [{"id": r[0] or 0, "track_id": r[0] or 0, "filepath": r[1] or "", "position": r[2] or idx,
+                 "title": "", "artist": "", "album": "", "duration": 0}
+                for idx, r in enumerate(rows)]
+
+    def clear_playlist(self, pid):
+        self.conn.execute("DELETE FROM playlist_tracks WHERE playlist_id=?", (pid,))
+        self.conn.commit()
+
+    def delete_playlist(self, pid):
+        self.conn.execute("DELETE FROM playlists WHERE id=?", (pid,))
+        self.conn.commit()
+
+
+@pytest.fixture
+def db_conn():
+    conn = sqlite3.connect(":memory:")
+    conn.execute("""CREATE TABLE IF NOT EXISTS playlists (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
+        track_count INTEGER DEFAULT 0, description TEXT DEFAULT '',
+        cover TEXT DEFAULT '', smart_rule TEXT DEFAULT '', created_at TEXT DEFAULT '')""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS playlist_tracks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, playlist_id INTEGER NOT NULL,
+        track_id INTEGER, filepath TEXT, position INTEGER DEFAULT 0, added_at TEXT DEFAULT '')""")
+    return conn
+
+
+@pytest.fixture
+def fake_db(db_conn):
+    return _FakeDb(db_conn)
+
+
+@pytest.fixture
+def svc(fake_db):
+    return PlaylistService(db=fake_db)

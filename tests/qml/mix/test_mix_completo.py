@@ -38,9 +38,12 @@ def mock_mix_svc():
 
 @pytest.fixture
 def mock_services():
+    queue_svc = MagicMock()
+    queue_svc.replace_and_play.return_value = {"ok": True}
+    queue_svc.enqueue.return_value = {"ok": True, "count": 2}
     return {
         "playback_svc": MagicMock(),
-        "queue_svc": MagicMock(),
+        "queue_svc": queue_svc,
         "playlist_svc": MagicMock(),
         "nav": MagicMock(),
         "page_state": MagicMock(),

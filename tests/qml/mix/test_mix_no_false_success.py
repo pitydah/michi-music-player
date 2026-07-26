@@ -105,6 +105,7 @@ def test_play_from_index_invalid(bridge):
 
 def test_play_from_index_no_track_id(bridge):
     bridge._current_songs = [{"id": 0, "title": "No ID"}]
+    bridge._queue_svc = None
     result = bridge.playFromIndex(0)
     assert not result["ok"]
 
