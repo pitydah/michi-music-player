@@ -28,5 +28,10 @@ def build(container: ServiceContainer) -> None:
                                 player_service=ps, worker_manager=wm)
         container.register("diagnostics_service", ds)
     except Exception:
-        logger.error("Failed to create DiagnosticsService", exc_info=True)
         container.register("diagnostics_service", None)
+    try:
+        from core.audio_lab.cd_ripper_service import CDRipperService
+        crs = CDRipperService()
+        container.register("cd_ripper_service", crs)
+    except Exception:
+        container.register("cd_ripper_service", None)
