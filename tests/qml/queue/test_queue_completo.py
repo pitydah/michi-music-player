@@ -83,12 +83,13 @@ class TestQueueCompleto:
         service.clear()
         assert service.count == 0
         result = service.undo()
-        assert result is True
+        assert result["ok"]
         assert service.count == 2
 
     def test_undo_no_state(self, service):
         result = service.undo()
-        assert result is False
+        assert not result["ok"]
+        assert result["error"] == "NOTHING_TO_UNDO"
 
     def test_get_current(self, service):
         service.add({"track_id": 1, "title": "A"})
@@ -100,12 +101,10 @@ class TestQueueCompleto:
         assert current is None
 
     def test_play_from_index(self, mock_player):
-        bridge = QueueBridge(player_service=mock_player)
-        mock_player.get_queue.return_value = [
-            {"track_id": 1, "title": "A", "source_type": "local_file", "duration": 200},
-            {"track_id": 2, "title": "B", "source_type": "local_file", "duration": 200},
-        ]
-        mock_player.play_index = MagicMock()
+        svc = QueueService(player_service=mock_player)
+        svc.add({"track_id": 1, "title": "A", "source_type": "local_file", "duration": 200, "filepath": "/a.flac"})
+        svc.add({"track_id": 2, "title": "B", "source_type": "local_file", "duration": 200, "filepath": "/b.flac"})
+        bridge = QueueBridge(player_service=mock_player, queue_service=svc)
         result = bridge.playFromIndex(1)
         assert result["ok"]
 
@@ -148,8 +147,9 @@ class TestQueueCompleto:
 
     def test_shuffle_property(self, service):
         assert service.shuffle_order is None
-        service.shuffle_order = [2, 0, 1]
-        assert service.shuffle_order == [2, 0, 1]
+        service.set_shuffle(True)
+        assert service.shuffle is True
+        assert service.shuffle_order is not None
 
     def test_repeat_property(self, service):
         assert service.repeat == "none"
@@ -161,13 +161,16 @@ class TestQueueCompleto:
         service.context = "album:123"
         assert service.context == "album:123"
 
-    def test_bridge_save_as_playlist(self, mock_player):
+    def test_bridge_save_as_playlist(self, service, mock_player):
+        service.add({"track_id": 1, "title": "A"})
         mock_pb = MagicMock()
         mock_pb.saveQueueAsPlaylist.return_value = {"ok": True}
-        bridge = QueueBridge(player_service=mock_player, playlists_bridge=mock_pb)
+        bridge = QueueBridge(player_service=mock_player, playlists_bridge=mock_pb, queue_service=service)
         result = bridge.saveAsPlaylist("My Queue")
         assert result["ok"]
 
-    def test_bridge_no_player(self):
-        bridge = QueueBridge()
-        assert bridge.playFromIndex(0)["error"] == "NO_PLAYER"
+    def test_bridge_no_player(self, service):
+        service.add({"track_id": 1, "title": "A", "filepath": "/a.flac"})
+        bridge = QueueBridge(queue_service=service)
+        result = bridge.playFromIndex(0)
+        assert result["error"] == "NO_PLAYER"
