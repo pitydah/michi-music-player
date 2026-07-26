@@ -43,6 +43,12 @@ class PlaylistsBridge(QObject):
         self._sel_ctx = selection_context
         self._player = player_service
         self._svc = playlist_service
+        if self._svc is None and self._db is not None:
+            try:
+                from core.playlist_service import PlaylistService
+                self._svc = PlaylistService(db=self._db)
+            except Exception:
+                pass
         self._queue_service = queue_service
         self._action_registry = action_registry
         self._confirmation = confirmation_bridge
@@ -118,7 +124,9 @@ class PlaylistsBridge(QObject):
 
     @Slot(str, result=dict)
     def createPlaylist(self, name: str) -> dict:
-        result = self._svc.create(name) if self._can() else {"ok": False, "error": "NO_DB"}
+        result = (self._svc.create(name)
+                  if self._svc is not None and self._can()
+                  else {"ok": False, "error": "NO_DB"})
         if result.get("ok"):
             self.refresh()
             self._notify(f"Playlist '{name}' creada", "success")
@@ -126,7 +134,9 @@ class PlaylistsBridge(QObject):
 
     @Slot(int, str, result=dict)
     def renamePlaylist(self, pid: int, name: str) -> dict:
-        result = self._svc.rename(pid, name) if self._can() else {"ok": False, "error": "NO_DB"}
+        result = (self._svc.rename(pid, name)
+                  if self._svc is not None and self._can()
+                  else {"ok": False, "error": "NO_DB"})
         if result.get("ok"):
             self.refresh()
             self._notify(f"Playlist renombrada a '{name}'", "success")
@@ -134,7 +144,9 @@ class PlaylistsBridge(QObject):
 
     @Slot(int, result=dict)
     def duplicatePlaylist(self, pid: int) -> dict:
-        result = self._svc.duplicate(pid) if self._can() else {"ok": False, "error": "NO_DB"}
+        result = (self._svc.duplicate(pid)
+                  if self._svc is not None and self._can()
+                  else {"ok": False, "error": "NO_DB"})
         if result.get("ok"):
             self.refresh()
             self._notify(f"Playlist duplicada como '{result.get('name', '')}'", "success")
@@ -157,6 +169,8 @@ class PlaylistsBridge(QObject):
         return self._execute_delete(pid, name)
 
     def _execute_delete(self, pid: int, name: str) -> dict:
+        if self._svc is None:
+            return {"ok": False, "error": "NO_SERVICE"}
         result = self._svc.delete(pid)
         if result.get("ok"):
             self.refresh()
@@ -178,6 +192,8 @@ class PlaylistsBridge(QObject):
         return self._execute_clear(pid)
 
     def _execute_clear(self, pid: int) -> dict:
+        if self._svc is None:
+            return {"ok": False, "error": "NO_SERVICE"}
         result = self._svc.clear_playlist(pid)
         if result.get("ok"):
             self.refresh()
@@ -224,7 +240,7 @@ class PlaylistsBridge(QObject):
 
     @Slot(int, result=dict)
     def getPlaylistDetail(self, pid: int) -> dict:
-        if not self._can():
+        if not self._can() or self._svc is None:
             return {"ok": False, "error": "NO_DB"}
         result = self._svc.get_detail(pid)
         if not result.get("ok"):
@@ -241,7 +257,7 @@ class PlaylistsBridge(QObject):
             filepath = self._sel_ctx.selectedFilepath
             track_id = self._sel_ctx.selectedTrackId
         try:
-            if track_id:
+            if track_id and self._svc is not None:
                 try:
                     tid = int(track_id)
                 except (ValueError, TypeError):
@@ -250,7 +266,7 @@ class PlaylistsBridge(QObject):
                     result = self._svc.add_track(pid, track_id=tid)
                 else:
                     return {"ok": False, "error": "NO_VALID_TRACK"}
-            elif filepath and Path(filepath).is_file():
+            elif filepath and self._svc is not None and Path(filepath).is_file():
                 result = self._svc.add_track(pid, filepath=filepath)
             else:
                 return {"ok": False, "error": "NO_SELECTION"}

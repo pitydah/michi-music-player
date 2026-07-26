@@ -33,14 +33,14 @@ class TestNavigationBridgeIntegrations:
     def test_navigation_bridge_back_forward_fullcycle(self):
         nav = NavigationBridge()
         nav.navigate("library")
-        nav.navigate("radio")
+        nav.navigate("streaming.radio")
         nav.navigate("playback")
         nav.back()
-        assert nav.currentRoute == "radio"
+        assert nav.currentRoute == "streaming.radio"
         nav.back()
         assert nav.currentRoute == "library"
         nav.forward()
-        assert nav.currentRoute == "radio"
+        assert nav.currentRoute == "streaming.radio"
 
     def test_navigation_bridge_params_validation(self):
         nav = NavigationBridge()
@@ -77,13 +77,13 @@ class TestNavigationBridgeIntegrations:
     def test_navigation_bridge_capability_gate(self):
         nav = NavigationBridge()
         nav.set_capabilities(set())
-        nav.navigate("audio_lab.overview")
+        nav.navigate("audio_lab")
         assert nav.currentRoute == "home"
 
     def test_navigation_bridge_replace(self):
         nav = NavigationBridge()
-        nav.replace("radio")
-        assert nav.currentRoute == "radio"
+        nav.replace("streaming.radio")
+        assert nav.currentRoute == "streaming.radio"
         assert not nav.canGoBack
 
     def test_navigation_bridge_clear_history(self):

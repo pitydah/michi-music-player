@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import os
 import sys
-import time
 from dataclasses import dataclass, field
 from importlib.metadata import version, PackageNotFoundError
 from typing import Any
@@ -34,6 +33,18 @@ def get_app_version() -> str:
         return "0.2.0-alpha.1"
 
 
+def _try_shutdown(svc):
+    if hasattr(svc, 'shutdown') and callable(svc.shutdown):
+        svc.shutdown()
+    elif hasattr(svc, 'stop') and callable(svc.stop):
+        svc.stop()
+
+
+def _try_cancel(svc):
+    if hasattr(svc, 'cancel_all') and callable(svc.cancel_all):
+        svc.cancel_all()
+
+
 class AppBridge(QObject):
     statusChanged = Signal(str)
 
@@ -55,9 +66,13 @@ class AppBridge(QObject):
     PHASE_FAILED = "failed"
 
     def __init__(self, worker_manager=None, query_executor=None,
-                 player_service=None, queue_bridge=None,
-                 sync_manager=None, home_audio_controller=None,
-                 radio_manager=None, discovery=None, db=None, parent=None):
+                 player_service=None, queue_service=None,
+                 device_sync_service=None, connection_service=None,
+                 home_audio_service=None, radio_service=None,
+                 database=None, navigation_bridge=None,
+                 queue_bridge=None, sync_manager=None,
+                 home_audio_controller=None, radio_manager=None,
+                 discovery=None, db=None, parent=None):
         super().__init__(parent)
         self._app_name = "Michi Music Player"
         self._version = get_app_version()
@@ -66,17 +81,56 @@ class AppBridge(QObject):
         self._ready = False
         self._shutting_down = False
         self._restart_required = False
-        self._services: list = [s for s in [worker_manager, query_executor,
-                               player_service, queue_bridge, sync_manager,
-                               home_audio_controller, radio_manager, discovery, db]
-                               if s is not None]
-        self._ui_mode = "qml"
         self._phase = self.BOOTSTRAP
         self._accepting_new = True
         self._shutdown_executed = False
+        self._external_processes: list = []
+        self._navigation_bridge = navigation_bridge
+
+        self._wm = worker_manager
+        self._qe = query_executor
+        self._player_service = player_service
+        self._queue_service = queue_service or queue_bridge
+        self._device_sync_service = device_sync_service or sync_manager
+        self._connection_service = connection_service
+        self._home_audio_service = home_audio_service or home_audio_controller
+        self._radio_service = radio_service or radio_manager
+        self._discovery = discovery
+        self._database = database or db
+
+        self._services: list = [s for s in [
+            self._wm, self._qe, self._player_service,
+            self._queue_service, self._device_sync_service,
+            self._connection_service, self._home_audio_service,
+            self._radio_service, self._navigation_bridge, self._database,
+        ] if s is not None]
+
+        self._ui_mode = "qml"
+
+    @property
+    def _accepting(self):
+        return self._accepting_new
+
+    @_accepting.setter
+    def _accepting(self, value):
+        self._accepting_new = value
 
     def receive_services(self, *services):
         self._services = list(services)
+
+    def set_navigation_bridge(self, nav):
+        self._navigation_bridge = nav
+        if nav and nav not in self._services:
+            self._services.append(nav)
+
+    def track_external_process(self, proc):
+        self._external_processes.append(proc)
+
+    def _persist_page_state(self):
+        pass
+
+    def _close_repositories(self):
+        pass
 
     @Property(str, constant=True)
     def appName(self):
@@ -177,91 +231,112 @@ class AppBridge(QObject):
         ]
         return {"ok": True, "text": "\n".join(lines)}
 
-    @Slot()
+    @Slot(result=dict)
     def quit(self):
         self._shutting_down = True
         self._phase = self.SHUTTING_DOWN
         self._accepting_new = False
         self.statusChanged.emit("shutting_down")
-        self._ordered_shutdown()
+        result = self._ordered_shutdown()
+        return result.to_dict() if isinstance(result, ShutdownResult) else result
 
     SHUTDOWN_TIMEOUT_S = 5.0
 
     def _ordered_shutdown(self):
         if self._shutdown_executed:
-            logger.warning("Shutdown already executed, skipping")
-            return
+            return {"success": True, "steps": []}
         self._shutdown_executed = True
+        sr = ShutdownResult()
 
-        step_defs = [
-            ("set_phase_shutting_down", lambda: self.setPhase(self.SHUTTING_DOWN)),
-            ("cancel_all_tasks", self.cancelAllTasks),
-            ("shutdown_queue_service", lambda: self._shutdown_service("queue_service")),
-            ("shutdown_notification_service", lambda: self._shutdown_service("notification_service")),
-            ("shutdown_device_sync_service", lambda: self._shutdown_service("device_sync_service")),
-            ("shutdown_audio_lab_service", lambda: self._shutdown_service("audio_lab_service")),
-            ("shutdown_playback_service", lambda: self._shutdown_service("playback_service")),
-            ("shutdown_background_workers", lambda: self._shutdown_service("worker_manager")),
-            ("shutdown_settings_service", lambda: self._shutdown_service("settings_service")),
-            ("shutdown_job_service", lambda: self._shutdown_service("job_service")),
-            ("shutdown_service_container", lambda: self._shutdown_service("service_container")),
-            ("shutdown_database", lambda: self._shutdown_service("connection_factory")),
-            ("stop_accepting_new", lambda: setattr(self, '_accepting_new', False)),
-            ("set_phase_stopped", lambda: self.setPhase(self.STOPPED)),
-            ("quit_core_app", lambda: self._call_quit()),
+        steps = [
+            ("block_actions", self._step_block_actions),
+            ("cancel_navigation", self._step_cancel_navigation),
+            ("cancel_queries", self._step_cancel_queries),
+            ("cancel_jobs", self._step_cancel_jobs),
+            ("terminate_subprocesses", self._step_terminate_subprocesses),
+            ("persist_queue", self._step_persist_queue),
+            ("persist_page_state", self._step_persist_page_state),
+            ("stop_device_sync", self._step_stop_device_sync),
+            ("stop_connections", self._step_stop_connections),
+            ("stop_home_audio", self._step_stop_home_audio),
+            ("stop_radio", self._step_stop_radio),
+            ("stop_playback", self._step_stop_playback),
+            ("close_repositories", self._step_close_repositories),
+            ("close_db", self._step_close_db),
         ]
-
-        results = []
-        for step_name, step_fn in step_defs:
-            start = time.monotonic()
-            result = {"step": step_name, "ok": True, "duration_s": 0.0}
+        for step_name, step_fn in steps:
             try:
                 step_fn()
-                result["duration_s"] = round(time.monotonic() - start, 3)
+                sr.record(step_name, True)
             except Exception as e:
-                result["ok"] = False
-                result["error"] = str(e)
-                result["duration_s"] = round(time.monotonic() - start, 3)
                 logger.error("Shutdown step '%s' failed: %s", step_name, e)
-            results.append(result)
+                sr.record(step_name, False, str(e))
 
-        if self._shutdown_log(results):
-            self.statusChanged.emit("stopped")
+        if not sr.success:
+            logger.warning("Shutdown completed with %d failed steps",
+                          sum(1 for s in sr.steps if not s["ok"]))
+        return sr
 
-    def _shutdown_service(self, name: str):
-        for svc in self._services:
-            svc_name = getattr(svc, '__class__', type(svc)).__name__
-            if svc_name.lower().startswith(name.lower().replace("_", "").replace("service", "")):
-                continue
-        for svc in self._services:
-            if hasattr(svc, 'shutdown'):
-                svc.shutdown()
+    def _step_block_actions(self):
+        self._accepting_new = False
 
-    def _call_quit(self):
-        from PySide6.QtCore import QCoreApplication
-        QCoreApplication.quit()
+    def _step_cancel_navigation(self):
+        if self._navigation_bridge and hasattr(self._navigation_bridge, 'clearHistory'):
+            self._navigation_bridge.clearHistory()
 
-    def _shutdown_log(self, results: list[dict]) -> bool:
-        failed = [r for r in results if not r["ok"]]
-        for r in results:
-            status = "OK" if r["ok"] else "FAIL"
-            logger.info("Shutdown %s: %s (%.3fs)", status, r["step"], r["duration_s"])
-        if failed:
-            logger.warning("Shutdown completed with %d failed steps", len(failed))
-        self._shutdown_results = results
-        return True
+    def _step_cancel_queries(self):
+        if self._qe and hasattr(self._qe, 'shutdown'):
+            self._qe.shutdown(2000)
 
-    @Slot()
-    def cancelAllTasks(self):
-        import contextlib
-        for svc in self._services:
-            if hasattr(svc, 'cancel_all'):
-                with contextlib.suppress(Exception):
-                    svc.cancel_all()
+    def _step_cancel_jobs(self):
+        _try_cancel(self._wm)
+        if self._wm and hasattr(self._wm, 'shutdown'):
+            self._wm.shutdown(3000)
+
+    def _step_terminate_subprocesses(self):
+        for proc in self._external_processes:
+            if hasattr(proc, 'terminate'):
+                proc.terminate()
+            if hasattr(proc, 'wait'):
+                proc.wait(timeout=2)
+        self._external_processes.clear()
+
+    def _step_persist_queue(self):
+        _try_shutdown(self._queue_service)
+
+    def _step_persist_page_state(self):
+        self._persist_page_state()
+
+    def _step_stop_device_sync(self):
+        _try_shutdown(self._device_sync_service)
+
+    def _step_stop_connections(self):
+        _try_shutdown(self._connection_service)
+
+    def _step_stop_home_audio(self):
+        _try_shutdown(self._home_audio_service)
+
+    def _step_stop_radio(self):
+        _try_shutdown(self._radio_service)
+
+    def _step_stop_playback(self):
+        if self._player_service and hasattr(self._player_service, 'stop'):
+            self._player_service.stop()
+
+    def _step_close_repositories(self):
+        self._close_repositories()
+
+    def _step_close_db(self):
+        if self._database and hasattr(self._database, 'close'):
+            self._database.close()
 
     def notifyRestartRequired(self):
         self._restart_required = True
         self.statusChanged.emit("restart_required")
+
+    @Slot()
+    def cancelAllTasks(self):
+        _try_cancel(self._wm)
 
     @Slot(result=dict)
     def appScore(self) -> dict:
@@ -284,4 +359,5 @@ class AppBridge(QObject):
             "shutting_down": self._shutting_down,
             "restart_required": self._restart_required,
             "phase": self._phase,
+            "has_worker_manager": self._wm is not None,
         }

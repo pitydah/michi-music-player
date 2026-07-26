@@ -213,6 +213,23 @@ class ServiceContainer:
         ordered.extend(remaining)
         return ordered
 
+    def validate_required_present(self) -> list[str]:
+        """Return list of required service names that are missing or None."""
+        missing = []
+        for name in self._required_names():
+            svc = self._services.get(name)
+            if svc is None:
+                missing.append(name)
+        return missing
+
+    def validate_no_none_required(self) -> list[str]:
+        """Return list of required services whose value is None."""
+        none_list = []
+        for name in self._required_names():
+            if name in self._services and self._services[name] is None:
+                none_list.append(name)
+        return none_list
+
     def validate(self) -> list[str]:
         """Return registration, dependency, and required-service failures."""
 

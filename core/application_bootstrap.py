@@ -38,6 +38,9 @@ class ApplicationBootstrap:
         self._has_started = False
         self._session_restore_attempted = False
 
+    def _validate_required(self) -> list[str]:
+        return self.container.validate_required_present()
+
     def build(self) -> Self:
         """Build and register each service once in dependency order."""
         if self._has_built:
@@ -211,3 +214,7 @@ class ApplicationBootstrap:
     def get_query_executor(self) -> Any | None:
         """Return the query executor when it has been registered."""
         return self.container.get("query_executor")
+
+    def register_qml(self, alias: str, obj: QObject) -> None:
+        """Register a QML object or bridge under the given alias."""
+        self._bridges[alias] = obj
