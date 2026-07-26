@@ -114,31 +114,31 @@ class TestLibraryCompleto:
         assert m.count == 0
 
     def test_songs_page_from_bridge(self, qs):
-        bridge = LibraryBridge(query_service=qs, query_executor=MagicMock())
+        bridge = LibraryBridge(query_service=qs, query_executor=MagicMock(), track_action_service=MagicMock())
         page = bridge.getSongsPage(0, 10)
         assert len(page) >= 0
 
     def test_bridge_state_initial(self):
-        bridge = LibraryBridge()
+        bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
         assert bridge.state == "INITIALIZING"
 
     def test_bridge_state_no_sources(self, qs):
         qs.count_tracks.return_value = 0
-        bridge = LibraryBridge(query_service=qs)
+        bridge = LibraryBridge(query_service=qs, track_action_service=MagicMock())
         assert bridge.state is not None
 
     def test_bridge_search(self, qs):
-        bridge = LibraryBridge(query_service=qs)
+        bridge = LibraryBridge(query_service=qs, track_action_service=MagicMock())
         result = bridge.setSearchQuery("test")
         assert result["ok"]
 
     def test_bridge_clear_filters(self, qs):
-        bridge = LibraryBridge(query_service=qs)
+        bridge = LibraryBridge(query_service=qs, track_action_service=MagicMock())
         result = bridge.clearFilters()
         assert result["ok"]
 
     def test_load_next_page(self, qs):
-        bridge = LibraryBridge(query_service=qs)
+        bridge = LibraryBridge(query_service=qs, track_action_service=MagicMock())
         result = bridge.loadNextPage()
         assert result["ok"]
 

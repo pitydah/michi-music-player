@@ -10,7 +10,7 @@ pytestmark = [pytest.mark.qml_module("library")]
 
 
 def _make_mock_models():
-    bridge = LibraryBridge()
+    bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
     bridge._track_model = MagicMock()
     bridge._track_model.totalCount = 0
     bridge._track_model.count = 0
@@ -26,12 +26,12 @@ def _make_mock_models():
 
 
 def test_initial_state():
-    bridge = LibraryBridge()
+    bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
     assert bridge.state == "INITIALIZING"
 
 
 def test_state_property():
-    bridge = LibraryBridge()
+    bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
     assert hasattr(bridge, 'state')
     assert isinstance(bridge.state, str)
 
@@ -68,19 +68,19 @@ def test_ready_state_counts():
 
 
 def test_no_sources_state():
-    bridge = LibraryBridge()
+    bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
     bridge._state = LibraryState.NO_SOURCES
     assert bridge.state == "NO_SOURCES"
 
 
 def test_scanning_state():
-    bridge = LibraryBridge()
+    bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
     bridge._state = LibraryState.SCANNING
     assert bridge.state == "SCANNING"
 
 
 def test_loading_state():
-    bridge = LibraryBridge()
+    bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
     bridge._state = LibraryState.LOADING
     assert bridge.state == "LOADING"
 
@@ -92,61 +92,61 @@ def test_false_ready_with_zero_songs():
 
 
 def test_source_offline_state():
-    bridge = LibraryBridge()
+    bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
     bridge._state = LibraryState.SOURCE_OFFLINE
     assert bridge.state == "SOURCE_OFFLINE"
 
 
 def test_source_permission_error_state():
-    bridge = LibraryBridge()
+    bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
     bridge._state = LibraryState.SOURCE_PERMISSION_ERROR
     assert bridge.state == "SOURCE_PERMISSION_ERROR"
 
 
 def test_source_empty_state():
-    bridge = LibraryBridge()
+    bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
     bridge._state = LibraryState.SOURCE_EMPTY
     assert bridge.state == "SOURCE_EMPTY"
 
 
 def test_indexing_state():
-    bridge = LibraryBridge()
+    bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
     bridge._state = LibraryState.INDEXING
     assert bridge.state == "INDEXING"
 
 
 def test_filtered_empty_state():
-    bridge = LibraryBridge()
+    bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
     bridge._state = LibraryState.FILTERED_EMPTY
     assert bridge.state == "FILTERED_EMPTY"
 
 
 def test_database_error_state():
-    bridge = LibraryBridge()
+    bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
     bridge._state = LibraryState.DATABASE_ERROR
     assert bridge.state == "DATABASE_ERROR"
 
 
 def test_query_error_state():
-    bridge = LibraryBridge()
+    bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
     bridge._state = LibraryState.QUERY_ERROR
     assert bridge.state == "QUERY_ERROR"
 
 
 def test_partial_results_state():
-    bridge = LibraryBridge()
+    bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
     bridge._state = LibraryState.PARTIAL_RESULTS
     assert bridge.state == "PARTIAL_RESULTS"
 
 
 def test_cancelled_state():
-    bridge = LibraryBridge()
+    bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
     bridge._state = LibraryState.CANCELLED
     assert bridge.state == "CANCELLED"
 
 
 def test_missing_content_state():
-    bridge = LibraryBridge()
+    bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
     bridge._state = LibraryState.MISSING_CONTENT
     assert bridge.state == "MISSING_CONTENT"
 

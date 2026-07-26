@@ -111,7 +111,9 @@ def test_selection_empty():
 
 
 def test_favorite_toggle():
-    bridge = LibraryBridge(db=MagicMock(), query_service=MagicMock())
+    tas = MagicMock()
+    tas.toggle_favorite.return_value = {"ok": True}
+    bridge = LibraryBridge(db=MagicMock(), query_service=MagicMock(), track_action_service=tas)
     bridge._query_svc.fetch_track_internal.return_value = {"filepath": "/m/s.flac"}
     bridge._db.conn.execute.return_value.fetchone.return_value = None
     result = bridge.toggleFavoriteById(1)
@@ -119,7 +121,9 @@ def test_favorite_toggle():
 
 
 def test_favorite_unfavorite():
-    bridge = LibraryBridge(db=MagicMock(), query_service=MagicMock())
+    tas = MagicMock()
+    tas.toggle_favorite.return_value = {"ok": True}
+    bridge = LibraryBridge(db=MagicMock(), query_service=MagicMock(), track_action_service=tas)
     bridge._query_svc.fetch_track_internal.return_value = {"filepath": "/m/s.flac"}
     bridge._db.conn.execute.return_value.fetchone.return_value = (1,)
     result = bridge.toggleFavoriteById(1)

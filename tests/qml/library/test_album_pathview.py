@@ -81,6 +81,7 @@ def _load_coverflow(engine, model=None):
     assert component.isReady(), f"Component errors: {component.errors()}"
     obj = component.create()
     assert obj is not None, f"Failed to create: {component.errors()}"
+    obj.setParent(engine)
     if model is not None:
         obj.setProperty("albumModel", model)
     return obj

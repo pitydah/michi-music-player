@@ -35,13 +35,9 @@ class TestArtistGridPage:
         assert result["ok"] is True
 
     def test_artist_grid_object_name(self):
-        import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            "artist_grid_page",
-            "ui_qml/pages/library/ArtistGridPage.qml",
-        )
-        assert spec is not None
-        assert spec.origin.endswith("ArtistGridPage.qml")
+        from pathlib import Path
+        path = Path("ui_qml/pages/library/ArtistGridPage.qml")
+        assert path.exists(), "ArtistGridPage.qml should exist"
 
     def test_artist_grid_imports_components(self):
         with open("ui_qml/pages/library/ArtistGridPage.qml") as f:
@@ -110,13 +106,9 @@ class TestGenresPage:
         assert result["ok"] is True
 
     def test_genres_page_object_name(self):
-        import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            "genres_page",
-            "ui_qml/pages/library/GenresPage.qml",
-        )
-        assert spec is not None
-        assert spec.origin.endswith("GenresPage.qml")
+        from pathlib import Path
+        path = Path("ui_qml/pages/library/GenresPage.qml")
+        assert path.exists(), "GenresPage.qml should exist"
 
 
 # ── ComposersPage ──
@@ -171,13 +163,9 @@ class TestComposersPage:
         assert result["ok"] is True
 
     def test_composers_page_object_name(self):
-        import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            "composers_page",
-            "ui_qml/pages/library/ComposersPage.qml",
-        )
-        assert spec is not None
-        assert spec.origin.endswith("ComposersPage.qml")
+        from pathlib import Path
+        path = Path("ui_qml/pages/library/ComposersPage.qml")
+        assert path.exists(), "ComposersPage.qml should exist"
 
 
 # ── ArtistDetailPage ──
@@ -193,7 +181,7 @@ class TestArtistDetailPage:
             "genre": "Rock",
             "bio": "A great artist",
         }
-        return LibraryBridge(query_service=qs)
+        return LibraryBridge(query_service=qs, track_action_service=MagicMock())
 
     def test_artist_detail_loads(self, bridge):
         detail = bridge.getArtistDetail("Test Artist")
@@ -210,7 +198,7 @@ class TestArtistDetailPage:
     def test_artist_detail_not_found(self):
         qs = MagicMock()
         qs.fetch_artist_detail.return_value = None
-        bridge = LibraryBridge(query_service=qs)
+        bridge = LibraryBridge(query_service=qs, track_action_service=MagicMock())
         detail = bridge.getArtistDetail("Unknown")
         assert detail["ok"] is False
         assert detail["error"] == "NOT_FOUND"
@@ -239,8 +227,8 @@ class TestArtistDetailPage:
     def test_artist_detail_back_button(self):
         with open("ui_qml/pages/library/ArtistDetailPage.qml") as f:
             content = f.read()
-        assert "Volver" in content
-        assert "backRequested" in content
+        assert "\u2190 Volver" in content
+        assert "navigationBridge.back()" in content
 
     def test_artist_detail_play_all_button(self):
         with open("ui_qml/pages/library/ArtistDetailPage.qml") as f:
@@ -251,7 +239,7 @@ class TestArtistDetailPage:
         with open("ui_qml/pages/library/ArtistDetailPage.qml") as f:
             content = f.read()
         assert "Álbumes" in content
-        assert "SectionHeader" in content
+        assert "qsTr(\"Álbumes\")" in content
 
     def test_artist_detail_songs_header(self):
         with open("ui_qml/pages/library/ArtistDetailPage.qml") as f:
@@ -259,13 +247,9 @@ class TestArtistDetailPage:
         assert "Canciones" in content
 
     def test_artist_detail_page_object_name(self):
-        import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            "artist_detail_page",
-            "ui_qml/pages/library/ArtistDetailPage.qml",
-        )
-        assert spec is not None
-        assert spec.origin.endswith("ArtistDetailPage.qml")
+        from pathlib import Path
+        path = Path("ui_qml/pages/library/ArtistDetailPage.qml")
+        assert path.exists(), "ArtistDetailPage.qml should exist"
 
 
 # ── GenreDetailPage ──
@@ -275,10 +259,13 @@ class TestGenreDetailPage:
     def bridge(self):
         qs = MagicMock()
         qs.fetch_artist_detail.return_value = None
-        b = LibraryBridge(query_service=qs)
+        b = LibraryBridge(query_service=qs, track_action_service=MagicMock())
         b._filter_genre = ""
-        b.trackModel = MagicMock()
-        b.trackModel.count = 5
+        tm = MagicMock()
+        tm.count = 5
+        tm.totalCount = 5
+        tm.hasMore = False
+        b._track_model = tm
         return b
 
     def test_genre_detail_loads(self, bridge):
@@ -300,7 +287,7 @@ class TestGenreDetailPage:
     def test_genre_detail_header_shows_genre(self):
         with open("ui_qml/pages/library/GenreDetailPage.qml") as f:
             content = f.read()
-        assert "G\u00e9nero:" in content
+        assert "G\\u00e9nero:" in content
         assert "root.genre" in content
 
     def test_genre_detail_songs_header(self):
@@ -316,16 +303,12 @@ class TestGenreDetailPage:
     def test_genre_detail_add_queue_button(self):
         with open("ui_qml/pages/library/GenreDetailPage.qml") as f:
             content = f.read()
-        assert "A\u00f1adir a cola" in content
+        assert "A\\u00f1adir a cola" in content
 
     def test_genre_detail_track_model_used(self, bridge):
         assert bridge.trackModel is not None
 
     def test_genre_detail_page_object_name(self):
-        import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            "genre_detail_page",
-            "ui_qml/pages/library/GenreDetailPage.qml",
-        )
-        assert spec is not None
-        assert spec.origin.endswith("GenreDetailPage.qml")
+        from pathlib import Path
+        path = Path("ui_qml/pages/library/GenreDetailPage.qml")
+        assert path.exists(), "GenreDetailPage.qml should exist"
