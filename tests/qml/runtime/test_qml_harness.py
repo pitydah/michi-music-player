@@ -13,8 +13,6 @@ from PySide6.QtCore import QObject
 REPO = Path(__file__).resolve().parent.parent.parent.parent
 QML_DIR = REPO / "ui_qml"
 
-from PySide6.QtCore import QObject
-
 from tests.qml.runtime.qml_test_harness import (  # noqa: E402
     QmlTestHarness,
     FakePlayerService,
@@ -27,6 +25,9 @@ from tests.qml.runtime.qml_test_harness import (  # noqa: E402
 @pytest.fixture
 def harness():
     h = QmlTestHarness()
+    for name in ["appBridge", "navigationBridge", "themeBridge", "libraryBridge",
+                  "nowplayingBridge", "settingsBridge", "actionRegistry"]:
+        h.register_bridge(name, QObject())
     yield h
     h.cleanup()
 
@@ -35,12 +36,14 @@ def harness():
 def real_harness(harness):
     harness.setup_db()
     fake_player = FakePlayerService()
-    harness.register_bridge("nowplayingBridge", QObject(parent=harness.engine.rootContext()))
-    harness.register_bridge("libraryBridge", QObject(parent=harness.engine.rootContext()))
-    harness.register_bridge("navigationBridge", QObject(parent=harness.engine.rootContext()))
-    harness.register_bridge("themeBridge", QObject(parent=harness.engine.rootContext()))
-    harness.register_bridge("appBridge", QObject(parent=harness.engine.rootContext()))
-    harness.register_bridge("coverBridge", QObject(parent=harness.engine.rootContext()))
+    harness.register_bridge("nowplayingBridge", QObject())
+    harness.register_bridge("libraryBridge", QObject())
+    harness.register_bridge("navigationBridge", QObject())
+    harness.register_bridge("themeBridge", QObject())
+    harness.register_bridge("appBridge", QObject())
+    harness.register_bridge("coverBridge", QObject())
+    harness.register_bridge("settingsBridge", QObject())
+    harness.register_bridge("actionRegistry", QObject())
     return harness, fake_player
 
 
@@ -96,10 +99,12 @@ def test_register_bridge(harness):
     assert "testBridge" in harness._bridges
 
 
-def test_register_multiple_bridges(harness):
+def test_register_multiple_bridges():
+    h = QmlTestHarness()
     for name in ["bridgeA", "bridgeB", "bridgeC"]:
-        harness.register_bridge(name, QObject())
-    assert len(harness._bridges) == 3
+        h.register_bridge(name, QObject())
+    assert len(h._bridges) == 3
+    h.cleanup()
 
 
 # ── QML loading ──
@@ -192,6 +197,9 @@ def test_reload_after_cleanup(harness):
     root1 = harness.load_qml(str(QML_DIR / "theme" / "MichiTheme.qml"))
     assert root1 is not None
     harness.cleanup()
+    for name in ["appBridge", "navigationBridge", "themeBridge", "libraryBridge",
+                  "nowplayingBridge", "settingsBridge", "actionRegistry"]:
+        harness.register_bridge(name, QObject())
     root2 = harness.load_qml(str(QML_DIR / "theme" / "MichiTheme.qml"))
     assert root2 is not None
     harness.cleanup()
