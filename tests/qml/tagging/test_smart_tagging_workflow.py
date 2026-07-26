@@ -2,6 +2,7 @@ from __future__ import annotations
 """Tests for Smart Tagging full workflow."""
 
 import time
+from unittest.mock import MagicMock
 
 import pytest
 from PySide6.QtCore import QCoreApplication
@@ -24,7 +25,7 @@ class TestSmartTaggingWorkflow:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
-        return SmartTaggingBridge()
+        return SmartTaggingBridge(service=MagicMock(), worker_manager=MagicMock())
 
     def test_default_status_idle(self, bridge):
         assert bridge.status == "idle"

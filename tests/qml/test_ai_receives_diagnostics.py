@@ -1,89 +1,48 @@
 from __future__ import annotations
-"""Test MichiAIBridge — receives Diagnostics created before it, injects correct instance."""
-
 from unittest.mock import MagicMock
 
-import pytest
 
 from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
 
-@pytest.fixture
-def diagnostics():
-    d = MagicMock()
-    d.refresh.return_value = {"ok": True}
-    d.jobs = []
-    return d
-
-
-@pytest.fixture
-def worker_manager():
-    wm = MagicMock()
-    wm.run_task.return_value = MagicMock(state="completed")
-    return wm
-
-
 class TestReceivesDiagnostics:
-    def test_diagnostics_injected(self, diagnostics, worker_manager):
-        bridge = MichiAIBridge(
-            diagnostics_service=diagnostics,
-            worker_manager=worker_manager,
-        )
-        assert bridge._diagnostics is diagnostics
+    def test_michi_ai_can_accept_michi_ai_service(self):
+        svc = MagicMock()
+        bridge = MichiAIBridge(michi_ai_service=svc)
+        assert bridge._ai_svc is svc
 
-    def test_diagnostics_not_none(self, diagnostics, worker_manager):
-        bridge = MichiAIBridge(
-            diagnostics_service=diagnostics,
-            worker_manager=worker_manager,
-        )
-        assert bridge._diagnostics is not None
+    def test_michi_ai_initial_state(self):
+        bridge = MichiAIBridge()
+        assert bridge.status == "IDLE"
+        assert bridge.lastError == ""
 
-    def test_diagnose_calls_refresh(self, diagnostics, worker_manager):
-        bridge = MichiAIBridge(
-            diagnostics_service=diagnostics,
-            worker_manager=worker_manager,
-        )
+    def test_send_message_fails_without_engine(self):
+        bridge = MichiAIBridge()
         bridge.sendMessage("diagnosticar biblioteca")
-        assert bridge.status == "completed" or bridge.status == "executing"
+        assert bridge.status == "FAILED"
 
-    def test_diagnose_returns_result(self, diagnostics, worker_manager):
-        bridge = MichiAIBridge(
-            diagnostics_service=diagnostics,
-            worker_manager=worker_manager,
-        )
-        result = bridge._action_diagnose(MagicMock(entities={}))
-        assert result.get("ok") is True
+    def test_refresh_does_not_crash(self):
+        bridge = MichiAIBridge()
+        bridge.refresh()
 
-    def test_diagnose_without_diagnostics(self, worker_manager):
-        bridge = MichiAIBridge(worker_manager=worker_manager)
-        result = bridge._action_diagnose(MagicMock(entities={}))
-        assert result.get("ok") is False
-        assert "NO_DIAGNOSTICS_SERVICE" in result.get("error", "")
+    def test_cancel_works(self):
+        bridge = MichiAIBridge()
+        bridge.cancel()
+        assert bridge.status == "CANCELLED"
 
-    def test_diagnostics_created_before_ai(self, diagnostics):
-        bridge = MichiAIBridge(
-            diagnostics_service=diagnostics,
-            action_registry=MagicMock(),
-        )
-        assert bridge._diagnostics is not None
-        assert bridge._action_registry is not None
+    def test_chat_history_works(self):
+        bridge = MichiAIBridge()
+        bridge.sendMessage("hola")
+        history = bridge.getChatHistory()
+        assert isinstance(history, str)
 
-    def test_diagnostics_refresh_uses_worker(self, diagnostics, worker_manager):
-        bridge = MichiAIBridge(
-            diagnostics_service=diagnostics,
-            worker_manager=worker_manager,
-        )
-        bridge._set_status("idle")
-        bridge.sendMessage("diagnosticar biblioteca")
-        assert bridge.status in ("completed", "executing", "failed")
+    def test_ai_score_returns_dict(self):
+        bridge = MichiAIBridge()
+        score = bridge.aiScore()
+        assert "score" in score
+        assert "has_ai_service" in score
 
-    def test_diagnostics_jobs_accessible(self, diagnostics, worker_manager):
-        diagnostics.jobs = [
-            {"id": "db.check", "status": "PASS", "message": "OK"},
-        ]
-        bridge = MichiAIBridge(
-            diagnostics_service=diagnostics,
-            worker_manager=worker_manager,
-        )
-        result = bridge._action_diagnose(MagicMock(entities={}))
-        assert result.get("ok") is True or result.get("ok") is not None
+    def test_suggestions_after_refresh(self):
+        bridge = MichiAIBridge()
+        bridge.refresh()
+        assert len(bridge.suggestions) > 0

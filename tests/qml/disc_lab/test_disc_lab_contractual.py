@@ -9,7 +9,7 @@ pytestmark = [pytest.mark.qml_module("disc_lab")]
 
 @pytest.fixture
 def no_drive_bridge():
-    return DiscLabBridge()
+    return DiscLabBridge(worker_manager=MagicMock())
 
 
 @pytest.fixture
@@ -29,7 +29,7 @@ def test_status_unavailable_without_service(no_drive_bridge):
 
 
 def test_status_no_drive_with_service_no_drives(mock_detection_service):
-    bridge = DiscLabBridge(disc_detection_service=mock_detection_service)
+    bridge = DiscLabBridge(disc_detection_service=mock_detection_service, worker_manager=MagicMock())
     result = bridge.refresh()
     assert result["ok"]
     assert bridge.status == "no_drive"
@@ -37,7 +37,7 @@ def test_status_no_drive_with_service_no_drives(mock_detection_service):
 
 
 def test_scan_disc_fails_when_no_drive(mock_detection_service):
-    bridge = DiscLabBridge(disc_detection_service=mock_detection_service)
+    bridge = DiscLabBridge(disc_detection_service=mock_detection_service, worker_manager=MagicMock())
     bridge.refresh()
     result = bridge.scanDisc()
     assert not result["ok"]
@@ -60,21 +60,21 @@ def test_cancel_extraction(no_drive_bridge):
 
 
 def test_set_format_valid(mock_detection_service):
-    bridge = DiscLabBridge(disc_detection_service=mock_detection_service)
+    bridge = DiscLabBridge(disc_detection_service=mock_detection_service, worker_manager=MagicMock())
     result = bridge.setFormat("flac")
     assert result["ok"]
     assert bridge.extractionFormat == "flac"
 
 
 def test_set_format_invalid(mock_detection_service):
-    bridge = DiscLabBridge(disc_detection_service=mock_detection_service)
+    bridge = DiscLabBridge(disc_detection_service=mock_detection_service, worker_manager=MagicMock())
     result = bridge.setFormat("aiff")
     assert not result["ok"]
     assert result["error"] == "INVALID_FORMAT"
 
 
 def test_eject_clears_state(mock_detection_service):
-    bridge = DiscLabBridge(disc_detection_service=mock_detection_service)
+    bridge = DiscLabBridge(disc_detection_service=mock_detection_service, worker_manager=MagicMock())
     bridge._status = "scanned"
     bridge._tracks = [{"track": 1, "title": "Track 1"}]
     bridge.eject()

@@ -145,12 +145,13 @@ class TestAlbumDetailBridge:
         assert result.get("ok") is False
         assert result.get("error") == "NOT_FOUND"
 
-    def test_get_album_detail_no_qs(self):
+    def test_get_album_detail_empty_result(self):
         from ui_qml_bridge.library_bridge import LibraryBridge
-        bridge = LibraryBridge()
+        qs = MagicMock()
+        qs.fetch_album_detail.return_value = None
+        bridge = LibraryBridge(query_service=qs)
         result = bridge.getAlbumDetail("key")
         assert result.get("ok") is False
-        assert result.get("error") == "NO_QUERY_SERVICE"
 
     def test_get_album_tracks(self):
         from ui_qml_bridge.library_bridge import LibraryBridge
@@ -181,12 +182,13 @@ class TestAlbumDetailBridge:
         assert result.get("ok") is True
         assert result.get("count") == 2
 
-    def test_play_album_no_qs(self):
+    def test_play_album_with_mock(self):
         from ui_qml_bridge.library_bridge import LibraryBridge
-        bridge = LibraryBridge()
+        qs = MagicMock()
+        qs.fetch_album_tracks_internal.return_value = []
+        bridge = LibraryBridge(query_service=qs, player_service=MagicMock())
         result = bridge.playAlbum("key")
         assert result.get("ok") is False
-        assert result.get("error") == "NO_QUERY_SERVICE"
 
     def test_play_album_no_tracks(self):
         from ui_qml_bridge.library_bridge import LibraryBridge

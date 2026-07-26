@@ -10,7 +10,7 @@ class TestSmartTagging:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
-        return SmartTaggingBridge()
+        return SmartTaggingBridge(service=MagicMock(), worker_manager=MagicMock())
 
     def test_detect_format_empty_path(self, bridge):
         assert bridge.detectFormat("") == ""
@@ -31,14 +31,14 @@ class TestSmartTagging:
 class TestSmartTaggingBridgeGraceful:
     def test_no_service_scan_track(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
-        bridge = SmartTaggingBridge()
+        bridge = SmartTaggingBridge(service=MagicMock(), worker_manager=MagicMock())
         result = bridge.scanTrackById(1)
         assert result.get("ok") is False
         assert bridge.status == "unavailable"
 
     def test_no_service_suggestions_empty(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
-        bridge = SmartTaggingBridge()
+        bridge = SmartTaggingBridge(service=MagicMock(), worker_manager=MagicMock())
         assert bridge.suggestions == []
 
     def test_no_worker_manager(self):

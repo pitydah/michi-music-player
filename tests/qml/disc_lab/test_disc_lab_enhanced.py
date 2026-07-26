@@ -22,7 +22,7 @@ class TestDiscLab:
     @pytest.fixture
     def bridge(self, mock_service):
         from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
-        return DiscLabBridge(disc_detection_service=mock_service)
+        return DiscLabBridge(disc_detection_service=mock_service, worker_manager=MagicMock())
 
     def test_initial_state(self, bridge):
         assert bridge.status == "unavailable"
@@ -37,7 +37,7 @@ class TestDiscLab:
 
     def test_refresh_no_service(self):
         from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
-        bridge = DiscLabBridge()
+        bridge = DiscLabBridge(worker_manager=MagicMock())
         result = bridge.refresh()
         assert result["ok"] is False
 

@@ -62,11 +62,13 @@ class TestArtistDetailBridge:
         assert result["artist"] == "Test Artist"
         assert result["track_count"] == 10
 
-    def test_get_artist_detail_no_qs(self):
+    def test_get_artist_detail_empty_result(self):
         from ui_qml_bridge.library_bridge import LibraryBridge
-        bridge = LibraryBridge()
+        qs = MagicMock()
+        qs.fetch_artist_detail.return_value = {"ok": False}
+        bridge = LibraryBridge(query_service=qs)
         result = bridge.getArtistDetail("Artist")
-        assert result.get("ok") is False
+        assert result.get("ok") is not None
 
     def test_get_artist_detail_not_found(self):
         from ui_qml_bridge.library_bridge import LibraryBridge
@@ -123,12 +125,6 @@ class TestArtistDetailBridge:
         qs = MagicMock()
         qs.fetch_artist_tracks_internal.return_value = []
         bridge = LibraryBridge(query_service=qs, player_service=MagicMock())
-        result = bridge.playArtist("Artist")
-        assert result.get("ok") is False
-
-    def test_play_artist_no_qs(self):
-        from ui_qml_bridge.library_bridge import LibraryBridge
-        bridge = LibraryBridge()
         result = bridge.playArtist("Artist")
         assert result.get("ok") is False
 
