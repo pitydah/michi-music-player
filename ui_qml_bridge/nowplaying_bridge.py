@@ -111,8 +111,8 @@ class NowPlayingBridge(QObject):
     def __init__(self, player_service=None, queue_service=None,
                  audio_quality_adapter=None, parent=None):
         super().__init__(parent)
-        assert player_service is not None, "NowPlayingBridge: player_service is REQUIRED"
-        assert audio_quality_adapter is not None, "NowPlayingBridge: audio_quality_adapter is REQUIRED"
+        if player_service is None:
+            logger.warning("NowPlayingBridge: player_service is None — running in degraded mode")
         self._player = player_service
         self._queue_service = queue_service
         self._quality_adapter = audio_quality_adapter

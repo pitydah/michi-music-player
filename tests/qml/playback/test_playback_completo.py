@@ -138,8 +138,11 @@ class TestPlaybackCompleto:
         mock_player.play_queue_item.assert_not_called()
 
     def test_bridge_error_no_player(self):
-        with pytest.raises(AssertionError):
-            NowPlayingBridge()
+        bridge = NowPlayingBridge()
+        assert not bridge.backendAvailable
+        assert not bridge.togglePlay()["ok"]
+        assert not bridge.seek(0)["ok"]
+        assert not bridge.setVolume(50)["ok"]
 
     def test_quality_probe(self, bridge, mock_player):
         qa = MagicMock()
