@@ -1,5 +1,4 @@
 from __future__ import annotations
-"""Test MichiAIBridge — receives Diagnostics created before it, injects correct instance."""
 
 from unittest.mock import MagicMock
 
@@ -8,82 +7,52 @@ import pytest
 from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
 
-@pytest.fixture
-def diagnostics():
-    d = MagicMock()
-    d.refresh.return_value = {"ok": True}
-    d.jobs = []
-    return d
-
-
-@pytest.fixture
-def worker_manager():
-    wm = MagicMock()
-    wm.run_task.return_value = MagicMock(state="completed")
-    return wm
+pytestmark = pytest.mark.isolation
 
 
 class TestReceivesDiagnostics:
-    def test_diagnostics_injected(self, diagnostics, worker_manager):
-        bridge = MichiAIBridge(
-            diagnostics_service=diagnostics,
-            worker_manager=worker_manager,
-        )
-        assert bridge._diagnostics is diagnostics
-
-    def test_diagnostics_not_none(self, diagnostics, worker_manager):
-        bridge = MichiAIBridge(
-            diagnostics_service=diagnostics,
-            worker_manager=worker_manager,
-        )
-        assert bridge._diagnostics is not None
-
-    def test_diagnose_calls_refresh(self, diagnostics, worker_manager):
-        bridge = MichiAIBridge(
-            diagnostics_service=diagnostics,
-            worker_manager=worker_manager,
-        )
+    def test_diagnose_message_forwards_to_engine(self) -> None:
+        svc = MagicMock()
+        svc.process_message.return_value = {"ok": True, "response": "Diagnóstico completo."}
+        bridge = MichiAIBridge(michi_ai_service=svc)
         bridge.sendMessage("diagnosticar biblioteca")
-        assert bridge.status == "completed" or bridge.status == "executing"
+        svc.process_message.assert_called_once()
+        assert bridge.status == "SUCCEEDED"
 
-    def test_diagnose_returns_result(self, diagnostics, worker_manager):
+    def test_diagnose_engine_fails(self) -> None:
+        svc = MagicMock()
+        svc.process_message.return_value = {"ok": False, "response": "Error de diagnóstico"}
+        bridge = MichiAIBridge(michi_ai_service=svc)
+        bridge.sendMessage("diagnosticar biblioteca")
+        assert bridge.status == "FAILED"
+
+    def test_diagnose_no_ai_service(self) -> None:
+        bridge = MichiAIBridge()
+        bridge.sendMessage("diagnosticar biblioteca")
+        assert bridge.status == "FAILED"
+        assert bridge.lastError == "NO_AI_SERVICE"
+
+    def test_diagnose_with_action_registry(self) -> None:
+        svc = MagicMock()
+        svc.process_message.return_value = {"ok": True, "response": "OK"}
         bridge = MichiAIBridge(
-            diagnostics_service=diagnostics,
-            worker_manager=worker_manager,
-        )
-        result = bridge._action_diagnose(MagicMock(entities={}))
-        assert result.get("ok") is True
-
-    def test_diagnose_without_diagnostics(self, worker_manager):
-        bridge = MichiAIBridge(worker_manager=worker_manager)
-        result = bridge._action_diagnose(MagicMock(entities={}))
-        assert result.get("ok") is False
-        assert "NO_DIAGNOSTICS_SERVICE" in result.get("error", "")
-
-    def test_diagnostics_created_before_ai(self, diagnostics):
-        bridge = MichiAIBridge(
-            diagnostics_service=diagnostics,
+            michi_ai_service=svc,
             action_registry=MagicMock(),
         )
-        assert bridge._diagnostics is not None
-        assert bridge._action_registry is not None
-
-    def test_diagnostics_refresh_uses_worker(self, diagnostics, worker_manager):
-        bridge = MichiAIBridge(
-            diagnostics_service=diagnostics,
-            worker_manager=worker_manager,
-        )
-        bridge._set_status("idle")
+        assert bridge._registry is not None
         bridge.sendMessage("diagnosticar biblioteca")
-        assert bridge.status in ("completed", "executing", "failed")
+        assert bridge.status == "SUCCEEDED"
 
-    def test_diagnostics_jobs_accessible(self, diagnostics, worker_manager):
-        diagnostics.jobs = [
-            {"id": "db.check", "status": "PASS", "message": "OK"},
-        ]
-        bridge = MichiAIBridge(
-            diagnostics_service=diagnostics,
-            worker_manager=worker_manager,
-        )
-        result = bridge._action_diagnose(MagicMock(entities={}))
-        assert result.get("ok") is True or result.get("ok") is not None
+    def test_diagnose_engine_exception(self) -> None:
+        svc = MagicMock()
+        svc.process_message.side_effect = Exception("Engine error")
+        bridge = MichiAIBridge(michi_ai_service=svc)
+        bridge.sendMessage("diagnosticar biblioteca")
+        assert bridge.status == "FAILED"
+
+    def test_diagnose_result_in_chat(self) -> None:
+        svc = MagicMock()
+        svc.process_message.return_value = {"ok": True, "response": "Todo correcto."}
+        bridge = MichiAIBridge(michi_ai_service=svc)
+        bridge.sendMessage("diagnosticar biblioteca")
+        assert any("Todo correcto" in m.get("text", "") for m in bridge._chat_history)

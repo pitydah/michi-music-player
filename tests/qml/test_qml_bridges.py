@@ -19,45 +19,45 @@ from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
 QML_DIR = Path(__file__).resolve().parent.parent.parent / "ui_qml"
 
 
-def test_qml_main_exists():
+def test_qml_main_exists() -> None:
     assert (QML_DIR / "Main.qml").exists()
 
 
-def test_michi_app_exists():
+def test_michi_app_exists() -> None:
     assert (QML_DIR / "MichiApp.qml").exists()
 
 
-def test_qmldir_exists():
+def test_qmldir_exists() -> None:
     assert (QML_DIR / "qmldir").exists()
 
 
-def test_theme_qmldir_exists():
+def test_theme_qmldir_exists() -> None:
     assert (QML_DIR / "theme" / "qmldir").exists()
 
 
-def test_theme_files():
+def test_theme_files() -> None:
     for name in ("MichiColors", "MichiTypography", "MichiSpacing", "MichiMotion", "MichiTheme"):
         assert (QML_DIR / "theme" / f"{name}.qml").exists(), f"Missing theme file: {name}.qml"
 
 
-def test_materials_files():
+def test_materials_files() -> None:
     for name in ("GlassMaterial", "HeroMaterial", "PopupMaterial", "SidebarMaterial", "InputMaterial", "AcrylicBackdrop"):
         assert (QML_DIR / "materials" / f"{name}.qml").exists(), f"Missing material: {name}.qml"
 
 
-def test_components_files():
+def test_components_files() -> None:
     for name in ("GlassPanel", "GlassCard", "HeroPanel", "MichiButton", "StatusBadge",
                  "EmptyState", "SearchField", "SidebarItem", "SectionHeader", "IconSlot",
                  "InspectorPanel", "DiscoveryResultCard"):
         assert (QML_DIR / "components" / f"{name}.qml").exists(), f"Missing component: {name}.qml"
 
 
-def test_shell_files():
+def test_shell_files() -> None:
     for name in ("AppShell", "Sidebar", "HeaderBar", "PageStack", "RouteTransition"):
         assert (QML_DIR / "shell" / f"{name}.qml").exists(), f"Missing shell: {name}.qml"
 
 
-def test_page_stack_contains_new_routes():
+def test_page_stack_contains_new_routes() -> None:
     from ui_qml_bridge.route_registry import ROUTES
     assert "streaming.radio" in ROUTES, "radio should be in route registry"
     assert "playlists" in ROUTES, "playlists should be in route registry"
@@ -70,7 +70,7 @@ def test_page_stack_contains_new_routes():
         assert t in ROUTES, f"Route registry missing {t}"
 
 
-def test_page_stack_references_exist():
+def test_page_stack_references_exist() -> None:
     import re
     page_stack = (QML_DIR / "shell" / "PageStack.qml").read_text()
     refs = re.findall(r'"([^"]+\.qml)"', page_stack)
@@ -87,7 +87,7 @@ def test_page_stack_references_exist():
         )
 
 
-def test_qml_files_have_no_emoji_icons():
+def test_qml_files_have_no_emoji_icons() -> None:
     import unicodedata
     emoji_codepoints = set()
     for cp in range(0x1F300, 0x1FAFF):
@@ -129,7 +129,7 @@ def test_qml_files_have_no_emoji_icons():
                 )
 
 
-def test_app_shell_titles_match_sidebar_routes():
+def test_app_shell_titles_match_sidebar_routes() -> None:
     import re
     from ui_qml_bridge.route_registry import ROUTES
     sidebar = (QML_DIR / "shell" / "Sidebar.qml").read_text()
@@ -142,7 +142,7 @@ def test_app_shell_titles_match_sidebar_routes():
             f"PageStack missing source for route {route}: {info['source']}"
 
 
-def test_sidebar_has_no_forbidden_routes():
+def test_sidebar_has_no_forbidden_routes() -> None:
     import re
     sidebar = (QML_DIR / "shell" / "Sidebar.qml").read_text()
     forbidden = {"genres", "ecosystem"}
@@ -151,43 +151,43 @@ def test_sidebar_has_no_forbidden_routes():
     assert not found, f"Forbidden sidebar routes found: {found}"
 
 
-def test_sidebar_contains_radio_and_playlists():
+def test_sidebar_contains_radio_and_playlists() -> None:
     from ui_qml_bridge.route_registry import ROUTES
     assert "streaming.radio" in ROUTES, "Route registry missing radio"
     assert "streaming.podcasts" in ROUTES, "Route registry missing podcasts"
     assert "playlists" in ROUTES, "Route registry missing playlists"
 
 
-def test_sidebar_uses_michi_ai_label():
+def test_sidebar_uses_michi_ai_label() -> None:
     from ui_qml_bridge.route_registry import ROUTES
     info = ROUTES["michi_ai"]
     assert info["title"] == "Michi AI", "Michi AI title mismatch"
 
 
-def test_sidebar_contains_reproduccion_label():
+def test_sidebar_contains_reproduccion_label() -> None:
     from ui_qml_bridge.route_registry import ROUTES
     info = ROUTES["playback"]
     assert info["title"] == "Reproducción", "Reproducción title mismatch"
 
 
-def test_sidebar_has_no_ajustes():
+def test_sidebar_has_no_ajustes() -> None:
     (QML_DIR / "shell" / "Sidebar.qml").read_text()
     # Settings is now a delivery core route, "Ajustes" label is acceptable in delivery model
 
 
-def test_page_stack_has_explicit_radio_playlists():
+def test_page_stack_has_explicit_radio_playlists() -> None:
     from ui_qml_bridge.route_registry import ROUTES
     assert "streaming.radio" in ROUTES, "Route registry missing radio"
     assert "playlists" in ROUTES, "Route registry missing playlists"
     assert "michi_ai" in ROUTES, "Route registry missing michi_ai (aliased from assistant)"
 
 
-def test_sidebar_no_settings_ajustes():
+def test_sidebar_no_settings_ajustes() -> None:
     (QML_DIR / "shell" / "Sidebar.qml").read_text()
     # Settings is now a delivery core route
 
 
-def test_sidebar_has_no_emoji_glyphs():
+def test_sidebar_has_no_emoji_glyphs() -> None:
     sidebar = (QML_DIR / "shell" / "Sidebar.qml").read_text()
     emoji_ranges = set(range(0x1F300, 0x1FAFF)) | set(range(0x2600, 0x27BF))
     safe = {0x2609, 0x2605, 0x2606, 0x2610, 0x2611, 0x2660, 0x2663, 0x2665, 0x2666}
@@ -197,108 +197,108 @@ def test_sidebar_has_no_emoji_glyphs():
             assert False, f"Emoji U+{ord(ch):04X} found in Sidebar.qml"
 
 
-def test_context_menu_has_no_emojis():
+def test_context_menu_has_no_emojis() -> None:
     from ui_qml_bridge.route_registry import ROUTES
     assert "home" in ROUTES  # QML-only app, no ui/window.py context menus
 
 
-def test_qml_main_importable():
+def test_qml_main_importable() -> None:
     import importlib
     mod = importlib.import_module("ui_qml_bridge.qml_main")
     assert hasattr(mod, "main")
 
 
 class TestAppBridge:
-    def test_instantiate(self):
+    def test_instantiate(self) -> None:
         bridge = AppBridge()
         assert bridge.appName == "Michi Music Player"
         # Version comes from importlib.metadata, fallback to 0.2.0-alpha.1
         assert bridge.version
         assert bridge.experimentalQml is True
 
-    def test_quit_slot(self):
+    def test_quit_slot(self) -> None:
         bridge = AppBridge()
         assert hasattr(bridge, 'quit')
 
 
 class TestNavigationBridge:
-    def test_default_route(self):
+    def test_default_route(self) -> None:
         bridge = NavigationBridge()
         assert bridge.currentRoute == "home"
 
-    def test_navigate_changes_route(self):
+    def test_navigate_changes_route(self) -> None:
         bridge = NavigationBridge()
         bridge.navigate("connections")
         assert bridge.currentRoute == "connections"
 
-    def test_same_route_no_change(self):
+    def test_same_route_no_change(self) -> None:
         bridge = NavigationBridge()
         bridge.navigate("home")
         assert bridge.currentRoute == "home"
 
-    def test_empty_route_falls_back(self):
+    def test_empty_route_falls_back(self) -> None:
         bridge = NavigationBridge()
         bridge.navigate("")
         assert bridge.currentRoute == "home"
 
-    def test_invalid_route_falls_back(self):
+    def test_invalid_route_falls_back(self) -> None:
         bridge = NavigationBridge()
         bridge.navigate("nonexistent_route")
         assert bridge.currentRoute == "placeholder"
 
-    def test_navigate_slot(self):
+    def test_navigate_slot(self) -> None:
         bridge = NavigationBridge()
         assert hasattr(bridge, 'navigate')
 
-    def test_navigate_radio_works(self):
+    def test_navigate_radio_works(self) -> None:
         bridge = NavigationBridge()
         bridge.navigate("radio")
         assert bridge.currentRoute == "streaming.radio", "radio aliases to streaming.radio"
 
-    def test_navigate_playlists_works(self):
+    def test_navigate_playlists_works(self) -> None:
         bridge = NavigationBridge()
         bridge.navigate("playlists")
         assert bridge.currentRoute == "playlists"
 
-    def test_navigate_assistant_works(self):
+    def test_navigate_assistant_works(self) -> None:
         bridge = NavigationBridge()
         bridge.navigate("assistant")
         assert bridge.currentRoute == "michi_ai", "assistant aliases to michi_ai"
 
-    def test_navigate_settings_falls_to_placeholder(self):
+    def test_navigate_settings_falls_to_placeholder(self) -> None:
         bridge = NavigationBridge()
         bridge.navigate("settings")
         assert bridge.currentRoute == "settings", "settings should be a valid route now"
 
-    def test_navigate_michi_ai_falls_to_placeholder(self):
+    def test_navigate_michi_ai_falls_to_placeholder(self) -> None:
         bridge = NavigationBridge()
         bridge.navigate("michi_ai")
         assert bridge.currentRoute == "michi_ai", "michi_ai is now a valid route"
 
 
 class TestCommandBus:
-    def test_instantiate(self):
+    def test_instantiate(self) -> None:
         bus = CommandBus()
         assert bus is not None
 
-    def test_execute_does_not_crash(self):
+    def test_execute_does_not_crash(self) -> None:
         bus = CommandBus()
         bus.execute("navigate", {"route": "home"})
 
 
 class TestThemeBridge:
-    def test_default_dark(self):
+    def test_default_dark(self) -> None:
         from unittest.mock import MagicMock
         bridge = ThemeBridge(coordinator=MagicMock())
         assert bridge.darkMode is True
 
-    def test_set_light(self):
+    def test_set_light(self) -> None:
         from unittest.mock import MagicMock
         bridge = ThemeBridge(coordinator=MagicMock())
         bridge.darkMode = False
         assert bridge.darkMode is False
 
-    def test_set_dark(self):
+    def test_set_dark(self) -> None:
         from unittest.mock import MagicMock
         bridge = ThemeBridge(coordinator=MagicMock())
         bridge.darkMode = True
@@ -306,64 +306,66 @@ class TestThemeBridge:
 
 
 class TestHomeBridge:
-    def test_default_stats(self):
+    def test_default_stats(self) -> None:
         bridge = HomeBridge()
         assert bridge.libraryAlbums == 0
         assert bridge.libraryArtists == 0
         assert bridge.libraryTracks == 0
         assert bridge.hasPlayback is False
 
-    def test_set_library_stats(self):
+    def test_set_library_stats(self) -> None:
         bridge = HomeBridge()
         bridge.set_library_stats(10, 5, 100)
         assert bridge.libraryAlbums == 10
         assert bridge.libraryArtists == 5
         assert bridge.libraryTracks == 100
 
-    def test_refresh_does_not_crash(self):
+    def test_refresh_does_not_crash(self) -> None:
         bridge = HomeBridge()
         bridge.refresh()
 
-    def test_set_library_stats_slot(self):
+    def test_set_library_stats_slot(self) -> None:
         bridge = HomeBridge()
         assert hasattr(bridge, 'set_library_stats')
 
 
 class TestConnectionsBridge:
-    def test_default_state(self):
+    def test_default_state(self) -> None:
         bridge = ConnectionsBridge()
         assert bridge.microServerState == "service_unavailable"
 
-    def test_scan_for_servers(self):
+    def test_scan_for_servers(self) -> None:
         bridge = ConnectionsBridge()
         bridge.scanForServers()
         assert bridge.microServerState == "service_unavailable"
 
-    def test_add_manual_server(self):
+    def test_add_manual_server(self) -> None:
         bridge = ConnectionsBridge()
         bridge.addManualServer()
 
-    def test_scan_slot(self):
+    def test_scan_slot(self) -> None:
         bridge = ConnectionsBridge()
         assert hasattr(bridge, 'scanForServers')
 
-    def test_connect_manual_returns_dict(self):
-        bridge = ConnectionsBridge()
+    def test_connect_manual_returns_dict(self) -> None:
+        from unittest.mock import MagicMock
+        bridge = ConnectionsBridge(connection_service=MagicMock())
+        bridge._connection_service.connect_manual = MagicMock()
         result = bridge.connectManual("192.168.1.100", 8080, "test")
         assert isinstance(result, dict)
         assert result.get("ok") is True
 
-    def test_diagnose_returns_dict(self):
+    def test_diagnose_returns_dict(self) -> None:
         bridge = ConnectionsBridge()
         result = bridge.diagnose()
         assert isinstance(result, dict)
 
-    def test_disconnect_returns_dict(self):
+    def test_disconnect_returns_dict(self) -> None:
         bridge = ConnectionsBridge()
         result = bridge.disconnect()
         assert isinstance(result, dict)
 
-    def test_capabilities_list(self):
+    def test_capabilities_list(self) -> None:
         bridge = ConnectionsBridge()
         caps = bridge.capabilities
         assert len(caps) > 0
@@ -371,24 +373,24 @@ class TestConnectionsBridge:
 
 
 class TestHomeAudioBridge:
-    def test_default_state(self):
+    def test_default_state(self) -> None:
         bridge = HomeAudioBridge()
         assert bridge.homeAssistantState == "not_configured"
         assert bridge.snapcastState == "concept"
         assert len(bridge.devices) == 0
 
-    def test_configure_home_assistant_returns_dict(self):
+    def test_configure_home_assistant_returns_dict(self) -> None:
         bridge = HomeAudioBridge()
         result = bridge.configureHomeAssistant("host", 8123, "token")
         assert result.get("ok") is False
         assert result.get("error") == "UNSUPPORTED"
 
-    def test_open_diagnostics(self):
+    def test_open_diagnostics(self) -> None:
         bridge = HomeAudioBridge()
         result = bridge.openDiagnostics()
         assert result.get("ok") is True
 
-    def test_capabilities_no_controller(self):
+    def test_capabilities_no_controller(self) -> None:
         bridge = HomeAudioBridge()
         assert bridge.homeAssistantAvailable is False
         assert bridge.snapcastAvailable is False
@@ -396,14 +398,14 @@ class TestHomeAudioBridge:
 
 
 class TestSmartTaggingBridge:
-    def test_smart_tagging_importable(self):
+    def test_smart_tagging_importable(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
         bridge = SmartTaggingBridge(service=MagicMock(), worker_manager=MagicMock())
         assert bridge is not None
         assert bridge.status == "idle"
 
-    def test_smart_tagging_scan_by_id_no_service(self):
+    def test_smart_tagging_scan_by_id_no_service(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
         bridge = SmartTaggingBridge(service=MagicMock(), worker_manager=MagicMock())
@@ -412,7 +414,7 @@ class TestSmartTaggingBridge:
         assert result.get("ok") is False
         assert result.get("error_code") == "UNSUPPORTED"
 
-    def test_smart_tagging_apply_no_suggestions(self):
+    def test_smart_tagging_apply_no_suggestions(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
         bridge = SmartTaggingBridge(service=MagicMock(), worker_manager=MagicMock())
@@ -421,13 +423,13 @@ class TestSmartTaggingBridge:
         assert result.get("ok") is False
         assert result.get("error_code") == "NO_SUGGESTIONS"
 
-    def test_refresh_returns_dict(self):
+    def test_refresh_returns_dict(self) -> None:
         bridge = HomeAudioBridge()
         result = bridge.refresh()
         assert isinstance(result, dict)
         assert result.get("ok") is True
 
-    def test_discover_receivers_unsupported(self):
+    def test_discover_receivers_unsupported(self) -> None:
         bridge = HomeAudioBridge()
         result = bridge.discoverReceivers()
         assert result.get("ok") is False
@@ -440,32 +442,32 @@ def _make_library_bridge(**kwargs):
 
 
 class TestLibraryBridge:
-    def test_instantiate(self):
+    def test_instantiate(self) -> None:
         bridge = _make_library_bridge()
         assert bridge is not None
 
-    def test_default_counts(self):
+    def test_default_counts(self) -> None:
         bridge = _make_library_bridge()
         assert bridge.songCount == 0
         assert bridge.albumCount == 0
 
-    def test_refresh_does_not_crash(self):
+    def test_refresh_does_not_crash(self) -> None:
         bridge = _make_library_bridge()
         bridge.refresh()
 
-    def test_add_folder_empty_path(self):
+    def test_add_folder_empty_path(self) -> None:
         bridge = _make_library_bridge()
         result = bridge.addFolder("")
         assert result.get("ok") is False
         assert result.get("error") == "EMPTY_PATH"
 
-    def test_add_folder_not_found(self):
+    def test_add_folder_not_found(self) -> None:
         bridge = _make_library_bridge()
         result = bridge.addFolder("/nonexistent/path/12345")
         assert result.get("ok") is False
         assert result.get("error") == "DIR_NOT_FOUND"
 
-    def test_add_folder_no_db(self):
+    def test_add_folder_no_db(self) -> None:
         import tempfile
         import os
         bridge = _make_library_bridge(job_bridge=None)
@@ -477,13 +479,13 @@ class TestLibraryBridge:
         finally:
             os.rmdir(tmpdir)
 
-    def test_add_media_empty(self):
+    def test_add_media_empty(self) -> None:
         bridge = _make_library_bridge()
         result = bridge.addMedia("")
         assert result.get("ok") is False
         assert result.get("error") == "EMPTY_PATH"
 
-    def test_add_media_not_found(self):
+    def test_add_media_not_found(self) -> None:
         bridge = _make_library_bridge()
         result = bridge.addMedia("/nonexistent/file.mp3")
         assert result.get("ok") is False
@@ -491,49 +493,49 @@ class TestLibraryBridge:
 
 
 class TestMichiAIBridge:
-    def test_instantiate(self):
+    def test_instantiate(self) -> None:
         bridge = MichiAIBridge()
         assert bridge is not None
 
-    def test_refresh_does_not_crash(self):
+    def test_refresh_does_not_crash(self) -> None:
         bridge = MichiAIBridge()
         bridge.refresh()
 
-    def test_send_message_returns_response(self):
+    def test_send_message_returns_response(self) -> None:
         bridge = MichiAIBridge()
         bridge.sendMessage("hola")
         history = bridge.getChatHistory()
         assert "hola" in history
         assert "assistant" in history
 
-    def test_suggestions_after_refresh(self):
+    def test_suggestions_after_refresh(self) -> None:
         bridge = MichiAIBridge()
         bridge.refresh()
         assert len(bridge.suggestions) > 0
 
 
 class TestLibraryBridgeContract:
-    def test_importable_without_db(self):
+    def test_importable_without_db(self) -> None:
         bridge = _make_library_bridge()
         assert bridge is not None
         assert bridge.songCount == 0
         assert bridge.albumCount == 0
 
-    def test_songs_property_returns_list(self):
+    def test_songs_property_returns_list(self) -> None:
         bridge = _make_library_bridge()
         songs = bridge.songs
         assert isinstance(songs, list)
 
-    def test_albums_property_returns_list(self):
+    def test_albums_property_returns_list(self) -> None:
         bridge = _make_library_bridge()
         albums = bridge.albums
         assert isinstance(albums, list)
 
-    def test_refresh_does_not_crash_without_db(self):
+    def test_refresh_does_not_crash_without_db(self) -> None:
         bridge = _make_library_bridge()
         bridge.refresh()
 
-    def test_play_song_delegates_to_player_service_with_metadata(self):
+    def test_play_song_delegates_to_player_service_with_metadata(self) -> None:
         from unittest.mock import MagicMock
 
         from ui_qml_bridge.library_query_service import LibraryQueryService
@@ -551,16 +553,16 @@ class TestLibraryBridgeContract:
 
 
 class TestAlbumGrid:
-    def test_album_grid_qml_exists(self):
+    def test_album_grid_qml_exists(self) -> None:
         assert (QML_DIR / "pages" / "library" / "AlbumGrid.qml").exists()
 
-    def test_album_grid_uses_cover_bridge(self):
+    def test_album_grid_uses_cover_bridge(self) -> None:
         content = (QML_DIR / "pages" / "library" / "AlbumCard.qml").read_text()
         assert "CoverImage" in content, "AlbumCard does not use CoverImage"
         proxy = (QML_DIR / "components" / "CoverBridgeProxy.qml").read_text()
         assert "coverBridge" in proxy, "CoverBridgeProxy does not wrap CoverBridge"
 
-    def test_album_grid_no_emoji(self):
+    def test_album_grid_no_emoji(self) -> None:
         content = (QML_DIR / "pages" / "library" / "AlbumCard.qml").read_text()
         for ch in content:
             if ord(ch) in set(range(0x1F300, 0x1FAFF)):
@@ -568,50 +570,50 @@ class TestAlbumGrid:
 
 
 class TestSongTable:
-    def test_song_table_qml_exists(self):
+    def test_song_table_qml_exists(self) -> None:
         assert (QML_DIR / "pages" / "library" / "SongTable.qml").exists()
 
-    def test_song_table_structure(self):
+    def test_song_table_structure(self) -> None:
         content = (QML_DIR / "pages" / "library" / "SongTable.qml").read_text()
         assert "songPlayRequested" in content
         assert "MichiTrackRow" in content or "SongRow" in content
 
 
 class TestCoverBridge:
-    def test_cover_bridge_importable(self):
+    def test_cover_bridge_importable(self) -> None:
         from ui_qml_bridge.cover_bridge import CoverBridge
         assert CoverBridge is not None
 
-    def test_cover_bridge_has_paint(self):
+    def test_cover_bridge_has_paint(self) -> None:
         from ui_qml_bridge.cover_bridge import CoverBridge
         assert hasattr(CoverBridge, 'paint')
 
-    def test_cover_bridge_cover_key_property(self):
+    def test_cover_bridge_cover_key_property(self) -> None:
         from ui_qml_bridge.cover_bridge import CoverBridge
         assert hasattr(CoverBridge, 'coverKey')
 
-    def test_album_card_uses_cover_bridge(self):
+    def test_album_card_uses_cover_bridge(self) -> None:
         content = (QML_DIR / "pages" / "library" / "AlbumCard.qml").read_text()
         assert "CoverImage" in content, "AlbumCard does not use CoverImage"
         proxy = (QML_DIR / "components" / "CoverBridgeProxy.qml").read_text()
         assert "coverBridge" in proxy, "CoverBridgeProxy does not reference coverBridge"
 
-    def test_album_card_no_image_provider(self):
+    def test_album_card_no_image_provider(self) -> None:
         content = (QML_DIR / "pages" / "library" / "AlbumCard.qml").read_text()
         assert "michi-cover" not in content, "AlbumCard still uses old image provider"
 
-    def test_album_card_no_parent_source(self):
+    def test_album_card_no_parent_source(self) -> None:
         content = (QML_DIR / "pages" / "library" / "AlbumCard.qml").read_text()
         assert "parent.source" not in content, "AlbumCard uses parent.source (deprecated)"
         assert "parent.status" not in content, "AlbumCard uses parent.status (deprecated)"
 
-    def test_cover_bridge_no_bare_except_pass(self):
+    def test_cover_bridge_no_bare_except_pass(self) -> None:
         content = (QML_DIR.parent / "ui_qml_bridge" / "cover_bridge.py").read_text()
         assert "except Exception:\n        pass" not in content, (
             "cover_bridge.py has bare except:pass"
         )
 
-    def test_cover_bridge_uses_qt_enums(self):
+    def test_cover_bridge_uses_qt_enums(self) -> None:
         content = (QML_DIR.parent / "ui_qml_bridge" / "cover_bridge.py").read_text()
         assert "Qt.AspectRatioMode" in content or "Qt.KeepAspectRatio" in content, (
             "cover_bridge.py missing Qt aspect ratio enum"
@@ -620,19 +622,19 @@ class TestCoverBridge:
             "cover_bridge.py missing Qt transformation enum"
         )
 
-    def test_cover_bridge_has_cache_limit(self):
+    def test_cover_bridge_has_cache_limit(self) -> None:
         content = (QML_DIR.parent / "ui_qml_bridge" / "cover_bridge.py").read_text()
         assert "_MAX_CACHE" in content, "cover_bridge.py missing _MAX_CACHE constant"
         assert "_trim_cache" in content, "cover_bridge.py missing _trim_cache function"
 
-    def test_qml_main_registers_cover_bridge(self):
+    def test_qml_main_registers_cover_bridge(self) -> None:
         from ui_qml_bridge.context_bindings import CONTEXT_BINDINGS
         names = [b.context_name for b in CONTEXT_BINDINGS]
         assert "coverProviderBridge" in names, (
             "No cover bridge binding found in context_bindings"
         )
 
-    def test_cover_bridge_paint_no_db_load(self):
+    def test_cover_bridge_paint_no_db_load(self) -> None:
         content = (QML_DIR.parent / "ui_qml_bridge" / "cover_bridge.py").read_text()
         paint_body = content[content.find("def paint"):]
         paint_body = paint_body[:paint_body.find("\n    def ") if "\n    def " in paint_body else len(paint_body)]
@@ -640,7 +642,7 @@ class TestCoverBridge:
             "paint() still calls _load_cover_image (should be in setter)"
         )
 
-    def test_cover_bridge_docstring_honest(self):
+    def test_cover_bridge_docstring_honest(self) -> None:
         content = (QML_DIR.parent / "ui_qml_bridge" / "cover_bridge.py").read_text()
         docstring = content.split('"""')[1] if '"""' in content else ""
         assert "paint()" in docstring, "docstring missing paint() contract"
@@ -648,7 +650,7 @@ class TestCoverBridge:
             "docstring should state paint() does no heavy work"
         )
 
-    def test_no_broadcast_files_in_this_branch(self):
+    def test_no_broadcast_files_in_this_branch(self) -> None:
         import subprocess
         result = subprocess.run(
             ["git", "ls-tree", "-r", "HEAD", "--name-only"],
@@ -662,22 +664,22 @@ class TestCoverBridge:
         ]
         assert not forbidden, f"Broadcast/podcast files found in branch: {forbidden}"
 
-    def test_sidebar_no_genres(self):
+    def test_sidebar_no_genres(self) -> None:
         content = (QML_DIR / "shell" / "Sidebar.qml").read_text()
         assert "genres" not in content, "Sidebar contains 'genres' route"
         assert "Géneros" not in content, "Sidebar contains 'Géneros' label"
 
-    def test_navigation_bridge_rejects_genres(self):
+    def test_navigation_bridge_rejects_genres(self) -> None:
         from ui_qml_bridge.navigation_bridge import NavigationBridge
         bridge = NavigationBridge()
         bridge.navigate("genres")
         assert bridge.currentRoute == "placeholder", "genres should fall to placeholder"
 
-    def test_page_stack_no_genres(self):
+    def test_page_stack_no_genres(self) -> None:
         content = (QML_DIR / "shell" / "PageStack.qml").read_text()
         assert "genres" not in content, "PageStack contains 'genres' case"
 
-    def test_app_shell_no_genres_title(self):
+    def test_app_shell_no_genres_title(self) -> None:
         content = (QML_DIR / "shell" / "AppShell.qml").read_text()
         assert "genres" not in content, "AppShell contains 'genres' title"
         assert "Géneros" not in content, "AppShell contains 'Géneros' title"
@@ -690,43 +692,43 @@ def _make_metadata_bridge(**kwargs):
 
 
 class TestMetadataBridge:
-    def test_metadata_bridge_exists(self):
+    def test_metadata_bridge_exists(self) -> None:
         assert MetadataBridge is not None
 
-    def test_metadata_bridge_properties(self):
+    def test_metadata_bridge_properties(self) -> None:
         bridge = _make_metadata_bridge()
         assert bridge.hasSelection is False
         assert bridge.isLoading is False
         assert bridge.canApply is False
         assert bridge.errorMessage == ""
 
-    def test_metadata_bridge_load_empty_path(self):
+    def test_metadata_bridge_load_empty_path(self) -> None:
         bridge = _make_metadata_bridge()
         result = bridge.loadMetadata("")
         assert result.get("ok") is False
         assert result.get("error") == "EMPTY_FILEPATH"
 
-    def test_metadata_bridge_clear(self):
+    def test_metadata_bridge_clear(self) -> None:
         bridge = _make_metadata_bridge()
         bridge.loadMetadata("/test/song.flac")
         bridge.clear()
         assert bridge.hasSelection is False
 
-    def test_metadata_bridge_load_not_found(self):
+    def test_metadata_bridge_load_not_found(self) -> None:
         bridge = _make_metadata_bridge()
         result = bridge.loadMetadata("/nonexistent/file.flac")
         assert result.get("ok") is False
 
-    def test_metadata_inspector_page_exists(self):
+    def test_metadata_inspector_page_exists(self) -> None:
         assert (QML_DIR / "pages" / "metadata" / "MetadataInspectorPage.qml").exists()
 
-    def test_metadata_field_row_exists(self):
+    def test_metadata_field_row_exists(self) -> None:
         assert (QML_DIR / "pages" / "metadata" / "MetadataFieldRow.qml").exists()
 
-    def test_metadata_artwork_preview_exists(self):
+    def test_metadata_artwork_preview_exists(self) -> None:
         assert (QML_DIR / "pages" / "metadata" / "MetadataArtworkPreview.qml").exists()
 
-    def test_navigation_bridge_accepts_metadata_inspector(self):
+    def test_navigation_bridge_accepts_metadata_inspector(self) -> None:
         from ui_qml_bridge.navigation_bridge import NavigationBridge
         bridge = NavigationBridge()
         bridge.navigate("metadata_inspector")
@@ -734,31 +736,31 @@ class TestMetadataBridge:
             "metadata_inspector aliases to audio_lab.metadata"
         )
 
-    def test_navigation_bridge_rejects_nowplaying(self):
+    def test_navigation_bridge_rejects_nowplaying(self) -> None:
         from ui_qml_bridge.navigation_bridge import NavigationBridge
         bridge = NavigationBridge()
         bridge.navigate("nowplaying")
         assert bridge.currentRoute == "nowplaying", "nowplaying is now a valid route"
 
-    def test_no_nowplaying_page_in_qml_clean(self):
+    def test_no_nowplaying_page_in_qml_clean(self) -> None:
         assert not (QML_DIR / "pages" / "NowPlayingPage.qml").exists(), (
             "NowPlayingPage.qml should not exist in qml-migration-foundation-clean"
         )
 
-    def test_metadata_bridge_can_apply_false_without_selection(self):
+    def test_metadata_bridge_can_apply_false_without_selection(self) -> None:
         bridge = _make_metadata_bridge()
         assert bridge.canApply is False
 
-    def test_metadata_bridge_can_apply_false_without_file(self):
+    def test_metadata_bridge_can_apply_false_without_file(self) -> None:
         bridge = _make_metadata_bridge()
         assert bridge.canApply is False
 
-    def test_metadata_bridge_save_changes_return_dict(self):
+    def test_metadata_bridge_save_changes_return_dict(self) -> None:
         bridge = _make_metadata_bridge()
         result = bridge.saveChanges()
         assert isinstance(result, dict)
 
-    def test_metadata_inspector_apply_button_disabled(self):
+    def test_metadata_inspector_apply_button_disabled(self) -> None:
         content = (QML_DIR / "pages" / "metadata" / "MetadataInspectorPage.qml").read_text()
         assert "_editing" in content, "Metadata page missing editing state"
         assert "saveChanges" in content or "inspect" in content, (
@@ -767,94 +769,94 @@ class TestMetadataBridge:
 
 
 class TestLibraryComponents:
-    def test_artist_card_exists(self):
+    def test_artist_card_exists(self) -> None:
         assert (QML_DIR / "pages" / "library" / "ArtistCard.qml").exists()
 
-    def test_artist_list_exists(self):
+    def test_artist_list_exists(self) -> None:
         assert (QML_DIR / "pages" / "library" / "ArtistList.qml").exists()
 
-    def test_artist_detail_page_exists(self):
+    def test_artist_detail_page_exists(self) -> None:
         assert (QML_DIR / "pages" / "library" / "ArtistDetailPage.qml").exists()
 
-    def test_album_detail_page_exists(self):
+    def test_album_detail_page_exists(self) -> None:
         assert (QML_DIR / "pages" / "library" / "AlbumDetailPage.qml").exists()
 
-    def test_folder_browser_exists(self):
+    def test_folder_browser_exists(self) -> None:
         assert (QML_DIR / "pages" / "library" / "FolderBrowser.qml").exists()
 
-    def test_library_page_has_artists_tab(self):
+    def test_library_page_has_artists_tab(self) -> None:
         content = (QML_DIR / "pages" / "library" / "LibraryPage.qml").read_text()
         assert "Artistas" in content, "LibraryPage missing Artists tab"
 
-    def test_library_page_has_folders_tab(self):
+    def test_library_page_has_folders_tab(self) -> None:
         content = (QML_DIR / "pages" / "library" / "LibraryPage.qml").read_text()
         assert "Carpetas" in content, "LibraryPage missing Folders tab"
 
-    def test_library_bridge_has_artists_property(self):
+    def test_library_bridge_has_artists_property(self) -> None:
         bridge = _make_library_bridge()
         assert hasattr(bridge, 'artists'), "LibraryBridge missing artists property"
 
-    def test_library_bridge_has_folders_property(self):
+    def test_library_bridge_has_folders_property(self) -> None:
         bridge = _make_library_bridge()
         assert hasattr(bridge, 'folders'), "LibraryBridge missing folders property"
 
-    def test_library_bridge_has_filter_methods(self):
+    def test_library_bridge_has_filter_methods(self) -> None:
         bridge = _make_library_bridge()
         assert hasattr(bridge, 'filterByArtist'), "LibraryBridge missing filterByArtist"
         assert hasattr(bridge, 'filterByAlbum'), "LibraryBridge missing filterByAlbum"
         assert hasattr(bridge, 'clearFilters'), "LibraryBridge missing clearFilters"
         assert hasattr(bridge, 'sortBy'), "LibraryBridge missing sortBy"
 
-    def test_folder_browser_no_emojis(self):
+    def test_folder_browser_no_emojis(self) -> None:
         content = (QML_DIR / "pages" / "library" / "FolderBrowser.qml").read_text()
         assert "📁" not in content, "FolderBrowser contains emoji"
 
-    def test_album_grid_has_album_clicked_signal(self):
+    def test_album_grid_has_album_clicked_signal(self) -> None:
         content = (QML_DIR / "pages" / "library" / "AlbumGrid.qml").read_text()
         assert "albumClicked" in content, "AlbumGrid missing albumClicked signal"
 
 
 class TestMixComponents:
-    def test_mix_bridge_importable(self):
+    def test_mix_bridge_importable(self) -> None:
         from ui_qml_bridge.mix_bridge import MixBridge
         assert MixBridge is not None
 
-    def test_mix_bridge_has_categories(self):
+    def test_mix_bridge_has_categories(self) -> None:
         from ui_qml_bridge.mix_bridge import MixBridge
         bridge = MixBridge()
         cats = bridge.categories
         assert len(cats) > 0, "MixBridge has no categories"
         assert any(c["id"] == "daily_mix" for c in cats), "Missing daily_mix"
 
-    def test_mix_bridge_load_mix(self):
+    def test_mix_bridge_load_mix(self) -> None:
         from ui_qml_bridge.mix_bridge import MixBridge
         bridge = MixBridge()
         bridge.loadMix("favorites")
         assert bridge.currentMixTitle == "Favoritos"
 
-    def test_mix_hub_page_exists(self):
+    def test_mix_hub_page_exists(self) -> None:
         assert (QML_DIR / "pages" / "mix" / "MixHubPage.qml").exists()
 
-    def test_mix_detail_page_exists(self):
+    def test_mix_detail_page_exists(self) -> None:
         assert (QML_DIR / "pages" / "mix" / "MixDetailPage.qml").exists()
 
-    def test_mix_detail_route_in_navigation(self):
+    def test_mix_detail_route_in_navigation(self) -> None:
         from ui_qml_bridge.route_registry import ROUTES
         assert "mix_detail" in ROUTES, "mix_detail not in route registry"
         info = ROUTES["mix_detail"]
         assert info["route"] == "mix_detail"
         assert info["status"] == "functional"
 
-    def test_mix_detail_route_in_pagestack(self):
+    def test_mix_detail_route_in_pagestack(self) -> None:
         from ui_qml_bridge.route_registry import ROUTES
         assert "mix_detail" in ROUTES, "Route registry missing mix_detail"
 
-    def test_qml_main_registers_mix_bridge(self):
+    def test_qml_main_registers_mix_bridge(self) -> None:
         bindings = (QML_DIR.parent / "ui_qml_bridge" / "context_bindings.py").read_text()
         assert "mixBridge" in bindings, "context_bindings missing mixBridge"
 
     @pytest.mark.skip(reason="Requiere SQL real: MixQueryService")
-    def test_mix_favorites_uses_fav_db(self):
+    def test_mix_favorites_uses_fav_db(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.mix_bridge import MixBridge
         from library.media_item import MediaItem
@@ -875,7 +877,7 @@ class TestMixComponents:
         assert "/path/other.mp3" not in fps
 
     @pytest.mark.skip(reason="Requiere SQL real: MixQueryService")
-    def test_mix_recent_uses_last_played(self):
+    def test_mix_recent_uses_last_played(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.mix_bridge import MixBridge
         from library.media_item import MediaItem
@@ -894,7 +896,7 @@ class TestMixComponents:
         assert bridge.currentSongs[0]["filepath"] == "/new.mp3", "Most recent first"
 
     @pytest.mark.skip(reason="Requiere SQL real: MixQueryService")
-    def test_mix_unplayed_excludes_played(self):
+    def test_mix_unplayed_excludes_played(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.mix_bridge import MixBridge
         from library.media_item import MediaItem
@@ -912,7 +914,7 @@ class TestMixComponents:
         assert bridge.currentSongs[0]["filepath"] == "/a.mp3"
 
     @pytest.mark.skip(reason="Requiere SQL real: MixQueryService")
-    def test_mix_most_played_orders_by_play_count(self):
+    def test_mix_most_played_orders_by_play_count(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.mix_bridge import MixBridge
         from library.media_item import MediaItem
@@ -931,19 +933,19 @@ class TestMixComponents:
         assert len(bridge.currentSongs) == 2
         assert bridge.currentSongs[0]["filepath"] == "/b.mp3", "Highest play count first"
 
-    def test_mix_daily_fallback_not_first_25(self):
+    def test_mix_daily_fallback_not_first_25(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.mix_bridge import MixBridge
         bridge = MixBridge(playback_service=MagicMock(), queue_service=MagicMock())
         bridge.loadMix("daily_mix")
         assert isinstance(bridge.currentSongs, list)
 
-    def test_mix_ai_requires_enabled(self):
+    def test_mix_ai_requires_enabled(self) -> None:
         from ui_qml_bridge.mix_bridge import MixBridge
         bridge = MixBridge()
         assert "ai_recommended" not in [c["id"] for c in bridge.categories]
 
-    def test_mix_daily_uses_smart_mix_service(self):
+    def test_mix_daily_uses_smart_mix_service(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.mix_bridge import MixBridge
         bridge = MixBridge(playback_service=MagicMock(), queue_service=MagicMock())
@@ -952,15 +954,15 @@ class TestMixComponents:
 
 
 class TestPlaybackComponents:
-    def test_playback_page_exists(self):
+    def test_playback_page_exists(self) -> None:
         assert (QML_DIR / "pages" / "PlaybackPage.qml").exists()
 
 
 class TestRadioComponents:
-    def test_radio_page_exists(self):
+    def test_radio_page_exists(self) -> None:
         assert (QML_DIR / "pages" / "radio" / "RadioPage.qml").exists()
 
-    def test_radio_route_in_pagestack(self):
+    def test_radio_route_in_pagestack(self) -> None:
         from ui_qml_bridge.route_registry import ROUTES
         assert "streaming.radio" in ROUTES, "Route registry missing radio"
 
@@ -970,7 +972,7 @@ class TestRadioComponents:
         args = dict(player_service=MagicMock(), **kwargs)
         return RadioBridge(**args)
 
-    def test_radio_bridge_edit_station(self):
+    def test_radio_bridge_edit_station(self) -> None:
         from unittest.mock import MagicMock
         mgr = MagicMock()
         bridge = self._make_radio_bridge(radio_manager=mgr)
@@ -978,13 +980,13 @@ class TestRadioComponents:
         assert result.get("ok") is True
         mgr.update.assert_called_once()
 
-    def test_radio_bridge_edit_station_no_mgr(self):
+    def test_radio_bridge_edit_station_no_mgr(self) -> None:
         bridge = self._make_radio_bridge()
         result = bridge.editStation(1, "Name", "url")
         assert result.get("ok") is False
         assert result.get("error") == "NO_RADIO_MANAGER"
 
-    def test_radio_bridge_toggle_favorite(self):
+    def test_radio_bridge_toggle_favorite(self) -> None:
         from unittest.mock import MagicMock
         mgr = MagicMock()
         mgr.toggle_favorite.return_value = True
@@ -993,12 +995,12 @@ class TestRadioComponents:
         assert result.get("ok") is True
         assert result.get("favorite") is True
 
-    def test_radio_bridge_toggle_favorite_no_mgr(self):
+    def test_radio_bridge_toggle_favorite_no_mgr(self) -> None:
         bridge = self._make_radio_bridge()
         result = bridge.toggleFavorite(1)
         assert result.get("ok") is False
 
-    def test_radio_bridge_search(self):
+    def test_radio_bridge_search(self) -> None:
         from unittest.mock import MagicMock
         from streaming.radio_manager import RadioStation
         mgr = MagicMock()
@@ -1010,7 +1012,7 @@ class TestRadioComponents:
         assert result.get("ok") is True
         assert result.get("count") == 1
 
-    def test_radio_bridge_search_no_match(self):
+    def test_radio_bridge_search_no_match(self) -> None:
         from unittest.mock import MagicMock
         from streaming.radio_manager import RadioStation
         mgr = MagicMock()
@@ -1022,48 +1024,48 @@ class TestRadioComponents:
 
 
 class TestSettingsComponents:
-    def test_settings_page_exists(self):
+    def test_settings_page_exists(self) -> None:
         assert (QML_DIR / "pages" / "SettingsPage.qml").exists()
 
-    def test_settings_route_in_navigation(self):
+    def test_settings_route_in_navigation(self) -> None:
         from ui_qml_bridge.navigation_bridge import NavigationBridge
         bridge = NavigationBridge()
         bridge.navigate("settings")
         assert bridge.currentRoute == "settings", "settings should be valid route"
 
-    def test_settings_route_in_pagestack(self):
+    def test_settings_route_in_pagestack(self) -> None:
         from ui_qml_bridge.route_registry import ROUTES
         assert "settings" in ROUTES, "Route registry missing settings"
 
 
 class TestNowPlayingBar:
-    def test_nowplaying_bar_exists(self):
+    def test_nowplaying_bar_exists(self) -> None:
         assert (QML_DIR / "components" / "NowPlayingBar.qml").exists()
 
-    def test_nowplaying_cover_exists(self):
+    def test_nowplaying_cover_exists(self) -> None:
         assert (QML_DIR / "components" / "NowPlayingCover.qml").exists()
 
-    def test_nowplaying_info_exists(self):
+    def test_nowplaying_info_exists(self) -> None:
         assert (QML_DIR / "components" / "NowPlayingInfo.qml").exists()
 
-    def test_nowplaying_controls_exists(self):
+    def test_nowplaying_controls_exists(self) -> None:
         assert (QML_DIR / "components" / "NowPlayingControls.qml").exists()
 
-    def test_nowplaying_seekbar_exists(self):
+    def test_nowplaying_seekbar_exists(self) -> None:
         assert (QML_DIR / "components" / "NowPlayingSeekBar.qml").exists()
 
-    def test_nowplaying_volume_exists(self):
+    def test_nowplaying_volume_exists(self) -> None:
         assert (QML_DIR / "components" / "NowPlayingVolume.qml").exists()
 
-    def test_appshell_has_nowplaying(self):
+    def test_appshell_has_nowplaying(self) -> None:
         content = (QML_DIR / "shell" / "AppShell.qml").read_text()
         assert "NowPlayingBar" in content, "AppShell missing NowPlayingBar"
 
-    def test_nowplaying_bridge_importable(self):
+    def test_nowplaying_bridge_importable(self) -> None:
         from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
         assert NowPlayingBridge is not None
 
-    def test_nowplaying_bridge_mirrors_player_signals(self):
+    def test_nowplaying_bridge_mirrors_player_signals(self) -> None:
         from PySide6.QtCore import QObject, Signal
         from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
 
@@ -1107,7 +1109,7 @@ class TestNowPlayingBar:
         assert bridge.volume == 55
         assert bridge.coverPath.startswith("track_")
 
-    def test_nowplaying_bridge_reads_current_track_object(self):
+    def test_nowplaying_bridge_reads_current_track_object(self) -> None:
         from types import SimpleNamespace
         from PySide6.QtCore import QObject, Signal
         from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
@@ -1148,7 +1150,7 @@ class TestNowPlayingBar:
         assert bridge.coverPath == "track_c79b4c2b8e46"
         assert bridge.hasTrack is True
 
-    def test_nowplaying_bridge_commands_call_player_service(self):
+    def test_nowplaying_bridge_commands_call_player_service(self) -> None:
         from unittest.mock import MagicMock
         from PySide6.QtCore import QObject, Signal
         from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
@@ -1234,12 +1236,12 @@ class TestNowPlayingBar:
         assert bridge.shuffleEnabled is True
         assert bridge.repeatMode == "all"
 
-    def test_nowplaying_bar_uses_nowplaying_bridge_first(self):
+    def test_nowplaying_bar_uses_nowplaying_bridge_first(self) -> None:
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
         assert "nowplayingBridge" in content
         assert "notificationBridge" in content
 
-    def test_nowplaying_bar_no_emojis(self):
+    def test_nowplaying_bar_no_emojis(self) -> None:
         for name in ("NowPlayingBar", "NowPlayingCover", "NowPlayingInfo",
                      "NowPlayingControls", "NowPlayingSeekBar", "NowPlayingVolume"):
             content = (QML_DIR / "components" / f"{name}.qml").read_text()
@@ -1249,13 +1251,13 @@ class TestNowPlayingBar:
 
 
 class TestLibraryQueryService:
-    def test_query_service_sort_whitelist(self):
+    def test_query_service_sort_whitelist(self) -> None:
         from ui_qml_bridge.library_query_service import _sort_col, _TRACK_SORT
         assert _sort_col("title") == "LOWER(COALESCE(title, ''))"
         assert _sort_col("invalid") == "LOWER(COALESCE(title, ''))"
         assert "artist" in _TRACK_SORT
 
-    def test_query_service_empty_db(self):
+    def test_query_service_empty_db(self) -> None:
         from ui_qml_bridge.library_query_service import LibraryQueryService
         from unittest.mock import MagicMock
         db = MagicMock()
@@ -1268,7 +1270,7 @@ class TestLibraryQueryService:
         assert svc.count_artists() == 0
         assert svc.search_backend in ("fts5", "like", "none")
 
-    def test_query_service_search_backend_detection(self):
+    def test_query_service_search_backend_detection(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.library_query_service import LibraryQueryService
         db = MagicMock()
@@ -1276,7 +1278,7 @@ class TestLibraryQueryService:
         svc = LibraryQueryService(db=db)
         assert svc.search_backend == "fts5"
 
-    def test_track_model_has_correct_signals(self):
+    def test_track_model_has_correct_signals(self) -> None:
         from ui_qml.models.TrackListModel import TrackListModel
         model = TrackListModel()
         assert hasattr(model, 'countChanged')
@@ -1286,23 +1288,23 @@ class TestLibraryQueryService:
 
 
 class TestTrackListModel:
-    def test_track_model_importable(self):
+    def test_track_model_importable(self) -> None:
         from ui_qml.models.TrackListModel import TrackListModel
         model = TrackListModel()
         assert model.count == 0
 
-    def test_track_model_basic(self):
+    def test_track_model_basic(self) -> None:
         from ui_qml.models.TrackListModel import TrackListModel
         model = TrackListModel()
         assert model.count == 0
         assert model.loading is False
 
-    def test_album_model_importable(self):
+    def test_album_model_importable(self) -> None:
         from ui_qml.models.AlbumListModel import AlbumListModel
         model = AlbumListModel()
         assert model.count == 0
 
-    def test_album_model_basic(self):
+    def test_album_model_basic(self) -> None:
         from ui_qml.models.AlbumListModel import AlbumListModel
         model = AlbumListModel()
         assert model.count == 0
@@ -1310,24 +1312,24 @@ class TestTrackListModel:
 
 
 class TestQueueListModel:
-    def test_queue_model_importable(self):
+    def test_queue_model_importable(self) -> None:
         from ui_qml.models.QueueListModel import QueueListModel
         model = QueueListModel()
         assert model.count == 0
 
-    def test_queue_model_counts_empty(self):
+    def test_queue_model_counts_empty(self) -> None:
         from ui_qml.models.QueueListModel import QueueListModel
         model = QueueListModel()
         assert model.totalCount == 0
         assert model.hasMore is False
 
-    def test_queue_bridge_importable(self):
+    def test_queue_bridge_importable(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.queue_bridge import QueueBridge
         bridge = QueueBridge(queue_service=MagicMock())
         assert bridge.queueCount == 0
 
-    def test_queue_bridge_refresh(self):
+    def test_queue_bridge_refresh(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.queue_bridge import QueueBridge
         bridge = QueueBridge(queue_service=MagicMock())
@@ -1336,29 +1338,29 @@ class TestQueueListModel:
 
 
 class TestHistoryListModel:
-    def test_history_model_importable(self):
+    def test_history_model_importable(self) -> None:
         from ui_qml.models.HistoryListModel import HistoryListModel
         model = HistoryListModel()
         assert model.count == 0
 
-    def test_history_model_basic(self):
+    def test_history_model_basic(self) -> None:
         from ui_qml.models.HistoryListModel import HistoryListModel
         model = HistoryListModel()
         assert model.loading is False
         assert model.totalCount == 0
 
-    def test_history_bridge_importable(self):
+    def test_history_bridge_importable(self) -> None:
         from ui_qml_bridge.history_bridge import HistoryBridge
         bridge = HistoryBridge()
         assert bridge.historyCount == 0
 
-    def test_history_bridge_refresh(self):
+    def test_history_bridge_refresh(self) -> None:
         from ui_qml_bridge.history_bridge import HistoryBridge
         bridge = HistoryBridge()
         result = bridge.refresh()
         assert result.get("ok") is True
 
-    def test_history_bridge_clear_no_db(self):
+    def test_history_bridge_clear_no_db(self) -> None:
         from ui_qml_bridge.history_bridge import HistoryBridge
         bridge = HistoryBridge()
         result = bridge.clearHistory()
@@ -1366,7 +1368,7 @@ class TestHistoryListModel:
 
 
 class TestEqBridge:
-    def test_eq_importable(self):
+    def test_eq_importable(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.eq_bridge import EqBridge
         bridge = EqBridge(player_service=MagicMock())
@@ -1375,7 +1377,7 @@ class TestEqBridge:
         result = bridge.refresh()
         assert result.get("ok") is True
 
-    def test_eq_apply_preset_no_player(self):
+    def test_eq_apply_preset_no_player(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.eq_bridge import EqBridge
         bridge = EqBridge(player_service=MagicMock())
@@ -1383,7 +1385,7 @@ class TestEqBridge:
         result = bridge.applyPreset("Rock")
         assert result.get("ok") is False
 
-    def test_eq_toggle_bypass_no_player(self):
+    def test_eq_toggle_bypass_no_player(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.eq_bridge import EqBridge
         bridge = EqBridge(player_service=MagicMock())
@@ -1393,7 +1395,7 @@ class TestEqBridge:
 
 
 class TestSettingsBridge:
-    def test_settings_importable(self):
+    def test_settings_importable(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.settings_bridge import SettingsBridgeV2 as SettingsBridge
         svc = MagicMock()
@@ -1401,7 +1403,7 @@ class TestSettingsBridge:
         bridge = SettingsBridge(service=svc)
         assert len(bridge.categories) > 0
 
-    def test_settings_categories(self):
+    def test_settings_categories(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.settings_bridge import SettingsBridgeV2 as SettingsBridge
         svc = MagicMock()
@@ -1413,7 +1415,7 @@ class TestSettingsBridge:
 
 
 class TestLibraryDoctorBridge:
-    def test_library_doctor_importable(self):
+    def test_library_doctor_importable(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
         bridge = LibraryDoctorBridge(db=MagicMock(), worker_manager=MagicMock())
@@ -1421,7 +1423,7 @@ class TestLibraryDoctorBridge:
 
 
 class TestPlaylistsFullBridge:
-    def test_playlists_bridge_duplicate(self):
+    def test_playlists_bridge_duplicate(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.playlists_bridge import PlaylistsBridge
         svc = MagicMock()
@@ -1430,7 +1432,7 @@ class TestPlaylistsFullBridge:
         result = bridge.duplicatePlaylist(1)
         assert result.get("ok") is True
 
-    def test_playlists_bridge_clear(self):
+    def test_playlists_bridge_clear(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.playlists_bridge import PlaylistsBridge
         svc = MagicMock()
@@ -1439,13 +1441,13 @@ class TestPlaylistsFullBridge:
         result = bridge.clearPlaylist(1)
         assert result.get("ok") is True
 
-    def test_playlists_bridge_save_queue_no_player(self):
+    def test_playlists_bridge_save_queue_no_player(self) -> None:
         from ui_qml_bridge.playlists_bridge import PlaylistsBridge
         bridge = PlaylistsBridge()
         result = bridge.saveQueueAsPlaylist("Test")
         assert result.get("ok") is False
 
-    def test_playlists_bridge_m3u_import_not_found(self):
+    def test_playlists_bridge_m3u_import_not_found(self) -> None:
         from ui_qml_bridge.playlists_bridge import PlaylistsBridge
         bridge = PlaylistsBridge()
         result = bridge.importM3U("/nonexistent/file.m3u")
@@ -1453,70 +1455,70 @@ class TestPlaylistsFullBridge:
 
 
 class TestDevicesComponents:
-    def test_devices_page_exists(self):
+    def test_devices_page_exists(self) -> None:
         assert (QML_DIR / "pages" / "devices" / "DevicesPage.qml").exists()
-    def test_device_card_exists(self):
+    def test_device_card_exists(self) -> None:
         assert (QML_DIR / "pages" / "devices" / "DeviceCard.qml").exists()
-    def test_sync_status_panel_exists(self):
+    def test_sync_status_panel_exists(self) -> None:
         assert (QML_DIR / "pages" / "devices" / "SyncStatusPanel.qml").exists()
-    def test_devices_bridge_importable(self):
+    def test_devices_bridge_importable(self) -> None:
         from ui_qml_bridge.devices_bridge import DevicesBridge
         assert DevicesBridge is not None
-    def test_devices_route_in_pagestack(self):
+    def test_devices_route_in_pagestack(self) -> None:
         from ui_qml_bridge.route_registry import ROUTES
         assert "sync" in ROUTES
         assert "sync.mobile" in ROUTES
-    def test_devices_start_server_no_sync(self):
+    def test_devices_start_server_no_sync(self) -> None:
         from ui_qml_bridge.devices_bridge import DevicesBridge
         bridge = DevicesBridge()
         result = bridge.startServer()
         assert result.get("ok") is False
         assert result.get("error") == "NO_SYNC_MANAGER"
-    def test_devices_stop_server_no_sync(self):
+    def test_devices_stop_server_no_sync(self) -> None:
         from ui_qml_bridge.devices_bridge import DevicesBridge
         bridge = DevicesBridge()
         result = bridge.stopServer()
         assert result.get("ok") is not True
-    def test_devices_refresh_no_sync(self):
+    def test_devices_refresh_no_sync(self) -> None:
         from ui_qml_bridge.devices_bridge import DevicesBridge
         bridge = DevicesBridge()
         result = bridge.refresh()
         assert isinstance(result, dict)
 
 class TestPlaylistsComponents:
-    def test_playlists_page_real_exists(self):
+    def test_playlists_page_real_exists(self) -> None:
         assert (QML_DIR / "pages" / "playlists" / "PlaylistsPage.qml").exists()
-    def test_playlist_card_exists(self):
+    def test_playlist_card_exists(self) -> None:
         assert (QML_DIR / "pages" / "playlists" / "PlaylistCard.qml").exists()
-    def test_playlist_detail_page_exists(self):
+    def test_playlist_detail_page_exists(self) -> None:
         assert (QML_DIR / "pages" / "playlists" / "PlaylistDetailPage.qml").exists()
-    def test_playlists_bridge_importable(self):
+    def test_playlists_bridge_importable(self) -> None:
         from ui_qml_bridge.playlists_bridge import PlaylistsBridge
         assert PlaylistsBridge is not None
-    def test_playlists_route_in_pagestack(self):
+    def test_playlists_route_in_pagestack(self) -> None:
         from ui_qml_bridge.route_registry import ROUTES
         assert "playlists" in ROUTES
-    def test_playlist_detail_route_in_pagestack(self):
+    def test_playlist_detail_route_in_pagestack(self) -> None:
         from ui_qml_bridge.route_registry import ROUTES
         assert "playlist_detail" in ROUTES
 
 class TestContextMenu:
-    def test_song_context_menu_exists(self):
+    def test_song_context_menu_exists(self) -> None:
         assert (QML_DIR / "components" / "SongContextMenu.qml").exists()
 
 
 class TestRadioBridgeIntegration:
-    def test_radio_bridge_importable(self):
+    def test_radio_bridge_importable(self) -> None:
         from ui_qml_bridge.radio_bridge import RadioBridge
         assert RadioBridge is not None
 
-    def test_radio_bridge_refresh(self):
+    def test_radio_bridge_refresh(self) -> None:
         from unittest.mock import MagicMock
         bridge = RadioBridge(player_service=MagicMock())
         bridge.refresh()
         assert len(bridge.stations) == 0
 
-    def test_radio_bridge_has_slots(self):
+    def test_radio_bridge_has_slots(self) -> None:
         from unittest.mock import MagicMock
         bridge = RadioBridge(player_service=MagicMock())
         assert hasattr(bridge, 'addStation')
@@ -1525,22 +1527,22 @@ class TestRadioBridgeIntegration:
 
 
 class TestAudioLabIntegration:
-    def test_audio_lab_bridge_importable(self):
+    def test_audio_lab_bridge_importable(self) -> None:
         from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
         assert AudioLabBridge is not None
 
-    def test_audio_lab_bridge_modules(self):
+    def test_audio_lab_bridge_modules(self) -> None:
         bridge = AudioLabBridge()
         mods = bridge.modules
         assert isinstance(mods, list)
 
-    def test_audio_lab_bridge_refresh(self):
+    def test_audio_lab_bridge_refresh(self) -> None:
         bridge = AudioLabBridge()
         bridge.refresh()
 
 
 class TestDiscLabBridge:
-    def test_disc_lab_importable(self):
+    def test_disc_lab_importable(self) -> None:
         from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
         assert DiscLabBridge is not None
 
@@ -1550,14 +1552,14 @@ class TestDiscLabBridge:
         args = dict(worker_manager=MagicMock(), **kwargs)
         return DiscLabBridge(**args)
 
-    def test_disc_lab_unavailable_no_service(self):
+    def test_disc_lab_unavailable_no_service(self) -> None:
         bridge = self._make_disc_lab_bridge()
         assert bridge.status == "unavailable"
         result = bridge.refresh()
         assert result.get("ok") is False
         assert result.get("error") == "UNSUPPORTED"
 
-    def test_disc_lab_scan_no_disc(self):
+    def test_disc_lab_scan_no_disc(self) -> None:
         from unittest.mock import MagicMock
         svc = MagicMock()
         svc.detect_drives.return_value = ["/dev/sr0"]
@@ -1567,7 +1569,7 @@ class TestDiscLabBridge:
         assert result.get("ok") is True
         assert bridge.status == "no_disc"
 
-    def test_disc_lab_scan_with_tracks(self):
+    def test_disc_lab_scan_with_tracks(self) -> None:
         from unittest.mock import MagicMock
         svc = MagicMock()
         svc.detect_drives.return_value = ["/dev/sr0"]
@@ -1576,7 +1578,7 @@ class TestDiscLabBridge:
         bridge.refresh()
         assert bridge.status == "ready"
 
-    def test_disc_lab_eject(self):
+    def test_disc_lab_eject(self) -> None:
         bridge = self._make_disc_lab_bridge()
         bridge._status = "scanned"
         bridge._tracks = [{"track": 1, "title": "Track 1"}]
@@ -1587,11 +1589,11 @@ class TestDiscLabBridge:
 
 
 class TestSettingsBridgeIntegration:
-    def test_settings_bridge_importable(self):
+    def test_settings_bridge_importable(self) -> None:
         from ui_qml_bridge.settings_bridge import SettingsBridgeV2 as SettingsBridge
         assert SettingsBridge is not None
 
-    def test_settings_bridge_sections(self):
+    def test_settings_bridge_sections(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.settings_bridge import SettingsBridgeV2 as SettingsBridge
         svc = MagicMock()
@@ -1603,18 +1605,18 @@ class TestSettingsBridgeIntegration:
 
 
 class TestConnectionsV2Bridge:
-    def test_connections_bridge_refresh(self):
+    def test_connections_bridge_refresh(self) -> None:
         bridge = ConnectionsBridge()
         bridge.refresh()
         assert bridge.microServerState == "service_unavailable"
 
-    def test_connections_bridge_scan(self):
+    def test_connections_bridge_scan(self) -> None:
         bridge = ConnectionsBridge()
         bridge.scanForServers()
         # Without demo data and without a real controller, should return empty
         assert len(bridge.discoveredServers) == 0
 
-    def test_connections_bridge_no_demo_without_controller(self):
+    def test_connections_bridge_no_demo_without_controller(self) -> None:
         bridge = ConnectionsBridge()
         bridge.scanForServers()
         servers = bridge.discoveredServers
@@ -1628,13 +1630,13 @@ class TestLyricsBridge:
         args = dict(worker_manager=MagicMock(), **kwargs)
         return LyricsBridge(**args)
 
-    def test_lyrics_idle_on_create(self):
+    def test_lyrics_idle_on_create(self) -> None:
         bridge = self._make_lyrics_bridge()
         assert bridge.status == "idle"
         assert bridge.lyrics == ""
         assert bridge.syncedLyrics == []
 
-    def test_lyrics_parse_lrc(self):
+    def test_lyrics_parse_lrc(self) -> None:
         from ui_qml_bridge.lyrics_bridge import _parse_lrc
         lrc_text = "[00:01.00]Line 1\n[00:02.50]Line 2\n[00:03.75]Line 3"
         synced = _parse_lrc(lrc_text)
@@ -1644,13 +1646,13 @@ class TestLyricsBridge:
         assert synced[1]["time"] == 2.5
         assert synced[2]["time"] == 3.75
 
-    def test_lyrics_parse_lrc_no_timestamp(self):
+    def test_lyrics_parse_lrc_no_timestamp(self) -> None:
         from ui_qml_bridge.lyrics_bridge import _parse_lrc
         synced = _parse_lrc("Plain text line")
         assert len(synced) == 1
         assert synced[0]["time"] == 0
 
-    def test_lyrics_cache_hit(self):
+    def test_lyrics_cache_hit(self) -> None:
         bridge = self._make_lyrics_bridge()
         bridge._cache["test||artist||album||0"] = {
             "lyrics": "cached lyrics", "synced_lyrics": "",
@@ -1661,13 +1663,13 @@ class TestLyricsBridge:
         assert bridge.lyrics == "cached lyrics"
         assert bridge.status == "done"
 
-    def test_lyrics_cancel_search(self):
+    def test_lyrics_cancel_search(self) -> None:
         bridge = self._make_lyrics_bridge()
         bridge._status = "searching"
         bridge.cancelSearch()
         assert bridge.status == "idle"
 
-    def test_lyrics_clear_cache_for_track(self):
+    def test_lyrics_clear_cache_for_track(self) -> None:
         bridge = self._make_lyrics_bridge()
         bridge._cache["test||artist||album||0"] = {"lyrics": "x", "synced_lyrics": "", "source": "L", "timestamp": 1000}
         bridge._current_title = "test"
@@ -1678,18 +1680,18 @@ class TestLyricsBridge:
         assert result.get("ok") is True
         assert "test||artist||album||0" not in bridge._cache
 
-    def test_lyrics_search_manual_empty(self):
+    def test_lyrics_search_manual_empty(self) -> None:
         bridge = self._make_lyrics_bridge()
         result = bridge.searchManual("")
         assert result.get("ok") is False
         assert result.get("error") == "EMPTY_QUERY"
 
-    def test_lyrics_search_current_track_no_np(self):
+    def test_lyrics_search_current_track_no_np(self) -> None:
         bridge = self._make_lyrics_bridge()
         result = bridge.searchCurrentTrack()
         assert result.get("ok") is False
 
-    def test_lyrics_get_active_line(self):
+    def test_lyrics_get_active_line(self) -> None:
         bridge = self._make_lyrics_bridge()
         bridge._synced_lyrics = [{"time": 1.0, "text": "A"}, {"time": 2.0, "text": "B"}, {"time": 3.0, "text": "C"}]
         assert bridge.getActiveLine(0) == 0
@@ -1697,11 +1699,11 @@ class TestLyricsBridge:
         assert bridge.getActiveLine(2500) == 1
         assert bridge.getActiveLine(5000) == 2
 
-    def test_lyrics_get_active_line_empty(self):
+    def test_lyrics_get_active_line_empty(self) -> None:
         bridge = self._make_lyrics_bridge()
         assert bridge.getActiveLine(1000) is None
 
-    def test_lyrics_on_track_changed_noop_same_track(self):
+    def test_lyrics_on_track_changed_noop_same_track(self) -> None:
         from unittest.mock import MagicMock
         bridge = self._make_lyrics_bridge()
         bridge._current_title = "Same"
@@ -1715,17 +1717,17 @@ class TestLyricsBridge:
 
 
 class TestHomeAudioV2Bridge:
-    def test_home_audio_bridge_refresh(self):
+    def test_home_audio_bridge_refresh(self) -> None:
         bridge = HomeAudioBridge()
         result = bridge.refresh()
         assert result.get("ok") is True
         assert bridge.homeAssistantState == "not_configured"
 
-    def test_home_audio_bridge_devices(self):
+    def test_home_audio_bridge_devices(self) -> None:
         bridge = HomeAudioBridge()
         assert len(bridge.devices) == 0
 
-    def test_home_audio_capabilities_no_controller(self):
+    def test_home_audio_capabilities_no_controller(self) -> None:
         bridge = HomeAudioBridge()
         assert bridge.homeAssistantAvailable is False
         assert bridge.snapcastAvailable is False
@@ -1734,35 +1736,35 @@ class TestHomeAudioV2Bridge:
         assert bridge.groupingSupported is False
         assert bridge.volumeSupported is False
 
-    def test_home_audio_configure_unsupported_without_ha(self):
+    def test_home_audio_configure_unsupported_without_ha(self) -> None:
         bridge = HomeAudioBridge()
         result = bridge.configureHomeAssistant("192.168.1.100", 8123, "token")
         assert result.get("ok") is False
         assert result.get("error") == "UNSUPPORTED"
 
-    def test_home_audio_discover_receivers_unsupported(self):
+    def test_home_audio_discover_receivers_unsupported(self) -> None:
         bridge = HomeAudioBridge()
         result = bridge.discoverReceivers()
         assert result.get("ok") is False
         assert result.get("error") == "UNSUPPORTED"
 
-    def test_home_audio_set_zone_volume_unsupported(self):
+    def test_home_audio_set_zone_volume_unsupported(self) -> None:
         bridge = HomeAudioBridge()
         result = bridge.setZoneVolume("zone1", 0.5)
         assert result.get("ok") is False
         assert result.get("error") == "UNSUPPORTED"
 
-    def test_home_audio_test_ha_unsupported(self):
+    def test_home_audio_test_ha_unsupported(self) -> None:
         bridge = HomeAudioBridge()
         result = bridge.testHomeAssistant()
         assert result.get("ok") is False
 
-    def test_home_audio_assign_stream_unsupported(self):
+    def test_home_audio_assign_stream_unsupported(self) -> None:
         bridge = HomeAudioBridge()
         result = bridge.assignStream("stream1")
         assert result.get("ok") is False
 
-    def test_home_audio_bridge_with_ha_adapter(self):
+    def test_home_audio_bridge_with_ha_adapter(self) -> None:
         from unittest.mock import MagicMock
         ha_adapter = MagicMock()
         ha_adapter.is_connected = True
@@ -1774,7 +1776,7 @@ class TestHomeAudioV2Bridge:
         assert bridge.homeAssistantAvailable is True
         assert bridge.homeAssistantState == "connected"
 
-    def test_home_audio_bridge_with_snapcast_adapter(self):
+    def test_home_audio_bridge_with_snapcast_adapter(self) -> None:
         from unittest.mock import MagicMock
         snap_adapter = MagicMock()
         snap_adapter.get_servers.return_value = [
@@ -1789,7 +1791,7 @@ class TestHomeAudioV2Bridge:
         assert bridge.snapcastAvailable is True
         assert len(bridge.servers) == 1
 
-    def test_home_audio_bridge_configure_with_ha_adapter(self):
+    def test_home_audio_bridge_configure_with_ha_adapter(self) -> None:
         class _HAAdapter:
             def configure(self, host="", port=0, access_token=""):
                 return {"ok": True}
@@ -1798,7 +1800,7 @@ class TestHomeAudioV2Bridge:
         result = bridge.configureHomeAssistant("192.168.1.100", 8123, "token")
         assert result.get("ok") is True
 
-    def test_home_audio_bridge_volume_with_snapcast(self):
+    def test_home_audio_bridge_volume_with_snapcast(self) -> None:
         from unittest.mock import MagicMock
         snap_adapter = MagicMock()
         snap_adapter.set_volume.return_value = {"ok": True}
@@ -1809,12 +1811,12 @@ class TestHomeAudioV2Bridge:
 
 
 class TestActionRegistry:
-    def test_action_registry_importable(self):
+    def test_action_registry_importable(self) -> None:
         from ui_qml_bridge.action_registry import ActionRegistry
         registry = ActionRegistry()
         assert len(registry.actions) > 0
 
-    def test_action_registry_contains_navigation(self):
+    def test_action_registry_contains_navigation(self) -> None:
         from ui_qml_bridge.action_registry import ActionRegistry
         registry = ActionRegistry()
         actions = registry.actions
@@ -1824,21 +1826,21 @@ class TestActionRegistry:
         assert "playback_playpause" in ids
         assert "library_refresh" in ids
 
-    def test_action_registry_execute_no_handler(self):
+    def test_action_registry_execute_no_handler(self) -> None:
         from ui_qml_bridge.action_registry import ActionRegistry
         registry = ActionRegistry()
         result = registry.execute("navigate_home")
         assert result.get("ok") is False
         assert result.get("error") == "NO_HANDLER"
 
-    def test_action_registry_execute_not_found(self):
+    def test_action_registry_execute_not_found(self) -> None:
         from ui_qml_bridge.action_registry import ActionRegistry
         registry = ActionRegistry()
         result = registry.execute("nonexistent")
         assert result.get("ok") is False
         assert result.get("error") == "NOT_FOUND"
 
-    def test_action_registry_register(self):
+    def test_action_registry_register(self) -> None:
         from ui_qml_bridge.action_registry import ActionRegistry, ActionDescriptor
         registry = ActionRegistry()
         registry.register(ActionDescriptor("test_action", "Test", "test"))
@@ -1848,19 +1850,19 @@ class TestActionRegistry:
 
 
 class TestGlobalSearchBridge:
-    def test_global_search_importable(self):
+    def test_global_search_importable(self) -> None:
         from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
         bridge = GlobalSearchBridge()
         assert bridge.results == []
 
-    def test_global_search_empty_query(self):
+    def test_global_search_empty_query(self) -> None:
         from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
         bridge = GlobalSearchBridge()
         result = bridge.search("")
         assert result.get("ok") is True
         assert result.get("count") == 0
 
-    def test_global_search_no_db_returns_empty(self):
+    def test_global_search_no_db_returns_empty(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
         qe = MagicMock()
@@ -1878,24 +1880,24 @@ class TestJobBridge:
         args = dict(worker_manager=MagicMock(), db=MagicMock(), **kwargs)
         return JobBridge(**args)
 
-    def test_job_bridge_importable(self):
+    def test_job_bridge_importable(self) -> None:
         bridge = self._make_job_bridge()
         assert bridge.jobs == []
         assert bridge.activeCount == 0
 
-    def test_job_bridge_unknown_job(self):
+    def test_job_bridge_unknown_job(self) -> None:
         bridge = self._make_job_bridge()
         result = bridge.runJob("unknown_job")
         assert result.get("ok") is False
         assert result.get("error") == "UNKNOWN_JOB_TYPE"
 
-    def test_job_bridge_run_scan(self):
+    def test_job_bridge_run_scan(self) -> None:
         bridge = self._make_job_bridge()
         result = bridge.runJob("library_scan", "/tmp")
         assert result.get("ok") is True
         assert len(bridge.jobs) == 1
 
-    def test_job_bridge_cancel(self):
+    def test_job_bridge_cancel(self) -> None:
         bridge = self._make_job_bridge()
         bridge.runJob("library_scan", "/tmp")
         job_id = bridge.jobs[0]["job_id"]
@@ -1903,12 +1905,12 @@ class TestJobBridge:
         assert result.get("ok") is True
         assert bridge.activeCount == 0
 
-    def test_job_bridge_cancel_not_found(self):
+    def test_job_bridge_cancel_not_found(self) -> None:
         bridge = self._make_job_bridge()
         result = bridge.cancelJob(999)
         assert result.get("ok") is False
 
-    def test_job_bridge_clear_completed(self):
+    def test_job_bridge_clear_completed(self) -> None:
         bridge = self._make_job_bridge()
         bridge.runJob("library_scan", "/tmp")
         bridge.cancelJob(bridge.jobs[0]["job_id"])
@@ -1926,13 +1928,13 @@ class TestLibrarySourcesBridge:
         db.remove_library_root.return_value = True
         return db
 
-    def test_library_sources_service_importable(self):
+    def test_library_sources_service_importable(self) -> None:
         from core.library_sources_service import LibrarySourcesService
         svc = LibrarySourcesService(db=self._make_source_db())
         sources = svc.list()
         assert isinstance(sources, list)
 
-    def test_library_sources_service_add_remove(self):
+    def test_library_sources_service_add_remove(self) -> None:
         import tempfile
         from core.library_sources_service import LibrarySourcesService
         db = self._make_source_db()
@@ -1942,13 +1944,13 @@ class TestLibrarySourcesBridge:
             result = svc.add(tmp)
             assert result.get("ok") is True
 
-    def test_library_sources_service_add_nonexistent(self):
+    def test_library_sources_service_add_nonexistent(self) -> None:
         from core.library_sources_service import LibrarySourcesService
         svc = LibrarySourcesService(db=self._make_source_db())
         result = svc.add("/nonexistent/path")
         assert result.get("ok") is False
 
-    def test_library_sources_service_duplicate(self):
+    def test_library_sources_service_duplicate(self) -> None:
         import tempfile
         from core.library_sources_service import LibrarySourcesService
         db = self._make_source_db()
@@ -1959,7 +1961,7 @@ class TestLibrarySourcesBridge:
             assert result.get("ok") is False
             assert result.get("error") == "ALREADY_EXISTS"
 
-    def test_library_sources_bridge_importable(self):
+    def test_library_sources_bridge_importable(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.library_sources_bridge import LibrarySourcesBridge
         svc = MagicMock()
@@ -1968,7 +1970,7 @@ class TestLibrarySourcesBridge:
         assert bridge.status == "ready"
         assert isinstance(bridge.sources, list)
 
-    def test_library_sources_bridge_add_source(self):
+    def test_library_sources_bridge_add_source(self) -> None:
         import tempfile
         from unittest.mock import MagicMock
         from core.library_sources_service import LibrarySourcesService
@@ -1982,7 +1984,7 @@ class TestLibrarySourcesBridge:
             result = bridge.addSource(tmp)
             assert result.get("ok") is True
 
-    def test_library_sources_bridge_remove_missing(self):
+    def test_library_sources_bridge_remove_missing(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.library_sources_bridge import LibrarySourcesBridge
         from core.library_sources_service import LibrarySourcesService
@@ -1993,7 +1995,7 @@ class TestLibrarySourcesBridge:
         result = bridge.removeSource("/nonexistent")
         assert result.get("ok") is False
 
-    def test_library_sources_bridge_refresh(self):
+    def test_library_sources_bridge_refresh(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.library_sources_bridge import LibrarySourcesBridge
         bridge = LibrarySourcesBridge(service=MagicMock())
@@ -2002,7 +2004,7 @@ class TestLibrarySourcesBridge:
 
 
 class TestRadioBridgeWithService:
-    def test_radio_bridge_with_manager(self):
+    def test_radio_bridge_with_manager(self) -> None:
         from unittest.mock import MagicMock
         from types import SimpleNamespace
         from ui_qml_bridge.radio_bridge import RadioBridge
@@ -2019,7 +2021,7 @@ class TestRadioBridgeWithService:
 
 
 class TestMixBridgeWithService:
-    def test_mix_bridge_with_db(self):
+    def test_mix_bridge_with_db(self) -> None:
         from unittest.mock import MagicMock
         from ui_qml_bridge.mix_bridge import MixBridge
         bridge = MixBridge(playback_service=MagicMock(), queue_service=MagicMock())

@@ -10,11 +10,11 @@ pytestmark = [pytest.mark.qml_module("worker_manager")]
 
 
 class TestContainerCreation:
-    def test_initial_state_is_created(self):
+    def test_initial_state_is_created(self) -> None:
         c = ServiceContainer()
         assert c.state == ContainerState.CREATED
 
-    def test_has_all_required_services_defined(self):
+    def test_has_all_required_services_defined(self) -> None:
         c = ServiceContainer()
         required = c._required_names()
         expected = {
@@ -30,7 +30,7 @@ class TestContainerCreation:
         }
         assert required == expected
 
-    def test_has_all_optional_services_defined(self):
+    def test_has_all_optional_services_defined(self) -> None:
         c = ServiceContainer()
         optional = c._optional_names()
         expected = {
@@ -45,102 +45,102 @@ class TestContainerCreation:
         }
         assert optional == expected
 
-    def test_all_services_have_priority(self):
+    def test_all_services_have_priority(self) -> None:
         c = ServiceContainer()
         for name in c._all_names():
             assert c.priority(name) is not None
 
-    def test_required_priority_assigned(self):
+    def test_required_priority_assigned(self) -> None:
         c = ServiceContainer()
         for name in c._required_names():
             assert c.priority(name) == ServicePriority.REQUIRED
 
-    def test_optional_priority_assigned(self):
+    def test_optional_priority_assigned(self) -> None:
         c = ServiceContainer()
         for name in c._optional_names():
             assert c.priority(name) == ServicePriority.OPTIONAL
 
 
 class TestContainerAPI:
-    def test_register_and_get(self):
+    def test_register_and_get(self) -> None:
         c = ServiceContainer()
         obj = object()
         c.register("test_svc", obj)
         assert c.get("test_svc") is obj
 
-    def test_require_returns_service(self):
+    def test_require_returns_service(self) -> None:
         c = ServiceContainer()
         obj = object()
         c.register("test_svc", obj)
         assert c.require("test_svc") is obj
 
-    def test_require_raises_on_missing(self):
+    def test_require_raises_on_missing(self) -> None:
         c = ServiceContainer()
         with pytest.raises(KeyError):
             c.require("nonexistent")
 
-    def test_contains_returns_true(self):
+    def test_contains_returns_true(self) -> None:
         c = ServiceContainer()
         c.register("test_svc", object())
         assert c.contains("test_svc") is True
 
-    def test_contains_returns_false_for_unregistered(self):
+    def test_contains_returns_false_for_unregistered(self) -> None:
         c = ServiceContainer()
         assert c.contains("nonexistent") is False
 
-    def test_register_with_required_flag(self):
+    def test_register_with_required_flag(self) -> None:
         c = ServiceContainer()
-        c.register("custom", object(), required=True)
+        c.register("custom", object(), priority=ServicePriority.REQUIRED)
         assert c.priority("custom") == ServicePriority.REQUIRED
 
-    def test_register_with_dependencies(self):
+    def test_register_with_dependencies(self) -> None:
         c = ServiceContainer()
         c.register("a", object(), dependencies=("b",))
         assert c._dependencies["a"] == ("b",)
 
-    def test_typed_property_connection_factory(self):
+    def test_typed_property_connection_factory(self) -> None:
         c = ServiceContainer()
         obj = object()
         c.register("connection_factory", obj)
         assert c.connection_factory is obj
 
-    def test_typed_property_returns_none_when_unregistered(self):
+    def test_typed_property_returns_none_when_unregistered(self) -> None:
         c = ServiceContainer()
         assert c.audio_lab_service is None
 
 
 class TestContainerLifecycle:
-    def test_start_sets_ready(self):
+    def test_start_sets_ready(self) -> None:
         c = ServiceContainer()
         c.register("connection_factory", object())
         c.start()
         assert c.ready() is True
 
-    def test_shutdown_resets_state(self):
+    def test_shutdown_resets_state(self) -> None:
         c = ServiceContainer()
         c.register("connection_factory", object())
         c.start()
         c.shutdown()
         assert c.ready() is False
 
-    def test_shutdown_clears_failures(self):
+    def test_shutdown_clears_failures(self) -> None:
         c = ServiceContainer()
         c.report_failure("connection_factory", "fail")
         assert c._failures
         c.shutdown()
         assert not c._failures
 
-    def test_shutdown_state_is_stopped(self):
+    def test_shutdown_state_is_stopped(self) -> None:
         c = ServiceContainer()
         c.shutdown()
         assert c.state == ContainerState.STOPPED
 
-    def test_cancel_all_does_not_crash(self):
+    def test_cancel_all_does_not_crash(self) -> None:
         c = ServiceContainer()
         c.register("test_svc", object())
         c.cancel_all()
 
-    def test_cancel_all_calls_cancel_on_cancellable(self):
+    def test_cancel_all_calls_cancel_on_cancellable(self) -> None:
         c = ServiceContainer()
         svc = Mock()
         svc.cancel = Mock()
@@ -150,31 +150,31 @@ class TestContainerLifecycle:
 
 
 class TestContainerCapability:
-    def test_required_present_is_capable(self):
+    def test_required_present_is_capable(self) -> None:
         c = ServiceContainer()
         c.register("connection_factory", object())
         assert c.is_capable("connection_factory") is True
 
-    def test_required_absent_is_not_capable(self):
+    def test_required_absent_is_not_capable(self) -> None:
         c = ServiceContainer()
         assert c.is_capable("connection_factory") is False
 
-    def test_required_failed_is_not_capable(self):
+    def test_required_failed_is_not_capable(self) -> None:
         c = ServiceContainer()
         c.register("connection_factory", object())
         c.report_failure("connection_factory", "error")
         assert c.is_capable("connection_factory") is False
 
-    def test_optional_absent_is_not_capable(self):
+    def test_optional_absent_is_not_capable(self) -> None:
         c = ServiceContainer()
         assert c.is_capable("theme_service") is False
 
-    def test_optional_present_is_capable(self):
+    def test_optional_present_is_capable(self) -> None:
         c = ServiceContainer()
         c.register("theme_service", object())
         assert c.is_capable("theme_service") is True
 
-    def test_required_failure_logs_and_blocks_domain(self):
+    def test_required_failure_logs_and_blocks_domain(self) -> None:
         c = ServiceContainer()
         c.register("connection_factory", object())
         c.report_failure("connection_factory", "db connection lost")
@@ -186,18 +186,18 @@ class TestContainerCapability:
 
 
 class TestContainerList:
-    def test_list_services_returns_all(self):
+    def test_list_services_returns_all(self) -> None:
         c = ServiceContainer()
         listing = c.list_services()
         assert len(listing) == len(c._all_names())
 
-    def test_list_services_has_correct_keys(self):
+    def test_list_services_has_correct_keys(self) -> None:
         c = ServiceContainer()
         c.register("connection_factory", object())
         info = c.list_services()["connection_factory"]
         assert set(info.keys()) == {"available", "priority", "failed", "error", "capable"}
 
-    def test_list_services_shows_availability(self):
+    def test_list_services_shows_availability(self) -> None:
         c = ServiceContainer()
         c.register("connection_factory", object())
         c.register("worker_manager", object())
@@ -208,15 +208,15 @@ class TestContainerList:
 
 
 class TestContainerHealth:
-    def test_health_returns_dict(self):
+    def test_health_returns_dict(self) -> None:
         c = ServiceContainer()
         h = c.health()
         assert isinstance(h, dict)
 
-    def test_health_has_state_key(self):
+    def test_health_has_state_key(self) -> None:
         c = ServiceContainer()
         assert "state" in c.health()
 
-    def test_health_has_services_count(self):
+    def test_health_has_services_count(self) -> None:
         c = ServiceContainer()
         assert "services" in c.health()

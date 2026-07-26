@@ -22,14 +22,14 @@ def _make_bundle():
     return bundle
 
 
-def test_global_search_uses_public_query_executor_property():
+def test_global_search_uses_public_query_executor_property() -> None:
     """GlobalSearchBridge must expose search_service through public API."""
     from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
     bridge = GlobalSearchBridge(search_service=MagicMock())
     assert hasattr(bridge, '_svc'), "search_service missing"
 
 
-def test_diagnostics_uses_public_query_executor_property():
+def test_diagnostics_uses_public_query_executor_property() -> None:
     """DiagnosticsBridge must expose query_executor as public property."""
     from ui_qml_bridge.diagnostics_bridge import DiagnosticsBridge
     bridge = DiagnosticsBridge(query_executor=MagicMock())
@@ -37,14 +37,14 @@ def test_diagnostics_uses_public_query_executor_property():
     assert bridge.query_executor is not None
 
 
-def test_job_bridge_has_attach_library_coordinator():
+def test_job_bridge_has_attach_library_coordinator() -> None:
     """JobBridge must expose attach_library_coordinator public method."""
     from ui_qml_bridge.job_bridge import JobBridge
     bridge = JobBridge()
     assert hasattr(bridge, 'attach_library_coordinator'), "attach_library_coordinator missing"
 
 
-def test_factory_creates_bridges_with_public_api():
+def test_factory_creates_bridges_with_public_api() -> None:
     """Factory uses public API compose — no private caches."""
     bundle = _make_bundle()
     factory = BridgeFactory(bundle)
@@ -58,9 +58,7 @@ def test_factory_creates_bridges_with_public_api():
     from ui_qml_bridge.diagnostics_bridge import DiagnosticsBridge
     diag = DiagnosticsBridge(
         player_service=bundle.player_service,
-        db=bundle.db,
-        radio_manager=bundle.radio_manager,
-        sync_manager=bundle.sync_manager,
+        diagnostics_service=bundle.db,
         worker_manager=bundle.worker_manager,
     )
     factory._bridges["diagnostics"] = diag
@@ -71,7 +69,7 @@ def test_factory_creates_bridges_with_public_api():
     assert factory.bridges["diagnostics"] is diag
 
 
-def test_mix_bridge_receives_query_service():
+def test_mix_bridge_receives_query_service() -> None:
     """MixBridge must accept query_service in constructor."""
     from ui_qml_bridge.mix_bridge import MixBridge
     from core.mix_query_service import MixQueryService
@@ -85,7 +83,7 @@ def test_mix_bridge_receives_query_service():
     assert bridge is not None
 
 
-def test_playlists_bridge_receives_playlist_service():
+def test_playlists_bridge_receives_playlist_service() -> None:
     """PlaylistsBridge must accept playlist_service in constructor."""
     from ui_qml_bridge.playlists_bridge import PlaylistsBridge
 

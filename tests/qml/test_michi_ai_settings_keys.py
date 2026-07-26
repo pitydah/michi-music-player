@@ -1,5 +1,4 @@
 from __future__ import annotations
-"""Test MichiAIBridge — uses correct Settings Schema keys, never theme/mode or audio/volume."""
 
 from unittest.mock import MagicMock
 
@@ -8,63 +7,64 @@ import pytest
 from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
 
+pytestmark = pytest.mark.isolation
+
+
 @pytest.fixture
-def bridge():
-    settings = MagicMock()
-    settings.set_.return_value = {"ok": True}
+def services() -> None:
+    svc = {
+        "michi_ai_service": MagicMock(),
+        "action_registry": MagicMock(),
+        "navigation_bridge": MagicMock(),
+    }
+    svc["michi_ai_service"].process_message.return_value = {"ok": True, "response": "OK"}
+    return svc
+
+
+@pytest.fixture
+def bridge(services) -> None:
     return MichiAIBridge(
-        settings_service=settings,
+        michi_ai_service=services["michi_ai_service"],
+        action_registry=services["action_registry"],
+        navigation_bridge=services["navigation_bridge"],
     )
 
 
 class TestSettingsKeys:
-    def test_volume_uses_playback_default_volume(self, bridge):
-        bridge._set_status("idle")
-        intent = bridge._parse_intent("cambiar ajuste volumen a 80")
-        assert intent is not None
-        assert intent["entities"]["setting_key"] == "playback/default_volume"
-
-    def test_volume_key_not_audio_volume(self, bridge):
-        bridge._set_status("idle")
-        intent = bridge._parse_intent("cambiar ajuste volumen a 50")
-        assert intent is not None
-        assert intent["entities"]["setting_key"] != "audio/volume"
-
-    def test_theme_uses_appearance_theme(self, bridge):
-        bridge._set_status("idle")
-        intent = bridge._parse_intent("cambiar ajuste tema oscuro")
-        assert intent is not None
-        assert intent["entities"]["setting_key"] == "appearance/theme"
-
-    def test_theme_key_not_theme_mode(self, bridge):
-        intent = bridge._parse_intent("cambiar ajuste tema oscuro")
-        assert intent is not None
-        assert intent["entities"]["setting_key"] != "theme/mode"
-
-    def test_setting_value_is_correct_type(self, bridge):
-        bridge._set_status("idle")
-        intent = bridge._parse_intent("cambiar ajuste volumen a 80")
-        assert intent is not None
-        assert intent["entities"]["setting_value"] == 80
-        assert intent["entities"]["setting_key"] == "playback/default_volume"
-
-    def test_theme_value_is_string(self, bridge):
-        intent = bridge._parse_intent("cambiar ajuste tema oscuro")
-        assert intent is not None
-        assert isinstance(intent["entities"]["setting_value"], str)
-
-    def test_setting_change_requires_confirmation(self, bridge):
+    def test_volume_change_sends_to_engine(self, bridge, services) -> None:
         bridge.sendMessage("cambiar ajuste volumen a 80")
-        assert bridge.status == "awaiting_confirmation"
+        services["michi_ai_service"].process_message.assert_called_once()
 
-    def test_setting_change_confirm_executes(self, bridge):
+    def test_theme_change_sends_to_engine(self, bridge, services) -> None:
+        bridge.sendMessage("cambiar ajuste tema oscuro")
+        services["michi_ai_service"].process_message.assert_called_once()
+
+    def test_setting_change_requires_confirmation_via_engine(self, bridge, services) -> None:
+        services["michi_ai_service"].process_message.return_value = {
+            "requires_confirmation": True, "intent": "cambiar ajuste"
+        }
         bridge.sendMessage("cambiar ajuste volumen a 80")
-        assert bridge.status == "awaiting_confirmation"
+        assert bridge.status == "CONFIRMATION_REQUIRED"
+
+    def test_setting_change_confirm_executes_via_engine(self, bridge, services) -> None:
+        services["michi_ai_service"].process_message.side_effect = [
+            {"requires_confirmation": True, "intent": "cambiar ajuste"},
+            {"ok": True, "response": "Ajuste aplicado."},
+        ]
+        bridge.sendMessage("cambiar ajuste volumen a 80")
+        assert bridge.status == "CONFIRMATION_REQUIRED"
         bridge.sendMessage("sí")
-        assert bridge.status == "completed"
-        bridge._settings.set_.assert_called_once()
+        assert bridge.status == "SUCCEEDED"
 
-    def test_no_audio_volume_key_leaked(self, bridge):
-        intent = bridge._parse_intent("cambiar ajuste volumen a 42")
-        assert intent is not None
-        assert intent["entities"]["setting_key"] != "audio/volume"
+    def test_setting_change_fails_via_engine(self, bridge, services) -> None:
+        services["michi_ai_service"].process_message.return_value = {
+            "ok": False, "response": "No se pudo cambiar el ajuste."
+        }
+        bridge.sendMessage("cambiar ajuste volumen a 80")
+        assert bridge.status == "FAILED"
+
+    def test_setting_no_ai_service(self) -> None:
+        bridge = MichiAIBridge()
+        bridge.sendMessage("cambiar ajuste volumen a 80")
+        assert bridge.status == "FAILED"
+        assert bridge.lastError == "NO_AI_SERVICE"

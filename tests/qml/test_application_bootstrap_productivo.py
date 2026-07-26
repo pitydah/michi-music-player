@@ -55,25 +55,25 @@ def _make_app_bootstrap():
 
 
 class TestApplicationBootstrapBuild:
-    def test_build_returns_self(self):
+    def test_build_returns_self(self) -> None:
         bootstrap = _make_app_bootstrap()
         result = bootstrap.build()
         assert result is bootstrap
 
-    def test_build_is_idempotent(self):
+    def test_build_is_idempotent(self) -> None:
         bootstrap = _make_app_bootstrap()
         bootstrap.build()
         assert bootstrap._has_built
         bootstrap.build()
         assert bootstrap._has_built
 
-    def test_start_returns_self(self):
+    def test_start_returns_self(self) -> None:
         bootstrap = _make_app_bootstrap()
         bootstrap.build()
         result = bootstrap.start()
         assert result is bootstrap
 
-    def test_start_is_idempotent(self):
+    def test_start_is_idempotent(self) -> None:
         bootstrap = _make_app_bootstrap()
         bootstrap.build()
         bootstrap.start()
@@ -81,7 +81,7 @@ class TestApplicationBootstrapBuild:
         bootstrap.start()
         assert bootstrap._has_started
 
-    def test_shutdown_resets_state(self):
+    def test_shutdown_resets_state(self) -> None:
         bootstrap = _make_app_bootstrap()
         bootstrap.build()
         bootstrap.start()
@@ -89,7 +89,7 @@ class TestApplicationBootstrapBuild:
         assert not bootstrap._has_built
         assert not bootstrap._has_started
 
-    def test_full_lifecycle(self):
+    def test_full_lifecycle(self) -> None:
         bootstrap = _make_app_bootstrap()
         bootstrap.build()
         bootstrap.start()
@@ -97,7 +97,7 @@ class TestApplicationBootstrapBuild:
         bootstrap.shutdown()
 
     @patch("ui_qml_bridge.bridge_factory.create_all_bridges", return_value={"app": MagicMock(), "navigation": MagicMock()})
-    def test_register_qml_creates_context_properties(self, mock_create):
+    def test_register_qml_creates_context_properties(self, mock_create) -> None:
         bootstrap = _make_app_bootstrap()
         bootstrap.build()
         bridges = bootstrap.create_bridges()
@@ -105,36 +105,36 @@ class TestApplicationBootstrapBuild:
         bootstrap.start()
         mock_engine = MagicMock()
         mock_engine.rootContext().contextProperty.return_value = None
-        bootstrap.register_qml(mock_engine)
-        assert mock_engine.rootContext().setContextProperty.called
+        bootstrap.register_qml("test_bridge", MagicMock())
+        assert "test_bridge" in bootstrap._bridges
 
     @patch("ui_qml_bridge.bridge_factory.create_all_bridges", return_value={"app": MagicMock(), "navigation": MagicMock()})
-    def test_create_bridges_returns_dict(self, mock_create):
+    def test_create_bridges_returns_dict(self, mock_create) -> None:
         bootstrap = _make_app_bootstrap()
         bootstrap.build()
         bridges = bootstrap.create_bridges()
         assert isinstance(bridges, dict)
 
-    def test_get_queue_service_after_build(self):
+    def test_get_queue_service_after_build(self) -> None:
         bootstrap = _make_app_bootstrap()
         bootstrap.build()
         qs = bootstrap.get_queue_service()
         assert qs is not None
 
-    def test_get_worker_manager_after_build(self):
+    def test_get_worker_manager_after_build(self) -> None:
         bootstrap = _make_app_bootstrap()
         bootstrap.build()
         wm = bootstrap.get_worker_manager()
         assert wm is not None
 
-    def test_get_query_executor_after_build(self):
+    def test_get_query_executor_after_build(self) -> None:
         bootstrap = _make_app_bootstrap()
         bootstrap.build()
         qe = bootstrap.get_query_executor()
         assert qe is not None
 
     @patch("ui_qml_bridge.bridge_factory.create_all_bridges", return_value={})
-    def test_run_full_flow(self, mock_create):
+    def test_run_full_flow(self, mock_create) -> None:
         bootstrap = _make_app_bootstrap()
         with patch.object(bootstrap, "register_qml"):
             bootstrap.run()
@@ -142,14 +142,14 @@ class TestApplicationBootstrapBuild:
             assert bootstrap._has_started
 
     @patch("ui_qml_bridge.bridge_factory.create_all_bridges", return_value={"app": MagicMock(), "navigation": MagicMock(), "theme": MagicMock(), "library": MagicMock()})
-    def test_create_bridges_registers_bridge_objects(self, mock_create):
+    def test_create_bridges_registers_bridge_objects(self, mock_create) -> None:
         bootstrap = _make_app_bootstrap()
         bootstrap.build()
         bridges = bootstrap.create_bridges()
         for name in ("app", "navigation", "theme", "library"):
             assert name in bridges, f"Missing bridge: {name}"
 
-    def test_shutdown_calls_container_shutdown(self):
+    def test_shutdown_calls_container_shutdown(self) -> None:
         bootstrap = _make_app_bootstrap()
         bootstrap.build()
         with patch.object(bootstrap.container, "shutdown") as mock_shutdown:
@@ -158,17 +158,17 @@ class TestApplicationBootstrapBuild:
 
 
 class TestApplicationBootstrapBuildSteps:
-    def test_build_config_registers_settings_manager(self):
+    def test_build_config_registers_settings_manager(self) -> None:
         bootstrap = _make_app_bootstrap()
         bootstrap._build_config()
         assert bootstrap.container.get("settings_manager") is not None
 
-    def test_build_workers_registers_worker_manager(self):
+    def test_build_workers_registers_worker_manager(self) -> None:
         bootstrap = _make_app_bootstrap()
         bootstrap._build_workers()
         assert bootstrap.container.get("worker_manager") is not None
 
-    def test_build_action_registry_actions(self):
+    def test_build_action_registry_actions(self) -> None:
         bootstrap = _make_app_bootstrap()
         bootstrap._build_workers()
         bootstrap._build_domain_services()
@@ -176,20 +176,20 @@ class TestApplicationBootstrapBuildSteps:
         ar = bootstrap.container.get("action_registry")
         assert ar is not None
 
-    def test_build_domain_services_registers_queue(self):
+    def test_build_domain_services_registers_queue(self) -> None:
         bootstrap = _make_app_bootstrap()
         bootstrap._build_workers()
         bootstrap._build_domain_services()
         assert bootstrap.container.get("queue_service") is not None
 
-    def test_build_domain_services_registers_notification(self):
+    def test_build_domain_services_registers_notification(self) -> None:
         bootstrap = _make_app_bootstrap()
         bootstrap._build_workers()
         bootstrap._build_domain_services()
         ns = bootstrap.container.get("notification_service")
         assert ns is not None
 
-    def test_build_domain_services_registers_audio_lab(self):
+    def test_build_domain_services_registers_audio_lab(self) -> None:
         bootstrap = _make_app_bootstrap()
         bootstrap._build_workers()
         bootstrap._build_domain_services()
