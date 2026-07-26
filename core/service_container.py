@@ -427,11 +427,20 @@ class ServiceContainer:
                     and self._service_states.get(name) in ('ready', 'starting')):
                 continue
             if hasattr(svc, 'start') and callable(svc.start):
+                if hasattr(self, '_service_states'):
+                    self._service_states[name] = "starting"
+                    self.service_state_changed.emit(name, "starting")
                 try:
                     svc.start()
+                    if hasattr(self, '_service_states'):
+                        self._service_states[name] = "ready"
+                        self.service_state_changed.emit(name, "ready")
                 except Exception as e:
                     err = str(e)
                     self._failures[name] = err
+                    if hasattr(self, '_service_states'):
+                        self._service_states[name] = "failed"
+                        self.service_state_changed.emit(name, "failed")
                     prio = self.priority(name)
                     if prio == ServicePriority.REQUIRED:
                         logger.error("REQUIRED '%s' start failed: %s", name, err)
@@ -567,20 +576,10 @@ class ObservableServiceContainer(ServiceContainer, QObject):
         priority: ServicePriority | None = None,
         dependencies: tuple[str, ...] | None = None,
     ) -> None:
-        """Register a service, auto-start it when possible, and emit its state."""
+        """Register a service — does NOT auto-start. Use start() for topological startup."""
 
         self._service_states[name] = "registered"
         ServiceContainer.register(self, name, service, priority, dependencies or ())
-        if self._can_auto_start(service):
-            try:
-                self._service_states[name] = "starting"
-                service.start()
-                self._service_states[name] = "ready"
-            except Exception as e:
-                self._service_states[name] = "failed"
-                logger.error("Service %s failed to start: %s", name, e, exc_info=True)
-        else:
-            self._service_states[name] = "ready"
         self.service_state_changed.emit(name, self._service_states[name])
 
     def get_service_state(self, name: str) -> str:
