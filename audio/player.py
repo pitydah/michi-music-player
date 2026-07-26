@@ -159,9 +159,8 @@ class GStreamerEngine(QObject):
         return 0
 
     def set_repeat(self, mode: str) -> str:
-        valid = {"none", "all", "one"}
-        if mode not in valid:
-            return "none"
+        if mode not in {"none", "all", "one"}:
+            raise ValueError(f"Invalid repeat mode: {mode}")
         self._repeat = mode
         return self._repeat
 
@@ -856,8 +855,7 @@ class GStreamerEngine(QObject):
 
     def toggle_repeat(self) -> str:
         modes = {"none": "all", "all": "one", "one": "none"}
-        self._repeat = modes.get(self._repeat, "none")
-        return self._repeat
+        return self.set_repeat(modes.get(self._repeat, "none"))
 
 
 PlayerEngine = GStreamerEngine

@@ -129,6 +129,7 @@ QtObject {
     readonly property color nowPlayingTransmitActiveBorder: Qt.rgba(52, 199, 89, 0.28)
     readonly property color nowPlayingQualityBg: surfaceElevation4
     readonly property color nowPlayingQualityBorder: Qt.rgba(255, 255, 255, 0.08)
+    readonly property color nowPlayingMetaText: lightMode ? "#B0B8C0" : "#485068"
     readonly property color surfaceNowPlayingBorder: Qt.rgba(1.0, 1.0, 1.0, 0.06)
     readonly property color overlayDark: Qt.rgba(0.02, 0.03, 0.05, 0.70)
 

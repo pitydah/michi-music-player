@@ -13,6 +13,10 @@ Item {
     property bool transmitSupported: true
     property bool outputSupported: true
     property bool queueSupported: true
+    property bool showEq: true
+    property bool showTransmit: true
+    property bool showOutput: true
+    property bool showQueue: true
     property bool showMiniPlayer: true
 
     signal eqClicked()
@@ -34,6 +38,7 @@ Item {
             btnSize: 40
             tooltipText: "Ecualizador"
             enabled: root.eqSupported
+            visible: root.showEq
             onClicked: root.eqClicked()
         }
 
@@ -43,6 +48,7 @@ Item {
             btnSize: 40
             tooltipText: root.transmitActive && root.transmitDeviceName ? root.transmitDeviceName : "Transmitir a dispositivo"
             enabled: root.transmitSupported
+            visible: root.showTransmit
             active: root.transmitActive
             activeColor: MichiTheme.colors.nowPlayingTransmitActive
             activeBorderColor: MichiTheme.colors.nowPlayingTransmitActiveBorder
@@ -55,6 +61,7 @@ Item {
             btnSize: 44
             tooltipText: "Seleccionar salida de audio"
             enabled: root.outputSupported
+            visible: root.showOutput
             onClicked: root.outputClicked()
         }
 
@@ -64,6 +71,7 @@ Item {
             btnSize: 40
             tooltipText: "Abrir cola"
             enabled: root.queueSupported
+            visible: root.showQueue
             onClicked: root.queueClicked()
         }
 
