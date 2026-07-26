@@ -23,7 +23,6 @@ class RadioBridge(QObject):
                  player_service: Any = None,
                  parent=None):
         super().__init__(parent)
-        assert player_service is not None, "RadioBridge: player_service is REQUIRED"
         self._radio_mgr = radio_manager
         self._player = player_service
         self._stations: list[dict] = []
@@ -456,6 +455,10 @@ class RadioBridge(QObject):
                 })
                 current_name = ""
         return stations
+
+    @Slot(result=str)
+    def getCodec(self):
+        return ""
 
     @Slot(result=int)
     def getBitrate(self):

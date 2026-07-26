@@ -118,8 +118,8 @@ Item {
             anchors.fill: parent
             anchors.leftMargin: MichiTheme.spacing.sm
             anchors.rightMargin: MichiTheme.spacing.sm
-            anchors.topMargin: 4
-            anchors.bottomMargin: 4
+            anchors.topMargin: MichiTheme.spacing.xs
+            anchors.bottomMargin: MichiTheme.spacing.xs
             spacing: 4
 
             Flickable {

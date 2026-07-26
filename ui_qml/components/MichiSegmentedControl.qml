@@ -34,7 +34,7 @@ Item {
 
                     Rectangle {
                         anchors.fill: parent
-                        anchors.margins: 2
+                        anchors.margins: MichiTheme.spacing.xxs
                         radius: MichiTheme.radius.sm
                         color: index === root.currentIndex ? MichiTheme.colors.surfaceElevation2 : "transparent"
 

@@ -46,7 +46,7 @@ Popup {
             height: 4
             radius: 2
             color: MichiTheme.colors.controlTrack
-            anchors.topMargin: 8
+            anchors.topMargin: MichiTheme.spacing.sm
         }
     }
 

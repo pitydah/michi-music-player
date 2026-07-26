@@ -124,19 +124,19 @@ class ServiceContainer:
             "mix_query_service", "mix_service",
             "track_action_service", "playback_service",
             "queue_service", "metadata_service",
+            "process_controller", "runtime_persistence",
+            "theme_service", "accessibility_service",
+            "action_registry", "confirmation_service",
+            "notification_service", "diagnostics_service",
         }
 
     @staticmethod
     def _optional_names() -> set[str]:
         return {
-            "theme_service", "accessibility_service",
             "audio_lab_service", "smart_tagging_service",
             "library_doctor_service", "device_sync_service",
             "connection_service", "home_audio_service",
             "radio_service", "lyrics_service",
-            "diagnostics_service", "notification_service",
-            "action_registry", "confirmation_service",
-            "runtime_persistence", "process_controller",
         }
 
     @staticmethod
@@ -206,7 +206,10 @@ class ServiceContainer:
                 visit(d, path | {n})
             seen.add(n)
             ordered.append(n)
-        all_sorted = sorted(self._all_names(), key=lambda x: SERVICE_ORDER_INDEX.get(x, 999))
+        all_sorted = sorted(self._all_names(), key=lambda x: (
+            0 if self.priority(x) == ServicePriority.REQUIRED else 1,
+            SERVICE_ORDER_INDEX.get(x, 999),
+        ))
         for svc in all_sorted:
             visit(svc, set())
         remaining = [s for s in all_sorted if s not in ordered]
@@ -223,10 +226,10 @@ class ServiceContainer:
         return missing
 
     def validate_no_none_required(self) -> list[str]:
-        """Return list of required services whose value is None."""
+        """Return list of required services whose value is None or missing."""
         none_list = []
         for name in self._required_names():
-            if name in self._services and self._services[name] is None:
+            if name not in self._services or self._services[name] is None:
                 none_list.append(name)
         return none_list
 
@@ -527,6 +530,22 @@ class ServiceContainer:
         self.cancel_all()
         self._failures.clear()
         self._state = ContainerState.STOPPED
+
+    def build_start_order(self) -> list[str]:
+        return self.build_order()
+
+    def validate_acyclic_graph(self) -> list[str]:
+        return self.build_order()
+
+    def validate_dependencies_present(self) -> list[str]:
+        errors = []
+        for name in self._all_names():
+            deps = set(self._dependencies.get(name, BUILTIN_DEPENDENCIES.get(name, set())))
+            deps.intersection_update(self._all_names())
+            for dep in deps:
+                if dep not in self._services or self._services[dep] is None:
+                    errors.append(f"'{name}' depends on '{dep}' which is missing")
+        return errors
 
     def report_failure(self, name: str, error: str) -> None:
         self._failures[name] = error

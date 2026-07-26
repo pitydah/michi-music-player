@@ -66,6 +66,7 @@ class TestMichiAIStates:
 
     def test_failed_state_missing_service(self, bridge):
         bridge._ai_svc = None
+        bridge._ai_engine = None
         bridge.sendMessage("reproduce canción 42")
         assert bridge.status == "FAILED"
 

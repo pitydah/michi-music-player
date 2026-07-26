@@ -247,7 +247,7 @@ class TestMetadata:
     def test_get_metadata(self, bridge, mock_radio_mgr):
         mock_radio_mgr.get_metadata.return_value = {"name": "Test", "bitrate": 128}
         result = bridge.getMetadata("http://example.com")
-        assert result.get("name") == "Test"
+        assert result.get("metadata", {}).get("name") == "Test"
 
     def test_get_metadata_no_manager(self):
         b = RadioBridge()
