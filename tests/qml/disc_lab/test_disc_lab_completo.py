@@ -37,7 +37,7 @@ def bridge(mock_service, mock_wm):
 
 @pytest.fixture
 def no_svc_bridge():
-    return DiscLabBridge()
+    return DiscLabBridge(worker_manager=MagicMock())
 
 
 def test_initial_state(no_svc_bridge):
@@ -61,7 +61,7 @@ def test_disc_discovery_with_drive(bridge, mock_service):
 
 def test_disc_discovery_no_drive(mock_service):
     mock_service.detect_drives.return_value = []
-    b = DiscLabBridge(disc_detection_service=mock_service)
+    b = DiscLabBridge(disc_detection_service=mock_service, worker_manager=MagicMock())
     result = b.refresh()
     assert result["ok"] is True
     assert b.status == "no_drive"

@@ -67,7 +67,7 @@ class TestSmartTagging:
 
     def test_scan_track_no_service(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
-        bridge = SmartTaggingBridge()
+        bridge = SmartTaggingBridge(service=MagicMock(), worker_manager=MagicMock())
         result = bridge.scanTrackById(1)
         assert result["ok"] is False
 

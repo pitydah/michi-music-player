@@ -11,7 +11,7 @@ pytestmark = [pytest.mark.qml_module("library")]
 
 @pytest.fixture
 def bridge():
-    return LibraryBridge(db=MagicMock(), job_bridge=MagicMock())
+    return LibraryBridge(db=MagicMock(), query_service=MagicMock(), job_bridge=MagicMock())
 
 
 def test_add_folder(bridge):

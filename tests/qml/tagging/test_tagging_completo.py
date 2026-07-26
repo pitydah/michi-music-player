@@ -1,5 +1,7 @@
 from __future__ import annotations
 import time
+from unittest.mock import MagicMock
+
 import pytest
 from PySide6.QtCore import QCoreApplication
 
@@ -20,7 +22,7 @@ class TestTaggingCandidates:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
-        return SmartTaggingBridge()
+        return SmartTaggingBridge(service=MagicMock(), worker_manager=MagicMock())
 
     def test_default_status_idle(self, bridge):
         assert bridge.status == "idle"
@@ -61,7 +63,7 @@ class TestTaggingConfidence:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
-        bridge = SmartTaggingBridge()
+        bridge = SmartTaggingBridge(service=MagicMock(), worker_manager=MagicMock())
         bridge._suggestions = [
             {"id": 0, "field": "artist", "current": "A", "suggested": "B",
              "confidence": 0.95, "source": "musicbrainz", "selected": False},
@@ -92,7 +94,7 @@ class TestTaggingPreview:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
-        return SmartTaggingBridge()
+        return SmartTaggingBridge(service=MagicMock(), worker_manager=MagicMock())
 
     def test_set_suggestion_selected(self, bridge):
         bridge._suggestions = [{"id": 0, "field": "artist", "selected": False}]
@@ -142,7 +144,7 @@ class TestTaggingApply:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
-        return SmartTaggingBridge()
+        return SmartTaggingBridge(service=MagicMock(), worker_manager=MagicMock())
 
     def test_apply_rejects_idle(self, bridge):
         r = bridge.applySelected()
@@ -169,7 +171,7 @@ class TestTaggingBatch:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
-        return SmartTaggingBridge()
+        return SmartTaggingBridge(service=MagicMock(), worker_manager=MagicMock())
 
     def test_batch_apply_empty(self, bridge):
         bridge._status = "batch_review"
@@ -199,7 +201,7 @@ class TestTaggingCancel:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
-        return SmartTaggingBridge()
+        return SmartTaggingBridge(service=MagicMock(), worker_manager=MagicMock())
 
     def test_cancel_scan(self, bridge):
         bridge._status = "scanning"
@@ -232,7 +234,7 @@ class TestTaggingVerify:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
-        return SmartTaggingBridge()
+        return SmartTaggingBridge(service=MagicMock(), worker_manager=MagicMock())
 
     def test_refresh_emits_signal(self, bridge):
         called = [False]

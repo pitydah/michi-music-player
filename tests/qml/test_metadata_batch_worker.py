@@ -37,12 +37,12 @@ class TestMetadataBatchWorker:
     @pytest.fixture
     def bridge(self, worker_manager):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
-        br = MetadataBridge(worker_manager=worker_manager)
+        br = MetadataBridge(job_service=worker_manager)
         return br
 
     def test_batch_set_field_uses_callable_not_dict(self, worker_manager):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
-        br = MetadataBridge(worker_manager=worker_manager)
+        br = MetadataBridge(job_service=worker_manager)
         original_run_task = worker_manager.run_task
         callable_used = False
 
