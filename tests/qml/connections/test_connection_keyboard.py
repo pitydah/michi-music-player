@@ -1,95 +1,22 @@
 """Test keyboard navigation patterns for connections."""
+import pathlib
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.connections_bridge import ConnectionsBridge
 import pytest
-"""Tests for keyboard navigation in connection components."""
 pytestmark = pytest.mark.isolation
+
+
+@pytest.fixture
+def qml_dir():
+    return pathlib.Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
 
 @pytest.fixture
 def mock_ctrl():
     ctrl = MagicMock()
-    ctrl.discover_servers.return_value = []
-    ctrl.get_capabilities.return_value = {
-        "micro_server_state": "connected",
-        "micro_server_name": "MichiServer",
-        "contract_ok": True,
-    }
-    ctrl.get_connection_state.return_value = {
-        "micro_server_state": "connected",
-        "micro_server_name": "MichiServer",
-    }
+    ctrl.discover.return_value = []
     ctrl.reconnect.return_value = True
-    ctrl.is_connected = True
-    return ctrl
-
-
-@pytest.fixture
-def bridge(mock_ctrl):
-    return ConnectionsBridge(connection_service=mock_ctrl)
-
-
-class TestKeyboardAccessible:
-    def test_state_changed_signal_emitted(self, bridge):
-        signals = []
-        bridge.stateChanged.connect(lambda: signals.append(1))
-        bridge.refresh()
-        assert len(signals) >= 0
-
-    def test_state_preserved_after_action(self, bridge):
-        bridge.connectManual("10.0.0.1", 53318, "KBTest")
-        assert bridge.microServerAlias == "KBTest"
-
-    def test_disconnect_preserves_state(self, bridge):
-        bridge.disconnect()
-        assert bridge.microServerState == "not_configured"
-
-    def test_scan_accessible(self, bridge):
-        result = bridge.scanForServers()
-        assert "ok" in result
-
-    def test_disconnect_accessible(self, bridge):
-        result = bridge.disconnect()
-        assert result["ok"] is True
-
-    def test_forget_accessible(self, bridge):
-        result = bridge.forgetServer()
-        assert result["ok"] is True
-
-    def test_objectName_on_all_connection_pages(self, qml_dir):
-        files = [
-            "ConnectionsPage.qml", "ConnectionDetailPage.qml", "MicroServerHero.qml",
-            "ConnectionCard.qml", "ConfiguredServerCard.qml", "DiscoveredServerCard.qml",
-            "ExternalServerCard.qml", "ManualConnectionDialog.qml",
-            "ConnectionCapabilities.qml", "ConnectionErrorPanel.qml",
-            "NetworkDiscoveryPanel.qml", "ServerDiscoveryView.qml",
-            "HomeAudioAccess.qml",
-        ]
-        for f in files:
-            content = (qml_dir / "pages" / "connections" / f).read_text()
-            assert "objectName" in content, f"{f} missing objectName"
-"""Test keyboard navigation patterns for connections."""
-
-import pytest
-pytestmark = pytest.mark.isolation
-
-
-@pytest.fixture
-def mock_ctrl():
-    ctrl = MagicMock()
-    ctrl.discover_servers.return_value = []
-    ctrl.get_capabilities.return_value = {
-        "micro_server_state": "connected",
-        "micro_server_name": "MichiServer",
-        "contract_ok": True,
-    }
-    ctrl.get_connection_state.return_value = {
-        "micro_server_state": "connected",
-        "micro_server_name": "MichiServer",
-    }
-    ctrl.reconnect.return_value = True
-    ctrl.is_connected = True
     return ctrl
 
 
@@ -145,3 +72,16 @@ class TestKeyboardAccessible:
         bridge.scanForServers()
         bridge.refresh()
         assert bridge.microServerState != "error"
+
+    def test_objectName_on_all_connection_pages(self, qml_dir):
+        files = [
+            "ConnectionsPage.qml", "ConnectionDetailPage.qml", "MicroServerHero.qml",
+            "ConnectionCard.qml", "ConfiguredServerCard.qml", "DiscoveredServerCard.qml",
+            "ExternalServerCard.qml", "ManualConnectionDialog.qml",
+            "ConnectionCapabilities.qml", "ConnectionErrorPanel.qml",
+            "NetworkDiscoveryPanel.qml", "ServerDiscoveryView.qml",
+            "HomeAudioAccess.qml",
+        ]
+        for f in files:
+            content = (qml_dir / "pages" / "connections" / f).read_text()
+            assert "objectName" in content, f"{f} missing objectName"

@@ -9,18 +9,8 @@ pytestmark = pytest.mark.isolation
 @pytest.fixture
 def mock_ctrl():
     ctrl = MagicMock()
-    ctrl.discover_servers.return_value = []
-    ctrl.get_capabilities.return_value = {
-        "micro_server_state": "connected",
-        "micro_server_name": "MichiServer",
-        "contract_ok": True,
-    }
-    ctrl.get_connection_state.return_value = {
-        "micro_server_state": "connected",
-        "micro_server_name": "MichiServer",
-    }
+    ctrl.discover.return_value = []
     ctrl.reconnect.return_value = True
-    ctrl.is_connected = True
     return ctrl
 
 

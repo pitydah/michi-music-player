@@ -10,27 +10,11 @@ pytestmark = pytest.mark.isolation
 @pytest.fixture
 def mock_ctrl():
     ctrl = MagicMock()
-    s1, s2 = MagicMock(), MagicMock()
-    s1.name = "Server1"
-    s1.host = "10.0.0.1"
-    s2.name = "Server2"
-    s2.host = "10.0.0.2"
-    ctrl.discover_servers.return_value = [s1, s2]
-    ctrl.get_capabilities.return_value = {
-        "micro_server_state": "connected",
-        "micro_server_name": "Michi Micro Server",
-        "contract_ok": True,
-        "can_continue_playback": True,
-        "can_import": False,
-        "can_send_genre_playlist": True,
-        "can_send_genre_mix": False,
-    }
+    ctrl.discover.return_value = [
+        {"name": "Server1", "host": "10.0.0.1"},
+        {"name": "Server2", "host": "10.0.0.2"},
+    ]
     ctrl.reconnect.return_value = True
-    ctrl.get_connection_state.return_value = {
-        "micro_server_state": "connected",
-        "micro_server_name": "Michi Server",
-    }
-    ctrl.is_connected = True
     return ctrl
 
 
@@ -119,27 +103,11 @@ pytestmark = pytest.mark.isolation
 @pytest.fixture
 def mock_ctrl():
     ctrl = MagicMock()
-    s1, s2 = MagicMock(), MagicMock()
-    s1.name = "Server1"
-    s1.host = "10.0.0.1"
-    s2.name = "Server2"
-    s2.host = "10.0.0.2"
-    ctrl.discover_servers.return_value = [s1, s2]
-    ctrl.get_capabilities.return_value = {
-        "micro_server_state": "connected",
-        "micro_server_name": "Michi Micro Server",
-        "contract_ok": True,
-        "can_continue_playback": True,
-        "can_import": False,
-        "can_send_genre_playlist": True,
-        "can_send_genre_mix": False,
-    }
+    ctrl.discover.return_value = [
+        {"name": "Server1", "host": "10.0.0.1"},
+        {"name": "Server2", "host": "10.0.0.2"},
+    ]
     ctrl.reconnect.return_value = True
-    ctrl.get_connection_state.return_value = {
-        "micro_server_state": "connected",
-        "micro_server_name": "Michi Server",
-    }
-    ctrl.is_connected = True
     return ctrl
 
 
@@ -222,7 +190,7 @@ class TestDetailActions:
 class TestDetailNoController:
     def test_state_not_configured(self):
         b = ConnectionsBridge(connection_service=None)
-        assert b.microServerState == "not_configured"
+        assert b.microServerState == "service_unavailable"
 
     def test_scan_empty(self):
         b = ConnectionsBridge(connection_service=None)

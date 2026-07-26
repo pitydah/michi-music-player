@@ -3,7 +3,6 @@ Bridge solo refleja estado/errores."""
 from unittest.mock import MagicMock
 
 
-
 class TestConnectionsBridgeCreation:
     def test_creation(self):
         from ui_qml_bridge.connections_bridge import ConnectionsBridge
@@ -41,55 +40,66 @@ class TestConnectionsOperations:
 
     def test_disconnect(self):
         from ui_qml_bridge.connections_bridge import ConnectionsBridge
-        cb = ConnectionsBridge(connection_service=MagicMock())
+        ctrl = MagicMock()
+        ctrl.disconnect.return_value = {"ok": True}
+        cb = ConnectionsBridge(connection_service=ctrl)
         result = cb.disconnect()
         assert result.get("ok")
         assert cb.microServerState == "not_configured"
 
     def test_forget_server(self):
         from ui_qml_bridge.connections_bridge import ConnectionsBridge
-        cb = ConnectionsBridge(connection_service=MagicMock())
+        ctrl = MagicMock()
+        ctrl.forget.return_value = {"ok": True}
+        cb = ConnectionsBridge(connection_service=ctrl)
         result = cb.forgetServer()
         assert result.get("ok")
 
     def test_request_pair(self):
         from ui_qml_bridge.connections_bridge import ConnectionsBridge
-        cb = ConnectionsBridge(connection_service=MagicMock())
+        ctrl = MagicMock()
+        ctrl.pair.return_value = {"ok": True}
+        cb = ConnectionsBridge(connection_service=ctrl)
         result = cb.requestPair()
         assert result.get("ok")
 
     def test_confirm_pair(self):
         from ui_qml_bridge.connections_bridge import ConnectionsBridge
         ctrl = MagicMock()
-        ctrl.get_capabilities.return_value = {"contract_ok": True}
+        ctrl.confirm_pair.return_value = {"ok": True}
         cb = ConnectionsBridge(connection_service=ctrl)
         result = cb.confirmPair()
         assert isinstance(result, dict)
 
     def test_reject_pair(self):
         from ui_qml_bridge.connections_bridge import ConnectionsBridge
-        cb = ConnectionsBridge(connection_service=MagicMock())
+        ctrl = MagicMock()
+        ctrl.reject_pair.return_value = {"ok": True}
+        cb = ConnectionsBridge(connection_service=ctrl)
         result = cb.rejectPair()
         assert result.get("ok")
 
     def test_diagnose(self):
         from ui_qml_bridge.connections_bridge import ConnectionsBridge
         ctrl = MagicMock()
-        ctrl.get_connection_state.return_value = {"micro_server_state": "connected"}
-        ctrl.get_capabilities.return_value = {}
+        ctrl.diagnose.return_value = {"ok": True}
         cb = ConnectionsBridge(connection_service=ctrl)
         result = cb.diagnose()
         assert result.get("ok")
 
     def test_add_manual_server(self):
         from ui_qml_bridge.connections_bridge import ConnectionsBridge
-        cb = ConnectionsBridge(connection_service=MagicMock())
+        ctrl = MagicMock()
+        ctrl.connect_manual.return_value = {"ok": True}
+        cb = ConnectionsBridge(connection_service=ctrl)
         result = cb.addManualServer(host="192.168.1.100", port=53318, alias="Server")
         assert result.get("ok")
 
     def test_connect_manual(self):
         from ui_qml_bridge.connections_bridge import ConnectionsBridge
-        cb = ConnectionsBridge(connection_service=MagicMock())
+        ctrl = MagicMock()
+        ctrl.connect_manual.return_value = {"ok": True}
+        cb = ConnectionsBridge(connection_service=ctrl)
         result = cb.connectManual("192.168.1.100", 53318, "Server")
         assert result.get("ok")
 

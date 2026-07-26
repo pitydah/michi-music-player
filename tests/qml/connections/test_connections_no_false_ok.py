@@ -13,22 +13,8 @@ pytestmark = pytest.mark.isolation
 @pytest.fixture
 def mock_ctrl():
     ctrl = MagicMock()
-    ctrl.discover_servers.return_value = []
-    ctrl.get_capabilities.return_value = {
-        "micro_server_state": "connected",
-        "micro_server_name": "MichiServer",
-        "contract_ok": True,
-        "can_continue_playback": True,
-        "can_import": False,
-        "can_send_genre_playlist": True,
-        "can_send_genre_mix": False,
-    }
-    ctrl.get_connection_state.return_value = {
-        "micro_server_state": "connected",
-        "micro_server_name": "MichiServer",
-    }
+    ctrl.discover.return_value = []
     ctrl.reconnect.return_value = True
-    ctrl.is_connected = True
     ctrl.connect = MagicMock(return_value={"ok": True})
     ctrl.pair = MagicMock(return_value={"ok": True})
     ctrl.test_connection = MagicMock(return_value=True)
@@ -59,7 +45,7 @@ class TestConnectNoFalseOk:
         bridge.requestPair()
         result = bridge.confirmPair()
         assert result["ok"] is True
-        assert mock_ctrl.get_capabilities.called
+        assert mock_ctrl.pair.called
 
     def test_confirm_pair_no_controller(self):
         b = ConnectionsBridge(connection_service=None)

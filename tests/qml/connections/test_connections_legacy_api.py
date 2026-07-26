@@ -14,27 +14,17 @@ pytestmark = pytest.mark.isolation
 @pytest.fixture
 def mock_ctrl():
     ctrl = MagicMock()
-    s1, s2 = MagicMock(), MagicMock()
-    s1.name = "MichiServer1"
-    s1.host = "192.168.1.100"
-    s2.name = "MichiServer2"
-    s2.host = "192.168.1.101"
-    ctrl.discover_servers.return_value = [s1, s2]
-    ctrl.get_capabilities.return_value = {
-        "micro_server_state": "connected",
-        "micro_server_name": "Michi Micro Server",
-        "contract_ok": True,
+    ctrl.discover.return_value = [
+        {"name": "MichiServer1", "host": "192.168.1.100"},
+        {"name": "MichiServer2", "host": "192.168.1.101"},
+    ]
+    ctrl.reconnect.return_value = True
+    ctrl.capabilities = {
         "can_continue_playback": True,
         "can_import": False,
         "can_send_genre_playlist": True,
         "can_send_genre_mix": False,
     }
-    ctrl.reconnect.return_value = True
-    ctrl.get_connection_state.return_value = {
-        "micro_server_state": "connected",
-        "micro_server_name": "Michi Server",
-    }
-    ctrl.is_connected = True
     return ctrl
 
 
@@ -71,7 +61,7 @@ class TestDiscovery:
     def test_scan_returns_ok(self, bridge, mock_ctrl):
         result = bridge.scanForServers()
         assert result["ok"] is True
-        assert mock_ctrl.discover_servers.called
+        assert mock_ctrl.discover.called
 
     def test_scan_populates_discovered(self, bridge):
         bridge.scanForServers()
@@ -171,7 +161,7 @@ class TestErrors:
 
     def test_scan_unsupported_no_discovery_method(self):
         ctrl = MagicMock()
-        ctrl.discover_servers = None
+        ctrl.discover.side_effect = Exception("No discovery available")
         b = ConnectionsBridge(connection_service=ctrl)
         result = b.scanForServers()
         assert result["ok"] is False
