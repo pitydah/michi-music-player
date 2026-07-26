@@ -49,7 +49,7 @@ def test_persist_version(service, sample_items):
     result = service.save_state()
     with open(result["path"]) as f:
         state = json.load(f)
-    assert state["version"] == 2
+    assert state["version"] == 3
 
 
 def test_persist_current_index(service, sample_items):
@@ -62,13 +62,13 @@ def test_persist_current_index(service, sample_items):
 
 def test_persist_shuffle_repeat_context(service, sample_items):
     service.set_items(sample_items)
-    service.shuffle_order = [2, 0, 1]
+    service.set_shuffle(True)
     service.repeat = "one"
     service.context = "album:42"
     result = service.save_state(position=30.0)
     with open(result["path"]) as f:
         state = json.load(f)
-    assert state["shuffle_order"] == [2, 0, 1]
+    assert state["shuffle"] is True
     assert state["repeat"] == "one"
     assert state["context"] == "album:42"
     assert state["position"] == 30.0
@@ -115,11 +115,12 @@ def test_restore_no_save_state():
 
 def test_restore_preserves_order(service, sample_items):
     service.set_items(sample_items)
-    service.shuffle_order = [2, 1, 0]
+    service.set_shuffle(True)
     service.save_state()
     fresh = QueueService()
     fresh.load_state()
-    assert fresh.shuffle_order == [2, 1, 0]
+    assert fresh.shuffle is True
+    assert fresh.count == 3
 
 
 def test_persist_track_uid_and_id(service, sample_items):

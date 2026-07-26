@@ -45,7 +45,7 @@ def sample_items():
 
 def test_save_state_stores_required_fields(service, sample_items):
     service.set_items(sample_items, current_index=1)
-    service.shuffle_order = [2, 0, 1]
+    service.set_shuffle(True)
     service.repeat = "all"
     service.context = "album:123"
     result = service.save_state(position=45.5)
@@ -55,10 +55,10 @@ def test_save_state_stores_required_fields(service, sample_items):
     assert os.path.exists(path)
     with open(path) as f:
         state = json.load(f)
-    assert state["version"] == 2
+    assert state["version"] == 3
     assert state["current_index"] == 1
     assert state["position"] == 45.5
-    assert state["shuffle_order"] == [2, 0, 1]
+    assert state["shuffle"] is True
     assert state["repeat"] == "all"
     assert state["context"] == "album:123"
     assert len(state["items"]) == 3
@@ -86,7 +86,7 @@ def test_save_state_empty_queue(service):
 
 def test_load_state_restores_full_state(service, sample_items):
     service.set_items(sample_items, current_index=2)
-    service.shuffle_order = [0, 2, 1]
+    service.set_shuffle(True)
     service.repeat = "one"
     service.context = "playlist:42"
     service.save_state()
@@ -98,6 +98,7 @@ def test_load_state_restores_full_state(service, sample_items):
     assert fresh.current_index == 2
     assert fresh.repeat == "one"
     assert fresh.context == "playlist:42"
+    assert fresh.shuffle is True
 
 
 def test_load_state_resolves_tracks(service, sample_items):
@@ -122,14 +123,15 @@ def test_load_state_no_saved_state():
 
 def test_load_state_preserves_order(service, sample_items):
     service.set_items(sample_items)
-    service.shuffle_order = [2, 1, 0]
+    service.set_shuffle(True)
+    saved_ids = [item["track_id"] for item in service.items]
     service.save_state()
     fresh = QueueService()
     fresh.load_state()
-    assert fresh.items[0]["track_id"] == "101"
-    assert fresh.items[1]["track_id"] == "102"
-    assert fresh.items[2]["track_id"] == "103"
-    assert fresh.shuffle_order == [2, 1, 0]
+    assert fresh.items[0]["track_id"] == saved_ids[0]
+    assert fresh.items[1]["track_id"] == saved_ids[1]
+    assert fresh.items[2]["track_id"] == saved_ids[2]
+    assert fresh.shuffle is True
 
 
 def test_shutdown_calls_save_state(service, sample_items):

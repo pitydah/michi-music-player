@@ -40,7 +40,7 @@ def test_save_state():
     assert os.path.exists(result["path"])
     with open(result["path"]) as f:
         state = json.load(f)
-    assert state["version"] == 2
+    assert state["version"] == 3
     assert "timestamp" in state
     assert len(state["items"]) == 2
 
@@ -91,4 +91,4 @@ def test_save_state_stores_version():
     result = svc.save_state()
     with open(result["path"]) as f:
         state = json.load(f)
-    assert state["version"] == 2
+    assert state["version"] == 3
