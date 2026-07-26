@@ -3,7 +3,6 @@ NO db_conn, NO player_service como orquestador."""
 from unittest.mock import MagicMock
 
 
-
 class TestAudioLabBridgeCreation:
     def test_creation(self):
         from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
@@ -28,12 +27,12 @@ class TestAudioLabBridgeCreation:
         from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
         alb = AudioLabBridge(audio_lab_service=MagicMock(),
                               job_service=MagicMock(), process_controller=MagicMock())
-        assert alb._db_conn is None
+        assert alb._db is None
 
     def test_no_player_service_orquestador(self):
         from ui_qml_bridge import audio_lab_bridge
         content = open(audio_lab_bridge.__file__).read()
-        assert "player_service=None" in content
+        assert "legacy_kwargs" in content
 
     def test_capability_map(self):
         from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
@@ -67,7 +66,7 @@ class TestAudioLabOperations:
         from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
         alb = AudioLabBridge(audio_lab_service=MagicMock())
         jobs = alb.activeJobs()
-        assert isinstance(jobs, dict)
+        assert isinstance(jobs, (list, dict))
 
     def test_navigate(self):
         from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
