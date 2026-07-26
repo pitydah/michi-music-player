@@ -22,6 +22,13 @@ MichiPage {
     property int _currentLibrarySection: 0
     readonly property int _navigationSection: _currentLibrarySection === 3 ? 5 : _currentLibrarySection
     readonly property var _localSectionTitles: [qsTr("Canciones"), qsTr("Álbumes"), qsTr("Artistas"), qsTr("Carpetas")]
+    readonly property var _albumViewModes: [
+        { icon: "../../../icons/view/view-grid.svg", tooltip: qsTr("Cuadrícula") },
+        { icon: "../../../icons/view/view-coverflow.svg", tooltip: qsTr("CoverFlow") },
+        { icon: "../../../icons/view/warm_view_vinyl.svg", tooltip: qsTr("Muro de vinilos") },
+        { icon: "../../../icons/view/warm_view_timeline.svg", tooltip: qsTr("Línea de tiempo") },
+        { icon: "../../../icons/view/warm_view_magazine.svg", tooltip: qsTr("Magazine") }
+    ]
     property bool _searchActive: false
     property bool _restoringState: false
 
@@ -210,6 +217,9 @@ MichiPage {
             currentFilterIndex: root._navigationSection
             selectionActive: selectionBar.visible
             selectedCount: selectionBar.selectedCount
+            viewModes: root._currentLibrarySection === 1 ? root._albumViewModes : []
+            currentViewMode: albumViewHost.currentView
+            activeFilterCount: filterBar.activeFilterCount
             onFilterChanged: function(index) {
                 root._currentLibrarySection = index
                 pageState.currentTab = index
@@ -222,9 +232,15 @@ MichiPage {
                 pageState.save()
             }
             onRefreshRequested: root.refreshData()
+            onFiltersRequested: filterBar.open()
+            onViewModeChanged: function(index) {
+                albumViewHost.selectView(index)
+                pageState.currentView = index
+                pageState.save()
+            }
         }
 
-        LibraryFilterBar {
+        LibraryFilterPopover {
             id: filterBar
             Layout.fillWidth: true
             Layout.preferredHeight: implicitHeight
