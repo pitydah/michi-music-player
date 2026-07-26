@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import sys
-import time
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
+from PySide6.QtCore import QCoreApplication, Property, QObject, QUrl, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
+from PySide6.QtTest import QTest
 
 
 REPO = Path(__file__).resolve().parents[3]
@@ -273,10 +273,9 @@ def load_qml_component(
     component = QQmlComponent(engine)
     component.loadUrl(QUrl.fromLocalFile(str(path)))
 
-    deadline = time.monotonic() + (timeout_ms / 1000)
-    while time.monotonic() < deadline:
+    for _ in range(max(1, timeout_ms // 10)):
         QCoreApplication.processEvents()
-        time.sleep(0.01)
+        QTest.qWait(10)
         status = component.status()
         if status != QQmlComponent.Loading:
             break
