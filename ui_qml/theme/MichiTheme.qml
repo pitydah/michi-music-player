@@ -80,10 +80,16 @@ QtObject {
 
     // ── Now Playing heights ──
     readonly property QtObject nowPlaying: QtObject {
-        readonly property int desktop: 132
-        readonly property int medium: 122
-        readonly property int compact: 108
-        readonly property int minHeight: 96
+        // Two-level composition: seek/status strip + primary controls row.
+        readonly property int desktop: 156
+        readonly property int medium: 146
+        readonly property int compact: 116
+        readonly property int minHeight: 108
+        readonly property int seekDesktop: 28
+        readonly property int seekMedium: 26
+        readonly property int seekCompact: 20
+        readonly property int coverDesktop: 88
+        readonly property int coverMedium: 80
     }
 
     // ── Reduced motion ──
