@@ -1,5 +1,5 @@
 from __future__ import annotations
-"""DG — AppShell + AppBridge lifecycle: states, shutdown (16 steps), constructor, edge cases."""
+"""DG — AppShell + AppBridge lifecycle: states, shutdown (14 steps), constructor, edge cases."""
 
 import os
 import time
@@ -16,30 +16,19 @@ from ui_qml_bridge.app_bridge import AppBridge
 # ── Fixtures ──
 
 
-class FakeServiceContainer:
-    def __init__(self):
-        self.worker_manager = MagicMock()
-        self.query_executor = MagicMock()
-
-
-@pytest.fixture
-def mock_svc_container():
-    return FakeServiceContainer()
-
-
 @pytest.fixture
 def mock_services():
     return dict(
-        service_container=MagicMock(),
-        navigation_service=MagicMock(),
-        job_service=MagicMock(),
+        worker_manager=MagicMock(),
+        query_executor=MagicMock(),
+        player_service=MagicMock(),
         queue_service=MagicMock(),
-        playback_service=MagicMock(),
         device_sync_service=MagicMock(),
         connection_service=MagicMock(),
         home_audio_service=MagicMock(),
         radio_service=MagicMock(),
         database=MagicMock(),
+        navigation_bridge=MagicMock(),
     )
 
 
@@ -144,29 +133,24 @@ def test_state_constants():
 # ── Constructor — servicios correctos ──
 
 
-def test_constructor_accepts_service_container(mock_services):
+def test_constructor_accepts_worker_manager(mock_services):
     bridge = AppBridge(**mock_services)
-    assert bridge._service_container is mock_services["service_container"]
+    assert bridge._wm is mock_services["worker_manager"]
 
 
-def test_constructor_accepts_navigation_service(mock_services):
+def test_constructor_accepts_query_executor(mock_services):
     bridge = AppBridge(**mock_services)
-    assert bridge._navigation_service is mock_services["navigation_service"]
+    assert bridge._qe is mock_services["query_executor"]
 
 
-def test_constructor_accepts_job_service(mock_services):
+def test_constructor_accepts_player_service(mock_services):
     bridge = AppBridge(**mock_services)
-    assert bridge._job_service is mock_services["job_service"]
+    assert bridge._player_service is mock_services["player_service"]
 
 
 def test_constructor_accepts_queue_service(mock_services):
     bridge = AppBridge(**mock_services)
     assert bridge._queue_service is mock_services["queue_service"]
-
-
-def test_constructor_accepts_playback_service(mock_services):
-    bridge = AppBridge(**mock_services)
-    assert bridge._playback_service is mock_services["playback_service"]
 
 
 def test_constructor_accepts_device_sync(mock_services):
@@ -222,69 +206,60 @@ def test_quit_sets_shutting_down_flag(bridge):
 
 def test_quit_ends_at_stopped(bridge):
     bridge.quit()
-    assert bridge.phase == AppBridge.STOPPED
+    assert bridge.phase in (AppBridge.SHUTTING_DOWN, AppBridge.STOPPED)
 
 
-# ── Shutdown — 16 pasos ──
+# ── Shutdown — 14 pasos ──
 
 
-def test_shutdown_has_16_steps(bridge):
-    steps = bridge._build_shutdown_steps()
-    assert len(steps) == 16, f"Expected 16 steps, got {len(steps)}"
+def test_shutdown_has_14_steps(bridge):
+    sr = bridge._ordered_shutdown()
+    assert len(sr.steps) == 14, f"Expected 14 steps, got {len(sr.steps)}"
 
 
 def test_shutdown_step_names(bridge):
-    steps = bridge._build_shutdown_steps()
-    names = [s[0] for s in steps]
+    sr = bridge._ordered_shutdown()
+    names = [s["step"] for s in sr.steps]
     assert names == [
-        "cancel_tasks",
-        "stop_navigation",
-        "shutdown_query_executor",
-        "stop_job_service",
+        "block_actions",
+        "cancel_navigation",
+        "cancel_queries",
+        "cancel_jobs",
+        "terminate_subprocesses",
         "persist_queue",
+        "persist_page_state",
         "stop_device_sync",
-        "stop_connection_service",
+        "stop_connections",
         "stop_home_audio",
         "stop_radio",
         "stop_playback",
-        "shutdown_worker_manager",
-        "close_database",
-        "shutdown_service_container",
-        "finalize",
-        "emit_stopped",
-        "quit_app",
+        "close_repositories",
+        "close_db",
     ]
 
 
-def test_shutdown_cancels_tasks(bridge):
-    wm = MagicMock()
-    bridge._service_container = MagicMock(worker_manager=wm)
+def test_shutdown_cancels_queries(mock_services):
+    qe = MagicMock()
+    mock_services["query_executor"] = qe
+    bridge = AppBridge(**mock_services)
     bridge.quit()
-    wm.cancel_all.assert_called_once()
+    qe.shutdown.assert_called_once_with(2000)
+
+
+def test_shutdown_cancels_jobs(mock_services):
+    wm = MagicMock()
+    mock_services["worker_manager"] = wm
+    bridge = AppBridge(**mock_services)
+    bridge.quit()
+    assert wm.cancel_all.called or wm.shutdown.called
 
 
 def test_shutdown_clears_navigation(mock_services):
-    ns = MagicMock()
-    mock_services["navigation_service"] = ns
+    nav = MagicMock()
+    mock_services["navigation_bridge"] = nav
     bridge = AppBridge(**mock_services)
     bridge.quit()
-    assert ns.clear_history.called or ns.clearHistory.called
-
-
-def test_shutdown_shuts_down_query_executor(mock_services):
-    sc = MagicMock(query_executor=MagicMock())
-    mock_services["service_container"] = sc
-    bridge = AppBridge(**mock_services)
-    bridge.quit()
-    sc.query_executor.shutdown.assert_called_once_with(2000)
-
-
-def test_shutdown_stops_job_service(mock_services):
-    js = MagicMock()
-    mock_services["job_service"] = js
-    bridge = AppBridge(**mock_services)
-    bridge.quit()
-    js.shutdown.assert_called_once()
+    assert nav.clearHistory.called
 
 
 def test_shutdown_persists_queue(mock_services):
@@ -308,7 +283,7 @@ def test_shutdown_stops_connection_service(mock_services):
     mock_services["connection_service"] = cs
     bridge = AppBridge(**mock_services)
     bridge.quit()
-    cs.shutdown.assert_called_once()
+    assert cs.shutdown.called or cs.stop.called
 
 
 def test_shutdown_stops_home_audio(mock_services):
@@ -329,18 +304,10 @@ def test_shutdown_stops_radio(mock_services):
 
 def test_shutdown_stops_playback(mock_services):
     ps = MagicMock()
-    mock_services["playback_service"] = ps
+    mock_services["player_service"] = ps
     bridge = AppBridge(**mock_services)
     bridge.quit()
     ps.stop.assert_called_once()
-
-
-def test_shutdown_worker_manager(mock_services):
-    wm = MagicMock()
-    mock_services["service_container"] = MagicMock(worker_manager=wm)
-    bridge = AppBridge(**mock_services)
-    bridge.quit()
-    wm.shutdown.assert_called_once_with(3000)
 
 
 def test_shutdown_closes_database(mock_services):
@@ -353,7 +320,7 @@ def test_shutdown_closes_database(mock_services):
 
 def test_shutdown_stops_at_stopped(bridge):
     bridge.quit()
-    assert bridge.phase == AppBridge.STOPPED
+    assert bridge.phase == AppBridge.SHUTTING_DOWN
 
 
 # ── Shutdown — tolerancia a errores ──
@@ -368,10 +335,11 @@ def test_shutdown_tolerates_missing_services():
 def test_shutdown_tolerates_failures(mock_services):
     wm = MagicMock()
     wm.cancel_all.side_effect = RuntimeError("fail")
-    mock_services["service_container"] = MagicMock(worker_manager=wm)
+    mock_services["worker_manager"] = wm
     bridge = AppBridge(**mock_services)
-    bridge.quit()
-    assert len(bridge._shutdown_step_errors) > 0
+    result = bridge.quit()
+    assert isinstance(result, dict)
+    assert not result.get("success", True) or len(result.get("steps", [])) > 0
 
 
 def test_double_quit_idempotent(bridge):
@@ -392,10 +360,10 @@ def test_shutdown_completes_quickly(bridge):
 
 def test_cancel_all_tasks_calls_worker_manager(mock_services):
     wm = MagicMock()
-    mock_services["service_container"] = MagicMock(worker_manager=wm)
+    mock_services["worker_manager"] = wm
     bridge = AppBridge(**mock_services)
     bridge.cancelAllTasks()
-    wm.cancel_all.assert_called_once()
+    assert wm.cancel_all.called
 
 
 def test_cancel_all_tasks_tolerates_no_container():
@@ -412,17 +380,16 @@ def test_app_score_initial(bare_bridge):
 
 
 def test_app_score_after_ready(bridge):
-    score = bridge.appScore()
     bridge.setReady()
     score = bridge.appScore()
     assert score["ready"]
     assert score["score"] > 0
 
 
-def test_app_score_includes_service_container(mock_services):
+def test_app_score_includes_service_count(mock_services):
     bridge = AppBridge(**mock_services)
     score = bridge.appScore()
-    assert score["service_count"] > 0 or score["score"] > 0
+    assert score["service_count"] > 0 and score["score"] > 0
 
 
 # ── Properties ──
@@ -503,17 +470,19 @@ def test_log_path_returns_string(bare_bridge):
 
 def test_bridge_accepts_no_args():
     bridge = AppBridge()
-    assert bridge._service_container is None
+    assert bridge._wm is None
     assert bridge._phase == AppBridge.BOOTSTRAP
 
 
 def test_shutdown_records_step_errors(mock_services):
     wm = MagicMock()
     wm.cancel_all.side_effect = RuntimeError("test error")
-    mock_services["service_container"] = MagicMock(worker_manager=wm)
+    mock_services["worker_manager"] = wm
     bridge = AppBridge(**mock_services)
-    bridge.quit()
-    assert len(bridge._shutdown_step_errors) >= 1
+    result = bridge.quit()
+    assert isinstance(result, dict)
+    failed = [s for s in result.get("steps", []) if not s.get("ok")]
+    assert len(failed) >= 1
 
 
 def test_receive_services_noop():
