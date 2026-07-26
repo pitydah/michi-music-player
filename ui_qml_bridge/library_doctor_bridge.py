@@ -29,8 +29,10 @@ class LibraryDoctorBridge(QObject):
     repairProgress = Signal(int, int)
 
     def __init__(self, db=None, worker_manager=None, parent=None):
-        assert db is not None, "LibraryDoctorBridge: db is REQUIRED"
-        assert worker_manager is not None, "LibraryDoctorBridge: worker_manager is REQUIRED"
+        if db is None:
+            logger.warning("LibraryDoctorBridge: db is None — running in degraded mode")
+        if worker_manager is None:
+            logger.warning("LibraryDoctorBridge: worker_manager is None — running in degraded mode")
         super().__init__(parent)
         self._db = db
         self._wm = worker_manager

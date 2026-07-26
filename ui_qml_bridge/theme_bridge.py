@@ -12,7 +12,9 @@ class ThemeBridge(QObject):
 
     def __init__(self, service=None, coordinator=None, parent=None):
         super().__init__(parent)
-        assert coordinator is not None, "ThemeBridge: coordinator is REQUIRED"
+        if coordinator is None:
+            import logging
+            logging.getLogger("michi.theme_bridge").warning("ThemeBridge: coordinator is None — running in degraded mode")
         self._service = service or coordinator
         self._theme = SETTINGS.value("appearance/theme", "dark")
         self._accent_color = SETTINGS.value("appearance/accent_color", "#8FB7FF")

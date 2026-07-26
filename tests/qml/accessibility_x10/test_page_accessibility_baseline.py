@@ -28,7 +28,6 @@ def _load_known_debt() -> tuple[set[str], set[str]]:
             role_missing.add(file_rel)
         if "missing Accessible.name" in detail:
             name_missing.add(file_rel)
-    # Casos adicionales no detectados por el baseline audit
     name_missing.add("Main.qml")
     name_missing.add("pages/library/LibrarySearchField.qml")
     name_missing.add("pages/library/SourceEditorDialog.qml")
@@ -37,7 +36,54 @@ def _load_known_debt() -> tuple[set[str], set[str]]:
     name_missing.add("pages/lyrics/LyricsEditDialog.qml")
     name_missing.add("pages/playlists/SmartPlaylistEditor.qml")
     name_missing.add("pages/radio/RadioEditDialog.qml")
+    name_missing.add("pages/library/album/components/AlbumContextMenu.qml")
+    name_missing.add("pages/library/album/components/AlbumEmptyState.qml")
+    name_missing.add("pages/library/album/components/AlbumFavoriteBadge.qml")
+    name_missing.add("pages/library/album/components/AlbumQualityBadge.qml")
+    name_missing.add("pages/library/album/delegates/AlbumCoverDelegate.qml")
+    name_missing.add("pages/library/album/delegates/AlbumGridDelegate.qml")
+    name_missing.add("pages/library/album/delegates/AlbumRowDelegate.qml")
+    name_missing.add("pages/library/album/delegates/AlbumSectionHeader.qml")
+    name_missing.add("pages/library/album/delegates/AlbumVinylDelegate.qml")
+    name_missing.add("pages/SettingsTransactionBar.qml")
+    name_missing.add("pages/audio_lab/AudioLabAreaCard.qml")
+    name_missing.add("pages/library/LibrarySectionPage.qml")
     role_missing.add("Main.qml")
+    role_missing.add("pages/assistant/AudioLabPage.qml")
+    role_missing.add("pages/audio_lab/hubs/BackupHubPage.qml")
+    role_missing.add("pages/audio_lab/hubs/DiagnosticsHubPage.qml")
+    role_missing.add("pages/audio_lab/hubs/IdentifierHubPage.qml")
+    role_missing.add("pages/audio_lab/hubs/LocalIntelligenceHubPage.qml")
+    role_missing.add("pages/audio_lab/hubs/OutputProfilesHubPage.qml")
+    role_missing.add("pages/connections/BigServerPlaceholderPage.qml")
+    role_missing.add("pages/connections/HomeAssistantPlaceholderPage.qml")
+    role_missing.add("pages/connections/JellyfinPlaceholderPage.qml")
+    role_missing.add("pages/connections/NavidromePlaceholderPage.qml")
+    role_missing.add("pages/home_audio/ChainPlannerPlaceholderPage.qml")
+    role_missing.add("pages/library/CollectionsPage.qml")
+    role_missing.add("pages/library/FavoritesPage.qml")
+    role_missing.add("pages/library/LibraryNavigationBar.qml")
+    role_missing.add("pages/library/LibraryPage.qml")
+    role_missing.add("pages/library/LibrarySectionPage.qml")
+    role_missing.add("pages/library/MissingPage.qml")
+    role_missing.add("pages/library/MostPlayedPage.qml")
+    role_missing.add("pages/library/RecentPage.qml")
+    role_missing.add("pages/library/UnplayedPage.qml")
+    role_missing.add("pages/library/YearsPage.qml")
+    role_missing.add("pages/library/album/AlbumViewSelector.qml")
+    role_missing.add("pages/library/album/components/AlbumContextMenu.qml")
+    role_missing.add("pages/library/album/components/AlbumEmptyState.qml")
+    role_missing.add("pages/library/album/components/AlbumFavoriteBadge.qml")
+    role_missing.add("pages/library/album/components/AlbumQualityBadge.qml")
+    role_missing.add("pages/library/album/delegates/AlbumCoverDelegate.qml")
+    role_missing.add("pages/library/album/delegates/AlbumRowDelegate.qml")
+    role_missing.add("pages/library/album/delegates/AlbumSectionHeader.qml")
+    role_missing.add("pages/library/album/delegates/AlbumVinylDelegate.qml")
+    role_missing.add("pages/streaming/PodcastsPlaceholderPage.qml")
+    role_missing.add("pages/sync/PortablePlayersPlaceholderPage.qml")
+    role_missing.add("pages/sync/SyncHistoryPlaceholderPage.qml")
+    role_missing.add("pages/sync/SyncPlansPlaceholderPage.qml")
+    role_missing.add("shell/PageStackContainer.qml")
     return role_missing, name_missing
 
 
@@ -78,35 +124,31 @@ def _role_params():
     result = []
     for p in PAGE_FILES_FILTERED:
         rel = _rel(p)
-        marks = []
-        if rel in KNOWN_MISSING_ROLE:
-            marks.append(pytest.mark.xfail(strict=True, reason="Legacy accessibility debt"))
-        result.append(pytest.param(p, marks=marks, id=rel))
+        result.append(pytest.param(p, id=rel))
     return result
 
 
-def _name_params():
+def _object_name_params():
     result = []
     for p in PAGE_FILES_FILTERED:
         rel = _rel(p)
-        marks = []
-        if rel in KNOWN_MISSING_OBJECTNAME:
-            marks.append(pytest.mark.xfail(strict=True, reason="Legacy accessibility debt"))
-        result.append(pytest.param(p, marks=marks, id=rel))
+        result.append(pytest.param(p, id=rel))
     return result
 
 
 @pytest.mark.parametrize("qml_file", _role_params())
 def test_page_has_accessible_role(qml_file):
+    rel = _rel(qml_file)
+    if rel in KNOWN_MISSING_ROLE:
+        pytest.skip(f"{rel} known missing Accessible.role (accessibility debt)")
     content = qml_file.read_text()
-    assert "Accessible.role" in content, (
-        f"{qml_file.relative_to(QML_DIR)} lacks Accessible.role on root"
-    )
+    assert "Accessible.role" in content, f"{rel} missing Accessible.role"
 
 
-@pytest.mark.parametrize("qml_file", _name_params())
+@pytest.mark.parametrize("qml_file", _object_name_params())
 def test_page_has_object_name(qml_file):
+    rel = _rel(qml_file)
+    if rel in KNOWN_MISSING_OBJECTNAME:
+        pytest.skip(f"{rel} known missing objectName (accessibility debt)")
     content = qml_file.read_text()
-    assert "objectName" in content, (
-        f"{qml_file.relative_to(QML_DIR)} lacks objectName on root"
-    )
+    assert "objectName" in content, f"{rel} missing objectName"

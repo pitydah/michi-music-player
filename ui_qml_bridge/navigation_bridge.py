@@ -33,7 +33,7 @@ class NavigationBridge(QObject):
         self._back_stack: list[tuple[str, dict]] = []
         self._forward_stack: list[tuple[str, dict]] = []
         self._max_history = 50
-        self._capabilities: set[str] = set()
+        self._capabilities: set[str] | None = None
         self._poll_timer: QTimer | None = None
         self._leave_guards: dict[str, QObject] = {}
         self._pending_navigation: dict | None = None
@@ -64,7 +64,7 @@ class NavigationBridge(QObject):
             self.navigateWithParams(route, params)
 
     def _route_matches_capability(self, route: str) -> bool:
-        if not self._capabilities:
+        if self._capabilities is None:
             return True
         for pattern, cap in CAPABILITY_MAP.items():
             if pattern.endswith(".*"):
@@ -329,6 +329,9 @@ class NavigationBridge(QObject):
             self.routeRefreshRequested.emit(route)
             return
         resolved = self._resolve(route)
+        if not self._route_matches_capability(resolved):
+            self.invalidRouteError.emit(route, "Route not available (capability gated)")
+            return
         if self._request_leave("navigate", resolved):
             return
         self._navigate_internal(route)
@@ -337,6 +340,9 @@ class NavigationBridge(QObject):
     def navigateWithParams(self, route: str, params: dict):
         params = self._params_from_qml(params)
         resolved = self._resolve(route)
+        if not self._route_matches_capability(resolved):
+            self.invalidRouteError.emit(route, "Route not available (capability gated)")
+            return
         if resolved == self._current_route:
             param_error = self._validate_params(resolved, params)
             if param_error:
@@ -362,6 +368,9 @@ class NavigationBridge(QObject):
     @Slot(str)
     def replace(self, route: str):
         resolved = self._resolve(route)
+        if not self._route_matches_capability(resolved):
+            self.invalidRouteError.emit(route, "Route not available (capability gated)")
+            return
         if self._request_leave("replace", resolved):
             return
         self._replace_internal(route)
@@ -406,6 +415,8 @@ class NavigationBridge(QObject):
                     key, value = pair.split("=", 1)
                     params[key] = value
         resolved = self._resolve(path)
+        if not self._route_matches_capability(resolved):
+            return {"ok": False, "blocked": True, "route": path, "params": params}
         if self._request_leave("navigate", resolved, params):
             return {"ok": False, "blocked": True, "route": path, "params": params}
         self._navigate_internal(path, params)

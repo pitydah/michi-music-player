@@ -108,10 +108,10 @@ class LibraryQueryService:
 
     def _build_where(self, search: str = "", artist: str = "", album: str = "",
                      genre: str = "", fmt: str = "", folder: str = "",
-                     year: str = "", quality: str = "",
-                      missing_artist: bool = False, missing_album: bool = False,
-                      missing_file: bool = False,
-                      _use_fts: bool = False) -> tuple[str, list[Any]]:
+                     year: str = "", quality: str = "", composer: str = "",
+                     missing_artist: bool = False, missing_album: bool = False,
+                     missing_file: bool = False,
+                     _use_fts: bool = False, **extra) -> tuple[str, list[Any]]:
         """Build parameterized predicates shared by library aggregate queries."""
         clauses: list[str] = []
         params: list[Any] = []
@@ -144,6 +144,9 @@ class LibraryQueryService:
         if year:
             clauses.append("year = ?")
             params.append(int(year))
+        if composer:
+            clauses.append("composer = ?")
+            params.append(composer)
         if missing_artist:
             clauses.append(f"({_artist_key_sql()} = '' OR {_artist_key_sql()} IS NULL)")
         if missing_album:

@@ -51,6 +51,7 @@ SYS_MODULE_PATCHES = {
     "core.job_service": MagicMock(),
     "core.worker_manager": MagicMock(),
     "core.paths": MagicMock(),
+    "audio.player": MagicMock(),
     "audio.player_service": MagicMock(),
     "audio": MagicMock(),
 }

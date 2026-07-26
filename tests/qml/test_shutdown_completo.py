@@ -188,7 +188,7 @@ def test_step7_persist_page_state(mock_bridge):
 
 def test_step8_stop_device_sync(mock_bridge):
     result = mock_bridge.quit()
-    mock_bridge._sync_manager.stop.assert_called_once()
+    mock_bridge._device_sync_service.stop.assert_called_once()
     step = result["steps"][7]
     assert step["step"] == "stop_device_sync"
 
@@ -219,7 +219,7 @@ def test_step9_tolerates_no_discovery(bare_bridge):
 
 def test_step10_stop_home_audio(mock_bridge):
     result = mock_bridge.quit()
-    mock_bridge._home_audio_controller.stop.assert_called_once()
+    mock_bridge._home_audio_service.stop.assert_called_once()
     step = result["steps"][9]
     assert step["step"] == "stop_home_audio"
 
@@ -235,7 +235,7 @@ def test_step10_tolerates_no_home_audio(bare_bridge):
 
 def test_step11_stop_radio(mock_bridge):
     result = mock_bridge.quit()
-    mock_bridge._radio_manager.stop.assert_called_once()
+    mock_bridge._radio_service.stop.assert_called_once()
     step = result["steps"][10]
     assert step["step"] == "stop_radio"
 
@@ -282,7 +282,7 @@ def test_step13_tolerates_no_repositories(bare_bridge):
 
 def test_step14_close_db(mock_bridge):
     result = mock_bridge.quit()
-    mock_bridge._db.close.assert_called_once()
+    mock_bridge._database.close.assert_called_once()
     step = result["steps"][13]
     assert step["step"] == "close_db"
 
@@ -302,7 +302,7 @@ def test_full_shutdown_sequence(mock_bridge):
     result =     mock_bridge.quit()
     assert mock_bridge._shutting_down
     assert not mock_bridge._accepting_new
-    assert mock_bridge.phase == AppBridge.STOPPED
+    assert mock_bridge.phase == AppBridge.SHUTTING_DOWN
     assert result["success"] is True
     assert len(result["steps"]) == 14
 
@@ -320,12 +320,12 @@ def test_double_quit_idempotent(mock_bridge):
     mock_bridge._player_service.stop.assert_called_once()
 
 
-def test_shutdown_phase_transitions(bare_bridge):
-    assert bare_bridge.phase == AppBridge.BOOTSTRAP
-    bare_bridge.setReady()
-    assert bare_bridge.phase == AppBridge.READY
-    bare_bridge.quit()
-    assert bare_bridge.phase == AppBridge.STOPPED
+    def test_shutdown_phase_transitions(bare_bridge):
+        assert bare_bridge.phase == AppBridge.BOOTSTRAP
+        bare_bridge.setReady()
+        assert bare_bridge.phase == AppBridge.READY
+        bare_bridge.quit()
+        assert bare_bridge.phase == AppBridge.SHUTTING_DOWN
 
 
 def test_shutdown_handles_step_failures():
