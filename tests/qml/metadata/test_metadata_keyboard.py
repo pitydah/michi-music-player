@@ -1,4 +1,5 @@
 from __future__ import annotations
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -9,7 +10,7 @@ class TestMetadataKeyboard:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
-        return MetadataBridge()
+        return MetadataBridge(metadata_service=MagicMock())
 
     def test_load_metadata_via_enter_action(self, bridge):
         bridge.loadMetadata("/fake/file.flac")

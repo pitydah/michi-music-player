@@ -22,7 +22,7 @@ class TestMetadataSingleEdit:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
-        return MetadataBridge()
+        return MetadataBridge(metadata_service=MagicMock())
 
     def test_load_metadata_valid_file(self, bridge, sample_file):
         r = bridge.loadMetadata(sample_file)
@@ -80,7 +80,7 @@ class TestMetadataBatchEdit:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
-        return MetadataBridge()
+        return MetadataBridge(metadata_service=MagicMock())
 
     def test_batch_set_field_empty_list(self, bridge):
         r = bridge.batchSetField([], "title", "Test")
@@ -120,7 +120,7 @@ class TestMetadataArtwork:
             os.unlink(path)
 
     @pytest.fixture
-    def sample_image(self):
+    def png_file(self):
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
             f.write(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
             path = f.name
@@ -131,7 +131,7 @@ class TestMetadataArtwork:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
-        return MetadataBridge()
+        return MetadataBridge(metadata_service=MagicMock())
 
     def test_has_artwork(self, bridge, sample_file):
         bridge.loadMetadata(sample_file)
@@ -167,7 +167,7 @@ class TestMetadataDiff:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
-        return MetadataBridge()
+        return MetadataBridge(metadata_service=MagicMock())
 
     @pytest.fixture
     def tmp_file(self):
@@ -199,7 +199,7 @@ class TestMetadataConfirmation:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
-        return MetadataBridge()
+        return MetadataBridge(metadata_service=MagicMock())
 
     @pytest.fixture
     def tmp_file(self):
@@ -235,7 +235,7 @@ class TestMetadataProgress:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
-        return MetadataBridge()
+        return MetadataBridge(metadata_service=MagicMock())
 
     def test_batch_progress_signal(self, bridge):
         assert hasattr(bridge, 'batchProgress')
