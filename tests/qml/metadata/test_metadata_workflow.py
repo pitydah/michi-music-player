@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 import tempfile
-
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -23,7 +23,7 @@ class TestMetadataWorkflow:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
-        return MetadataBridge()
+        return MetadataBridge(metadata_service=MagicMock())
 
     def test_load_metadata_on_valid_file(self, bridge, sample_file):
         result = bridge.loadMetadata(sample_file)
