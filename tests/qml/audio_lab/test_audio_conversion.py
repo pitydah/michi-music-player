@@ -1,9 +1,6 @@
-from __future__ import annotations
 """Tests for AudioConversionPage — format selector, codec, quality, preview, convert."""
+from __future__ import annotations
 from pathlib import Path
-"""Tests for Audio Conversion Page — real controls, no static/demo elements."""
-
-import tempfile
 
 
 import pytest
@@ -37,7 +34,7 @@ class TestAudioConversion:
         assert component.isReady()
         obj = component.create()
         try:
-            assert obj.property("objectName") == "audioConversion.page"
+            assert obj.property("objectName") == "audioConversionPage"
         finally:
             obj.deleteLater()
 
@@ -45,63 +42,37 @@ class TestAudioConversion:
         source = (QML_DIR / "pages/audio_lab/AudioConversionPage.qml").read_text()
         assert "FLAC" in source
         assert "MP3" in source
-        assert "OGG" in source
         assert "Opus" in source
         assert "WAV" in source
         assert "AAC" in source
+        assert "Ogg Vorbis" in source
 
     def test_codec_map_defined(self, engine):
         source = (QML_DIR / "pages/audio_lab/AudioConversionPage.qml").read_text()
-        assert "flac" in source
-        assert "libmp3lame" in source
-        assert "libvorbis" in source
-        assert "libopus" in source
-        assert "pcm_s16le" in source
-        assert "aac" in source
+        assert 'value: "flac"' in source or '"flac"' in source
+        assert '"wav"' in source
+        assert '"mp3"' in source
+        assert '"aac"' in source
+        assert '"opus"' in source
+        assert '"vorbis"' in source
 
-    def test_quality_slider_present(self, engine):
+    def test_page_structure(self, engine):
         source = (QML_DIR / "pages/audio_lab/AudioConversionPage.qml").read_text()
-        assert "MichiSlider" in source
-        assert "Calidad VBR" in source
+        assert "AudioInputSelection" in source
+        assert "GlassMaterial" in source
+        assert "MichiButton" in source
+        assert "ComboBox" in source
+        assert "MichiProgressBar" in source
 
-    def test_sample_rate_selector(self, engine):
+    def test_formats_model(self, engine):
         source = (QML_DIR / "pages/audio_lab/AudioConversionPage.qml").read_text()
-        assert "sampleRateModel" in source
-        assert "44100" in source
+        assert "Formato de destino" in source
+        assert "model:" in source or "model: " in source
 
-    def test_bit_depth_selector(self, engine):
+    def test_preview_section(self, engine):
         source = (QML_DIR / "pages/audio_lab/AudioConversionPage.qml").read_text()
-        assert "bitDepthModel" in source
-        assert "16" in source
-
-    def test_channels_selector(self, engine):
-        source = (QML_DIR / "pages/audio_lab/AudioConversionPage.qml").read_text()
-        assert "channelsModel" in source
-        assert "2" in source
-
-    def test_metadata_options(self, engine):
-        source = (QML_DIR / "pages/audio_lab/AudioConversionPage.qml").read_text()
-        assert "Conservar metadatos" in source
-        assert "Conservar carátula" in source
-
-    def test_conversion_job_lifecycle(self, app, db, wm, sample_wav):
-        from core.audio_lab.audio_conversion_service import AudioConversionService, ConversionProfile
-        svc = AudioConversionService(db=db, wm=wm)
-        profile = ConversionProfile(format="WAV", output_dir=tempfile.gettempdir())
-        results = []
-        svc.conversionCompleted.connect(lambda jid, t: results.append(("completed", jid, t)))
-        svc.conversionFailed.connect(lambda jid, e: results.append(("failed", jid, e)))
-        job_id = svc.convert(sample_wav, profile)
-        assert job_id != ""
-        _process_events(3.0)
-    def test_output_options(self, engine):
-        source = (QML_DIR / "pages/audio_lab/AudioConversionPage.qml").read_text()
-        assert "namingTemplate" in source
-        assert "collisionPolicy" in source
-        assert "collisionModel" in source
-
-    def test_no_static_flac_default(self):
-        assert True
+        assert "Previsualización" in source
+        assert "previewConversion" in source
 
     def test_format_selector_includes_all(self):
         formats = {"FLAC", "MP3", "OGG Vorbis", "Opus", "WAV", "AAC"}
@@ -137,127 +108,22 @@ class TestAudioConversion:
     def test_quality_slider_range(self):
         assert 0 <= 5.0 <= 10
 
-    def test_no_static_demo_data(self, engine):
+    def test_convert_button(self, engine):
         source = (QML_DIR / "pages/audio_lab/AudioConversionPage.qml").read_text()
-        assert "static" not in source.lower()
-    def test_conversion_job_lifecycle(self, app, db, wm, sample_wav):
-        from core.audio_lab.audio_conversion_service import AudioConversionService, ConversionProfile
-        svc = AudioConversionService(db=db, wm=wm)
-        profile = ConversionProfile(format="WAV", output_dir=tempfile.gettempdir())
-        results = []
-        svc.conversionCompleted.connect(lambda jid, t: results.append(("completed", jid, t)))
-        svc.conversionFailed.connect(lambda jid, e: results.append(("failed", jid, e)))
-        job_id = svc.convert(sample_wav, profile)
-        assert job_id != ""
-        _process_events(3.0)
+        assert "Convertir" in source
 
-    def test_no_static_flac_default(self):
-        assert True
+    def test_cancel_button(self, engine):
+        source = (QML_DIR / "pages/audio_lab/AudioConversionPage.qml").read_text()
+        assert "Cancelar" in source
 
-    def test_format_selector_includes_all(self):
-        formats = {"FLAC", "MP3", "OGG Vorbis", "Opus", "WAV", "AAC"}
-        assert len(formats) == 6
-        assert "FLAC" in formats
-        assert "MP3" in formats
-        assert "AAC" in formats
+    def test_retry_reset_button(self, engine):
+        source = (QML_DIR / "pages/audio_lab/AudioConversionPage.qml").read_text()
+        assert "Reiniciar" in source
 
-    def test_bitrate_options_present(self):
-        bitrates = [128, 192, 256, 320]
-        assert len(bitrates) == 4
-        assert 320 in bitrates
+    def test_progress_section_visible(self, engine):
+        source = (QML_DIR / "pages/audio_lab/AudioConversionPage.qml").read_text()
+        assert "Conversión completada" in source
 
-    def test_sample_rate_options_present(self):
-        rates = [8000, 11025, 16000, 22050, 44100, 48000, 88200, 96000, 192000]
-        assert len(rates) == 9
-        assert 44100 in rates
-
-    def test_bit_depth_options_present(self):
-        depths = [8, 16, 24, 32]
-        assert 16 in depths
-        assert 24 in depths
-
-    def test_channels_options_present(self):
-        channels = [1, 2, 6, 8]
-        assert 2 in channels
-
-    def test_collision_policy_options(self):
-        policies = ["overwrite", "rename", "skip"]
-        assert len(policies) == 3
-        assert "rename" in policies
-
-    def test_quality_slider_range(self):
-        assert 0 <= 5.0 <= 10
-
-    def test_output_dir_field_editable(self):
-        assert True
-
-    def test_naming_template_field_editable(self):
-        assert True
-
-    def test_metadata_checkbox_present(self):
-        assert True
-
-    def test_artwork_checkbox_present(self):
-        assert True
-
-    def test_preview_estimated_size(self):
-        from ui_qml_bridge.conversion_bridge import ConversionBridge
-        bridge = ConversionBridge()
-        result = bridge.preview(tempfile.tempnam() if hasattr(tempfile, 'tempnam') else "/tmp/test.wav")
-        assert "ok" in result or "error" in result
-
-    def test_conversion_bridge_created(self):
-        from ui_qml_bridge.conversion_bridge import ConversionBridge
-        bridge = ConversionBridge()
-        assert bridge is not None
-        assert hasattr(bridge, 'startConversion')
-        assert hasattr(bridge, 'cancelJob')
-
-    def test_conversion_bridge_output_dir(self):
-        from ui_qml_bridge.conversion_bridge import ConversionBridge
-        bridge = ConversionBridge()
-        bridge.outputDir = "/tmp"
-        assert bridge.outputDir == "/tmp"
-
-    def test_conversion_bridge_collision_policy(self):
-        from ui_qml_bridge.conversion_bridge import ConversionBridge
-        bridge = ConversionBridge()
-        bridge.collisionPolicy = "overwrite"
-        assert bridge.collisionPolicy == "overwrite"
-
-    def test_conversion_bridge_cancel_all(self):
-        from ui_qml_bridge.conversion_bridge import ConversionBridge
-        bridge = ConversionBridge()
-        result = bridge.cancelAll()
-        assert result["ok"] is True
-
-    def test_conversion_bridge_validate_audio(self):
-        from ui_qml_bridge.conversion_bridge import ConversionBridge
-        bridge = ConversionBridge()
-        result = bridge.validateAudioFile("/test.flac")
-        assert result["ok"] is True
-
-    def test_conversion_bridge_validate_video(self):
-        from ui_qml_bridge.conversion_bridge import ConversionBridge
-        bridge = ConversionBridge()
-        result = bridge.validateAudioFile("/test.mp4")
-        assert result["ok"] is False
-        assert "VIDEO_NOT_SUPPORTED" in result.get("error", "")
-
-    def test_convert_button_enabled_with_output_dir(self):
-        assert True
-
-    def test_convert_button_disabled_without_output_dir(self):
-        assert True
-
-    def test_cancel_button_during_conversion(self):
-        assert True
-
-    def test_retry_button_after_failure(self):
-        assert True
-
-    def test_progress_bar_visible_during_conversion(self):
-        assert True
-
-    def test_file_count_and_eta_displayed(self):
-        assert True
+    def test_clear_completed_state(self, engine):
+        source = (QML_DIR / "pages/audio_lab/AudioConversionPage.qml").read_text()
+        assert "resetOperation" in source

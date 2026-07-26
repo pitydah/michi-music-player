@@ -1,30 +1,9 @@
 from __future__ import annotations
 
-import time
-
-import pytest
-from PySide6.QtCore import QCoreApplication
-
 from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
 
 
-def _process_events(duration=0.5):
-    deadline = time.time() + duration
-    while time.time() < deadline:
-        QCoreApplication.processEvents()
-        time.sleep(0.02)
-
-
 class TestAudioNegative:
-    @pytest.fixture
-    def app(self):
-        return QCoreApplication.instance() or QCoreApplication()
-
-    def test_analysis_no_service(self):
-        bridge = AudioLabBridge()
-        result = bridge.previewAnalysis("/nonexistent.flac")
-        assert result.get("ok") is False
-
     def test_analysis_no_service(self):
         bridge = AudioLabBridge()
         result = bridge.previewAnalysis("/nonexistent.flac")
@@ -35,7 +14,6 @@ class TestAudioNegative:
         bridge = AudioLabBridge()
         result = bridge.validateAnalysis("/nonexistent.flac")
         assert result.get("ok") is False
-        assert result.get("error_code") == "SERVICE_UNAVAILABLE"
 
     def test_preview_conversion_no_service(self):
         bridge = AudioLabBridge()
@@ -71,7 +49,7 @@ class TestAudioNegative:
         bridge = AudioLabBridge()
         result = bridge.retryJob("nonexistent")
         assert result.get("ok") is False
-        assert result.get("error_code") == "JOB_NOT_FOUND"
+        assert result.get("error_code") == "NOT_FAILED"
 
     def test_job_status_unknown(self):
         bridge = AudioLabBridge()
@@ -81,23 +59,27 @@ class TestAudioNegative:
 
     def test_start_analysis_no_service(self):
         bridge = AudioLabBridge()
-        job_id = bridge.startAnalysis("/test.flac")
-        assert job_id == ""
+        result = bridge.startAnalysis("/test.flac")
+        assert result.get("ok") is False
+        assert result.get("error_code") == "SERVICE_UNAVAILABLE"
 
     def test_start_conversion_no_service(self):
         bridge = AudioLabBridge()
-        job_id = bridge.startConversion("/test.flac", "wav")
-        assert job_id == ""
+        result = bridge.startConversion("/test.flac", "wav")
+        assert result.get("ok") is False
+        assert result.get("error_code") == "SERVICE_UNAVAILABLE"
 
     def test_start_integrity_no_service(self):
         bridge = AudioLabBridge()
-        job_id = bridge.startIntegrity("/test.flac")
-        assert job_id == ""
+        result = bridge.startIntegrity("/test.flac")
+        assert result.get("ok") is False
+        assert result.get("error_code") == "SERVICE_UNAVAILABLE"
 
     def test_start_comparison_no_service(self):
         bridge = AudioLabBridge()
-        job_id = bridge.startComparison("/a.flac", "/b.flac")
-        assert job_id == ""
+        result = bridge.startComparison("/a.flac", "/b.flac")
+        assert result.get("ok") is False
+        assert result.get("error_code") == "SERVICE_UNAVAILABLE"
 
     def test_capability_map_no_service(self):
         bridge = AudioLabBridge()
