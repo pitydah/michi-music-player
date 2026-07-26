@@ -21,9 +21,9 @@ def bridge():
     tas.play_album = MagicMock(return_value={"ok": False, "error": "ALBUM_NOT_FOUND"})
     tas.enqueue_track = MagicMock(return_value={"ok": False, "error": "TRACK_NOT_FOUND"})
     return MichiAIBridge(
-        track_action_service=tas,
-        global_search_service=gs,
-        settings_service=MagicMock(),
+        michi_ai_service=MagicMock(),
+        action_registry=MagicMock(),
+        navigation_bridge=MagicMock(),
     )
 
 

@@ -4,3 +4,4 @@ singleton MichiSpacing 1.0 MichiSpacing.qml
 singleton MichiMotion 1.0 MichiMotion.qml
 singleton MichiTheme 1.0 MichiTheme.qml
 singleton MichiAccessibility 1.0 MichiAccessibility.qml
+singleton ThemeStore 1.0 ThemeStore.qml

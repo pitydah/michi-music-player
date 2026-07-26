@@ -351,7 +351,8 @@ class TestConnectionsBridge:
         bridge = ConnectionsBridge()
         result = bridge.connectManual("192.168.1.100", 8080, "test")
         assert isinstance(result, dict)
-        assert result.get("ok") is True
+        assert not result.get("ok")
+        assert result.get("error") == "METHOD_UNAVAILABLE"
 
     def test_diagnose_returns_dict(self):
         bridge = ConnectionsBridge()

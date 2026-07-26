@@ -23,18 +23,9 @@ class TestMichiAI:
     @pytest.fixture
     def bridge(self):
         return MichiAIBridge(
-            ai_controller=MagicMock(),
-            context_service=MagicMock(),
-            plan_builder=MagicMock(),
-            tool_registry=MagicMock(),
+            michi_ai_service=MagicMock(),
             action_registry=MagicMock(),
             navigation_bridge=MagicMock(),
-            track_action_service=MagicMock(),
-            playlist_service=MagicMock(),
-            global_search_service=MagicMock(),
-            settings_service=MagicMock(),
-            diagnostics_service=MagicMock(),
-            worker_manager=MagicMock(),
         )
 
     def test_initial_state(self, bridge):

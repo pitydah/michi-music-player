@@ -41,18 +41,9 @@ def services():
 @pytest.fixture
 def bridge(services):
     return MichiAIBridge(
-        ai_controller=services["ai_controller"],
-        context_service=services["context_service"],
-        plan_builder=services["plan_builder"],
-        tool_registry=services["tool_registry"],
+        michi_ai_service=services["ai_controller"],
         action_registry=services["action_registry"],
         navigation_bridge=services["navigation_bridge"],
-        track_action_service=services["track_action_service"],
-        playlist_service=services["playlist_service"],
-        global_search_service=services["global_search_service"],
-        settings_service=services["settings_service"],
-        diagnostics_service=services["diagnostics_service"],
-        worker_manager=services["worker_manager"],
     )
 pytestmark = [pytest.mark.qml_module("michi_ai")]
 
@@ -147,18 +138,9 @@ def services():
 @pytest.fixture
 def bridge(services):
     return MichiAIBridge(
-        ai_controller=services["ai_controller"],
-        context_service=services["context_service"],
-        plan_builder=services["plan_builder"],
-        tool_registry=services["tool_registry"],
+        michi_ai_service=services["ai_controller"],
         action_registry=services["action_registry"],
         navigation_bridge=services["navigation_bridge"],
-        track_action_service=services["track_action_service"],
-        playlist_service=services["playlist_service"],
-        global_search_service=services["global_search_service"],
-        settings_service=services["settings_service"],
-        diagnostics_service=services["diagnostics_service"],
-        worker_manager=services["worker_manager"],
     )
 
 
