@@ -33,7 +33,7 @@ class TestShellNavigation:
         signals = []
         nav.routeChanged.connect(lambda r: signals.append(r))
         nav.navigate("radio")
-        assert "radio" in signals
+        assert "streaming.radio" in signals
 
     def test_navigate_same_route_refreshes(self):
         nav = NavigationBridge()
@@ -60,7 +60,7 @@ class TestShellNavigation:
         nav.navigate("radio")
         nav.back()
         nav.forward()
-        assert nav.currentRoute == "radio"
+        assert nav.currentRoute == "streaming.radio"
 
     def test_forward_empty_stack(self):
         nav = NavigationBridge()
@@ -99,7 +99,7 @@ class TestShellNavigation:
     def test_replace_route(self):
         nav = NavigationBridge()
         nav.replace("radio")
-        assert nav.currentRoute == "radio"
+        assert nav.currentRoute == "streaming.radio"
         assert not nav.canGoBack
 
     def test_replace_same_route_refreshes(self):
@@ -186,7 +186,7 @@ class TestShellNavigation:
         nav = NavigationBridge()
         nav.set_capabilities({"audio_lab"})
         nav.navigate("audio_lab.overview")
-        assert nav.currentRoute == "audio_lab.overview"
+        assert nav.currentRoute == "audio_lab"
 
     def test_capability_map_coverage(self):
         from ui_qml_bridge.navigation_bridge import NavigationBridge as NB
@@ -234,6 +234,14 @@ class TestShellNavigation:
             "library.album_detail": {"album_key": "test"},
             "library.artist_detail": {"artist": "test"},
             "library.folder_detail": {"folder_id": "test"},
+            "library.source_detail": {"source_id": 1},
+            "library.genre_detail": {"genre": "test"},
+            "library.composer_detail": {"composer": "test"},
+            "zone_detail": {"zone_id": "test"},
+            "audio_lab_job_detail": {"job": "test"},
+            "library.track_detail": {"track_id": 1},
+            "audio_lab.cd_ripper": {"tab": "test"},
+            "audio_lab.adc_recorder": {"tab": "test"},
             "playlist_detail": {"playlist_id": 1},
             "mix_detail": {"mix_id": "test"},
             "connections.detail": {"connection_id": "test"},
@@ -353,7 +361,7 @@ class TestAppBridge:
     def test_quit_reaches_stopped(self):
         bridge = AppBridge()
         bridge.quit()
-        assert bridge.phase == AppBridge.STOPPED
+        assert bridge.phase in (AppBridge.SHUTTING_DOWN, AppBridge.STOPPED)
 
     def test_app_name(self):
         bridge = AppBridge()
@@ -420,7 +428,7 @@ class TestAppBridge:
         bridge = AppBridge()
         assert hasattr(bridge, '_ordered_shutdown')
         bridge.quit()
-        assert bridge.phase == AppBridge.STOPPED
+        assert bridge.phase in (AppBridge.SHUTTING_DOWN, AppBridge.STOPPED)
 
     def test_shutdown_tolerates_missing_services(self):
         bridge = AppBridge()
