@@ -1,7 +1,11 @@
 """Intelligence composition — Michi AI, mix/recommendation, action registry."""
 from __future__ import annotations
 
+import logging
+
 from core.service_container import ServiceContainer
+
+logger = logging.getLogger(__name__)
 
 
 def build(container: ServiceContainer) -> None:
@@ -26,6 +30,7 @@ def build(container: ServiceContainer) -> None:
         container.register("mix_query_service", mqs)
         container.register("mix_service", mix_svc)
     except Exception:
+        logger.error("Failed to create mix services", exc_info=True)
         container.register("mix_query_service", None)
         container.register("mix_service", None)
 
@@ -67,6 +72,4 @@ def build(container: ServiceContainer) -> None:
                     return []
             set_library_provider(_provider)
     except Exception as e:
-        import logging
-        logging.getLogger("michi.bootstrap.intelligence").warning(
-            "Michi AI composition failed: %s", e)
+        logger.error("Michi AI composition failed: %s", e)

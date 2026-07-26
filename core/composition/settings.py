@@ -1,9 +1,11 @@
 """Settings and accessibility composition — theme, accessibility, background, runtime adapters."""
 from __future__ import annotations
 
-import contextlib
+import logging
 
 from core.service_container import ServiceContainer
+
+logger = logging.getLogger(__name__)
 
 
 def build(container: ServiceContainer) -> None:
@@ -36,17 +38,21 @@ def build(container: ServiceContainer) -> None:
                             RadioSettingsAdapter, LyricsSettingsAdapter,
                             DeviceSettingsAdapter, ConnectionSettingsAdapter,
                             HomeAudioSettingsAdapter, LoggingSettingsAdapter):
-            with contextlib.suppress(Exception):
+            try:
                 coordinator.register_adapter(adapter_cls())
+            except Exception:
+                logger.error("Failed to register adapter %s", adapter_cls.__name__, exc_info=True)
 
     try:
         from core.background_theme_service import BackgroundThemeService
         container.register("theme_service", BackgroundThemeService())
     except Exception:
+        logger.error("Failed to create theme_service", exc_info=True)
         container.register("theme_service", None)
 
     try:
         from core.accessibility_service import AccessibilityService
         container.register("accessibility_service", AccessibilityService())
     except Exception:
+        logger.error("Failed to create accessibility_service", exc_info=True)
         container.register("accessibility_service", None)

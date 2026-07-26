@@ -1,7 +1,11 @@
 """Playback composition — player, queue, track actions."""
 from __future__ import annotations
 
+import logging
+
 from core.service_container import ServiceContainer
+
+logger = logging.getLogger(__name__)
 
 
 def build(container: ServiceContainer) -> None:
@@ -33,4 +37,5 @@ def build(container: ServiceContainer) -> None:
             MPRISAdapter(player_service=ps, queue_service=qs),
         )
     except Exception:
+        logger.error("Failed to create MPRISAdapter", exc_info=True)
         container.register("mpris_adapter", None)

@@ -18,7 +18,7 @@ def build(container: ServiceContainer) -> None:
         try:
             als.setup()
         except Exception as e:
-            logger.warning("AudioLab setup failed: %s", e)
+            logger.error("AudioLab setup failed: %s", e)
     container.register("audio_lab_service", als)
 
     try:
@@ -28,4 +28,5 @@ def build(container: ServiceContainer) -> None:
                                 player_service=ps, worker_manager=wm)
         container.register("diagnostics_service", ds)
     except Exception:
+        logger.error("Failed to create DiagnosticsService", exc_info=True)
         container.register("diagnostics_service", None)

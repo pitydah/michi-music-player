@@ -1,7 +1,11 @@
 """Library composition — query, sources, search, playlists, history."""
 from __future__ import annotations
 
+import logging
+
 from core.service_container import ServiceContainer
+
+logger = logging.getLogger(__name__)
 
 
 def build(container: ServiceContainer) -> None:
@@ -47,16 +51,19 @@ def build(container: ServiceContainer) -> None:
         from core.library_doctor_service import LibraryDoctorService
         container.register("library_doctor_service", LibraryDoctorService(db))
     except Exception:
+        logger.error("Failed to create library_doctor_service", exc_info=True)
         container.register("library_doctor_service", None)
 
     try:
         sts = SmartTaggingService(worker_manager=wm, library_query_service=lqs)
         container.register("smart_tagging_service", sts)
     except Exception:
+        logger.error("Failed to create smart_tagging_service", exc_info=True)
         container.register("smart_tagging_service", None)
 
     try:
         from core.library.artwork_resolver import CoverArtService
         container.register("artwork_service", CoverArtService(db=db))
     except Exception:
+        logger.error("Failed to create artwork_service", exc_info=True)
         container.register("artwork_service", None)
