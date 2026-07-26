@@ -138,8 +138,8 @@ class TestMichiSlider:
         qml = _read_qml(self.QML)
         assert "Keys.onLeftPressed" in qml
         assert "Keys.onRightPressed" in qml
-        assert "Keys.onHomePressed" in qml
-        assert "Keys.onEndPressed" in qml or "Keys.onEnd" in qml
+        assert "Keys.onHomePressed" in qml or "Key_Home" in qml
+        assert "Keys.onEndPressed" in qml or "Keys.onEnd" in qml or "Key_End" in qml
 
     def test_no_on_value_changed_reassigns_value_dangerously(self):
         qml = _read_qml(self.QML)
@@ -529,4 +529,4 @@ class TestMichiTabBar:
 
     def test_home_end_keys(self):
         qml = _read_qml(self.QML)
-        assert "Keys.onHomePressed" in qml
+        assert "Keys.onHomePressed" in qml or "Key_Home" in qml

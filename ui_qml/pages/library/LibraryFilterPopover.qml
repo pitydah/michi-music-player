@@ -7,6 +7,8 @@ import "../../components"
 Item {
     id: root
     objectName: "libraryFilterBar"
+    Accessible.role: Accessible.Pane
+    Accessible.name: qsTr("Filtros de biblioteca")
     implicitHeight: 0
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
