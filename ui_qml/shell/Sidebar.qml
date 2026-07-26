@@ -172,40 +172,73 @@ Item {
             Rectangle {
                 id: mainRow
                 objectName: "sidebarMain_" + section.sectionRoute
-                width: parent.width
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: parent.width - (root.collapsed ? 12 : 16)
                 height: root.collapsed ? 48 : 44
-                radius: MichiTheme.radius.sm
+                radius: MichiTheme.radius.md
                 color: root.isParentActive(section.sectionRoute) && !root.collapsed
-                       ? MichiTheme.colors.accentSelection
+                       ? Qt.rgba(0.561, 0.718, 1.0,
+                                 MichiTheme.darkMode ? 0.15 : 0.18)
                        : mainAction.pressed ? MichiTheme.colors.surfacePressed
-                       : mainAction.containsMouse ? MichiTheme.colors.surfaceHover
+                       : mainAction.containsMouse
+                         ? Qt.rgba(1.0, 1.0, 1.0,
+                                   MichiTheme.darkMode ? 0.065 : 0.54)
                        : "transparent"
-                border.width: mainAction.activeFocus ? MichiTheme.focusWidth : 0
-                border.color: MichiTheme.colors.borderFocus
+                border.width: root.isParentActive(section.sectionRoute)
+                              || mainAction.containsMouse || mainAction.activeFocus ? 1 : 0
+                border.color: mainAction.activeFocus
+                              ? MichiTheme.colors.borderFocus
+                              : root.isParentActive(section.sectionRoute)
+                                ? Qt.rgba(0.561, 0.718, 1.0, 0.30)
+                                : MichiTheme.colors.borderSubtle
+
+                Behavior on color {
+                    ColorAnimation {
+                        duration: MichiTheme.motion.fast
+                        easing.type: MichiTheme.motion.easing.standard
+                    }
+                }
 
                 Rectangle {
                     visible: root.isParentActive(section.sectionRoute)
                     anchors.left: parent.left
+                    anchors.leftMargin: 1
                     anchors.verticalCenter: parent.verticalCenter
                     width: 3
-                    height: 22
-                    radius: MichiTheme.radius.xs
+                    height: 24
+                    radius: 2
                     color: MichiTheme.colors.accentPrimary
                 }
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: root.collapsed ? (parent.width - 20) / 2 : MichiTheme.spacing.md
-                    anchors.rightMargin: root.collapsed ? (parent.width - 20) / 2 : MichiTheme.spacing.sm
+                    anchors.leftMargin: root.collapsed ? (parent.width - 30) / 2 : MichiTheme.spacing.md
+                    anchors.rightMargin: root.collapsed ? (parent.width - 30) / 2 : MichiTheme.spacing.sm
                     spacing: MichiTheme.spacing.sm
 
-                    MichiIcon {
-                        Layout.preferredWidth: 20
-                        Layout.preferredHeight: 20
+                    Rectangle {
+                        Layout.preferredWidth: 30
+                        Layout.preferredHeight: 30
                         Layout.alignment: Qt.AlignVCenter
-                        iconKey: section.sectionIcon
-                        size: 20
-                        active: root.isParentActive(section.sectionRoute)
+                        radius: 9
+                        color: root.isParentActive(section.sectionRoute)
+                               ? Qt.rgba(0.561, 0.718, 1.0, 0.16)
+                               : mainAction.containsMouse
+                                 ? Qt.rgba(1.0, 1.0, 1.0,
+                                           MichiTheme.darkMode ? 0.06 : 0.48)
+                                 : Qt.rgba(1.0, 1.0, 1.0,
+                                           MichiTheme.darkMode ? 0.025 : 0.32)
+                        border.width: 1
+                        border.color: root.isParentActive(section.sectionRoute)
+                                      ? Qt.rgba(0.561, 0.718, 1.0, 0.28)
+                                      : MichiTheme.colors.borderInner
+
+                        MichiIcon {
+                            anchors.centerIn: parent
+                            iconKey: section.sectionIcon
+                            size: 18
+                            active: root.isParentActive(section.sectionRoute)
+                        }
                     }
 
                     Text {
@@ -314,14 +347,22 @@ Item {
                             width: parent.width - 16
                             height: parent.height - 2
                             anchors.centerIn: parent
-                            radius: MichiTheme.radius.sm
+                            radius: MichiTheme.radius.md
                             color: root.canonicalCurrentRoute === child.childRoute
-                                   ? MichiTheme.colors.accentSelection
+                                   ? Qt.rgba(0.561, 0.718, 1.0,
+                                             MichiTheme.darkMode ? 0.12 : 0.16)
                                    : childAction.pressed ? MichiTheme.colors.surfacePressed
                                    : childAction.containsMouse ? MichiTheme.colors.surfaceHover
                                    : "transparent"
-                            border.width: childAction.activeFocus ? MichiTheme.focusWidth : 0
-                            border.color: MichiTheme.colors.borderFocus
+                            border.width: childAction.activeFocus
+                                          || root.canonicalCurrentRoute === child.childRoute ? 1 : 0
+                            border.color: childAction.activeFocus
+                                          ? MichiTheme.colors.borderFocus
+                                          : Qt.rgba(0.561, 0.718, 1.0, 0.22)
+
+                            Behavior on color {
+                                ColorAnimation { duration: MichiTheme.motion.fast }
+                            }
 
                             Rectangle {
                                 visible: root.canonicalCurrentRoute === child.childRoute
@@ -340,12 +381,20 @@ Item {
                                 anchors.rightMargin: MichiTheme.spacing.sm
                                 spacing: MichiTheme.spacing.sm
 
-                                MichiIcon {
-                                    Layout.preferredWidth: 16
-                                    Layout.preferredHeight: 16
-                                    iconKey: child.childIcon
-                                    size: 16
-                                    active: root.canonicalCurrentRoute === child.childRoute
+                                Rectangle {
+                                    Layout.preferredWidth: 24
+                                    Layout.preferredHeight: 24
+                                    radius: 7
+                                    color: root.canonicalCurrentRoute === child.childRoute
+                                           ? Qt.rgba(0.561, 0.718, 1.0, 0.13)
+                                           : "transparent"
+
+                                    MichiIcon {
+                                        anchors.centerIn: parent
+                                        iconKey: child.childIcon
+                                        size: 15
+                                        active: root.canonicalCurrentRoute === child.childRoute
+                                    }
                                 }
 
                                 Text {
@@ -411,21 +460,32 @@ Item {
 
             Item {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 64
+                Layout.preferredHeight: 72
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: root.collapsed ? 21 : MichiTheme.spacing.lg
+                    anchors.leftMargin: root.collapsed
+                                        ? Math.round((parent.width - 38) / 2)
+                                        : MichiTheme.spacing.lg
                     anchors.rightMargin: MichiTheme.spacing.sm
                     spacing: MichiTheme.spacing.sm
 
-                    MichiIcon {
-                        Layout.preferredWidth: 28
-                        Layout.preferredHeight: 28
-                        source: "../../icons/app_icon.svg"
-                        size: 28
-                        color: MichiTheme.colors.accentPrimary
-                        accessibleName: qsTr("Michi Music Player")
+                    Rectangle {
+                        Layout.preferredWidth: 38
+                        Layout.preferredHeight: 38
+                        radius: 12
+                        color: Qt.rgba(0.561, 0.718, 1.0,
+                                       MichiTheme.darkMode ? 0.12 : 0.18)
+                        border.width: 1
+                        border.color: Qt.rgba(0.561, 0.718, 1.0, 0.24)
+
+                        MichiIcon {
+                            anchors.centerIn: parent
+                            source: "../../icons/app_icon.svg"
+                            size: 25
+                            color: MichiTheme.colors.accentPrimary
+                            accessibleName: qsTr("Michi Music Player")
+                        }
                     }
 
                     Text {
@@ -433,8 +493,9 @@ Item {
                         visible: !root.collapsed
                         text: "Michi Music Player"
                         color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        font.weight: MichiTheme.typography.weightSemiBold
+                        font.pixelSize: MichiTheme.typography.bodySize + 1
+                        font.weight: MichiTheme.typography.weightBold
+                        font.letterSpacing: 0.2
                         elide: Text.ElideRight
                     }
 
@@ -452,7 +513,8 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 height: MichiTheme.borderWidth
-                color: MichiTheme.colors.borderSubtle
+                color: Qt.rgba(0.561, 0.718, 1.0,
+                               MichiTheme.darkMode ? 0.10 : 0.16)
             }
 
             Flickable {
@@ -484,7 +546,8 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 height: MichiTheme.borderWidth
-                color: MichiTheme.colors.borderSubtle
+                color: Qt.rgba(0.561, 0.718, 1.0,
+                               MichiTheme.darkMode ? 0.10 : 0.16)
             }
 
             Column {
@@ -502,23 +565,44 @@ Item {
                         property var spec: modelData
 
                         Rectangle {
+                            id: fixedRow
                             objectName: "sidebarFixed_" + fixedItem.spec.route
-                            anchors.fill: parent
-                            radius: MichiTheme.radius.sm
+                            anchors.centerIn: parent
+                            width: parent.width - (root.collapsed ? 12 : 16)
+                            height: parent.height - 2
+                            radius: MichiTheme.radius.md
                             color: root.canonicalCurrentRoute === fixedItem.spec.route
-                                   ? MichiTheme.colors.accentSelection : "transparent"
+                                   ? MichiTheme.colors.accentSelection
+                                   : fixedAction.containsMouse
+                                     ? MichiTheme.colors.surfaceHover : "transparent"
+                            border.width: fixedAction.activeFocus
+                                          || root.canonicalCurrentRoute === fixedItem.spec.route ? 1 : 0
+                            border.color: fixedAction.activeFocus
+                                          ? MichiTheme.colors.borderFocus
+                                          : Qt.rgba(0.561, 0.718, 1.0, 0.22)
 
                             RowLayout {
                                 anchors.fill: parent
-                                anchors.leftMargin: root.collapsed ? 24 : MichiTheme.spacing.md
+                                anchors.leftMargin: root.collapsed
+                                                    ? Math.round((parent.width - 30) / 2)
+                                                    : MichiTheme.spacing.md
                                 anchors.rightMargin: MichiTheme.spacing.md
                                 spacing: MichiTheme.spacing.sm
 
-                                MichiIcon {
-                                    Layout.preferredWidth: 20
-                                    Layout.preferredHeight: 20
-                                    iconKey: fixedItem.spec.icon || ""
-                                    size: 20
+                                Rectangle {
+                                    Layout.preferredWidth: 30
+                                    Layout.preferredHeight: 30
+                                    radius: 9
+                                    color: root.canonicalCurrentRoute === fixedItem.spec.route
+                                           ? Qt.rgba(0.561, 0.718, 1.0, 0.16)
+                                           : "transparent"
+
+                                    MichiIcon {
+                                        anchors.centerIn: parent
+                                        iconKey: fixedItem.spec.icon || ""
+                                        size: 18
+                                        active: root.canonicalCurrentRoute === fixedItem.spec.route
+                                    }
                                 }
 
                                 Text {
@@ -531,8 +615,10 @@ Item {
                             }
 
                             MouseArea {
+                                id: fixedAction
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
+                                hoverEnabled: true
                                 activeFocusOnTab: true
                                 Accessible.role: Accessible.Button
                                 Accessible.name: fixedItem.spec.title || ""
