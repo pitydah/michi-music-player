@@ -55,7 +55,12 @@ def build(container: ServiceContainer) -> None:
         container.register("library_doctor_service", None)
 
     try:
-        sts = SmartTaggingService(worker_manager=wm, library_query_service=lqs)
+        from core.recognition_service import RecognitionService
+        from recognition.provider_manager import ProviderManager
+        recog = RecognitionService(provider_manager=ProviderManager(None))
+        container.register("recognition_service", recog)
+        sts = SmartTaggingService(worker_manager=wm, library_query_service=lqs,
+                                   recognition_service=recog)
         container.register("smart_tagging_service", sts)
     except Exception:
         logger.error("Failed to create smart_tagging_service", exc_info=True)
