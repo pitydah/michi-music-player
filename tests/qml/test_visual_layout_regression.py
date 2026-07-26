@@ -282,7 +282,10 @@ def test_sidebar_icon_inventory_exists_and_loads(qapp) -> None:
         assert "gradient" not in svg, f"Gradient in icon {icon_path}"
 
 
-@pytest.mark.parametrize("width,height", [(1366, 132), (900, 122), (899, 122), (700, 108)])
+@pytest.mark.parametrize(
+    "width,height",
+    [(1366, 156), (900, 146), (899, 146), (700, 116)],
+)
 def test_now_playing_bar_children_stay_inside(qapp, width: int, height: int) -> None:
     engine = QQmlEngine()
     component = _component(engine, "components/NowPlayingBar.qml")

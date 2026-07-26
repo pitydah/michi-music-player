@@ -35,6 +35,33 @@ def test_now_playing_tokens_exist():
     assert "minHeight" in content
 
 
+def test_now_playing_bar_matches_two_row_reference_structure():
+    path = QML_DIR / "components" / "NowPlayingBar.qml"
+    content = path.read_text(encoding="utf-8")
+
+    assert 'objectName: "nowPlayingReferenceLayout"' in content
+    assert 'objectName: "nowPlayingPrimaryArea"' in content
+    assert 'objectName: "nowPlayingTechnicalArea"' in content
+    assert 'objectName: "nowPlayingUpperTechnicalRow"' in content
+    assert 'objectName: "nowPlayingLowerPrimaryRow"' in content
+    assert 'objectName: "nowPlayingCenteredTransport"' in content
+    assert 'objectName: "nowPlayingLowerUtilities"' in content
+    assert 'objectName: "nowPlayingOutputProfileButton"' in content
+
+
+def test_now_playing_bar_has_premium_track_card():
+    path = QML_DIR / "components" / "NowPlayingBar.qml"
+    content = path.read_text(encoding="utf-8")
+
+    assert 'objectName: "nowPlayingMetadataCard"' in content
+    assert 'objectName: "nowPlayingCompactMetadataCard"' in content
+    assert "CoverImage {" in content
+    assert "root.ps.trackTitle" in content
+    assert "root.ps.trackArtist" in content
+    assert "root.ps.trackAlbum" in content
+    assert "root.technicalLabel" in content
+
+
 @pytest.mark.parametrize("width", WIDTHS)
 def test_responsive_widths_are_covered(width):
     assert width > 0

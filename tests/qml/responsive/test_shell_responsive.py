@@ -58,7 +58,7 @@ def test_shell_runtime_geometry(qapp, width: int, height: int) -> None:
     assert round(sidebar.width()) == expected_sidebar
     assert round(sidebar.width() + header.width()) == width
     assert round(header.height()) == 56
-    expected_now_playing = 132 if width >= 1200 else 122 if width >= 800 else 108
+    expected_now_playing = 156 if width >= 1200 else 146 if width >= 800 else 116
     assert round(now_playing.height()) == expected_now_playing
     assert round(header.height() + stack.height() + now_playing.height()) == height
     assert surface.width() <= stack.width()
