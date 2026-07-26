@@ -328,7 +328,7 @@ Item {
                                 width: 2
                                 height: 16
                                 anchors.left: parent.left
-                                anchors.leftMargin: 4
+                                anchors.leftMargin: MichiTheme.spacing.xs
                                 anchors.verticalCenter: parent.verticalCenter
                                 radius: 1
                                 color: MichiTheme.colors.accentPrimary

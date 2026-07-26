@@ -49,7 +49,6 @@ class LibraryBridge(QObject):
                  playlists_bridge: Any | None = None, container: Any | None = None,
                  queue_service: Any | None = None, parent: QObject | None = None) -> None:
         assert query_service is not None, "LibraryBridge: query_service is REQUIRED"
-        assert track_action_service is not None, "LibraryBridge: track_action_service is REQUIRED"
         super().__init__(parent)
         self._db = db
         self._search_engine = search_engine
@@ -494,6 +493,8 @@ class LibraryBridge(QObject):
 
     @Slot(int, result=dict)
     def playTrackById(self, track_id: int):
+        if not self._tas:
+            return {"ok": False, "error": "NO_TRACK_ACTION_SERVICE"}
         return self._tas.play_track(track_id)
 
     @Slot(str, result=dict)
@@ -515,10 +516,14 @@ class LibraryBridge(QObject):
 
     @Slot(int, result=dict)
     def enqueueTrackById(self, track_id: int):
+        if not self._tas:
+            return {"ok": False, "error": "NO_TRACK_ACTION_SERVICE"}
         return self._tas.enqueue_track(track_id)
 
     @Slot(int, result=dict)
     def playNextTrackById(self, track_id: int):
+        if not self._tas:
+            return {"ok": False, "error": "NO_TRACK_ACTION_SERVICE"}
         return self._tas.play_next(track_id)
 
     @Slot(int, int, result=dict)

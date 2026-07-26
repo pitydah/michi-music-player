@@ -321,7 +321,7 @@ Item {
 
             Rectangle {
                 anchors.top: artContainer.bottom
-                anchors.topMargin: 7
+                anchors.topMargin: MichiTheme.spacing.xs
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: artContainer.width * 0.64
                 height: 10

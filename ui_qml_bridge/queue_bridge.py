@@ -27,13 +27,16 @@ class QueueBridge(QObject):
     def __init__(self, player_service=None, playlists_bridge=None,
                  queue_service=None, parent=None) -> None:
         super().__init__(parent)
-        assert queue_service is not None, "QueueBridge: queue_service is REQUIRED"
         self._player = player_service
         self._pb = playlists_bridge
         self._queue_service = queue_service
-        from ui_qml.models.QueueListModel import QueueListModel
-        self._model = QueueListModel(queue_service=queue_service, parent=self)
-        self._unsubscribe = queue_service.subscribe(self._on_queue_event)
+        if queue_service is not None:
+            from ui_qml.models.QueueListModel import QueueListModel
+            self._model = QueueListModel(queue_service=queue_service, parent=self)
+            self._unsubscribe = queue_service.subscribe(self._on_queue_event)
+        else:
+            self._model = None
+            self._unsubscribe = None
         self._domainChanged.connect(self.dataChanged.emit)
         self.destroyed.connect(self._unsubscribe_queue)
 
@@ -64,7 +67,7 @@ class QueueBridge(QObject):
 
     @Property(bool, notify=dataChanged)
     def canUndo(self) -> bool:
-        return self._queue_service.can_undo
+        return bool(self._queue_service) and self._queue_service.can_undo
 
     @Property("QVariant", notify=dataChanged)
     def queueModel(self):
@@ -76,11 +79,12 @@ class QueueBridge(QObject):
 
     @Property(int, notify=dataChanged)
     def currentIndex(self) -> int:
-        return self._queue_service.current_index
+        return self._queue_service.current_index if self._queue_service else -1
 
     @Slot("QVariantList", result=dict)
     def add(self, items: list) -> dict:
-        """Append queue items without interrupting current playback."""
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
         try:
             return self._queue_service.enqueue(items, play_now=False)
         except Exception as exc:
@@ -88,7 +92,8 @@ class QueueBridge(QObject):
 
     @Slot("QVariantList", int, result=dict)
     def replaceAndPlay(self, items: list, start_index: int) -> dict:
-        """Atomically replace the queue and start at a validated index."""
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
         if not items:
             return {"ok": False, "error": "EMPTY_QUEUE"}
         if start_index < 0 or start_index >= len(items):
@@ -100,16 +105,21 @@ class QueueBridge(QObject):
 
     @Slot(result=dict)
     def refresh(self) -> dict:
-        self._model.refresh()
+        if self._model:
+            self._model.refresh()
         self.dataChanged.emit()
         return {"ok": True, "count": self.queueCount}
 
     @Slot(int, result=dict)
     def playFromIndex(self, index: int) -> dict:
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
         return self._queue_service.play_from_index(index)
 
     @Slot(int, result=dict)
     def removeFromQueue(self, index: int) -> dict:
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
         try:
             return self._queue_service.remove([index])
         except Exception as e:
@@ -117,6 +127,8 @@ class QueueBridge(QObject):
 
     @Slot(int, int, result=dict)
     def moveItem(self, from_index: int, to_index: int) -> dict:
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
         try:
             return self._queue_service.reorder(from_index, to_index)
         except Exception as e:
@@ -124,6 +136,8 @@ class QueueBridge(QObject):
 
     @Slot(str, result=dict)
     def saveAsPlaylist(self, name: str) -> dict:
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
         playlist_name = name.strip()
         if not playlist_name:
             return {"ok": False, "error": "EMPTY_NAME"}
@@ -139,6 +153,8 @@ class QueueBridge(QObject):
 
     @Slot(result=dict)
     def clearQueue(self) -> dict:
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
         try:
             return self._queue_service.clear()
         except Exception as e:
@@ -185,4 +201,5 @@ class QueueBridge(QObject):
 
     def shutdown(self) -> None:
         self._unsubscribe_queue()
-        self._model.shutdown()
+        if self._model:
+            self._model.shutdown()

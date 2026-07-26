@@ -214,7 +214,7 @@ Item {
                         StatusBadge {
                             anchors.right: parent.right
                             anchors.top: parent.top
-                            anchors.margins: 8
+                            anchors.margins: MichiTheme.spacing.sm
                             text: qsTr("Planificado")
                             kind: "neutral"
                         }
@@ -237,7 +237,7 @@ Item {
                         StatusBadge {
                             anchors.right: parent.right
                             anchors.top: parent.top
-                            anchors.margins: 8
+                            anchors.margins: MichiTheme.spacing.sm
                             text: qsTr("Planificado")
                             kind: "neutral"
                         }
@@ -260,7 +260,7 @@ Item {
                         StatusBadge {
                             anchors.right: parent.right
                             anchors.top: parent.top
-                            anchors.margins: 8
+                            anchors.margins: MichiTheme.spacing.sm
                             text: qsTr("Planificado")
                             kind: "neutral"
                         }
@@ -283,7 +283,7 @@ Item {
                         StatusBadge {
                             anchors.right: parent.right
                             anchors.top: parent.top
-                            anchors.margins: 8
+                            anchors.margins: MichiTheme.spacing.sm
                             text: qsTr("Configurar")
                             kind: "warning"
                         }

@@ -301,8 +301,8 @@ class TestLayouts:
         from pathlib import Path
         qml = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml/pages/SettingsPage.qml"
         text = qml.read_text()
-        assert "anchors.fill: parent" in text
-        assert "Desktop layout" in text or "width >= 900" in text
+        assert "Loader" in text
+        assert "SettingsTransactionBar" in text
 
     def test_settings_general_page_exists(self):
         from pathlib import Path

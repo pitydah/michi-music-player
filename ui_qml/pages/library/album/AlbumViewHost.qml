@@ -136,7 +136,7 @@ Item {
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.margins: 3
+                        anchors.margins: MichiTheme.spacing.xxs
                         spacing: 2
 
                         Repeater {

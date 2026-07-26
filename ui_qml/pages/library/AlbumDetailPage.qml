@@ -224,7 +224,7 @@ Item {
                 ListView {
                     id: tracksList
                     anchors.fill: parent
-                    anchors.margins: 6
+                    anchors.margins: MichiTheme.spacing.xs
                     model: root.albumTracks
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds

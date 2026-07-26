@@ -171,7 +171,17 @@ class GlobalSearchBridge(QObject):
             )
             return {"ok": True, "async": True, "request_id": request_id}
 
-        logger.error("GlobalSearchBridge: no QueryExecutor available — search cannot execute")
+        if self._svc and callable(getattr(self._svc, 'search', None)):
+            try:
+                result = self._svc.search(q)
+                self._on_search_done(result, request_id)
+                return {"ok": True, "result": result, "count": result.get("count", len(self._results)), "request_id": request_id}
+            except Exception as e:
+                self._on_search_done(
+                    {"ok": False, "error_code": "SEARCH_FAILED", "message": str(e)}, request_id)
+                return {"ok": False, "error": "SEARCH_FAILED", "message": str(e)}
+
+        logger.error("GlobalSearchBridge: no QueryExecutor or search_service available")
         self._results = []
         self._is_searching = False
         self._error_code = "NO_QUERY_EXECUTOR"

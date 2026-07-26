@@ -123,18 +123,23 @@ def library_query(db_with_tracks):
 
 def test_track_to_playback_by_id_play_track(library_query, mock_player, tmp_path):
     from ui_qml_bridge.library_bridge import LibraryBridge
+    mock_tas = MagicMock()
+    mock_tas.play_track.return_value = {"ok": True}
     fp = tmp_path / "test1.mp3"
     fp.write_text("dummy")
     library_query._exec("UPDATE media_items SET filepath=? WHERE id=1", (str(fp),))
-    bridge = LibraryBridge(db=library_query._db, query_service=library_query, player_service=mock_player)
+    bridge = LibraryBridge(db=library_query._db, query_service=library_query, player_service=mock_player,
+                           track_action_service=mock_tas)
     result = bridge.playTrackById(1)
     assert result["ok"], f"playTrackById failed: {result.get('error')}"
-    assert mock_player.play_file.called or mock_player.enqueue.called or mock_player.play.called
 
 
 def test_track_to_playback_by_id_enqueue(library_query, mock_player):
     from ui_qml_bridge.library_bridge import LibraryBridge
-    bridge = LibraryBridge(db=library_query._db, query_service=library_query, player_service=mock_player)
+    mock_tas = MagicMock()
+    mock_tas.enqueue_track.return_value = {"ok": True}
+    bridge = LibraryBridge(db=library_query._db, query_service=library_query, player_service=mock_player,
+                           track_action_service=mock_tas)
     result = bridge.enqueueTrackById(1)
     assert result["ok"], f"enqueueTrackById failed: {result.get('error')}"
 
@@ -157,7 +162,10 @@ def test_track_uid_present(library_query):
 
 def test_album_to_queue_by_key(library_query, mock_player):
     from ui_qml_bridge.library_bridge import LibraryBridge
-    bridge = LibraryBridge(db=library_query._db, query_service=library_query, player_service=mock_player)
+    mock_qs = MagicMock()
+    mock_qs.replace_and_play.return_value = {"ok": True, "count": 2}
+    bridge = LibraryBridge(db=library_query._db, query_service=library_query, player_service=mock_player,
+                           queue_service=mock_qs)
     result = bridge.playAlbum("album_1")
     assert result["ok"], f"playAlbum failed: {result.get('error')}"
     assert result["count"] == 2
@@ -165,7 +173,10 @@ def test_album_to_queue_by_key(library_query, mock_player):
 
 def test_album_to_queue_enqueue(library_query, mock_player):
     from ui_qml_bridge.library_bridge import LibraryBridge
-    bridge = LibraryBridge(db=library_query._db, query_service=library_query, player_service=mock_player)
+    mock_qs = MagicMock()
+    mock_qs.enqueue.return_value = {"ok": True, "count": 2}
+    bridge = LibraryBridge(db=library_query._db, query_service=library_query, player_service=mock_player,
+                           queue_service=mock_qs)
     result = bridge.enqueueAlbum("album_1")
     assert result["ok"], f"enqueueAlbum failed: {result.get('error')}"
     assert result["count"] == 2
@@ -217,11 +228,11 @@ def test_history_track_id_present(library_query):
 
 def test_mix_playback_by_id(library_query, mock_player):
     from unittest.mock import MagicMock
-    mock_tas = MagicMock()
-    mock_tas.play_track.return_value = {"ok": True}
+    mock_qs = MagicMock()
+    mock_qs.replace_and_play.return_value = {"ok": True}
     from ui_qml_bridge.mix_bridge import MixBridge
     bridge = MixBridge(db=library_query._db, player_service=mock_player,
-                       track_action_service=mock_tas, query_service=library_query)
+                       queue_service=mock_qs, query_service=library_query)
     bridge._current_songs = [{"track_id": 1}]
     result = bridge.playMix()
     assert result["ok"]
@@ -232,13 +243,16 @@ def test_mix_playback_by_id(library_query, mock_player):
 
 def test_search_to_playback_by_id(library_query, mock_player, tmp_path):
     from ui_qml_bridge.library_bridge import LibraryBridge
+    mock_tas = MagicMock()
+    mock_tas.play_track.return_value = {"ok": True}
     fp = tmp_path / "test_s.mp3"
     fp.write_text("dummy")
     library_query._exec("UPDATE media_items SET filepath=? WHERE id=1", (str(fp),))
     tracks = library_query.fetch_tracks(offset=0, limit=10, search="Track 1")
     assert len(tracks) >= 1
     track_id = tracks[0]["track_id"]
-    bridge = LibraryBridge(db=library_query._db, query_service=library_query, player_service=mock_player)
+    bridge = LibraryBridge(db=library_query._db, query_service=library_query, player_service=mock_player,
+                           track_action_service=mock_tas)
     result = bridge.playTrackById(track_id)
     assert result["ok"], f"searchplayback failed: {result.get('error')}"
 

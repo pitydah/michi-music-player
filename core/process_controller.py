@@ -124,14 +124,15 @@ class ProcessController:
         except Exception as e:
             logger.debug("stderr collector: %s", e)
 
-    async     def _wait_exit(self, proc: asyncio.subprocess.Process, mp: ManagedProcess):
+    async def _wait_exit(self, proc: asyncio.subprocess.Process, mp: ManagedProcess):
         try:
             returncode = await proc.wait()
             mp._exit_status = returncode
+        except AttributeError:
+            mp._exit_status = -1
         except Exception as e:
             logger.debug("wait exit: %s", e)
             mp._exit_status = -1
-        proc._transport = None  # noqa: SIM105
 
     async def stdout(self, pid: int) -> list[str]:
         mp = await self._get(pid)

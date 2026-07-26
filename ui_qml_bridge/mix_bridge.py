@@ -72,15 +72,20 @@ class MixBridge(QObject):
                  page_state_store: Any = None, capability_bridge: Any = None,
                  accessibility_bridge: Any = None, playlist_service: Any = None,
                   playback_service: Any = None, queue_service: Any = None,
-                  query_executor: Any = None, parent: QObject | None = None) -> None:
+                  query_executor: Any = None, parent: QObject | None = None,
+                  **legacy_kwargs) -> None:
         super().__init__(parent)
         # Retained for bridge-factory and caller compatibility; this bridge no longer uses them.
         del action_registry, capability_bridge, accessibility_bridge, playback_service, query_executor
         self._mix_svc = mix_service
+        if self._mix_svc is None and "query_service" in legacy_kwargs:
+            self._mix_svc = legacy_kwargs["query_service"]
         self._job_svc = job_service
         self._nav = navigation_bridge
         self._page_state = page_state_store
         self._playlist_svc = playlist_service
+        if self._playlist_svc is None and "playlist_bridge" in legacy_kwargs:
+            self._playlist_svc = legacy_kwargs["playlist_bridge"]
         self._queue_svc = queue_service
 
         self._state = MixState.IDLE
