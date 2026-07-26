@@ -761,7 +761,7 @@ ROUTES: dict[str, dict] = {
         "aliases": [],
         "keywords": [],
         "placeholder_state": None,
-        "params": {"tab": {"required": False, "type": "string"}}, "category": "tools",
+        "params": {"tab": {"required": False, "type": "string"}}, "category": "detail",
     },
     "audio_lab.adc_recorder": {
         "route": "audio_lab.adc_recorder", "parent": "audio_lab",
@@ -773,7 +773,7 @@ ROUTES: dict[str, dict] = {
         "aliases": [],
         "keywords": [],
         "placeholder_state": None,
-        "params": {"tab": {"required": False, "type": "string"}}, "category": "tools",
+        "params": {"tab": {"required": False, "type": "string"}}, "category": "detail",
     },
 
     # ═══════════════════════════════════════════════════════════════════

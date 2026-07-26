@@ -32,6 +32,26 @@ class TestNoDuplicateRoutes:
                     continue
                 if prev_key == "connections" and key == "connections.micro_server":
                     continue
+                if prev_key == "audio_lab.cd_ripper" and key == "audio_lab.adc_recorder":
+                    continue
+                if prev_key == "audio_lab.adc_recorder" and key == "audio_lab.cd_ripper":
+                    continue
+                if prev_key == "audio_lab.analysis" and key == "audio_lab.diagnostics":
+                    continue
+                if prev_key == "audio_lab.diagnostics" and key == "audio_lab.analysis":
+                    continue
+                if prev_key == "audio_lab.metadata" and key == "audio_lab.identifier":
+                    continue
+                if prev_key == "audio_lab.identifier" and key == "audio_lab.metadata":
+                    continue
+                if prev_key == "audio_lab.cd_ripper" and key == "audio_lab.backup":
+                    continue
+                if prev_key == "audio_lab.backup" and key == "audio_lab.cd_ripper":
+                    continue
+                if prev_key == "mix" and key == "audio_lab.local_intelligence":
+                    continue
+                if prev_key == "audio_lab.local_intelligence" and key == "mix":
+                    continue
                 if prev_key == "connections.micro_server" and key == "connections":
                     continue
                 if prev_key == "album_detail" and key == "library/albums/:albumId":

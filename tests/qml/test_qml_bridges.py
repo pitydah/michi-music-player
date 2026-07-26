@@ -288,9 +288,11 @@ class TestCommandBus:
 
 class TestThemeBridge:
     def test_default_dark(self):
-        from unittest.mock import MagicMock
-        bridge = ThemeBridge(coordinator=MagicMock())
-        assert bridge.darkMode is True
+        from unittest.mock import MagicMock, patch
+        with patch("ui_qml_bridge.theme_bridge.SETTINGS") as mock_settings:
+            mock_settings.value.return_value = "dark"
+            bridge = ThemeBridge(coordinator=MagicMock())
+            assert bridge.darkMode is True
 
     def test_set_light(self):
         from unittest.mock import MagicMock
