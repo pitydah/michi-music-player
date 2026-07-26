@@ -40,7 +40,7 @@ class TestAudioLabOrchestrated:
         from core.audio_lab.audio_lab_service import AudioLabService
 
         s = AudioLabService(db=db, worker_manager=wm)
-        s.setup()
+        s.start()
         return s
 
     def test_orchestrated_setup_all_services(self, svc):

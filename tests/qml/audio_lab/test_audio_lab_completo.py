@@ -32,6 +32,9 @@ def mock_services():
         status="completed", filepath="/test.flac", integrated_loudness=-14.0,
         true_peak=0.5, loudness_range=8.0,
     )
+    al_svc.normalization.normalize_file.return_value = {
+        "ok": True, "filepath": "/test.flac", "status": "completed",
+    }
     al_svc.replaygain.analyze_track.return_value = MagicMock(
         status="completed", filepath="/test.flac", track_gain=-5.2,
         track_peak=0.8, album_gain=-4.8, album_peak=0.75,
