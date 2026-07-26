@@ -19,7 +19,7 @@ Item {
     property string _lastError: root.ai ? root.ai.lastError || "" : "No disponible"
     property var _chatHistory: root.ai ? parseChatHistory(root.ai.getChatHistory()) : []
     property string selectedAiModelId: "calico"
-    property int pageState: root.ai ? stateReady : stateError
+    property int pageState: (root.ai && root.ai.backendAvailable) ? stateReady : stateError
 
     signal aiModelSelectionRequested(string modelId)
 
@@ -89,7 +89,11 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
-        sourceComponent: ErrorState { message: qsTr("Asistente no disponible") }
+        sourceComponent: ErrorState {
+            message: root.ai && !root.ai.backendAvailable
+                     ? qsTr("Asistente no disponible: el servicio de IA no está conectado. Verifica que Michi AI esté configurado en Ajustes.")
+                     : qsTr("Asistente no disponible")
+        }
     }
 
     Loader {
@@ -173,7 +177,8 @@ Item {
                 id: aiModelSelector
                 width: parent.width
                 selectedModelId: root.selectedAiModelId
-                integrationReady: false
+                integrationReady: root.ai && root.ai.backendAvailable
+                backendAvailable: root.ai && root.ai.backendAvailable
                 onModelSelectionRequested: function(modelId) {
                     root.selectedAiModelId = modelId
                     root.aiModelSelectionRequested(modelId)

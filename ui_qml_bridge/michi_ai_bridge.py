@@ -51,6 +51,11 @@ class MichiAIBridge(QObject):
         self._page_state = page_state_store
         self._access = accessibility_bridge
 
+        if michi_ai_service is None:
+            logger.warning("MichiAIBridge created WITHOUT michi_ai_service — AI features unavailable")
+        else:
+            logger.info("MichiAIBridge created with michi_ai_service=%s", type(michi_ai_service).__name__)
+
         self._status = "IDLE"
         self._suggestions: list[dict] = []
         self._backend_type: str = "calico"
@@ -62,6 +67,10 @@ class MichiAIBridge(QObject):
         self._last_error = ""
         self._current_task_id = ""
         self._session_id = "default"
+
+    @Property(bool, notify=statusChanged)
+    def backendAvailable(self) -> bool:
+        return self._ai_svc is not None
 
     @Property(str, notify=statusChanged)
     def status(self):

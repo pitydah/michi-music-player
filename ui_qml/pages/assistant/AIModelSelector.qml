@@ -11,6 +11,7 @@ Item {
     property string selectedModelId: "calico"
     property var selectedModel: modelAt(indexForId(selectedModelId))
     property bool integrationReady: false
+    property bool backendAvailable: false
 
     signal modelSelectionRequested(string modelId)
 
