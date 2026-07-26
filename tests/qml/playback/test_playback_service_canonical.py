@@ -88,8 +88,8 @@ def test_player_service_set_volume_emits(mock_engine):
 
 def test_player_service_get_queue_state_returns_tuple(mock_engine):
     svc = PlayerService(mock_engine)
-    mock_engine.get_queue.return_value = [{"filepath": "/a.flac"}, {"filepath": "/b.flac"}]
-    mock_engine.get_queue_index.return_value = 1
+    mock_engine._queue = ["/a.flac", "/b.flac"]
+    mock_engine._queue_index = 1
     paths, idx = svc.get_queue_state()
     assert len(paths) == 2
     assert idx == 1

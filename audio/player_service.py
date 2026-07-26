@@ -352,6 +352,8 @@ class PlayerService(QObject):
             self._hybrid.active.set_queue(filepaths)
 
     def toggle_shuffle(self) -> bool:
+        if self._engine:
+            return self._engine.toggle_shuffle()
         current = bool(getattr(self._hybrid.active, "_shuffle", False))
         return self.set_shuffle(not current)
 
@@ -359,6 +361,8 @@ class PlayerService(QObject):
         return self._hybrid.set_shuffle(enabled)
 
     def toggle_repeat(self) -> str:
+        if self._engine:
+            return self._engine.toggle_repeat()
         current = getattr(self._hybrid.active, "_repeat", "none")
         modes = {"none": "all", "all": "one", "one": "none"}
         return self.set_repeat(modes.get(current, "none"))
