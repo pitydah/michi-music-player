@@ -28,7 +28,7 @@ def build(container: ServiceContainer) -> None:
         )
         container.register("connection_service", connection_service)
     except Exception as exc:
-        logger.warning("Connection service unavailable: %s", exc)
+        logger.error("Failed to create connection_service: %s", exc)
         container.register("connection_service", None)
 
     try:
@@ -72,7 +72,7 @@ def build(container: ServiceContainer) -> None:
         container.register("snapserver_manager", snapserver)
         container.register("home_audio_service", home_audio)
     except Exception as exc:
-        logger.warning("Home Audio degraded during composition: %s", exc)
+        logger.error("Failed to create home_audio_service: %s", exc)
         container.register("home_audio_service", None)
 
     try:
@@ -82,7 +82,9 @@ def build(container: ServiceContainer) -> None:
         container.register("device_sync_service", DeviceSyncService())
         container.register("device_registry", DeviceRegistry())
     except Exception as exc:
-        logger.warning("Device sync unavailable: %s", exc)
+        logger.error("Failed to create device_sync_service: %s", exc)
+        container.register("device_sync_service", None)
+        container.register("device_registry", None)
 
     try:
         from core.mobile_sync_service import MobileSyncService
@@ -92,7 +94,8 @@ def build(container: ServiceContainer) -> None:
             MobileSyncService(db=container.get("database")),
         )
     except Exception as exc:
-        logger.warning("Mobile sync unavailable: %s", exc)
+        logger.error("Failed to create mobile_sync_service: %s", exc)
+        container.register("mobile_sync_service", None)
 
     from core.radio.radio_service import RadioService
 
@@ -108,5 +111,5 @@ def build(container: ServiceContainer) -> None:
         )
         container.register("lyrics_service", lyrics_service)
     except Exception as exc:
-        logger.warning("Lyrics service unavailable: %s", exc)
+        logger.error("Failed to create lyrics_service: %s", exc)
         container.register("lyrics_service", None)
