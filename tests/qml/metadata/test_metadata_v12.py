@@ -1,8 +1,6 @@
 """Tests for Metadata v12 — MetadataBridge with MetadataService."""
 from unittest.mock import MagicMock
 
-import pytest
-
 
 class MockMetadataResult:
     def __init__(self, ok=True, data=None, code="", message=""):
