@@ -122,7 +122,7 @@ class RealPlayerService:
         self._position = 0.0
         self._duration = 0.0
         self._mono = False
-        self._balance = 0
+        self._balance = 0.0
 
     def play(self, filepath, title=None, artist=None, album=None, duration=200, track_id=None):
         self.current = type("obj", (), {"title": title or "Now Playing", "artist": artist or "A", "album": album or "Al", "filepath": filepath, "duration": duration})()
@@ -211,8 +211,8 @@ class RealPlayerService:
     def balance(self):
         return self._balance
 
-    def set_balance(self, val: int):
-        self._balance = max(-100, min(100, int(val)))
+    def set_balance(self, val: float):
+        self._balance = max(-1.0, min(1.0, float(val)))
 
 
 class RealDbWrapper:
@@ -757,10 +757,10 @@ class TestWF11ThemePersistence:
         assert tb.highContrast is True
         tb.compactMode = True
         assert tb.compactMode is True
-        tb.fontScale = "large"
-        assert tb.fontScale == "large"
-        tb.reduceMotion = True
-        assert tb.reduceMotion is True
+        tb.fontScale = 1.5
+        assert tb.fontScale == 1.5
+        tb.reducedMotion = True
+        assert tb.reducedMotion is True
 
 
 # ── WF12: Accessibility mono/balance ──
@@ -782,20 +782,20 @@ class TestWF12AccessibilityMonoBalance:
         conn, db_wrapper, player, files = real_db_and_player
         from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
         ab = AccessibilityBridge(playback_service=player)
-        ab.balance = -50
-        assert ab.balance == -50
-        assert player.balance == -50
+        ab.balance = -0.5
+        assert ab.balance == -0.5
+        assert player.balance == -0.5
 
     def test_wf12_restore(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
         from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
         ab = AccessibilityBridge(playback_service=player)
         ab.mono = True
-        ab.balance = -30
+        ab.balance = -0.3
         r = ab.restoreOnError()
         assert r.get("ok")
         assert not ab.mono
-        assert ab.balance == 0
+        assert ab.balance == 0.0
 
 
 # ── WF13: Notification actions ──

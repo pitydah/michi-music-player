@@ -28,8 +28,8 @@ class SettingsEntry:
     hint: str = ""
     validator: Callable[[Any], tuple[bool, str]] | None = None
     requires_restart: bool = False
-    min_value: int | None = None
-    max_value: int | None = None
+    min_value: float | None = None
+    max_value: float | None = None
     category: str = "general"
     platforms: list[str] | None = None       # None = all, or ["Linux", "Windows", "Darwin"]
     requires_capability: str = ""            # capability name, empty = always available
@@ -381,19 +381,16 @@ APPEARANCE = SettingsCategory("appearance", "Apariencia", "appearance", sections
 
 ACCESSIBILITY = SettingsCategory("accessibility", "Accesibilidad", "accessibility", sections=[
     SettingsSection("display", "Pantalla", entries=[
-        SettingsEntry("accessibility/font_size", "Tamaño de fuente", ENTRY_SELECT, "normal",
-                       options=[{"value": "small", "label": "Pequeña"},
-                                {"value": "normal", "label": "Normal"},
-                                {"value": "large", "label": "Grande"},
-                                {"value": "xlarge", "label": "Muy grande"}]),
+        SettingsEntry("accessibility/font_size", "Tamaño de fuente", ENTRY_FLOAT, 1.0,
+                       min_value=0.5, max_value=2.0, hint="Escala de fuente (0.5x-2.0x)"),
         SettingsEntry("accessibility/high_contrast", "Alto contraste", ENTRY_BOOL, False),
-        SettingsEntry("accessibility/reduce_motion", "Reducir movimiento", ENTRY_BOOL, False),
+        SettingsEntry("accessibility/reduced_motion", "Reducir movimiento", ENTRY_BOOL, False),
         SettingsEntry("accessibility/focus_indicators", "Indicadores de foco", ENTRY_BOOL, True),
     ]),
     SettingsSection("audio", "Audio", entries=[
         SettingsEntry("accessibility/mono", "Modo mono", ENTRY_BOOL, False),
-        SettingsEntry("accessibility/balance", "Balance (L/R)", ENTRY_INT, 0,
-                       min_value=-100, max_value=100, hint="-100 = solo izquierdo, 100 = solo derecho"),
+        SettingsEntry("accessibility/balance", "Balance (L/R)", ENTRY_FLOAT, 0.0,
+                       min_value=-1, max_value=1, hint="-1 = solo izquierdo, 1 = solo derecho"),
     ]),
 ])
 
@@ -467,4 +464,14 @@ def validate(key: str, value: Any) -> tuple[bool, str]:
             return True, ""
         except (ValueError, TypeError):
             return False, "Debe ser un número entero"
+    if entry.entry_type == ENTRY_FLOAT:
+        try:
+            v = float(value)
+            if entry.min_value is not None and v < entry.min_value:
+                return False, f"Mínimo: {entry.min_value}"
+            if entry.max_value is not None and v > entry.max_value:
+                return False, f"Máximo: {entry.max_value}"
+            return True, ""
+        except (ValueError, TypeError):
+            return False, "Debe ser un número decimal"
     return True, ""

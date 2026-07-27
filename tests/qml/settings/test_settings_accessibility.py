@@ -21,7 +21,7 @@ class FakeSettingsBridgeV2(QObject):
         self._values = {
             "accessibility/mono": False,
             "accessibility/balance": 0.0,
-            "accessibility/font_scale": 100,
+            "accessibility/font_size": 1.0,
             "accessibility/high_contrast": False,
             "accessibility/reduced_motion": False,
             "accessibility/screen_reader": False,

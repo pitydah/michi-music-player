@@ -66,17 +66,17 @@ class TestThemeReactiveFlow:
 
     def test_reduce_motion_propagates(self, settings_service):
         bridge = ThemeBridge(service=settings_service)
-        bridge._reduce_motion = False
-        bridge.reduceMotion = True
-        assert bridge.reduceMotion is True
-        settings_service.set_.assert_called_with("accessibility/reduce_motion", True)
+        bridge._reduced_motion = False
+        bridge.reducedMotion = True
+        assert bridge.reducedMotion is True
+        settings_service.set_.assert_called_with("accessibility/reduced_motion", True)
 
     def test_font_scale_propagates(self, settings_service):
         bridge = ThemeBridge(service=settings_service)
-        bridge._font_scale = "normal"
-        bridge.fontScale = "large"
-        assert bridge.fontScale == "large"
-        settings_service.set_.assert_called_with("accessibility/font_size", "large")
+        bridge._font_scale = 1.0
+        bridge.fontScale = 1.5
+        assert bridge.fontScale == 1.5
+        settings_service.set_.assert_called_with("accessibility/font_size", 1.5)
 
     def test_dark_mode_setter(self, settings_service):
         bridge = ThemeBridge(service=settings_service)

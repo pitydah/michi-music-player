@@ -87,9 +87,9 @@ class TestReducedMotionBridge:
     def test_theme_bridge_exposes_reduce_motion(self):
         from ui_qml_bridge.theme_bridge import ThemeBridge
         bridge = ThemeBridge()
-        assert hasattr(bridge, "reduceMotion"), \
-            "ThemeBridge lacks reduceMotion property"
-        assert isinstance(bridge.reduceMotion, bool)
+        assert hasattr(bridge, "reducedMotion"), \
+            "ThemeBridge lacks reducedMotion property"
+        assert isinstance(bridge.reducedMotion, bool)
 
 
 class TestReducedMotionPages:

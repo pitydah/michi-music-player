@@ -19,7 +19,7 @@ def theme():
 
 class TestAccessibilityBridgeProperties:
     def test_initial_font_scale(self, bridge):
-        assert bridge.fontScale in ("small", "normal", "large", "xlarge")
+        assert isinstance(bridge.fontScale, float)
 
     def test_initial_high_contrast(self, bridge):
         assert isinstance(bridge.highContrast, bool)
@@ -34,12 +34,12 @@ class TestAccessibilityBridgeProperties:
         assert isinstance(bridge.mono, bool)
 
     def test_initial_balance(self, bridge):
-        assert isinstance(bridge.balance, int)
-        assert -100 <= bridge.balance <= 100
+        assert isinstance(bridge.balance, float)
+        assert -1.0 <= bridge.balance <= 1.0
 
     def test_font_scale_setter(self, bridge):
-        bridge.fontScale = "large"
-        assert bridge.fontScale == "large"
+        bridge.fontScale = 1.5
+        assert bridge.fontScale == 1.5
 
     def test_high_contrast_setter(self, bridge):
         bridge.highContrast = True
@@ -50,10 +50,10 @@ class TestAccessibilityBridgeProperties:
         assert bridge.reduceMotion is True
 
     def test_balance_clamps(self, bridge):
-        bridge.balance = 200
-        assert bridge.balance <= 100
-        bridge.balance = -200
-        assert bridge.balance >= -100
+        bridge.balance = 5.0
+        assert bridge.balance <= 1.0
+        bridge.balance = -5.0
+        assert bridge.balance >= -1.0
 
     def test_accessibility_score_returns_dict(self, bridge):
         score = bridge.accessibilityScore()
@@ -62,9 +62,9 @@ class TestAccessibilityBridgeProperties:
         assert 0 <= score["score"] <= 100
 
     def test_refresh_updates_values(self, bridge):
-        bridge._font_scale = "small"
+        bridge._font_scale = 0.5
         bridge.refresh()
-        assert bridge.fontScale in ("small", "normal", "large", "xlarge")
+        assert isinstance(bridge.fontScale, float)
 
 
 class TestAccessibilityGate:
@@ -81,14 +81,14 @@ class TestAccessibilityGate:
         assert theme.highContrast is True
 
     def test_reduced_motion_disables_animations(self, theme):
-        theme.reduceMotion = True
-        assert theme.reduceMotion is True
+        theme.reducedMotion = True
+        assert theme.reducedMotion is True
 
     def test_font_scale_propagates(self, bridge):
-        bridge.fontScale = "xlarge"
-        assert bridge.fontScale == "xlarge"
-        bridge.fontScale = "small"
-        assert bridge.fontScale == "small"
+        bridge.fontScale = 1.8
+        assert bridge.fontScale == 1.8
+        bridge.fontScale = 0.6
+        assert bridge.fontScale == 0.6
 
     def test_not_depending_on_color_alone(self, bridge):
         score = bridge.accessibilityScore()

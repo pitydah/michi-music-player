@@ -13,12 +13,12 @@ pytestmark = [pytest.mark.qml_module("accessibility")]
 class FakePlaybackService:
     def __init__(self):
         self.mono_enabled = False
-        self.balance_value = 0
+        self.balance_value = 0.0
 
     def set_mono(self, enabled: bool):
         self.mono_enabled = enabled
 
-    def set_balance(self, balance: int):
+    def set_balance(self, balance: float):
         self.balance_value = balance
 
 
@@ -26,7 +26,7 @@ class FakePlaybackServiceUnstable:
     def set_mono(self, enabled: bool):
         raise RuntimeError("Backend mono unavailable")
 
-    def set_balance(self, balance: int):
+    def set_balance(self, balance: float):
         raise RuntimeError("Backend balance unavailable")
 
 
@@ -35,16 +35,16 @@ class TestFontScale:
         svc = MagicMock()
         svc.set_.return_value = {"ok": True}
         bridge = AccessibilityBridge(settings_service=svc)
-        bridge._font_scale = "normal"
-        bridge.fontScale = "large"
-        assert bridge.fontScale == "large"
-        svc.set_.assert_called_with("accessibility/font_size", "large")
+        bridge._font_scale = 1.0
+        bridge.fontScale = 1.5
+        assert bridge.fontScale == 1.5
+        svc.set_.assert_called_with("accessibility/font_size", 1.5)
 
     def test_font_scale_noop_same(self):
         svc = MagicMock()
         bridge = AccessibilityBridge(settings_service=svc)
-        bridge._font_scale = "normal"
-        bridge.fontScale = "normal"
+        bridge._font_scale = 1.0
+        bridge.fontScale = 1.0
         svc.set_.assert_not_called()
 
 
@@ -72,7 +72,7 @@ class TestReduceMotion:
         bridge._reduce_motion = False
         bridge.reduceMotion = True
         assert bridge.reduceMotion is True
-        svc.set_.assert_called_with("accessibility/reduce_motion", True)
+        svc.set_.assert_called_with("accessibility/reduced_motion", True)
 
     def test_reduce_motion_toggle(self):
         svc = MagicMock()
@@ -132,35 +132,35 @@ class TestBalance:
         ps = FakePlaybackService()
         svc = MagicMock()
         bridge = AccessibilityBridge(settings_service=svc, playback_service=ps)
-        bridge._balance = 0
-        bridge.balance = 30
-        assert ps.balance_value == 30
-        assert bridge.balance == 30
+        bridge._balance = 0.0
+        bridge.balance = 0.3
+        assert ps.balance_value == 0.3
+        assert bridge.balance == 0.3
 
     def test_balance_clamps_values(self):
         ps = FakePlaybackService()
         svc = MagicMock()
         bridge = AccessibilityBridge(settings_service=svc, playback_service=ps)
-        bridge._balance = 0
-        bridge.balance = 150
-        assert bridge.balance == 100
-        bridge.balance = -200
-        assert bridge.balance == -100
+        bridge._balance = 0.0
+        bridge.balance = 5.0
+        assert bridge.balance == 1.0
+        bridge.balance = -5.0
+        assert bridge.balance == -1.0
 
     def test_balance_restores_on_backend_rejection(self):
         ps = FakePlaybackServiceUnstable()
         svc = MagicMock()
         bridge = AccessibilityBridge(settings_service=svc, playback_service=ps)
-        bridge._balance = 0
-        bridge.balance = 50
-        assert bridge.balance == 0
+        bridge._balance = 0.0
+        bridge.balance = 0.5
+        assert bridge.balance == 0.0
 
     def test_balance_no_playback_service(self):
         svc = MagicMock()
         bridge = AccessibilityBridge(settings_service=svc)
-        old = bridge.balance
-        bridge.balance = 50
-        assert bridge.balance == old
+        bridge._balance = 0.0
+        bridge.balance = 0.5
+        assert bridge.balance == 0.5
 
 
 class TestRestoreOnError:
@@ -168,11 +168,11 @@ class TestRestoreOnError:
         svc = MagicMock()
         bridge = AccessibilityBridge(settings_service=svc)
         bridge.mono = bool(bridge.mono) or False
-        bridge.balance = 30
+        bridge.balance = 0.3
         result = bridge.restoreOnError()
         assert result["ok"] is True
         assert result["mono"] is False
-        assert result["balance"] == 0
+        assert result["balance"] == 0.0
 
     def test_restore_emits_signal(self):
         svc = MagicMock()
@@ -208,7 +208,7 @@ class TestAccessibilityScore:
 class TestRefresh:
     def test_refresh_reloads_all_settings(self):
         bridge = AccessibilityBridge()
-        bridge.fontScale = "large"
+        bridge.fontScale = 1.5
         bridge.refresh()
         assert bridge.fontScale is not None
 
@@ -235,6 +235,6 @@ class TestLastError:
     def test_last_error_on_backend_rejection_balance(self):
         ps = FakePlaybackServiceUnstable()
         bridge = AccessibilityBridge(playback_service=ps)
-        bridge._balance = 0
-        bridge.balance = 50
+        bridge._balance = 0.0
+        bridge.balance = 0.5
         assert bridge.lastError != ""
