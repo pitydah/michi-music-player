@@ -1,6 +1,6 @@
 """ProcessController — centralizes external process management.
 
-API: start, stdout, stderr, progress, PID, timeout, terminate, kill, cleanup.
+API: spawn, stdout, stderr, progress, PID, timeout, terminate, kill, cleanup.
 Thread-safe, never blocks UI thread. No subprocess.run() in Qt slots.
 """
 from __future__ import annotations
@@ -64,7 +64,7 @@ class ProcessController:
         self._processes: dict[int, ManagedProcess] = {}
         self._counter = 0
 
-    async def start(
+    async def spawn(
         self,
         cmd: str = "",
         args: list[str] | None = None,

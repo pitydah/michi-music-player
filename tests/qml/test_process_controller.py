@@ -15,7 +15,7 @@ def controller():
 
 @pytest.mark.asyncio
 async def test_start_and_exit_status(controller):
-    mp = await controller.start(sys.executable, ["-c", "exit(0)"])
+    mp = await controller.spawn(sys.executable, ["-c", "exit(0)"])
     await asyncio.sleep(0.3)
     assert mp.exit_status() == 0
 
@@ -69,7 +69,7 @@ async def test_timeout_kills(controller):
 
 @pytest.mark.asyncio
 async def test_cleanup_removes(controller):
-    mp = await controller.start(sys.executable, ["-c", "exit(0)"])
+    mp = await controller.spawn(sys.executable, ["-c", "exit(0)"])
     await asyncio.sleep(0.3)
     await controller.cleanup(mp.pid)
     prog = await controller.progress()
@@ -86,7 +86,7 @@ async def test_stderr_collection(controller):
 
 @pytest.mark.asyncio
 async def test_exit_status_api(controller):
-    mp = await controller.start(sys.executable, ["-c", "exit(0)"])
+    mp = await controller.spawn(sys.executable, ["-c", "exit(0)"])
     await asyncio.sleep(0.3)
     status = await controller.exit_status(mp.pid)
     assert status == 0
