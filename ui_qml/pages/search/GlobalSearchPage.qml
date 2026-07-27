@@ -251,14 +251,10 @@ Item {
                             text: qsTr("Filtros")
                             variant: "ghost"
                             anchors.verticalCenter: parent.verticalCenter
-                            iconText: "\u2630"
+                            iconSource: "../../../icons/view/filter.svg"
                             onClicked: filterDrawer.open()
                             Accessible.description: "Abrir panel de filtros de búsqueda"
                         }
-                            Accessible.role: Accessible.Button
-
-                            activeFocusOnTab: true
-
 
                         MichiButton {
                             text: qsTr("Limpiar")

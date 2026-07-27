@@ -4,3 +4,4 @@ PopupMaterial 1.0 PopupMaterial.qml
 SidebarMaterial 1.0 SidebarMaterial.qml
 InputMaterial 1.0 InputMaterial.qml
 AcrylicBackdrop 1.0 AcrylicBackdrop.qml
+TextureOverlay 1.0 TextureOverlay.qml

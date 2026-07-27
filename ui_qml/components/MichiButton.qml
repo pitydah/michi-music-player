@@ -13,6 +13,7 @@ QQC2.Button {
     property string iconSource: ""
     property string tooltipText: ""
     property bool loading: false
+    property bool symbolic: true
     property string accessibleName: text
     property string accessibleDescription: tooltipText
 
@@ -60,14 +61,16 @@ QQC2.Button {
             if (root.down) return MichiTheme.colors.surfacePressed
             if (root.hovered) return MichiTheme.colors.surfaceCardHover
             if (root.variant === "ghost") return "transparent"
-            return MichiTheme.colors.surfaceCard
+            if (root.variant === "tonal") return MichiTheme.colors.accentSurface
+            return MichiTheme.colors.surfaceGlass
         }
         border.width: root.activeFocus ? MichiTheme.focusWidth : (root.variant === "ghost" ? 0 : MichiTheme.borderWidth)
         border.color: {
             if (!root.enabled || root.loading) return "transparent"
             if (root.activeFocus) return MichiTheme.colors.borderFocus
-            if (root.variant === "secondary") return root.hovered
+            if (root.variant === "secondary" || root.variant === "outline") return root.hovered
                     ? MichiTheme.colors.borderHover : MichiTheme.colors.borderCard
+            if (root.variant === "tonal") return MichiTheme.colors.accentSeparator
             return "transparent"
         }
         scale: root.down ? 0.985 : 1.0
@@ -90,14 +93,26 @@ QQC2.Button {
             id: contentRow
             anchors.centerIn: parent
             spacing: root.spacing
-            opacity: root.loading ? 0 : 1
+            visible: !root.loading
 
             Image {
-                width: MichiTheme.typography.cardTitleSize
+                width: MichiTheme.iconSizeRegular
                 height: width
                 source: root.iconSource
-                visible: root.iconSource !== ""
+                visible: root.iconSource !== "" && !root.symbolic
                 fillMode: Image.PreserveAspectFit
+            }
+
+            MichiIcon {
+                width: MichiTheme.iconSizeRegular
+                height: width
+                source: root.iconSource
+                size: MichiTheme.iconSizeRegular
+                color: root.variant === "primary" || root.variant === "accent"
+                       || root.variant === "danger" || root.variant === "success"
+                       ? MichiTheme.colors.textOnAccent : MichiTheme.colors.textPrimary
+                visible: root.iconSource !== "" && root.symbolic
+                accessibleName: ""
             }
 
             Text {
@@ -105,7 +120,8 @@ QQC2.Button {
                 font.pixelSize: MichiTheme.typography.cardTitleSize
                 color: {
                     if (!root.enabled) return MichiTheme.colors.textMuted
-                    if (root.variant === "primary" || root.variant === "danger" || root.variant === "success")
+                    if (root.variant === "primary" || root.variant === "accent"
+                            || root.variant === "danger" || root.variant === "success")
                         return MichiTheme.colors.textOnAccent
                     return MichiTheme.colors.textPrimary
                 }
@@ -117,7 +133,8 @@ QQC2.Button {
                 font: root.font
                 color: {
                     if (!root.enabled) return MichiTheme.colors.textMuted
-                    if (root.variant === "primary" || root.variant === "danger" || root.variant === "success")
+                    if (root.variant === "primary" || root.variant === "accent"
+                            || root.variant === "danger" || root.variant === "success")
                         return MichiTheme.colors.textOnAccent
                     return MichiTheme.colors.textPrimary
                 }

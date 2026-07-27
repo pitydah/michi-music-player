@@ -5,7 +5,6 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Hero Material"
     objectName: "heroMaterial"
-    focus: true
     id: root
 
     default property alias content: contentLayer.data
@@ -33,6 +32,12 @@ Item {
                     GradientStop { position: 0.5; color: "transparent" }
                     GradientStop { position: 1.0; color: MichiTheme.colors.shadowSoft }
                 }
+            }
+
+            TextureOverlay {
+                anchors.fill: parent
+                variant: "contours"
+                strength: root.showGlow ? 0.90 : 0.62
             }
 
             Rectangle {

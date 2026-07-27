@@ -38,8 +38,9 @@ Item {
 
         MichiButton {
             objectName: "michiDoubleSpinBoxDecrement"
-            text: qsTr("-")
-            implicitWidth: 32
+            iconSource: "../../icons/actions/minus.svg"
+            accessibleName: qsTr("Disminuir valor")
+            implicitWidth: MichiTheme.minimumInteractiveSize
             implicitHeight: parent.height
             variant: "ghost"
             enabled: root.enabled && !root.loading
@@ -108,8 +109,9 @@ Item {
 
         MichiButton {
             objectName: "michiDoubleSpinBoxIncrement"
-            text: qsTr("+")
-            implicitWidth: 32
+            iconSource: "../../icons/actions/plus.svg"
+            accessibleName: qsTr("Aumentar valor")
+            implicitWidth: MichiTheme.minimumInteractiveSize
             implicitHeight: parent.height
             variant: "ghost"
             enabled: root.enabled && !root.loading

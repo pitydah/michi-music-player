@@ -103,7 +103,7 @@ Item {
                         }
 
                         Label {
-                            text: qsTr("Reproductor de música premium para Linux/KDE con GStreamer, CoverFlow 3D y gestión avanzada de metadatos.")
+                            text: qsTr("Suite musical avanzada para Linux/KDE con GStreamer, CoverFlow 3D y gestión completa de metadatos.")
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.bodySize
                             wrapMode: Text.WordWrap

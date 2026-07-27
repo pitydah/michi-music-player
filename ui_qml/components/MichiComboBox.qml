@@ -73,14 +73,17 @@ Item {
             elide: Text.ElideRight
         }
 
-        Text {
+        MichiIcon {
             id: arrow
             anchors.right: parent.right
-            anchors.rightMargin: MichiTheme.spacing.sm
+            anchors.rightMargin: MichiTheme.spacing.md
             anchors.verticalCenter: parent.verticalCenter
-            text: qsTr("\u25BE")
+            source: "../../icons/actions/chevron-down.svg"
             color: MichiTheme.colors.textSecondary
-            font.pixelSize: MichiTheme.typography.captionSize
+            size: MichiTheme.iconSizeSmall
+            rotation: root.popupOpen ? 180 : 0
+            Behavior on rotation { NumberAnimation { duration: MichiTheme.motion.fast } }
+            accessibleName: ""
         }
 
         MouseArea {

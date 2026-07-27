@@ -24,7 +24,20 @@ Item {
     property string _newCountry: ""
     property int _activeDetailId: -1
     property bool _buffering: false
-    property int pageState: stateReady
+    property int pageState: root.rd ? stateReady : stateError
+
+    property bool headerContextEnabled: true
+    property bool headerSearchEnabled: true
+    property string headerSearchPlaceholder: qsTr("Buscar emisoras…")
+    property string headerSearchText: ""
+    property var headerViewModes: []
+    property int headerCurrentView: 0
+    property bool headerFilterEnabled: false
+    property int headerFilterCount: 0
+    property bool headerRefreshEnabled: true
+    property bool headerLoading: pageState === stateLoading
+    property string headerStatusText: root.rd && root.rd.stations
+                                      ? qsTr("%1 emisoras").arg(root.rd.stations.length) : ""
 
     readonly property int stateLoading: 0
     readonly property int stateReady: 1
@@ -33,6 +46,16 @@ Item {
 
     function doSearch(text) {
         _filterText = text.toLowerCase()
+    }
+
+    function applyHeaderSearch(query, submitted) {
+        headerSearchText = query
+        doSearch(query)
+    }
+
+    function refreshHeaderContext() {
+        if (root.rd && typeof root.rd.refresh === "function")
+            root.rd.refresh()
     }
 
     function addStationFromUI() {
@@ -94,27 +117,14 @@ Item {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
         sourceComponent: Component {
-            Rectangle {
-                anchors.centerIn: parent
-                width: 480
-                height: 320
-                radius: MichiTheme.radius.lg
-                color: MichiTheme.colors.surfaceCard
-                border.width: 1; border.color: MichiTheme.colors.borderCard
-
-                ColumnLayout {
-                    anchors.centerIn: parent
-                    spacing: MichiTheme.spacing.md
-                    width: parent.width - MichiTheme.spacing.xl * 2
-
-                    Text { text: qsTr("RD"); font.pixelSize: 36; anchors.horizontalCenter: parent.horizontalCenter }
-                    Text { text: qsTr("Radio no disponible"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold; anchors.horizontalCenter: parent.horizontalCenter }
-                    Text { text: qsTr("Explora emisoras de todo el mundo, descubre nueva musica y guarda tus favoritas. Necesitas una suscripcion premium para acceder al catalogo completo de emisoras y transmision sin interrupciones."); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; width: parent.width }
-                    Row {
-                        anchors.horizontalCenter: parent.horizontalCenter; spacing: MichiTheme.spacing.sm
-                        MichiButton { text: qsTr("Configurar"); variant: "primary"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
-                        MichiButton { text: qsTr("Ver requisitos"); variant: "ghost"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
-                    }
+            UnavailableState {
+                width: Math.min(520, root.width * 0.86)
+                title: qsTr("Radio no disponible")
+                message: qsTr("El servicio de radio no está activo en esta instalación. Configura el backend para explorar y guardar emisoras.")
+                primaryActionText: qsTr("Abrir ajustes")
+                onPrimaryActionRequested: {
+                    if (typeof navigationBridge !== "undefined" && navigationBridge)
+                        navigationBridge.navigate("settings")
                 }
             }
         }
@@ -172,15 +182,6 @@ Item {
                             visible: root._buffering
                         }
                     }
-                }
-
-                MichiSearchField {
-                    id: radioSearch
-                    width: parent.width
-                    placeholderText: qsTr("Buscar emisoras...")
-                    onSearchTextChanged: root.doSearch(text)
-                    KeyNavigation.tab: favoritesSection
-                    KeyNavigation.backtab: flickable
                 }
 
                 SectionHeader {

@@ -6,7 +6,6 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Glass Material"
     objectName: "glassMaterial"
-    focus: true
     id: root
 
     default property alias content: contentLayer.data
@@ -37,14 +36,14 @@ Item {
             color: {
                 if (root.pressed && root.interactive) return MichiTheme.colors.surfacePressed
                 switch (root.variant) {
-                    case "compact": return MichiTheme.colors.surfaceOverlay
+                    case "compact": return MichiTheme.colors.surfaceToolbar
                     case "elevated": return MichiTheme.colors.surfaceCardElevated
                     case "accent": return MichiTheme.colors.accentSurface
-                    case "floating": return MichiTheme.colors.surfaceElevated
+                    case "floating": return MichiTheme.colors.surfaceGlassStrong
                     case "status": return MichiTheme.colors.surfaceCard
                     case "hero": return MichiTheme.colors.surfaceHero
                     case "danger": return MichiTheme.colors.badgeDangerBg
-                    default: return MichiTheme.colors.surfaceCard
+                    default: return MichiTheme.colors.surfaceGlass
                 }
             }
 
@@ -70,10 +69,13 @@ Item {
             border.width: MichiTheme.borderWidth
 
             Rectangle {
-                anchors.fill: parent
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                height: Math.max(1, parent.height * 0.44)
                 radius: parent.radius
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: MichiTheme.colors.surfaceSubtle }
+                    GradientStop { position: 0.0; color: MichiTheme.colors.surfaceSheen }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
             }

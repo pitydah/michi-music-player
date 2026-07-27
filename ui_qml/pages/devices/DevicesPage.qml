@@ -14,9 +14,9 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Dispositivos y sincronización"
 
-    property var devicesBridge: typeof devicesBridge !== "undefined" ? devicesBridge : null
-    property var deviceSyncService: devicesBridge
-    property int pageState: root.devicesBridge ? stateReady : stateError
+    property var dv: typeof devicesBridge !== "undefined" ? devicesBridge : null
+    property var deviceSyncService: root.dv
+    property int pageState: root.dv ? stateReady : stateError
 
     readonly property int stateLoading: 0
     readonly property int stateReady: 1
@@ -33,9 +33,9 @@ Item {
     }
 
     Component.onCompleted: {
-        if (root.devicesBridge && typeof root.devicesBridge.refresh !== "undefined")
-            root.devicesBridge.refresh()
-        deviceGuard.checkCapability(root.devicesBridge)
+        if (root.dv && typeof root.dv.refresh !== "undefined")
+            root.dv.refresh()
+        deviceGuard.checkCapability(root.dv)
     }
 
     Loader {
@@ -85,11 +85,11 @@ Item {
                 SyncStatusPanel {
                     id: syncStatus
                     width: parent.width
-                    serverActive: root.devicesBridge ? root.devicesBridge.serverActive : false
-                    serverPort: root.devicesBridge ? root.devicesBridge.serverPort : 53318
-                    peerCount: root.devicesBridge ? root.devicesBridge.peers.length : 0
-                    onStartServer: { if (root.devicesBridge) root.devicesBridge.startServer() }
-                    onStopServer: { if (root.devicesBridge) root.devicesBridge.stopServer() }
+                    serverActive: root.dv ? root.dv.serverActive : false
+                    serverPort: root.dv ? root.dv.serverPort : 53318
+                    peerCount: root.dv ? root.dv.peers.length : 0
+                    onStartServer: { if (root.dv) root.dv.startServer() }
+                    onStopServer: { if (root.dv) root.dv.stopServer() }
                     activeFocusOnTab: true
                     KeyNavigation.tab: pairedHeader
                     KeyNavigation.backtab: flickable
@@ -115,7 +115,7 @@ Item {
                     spacing: MichiTheme.spacing.md
 
                     Repeater {
-                        model: root.devicesBridge ? root.devicesBridge.pairedDevices : []
+                        model: root.dv ? root.dv.pairedDevices : []
 
                         DeviceCard {
                             width: responsive.compact ? parent.width
@@ -135,7 +135,7 @@ Item {
                     text: qsTr("No hay dispositivos emparejados.")
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width
-                    visible: root.devicesBridge && root.devicesBridge.pairedDevices.length === 0
+                    visible: root.dv && root.dv.pairedDevices.length === 0
                 }
 
                 SectionHeader {
@@ -150,7 +150,7 @@ Item {
                     spacing: MichiTheme.spacing.md
 
                     Repeater {
-                        model: root.devicesBridge ? root.devicesBridge.peers : []
+                        model: root.dv ? root.dv.peers : []
 
                         DeviceCard {
                             width: responsive.compact ? parent.width
@@ -172,7 +172,7 @@ Item {
                     text: qsTr("No se detectaron pares en la red.")
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width
-                    visible: root.devicesBridge && root.devicesBridge.peers.length === 0
+                    visible: root.dv && root.dv.peers.length === 0
                 }
 
                 DevicePairingDialog {

@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import "../theme"
 import "../components"
 import "../components/foundations"
+import "../materials"
 
 Item {
     id: root
@@ -90,7 +91,13 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: MichiTheme.colors.surfaceToolbar
+        color: MichiTheme.colors.surfaceChrome
+
+        TextureOverlay {
+            anchors.fill: parent
+            variant: "grain"
+            strength: 0.34
+        }
 
         Rectangle {
             anchors.bottom: parent.bottom

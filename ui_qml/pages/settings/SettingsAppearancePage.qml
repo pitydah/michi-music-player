@@ -12,7 +12,7 @@ Item {
     objectName: "settingsAppearancePage"
 
     property var bridge: typeof settingsBridge !== "undefined" ? settingsBridge : null
-    property var themeBridge: typeof themeBridge !== "undefined" ? themeBridge : null
+    property var themeCtl: typeof themeBridge !== "undefined" ? themeBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
 
     property int pageState: AsyncStateView.READY
@@ -33,8 +33,8 @@ Item {
     function _saveValue(key, value) {
         if (!root.bridge) return
         root.bridge.setValue(key, value)
-        if (root.themeBridge && typeof root.themeBridge.applySetting === "function")
-            root.themeBridge.applySetting(key, value)
+        if (root.themeCtl && typeof root.themeCtl.applySetting === "function")
+            root.themeCtl.applySetting(key, value)
     }
 
     Component.onCompleted: root.refresh()
@@ -109,19 +109,47 @@ Item {
                                         { color: "#F0F2F8", name: "Blanco" }
                                     ]
 
-                                    Rectangle {
-                                        width: 32
-                                        height: 32
-                                        radius: width / 2
-                                        color: modelData.color
-                                        border.width: root._loadValue("appearance/accent_color", "#8FB7FF") === modelData.color ? 3 : 1
-                                        border.color: root._loadValue("appearance/accent_color", "#8FB7FF") === modelData.color ? MichiTheme.colors.textPrimary : MichiTheme.colors.borderCard
+                                    Item {
+                                        id: accentOption
+                                        width: MichiTheme.minimumInteractiveSize
+                                        height: MichiTheme.minimumInteractiveSize
+                                        activeFocusOnTab: true
+                                        Accessible.role: Accessible.Button
+                                        Accessible.name: qsTr("Usar acento %1").arg(modelData.name)
 
+                                        Keys.onReturnPressed: root._saveValue(
+                                                                  "appearance/accent_color",
+                                                                  modelData.color)
+                                        Keys.onSpacePressed: root._saveValue(
+                                                                 "appearance/accent_color",
+                                                                 modelData.color)
+
+                                        Rectangle {
+                                            anchors.centerIn: parent
+                                            width: 32
+                                            height: 32
+                                            radius: width / 2
+                                            color: modelData.color
+                                            border.width: root._loadValue(
+                                                              "appearance/accent_color",
+                                                              "#8FB7FF") === modelData.color ? 3 : 1
+                                            border.color: parent.activeFocus
+                                                          ? MichiTheme.colors.borderFocus
+                                                          : root._loadValue(
+                                                              "appearance/accent_color",
+                                                              "#8FB7FF") === modelData.color
+                                                            ? MichiTheme.colors.textPrimary
+                                                            : MichiTheme.colors.borderCard
+                                        }
 
                                         MouseArea {
                                             anchors.fill: parent
                                             cursorShape: Qt.PointingHandCursor
-                                            onClicked: root._saveValue("appearance/accent_color", modelData.color)
+                                            onClicked: {
+                                                accentOption.forceActiveFocus()
+                                                root._saveValue("appearance/accent_color",
+                                                                modelData.color)
+                                            }
                                         }
                                     }
                                 }

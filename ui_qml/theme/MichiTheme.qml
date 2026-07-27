@@ -60,13 +60,17 @@ QtObject {
     readonly property int pageSurfaceInset: spacing.md
     readonly property int pageMaximumWidth: 1680
     readonly property int sectionSpacing: spacing.xl
-    readonly property int controlHeight: 36
+    readonly property int controlHeight: 44
     readonly property int toolbarHeight: 56
-    readonly property int tableRowHeight: 42
+    readonly property int tableRowHeight: 44
     readonly property int cardMinimumWidth: 220
-    readonly property int rowHeightCompact: 36
-    readonly property int rowHeightComfortable: 44
+    readonly property int rowHeightCompact: 44
+    readonly property int rowHeightComfortable: 52
     readonly property int minimumInteractiveSize: 44
+    readonly property int iconSizeSmall: 16
+    readonly property int iconSizeRegular: 20
+    readonly property int iconSizeLarge: 24
+    readonly property int textureTileSize: 96
 
     // ── Card and panel heights ──
     readonly property QtObject cardHeights: QtObject {
@@ -94,6 +98,11 @@ QtObject {
 
     // ── Reduced motion ──
     property bool reducedMotion: false
+    property real fontScale: 1.0
+
+    onFontScaleChanged: {
+        MichiTypography.scaleFactor = Math.max(0.85, Math.min(1.5, fontScale))
+    }
 
     // ── Covers ──
     readonly property int coverSizeSmall: 48
@@ -127,5 +136,9 @@ QtObject {
     function setDarkMode(enabled: bool) {
         darkMode = enabled
         MichiColors.lightMode = !enabled
+    }
+
+    function setFontScale(scale: real) {
+        fontScale = Math.max(0.85, Math.min(1.5, scale))
     }
 }

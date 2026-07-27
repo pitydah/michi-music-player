@@ -7,7 +7,6 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Capability Guard"
     objectName: "capabilityGuard"
-    focus: true
     id: root
 
     property string capabilityName: ""
@@ -88,8 +87,7 @@ Item {
             anchors.centerIn: parent
             width: Math.min(implicitWidth + MichiTheme.spacing.xl * 2, parent.width * 0.85)
             title: root.capabilityName + " no disponible"
-            message: qsTr("Esta funcionalidad requiere servicios adicionales que no están activos.")
-            iconText: "\u26A0"
+            message: qsTr("El servicio necesario no está activo en esta instalación. Revisa la configuración y vuelve a intentarlo.")
         }
     }
 }

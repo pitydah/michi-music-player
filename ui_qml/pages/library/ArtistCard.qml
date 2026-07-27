@@ -112,7 +112,7 @@ Rectangle {
                     radius: parent.radius
                     color: "transparent"
                     border.width: 1
-                    border.color: Qt.rgba(1, 1, 1, 0.08)
+                    border.color: MichiTheme.colors.borderCard
                 }
             }
         }

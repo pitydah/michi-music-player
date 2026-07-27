@@ -7,7 +7,7 @@ import "../../materials"
 Dialog {
     id: root
 
-    property var radioBridge: typeof radioBridge !== "undefined" ? radioBridge : null
+    property var rb: typeof radioBridge !== "undefined" ? radioBridge : null
     property var stationData: null
     property string _originalName: ""
     property string _originalUrl: ""
@@ -257,12 +257,12 @@ Dialog {
                     var codec = codecField.text.trim()
                     var country = countryField.text.trim()
                     if (root._isEdit && root.stationData) {
-                        if (root.radioBridge && typeof root.radioBridge.editStation === "function") {
-                            root.radioBridge.editStation(root.stationData.id, name, url, codec, country)
+                        if (root.rb && typeof root.rb.editStation === "function") {
+                            root.rb.editStation(root.stationData.id, name, url, codec, country)
                         }
                     } else {
-                        if (root.radioBridge && typeof root.radioBridge.addStation === "function") {
-                            root.radioBridge.addStation(name, url, codec, country)
+                        if (root.rb && typeof root.rb.addStation === "function") {
+                            root.rb.addStation(name, url, codec, country)
                         }
                     }
                     root.saved(root.stationData ? root.stationData.id : 0, name, url, codec, country)

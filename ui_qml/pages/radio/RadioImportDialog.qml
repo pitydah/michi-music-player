@@ -8,7 +8,7 @@ import "../../materials"
 Dialog {
     id: root
 
-    property var radioBridge: typeof radioBridge !== "undefined" ? radioBridge : null
+    property var rb: typeof radioBridge !== "undefined" ? radioBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
 
     property var _importedStations: []
@@ -62,8 +62,8 @@ Dialog {
         root._lastError = ""
         root._importedStations = []
 
-        if (root.radioBridge && typeof root.radioBridge.importM3u === "function") {
-            var result = root.radioBridge.importM3u(filePath)
+        if (root.rb && typeof root.rb.importM3u === "function") {
+            var result = root.rb.importM3u(filePath)
         } else {
             root._lastError = "No hay puente de radio disponible"
             return

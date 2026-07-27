@@ -9,6 +9,8 @@ Item {
     property string title: qsTr("Sin contenido")
     property string message: ""
     property string iconName: "library"
+    property url iconSource: ""
+    property color iconColor: MichiTheme.colors.accentPrimary
     property string primaryActionText: ""
     property string secondaryActionText: ""
     property bool busy: false
@@ -31,11 +33,33 @@ Item {
         spacing: MichiTheme.spacing.md
         width: Math.min(implicitWidth, 480)
 
-        MichiIcon {
+        Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
-            iconName: root.iconName
-            accessibleName: root.title
-            iconSize: 28
+            width: 64
+            height: 64
+            radius: MichiTheme.radius.lg
+            color: MichiTheme.colors.accentGlowSubtle
+            border.width: MichiTheme.borderWidth
+            border.color: MichiTheme.colors.accentSeparator
+
+            MichiIcon {
+                anchors.centerIn: parent
+                iconName: root.iconName
+                source: root.iconSource
+                accessibleName: root.title
+                iconSize: 28
+                color: root.iconColor
+            }
+
+            Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 5
+                width: 18
+                height: 2
+                radius: 1
+                color: root.iconColor
+            }
         }
 
         Text {
@@ -81,7 +105,7 @@ Item {
             }
             MichiButton {
                 text: root.secondaryActionText
-                variant: "ghost"
+                variant: "secondary"
                 visible: text !== ""
                 onClicked: root.secondaryActionRequested()
             }

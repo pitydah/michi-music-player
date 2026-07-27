@@ -157,7 +157,7 @@ Item {
                     areaKey: "diagnostics"
                     title: root.area("diagnostics", { title: "Diagnóstico" }).title
                     description: root.area("diagnostics", { description: "Analiza e inspecciona archivos" }).description
-                    iconText: root.area("diagnostics", { icon: "🔍" }).icon
+                    iconSource: "../../../icons/sidebar/search.svg"
                     status: root.area("diagnostics", { status: "unavailable" }).status
                     tools: root.area("diagnostics", { tools: [] }).tools
                     onActivated: function(key) { root.openArea(key) }
@@ -168,7 +168,7 @@ Item {
                     areaKey: "identifier"
                     title: root.area("identifier", { title: "Identificador de audios" }).title
                     description: root.area("identifier", { description: "Identifica y corrige metadatos" }).description
-                    iconText: root.area("identifier", { icon: "🆔" }).icon
+                    iconSource: "../../../icons/actions/tag.svg"
                     status: root.area("identifier", { status: "unavailable" }).status
                     tools: root.area("identifier", { tools: [] }).tools
                     onActivated: function(key) { root.openArea(key) }
@@ -179,7 +179,7 @@ Item {
                     areaKey: "backup"
                     title: root.area("backup", { title: "Respaldar" }).title
                     description: root.area("backup", { description: "Convierte y digitaliza audio" }).description
-                    iconText: root.area("backup", { icon: "💾" }).icon
+                    iconSource: "../../../icons/actions/archive.svg"
                     status: root.area("backup", { status: "unavailable" }).status
                     tools: root.area("backup", { tools: [] }).tools
                     onActivated: function(key) { root.openArea(key) }
@@ -190,7 +190,7 @@ Item {
                     areaKey: "output_profiles"
                     title: root.area("output_profiles", { title: "Perfiles de salida" }).title
                     description: root.area("output_profiles", { description: "Configura DAC, EQ y reproducción" }).description
-                    iconText: root.area("output_profiles", { icon: "🎧" }).icon
+                    iconSource: "../../../icons/sidebar/outputs.svg"
                     status: root.area("output_profiles", { status: "unavailable" }).status
                     tools: root.area("output_profiles", { tools: [] }).tools
                     onActivated: function(key) { root.openArea(key) }
@@ -202,7 +202,7 @@ Item {
                     areaKey: "local_intelligence"
                     title: root.area("local_intelligence", { title: "Inteligencia local" }).title
                     description: root.area("local_intelligence", { description: "Análisis acústico y automatización local" }).description
-                    iconText: root.area("local_intelligence", { icon: "🧠" }).icon
+                    iconSource: "../../../icons/actions/sparkles.svg"
                     status: root.area("local_intelligence", { status: "partial" }).status
                     tools: root.area("local_intelligence", { tools: [] }).tools
                     onActivated: function(key) { root.openArea(key) }

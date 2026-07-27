@@ -16,6 +16,7 @@ Item {
     property string accessibleName: qsTr("Buscar")
     property string accessibleDescription: qsTr("Escribe para filtrar el contenido visible")
     property bool _clearing: false
+    property bool hovered: hoverHandler.hovered
 
     signal searchTextChanged(string newText)
     signal searchSubmitted(string text)
@@ -82,21 +83,26 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: MichiTheme.radius.pill
-        color: MichiTheme.colors.surfaceInput
+        radius: MichiTheme.radius.md
+        color: field.activeFocus ? MichiTheme.colors.surfaceGlassStrong
+                                 : root.hovered ? MichiTheme.colors.surfaceCardHover
+                                                : MichiTheme.colors.surfaceInput
         border.width: field.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
-        border.color: field.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
+        border.color: field.activeFocus ? MichiTheme.colors.borderFocus
+                                       : root.hovered ? MichiTheme.colors.borderHover
+                                                      : MichiTheme.colors.borderCard
 
         Behavior on border.color {
             ColorAnimation { duration: MichiTheme.motionFast }
         }
+        Behavior on color { ColorAnimation { duration: MichiTheme.motionFast } }
 
         RowLayout {
             anchors.fill: parent
             anchors.leftMargin: MichiTheme.spacing.md
             anchors.rightMargin: MichiTheme.spacing.xs
-            anchors.topMargin: MichiTheme.spacing.xs
-            anchors.bottomMargin: MichiTheme.spacing.xs
+            anchors.topMargin: 0
+            anchors.bottomMargin: 0
             spacing: MichiTheme.spacing.sm
 
             MichiIcon {
@@ -165,14 +171,15 @@ Item {
             MichiIconButton {
                 id: clearBtn
                 controlObjectName: "searchClearButton"
-                iconSource: "../../icons/nav_back.svg"
+                iconSource: "../../icons/actions/close.svg"
                 tooltipText: qsTr("Limpiar búsqueda")
-                btnSize: Math.min(root.height - MichiTheme.spacing.xs * 2, 28)
+                btnSize: MichiTheme.minimumInteractiveSize
                 visible: root.text !== ""
                 accessibleName: qsTr("Limpiar búsqueda")
-                transform: Rotation { angle: 45 }
                 onClicked: root.clearSearch(true)
             }
         }
     }
+
+    HoverHandler { id: hoverHandler }
 }

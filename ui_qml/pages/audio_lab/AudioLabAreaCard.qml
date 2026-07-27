@@ -11,7 +11,8 @@ GlassMaterial {
     property string areaKey: ""
     property string title: ""
     property string description: ""
-    property string iconText: "♪"
+    property string iconText: ""
+    property url iconSource: ""
     property string status: "unavailable"
     property var tools: []
 
@@ -58,10 +59,23 @@ GlassMaterial {
             Layout.fillWidth: true
             spacing: MichiTheme.spacing.sm
 
-            Text {
-                text: root.iconText
-                font.pixelSize: 28
-                Accessible.ignored: true
+            Rectangle {
+                Layout.preferredWidth: 44
+                Layout.preferredHeight: 44
+                radius: MichiTheme.radius.md
+                color: MichiTheme.colors.accentGlowSubtle
+                border.width: MichiTheme.borderWidth
+                border.color: MichiTheme.colors.accentSeparator
+
+                MichiIcon {
+                    anchors.centerIn: parent
+                    source: root.iconSource
+                    size: MichiTheme.iconSizeLarge
+                    color: root.status === "available"
+                           ? MichiTheme.colors.accentPrimary
+                           : MichiTheme.colors.textSecondary
+                    accessibleName: ""
+                }
             }
 
             Text {
@@ -110,12 +124,24 @@ GlassMaterial {
 
         Item { Layout.fillHeight: true }
 
-        Text {
+        Row {
             Layout.alignment: Qt.AlignRight
-            text: root.interactive ? "Abrir  ›" : "Dependencia pendiente"
-            color: root.interactive ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
-            font.pixelSize: MichiTheme.typography.metaSize
-            font.weight: MichiTheme.typography.weightMedium
+            spacing: MichiTheme.spacing.xs
+
+            Text {
+                text: root.interactive ? qsTr("Abrir") : qsTr("Dependencia pendiente")
+                color: root.interactive ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.metaSize
+                font.weight: MichiTheme.typography.weightMedium
+            }
+
+            MichiIcon {
+                source: "../../../icons/actions/chevron-right.svg"
+                size: MichiTheme.iconSizeSmall
+                color: MichiTheme.colors.accentBlue
+                visible: root.interactive
+                accessibleName: ""
+            }
         }
     }
 }

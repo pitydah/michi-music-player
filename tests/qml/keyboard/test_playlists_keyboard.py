@@ -23,10 +23,11 @@ class TestPlaylistsKeyboard:
         assert "MichiButton" in content
         assert "focus" in content or "onClicked" in content
 
-    def test_search_field_keyboard(self, engine):
+    def test_search_is_owned_by_contextual_header(self, engine):
         content = (QML_DIR / self.PL_PATH).read_text()
-        assert "SearchField" in content
-        assert "onSearchTextChanged" in content or "Keys.on" in content
+        assert "headerSearchEnabled: true" in content
+        assert "function applyHeaderSearch" in content
+        assert "id: playlistSearch" not in content
 
     def test_create_dialog_keyboard(self, engine):
         content = (QML_DIR / self.PL_PATH).read_text()

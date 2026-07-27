@@ -26,6 +26,10 @@ Item {
     signal clicked()
 
     function baseColor() {
+        if (variant === "ghost") return "transparent"
+        if (variant === "glass") return MichiTheme.colors.surfaceGlass
+        if (variant === "base" || variant === "solid") return MichiTheme.colors.surfaceCard
+        if (variant === "primary") return MichiTheme.colors.accentSurface
         if (variant === "accent") return MichiTheme.colors.accentSurface
         if (variant === "info") return MichiTheme.colors.badgeInfoBg
         if (variant === "success") return MichiTheme.colors.badgeActiveBg
@@ -36,6 +40,9 @@ Item {
     }
 
     function baseBorderColor() {
+        if (variant === "ghost") return "transparent"
+        if (variant === "glass") return MichiTheme.colors.borderCard
+        if (variant === "primary") return MichiTheme.colors.accentSeparator
         if (variant === "accent") return MichiTheme.colors.borderActive
         if (variant === "info") return MichiTheme.colors.info
         if (variant === "success") return MichiTheme.colors.success
@@ -84,6 +91,17 @@ Item {
                 easing.type: MichiTheme.motion.easing.emphasis
             }
         }
+    }
+
+    Rectangle {
+        anchors.left: background.left
+        anchors.right: background.right
+        anchors.top: background.top
+        anchors.leftMargin: MichiTheme.spacing.sm
+        anchors.rightMargin: MichiTheme.spacing.sm
+        height: MichiTheme.borderWidth
+        color: MichiTheme.colors.surfaceEdgeHighlight
+        visible: root.variant === "glass" || root.elevated
     }
 
     Rectangle {

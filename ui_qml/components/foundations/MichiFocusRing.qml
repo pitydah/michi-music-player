@@ -5,7 +5,6 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Michi Focus Ring"
     objectName: "michiFocusRing"
-    focus: true
     id: root
 
     property Item control: null
@@ -22,7 +21,7 @@ Item {
         anchors.margins: -2
         radius: root.controlRadius + MichiTheme.focusOffset + 2
         color: "transparent"
-        border.width: 4
+        border.width: 2
         border.color: MichiTheme.colors.focusHalo
     }
 

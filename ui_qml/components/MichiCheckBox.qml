@@ -68,12 +68,15 @@ Item {
 
         Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
 
-        Text {
+        MichiIcon {
             anchors.centerIn: parent
-            text: root.partiallyChecked ? "\u2014" : qsTr("\u2713")
+            source: root.partiallyChecked
+                    ? "../../icons/actions/minus.svg"
+                    : "../../icons/actions/check.svg"
+            size: MichiTheme.iconSizeSmall
             color: root.checked || root.partiallyChecked ? MichiTheme.colors.textOnAccent : "transparent"
-            font.pixelSize: MichiTheme.typography.bodySize
-            font.weight: MichiTheme.typography.weightBold
+            visible: root.checked || root.partiallyChecked
+            accessibleName: ""
         }
     }
 

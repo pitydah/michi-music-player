@@ -12,7 +12,7 @@ Item {
     focus: true
     id: root
 
-    property var radioBridge: typeof radioBridge !== "undefined" ? radioBridge : null
+    property var rd: typeof radioBridge !== "undefined" ? radioBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property var stationData: null
 
@@ -303,7 +303,8 @@ Item {
             }
 
             MichiButton {
-                text: root._isFav ? "\u2605" : qsTr("\u2606")
+                text: root._isFav ? qsTr("Favorita") : qsTr("Favorito")
+                iconSource: "../../../icons/actions/star.svg"
                 variant: "ghost"
                 activeFocusOnTab: true
                 onClicked: {
@@ -325,11 +326,12 @@ Item {
                 Accessible.name: "Editar emisora"
                 onClicked: root.editRequested(root.stationData)
                 Keys.onReturnPressed: onClicked()
-                iconText: "\u270E"
+                iconSource: "../../../icons/actions/edit.svg"
             }
 
             MichiButton {
-                text: qsTr("\u2716")
+                text: qsTr("Eliminar")
+                iconSource: "../../../icons/actions/trash.svg"
                 variant: "danger"
                 activeFocusOnTab: true
                 Accessible.name: "Eliminar emisora"

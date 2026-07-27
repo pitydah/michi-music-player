@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"
+import "../../materials"
 
 Rectangle {
     id: root
@@ -14,6 +15,12 @@ Rectangle {
     property alias pageHeaderZone: headerHost.data
     property alias pageToolbarZone: toolbarHost.data
     default property alias pageContent: contentViewport.data
+
+    AcrylicBackdrop {
+        anchors.fill: parent
+        textureHint: "dark"
+        textured: true
+    }
 
     ColumnLayout {
         anchors.fill: parent

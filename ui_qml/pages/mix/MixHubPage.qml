@@ -51,27 +51,14 @@ Item {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
         sourceComponent: Component {
-            Rectangle {
-                anchors.centerIn: parent
-                width: 480
-                height: 320
-                radius: MichiTheme.radius.lg
-                color: MichiTheme.colors.surfaceCard
-                border.width: 1; border.color: MichiTheme.colors.borderCard
-
-                ColumnLayout {
-                    anchors.centerIn: parent
-                    spacing: MichiTheme.spacing.md
-                    width: parent.width - MichiTheme.spacing.xl * 2
-
-                    Text { text: qsTr("MX"); font.pixelSize: 36; anchors.horizontalCenter: parent.horizontalCenter }
-                    Text { text: qsTr("Mix no disponible"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold; anchors.horizontalCenter: parent.horizontalCenter }
-                    Text { text: qsTr("Los mixes personalizados combinan canciones de tu biblioteca segun genero, estado de animo y preferencias. Necesitas una suscripcion premium para acceder a recomendaciones inteligentes y mixes automaticos."); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; width: parent.width }
-                    Row {
-                        anchors.horizontalCenter: parent.horizontalCenter; spacing: MichiTheme.spacing.sm
-                        MichiButton { text: qsTr("Configurar"); variant: "primary"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
-                        MichiButton { text: qsTr("Ver requisitos"); variant: "ghost"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
-                    }
+            UnavailableState {
+                width: Math.min(520, root.width * 0.86)
+                title: qsTr("Mix no disponible")
+                message: qsTr("El motor de mixes no está activo. Cuando esté configurado, combinará tu biblioteca por género, estado de ánimo y preferencias.")
+                primaryActionText: qsTr("Abrir ajustes")
+                onPrimaryActionRequested: {
+                    if (typeof navigationBridge !== "undefined" && navigationBridge)
+                        navigationBridge.navigate("settings")
                 }
             }
         }

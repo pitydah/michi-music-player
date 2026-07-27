@@ -5,10 +5,9 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Playback Action Handler"
     objectName: "playbackActionHandler"
-    focus: true
     id: root
 
-    property var notificationBridge: typeof notificationBridge !== "undefined" ? notificationBridge : null
+    property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
 
     function handleResult(result, actionName) {
         if (!result) return
@@ -23,7 +22,7 @@ Item {
         } else if (result.error_code === "PLAYBACK_ERROR") {
             msg = "Error al ejecutar: " + actionName
         }
-        if (root.notificationBridge)
-            root.notificationBridge.showMessage(msg, "error")
+        if (root.notif)
+            root.notif.showMessage(msg, "error")
     }
 }

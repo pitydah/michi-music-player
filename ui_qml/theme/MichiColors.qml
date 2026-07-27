@@ -23,8 +23,14 @@ QtObject {
     readonly property color surfaceCardHover: lightMode ? Qt.rgba(1.0, 1.0, 1.0, 0.94)
                                                         : Qt.rgba(0.102, 0.129, 0.184, 0.88)
     readonly property color surfaceCardElevated: surfaceElevation3
+    readonly property color surfaceGlass: lightMode ? Qt.rgba(0.97, 0.98, 1.0, 0.78)
+                                                    : Qt.rgba(0.052, 0.071, 0.108, 0.84)
+    readonly property color surfaceGlassStrong: lightMode ? Qt.rgba(0.98, 0.99, 1.0, 0.94)
+                                                          : Qt.rgba(0.067, 0.090, 0.137, 0.94)
     readonly property color surfaceToolbar: lightMode ? Qt.rgba(0.965, 0.976, 0.996, 0.90)
                                                       : Qt.rgba(0.035, 0.051, 0.082, 0.88)
+    readonly property color surfaceChrome: lightMode ? Qt.rgba(0.94, 0.96, 0.99, 0.96)
+                                                     : Qt.rgba(0.025, 0.035, 0.058, 0.96)
     readonly property color surfaceSidebar: lightMode ? "#EEF3F9" : "#080B12"
     readonly property color surfacePopup: lightMode ? "#FAFAFE" : "#0F1219"
     readonly property color surfaceInput: lightMode ? "#FFFFFF" : "#0C0E15"
@@ -35,6 +41,14 @@ QtObject {
     readonly property color surfaceNowPlaying: surfaceElevation3
     readonly property color surfacePlaybackPanel: surfaceElevation3
     readonly property color surfaceOverlay: lightMode ? Qt.rgba(0.9, 0.91, 0.93, 0.85) : Qt.rgba(0.02, 0.03, 0.05, 0.85)
+    readonly property color surfaceScrim: lightMode ? Qt.rgba(0.18, 0.22, 0.30, 0.24)
+                                                    : Qt.rgba(0.0, 0.0, 0.0, 0.62)
+    readonly property color surfaceSheen: lightMode ? Qt.rgba(1.0, 1.0, 1.0, 0.72)
+                                                    : Qt.rgba(1.0, 1.0, 1.0, 0.045)
+    readonly property color surfaceEdgeHighlight: lightMode ? Qt.rgba(1.0, 1.0, 1.0, 0.82)
+                                                            : Qt.rgba(0.72, 0.82, 1.0, 0.10)
+    readonly property color textureGrain: lightMode ? Qt.rgba(0.14, 0.20, 0.31, 0.09)
+                                                    : Qt.rgba(1.0, 1.0, 1.0, 0.055)
 
     // ── Estados de superficie ──
     readonly property color surfaceHover: lightMode ? Qt.rgba(0, 0, 0, 0.05) : Qt.rgba(1.0, 1.0, 1.0, 0.08)
@@ -62,10 +76,10 @@ QtObject {
     // ── Texto ──
     readonly property color textPrimary: lightMode ? "#1A1D26" : "#F2F5FA"
     readonly property color textNormal: lightMode ? "#3A3D46" : "#D0D4E0"
-    readonly property color textSecondary: lightMode ? "#707880" : "#A9B4C7"
-    readonly property color textTertiary: lightMode ? "#9098A0" : "#78869D"
-    readonly property color textMuted: lightMode ? "#A0A8B0" : "#566176"
-    readonly property color textMeta: lightMode ? "#B0B8C0" : "#485068"
+    readonly property color textSecondary: lightMode ? "#5F6978" : "#A9B4C7"
+    readonly property color textTertiary: lightMode ? "#697483" : "#8D9AAF"
+    readonly property color textMuted: lightMode ? "#5F6875" : "#8491A6"
+    readonly property color textMeta: lightMode ? "#687382" : "#78859A"
     readonly property color textOnAccent: lightMode ? "#FFFFFF" : bgBase
     readonly property color textOnError: lightMode ? "#FFFFFF" : bgBase
     readonly property color textOnSuccess: lightMode ? "#FFFFFF" : bgBase
@@ -78,6 +92,10 @@ QtObject {
     readonly property color accentSecondary: accentExperimental
     readonly property color accentSoft: Qt.rgba(0.561, 0.718, 1.0, lightMode ? 0.16 : 0.12)
     readonly property color accentSelection: Qt.rgba(0.561, 0.718, 1.0, lightMode ? 0.20 : 0.16)
+    readonly property color accentGlowSubtle: Qt.rgba(0.561, 0.718, 1.0, lightMode ? 0.10 : 0.08)
+    readonly property color accentGlow: Qt.rgba(0.561, 0.718, 1.0, lightMode ? 0.20 : 0.16)
+    readonly property color accentGlowStrong: Qt.rgba(0.561, 0.718, 1.0, lightMode ? 0.30 : 0.25)
+    readonly property color accentSeparator: Qt.rgba(0.561, 0.718, 1.0, lightMode ? 0.20 : 0.12)
     readonly property color accent: accentPrimary
     readonly property color accentBlue: accentInfo
     readonly property color accentSurface: accentSoft
@@ -101,6 +119,14 @@ QtObject {
     readonly property color badgeDangerText: error
     readonly property color badgeMutedBg: lightMode ? Qt.rgba(0, 0, 0, 0.06) : Qt.rgba(1, 1, 1, 0.06)
     readonly property color badgeMutedText: textSecondary
+    readonly property color successSurface: Qt.rgba(0.29, 0.87, 0.50, 0.12)
+    readonly property color successBorder: Qt.rgba(0.29, 0.87, 0.50, 0.28)
+    readonly property color warningSurface: Qt.rgba(1.0, 0.75, 0.14, 0.12)
+    readonly property color warningBorder: Qt.rgba(1.0, 0.75, 0.14, 0.28)
+    readonly property color errorSurface: Qt.rgba(1.0, 0.44, 0.44, 0.12)
+    readonly property color errorBorder: Qt.rgba(1.0, 0.44, 0.44, 0.28)
+    readonly property color infoSurface: accentGlowSubtle
+    readonly property color infoBorder: accentGlow
 
     readonly property color shadowSoft: lightMode ? Qt.rgba(0.08, 0.14, 0.24, 0.12)
                                                   : Qt.rgba(0.0, 0.0, 0.0, 0.34)
@@ -132,6 +158,14 @@ QtObject {
     readonly property color nowPlayingMetaText: lightMode ? "#B0B8C0" : "#485068"
     readonly property color surfaceNowPlayingBorder: Qt.rgba(1.0, 1.0, 1.0, 0.06)
     readonly property color overlayDark: Qt.rgba(0.02, 0.03, 0.05, 0.70)
+
+    // Compatibility aliases. They keep older pages renderable while the QML
+    // layer converges on the semantic tokens above.
+    readonly property color surface: surfaceCard
+    readonly property color surfaceElevated: surfaceCardElevated
+    readonly property color border: borderCard
+    readonly property color accentFaint: accentSoft
+    readonly property color accentGreen: success
 
     function toggleLightMode() {
         lightMode = !lightMode

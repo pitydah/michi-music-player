@@ -25,6 +25,19 @@ Item {
     property string _state: "LOADING"
     property string _errorMsg: ""
 
+    property bool headerContextEnabled: true
+    property bool headerSearchEnabled: true
+    property string headerSearchPlaceholder: qsTr("Buscar playlists…")
+    property string headerSearchText: root._searchText
+    property var headerViewModes: []
+    property int headerCurrentView: 0
+    property bool headerFilterEnabled: false
+    property int headerFilterCount: 0
+    property bool headerRefreshEnabled: true
+    property bool headerLoading: root._state === "LOADING"
+    property string headerStatusText: root.pl && root.pl.playlists
+                                      ? qsTr("%1 playlists").arg(root.pl.playlists.length) : ""
+
     PageStateManager {
         id: pageState
         route: "playlists"
@@ -91,6 +104,14 @@ Item {
         root._updateState()
     }
 
+    function applyHeaderSearch(query, submitted) {
+        root._searchText = query
+    }
+
+    function refreshHeaderContext() {
+        root.refresh()
+    }
+
     Flickable {
         id: flickable
         anchors.fill: parent
@@ -131,17 +152,6 @@ Item {
                 }
             }
 
-            MichiSearchField {
-                id: playlistSearch
-                width: parent.width * 0.5
-                placeholderText: qsTr("Buscar playlists...")
-                onSearchTextChanged: root._searchText = text
-                activeFocusOnTab: true
-                KeyNavigation.tab: createPlaylistBtn
-                KeyNavigation.backtab: flickable
-                Keys.onEscapePressed: { root._searchText = ""; text = "" }
-            }
-
             Row {
                 id: actionRow
                 spacing: MichiTheme.spacing.sm
@@ -153,7 +163,7 @@ Item {
                     variant: "primary"
                     activeFocusOnTab: true
                     KeyNavigation.tab: smartPlaylistBtn
-                    KeyNavigation.backtab: playlistSearch
+                    KeyNavigation.backtab: flickable
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
                     onClicked: root.openEditor()
@@ -202,23 +212,11 @@ Item {
                     variant: "danger"
                     visible: root._selectionMode && root._selectedPlaylists.length > 0
                     activeFocusOnTab: true
-                    KeyNavigation.tab: refreshBtn
+                    KeyNavigation.tab: createPlaylistBtn
                     KeyNavigation.backtab: selectPlaylistBtn
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._confirmBatchDelete = true
-                }
-                MichiButton {
-                    id: refreshBtn
-                    objectName: "refreshPlaylistsButton"
-                    text: qsTr("Refrescar")
-                    variant: "ghost"
-                    visible: root._state !== "LOADING"
-                    activeFocusOnTab: true
-                    KeyNavigation.backtab: deletePlaylistBtn
-                    Keys.onReturnPressed: onClicked()
-                    Keys.onSpacePressed: onClicked()
-                    onClicked: root.refresh()
                 }
             }
 

@@ -3,23 +3,36 @@ import QtQuick.Controls
 import "../theme"
 
 Rectangle {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Job Status Banner"
+    Accessible.role: Accessible.Button
+    Accessible.name: _activeCount > 0
+                     ? qsTr("%1 trabajos activos. Abrir trabajos.").arg(_activeCount)
+                     : qsTr("Sin trabajos activos")
     objectName: "jobStatusBanner"
-    focus: true
     id: root
-    property var jobBridge: typeof jobBridge !== "undefined" ? jobBridge : null
+    property var jobs: typeof jobBridge !== "undefined" ? jobBridge : null
     property int _activeCount: 0
 
-    height: _activeCount > 0 ? 32 : 0
+    height: _activeCount > 0 ? MichiTheme.minimumInteractiveSize : 0
     color: MichiTheme.colors.surfaceCard
     visible: _activeCount > 0
+    activeFocusOnTab: visible
+    border.width: activeFocus ? MichiTheme.focusWidth : 0
+    border.color: MichiTheme.colors.borderFocus
     Behavior on height { NumberAnimation { duration: 150 } }
 
+    function openJobs() {
+        if (typeof navigationBridge !== "undefined" && navigationBridge)
+            navigationBridge.navigate("jobs")
+    }
+
+    Accessible.onPressAction: root.openJobs()
+    Keys.onReturnPressed: root.openJobs()
+    Keys.onSpacePressed: root.openJobs()
+
     Timer {
-        interval: 1000; running: root.jobBridge !== null; repeat: true
+        interval: 1000; running: root.jobs !== null; repeat: true
         onTriggered: {
-            if (root.jobBridge) root._activeCount = root.jobBridge.activeCount || 0
+            if (root.jobs) root._activeCount = root.jobs.activeCount || 0
         }
     }
 
@@ -42,6 +55,6 @@ Rectangle {
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
-        onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("jobs") }
+        onClicked: root.openJobs()
     }
 }

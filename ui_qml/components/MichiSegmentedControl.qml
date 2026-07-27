@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import "../theme"
 
 Item {
@@ -10,7 +11,7 @@ Item {
 
     signal activated(int index)
 
-    implicitHeight: 36
+    implicitHeight: MichiTheme.minimumInteractiveSize
     implicitWidth: parent ? parent.width : 400
 
     Accessible.role: Accessible.PageTabList
@@ -20,6 +21,9 @@ Item {
         anchors.fill: parent
         color: MichiTheme.colors.surfaceInput
         radius: MichiTheme.radius.md
+        border.width: MichiTheme.borderWidth
+        border.color: root.activeFocus ? MichiTheme.colors.borderFocus
+                                      : MichiTheme.colors.borderCard
 
         Row {
             anchors.fill: parent
@@ -28,40 +32,49 @@ Item {
             Repeater {
                 model: root.model
 
-                Item {
+                AbstractButton {
+                    id: segment
                     width: parent.width / root.model.length
                     height: parent.height
-
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.xxs
-                        radius: MichiTheme.radius.sm
-                        color: index === root.currentIndex ? MichiTheme.colors.surfaceElevation2 : "transparent"
-
-                        Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: modelData
-                            color: index === root.currentIndex ? MichiTheme.colors.textPrimary : MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.secondarySize
-                            font.weight: index === root.currentIndex ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            root.currentIndex = index
-                            root.activated(index)
-                        }
-                    }
-
+                    hoverEnabled: true
+                    focusPolicy: Qt.StrongFocus
+                    activeFocusOnTab: index === root.currentIndex
                     Accessible.role: Accessible.PageTab
                     Accessible.name: modelData
                     Accessible.selected: index === root.currentIndex
+
+                    onClicked: {
+                        root.currentIndex = index
+                        root.activated(index)
+                    }
+
+                    background: Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: 4
+                        radius: MichiTheme.radius.sm
+                        color: segment.down ? MichiTheme.colors.surfacePressed
+                             : index === root.currentIndex ? MichiTheme.colors.accentSurface
+                             : segment.hovered ? MichiTheme.colors.surfaceHover : "transparent"
+                        border.width: segment.activeFocus ? MichiTheme.focusWidth
+                                                        : index === root.currentIndex ? MichiTheme.borderWidth : 0
+                        border.color: segment.activeFocus ? MichiTheme.colors.borderFocus
+                                                        : MichiTheme.colors.borderHover
+
+                        Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
+                    }
+
+                    contentItem: Text {
+                        text: modelData
+                        color: index === root.currentIndex ? MichiTheme.colors.textPrimary
+                                                          : MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.secondarySize
+                        font.weight: index === root.currentIndex
+                                     ? MichiTheme.typography.weightSemiBold
+                                     : MichiTheme.typography.weightMedium
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        elide: Text.ElideRight
+                    }
                 }
             }
         }

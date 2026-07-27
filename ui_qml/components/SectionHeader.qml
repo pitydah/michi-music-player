@@ -28,12 +28,13 @@ Item {
             font.letterSpacing: root.uppercase ? 0.5 : 0.0
         }
 
-        Text {
-            text: qsTr("›")
+        MichiIcon {
+            source: "../../icons/actions/chevron-right.svg"
             color: MichiTheme.colors.textMuted
-            font.pixelSize: MichiTheme.typography.sectionTitleSize
+            size: MichiTheme.iconSizeSmall
             visible: root.showChevron
             anchors.verticalCenter: parent.verticalCenter
+            accessibleName: ""
         }
     }
 }
