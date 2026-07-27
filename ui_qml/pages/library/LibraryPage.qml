@@ -13,6 +13,9 @@ MichiPage {
     objectName: "libraryPage_control"
     focus: true
     accessibleName: qsTr("Biblioteca")
+    Accessible.name: root.accessibleName
+    Accessible.role: Accessible.Pane
+    Accessible.description: qsTr("Navegación y gestión de la biblioteca musical")
     scrollable: false
     constrainContentWidth: false
 
