@@ -22,7 +22,7 @@ async def test_start_and_exit_status(controller):
 
 @pytest.mark.asyncio
 async def test_start_failure_exit(controller):
-    mp = await controller.start(sys.executable, ["-c", "exit(42)"])
+    mp = await controller.spawn(sys.executable, ["-c", "exit(42)"])
     await asyncio.sleep(0.3)
     assert mp.exit_status() == 42
 
@@ -35,14 +35,14 @@ async def test_progress_empty(controller):
 
 @pytest.mark.asyncio
 async def test_progress_after_start(controller):
-    await controller.start(sys.executable, ["-c", "import time; time.sleep(5)"])
+    await controller.spawn(sys.executable, ["-c", "import time; time.sleep(5)"])
     prog = await controller.progress()
     assert prog["active"] == 1
 
 
 @pytest.mark.asyncio
 async def test_terminate(controller):
-    mp = await controller.start(sys.executable, ["-c", "import time; time.sleep(30)"])
+    mp = await controller.spawn(sys.executable, ["-c", "import time; time.sleep(30)"])
     assert mp.is_alive()
     ok = await controller.terminate(mp.pid)
     await asyncio.sleep(0.3)
@@ -51,7 +51,7 @@ async def test_terminate(controller):
 
 @pytest.mark.asyncio
 async def test_kill(controller):
-    mp = await controller.start(sys.executable, ["-c", "import time; time.sleep(30)"])
+    mp = await controller.spawn(sys.executable, ["-c", "import time; time.sleep(30)"])
     assert mp.is_alive()
     ok = await controller.kill(mp.pid)
     await asyncio.sleep(0.3)
@@ -60,7 +60,7 @@ async def test_kill(controller):
 
 @pytest.mark.asyncio
 async def test_timeout_kills(controller):
-    mp = await controller.start(sys.executable, ["-c", "import time; time.sleep(30)"])
+    mp = await controller.spawn(sys.executable, ["-c", "import time; time.sleep(30)"])
     timed_out = await controller.timeout(mp.pid, 0.001)
     assert timed_out
     await asyncio.sleep(0.3)
@@ -78,7 +78,7 @@ async def test_cleanup_removes(controller):
 
 @pytest.mark.asyncio
 async def test_stderr_collection(controller):
-    mp = await controller.start(sys.executable, ["-c", "import sys; print('err line', file=sys.stderr)"])
+    mp = await controller.spawn(sys.executable, ["-c", "import sys; print('err line', file=sys.stderr)"])
     await asyncio.sleep(0.5)
     lines = await controller.stderr(mp.pid)
     assert any("err line" in line for line in lines)
@@ -104,13 +104,13 @@ async def test_unknown_pid_returns_false(controller):
 @pytest.mark.asyncio
 async def test_start_with_custom_cwd(controller):
     with tempfile.TemporaryDirectory() as td:
-        mp = await controller.start(sys.executable, ["-c", "import os; print(os.getcwd())"], cwd=td)
+        mp = await controller.spawn(sys.executable, ["-c", "import os; print(os.getcwd())"], cwd=td)
         await asyncio.sleep(0.3)
         assert mp.cwd == td
 
 
 @pytest.mark.asyncio
 async def test_start_with_custom_env(controller):
-    mp = await controller.start(sys.executable, ["-c", "exit(0)"], env={"MICHI_TEST": "1"})
+    mp = await controller.spawn(sys.executable, ["-c", "exit(0)"], env={"MICHI_TEST": "1"})
     await asyncio.sleep(0.3)
     assert mp.env.get("MICHI_TEST") == "1"
