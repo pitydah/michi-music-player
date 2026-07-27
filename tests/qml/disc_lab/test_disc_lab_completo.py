@@ -14,8 +14,15 @@ def mock_service():
     svc.detect_drives.return_value = ["/dev/sr0"]
     svc.get_default_drive.return_value = "/dev/sr0"
     svc.detect_audio_cd.return_value = True
-    svc.get_disc_toc.return_value = {"tracks": 5}
-    svc.get_track_durations.return_value = [180.0, 200.0, 190.0, 210.0, 175.0]
+    svc.get_cd_info.return_value = {
+        "tracks": [
+            {"title": "Track 1", "duration": 180.0},
+            {"title": "Track 2", "duration": 200.0},
+            {"title": "Track 3", "duration": 190.0},
+            {"title": "Track 4", "duration": 210.0},
+            {"title": "Track 5", "duration": 175.0},
+        ]
+    }
     return svc
 
 
