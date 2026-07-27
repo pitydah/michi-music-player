@@ -80,6 +80,8 @@ class DiscLabBridge(QObject):
                 if hasattr(self._svc, 'get_cd_info'):
                     info = self._svc.get_cd_info(default_drive)
                     self._status = "ready" if info else "no_disc"
+                    if info:
+                        self._toc = info
                 else:
                     self._status = "ready"
                 self._drive_info = default_drive
@@ -114,14 +116,22 @@ class DiscLabBridge(QObject):
                 self._status = "no_drive"
                 self.dataChanged.emit()
                 return {"ok": False, "error": "NO_DRIVE"}
-            toc = self._svc.get_disc_toc(drive)
-            track_count = toc.get("tracks", 0) if isinstance(toc, dict) else 0
-            durations = self._svc.get_track_durations(drive) if hasattr(self._svc, 'get_track_durations') else []
+            cd_info = self._svc.get_cd_info(drive) if hasattr(self._svc, 'get_cd_info') else None
+            tracks_raw = []
+            if cd_info and hasattr(cd_info, 'tracks'):
+                tracks_raw = cd_info.tracks
+            elif cd_info and isinstance(cd_info, dict) and 'tracks' in cd_info:
+                tracks_raw = cd_info.get('tracks', [])
             self._tracks = [
-                {"track": i + 1, "title": f"Track {i+1}",
-                 "duration": durations[i] if i < len(durations) else 0,
+                {"track": i + 1,
+                 "title": getattr(t, 'title', None) or (t.get('title') if isinstance(t, dict) else f"Track {i+1}"),
+                 "duration": int(getattr(t, 'duration', 0) or (t.get('duration', 0) if isinstance(t, dict) else 0)),
                  "selected": True}
-                for i in range(track_count)
+                for i, t in enumerate(tracks_raw)
+            ] if tracks_raw else [
+                {"track": i + 1, "title": f"Track {i+1}",
+                 "duration": 0, "selected": True}
+                for i in range(getattr(cd_info, 'track_count', 0) or (cd_info.get('track_count', 0) if isinstance(cd_info, dict) else 0))
             ]
             self._status = "scanned" if self._tracks else "no_tracks"
             self.dataChanged.emit()
@@ -186,8 +196,9 @@ class DiscLabBridge(QObject):
                 ctx.token.raise_if_cancelled()
                 ctx.report_progress((idx + 1) / total, f"Extrayendo pista {tn}...")
                 try:
-                    if hasattr(svc, 'extract_track'):
-                        out_path = svc.extract_track(drive, tn, dest, fmt)
+                    if hasattr(svc, 'rip_track'):
+                        rip_result = svc.rip_track(drive, tn, dest, format=fmt)
+                        out_path = rip_result.get("output_file", "") if isinstance(rip_result, dict) else ""
                         results.append({"track": tn, "ok": True, "path": out_path})
                     else:
                         results.append({"track": tn, "ok": False, "error": "EXTRACT_NOT_IMPLEMENTED"})
