@@ -129,7 +129,7 @@ class TestSmartTaggingCore:
         bridge._suggestions = [{"id": 0, "field": "artist"}]
         result = bridge.cancelScan()
         assert result["ok"] is True
-        assert bridge.status == "cancel_requested"
+        assert bridge.status == "cancelled"
         assert bridge.suggestions == []
 
     def test_backup_created_on_apply(self, bridge):

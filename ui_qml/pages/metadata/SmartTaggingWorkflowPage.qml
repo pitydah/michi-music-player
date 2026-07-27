@@ -187,7 +187,7 @@ Item {
 
                     activeFocusOnTab: true
 
-                    enabled: root.stb ? root.stb.status === "review" || root.stb.status === "batch_review" : false
+                    enabled: root.stb ? root.stb.status === "review" : false
                     onClicked: {
                         if (!root._confirmApply) {
                             root._confirmApply = true

@@ -86,7 +86,7 @@ class TestSmartTaggingWorkflow:
     def test_cancel_scan(self, bridge):
         result = bridge.cancelScan()
         assert result.get("ok")
-        assert bridge._status == "cancel_requested"
+        assert bridge._status == "cancelled"
 
     def test_accept_all(self, bridge):
         bridge._suggestions = [{"id": 0, "selected": False}, {"id": 1, "selected": False}]

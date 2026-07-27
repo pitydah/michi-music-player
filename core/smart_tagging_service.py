@@ -62,6 +62,10 @@ class SmartTaggingService:
             if not filepath:
                 return {"ok": False, "error": "NO_FILEPATH", "suggestions": []}
             result = self.identify(filepath)
+            if not result.get("ok", False):
+                return {"ok": False,
+                        "error": result.get("error", "RECOGNITION_FAILED"),
+                        "suggestions": []}
             suggestions_raw = result.get("suggestions", [])
             suggestions = []
             for s in suggestions_raw:

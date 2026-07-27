@@ -174,15 +174,16 @@ class TestTaggingBatch:
         return SmartTaggingBridge(service=MagicMock(), worker_manager=MagicMock())
 
     def test_batch_apply_empty(self, bridge):
-        bridge._status = "batch_review"
+        bridge._status = "review"
+        bridge._batch_mode = True
         bridge._batch_results = []
         r = bridge.applySelected()
         assert not r.get("ok")
 
     def test_batch_apply_with_results(self, bridge):
-        bridge._status = "batch_review"
+        bridge._status = "review"
         bridge._batch_mode = True
-        assert bridge.status == "batch_review"
+        assert bridge.status == "review"
 
     def test_detect_format_known(self, bridge):
         ext = bridge.detectFormat("/path/to/song.mp3")
@@ -207,7 +208,7 @@ class TestTaggingCancel:
         bridge._status = "scanning"
         r = bridge.cancelScan()
         assert r["ok"]
-        assert bridge.status == "cancel_requested"
+        assert bridge.status == "cancelled"
 
     def test_cancel_scan_resets_suggestions(self, bridge):
         bridge._suggestions = [{"id": 0, "field": "artist"}]

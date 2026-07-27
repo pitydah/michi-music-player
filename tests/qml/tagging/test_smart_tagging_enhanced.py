@@ -131,7 +131,7 @@ class TestSmartTagging:
     def test_cancel_scan(self, bridge):
         result = bridge.cancelScan()
         assert result["ok"] is True
-        assert bridge.status == "cancel_requested"
+        assert bridge.status == "cancelled"
         assert bridge.suggestions == []
 
     def test_refresh(self, bridge):
