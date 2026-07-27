@@ -13,7 +13,7 @@ from typing import Any
 from PySide6.QtCore import QObject
 from PySide6.QtQml import QQmlApplicationEngine
 
-from ui_qml_bridge.context_bindings import ContextBinding
+from ui_qml_bridge.context_bindings import CONTEXT_ALIASES, ContextBinding
 
 logger = logging.getLogger("michi.context_registrar")
 
@@ -88,9 +88,19 @@ class ContextRegistrar:
         self.register(name, bridge)
 
     def register_bindings(self, bindings: list[ContextBinding], bridges: dict[str, QObject], container: Any):
+        # Register primary bindings first
+        aliased: dict[str, QObject] = {}
         for b in bindings:
             bridge = bridges.get(b.context_name)
             self.register_with_contract(b, bridge, container)
+            # Check for aliases that point TO this context_name
+            for alias, target in CONTEXT_ALIASES.items():
+                if target == b.context_name:
+                    aliased[alias] = bridge
+
+        # Register aliases (same bridge instance, different context name)
+        for alias, bridge in aliased.items():
+            self.register(alias, bridge)
 
     def _canonical(self, name: str) -> str:
         return CANONICAL_MAP.get(name, name)

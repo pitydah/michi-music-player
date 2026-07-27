@@ -93,6 +93,11 @@ class CoverProviderBridge(QObject):
             self._cache.popitem(last=False)
         self.cacheChanged.emit()
 
+    @Slot(str, result=str)
+    def getCoverPath(self, cover_key: str) -> str:
+        """Alias for requestCover, expected by CoverBridgeProxy.qml."""
+        return self.requestCover(cover_key)
+
     @Slot(str, result=dict)
     def invalidateCover(self, cover_key: str):
         removed = self._cache.pop(str(cover_key or ""), None) is not None
