@@ -6,7 +6,6 @@ import pytest
 from pathlib import Path
 
 
-@pytest.mark.skip(reason="DRIFT: QML compile errors from Audio Lab (ComparisonPanel/RowLayout) and Qt compat (accessibleRole) — handled in separate PRs")
 @pytest.mark.skipif(not os.environ.get('QT_QPA_PLATFORM'), reason="Requires QT_QPA_PLATFORM")
 def test_qml_compile_zero_errors() -> None:
     """All QML files compile without errors."""
