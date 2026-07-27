@@ -761,7 +761,8 @@ class GStreamerEngine(QObject):
         if self._db:
             self._db.save_queue(self._queue, self._queue_index)
 
-    def set_queue(self, filepaths: list[str], start_index: int = 0):
+    def set_queue(self, filepaths: list[str], start_index: int = 0,
+                  revision: int | None = None):
         self._queue = list(filepaths)
         self._queue_index = max(0, min(start_index, len(self._queue) - 1)) if self._queue else -1
         self._sync_queue_from_backend()

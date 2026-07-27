@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-import pytest
 
 
 def _extract_navigate_calls(qml_file: str) -> list[str]:
@@ -20,7 +19,6 @@ def _extract_navigate_calls(qml_file: str) -> list[str]:
     return routes
 
 
-@pytest.mark.skip(reason="DRIFT: Audio Lab route audio_lab.equalizer not registered — handled in Audio Lab PR")
 def test_all_navigate_calls_exist_in_registry() -> None:
     from ui_qml_bridge.route_registry import ROUTES, ROUTE_ALIASES, resolve_route
 

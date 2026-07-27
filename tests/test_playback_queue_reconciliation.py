@@ -1,14 +1,12 @@
 """Composition-level queue progression reconciliation tests."""
 from __future__ import annotations
 
-import pytest
 from unittest.mock import patch
 
 from core.composition.playback import build
 from core.service_container import ServiceContainer
 
 
-@pytest.mark.skip(reason="DRIFT: EngineBackendAdapter.set_queue revision kwarg not handled by GStreamerEngine — handled in separate PR")
 def test_playback_composition_reconciles_backend_progress() -> None:
     container = ServiceContainer()
     build(container)
@@ -27,7 +25,6 @@ def test_playback_composition_reconciles_backend_progress() -> None:
     assert queue.get_current()["title"] == "B"
 
 
-@pytest.mark.skip(reason="DRIFT: EngineBackendAdapter.set_queue revision kwarg not handled by GStreamerEngine — handled in separate PR")
 def test_playback_composition_rejects_stale_progress() -> None:
     container = ServiceContainer()
     build(container)

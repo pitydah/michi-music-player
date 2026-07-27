@@ -587,7 +587,7 @@ ROUTES: dict[str, dict] = {
         "icon": "processing", "order": 20, "sidebar_visible": True,
         "sidebar_group": "audio_lab", "expandable": False,
         "status": "functional", "capability": "audio_lab",
-        "aliases": ["outputs"],
+        "aliases": ["outputs", "audio_lab.equalizer"],
         "keywords": ["procesamiento", "ecualizador", "dsp", "perfiles", "normalización", "conversión"],
         "placeholder_state": None,
         "params": None, "category": "tools",

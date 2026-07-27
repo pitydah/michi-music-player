@@ -42,7 +42,6 @@ Item {
                 font.weight: MichiTheme.typography.weightSemiBold
                 Layout.fillWidth: true
                 elide: Text.ElideRight
-                accessibleRole: Accessible.Heading
             }
 
             Repeater {
