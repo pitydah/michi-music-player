@@ -80,7 +80,7 @@ class BaseSettingsAdapter:
 class AccessibilitySettingsAdapter(BaseSettingsAdapter):
     """Applies accessibility changes at runtime."""
 
-    _KEYS = {"accessibility/font_size", "accessibility/high_contrast", "accessibility/reduce_motion",
+    _KEYS = {"accessibility/font_size", "accessibility/high_contrast", "accessibility/reduced_motion",
              "accessibility/focus_indicators", "accessibility/mono", "accessibility/balance"}
 
     @classmethod

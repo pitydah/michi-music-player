@@ -46,8 +46,8 @@ Item {
 
             onToggled: {
                 root.reduceMotion = checked
-                if (root.themeBridge && typeof root.themeBridge.reduceMotion !== "undefined")
-                    root.themeBridge.reduceMotion = checked
+                if (root.themeBridge && typeof root.themeBridge.reducedMotion !== "undefined")
+                    root.themeBridge.reducedMotion = checked
                 root.reduceMotionToggled(checked)
             }
         }

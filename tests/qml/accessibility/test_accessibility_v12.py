@@ -18,13 +18,13 @@ class TestAccessibilityBridge:
     def test_font_scale_default(self):
         from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
         ab = AccessibilityBridge(playback_service=MagicMock())
-        assert ab.fontScale in ("normal", "large", "x-large", "small")
+        assert isinstance(ab.fontScale, float)
 
     def test_font_scale_setter(self):
         from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
         ab = AccessibilityBridge(playback_service=MagicMock())
-        ab.fontScale = "large"
-        assert ab.fontScale == "large"
+        ab.fontScale = 1.5
+        assert ab.fontScale == 1.5
 
     def test_high_contrast_default(self):
         from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
@@ -45,13 +45,13 @@ class TestAccessibilityBridge:
     def test_balance_default(self):
         from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
         ab = AccessibilityBridge(playback_service=MagicMock())
-        assert isinstance(ab.balance, int)
+        assert isinstance(ab.balance, float)
 
     def test_balance_setter(self):
         from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
         ab = AccessibilityBridge(playback_service=MagicMock())
-        ab.balance = -50
-        assert ab.balance == -50
+        ab.balance = -0.5
+        assert ab.balance == -0.5
 
     def test_restore_on_error(self):
         from ui_qml_bridge.accessibility_bridge import AccessibilityBridge

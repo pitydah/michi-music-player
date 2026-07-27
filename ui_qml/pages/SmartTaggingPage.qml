@@ -202,12 +202,12 @@ Item {
                             font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
-                            width: parent.width * 0.25; text: modelData.current || "—"
+                            width: parent.width * 0.25; text: modelData.current_value || "—"
                             color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize
                             elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
-                            width: parent.width * 0.25; text: qsTr("→ ") + (modelData.suggested || "")
+                            width: parent.width * 0.25; text: qsTr("→ ") + (modelData.proposed_value || "")
                             color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.metaSize
                             elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
                         }

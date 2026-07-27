@@ -1,31 +1,19 @@
-"""Test: ActionRegistry validation with real container and service checks."""
+"""Test: ActionRegistry binding via ActionRegistryBinder (production path)."""
 
+
+class _MockNav:
+    def navigate(self, route):
+        return True
 
 
 class TestActionRegistryReal:
     def test_registry_has_production_actions(self):
-        """Build real container, create registry, verify actions."""
-        from core.service_container import ServiceContainer
-        from core.composition.infrastructure import build as infra
-        from core.composition.playback import build as playback
-        from core.composition.library import build as library
-        from core.composition.audio_lab import build as audio_lab
-        from core.composition.ecosystem import build as eco
-        from core.composition.settings import build as settings_b
-        from core.composition.intelligence import build as intel
-        c = ServiceContainer()
-        infra(c)
-        playback(c)
-        library(c)
-        audio_lab(c)
-        eco(c)
-        settings_b(c)
-        intel(c)
-
+        """Registry + binder: navigation actions resolve to real handlers."""
         from ui_qml_bridge.action_registry import ActionRegistry
+        from ui_qml_bridge.action_registry_binder import ActionRegistryBinder
         ar = ActionRegistry()
-        ar._container = c
-        ar.bind_default_handlers()
+        binder = ActionRegistryBinder(ar, {"navigation": _MockNav()})
+        binder.bind_all()
 
         # Navigate actions should be resolvable
         for a_id in ["navigate_home", "navigate_library"]:
@@ -35,27 +23,11 @@ class TestActionRegistryReal:
 
     def test_action_handler_executes(self):
         """Navigate actions execute without error."""
-        from core.service_container import ServiceContainer
-        from core.composition.infrastructure import build as infra
-        from core.composition.playback import build as playback
-        from core.composition.library import build as library
-        from core.composition.audio_lab import build as audio_lab
-        from core.composition.ecosystem import build as eco
-        from core.composition.settings import build as settings_b
-        from core.composition.intelligence import build as intel
-        c = ServiceContainer()
-        infra(c)
-        playback(c)
-        library(c)
-        audio_lab(c)
-        eco(c)
-        settings_b(c)
-        intel(c)
-
         from ui_qml_bridge.action_registry import ActionRegistry
+        from ui_qml_bridge.action_registry_binder import ActionRegistryBinder
         ar = ActionRegistry()
-        ar._container = c
-        ar.bind_default_handlers()
+        binder = ActionRegistryBinder(ar, {"navigation": _MockNav()})
+        binder.bind_all()
 
         a = ar._actions.get("navigate_home")
         assert a is not None

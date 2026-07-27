@@ -158,7 +158,7 @@ Item {
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                                 Label {
-                                    text: fontScaleSlider.value + "%"
+                                    text: fontScaleSlider.value.toFixed(1) + "x"
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
@@ -167,13 +167,13 @@ Item {
                             MichiSlider {
                                 id: fontScaleSlider
                                 implicitWidth: 200
-                                from: 75
-                                to: 150
-                                value: root._loadValue("accessibility/font_scale", 100)
-                                stepSize: 5
+                                from: 0.5
+                                to: 2.0
+                                value: root._loadValue("accessibility/font_size", 1.0)
+                                stepSize: 0.1
                                 accessibleName: "Escala de fuente"
                                 onPressedChanged: {
-                                    if (!pressed) root._saveValue("accessibility/font_scale", value)
+                                    if (!pressed) root._saveValue("accessibility/font_size", value)
                                 }
                                 Accessible.description: "Ajustar tamaño de fuente"
                             }

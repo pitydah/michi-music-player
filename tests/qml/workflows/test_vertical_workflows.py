@@ -800,8 +800,8 @@ class TestWorkflow9Theme:
     def test_wf9_theme_font_scale(self):
         from ui_qml_bridge.theme_bridge import ThemeBridge
         tb = ThemeBridge()
-        tb.fontScale = "large"
-        assert tb.fontScale == "large"
+        tb.fontScale = 1.5
+        assert tb.fontScale == 1.5
 
     def test_wf9_theme_persistence(self):
         from core.settings_manager import SETTINGS

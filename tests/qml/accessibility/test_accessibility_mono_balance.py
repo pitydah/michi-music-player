@@ -11,12 +11,12 @@ pytestmark = [pytest.mark.qml_module("accessibility")]
 class FakePlaybackService:
     def __init__(self):
         self.mono_enabled = False
-        self.balance_value = 0
+        self.balance_value = 0.0
 
     def set_mono(self, enabled: bool):
         self.mono_enabled = enabled
 
-    def set_balance(self, balance: int):
+    def set_balance(self, balance: float):
         self.balance_value = balance
 
 
@@ -24,7 +24,7 @@ class FakePlaybackServiceUnstable:
     def set_mono(self, enabled: bool):
         raise RuntimeError("Backend unavailable")
 
-    def set_balance(self, balance: int):
+    def set_balance(self, balance: float):
         raise RuntimeError("Backend unavailable")
 
 
@@ -75,30 +75,30 @@ class TestMonoBalance:
         bridge = AccessibilityBridge(settings_service=settings_service,
                                      settings_coordinator=coordinator,
                                      playback_service=ps)
-        bridge._balance = 0
-        bridge.balance = 30
-        assert ps.balance_value == 30
-        assert bridge.balance == 30
+        bridge._balance = 0.0
+        bridge.balance = 0.3
+        assert ps.balance_value == 0.3
+        assert bridge.balance == 0.3
 
     def test_balance_clamps_values(self, settings_service, coordinator):
         ps = FakePlaybackService()
         bridge = AccessibilityBridge(settings_service=settings_service,
                                      settings_coordinator=coordinator,
                                      playback_service=ps)
-        bridge._balance = 0
-        bridge.balance = 150
-        assert bridge.balance == 100
-        bridge.balance = -200
-        assert bridge.balance == -100
+        bridge._balance = 0.0
+        bridge.balance = 5.0
+        assert bridge.balance == 1.0
+        bridge.balance = -5.0
+        assert bridge.balance == -1.0
 
     def test_balance_restores_on_backend_rejection(self, settings_service, coordinator):
         ps = FakePlaybackServiceUnstable()
         bridge = AccessibilityBridge(settings_service=settings_service,
                                      settings_coordinator=coordinator,
                                      playback_service=ps)
-        bridge._balance = 0
-        bridge.balance = 50
-        assert bridge.balance == 0
+        bridge._balance = 0.0
+        bridge.balance = 0.5
+        assert bridge.balance == 0.0
 
     def test_mono_no_playback_service(self, settings_service, coordinator):
         bridge = AccessibilityBridge(settings_service=settings_service,
@@ -110,6 +110,6 @@ class TestMonoBalance:
     def test_balance_no_playback_service(self, settings_service, coordinator):
         bridge = AccessibilityBridge(settings_service=settings_service,
                                      settings_coordinator=coordinator)
-        old = bridge.balance
-        bridge.balance = 50
-        assert bridge.balance == old
+        bridge._balance = 0.0
+        bridge.balance = 0.5
+        assert bridge.balance == 0.5

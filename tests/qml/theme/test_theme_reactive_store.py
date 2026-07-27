@@ -57,10 +57,10 @@ class TestThemeReactiveStore:
 
     def test_reduce_motion_propagates(self, settings_service):
         bridge = ThemeBridge(service=settings_service)
-        bridge._reduce_motion = False
-        bridge.reduceMotion = True
-        assert bridge.reduceMotion is True
-        settings_service.set_.assert_called_with("accessibility/reduce_motion", True)
+        bridge._reduced_motion = False
+        bridge.reducedMotion = True
+        assert bridge.reducedMotion is True
+        settings_service.set_.assert_called_with("accessibility/reduced_motion", True)
 
     def test_notify_theme_store_does_not_crash(self, settings_service):
         bridge = ThemeBridge(service=settings_service)

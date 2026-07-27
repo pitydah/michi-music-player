@@ -38,6 +38,8 @@ jobs:
         run: python scripts/check_single_authority.py
       - name: QML-only gate
         run: python scripts/qml_only_gate.py
+      - name: Patch artifact gate
+        run: python scripts/check_patch_artifacts.py
 
   functional-tests:
     needs: [lint]
@@ -62,14 +64,19 @@ jobs:
           pip install -e ".[dev]" build
       - name: Functional tests
         run: |
-          QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest tests/qml/functional/ -q --timeout=120 -x --junitxml=results-functional.xml
+          QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest tests/qml/functional/ -q --timeout=120 --junitxml=results-functional.xml
       - name: Core tests
         run: |
           QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest tests/ -q --timeout=300 \
             --ignore=tests/qml --ignore=tests/test_large_library.py \
             --ignore=tests/perf -k "not qt_widget and not QtWidget" \
-            -x --deselect tests/test_context_semantic_audit.py::TestContextSemanticAudit::test_no_appevent_import_outside_context \
+            --deselect tests/test_context_semantic_audit.py::TestContextSemanticAudit::test_no_appevent_import_outside_context \
             --junitxml=results-core.xml
+      - name: Vertical contract tests
+        run: |
+          QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest \
+            tests/qml/tagging/ tests/qml/disc_lab/ tests/qml/settings/ tests/qml/queue/ tests/qml/nowplaying/ \
+            -q --timeout=300 --junitxml=results-vertical.xml
       - name: Runtime route matrix
         run: |
           QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest tests/qml/runtime/test_runtime_route_matrix.py -q --timeout=120 --junitxml=results-runtime.xml

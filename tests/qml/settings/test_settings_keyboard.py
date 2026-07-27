@@ -184,7 +184,7 @@ class TestSettingsKeyboardTabOrder:
         assert comp.isReady()
         obj = _create_context(engine, comp)
         try:
-            sw = obj.findChild(object, "settings.appearance.reduceMotion")
+            sw = obj.findChild(object, "settings.appearance.reducedMotion")
             if sw:
                 tab = sw.property("KeyNavigation")["tab"]
                 assert tab is not None

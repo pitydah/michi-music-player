@@ -9,6 +9,14 @@ from core.settings_manager import SETTINGS
 logger = logging.getLogger(__name__)
 
 
+def _to_float(value, default: float) -> float:
+    """Coerce a QSettings value to float, falling back to default."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float(default)
+
+
 class AccessibilityBridge(QObject):
     dataChanged = Signal()
 
@@ -21,12 +29,12 @@ class AccessibilityBridge(QObject):
         self._svc = service or settings_service
         self._coordinator = coordinator or settings_coordinator
         self._playback_service = playback_service
-        self._font_scale = SETTINGS.value("accessibility/font_size", "normal")
+        self._font_scale = _to_float(SETTINGS.value("accessibility/font_size", 1.0), 1.0)
         self._high_contrast = bool(SETTINGS.value("accessibility/high_contrast", False))
-        self._reduce_motion = bool(SETTINGS.value("accessibility/reduce_motion", False))
+        self._reduce_motion = bool(SETTINGS.value("accessibility/reduced_motion", False))
         self._focus_indicators = bool(SETTINGS.value("accessibility/focus_indicators", True))
         self._mono = bool(SETTINGS.value("accessibility/mono", False))
-        self._balance = int(SETTINGS.value("accessibility/balance", 0))
+        self._balance = _to_float(SETTINGS.value("accessibility/balance", 0.0), 0.0)
         self._last_error = ""
         self._reduce_transparency = bool(SETTINGS.value("accessibility/reduce_transparency", False))
 
@@ -63,12 +71,12 @@ class AccessibilityBridge(QObject):
         self.mono = False
         self.balance = 0
 
-    @Property(str, notify=dataChanged)
+    @Property(float, notify=dataChanged)
     def fontScale(self):
         return self._font_scale
 
     @fontScale.setter
-    def fontScale(self, val: str):
+    def fontScale(self, val: float):
         if val != self._font_scale:
             self._font_scale = val
             self._set_via_service("accessibility/font_size", val)
@@ -93,7 +101,7 @@ class AccessibilityBridge(QObject):
     def reduceMotion(self, val: bool):
         if val != self._reduce_motion:
             self._reduce_motion = val
-            self._set_via_service("accessibility/reduce_motion", val)
+            self._set_via_service("accessibility/reduced_motion", val)
             self.dataChanged.emit()
 
     @Property(bool, notify=dataChanged)
@@ -133,14 +141,14 @@ class AccessibilityBridge(QObject):
                 self._mono = old
             self.dataChanged.emit()
 
-    @Property(int, notify=dataChanged)
+    @Property(float, notify=dataChanged)
     def balance(self):
         return self._balance
 
     @balance.setter
-    def balance(self, val: int):
+    def balance(self, val: float):
         if val != self._balance:
-            self._balance = max(-100, min(100, val))
+            self._balance = max(-1.0, min(1.0, val))
             self._set_via_service("accessibility/balance", self._balance)
             self._apply_balance_to_playback()
             self.dataChanged.emit()
@@ -148,7 +156,7 @@ class AccessibilityBridge(QObject):
     @Slot(result=dict)
     def restoreOnError(self):
         self._restore_visual_control()
-        return {"ok": True, "mono": False, "balance": 0}
+        return {"ok": True, "mono": False, "balance": 0.0}
 
     @Property(str, notify=dataChanged)
     def lastError(self):
@@ -195,11 +203,11 @@ class AccessibilityBridge(QObject):
 
     @Slot()
     def refresh(self):
-        self._font_scale = SETTINGS.value("accessibility/font_size", "normal")
+        self._font_scale = _to_float(SETTINGS.value("accessibility/font_size", 1.0), 1.0)
         self._high_contrast = bool(SETTINGS.value("accessibility/high_contrast", False))
-        self._reduce_motion = bool(SETTINGS.value("accessibility/reduce_motion", False))
+        self._reduce_motion = bool(SETTINGS.value("accessibility/reduced_motion", False))
         self._reduce_transparency = bool(SETTINGS.value("accessibility/reduce_transparency", False))
         self._focus_indicators = bool(SETTINGS.value("accessibility/focus_indicators", True))
         self._mono = bool(SETTINGS.value("accessibility/mono", False))
-        self._balance = int(SETTINGS.value("accessibility/balance", 0))
+        self._balance = _to_float(SETTINGS.value("accessibility/balance", 0.0), 0.0)
         self.dataChanged.emit()

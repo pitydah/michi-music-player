@@ -16,7 +16,6 @@ DEFAULTS = {
     "interface/show_menubar": True,
     "interface/show_quality_badge": True,
     "interface/cover_size": 260,
-    "interface/compact_mode": False,
     "library/auto_scan": True,
     "library/exclude_hidden": True,
     "library/covers_cache_size": 100,
@@ -163,6 +162,16 @@ DEFAULTS = {
     "audio_analysis/resource_confirm": True,
     "audio_analysis/show_warning": True,
     "ai_assistant/use_audio_analysis": False,
+    "accessibility/font_size": 1.0,
+    "accessibility/high_contrast": False,
+    "accessibility/reduced_motion": False,
+    "accessibility/reduce_transparency": False,
+    "accessibility/focus_indicators": True,
+    "accessibility/mono": False,
+    "accessibility/balance": 0.0,
+    "appearance/theme": "dark",
+    "appearance/accent_color": "#8FB7FF",
+    "appearance/compact_mode": False,
 }
 
 

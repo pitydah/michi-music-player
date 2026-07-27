@@ -88,7 +88,7 @@ class TestValidation:
         assert result["error_code"] == "UNKNOWN_KEY"
 
     def test_valid_value_passes(self, coordinator):
-        result = coordinator.execute("accessibility/font_size", "large")
+        result = coordinator.execute("accessibility/font_size", 1.5)
         assert result["ok"] is True
 
 
@@ -202,7 +202,7 @@ class TestRestartPolicy:
         assert result["applied"] is False
 
     def test_restart_required_false(self, coordinator):
-        result = coordinator.execute("accessibility/font_size", "large")
+        result = coordinator.execute("accessibility/font_size", 1.5)
         assert result["requires_restart"] is False
         assert result["applied"] is True
 

@@ -30,7 +30,6 @@ def build(container: ServiceContainer) -> None:
     container.register("library_query_service", lqs)
     container.register("library_sources_service", LibrarySourcesService(cf))
     container.register("library_mutation_service", MetadataEditorService(db=db))
-    container.register("metadata_editor_service", MetadataEditorService(db=db))
     container.register("library_service", LibraryService(db=db, worker_manager=wm, library_query_service=lqs))
     playlist_service = PlaylistService(cf)
     container.register("playlist_service", playlist_service)

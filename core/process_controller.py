@@ -73,7 +73,7 @@ class ProcessController:
         capture_stdout: bool = False,
     ) -> ManagedProcess:
         if not cmd:
-            return ManagedProcess(pid=0, cmd="", process=None)
+            return ManagedProcess(pid=0, cmd="", args=[])
         all_args = [cmd] + (args or [])
         full_env = {**os.environ, **(env or {})}
         stdout_dest = asyncio.subprocess.PIPE if capture_stdout else asyncio.subprocess.DEVNULL

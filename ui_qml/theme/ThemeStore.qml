@@ -19,7 +19,7 @@ QtObject {
         if (bridge) {
             darkMode = bridge.darkMode
             highContrast = bridge.highContrast
-            reduceMotion = bridge.reduceMotion
+            reduceMotion = bridge.reducedMotion
         }
     }
 }

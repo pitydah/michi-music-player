@@ -317,8 +317,8 @@ Item {
                             }
                             Switch {
                                 id: compactMode
-                                checked: root._loadValue("interface/compact_mode", false)
-                                onClicked: root._saveValue("interface/compact_mode", checked)
+                                checked: root._loadValue("appearance/compact_mode", false)
+                                onClicked: root._saveValue("appearance/compact_mode", checked)
                                 Accessible.description: "Reducir espacios y márgenes"
                                 focusPolicy: Qt.StrongFocus
                             }

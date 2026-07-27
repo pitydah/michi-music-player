@@ -235,7 +235,7 @@ class TestAdapters:
         assert r.ok
         r2 = a.apply("accessibility/mono", True)
         assert r2.ok
-        r3 = a.apply("accessibility/font_size", "large")
+        r3 = a.apply("accessibility/font_size", 1.5)
         assert r3.ok
 
 
@@ -437,7 +437,7 @@ class TestTheme:
     def test_theme_bridge_has_reduce_motion(self):
         from ui_qml_bridge.theme_bridge import ThemeBridge
         b = ThemeBridge()
-        assert hasattr(b, 'reduceMotion')
+        assert hasattr(b, 'reducedMotion')
 
     def test_theme_bridge_has_font_scale(self):
         from ui_qml_bridge.theme_bridge import ThemeBridge
@@ -466,8 +466,8 @@ class TestTheme:
     def test_theme_bridge_reduce_motion_setter(self):
         from ui_qml_bridge.theme_bridge import ThemeBridge
         b = ThemeBridge()
-        b.reduceMotion = True
-        assert b.reduceMotion
+        b.reducedMotion = True
+        assert b.reducedMotion
 
     def test_theme_bridge_high_contrast_setter(self):
         from ui_qml_bridge.theme_bridge import ThemeBridge
@@ -529,5 +529,5 @@ class TestAccessibilityGlobal:
     def test_accessibility_bridge_font_scale_setter(self):
         from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
         b = AccessibilityBridge()
-        b.fontScale = "large"
-        assert b.fontScale == "large"
+        b.fontScale = 1.5
+        assert b.fontScale == 1.5

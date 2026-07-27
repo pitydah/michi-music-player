@@ -225,14 +225,14 @@ class TestCapabilityBridgeIntegrations:
 class TestAccessibilityBridgeIntegrations:
     def test_accessibility_bridge_defaults(self):
         ab = AccessibilityBridge()
-        assert ab.fontScale in ("normal", "large", "small")
+        assert isinstance(ab.fontScale, float)
         assert isinstance(ab.highContrast, bool)
         assert isinstance(ab.reduceMotion, bool)
 
     def test_accessibility_bridge_set_font_scale(self):
         ab = AccessibilityBridge()
-        ab.fontScale = "large"
-        assert ab.fontScale == "large"
+        ab.fontScale = 1.5
+        assert ab.fontScale == 1.5
 
     def test_accessibility_bridge_set_high_contrast(self):
         ab = AccessibilityBridge()
@@ -251,15 +251,15 @@ class TestAccessibilityBridgeIntegrations:
 
     def test_accessibility_bridge_set_balance(self):
         ab = AccessibilityBridge()
-        ab.balance = 30
-        assert ab.balance == 30
+        ab.balance = 0.3
+        assert ab.balance == 0.3
 
     def test_accessibility_bridge_balance_clamped(self):
         ab = AccessibilityBridge()
-        ab.balance = 200
-        assert ab.balance <= 100
-        ab.balance = -200
-        assert ab.balance >= -100
+        ab.balance = 5.0
+        assert ab.balance <= 1.0
+        ab.balance = -5.0
+        assert ab.balance >= -1.0
 
     def test_accessibility_bridge_with_playback_service(self):
         ps = MagicMock()
@@ -269,18 +269,18 @@ class TestAccessibilityBridgeIntegrations:
     def test_accessibility_bridge_restore_on_error(self):
         ab = AccessibilityBridge()
         ab.mono = True
-        ab.balance = 50
+        ab.balance = 0.5
         result = ab.restoreOnError()
         assert result["ok"]
         assert not result["mono"]
-        assert result["balance"] == 0
+        assert result["balance"] == 0.0
 
     def test_accessibility_bridge_refresh(self):
         ab = AccessibilityBridge()
         old = ab.fontScale
-        ab.fontScale = "large" if old != "large" else "small"
+        ab.fontScale = 1.5 if old != 1.5 else 0.8
         ab.refresh()
-        assert isinstance(ab.fontScale, str)
+        assert isinstance(ab.fontScale, float)
 
     def test_accessibility_bridge_score(self):
         ab = AccessibilityBridge()

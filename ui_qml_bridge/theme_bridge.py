@@ -5,6 +5,14 @@ from PySide6.QtCore import QObject, Signal, Property, Slot
 from core.settings_manager import SETTINGS
 
 
+def _to_float(value, default: float) -> float:
+    """Coerce a QSettings value to float, falling back to default."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float(default)
+
+
 class ThemeBridge(QObject):
     themeChanged = Signal()
 
@@ -20,8 +28,8 @@ class ThemeBridge(QObject):
         self._accent_color = SETTINGS.value("appearance/accent_color", "#8FB7FF")
         self._high_contrast = bool(SETTINGS.value("accessibility/high_contrast", False))
         self._compact_mode = bool(SETTINGS.value("appearance/compact_mode", False))
-        self._font_scale = SETTINGS.value("accessibility/font_size", "normal")
-        self._reduce_motion = bool(SETTINGS.value("accessibility/reduce_motion", False))
+        self._font_scale = _to_float(SETTINGS.value("accessibility/font_size", 1.0), 1.0)
+        self._reduced_motion = bool(SETTINGS.value("accessibility/reduced_motion", False))
         self._reduce_transparency = bool(SETTINGS.value("accessibility/reduce_transparency", False))
         self._dark_mode = self._theme not in ("light",)
 
@@ -108,12 +116,12 @@ class ThemeBridge(QObject):
             self._notify_theme_store()
             self.themeChanged.emit()
 
-    @Property(str, notify=themeChanged)
+    @Property(float, notify=themeChanged)
     def fontScale(self):
         return self._font_scale
 
     @fontScale.setter
-    def fontScale(self, val: str):
+    def fontScale(self, val: float):
         if val != self._font_scale:
             self._font_scale = val
             self._write("accessibility/font_size", val)
@@ -121,14 +129,14 @@ class ThemeBridge(QObject):
             self.themeChanged.emit()
 
     @Property(bool, notify=themeChanged)
-    def reduceMotion(self):
-        return self._reduce_motion
+    def reducedMotion(self):
+        return self._reduced_motion
 
-    @reduceMotion.setter
-    def reduceMotion(self, val: bool):
-        if val != self._reduce_motion:
-            self._reduce_motion = val
-            self._write("accessibility/reduce_motion", val)
+    @reducedMotion.setter
+    def reducedMotion(self, val: bool):
+        if val != self._reduced_motion:
+            self._reduced_motion = val
+            self._write("accessibility/reduced_motion", val)
             self._notify_theme_store()
             self.themeChanged.emit()
 
@@ -151,7 +159,7 @@ class ThemeBridge(QObject):
             "dark_mode": self._dark_mode,
             "accent_color": self._accent_color,
             "high_contrast": self._high_contrast,
-            "reduce_motion": self._reduce_motion,
+            "reduced_motion": self._reduced_motion,
             "reduce_transparency": self._reduce_transparency,
             "valid_themes": list(self.VALID_THEMES),
         }

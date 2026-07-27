@@ -35,7 +35,7 @@ class FakeSettingsBridgeV2(QObject):
             "appearance/font_scale": 100,
             "appearance/reduced_motion": False,
             "appearance/reduced_transparency": False,
-            "interface/compact_mode": False,
+            "appearance/compact_mode": False,
             "appearance/cover_as_backdrop": False,
             "interface/show_menubar": True,
         }

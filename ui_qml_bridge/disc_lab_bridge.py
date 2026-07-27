@@ -198,8 +198,13 @@ class DiscLabBridge(QObject):
                 try:
                     if hasattr(svc, 'rip_track'):
                         rip_result = svc.rip_track(drive, tn, dest, format=fmt)
-                        out_path = rip_result.get("output_file", "") if isinstance(rip_result, dict) else ""
-                        results.append({"track": tn, "ok": True, "path": out_path})
+                        if isinstance(rip_result, dict):
+                            ok = rip_result.get("success", False)
+                            out_path = rip_result.get("output_file", "")
+                        else:
+                            ok = False
+                            out_path = ""
+                        results.append({"track": tn, "ok": ok, "path": out_path})
                     else:
                         results.append({"track": tn, "ok": False, "error": "EXTRACT_NOT_IMPLEMENTED"})
                 except Exception as e:
