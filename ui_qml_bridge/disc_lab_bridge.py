@@ -7,6 +7,7 @@ destination, extraction, progress, cancel, error, dependency capability.
 from __future__ import annotations
 
 import logging
+import subprocess
 from typing import Any
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
@@ -278,8 +279,28 @@ class DiscLabBridge(QObject):
 
     @Slot(result=dict)
     def eject(self):
+        drive = self._drive_info or (self._drives[0] if self._drives else "")
+        hardware_ok = False
+        if drive:
+            try:
+                result = subprocess.run(
+                    ["eject", drive], capture_output=True, timeout=5
+                )
+                if result.returncode == 0:
+                    hardware_ok = True
+                else:
+                    logger.warning(
+                        "eject returned %d for %s: %s",
+                        result.returncode, drive, result.stderr.decode().strip(),
+                    )
+            except (FileNotFoundError, TimeoutError, OSError) as exc:
+                logger.warning("Hardware eject unavailable for %s: %s", drive, exc)
+        else:
+            logger.warning("No drive info available for eject")
         self._status = "no_disc"
         self._tracks = []
         self._extraction_progress = 0.0
         self.dataChanged.emit()
-        return {"ok": True}
+        if hardware_ok:
+            return {"ok": True, "message": "Drive ejected"}
+        return {"ok": True, "message": "State cleared (hardware eject unavailable)"}
