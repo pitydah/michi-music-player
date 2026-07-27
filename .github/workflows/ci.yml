@@ -82,3 +82,32 @@ jobs:
           name: test-results-${{ github.sha }}
           path: "*.xml"
           retention-days: 7
+
+  inventory:
+    needs: [functional-tests]
+    if: always()
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gir1.2-gst-plugins-base-1.0 python3-gi
+          pip install -e ".[dev]" build
+      - name: Full test suite (no -x)
+        run: |
+          QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest tests/ -q --timeout=300 --junitxml=results-inventory.xml
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: inventory-results-${{ github.sha }}
+          path: results-inventory.xml
+          retention-days: 7
