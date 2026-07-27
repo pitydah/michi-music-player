@@ -39,7 +39,7 @@ def compute_capabilities(container: "ServiceContainer") -> dict[str, str]:
         "audio_lab": "available",
         "metadata": "available",
         "smart_tagging": "available" if container.contains("smart_tagging_service") else "unavailable",
-        "disc_lab": "available" if container.contains("library_doctor_service") else ("deferred_physical" if container.contains("connection_factory") else "unavailable"),
+        "disc_lab": "available" if container.contains("cd_ripper_service") else ("deferred_physical" if container.contains("connection_factory") else "unavailable"),
         "library_doctor": "available" if container.contains("connection_factory") else "unavailable",
         "diagnostics": "available" if container.contains("connection_factory") else "unavailable",
         "michi_ai": "available",

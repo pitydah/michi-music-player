@@ -21,6 +21,7 @@ from ui_qml_bridge.desktop_bridge import DesktopBridge
 from ui_qml_bridge.devices_bridge import DevicesBridge
 from ui_qml_bridge.mobile_sync_bridge import MobileSyncBridge
 from ui_qml_bridge.diagnostics_bridge import DiagnosticsBridge
+from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
 from ui_qml_bridge.eq_bridge import EqBridge
 from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
 from ui_qml_bridge.history_bridge import HistoryBridge
@@ -99,6 +100,7 @@ CONTEXT_BINDINGS: list[ContextBinding] = [
     ContextBinding(LibraryDoctorBridge, "libraryDoctorBridge", required_services=("connection_factory", "worker_manager")),
     ContextBinding(MichiAIBridge,       "michiAiBridge",   required_services=("device_sync_service", "job_service")),
     ContextBinding(DiagnosticsBridge,   "diagnosticsBridge", required_services=("playback_service", "connection_factory", "worker_manager", "query_executor"), optional_services=("radio_service", "device_sync_service")),
+    ContextBinding(DiscLabBridge,       "discLabBridge",   required_services=("cd_ripper_service",), optional_services=("worker_manager",)),
     ContextBinding(RuntimeQualityBridge,"runtimeQualityBridge"),
     ContextBinding(PhysicalAudioBridge, "physicalAudioBridge"),
     ContextBinding(CommandPaletteBridge,"commandPaletteBridge"),
