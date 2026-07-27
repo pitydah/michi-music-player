@@ -23,25 +23,13 @@ def build(container: ServiceContainer) -> None:
         if wm:
             coordinator._wm = wm
 
-        # Register all settings adapters
-        from core.settings_adapters import (
-            AccessibilitySettingsAdapter, ThemeSettingsAdapter,
-            PlaybackSettingsAdapter, AudioSettingsAdapter, EqSettingsAdapter,
-            LibrarySettingsAdapter, CacheSettingsAdapter, HistorySettingsAdapter,
-            RadioSettingsAdapter, LyricsSettingsAdapter, DeviceSettingsAdapter,
-            ConnectionSettingsAdapter, HomeAudioSettingsAdapter, LoggingSettingsAdapter,
-        )
-        for adapter_cls in (AccessibilitySettingsAdapter, ThemeSettingsAdapter,
-                            PlaybackSettingsAdapter, AudioSettingsAdapter,
-                            EqSettingsAdapter, LibrarySettingsAdapter,
-                            CacheSettingsAdapter, HistorySettingsAdapter,
-                            RadioSettingsAdapter, LyricsSettingsAdapter,
-                            DeviceSettingsAdapter, ConnectionSettingsAdapter,
-                            HomeAudioSettingsAdapter, LoggingSettingsAdapter):
-            try:
-                coordinator.register_adapter(adapter_cls())
-            except Exception:
-                logger.error("Failed to register adapter %s", adapter_cls.__name__, exc_info=True)
+        # Register all settings adapters (bridges not yet available at
+        # composition time; adapters fall back to the bridge singleton).
+        from core.settings_adapters import register_all_adapters
+        try:
+            register_all_adapters(coordinator)
+        except Exception:
+            logger.error("Failed to register settings adapters", exc_info=True)
 
     try:
         from core.background_theme_service import BackgroundThemeService

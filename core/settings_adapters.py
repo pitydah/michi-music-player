@@ -1,5 +1,10 @@
 """Settings adapters — per-domain runtime application of settings changes.
 Each adapter implements real changes (not just key prefix matching).
+
+Theme and Accessibility adapters receive their bridge via constructor
+injection (``theme_bridge=`` / ``accessibility_bridge=``).  When no bridge is
+injected they fall back to the bridge module singleton; when no bridge is
+available at all, ``apply``/``verify`` report ``APPLY_TARGET_UNAVAILABLE``.
 """
 from __future__ import annotations
 
@@ -59,8 +64,15 @@ class BaseSettingsAdapter:
     def apply(self, key: str, value: Any) -> SettingsApplyResult:
         raise NotImplementedError
 
-    def verify(self, key: str) -> bool:
-        raise NotImplementedError
+    def verify(self, key: str, value: Any = None) -> dict:
+        """Verify that ``value`` was applied to the runtime target.
+
+        Default implementation reports success for adapters that only persist
+        (no live runtime target to read back).  Adapters with a bridge override
+        this to read back the live bridge state and return a dict shaped as
+        ``{"ok": bool, "applied": bool, ...}``.
+        """
+        return {"ok": True, "applied": True}
 
     def revert(self, key: str) -> SettingsApplyResult:
         from core.settings_schema import get_entry
@@ -78,77 +90,156 @@ class BaseSettingsAdapter:
 
 
 class AccessibilitySettingsAdapter(BaseSettingsAdapter):
-    """Applies accessibility changes at runtime."""
+    """Applies accessibility changes at runtime via the AccessibilityBridge."""
 
     _KEYS = {"accessibility/font_size", "accessibility/high_contrast", "accessibility/reduced_motion",
              "accessibility/focus_indicators", "accessibility/mono", "accessibility/balance"}
+
+    _BRIDGE_MAP = {
+        "accessibility/font_size": "fontScale",
+        "accessibility/high_contrast": "highContrast",
+        "accessibility/reduced_motion": "reduceMotion",
+        "accessibility/focus_indicators": "focusIndicators",
+        "accessibility/mono": "mono",
+        "accessibility/balance": "balance",
+    }
+
+    def __init__(self, accessibility_bridge: Any = None) -> None:
+        self._bridge = accessibility_bridge
 
     @classmethod
     def supported_keys(cls) -> set[str]:
         return cls._KEYS
 
+    def _resolve_bridge(self) -> Any:
+        """Return the injected bridge, or the module singleton, or None."""
+        if self._bridge is not None:
+            return self._bridge
+        try:
+            from ui_qml_bridge.accessibility_bridge import _instance
+            return _instance
+        except ImportError:
+            return None
+
     def apply(self, key: str, value: Any) -> SettingsApplyResult:
-        from ui_qml_bridge.accessibility_bridge import _instance as bridge
-        if bridge is not None:
-            try:
-                if key == "accessibility/mono":
-                    bridge.mono = bool(value)
-                elif key == "accessibility/balance":
-                    bridge.balance = float(value)
-                elif key == "accessibility/font_size":
-                    bridge.fontScale = float(value)
-                elif key == "accessibility/high_contrast":
-                    bridge.highContrast = bool(value)
-                elif key == "accessibility/reduced_motion":
-                    bridge.reduceMotion = bool(value)
-                elif key == "accessibility/focus_indicators":
-                    bridge.focusIndicators = bool(value)
-            except Exception as exc:
-                return SettingsApplyResult(
-                    ok=False, key=key, requested_value=value,
-                    error_code="APPLY_FAILED", message=str(exc)
-                )
+        bridge = self._resolve_bridge()
+        if bridge is None:
+            return SettingsApplyResult(
+                ok=False, key=key, requested_value=value,
+                error_code="APPLY_TARGET_UNAVAILABLE",
+                message="AccessibilityBridge no disponible",
+            )
+        try:
+            if key == "accessibility/mono":
+                bridge.mono = bool(value)
+            elif key == "accessibility/balance":
+                bridge.balance = float(value)
+            elif key == "accessibility/font_size":
+                bridge.fontScale = float(value)
+            elif key == "accessibility/high_contrast":
+                bridge.highContrast = bool(value)
+            elif key == "accessibility/reduced_motion":
+                bridge.reduceMotion = bool(value)
+            elif key == "accessibility/focus_indicators":
+                bridge.focusIndicators = bool(value)
+        except Exception as exc:
+            return SettingsApplyResult(
+                ok=False, key=key, requested_value=value,
+                error_code="APPLY_FAILED", message=str(exc)
+            )
         return SettingsApplyResult(
             ok=True, key=key, requested_value=value,
             applied=True, message="Aplicado"
         )
 
-    def verify(self, key: str) -> bool:
-        return True
+    def verify(self, key: str, value: Any = None) -> dict:
+        bridge = self._resolve_bridge()
+        if bridge is None:
+            return {"ok": False, "applied": False, "error": "APPLY_TARGET_UNAVAILABLE"}
+        prop = self._BRIDGE_MAP.get(key)
+        if not prop:
+            return {"ok": True, "applied": True}
+        try:
+            actual = getattr(bridge, prop)
+        except Exception as exc:
+            return {"ok": False, "applied": False, "error": "VERIFY_FAILED",
+                    "expected": value, "actual": None, "detail": str(exc)}
+        if actual == value:
+            return {"ok": True, "applied": True}
+        return {"ok": False, "applied": False, "error": "VERIFY_FAILED",
+                "expected": value, "actual": actual}
 
 
 class ThemeSettingsAdapter(BaseSettingsAdapter):
-    """Applies theme/appearance changes at runtime."""
+    """Applies theme/appearance changes at runtime via the ThemeBridge."""
 
     _KEYS = {"appearance/theme", "appearance/accent_color", "appearance/compact_mode", "appearance/language"}
+
+    _BRIDGE_MAP = {
+        "appearance/theme": "theme",
+        "appearance/accent_color": "accentColor",
+        "appearance/compact_mode": "compactMode",
+    }
+
+    def __init__(self, theme_bridge: Any = None) -> None:
+        self._bridge = theme_bridge
 
     @classmethod
     def supported_keys(cls) -> set[str]:
         return cls._KEYS
 
-    def apply(self, key: str, value: Any) -> SettingsApplyResult:
+    def _resolve_bridge(self) -> Any:
+        """Return the injected bridge, or the module singleton, or None."""
+        if self._bridge is not None:
+            return self._bridge
         try:
-            from ui_qml_bridge.theme_bridge import _instance as bridge
-            if bridge is not None:
-                if key == "appearance/theme":
-                    bridge.theme = str(value)
-                elif key == "appearance/accent_color":
-                    bridge.accentColor = str(value)
-                elif key == "appearance/compact_mode":
-                    bridge.compactMode = bool(value)
-            return SettingsApplyResult(
-                ok=True, key=key, requested_value=value,
-                applied=True, message="Tema actualizado"
-            )
-        except Exception as e:
-            logger.warning("Theme adapter could not apply %s: %s", key, e)
-            return SettingsApplyResult(
-                ok=True, key=key, requested_value=value,
-                applied=True, message="Tema actualizado (sin bridge)"
-            )
+            from ui_qml_bridge.theme_bridge import _instance
+            return _instance
+        except ImportError:
+            return None
 
-    def verify(self, key: str) -> bool:
-        return True
+    def apply(self, key: str, value: Any) -> SettingsApplyResult:
+        bridge = self._resolve_bridge()
+        if bridge is None:
+            return SettingsApplyResult(
+                ok=False, key=key, requested_value=value,
+                error_code="APPLY_TARGET_UNAVAILABLE",
+                message="ThemeBridge no disponible",
+            )
+        try:
+            if key == "appearance/theme":
+                bridge.theme = str(value)
+            elif key == "appearance/accent_color":
+                bridge.accentColor = str(value)
+            elif key == "appearance/compact_mode":
+                bridge.compactMode = bool(value)
+        except Exception as exc:
+            logger.warning("Theme adapter could not apply %s: %s", key, exc)
+            return SettingsApplyResult(
+                ok=False, key=key, requested_value=value,
+                error_code="APPLY_FAILED", message=str(exc)
+            )
+        return SettingsApplyResult(
+            ok=True, key=key, requested_value=value,
+            applied=True, message="Tema actualizado"
+        )
+
+    def verify(self, key: str, value: Any = None) -> dict:
+        bridge = self._resolve_bridge()
+        if bridge is None:
+            return {"ok": False, "applied": False, "error": "APPLY_TARGET_UNAVAILABLE"}
+        prop = self._BRIDGE_MAP.get(key)
+        if not prop:
+            return {"ok": True, "applied": True}
+        try:
+            actual = getattr(bridge, prop)
+        except Exception as exc:
+            return {"ok": False, "applied": False, "error": "VERIFY_FAILED",
+                    "expected": value, "actual": None, "detail": str(exc)}
+        if actual == value:
+            return {"ok": True, "applied": True}
+        return {"ok": False, "applied": False, "error": "VERIFY_FAILED",
+                "expected": value, "actual": actual}
 
 
 class PlaybackSettingsAdapter(BaseSettingsAdapter):
@@ -172,9 +263,6 @@ class PlaybackSettingsAdapter(BaseSettingsAdapter):
             ok=True, key=key, requested_value=value,
             applied=True, message="Aplicado"
         )
-
-    def verify(self, key: str) -> bool:
-        return True
 
 
 class AudioSettingsAdapter(BaseSettingsAdapter):
@@ -207,9 +295,6 @@ class AudioSettingsAdapter(BaseSettingsAdapter):
             message="Requiere reinicio" if restart else "Aplicado"
         )
 
-    def verify(self, key: str) -> bool:
-        return True
-
     def restart_required(self, key: str) -> bool:
         return key in (
             "audio/device", "audio/mode", "audio/sample_rate", "audio/buffer_ms",
@@ -239,9 +324,6 @@ class EqSettingsAdapter(BaseSettingsAdapter):
             message="Requiere reinicio" if restart else "Aplicado"
         )
 
-    def verify(self, key: str) -> bool:
-        return True
-
 
 class LibrarySettingsAdapter(BaseSettingsAdapter):
     """Applies library settings at runtime."""
@@ -257,9 +339,6 @@ class LibrarySettingsAdapter(BaseSettingsAdapter):
             ok=True, key=key, requested_value=value,
             applied=True, message="Aplicado"
         )
-
-    def verify(self, key: str) -> bool:
-        return True
 
 
 class CacheSettingsAdapter(BaseSettingsAdapter):
@@ -278,9 +357,6 @@ class CacheSettingsAdapter(BaseSettingsAdapter):
             applied=True, message="Aplicado"
         )
 
-    def verify(self, key: str) -> bool:
-        return True
-
 
 class HistorySettingsAdapter(BaseSettingsAdapter):
     """Applies history/privacy settings at runtime."""
@@ -296,9 +372,6 @@ class HistorySettingsAdapter(BaseSettingsAdapter):
             ok=True, key=key, requested_value=value,
             applied=True, message="Aplicado"
         )
-
-    def verify(self, key: str) -> bool:
-        return True
 
 
 class RadioSettingsAdapter(BaseSettingsAdapter):
@@ -319,9 +392,6 @@ class RadioSettingsAdapter(BaseSettingsAdapter):
             message="Requiere reinicio" if restart else "Aplicado"
         )
 
-    def verify(self, key: str) -> bool:
-        return True
-
 
 class LyricsSettingsAdapter(BaseSettingsAdapter):
     """Applies lyrics settings at runtime."""
@@ -339,9 +409,6 @@ class LyricsSettingsAdapter(BaseSettingsAdapter):
             applied=True, message="Aplicado"
         )
 
-    def verify(self, key: str) -> bool:
-        return True
-
 
 class DeviceSettingsAdapter(BaseSettingsAdapter):
     """Applies device/sync settings at runtime."""
@@ -358,9 +425,6 @@ class DeviceSettingsAdapter(BaseSettingsAdapter):
             ok=True, key=key, requested_value=value,
             applied=True, message="Aplicado"
         )
-
-    def verify(self, key: str) -> bool:
-        return True
 
 
 class ConnectionSettingsAdapter(BaseSettingsAdapter):
@@ -380,9 +444,6 @@ class ConnectionSettingsAdapter(BaseSettingsAdapter):
             message="Requiere reinicio" if key in ("connections/server_port",) else "Aplicado"
         )
 
-    def verify(self, key: str) -> bool:
-        return True
-
 
 class HomeAudioSettingsAdapter(BaseSettingsAdapter):
     """Applies Home Audio / Snapcast settings at runtime."""
@@ -400,9 +461,6 @@ class HomeAudioSettingsAdapter(BaseSettingsAdapter):
             requires_restart=True,
             message="Requiere reinicio"
         )
-
-    def verify(self, key: str) -> bool:
-        return True
 
 
 class LoggingSettingsAdapter(BaseSettingsAdapter):
@@ -439,12 +497,10 @@ class LoggingSettingsAdapter(BaseSettingsAdapter):
             applied=True, message="Aplicado"
         )
 
-    def verify(self, key: str) -> bool:
-        return True
-
 
 _ALL_ADAPTERS = [
     ThemeSettingsAdapter,
+    AccessibilitySettingsAdapter,
     PlaybackSettingsAdapter,
     AudioSettingsAdapter,
     EqSettingsAdapter,
@@ -457,11 +513,25 @@ _ALL_ADAPTERS = [
     ConnectionSettingsAdapter,
     HomeAudioSettingsAdapter,
     LoggingSettingsAdapter,
-    AccessibilitySettingsAdapter,
 ]
 
 
-def register_all_adapters(coordinator):
-    """Register all adapters into a SettingsRuntimeCoordinator."""
-    for adapter_cls in _ALL_ADAPTERS:
+def register_all_adapters(coordinator, theme_bridge: Any = None,
+                          accessibility_bridge: Any = None) -> None:
+    """Register all adapters into a SettingsRuntimeCoordinator.
+
+    Theme and Accessibility adapters accept an optional bridge reference
+    (constructor injection).  When ``None`` they fall back to the bridge module
+    singleton at apply/verify time.
+    """
+    coordinator.register_adapter(ThemeSettingsAdapter(theme_bridge=theme_bridge))
+    coordinator.register_adapter(
+        AccessibilitySettingsAdapter(accessibility_bridge=accessibility_bridge)
+    )
+    for adapter_cls in (
+        PlaybackSettingsAdapter, AudioSettingsAdapter, EqSettingsAdapter,
+        LibrarySettingsAdapter, CacheSettingsAdapter, HistorySettingsAdapter,
+        RadioSettingsAdapter, LyricsSettingsAdapter, DeviceSettingsAdapter,
+        ConnectionSettingsAdapter, HomeAudioSettingsAdapter, LoggingSettingsAdapter,
+    ):
         coordinator.register_adapter(adapter_cls())

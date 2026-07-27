@@ -145,7 +145,10 @@ class SettingsRuntimeCoordinator:
             verified = False
             if not restart:
                 try:
-                    verified = bool(adapter.verify(key))
+                    vr = adapter.verify(key, value)
+                    verified = (
+                        bool(vr.get("ok", False)) if isinstance(vr, dict) else bool(vr)
+                    )
                 except Exception:
                     logger.exception("Settings verification failed for %s", key)
             if not restart and verified:

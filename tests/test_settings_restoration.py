@@ -112,14 +112,45 @@ class TestAccessibilitySettingsAdapterRuntime:
         assert result.ok is True
         assert bridge.fontScale == 1.5
 
-    def test_adapter_fallback_ok_when_no_bridge(self):
+    def test_adapter_verify_ok_when_value_matches(self):
+        bridge = AccessibilityBridge(playback_service=MagicMock())
+        adapter = AccessibilitySettingsAdapter(accessibility_bridge=bridge)
+        bridge._font_scale = 1.5
+        result = adapter.verify("accessibility/font_size", 1.5)
+        assert result["ok"] is True
+        assert result["applied"] is True
+
+    def test_adapter_verify_fails_on_mismatch(self):
+        bridge = AccessibilityBridge(playback_service=MagicMock())
+        adapter = AccessibilitySettingsAdapter(accessibility_bridge=bridge)
+        bridge._font_scale = 1.0
+        result = adapter.verify("accessibility/font_size", 1.5)
+        assert result["ok"] is False
+        assert result["error"] == "VERIFY_FAILED"
+        assert result["expected"] == 1.5
+        assert result["actual"] == 1.0
+
+    def test_adapter_apply_fails_when_no_bridge(self):
         adapter = AccessibilitySettingsAdapter()
         import ui_qml_bridge.accessibility_bridge as mod
         saved = mod._instance
         try:
             mod._instance = None
             result = adapter.apply("accessibility/mono", True)
-            assert result.ok is True
+            assert result.ok is False
+            assert result.error_code == "APPLY_TARGET_UNAVAILABLE"
+        finally:
+            mod._instance = saved
+
+    def test_adapter_verify_returns_unavailable_when_no_bridge(self):
+        adapter = AccessibilitySettingsAdapter()
+        import ui_qml_bridge.accessibility_bridge as mod
+        saved = mod._instance
+        try:
+            mod._instance = None
+            result = adapter.verify("accessibility/mono", True)
+            assert result["ok"] is False
+            assert result["error"] == "APPLY_TARGET_UNAVAILABLE"
         finally:
             mod._instance = saved
 
@@ -151,14 +182,45 @@ class TestThemeSettingsAdapterRuntime:
         assert result.ok is True
         assert bridge.compactMode is True
 
-    def test_adapter_fallback_ok_when_no_bridge(self):
+    def test_adapter_verify_ok_when_value_matches(self):
+        bridge = ThemeBridge(coordinator=MagicMock())
+        adapter = ThemeSettingsAdapter(theme_bridge=bridge)
+        bridge._theme = "dark"
+        result = adapter.verify("appearance/theme", "dark")
+        assert result["ok"] is True
+        assert result["applied"] is True
+
+    def test_adapter_verify_fails_on_mismatch(self):
+        bridge = ThemeBridge(coordinator=MagicMock())
+        adapter = ThemeSettingsAdapter(theme_bridge=bridge)
+        bridge._theme = "light"
+        result = adapter.verify("appearance/theme", "dark")
+        assert result["ok"] is False
+        assert result["error"] == "VERIFY_FAILED"
+        assert result["expected"] == "dark"
+        assert result["actual"] == "light"
+
+    def test_adapter_apply_fails_when_no_bridge(self):
         adapter = ThemeSettingsAdapter()
         import ui_qml_bridge.theme_bridge as mod
         saved = mod._instance
         try:
             mod._instance = None
             result = adapter.apply("appearance/theme", "dark")
-            assert result.ok is True
+            assert result.ok is False
+            assert result.error_code == "APPLY_TARGET_UNAVAILABLE"
+        finally:
+            mod._instance = saved
+
+    def test_adapter_verify_returns_unavailable_when_no_bridge(self):
+        adapter = ThemeSettingsAdapter()
+        import ui_qml_bridge.theme_bridge as mod
+        saved = mod._instance
+        try:
+            mod._instance = None
+            result = adapter.verify("appearance/theme", "dark")
+            assert result["ok"] is False
+            assert result["error"] == "APPLY_TARGET_UNAVAILABLE"
         finally:
             mod._instance = saved
 

@@ -32,7 +32,8 @@ class FakeSettingsBridgeV2(QObject):
         super().__init__(parent)
         self._values = {
             "appearance/accent_color": "#8FB7FF",
-            "appearance/font_scale": 100,
+            "appearance/theme": "dark",
+            "accessibility/font_size": 1.0,
             "appearance/reduced_motion": False,
             "appearance/reduced_transparency": False,
             "appearance/compact_mode": False,

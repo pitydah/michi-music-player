@@ -13,6 +13,8 @@ from core.settings_adapters import (
 )
 from core.settings_runtime_coordinator import SettingsRuntimeCoordinator
 from core.settings_schema import ALL_CATEGORIES, get_entry, validate, get_default
+from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
+from ui_qml_bridge.theme_bridge import ThemeBridge
 
 pytestmark = [pytest.mark.qml_module("settings")]
 
@@ -164,10 +166,11 @@ class TestValidation:
 
 class TestAdapters:
     def test_theme_adapter_applies(self):
-        a = ThemeSettingsAdapter()
+        bridge = ThemeBridge(coordinator=MagicMock())
+        a = ThemeSettingsAdapter(theme_bridge=bridge)
         r = a.apply("appearance/theme", "dark")
         assert r.ok
-        assert a.verify("appearance/theme")
+        assert a.verify("appearance/theme", "dark")["ok"]
 
     def test_playback_adapter_applies(self):
         a = PlaybackSettingsAdapter()
@@ -230,7 +233,8 @@ class TestAdapters:
         assert r.ok
 
     def test_accessibility_adapter_applies(self):
-        a = AccessibilitySettingsAdapter()
+        bridge = AccessibilityBridge(playback_service=MagicMock())
+        a = AccessibilitySettingsAdapter(accessibility_bridge=bridge)
         r = a.apply("accessibility/high_contrast", True)
         assert r.ok
         r2 = a.apply("accessibility/mono", True)

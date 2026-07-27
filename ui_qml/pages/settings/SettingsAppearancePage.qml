@@ -33,8 +33,6 @@ Item {
     function _saveValue(key, value) {
         if (!root.bridge) return
         root.bridge.setValue(key, value)
-        if (root.themeCtl && typeof root.themeCtl.applySetting === "function")
-            root.themeCtl.applySetting(key, value)
     }
 
     Component.onCompleted: root.refresh()
@@ -189,9 +187,10 @@ Item {
 
                             Switch {
                                 id: darkModeSwitch
-                                checked: root._loadValue("appearance/dark_mode", true)
+                                checked: root._loadValue("appearance/theme", "dark") !== "light"
                                 onClicked: {
-                                    root._saveValue("appearance/dark_mode", checked)
+                                    var theme = checked ? "dark" : "light"
+                                    root._saveValue("appearance/theme", theme)
                                     MichiTheme.setDarkMode(checked)
                                 }
                                 Accessible.description: "Alternar modo oscuro/claro"
@@ -227,7 +226,7 @@ Item {
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                                 Label {
-                                    text: fontScaleSlider.value + "%"
+                                    text: Math.round(fontScaleSlider.value * 100) + "%"
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
@@ -240,16 +239,16 @@ Item {
                                 activeFocusOnTab: true
 
                                 implicitWidth: 200
-                                from: 75
-                                to: 150
-                                value: root._loadValue("appearance/font_scale", 100)
-                                stepSize: 5
+                                from: 0.75
+                                to: 1.5
+                                value: root._loadValue("accessibility/font_size", 1.0)
+                                stepSize: 0.05
                                 accessibleName: "Escala de fuente"
-                                onMoved: root._saveValue("appearance/font_scale", value)
+                                onMoved: root._saveValue("accessibility/font_size", value)
                                 onPressedChanged: {
-                                    if (!pressed) root._saveValue("appearance/font_scale", value)
+                                    if (!pressed) root._saveValue("accessibility/font_size", value)
                                 }
-                                Accessible.description: "Ajusta el tamaño de la fuente: " + value + "%"
+                                Accessible.description: "Ajusta el tamaño de la fuente: " + Math.round(value * 100) + "%"
                             }
                         }
                     }
