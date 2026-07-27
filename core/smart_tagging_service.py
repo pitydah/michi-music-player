@@ -55,7 +55,6 @@ class SmartTaggingService:
         if not self._library_query:
             return {"ok": False, "error": "NO_LIBRARY_QUERY", "suggestions": []}
         try:
-            from core.library.library_query_service import LibraryQueryService
             results = self._library_query.get_track(track_id)
             if not results:
                 return {"ok": False, "error": "TRACK_NOT_FOUND", "suggestions": []}
