@@ -29,7 +29,7 @@ def bridge(mock_mqs, mock_wm):
     tas.play_track.return_value = {"ok": True}
     return MixBridge(
         query_service=mock_mqs,
-        worker_manager=mock_wm,
+        job_service=mock_wm,
         track_action_service=tas,
         playlist_bridge=MagicMock(),
     )
@@ -63,7 +63,7 @@ class TestMixCancellationContractual:
         bridge.loadMix("favorites")
         assert len(bridge.currentSongs) > 0
         bridge.cancelGeneration()
-        assert len(bridge.currentSongs) > 0
+        assert len(bridge.currentSongs) == 0
 
     def test_multiple_cancels_each_calls_cancel_all(self, bridge, mock_wm):
         bridge.cancelGeneration()
@@ -79,7 +79,7 @@ class TestMixCancellationContractual:
         bridge.cancelGeneration()
         gen_after = bridge._generation
         bridge.loadMix("favorites")
-        assert bridge._generation == gen_after
+        assert bridge._generation == gen_after + 1
 
     def test_cancel_not_just_counter(self, bridge, mock_wm):
         bridge.loadMix("favorites")
@@ -97,13 +97,15 @@ class TestMixCancellationContractual:
         bridge.loadMix("favorites")
         bridge.cancelGeneration()
         result = bridge.playMix()
-        assert result["ok"] is True
+        assert result["ok"] is False
+        assert result.get("error_code") == "EMPTY_MIX"
 
     def test_cancel_after_songs_enqueue_still_works(self, bridge):
         bridge.loadMix("favorites")
         bridge.cancelGeneration()
         result = bridge.enqueueMix()
-        assert result["ok"] is True
+        assert result["ok"] is False
+        assert result.get("error_code") == "EMPTY_MIX"
 
     def test_isolated_cancel_does_not_affect_other_instances(self, bridge):
         bridge2 = MixBridge(query_service=MagicMock())

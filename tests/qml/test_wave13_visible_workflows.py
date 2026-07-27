@@ -148,7 +148,7 @@ class TestWave13VisibleWorkflows:
             def enqueue(s, paths, play_now=False):
                 s.played.extend(paths)
         player = FakePlayer()
-        svc = TrackActionService(query_service=qs, player_service=player)
+        svc = TrackActionService(query_service=qs)
         result = svc.play_track(1)
         assert result.get("ok") is True
         assert len(player.played) == 1
@@ -162,7 +162,7 @@ class TestWave13VisibleWorkflows:
             def enqueue(s, paths, play_now=False):
                 s.enqueued.extend(paths)
         player = FakePlayer()
-        svc = TrackActionService(query_service=qs, player_service=player)
+        svc = TrackActionService(query_service=qs)
         result = svc.enqueue_track(2)
         assert result.get("ok") is True
         assert len(player.enqueued) == 1

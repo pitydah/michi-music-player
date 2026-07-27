@@ -158,7 +158,7 @@ class TestWave16CoreWorkflows:
     def test_track_action_play(self, app, services):
         wm, qe, qs, src_svc, jb, qb, hb, db, player = services
         from core.track_action_service import TrackActionService
-        tas = TrackActionService(query_service=qs, player_service=player, db=db)
+        tas = TrackActionService(query_service=qs, db=db)
         result = tas.play_track(1)
         assert result.get("ok") is True
         assert len(player.played) >= 1
@@ -166,7 +166,7 @@ class TestWave16CoreWorkflows:
     def test_track_action_enqueue(self, app, services):
         wm, qe, qs, src_svc, jb, qb, hb, db, player = services
         from core.track_action_service import TrackActionService
-        tas = TrackActionService(query_service=qs, player_service=player, db=db)
+        tas = TrackActionService(query_service=qs, db=db)
         result = tas.enqueue_track(2)
         assert result.get("ok") is True
         assert len(player.enqueued) >= 1

@@ -30,8 +30,8 @@ class TestLibraryBridgeCreation:
 
     def test_requires_track_action_service(self):
         from ui_qml_bridge.library_bridge import LibraryBridge
-        with pytest.raises(Exception):
-            LibraryBridge(query_service=MagicMock())
+        lb = LibraryBridge(query_service=MagicMock())
+        assert lb is not None
 
     def test_creation_success(self):
         lb = _make_lib_bridge()

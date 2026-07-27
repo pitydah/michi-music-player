@@ -77,8 +77,8 @@ CONTEXT_BINDINGS: list[ContextBinding] = [
     ContextBinding(SelectionContextBridge, "selectionContextBridge"),
     ContextBinding(LibraryBridge,       "libraryBridge",   required_services=("connection_factory", "worker_manager", "global_search_service", "library_query_service", "query_executor", "track_action_service"), optional_services=("playback_service",)),
 
-    ContextBinding(NowPlayingBridge,    "nowplayingBridge", required_services=("playback_service", "worker_manager")),
-    ContextBinding(QueueBridge,         "queueBridge",     required_services=("playback_service",)),
+    ContextBinding(NowPlayingBridge,    "nowplayingBridge", required_services=("playback_service",)),
+    ContextBinding(QueueBridge,         "queueBridge",     required_services=("playback_service",), optional_services=("queue_service",)),
     ContextBinding(HistoryBridge,       "historyBridge",   required_services=("connection_factory",), optional_services=("history_query_service", "query_executor", "playback_service")),
     ContextBinding(MixBridge,           "mixBridge",       required_services=("mix_query_service", "job_service", "playlist_service", "playback_service", "queue_service")),
     ContextBinding(LyricsBridge,        "lyricsBridge",    required_services=("worker_manager",)),
@@ -93,12 +93,12 @@ CONTEXT_BINDINGS: list[ContextBinding] = [
     ContextBinding(RadioBridge,         "radioBridge",     required_services=("playback_service",), optional_services=("radio_service",)),
     ContextBinding(LibrarySourcesBridge,"librarySourcesBridge", required_services=("library_sources_service",)),
     ContextBinding(HomeBridge,          "homeBridge",      required_services=("connection_factory", "playback_service", "library_sources_service")),
-    ContextBinding(AudioLabBridge,      "audioLabBridge",  required_services=("worker_manager",), optional_services=("audio_lab_service", "job_service", "process_controller")),
-    ContextBinding(MetadataBridge,      "metadataBridge",  required_services=("worker_manager",), optional_services=("metadata_service", "job_service")),
-    ContextBinding(SmartTaggingBridge,  "smartTaggingBridge", required_services=("worker_manager", "library_query_service"), optional_services=("smart_tagging_service",)),
+    ContextBinding(AudioLabBridge,      "audioLabBridge",  optional_services=("audio_lab_service", "job_service", "process_controller")),
+    ContextBinding(MetadataBridge,      "metadataBridge",  optional_services=("metadata_service", "job_service")),
+    ContextBinding(SmartTaggingBridge,  "smartTaggingBridge", required_services=("library_query_service",), optional_services=("smart_tagging_service",)),
     ContextBinding(LibraryDoctorBridge, "libraryDoctorBridge", required_services=("connection_factory", "worker_manager")),
-    ContextBinding(MichiAIBridge,       "michiAiBridge",   required_services=("device_sync_service", "job_service")),
-    ContextBinding(DiagnosticsBridge,   "diagnosticsBridge", required_services=("playback_service", "connection_factory", "worker_manager", "query_executor"), optional_services=("radio_service", "device_sync_service")),
+    ContextBinding(MichiAIBridge,       "michiAiBridge",   required_services=("job_service",)),
+    ContextBinding(DiagnosticsBridge,   "diagnosticsBridge", required_services=("playback_service", "worker_manager", "query_executor"), optional_services=("radio_service", "device_sync_service")),
     ContextBinding(RuntimeQualityBridge,"runtimeQualityBridge"),
     ContextBinding(PhysicalAudioBridge, "physicalAudioBridge"),
     ContextBinding(CommandPaletteBridge,"commandPaletteBridge"),
@@ -123,6 +123,18 @@ _EXPLICIT_BRIDGE_KEYS: dict[str, str] = {
     "jobBridge": "job_bridge",
     "pageStateStore": "page_state",
     "confirmationBridge": "confirmation",
+}
+
+# QML context aliases: some pages reference bridge context properties by names
+# that differ from the canonical CONTEXT_BINDINGS context_name. These aliases
+# ensure the same bridge instance is reachable under both names.
+CONTEXT_ALIASES: dict[str, str] = {
+    # BalanceSlider.qml, MonoToggle.qml reference audioBridge
+    "audioBridge": "accessibilityBridge",
+    # NowPlayingBar.qml, NowPlayingOutputSelector.qml reference outputBridge
+    "outputBridge": "outputProfilesBridge",
+    # CoverBridgeProxy.qml references coverBridge.getCoverPath
+    "coverBridge": "coverProviderBridge",
 }
 
 

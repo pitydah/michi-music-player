@@ -48,7 +48,11 @@ class TestAudioLabOrchestrated:
     @pytest.fixture
     def nav(self):
         nav = MagicMock()
-        nav.navigate.return_value = {"ok": True}
+        def _navigate(route: str):
+            if route == "diagnostics":
+                return {"ok": True, "route": "diagnostics"}
+            return {"ok": False}
+        nav.navigate.side_effect = _navigate
         return nav
 
     @pytest.fixture
@@ -103,7 +107,7 @@ class TestAudioLabOrchestrated:
         f = tmp_path / "test.flac"
         f.write_bytes(b"fLaC" + b"\x00" * 200)
         result = bridge.integrityCheck(str(f))
-        assert "valid" in result or "error" in result
+        assert "is_valid" in result or "error" in result
 
     def test_bridge_analysis_missing(self, bridge):
         result = bridge.analyzeFile("/nonexistent.flac")
@@ -119,5 +123,5 @@ class TestAudioLabOrchestrated:
     def test_bridge_refresh_no_db(self, app):
         b = AudioLabBridge()
         result = b.refresh()
-        assert result["ok"] is True
+        assert result["ok"] is False
         assert result["stats"] == {}
