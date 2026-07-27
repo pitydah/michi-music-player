@@ -88,6 +88,26 @@ class AccessibilitySettingsAdapter(BaseSettingsAdapter):
         return cls._KEYS
 
     def apply(self, key: str, value: Any) -> SettingsApplyResult:
+        from ui_qml_bridge.accessibility_bridge import _instance as bridge
+        if bridge is not None:
+            try:
+                if key == "accessibility/mono":
+                    bridge.mono = bool(value)
+                elif key == "accessibility/balance":
+                    bridge.balance = float(value)
+                elif key == "accessibility/font_size":
+                    bridge.fontScale = float(value)
+                elif key == "accessibility/high_contrast":
+                    bridge.highContrast = bool(value)
+                elif key == "accessibility/reduced_motion":
+                    bridge.reduceMotion = bool(value)
+                elif key == "accessibility/focus_indicators":
+                    bridge.focusIndicators = bool(value)
+            except Exception as exc:
+                return SettingsApplyResult(
+                    ok=False, key=key, requested_value=value,
+                    error_code="APPLY_FAILED", message=str(exc)
+                )
         return SettingsApplyResult(
             ok=True, key=key, requested_value=value,
             applied=True, message="Aplicado"

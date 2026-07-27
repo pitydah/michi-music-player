@@ -155,7 +155,7 @@ class HistoryBridge(QObject):
     def cancelExport(self, export_id: str, filepath: str = ""):
         if filepath and os.path.exists(filepath):
             import contextlib
-            with contextlib.suppress(Exception):
+            with contextlib.suppress(OSError):
                 os.remove(filepath)
         return {"ok": True, "cancelled": True}
 

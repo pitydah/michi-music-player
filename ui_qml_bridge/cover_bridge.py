@@ -83,7 +83,7 @@ def _load_cover_image(album_key: str, size: int) -> QImage | None:
         _close = False
     try:
         from contextlib import suppress
-        with suppress(Exception):
+        with suppress(OSError, KeyError):
             row = db.get_album_art_cache(album_key)
             if row:
                 _mime, data = row
@@ -96,7 +96,7 @@ def _load_cover_image(album_key: str, size: int) -> QImage | None:
     finally:
         if _close:
             from contextlib import suppress as sup2
-            with sup2(Exception):
+            with sup2(OSError):
                 db.close()
     return None
 

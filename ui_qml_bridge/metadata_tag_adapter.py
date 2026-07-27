@@ -102,7 +102,7 @@ def write_tags_safe(tags: TrackTags, backup_path: str | None = None) -> dict:
     except Exception as e:
         logger.debug("write_tags_safe failed: %s", e)
         if backup_path and Path(backup_path).exists():
-            with contextlib.suppress(Exception):
+            with contextlib.suppress(OSError):
                 shutil.copy2(backup_path, tags.filepath)
         return {"ok": False, "error_code": "WRITE_FAILED", "message": str(e)}
 

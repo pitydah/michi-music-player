@@ -43,7 +43,7 @@ def _field(source, *names: str) -> str:
     for name in names:
         value = getattr(source, name, "")
         if callable(value):
-            with contextlib.suppress(Exception):
+            with contextlib.suppress(AttributeError):
                 value = value()
         if value:
             return str(value)
@@ -170,7 +170,7 @@ class NowPlayingBridge(QObject):
             signal = getattr(self._player, signal_name, None)
             if signal is None:
                 continue
-            with contextlib.suppress(Exception):
+            with contextlib.suppress(TypeError):
                 signal.connect(slot)
 
     def _begin_command(self, operation: str):

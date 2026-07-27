@@ -94,7 +94,7 @@ class LyricsBridge(QObject):
 
         if self._np_bridge:
             from contextlib import suppress
-            with suppress(Exception):
+            with suppress(AttributeError):
                 self._np_bridge.trackChanged.connect(self._on_track_changed)
 
     # ── Properties ──
