@@ -29,7 +29,15 @@ Item {
     property string zoneState: root.ha ? "ready" : "unavailable"
     property string errorMessage: ""
 
+    signal backClicked()
     signal deleteRequested(string zoneId)
+    signal groupClicked(string zoneId)
+    signal muteToggled(string zoneId, bool muted)
+    signal reconnectClicked(string zoneId)
+    signal renameRequested(string zoneId, string newName)
+    signal sourceChanged(string zoneId, string source)
+    signal ungroupClicked(string zoneId)
+    signal zoneDetailVolumeChanged(string zoneId, real volume)
 
     MichiResponsive {
         id: responsive
