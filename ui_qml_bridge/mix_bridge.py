@@ -76,7 +76,6 @@ class MixBridge(QObject):
                   **legacy_kwargs) -> None:
         super().__init__(parent)
         # Retained for bridge-factory and caller compatibility; this bridge no longer uses them.
-        del action_registry, capability_bridge, accessibility_bridge, playback_service, query_executor
         self._mix_svc = mix_service
         if self._mix_svc is None and "query_service" in legacy_kwargs:
             self._mix_svc = legacy_kwargs["query_service"]

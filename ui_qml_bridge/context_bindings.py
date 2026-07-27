@@ -64,7 +64,7 @@ class ContextBinding:
 
 
 CONTEXT_BINDINGS: list[ContextBinding] = [
-    ContextBinding(NavigationBridge,    "navigationBridge"),
+    ContextBinding(NavigationBridge,    "navigationBridge", required_services=("navigation_service",)),
     ContextBinding(AppBridge,           "appBridge",       required_services=("connection_factory", "playback_service"), optional_services=("device_sync_service", "home_audio_service", "radio_service")),
     ContextBinding(ThemeBridge,         "themeBridge",    required_services=("settings_coordinator",)),
     ContextBinding(NotificationBridge,  "notificationBridge", required_services=("notification_service", "action_registry"), optional_services=("diagnostics_service",)),
@@ -74,13 +74,13 @@ CONTEXT_BINDINGS: list[ContextBinding] = [
     ContextBinding(ActionRegistry,      "actionRegistry"),
     ContextBinding(CapabilityBridge,    "capabilityBridge"),
     ContextBinding(ConfirmationBridge,  "confirmationBridge", required_services=("confirmation_service",)),
-    ContextBinding(JobBridge,           "jobBridge",       required_services=("worker_manager", "connection_factory")),
+    ContextBinding(JobBridge,           "jobBridge",       required_services=("worker_manager", "database")),
     ContextBinding(SelectionContextBridge, "selectionContextBridge"),
-    ContextBinding(LibraryBridge,       "libraryBridge",   required_services=("connection_factory", "worker_manager", "global_search_service", "library_query_service", "query_executor", "track_action_service"), optional_services=("playback_service",)),
+    ContextBinding(LibraryBridge,       "libraryBridge",   required_services=("database", "worker_manager", "global_search_service", "library_query_service", "query_executor", "track_action_service"), optional_services=("playback_service",)),
 
     ContextBinding(NowPlayingBridge,    "nowplayingBridge", required_services=("playback_service", "worker_manager")),
     ContextBinding(QueueBridge,         "queueBridge",     required_services=("playback_service",)),
-    ContextBinding(HistoryBridge,       "historyBridge",   required_services=("connection_factory",), optional_services=("history_query_service", "query_executor", "playback_service")),
+    ContextBinding(HistoryBridge,       "historyBridge",   required_services=("database",), optional_services=("history_query_service", "query_executor", "playback_service")),
     ContextBinding(MixBridge,           "mixBridge",       required_services=("mix_query_service", "job_service", "playlist_service", "playback_service", "queue_service")),
     ContextBinding(LyricsBridge,        "lyricsBridge",    required_services=("worker_manager",)),
     ContextBinding(GlobalSearchBridge,  "globalSearchBridge", required_services=("global_search_service", "query_executor")),
@@ -93,11 +93,11 @@ CONTEXT_BINDINGS: list[ContextBinding] = [
     ContextBinding(MobileSyncBridge,    "mobileSyncBridge", optional_services=("mobile_sync_service",)),
     ContextBinding(RadioBridge,         "radioBridge",     required_services=("playback_service",), optional_services=("radio_service",)),
     ContextBinding(LibrarySourcesBridge,"librarySourcesBridge", required_services=("library_sources_service",)),
-    ContextBinding(HomeBridge,          "homeBridge",      required_services=("connection_factory", "playback_service", "library_sources_service")),
+    ContextBinding(HomeBridge,          "homeBridge",      required_services=("database", "playback_service", "library_sources_service")),
     ContextBinding(AudioLabBridge,      "audioLabBridge",  required_services=("worker_manager",), optional_services=("audio_lab_service", "job_service", "process_controller")),
     ContextBinding(MetadataBridge,      "metadataBridge",  required_services=("worker_manager",), optional_services=("metadata_service", "job_service")),
     ContextBinding(SmartTaggingBridge,  "smartTaggingBridge", required_services=("worker_manager", "library_query_service"), optional_services=("smart_tagging_service",)),
-    ContextBinding(LibraryDoctorBridge, "libraryDoctorBridge", required_services=("connection_factory", "worker_manager")),
+    ContextBinding(LibraryDoctorBridge, "libraryDoctorBridge", required_services=("database", "worker_manager")),
     ContextBinding(MichiAIBridge,       "michiAiBridge",   required_services=("device_sync_service", "job_service")),
     ContextBinding(DiagnosticsBridge,   "diagnosticsBridge", required_services=("playback_service", "connection_factory", "worker_manager", "query_executor"), optional_services=("radio_service", "device_sync_service")),
     ContextBinding(DiscLabBridge,       "discLabBridge",   required_services=("cd_ripper_service",), optional_services=("worker_manager",)),
@@ -107,7 +107,7 @@ CONTEXT_BINDINGS: list[ContextBinding] = [
     ContextBinding(CoverProviderBridge, "coverProviderBridge"),
     ContextBinding(DesktopBridge,       "desktopBridge"),
     ContextBinding(PageStateStore,      "pageStateStore"),
-    ContextBinding(PlaylistsBridge,     "playlistsBridge", required_services=("connection_factory",), optional_services=("playback_service", "playlist_service")),
+    ContextBinding(PlaylistsBridge,     "playlistsBridge", required_services=("database",), optional_services=("playback_service", "playlist_service")),
 ]
 
 def _camel_to_snake(name: str) -> str:

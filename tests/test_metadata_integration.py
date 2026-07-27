@@ -34,7 +34,7 @@ class TestMetadataIntegration:
         assert hasattr(MetadataBridge, 'loadMetadata')
         assert hasattr(MetadataBridge, 'saveChanges')
 
-    def test_metadata_editor_service_exists(self):
+    def test_library_mutation_service_exists(self):
         from core.composition.infrastructure import build as infra
         from core.composition.playback import build as playback
         from core.composition.library import build as library
@@ -43,7 +43,7 @@ class TestMetadataIntegration:
         infra(c)
         playback(c)  # registra queue_service requerido por library.build()
         library(c)
-        es = c.get("metadata_editor_service")
+        es = c.get("library_mutation_service")
         assert es is not None
 
     def test_batch_edit_field(self):
