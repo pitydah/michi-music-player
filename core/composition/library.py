@@ -72,3 +72,31 @@ def build(container: ServiceContainer) -> None:
     except Exception:
         logger.error("Failed to create artwork_service", exc_info=True)
         container.register("artwork_service", None)
+
+    try:
+        from core.songs_service import SongsService
+        container.register("songs_service", SongsService(db=db, library_query_service=lqs))
+    except Exception:
+        logger.error("Failed to create songs_service", exc_info=True)
+        container.register("songs_service", None)
+
+    try:
+        from core.track_service import TrackService
+        container.register("track_service", TrackService(db=db))
+    except Exception:
+        logger.error("Failed to create track_service", exc_info=True)
+        container.register("track_service", None)
+
+    try:
+        from core.genres_service import GenresService
+        container.register("genres_service", GenresService(db=db))
+    except Exception:
+        logger.error("Failed to create genres_service", exc_info=True)
+        container.register("genres_service", None)
+
+    try:
+        from core.folder_service import FolderService
+        container.register("folder_service", FolderService(db=db, worker_manager=wm))
+    except Exception:
+        logger.error("Failed to create folder_service", exc_info=True)
+        container.register("folder_service", None)

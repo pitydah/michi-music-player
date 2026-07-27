@@ -361,19 +361,6 @@ class ServiceContainer:
     def device_sync_service(self) -> Any | None:
         return self._services.get("device_sync_service")
 
-    def ensure_device_sync_service(self) -> Any | None:
-        if "device_sync_service" not in self._services or self._services["device_sync_service"] is None:
-            try:
-                from core.device_sync_service import DeviceSyncService
-                svc = DeviceSyncService()
-                self.register("device_sync_service", svc)
-                logger.info("DeviceSyncService built productively")
-                return svc
-            except Exception as e:
-                logger.warning("DeviceSyncService build failed: %s", e)
-                return None
-        return self._services["device_sync_service"]
-
     @property
     def connection_service(self) -> Any | None:
         return self._services.get("connection_service")

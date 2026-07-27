@@ -86,14 +86,14 @@ class ActionRegistry(QObject):
                 action.service_name = "navigation_bridge"
 
         playback_map = {
-            "playback_playpause": ("playback_bridge", "togglePlay"),
-            "playback_next": ("playback_bridge", "next"),
-            "playback_prev": ("playback_bridge", "previous"),
-            "playback_volume_up": ("playback_bridge", "volumeUp"),
-            "playback_volume_down": ("playback_bridge", "volumeDown"),
-            "playback_mute": ("playback_bridge", "toggleMute"),
-            "playback_seek_forward": ("playback_bridge", "seekForward"),
-            "playback_seek_back": ("playback_bridge", "seekBack"),
+            "playback_playpause": ("playback_service", "togglePlay"),
+            "playback_next": ("playback_service", "next"),
+            "playback_prev": ("playback_service", "previous"),
+            "playback_volume_up": ("playback_service", "volumeUp"),
+            "playback_volume_down": ("playback_service", "volumeDown"),
+            "playback_mute": ("playback_service", "toggleMute"),
+            "playback_seek_forward": ("playback_service", "seekForward"),
+            "playback_seek_back": ("playback_service", "seekBack"),
         }
         for aid, (svc, method) in playback_map.items():
             action = self._actions.get(aid)
@@ -113,8 +113,8 @@ class ActionRegistry(QObject):
                 action.service_name = svc
 
         track_map = {
-            "track_play_now": ("playback_bridge", "play"),
-            "track_play_next": ("playback_bridge", "playNext"),
+            "track_play_now": ("playback_service", "play"),
+            "track_play_next": ("playback_service", "playNext"),
             "track_add_to_queue": ("queue_bridge", "add"),
             "track_favorite": ("library_bridge", "toggleFavorite"),
             "track_open_album": ("navigation_bridge", "navigateToAlbum"),
@@ -126,8 +126,8 @@ class ActionRegistry(QObject):
                 action.service_name = svc
 
         album_map = {
-            "album_play": ("playback_bridge", "playAlbum"),
-            "album_shuffle": ("playback_bridge", "shuffleAlbum"),
+            "album_play": ("playback_service", "playAlbum"),
+            "album_shuffle": ("playback_service", "shuffleAlbum"),
             "album_queue": ("queue_bridge", "addAlbum"),
             "album_favorite": ("library_bridge", "toggleFavoriteAlbum"),
             "album_play_next": ("queue_bridge", "playNext"),
@@ -140,10 +140,10 @@ class ActionRegistry(QObject):
                 action.service_name = svc
 
         artist_map = {
-            "artist_play": ("playback_bridge", "playArtist"),
-            "artist_shuffle": ("playback_bridge", "shuffleArtist"),
+            "artist_play": ("playback_service", "playArtist"),
+            "artist_shuffle": ("playback_service", "shuffleArtist"),
             "artist_queue": ("queue_bridge", "addArtist"),
-            "artist_radio": ("playback_bridge", "radioFromArtist"),
+            "artist_radio": ("playback_service", "radioFromArtist"),
             "artist_add_to_playlist": ("playlists_bridge", "addArtist"),
         }
         for aid, (svc, method) in artist_map.items():
@@ -153,7 +153,7 @@ class ActionRegistry(QObject):
                 action.service_name = svc
 
         folder_map = {
-            "folder_play": ("playback_bridge", "playFolder"),
+            "folder_play": ("playback_service", "playFolder"),
             "folder_queue": ("queue_bridge", "addFolder"),
         }
         for aid, (svc, method) in folder_map.items():
@@ -168,7 +168,7 @@ class ActionRegistry(QObject):
             "track_open_folder": ("navigation_bridge", "navigateToFolder"),
             "track_show_properties": ("navigation_bridge", "navigateToTrackProperties"),
             "track_edit_metadata": ("navigation_bridge", "navigateToMetadataEditor"),
-            "track_radio": ("playback_bridge", "radioFromTrack"),
+            "track_radio": ("playback_service", "radioFromTrack"),
             "track_replace_queue": ("queue_bridge", "replace"),
             "track_unfavorite": ("library_bridge", "unfavorite"),
         }
