@@ -12,12 +12,15 @@ class TestSmartTagging:
     @pytest.fixture
     def mock_service(self):
         svc = MagicMock()
-        svc.suggest_for_track.return_value = [
-            MagicMock(field="artist", current="Unknown", suggested="Real Artist",
-                      confidence=0.95, source="MusicBrainz", warning=""),
-            MagicMock(field="genre", current="", suggested="Rock",
-                      confidence=0.82, source="AcousticBrainz", warning=""),
-        ]
+        svc.suggest_for_track.return_value = {
+            "ok": True,
+            "suggestions": [
+                {"field": "artist", "current_value": "Unknown", "proposed_value": "Real Artist",
+                 "confidence": 0.95, "source": "MusicBrainz", "warning": ""},
+                {"field": "genre", "current_value": "", "proposed_value": "Rock",
+                 "confidence": 0.82, "source": "AcousticBrainz", "warning": ""},
+            ],
+        }
         return svc
 
     @pytest.fixture
@@ -67,20 +70,24 @@ class TestSmartTagging:
 
     def test_scan_track_no_service(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
-        bridge = SmartTaggingBridge(service=MagicMock(), worker_manager=MagicMock())
-        result = bridge.scanTrackById(1)
+        # Break A: scanTrack returns ok=False when the filepath cannot be
+        # resolved to a track in the library (no usable service result).
+        bridge = SmartTaggingBridge(service=MagicMock(), worker_manager=MagicMock(),
+                                     query_service=MagicMock())
+        bridge._qs.fetch_track_by_filepath.return_value = None
+        result = bridge.scanTrack("/missing.flac")
         assert result["ok"] is False
 
     def test_set_suggestion_selected(self, bridge):
-        bridge._suggestions = [{"id": 0, "field": "artist", "current": "A",
-                                 "suggested": "B", "confidence": 0.9, "selected": False}]
+        bridge._suggestions = [{"id": 0, "field": "artist", "current_value": "A",
+                                 "proposed_value": "B", "confidence": 0.9, "selected": False}]
         result = bridge.setSuggestionSelected(0, True)
         assert result["ok"] is True
         assert bridge._suggestions[0]["selected"] is True
 
     def test_set_suggestion_deselected(self, bridge):
-        bridge._suggestions = [{"id": 0, "field": "artist", "current": "A",
-                                 "suggested": "B", "confidence": 0.9, "selected": True}]
+        bridge._suggestions = [{"id": 0, "field": "artist", "current_value": "A",
+                                 "proposed_value": "B", "confidence": 0.9, "selected": True}]
         result = bridge.setSuggestionSelected(0, False)
         assert result["ok"] is True
         assert bridge._suggestions[0]["selected"] is False
@@ -135,7 +142,7 @@ class TestSmartTagging:
         assert result["ok"] is False
 
     def test_apply_selected_no_selection(self, bridge):
-        bridge._suggestions = [{"id": 0, "field": "artist", "suggested": "B"}]
+        bridge._suggestions = [{"id": 0, "field": "artist", "proposed_value": "B"}]
         bridge._status = "review"
         bridge._current_filepath = "/test.flac"
         result = bridge.applySelected()

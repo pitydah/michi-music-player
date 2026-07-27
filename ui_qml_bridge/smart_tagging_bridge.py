@@ -60,6 +60,36 @@ class SmartTaggingBridge(QObject):
     def batchResults(self):
         return list(self._batch_results)
 
+    @Slot(str, result=dict)
+    def scanTrack(self, filepath: str):
+        """Resolve a filepath to its track id, then run the canonical scan.
+
+        QML invokes this with a filepath string (see SmartTaggingPage.qml).
+        The filepath is resolved to a track_id via the library query service
+        and then delegated to scanTrackById so the scan pipeline is reused.
+        """
+        if not filepath:
+            return {"ok": False, "error_code": "NO_FILEPATH", "message": "Ruta vacía"}
+        if self._status in ("scanning", "applying"):
+            return {"ok": False, "error_code": "BUSY", "message": "Ya hay un escaneo en curso"}
+        if not self._qs or not hasattr(self._qs, "fetch_track_by_filepath"):
+            return {"ok": False, "error_code": "NO_QUERY_SERVICE",
+                    "message": "Servicio de biblioteca no disponible"}
+        try:
+            track = self._qs.fetch_track_by_filepath(filepath)
+        except Exception as exc:
+            logger.error("scanTrack: resolve %s failed: %s", filepath, exc)
+            return {"ok": False, "error_code": "QUERY_FAILED",
+                    "message": "No se pudo resolver la pista"}
+        if not track:
+            return {"ok": False, "error_code": "TRACK_NOT_FOUND",
+                    "message": "Pista no encontrada en la biblioteca"}
+        track_id = track.get("id") or track.get("track_id")
+        if track_id is None:
+            return {"ok": False, "error_code": "NO_TRACK_ID",
+                    "message": "La pista no tiene id"}
+        return self.scanTrackById(int(track_id))
+
     @Slot(int, result=dict)
     def scanTrackById(self, track_id: int):
         if self._status in ("scanning", "applying"):
@@ -96,9 +126,11 @@ class SmartTaggingBridge(QObject):
                 return {"error": "TRACK_NOT_FOUND"}
             ctx.token.raise_if_cancelled()
             if hasattr(service, 'suggest_for_track'):
-                results = service.suggest_for_track(track)
+                resolved_id = track.get("id") or track.get("track_id") or track_id
+                results = service.suggest_for_track(resolved_id)
                 ctx.token.raise_if_cancelled()
-                return {"results": results or [], "filepath": track.get("filepath", "")}
+                suggestions = (results or {}).get("suggestions", [])
+                return {"results": suggestions, "filepath": track.get("filepath", "")}
             return {"error": "NO_SUGGEST_SERVICE"}
 
         def _done(res):
@@ -113,12 +145,13 @@ class SmartTaggingBridge(QObject):
             self._current_filepath = res.get("filepath", "")
             results = res.get("results", [])
             self._suggestions = [
-                {"id": i, "field": getattr(s, 'field', ''),
-                 "current": getattr(s, 'current', '') or "",
-                 "suggested": getattr(s, 'suggested', '') or "",
-                 "confidence": getattr(s, 'confidence', 0.0) or 0.0,
-                 "source": getattr(s, 'source', '') or "", "selected": False,
-                 "warning": getattr(s, 'warning', '') or ""}
+                {"id": i, "field": s.get("field", ""),
+                 "current_value": s.get("current_value", "") or "",
+                 "proposed_value": s.get("proposed_value", "") or "",
+                 "confidence": s.get("confidence", 0.0) or 0.0,
+                 "source": s.get("source", "") or "",
+                 "warning": s.get("warning", "") or "",
+                 "selected": False}
                 for i, s in enumerate(results)
             ]
             self._selected_ids.clear()
@@ -179,22 +212,25 @@ class SmartTaggingBridge(QObject):
                     continue
                 if hasattr(service, 'suggest_for_track'):
                     try:
-                        suggestions = service.suggest_for_track(track)
+                        resolved_id = track.get("id") or track.get("track_id") or tid
+                        raw = service.suggest_for_track(resolved_id)
+                        suggestions = (raw or {}).get("suggestions", [])
                     except Exception:
                         suggestions = []
                     all_results.append({
                         "track_id": tid,
                         "filepath": track.get("filepath", ""),
-                            "suggestions": [
-                                {"field": getattr(s, 'field', ''),
-                                 "current": getattr(s, 'current', '') or "",
-                                 "suggested": getattr(s, 'suggested', '') or "",
-                                 "confidence": getattr(s, 'confidence', 0.0) or 0.0,
-                                 "source": getattr(s, 'source', '') or "",
-                                 "warning": getattr(s, 'warning', '') or ""}
-                                for s in (suggestions or [])
-                            ],
-                        })
+                        "suggestions": [
+                            {"field": s.get("field", ""),
+                             "current_value": s.get("current_value", "") or "",
+                             "proposed_value": s.get("proposed_value", "") or "",
+                             "confidence": s.get("confidence", 0.0) or 0.0,
+                             "source": s.get("source", "") or "",
+                             "warning": s.get("warning", "") or "",
+                             "selected": False}
+                            for s in (suggestions or [])
+                        ],
+                    })
             return {"results": all_results}
 
         def _done(res):
@@ -286,8 +322,8 @@ class SmartTaggingBridge(QObject):
                 return {"error": "FILE_NOT_FOUND"}
             changes = {}
             for s in suggestions:
-                if s.get("id") in selected_ids and s.get("field") and s.get("suggested"):
-                    changes[s["field"]] = s["suggested"]
+                if s.get("id") in selected_ids and s.get("field") and s.get("proposed_value"):
+                    changes[s["field"]] = s["proposed_value"]
             tags = apply_patch(base, changes)
             if not tags.dirty:
                 return {"error": "NO_CHANGES"}
@@ -355,8 +391,8 @@ class SmartTaggingBridge(QObject):
                     continue
                 changes = {}
                 for s in suggestions:
-                    if s.get("field") and s.get("suggested"):
-                        changes[s["field"]] = s["suggested"]
+                    if s.get("field") and s.get("proposed_value"):
+                        changes[s["field"]] = s["proposed_value"]
                 if not changes:
                     results.append({"track_id": br.get("track_id"), "ok": True, "applied": 0})
                     continue

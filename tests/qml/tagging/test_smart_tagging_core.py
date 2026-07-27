@@ -22,21 +22,26 @@ class TestSmartTaggingCore:
     @pytest.fixture
     def mock_service(self):
         svc = MagicMock()
-        svc.suggest_for_track.return_value = [
-            MagicMock(field="artist", current="Unknown", suggested="Real Artist",
-                      confidence=0.95, source="MusicBrainz", warning=""),
-            MagicMock(field="album", current="", suggested="Real Album",
-                      confidence=0.88, source="MusicBrainz", warning=""),
-            MagicMock(field="genre", current="", suggested="Rock",
-                      confidence=0.72, source="AcousticBrainz", warning=""),
-        ]
+        svc.suggest_for_track.return_value = {
+            "ok": True,
+            "suggestions": [
+                {"field": "artist", "current_value": "Unknown", "proposed_value": "Real Artist",
+                 "confidence": 0.95, "source": "MusicBrainz", "warning": ""},
+                {"field": "album", "current_value": "", "proposed_value": "Real Album",
+                 "confidence": 0.88, "source": "MusicBrainz", "warning": ""},
+                {"field": "genre", "current_value": "", "proposed_value": "Rock",
+                 "confidence": 0.72, "source": "AcousticBrainz", "warning": ""},
+            ],
+        }
         return svc
 
     @pytest.fixture
     def mock_qs(self):
         qs = MagicMock()
         qs.fetch_track_internal.return_value = {"id": 1, "filepath": "/test.flac",
-                                                  "title": "Song", "artist": "Unknown"}
+                                                   "title": "Song", "artist": "Unknown"}
+        qs.fetch_track_by_filepath.return_value = {"id": 1, "filepath": "/test.flac",
+                                                     "title": "Song", "artist": "Unknown"}
         return qs
 
     @pytest.fixture
@@ -72,6 +77,29 @@ class TestSmartTaggingCore:
         assert bridge.status == "review"
         assert len(bridge.suggestions) == 3
 
+    def test_scan_track_by_filepath_delegates_to_id(self, bridge, mock_qs):
+        # Break A: QML calls scanTrack(filepath); bridge resolves to track_id
+        mock_qs.fetch_track_by_filepath.return_value = {"id": 1, "filepath": "/test.flac"}
+        result = bridge.scanTrack("/test.flac")
+        assert result["ok"] is True
+        assert bridge.status == "review"
+        assert len(bridge.suggestions) == 3
+        # current/proposed values are no longer empty (Breaks B + D)
+        assert bridge.suggestions[0]["current_value"] == "Unknown"
+        assert bridge.suggestions[0]["proposed_value"] == "Real Artist"
+
+    def test_scan_track_unknown_filepath_returns_error(self, bridge, mock_qs):
+        # Break A error path: unresolvable filepath -> ok=False
+        mock_qs.fetch_track_by_filepath.return_value = None
+        result = bridge.scanTrack("/missing.flac")
+        assert result["ok"] is False
+        assert result["error_code"] == "TRACK_NOT_FOUND"
+
+    def test_scan_track_empty_filepath_rejected(self, bridge):
+        result = bridge.scanTrack("")
+        assert result["ok"] is False
+        assert result["error_code"] == "NO_FILEPATH"
+
     def test_accept_all_selects_all(self, bridge):
         bridge._suggestions = [
             {"id": 0, "field": "artist", "selected": False},
@@ -106,7 +134,7 @@ class TestSmartTaggingCore:
 
     def test_backup_created_on_apply(self, bridge):
         bridge._current_filepath = "/test.flac"
-        bridge._suggestions = [{"id": 0, "field": "artist", "suggested": "New Artist"}]
+        bridge._suggestions = [{"id": 0, "field": "artist", "proposed_value": "New Artist"}]
         bridge._selected_ids = {0}
         bridge._status = "review"
         with patch("ui_qml_bridge.smart_tagging_bridge.load_tags") as load, \
@@ -125,7 +153,7 @@ class TestSmartTaggingCore:
 
     def test_rollback_on_write_failure(self, bridge):
         bridge._current_filepath = "/test.flac"
-        bridge._suggestions = [{"id": 0, "field": "artist", "suggested": "New"}]
+        bridge._suggestions = [{"id": 0, "field": "artist", "proposed_value": "New"}]
         bridge._selected_ids = {0}
         bridge._status = "review"
         with patch("ui_qml_bridge.smart_tagging_bridge.load_tags") as load, \
@@ -145,7 +173,7 @@ class TestSmartTaggingCore:
 
     def test_rollback_on_verify_failure(self, bridge):
         bridge._current_filepath = "/test.flac"
-        bridge._suggestions = [{"id": 0, "field": "artist", "suggested": "New"}]
+        bridge._suggestions = [{"id": 0, "field": "artist", "proposed_value": "New"}]
         bridge._selected_ids = {0}
         bridge._status = "review"
         with patch("ui_qml_bridge.smart_tagging_bridge.load_tags") as load, \
@@ -165,7 +193,7 @@ class TestSmartTaggingCore:
 
     def test_verify_after_successful_apply(self, bridge):
         bridge._current_filepath = "/test.flac"
-        bridge._suggestions = [{"id": 0, "field": "artist", "suggested": "New"}]
+        bridge._suggestions = [{"id": 0, "field": "artist", "proposed_value": "New"}]
         bridge._selected_ids = {0}
         bridge._status = "review"
         with patch("ui_qml_bridge.smart_tagging_bridge.load_tags") as load, \
