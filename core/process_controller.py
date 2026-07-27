@@ -66,12 +66,14 @@ class ProcessController:
 
     async def start(
         self,
-        cmd: str,
+        cmd: str = "",
         args: list[str] | None = None,
         cwd: str | None = None,
         env: dict[str, str] | None = None,
         capture_stdout: bool = False,
     ) -> ManagedProcess:
+        if not cmd:
+            return ManagedProcess(pid=0, cmd="", process=None)
         all_args = [cmd] + (args or [])
         full_env = {**os.environ, **(env or {})}
         stdout_dest = asyncio.subprocess.PIPE if capture_stdout else asyncio.subprocess.DEVNULL
