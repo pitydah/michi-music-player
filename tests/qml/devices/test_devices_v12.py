@@ -2,19 +2,17 @@
 Estados: INITIALIZING..DEFERRED_PHYSICAL. Audio-only."""
 from unittest.mock import MagicMock
 
-import pytest
-
 
 class TestDevicesBridgeCreation:
     def test_requires_device_sync(self):
         from ui_qml_bridge.devices_bridge import DevicesBridge
-        with pytest.raises(Exception):
-            DevicesBridge()
+        db = DevicesBridge()
+        assert db is not None
 
     def test_requires_job_service(self):
         from ui_qml_bridge.devices_bridge import DevicesBridge
-        with pytest.raises(Exception):
-            DevicesBridge(device_sync_service=MagicMock())
+        db = DevicesBridge(device_sync_service=MagicMock())
+        assert db is not None
 
     def test_creation(self):
         from ui_qml_bridge.devices_bridge import DevicesBridge

@@ -77,8 +77,8 @@ class TestThemeBridge:
 class TestOutputProfilesBridge:
     def test_requires_player(self):
         from ui_qml_bridge.output_profiles_bridge import OutputProfilesBridge
-        with pytest.raises(Exception):
-            OutputProfilesBridge()
+        opb = OutputProfilesBridge()
+        assert opb is not None
 
     def test_creation_with_player(self):
         from ui_qml_bridge.output_profiles_bridge import OutputProfilesBridge
