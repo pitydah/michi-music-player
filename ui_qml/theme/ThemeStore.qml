@@ -3,7 +3,7 @@ import QtQuick
 
 QtObject {
     readonly property bool reduceMotion: MichiAccessibility.reduceMotion
-    readonly property bool highContrast: MichiAccessibility.highContrast
+    property bool highContrast: typeof themeBridge !== "undefined" && themeBridge ? themeBridge.highContrast : false
     readonly property real fontScaleFactor: MichiAccessibility.fontScale
     readonly property int motionDurationFast: MichiMotion.durationFast
     readonly property int motionDurationNormal: MichiMotion.durationNormal
@@ -18,7 +18,6 @@ QtObject {
     function updateFromBridge(bridge) {
         if (bridge) {
             darkMode = bridge.darkMode
-            highContrast = bridge.highContrast
             reduceMotion = bridge.reducedMotion
         }
     }

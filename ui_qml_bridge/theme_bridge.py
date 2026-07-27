@@ -15,6 +15,7 @@ def _to_float(value, default: float) -> float:
 
 class ThemeBridge(QObject):
     themeChanged = Signal()
+    highContrastChanged = Signal(bool)
 
     VALID_THEMES = ("dark", "light", "system", "high_contrast")
 
@@ -92,7 +93,7 @@ class ThemeBridge(QObject):
             self._notify_theme_store()
             self.themeChanged.emit()
 
-    @Property(bool, notify=themeChanged)
+    @Property(bool, notify=highContrastChanged)
     def highContrast(self):
         return self._high_contrast
 
@@ -101,8 +102,7 @@ class ThemeBridge(QObject):
         if val != self._high_contrast:
             self._high_contrast = val
             self._write("accessibility/high_contrast", val)
-            self._notify_theme_store()
-            self.themeChanged.emit()
+            self.highContrastChanged.emit(val)
 
     @Property(bool, notify=themeChanged)
     def compactMode(self):

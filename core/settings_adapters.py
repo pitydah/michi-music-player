@@ -136,6 +136,8 @@ class ThemeSettingsAdapter(BaseSettingsAdapter):
                 bridge.accentColor = str(value)
             elif key == "appearance/compact_mode":
                 bridge.compactMode = bool(value)
+            elif key == "accessibility/high_contrast":
+                bridge.highContrast = bool(value)
             return SettingsApplyResult(
                 ok=True, key=key, requested_value=value,
                 applied=True, message="Tema actualizado"

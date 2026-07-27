@@ -52,7 +52,7 @@ class TestThemeReactiveFlow:
     def test_high_contrast_emits_signal(self, settings_service):
         bridge = ThemeBridge(service=settings_service)
         handler = MagicMock()
-        bridge.themeChanged.connect(handler)
+        bridge.highContrastChanged.connect(handler)
         bridge._high_contrast = False
         bridge.highContrast = True
         handler.assert_called_once()
