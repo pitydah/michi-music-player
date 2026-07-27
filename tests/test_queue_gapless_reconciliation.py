@@ -1,7 +1,6 @@
 """Logical gapless progression tests without a physical audio device."""
 from __future__ import annotations
 
-import pytest
 from unittest.mock import MagicMock
 
 from audio.player import GStreamerEngine
@@ -23,7 +22,6 @@ def _engine() -> GStreamerEngine:
     return engine
 
 
-@pytest.mark.skip(reason="DRIFT: GStreamerEngine missing _gapless_pending_index / _commit_gapless_progress — convergence feature not yet implemented")
 def test_gapless_commits_only_when_stream_starts() -> None:
     engine = _engine()
     playbin = MagicMock()
@@ -43,7 +41,6 @@ def test_gapless_commits_only_when_stream_starts() -> None:
     )
 
 
-@pytest.mark.skip(reason="DRIFT: GStreamerEngine missing _gapless_pending_index / _commit_gapless_progress — convergence feature not yet implemented")
 def test_repeat_one_preloads_current_track() -> None:
     engine = _engine()
     engine._queue_index = 1
@@ -60,7 +57,6 @@ def test_repeat_one_preloads_current_track() -> None:
     )
 
 
-@pytest.mark.skip(reason="DRIFT: GStreamerEngine missing _gapless_pending_index / _commit_gapless_progress — convergence feature not yet implemented")
 def test_repeat_all_preloads_first_track_after_last() -> None:
     engine = _engine()
     engine._queue_index = 2
@@ -77,7 +73,6 @@ def test_repeat_all_preloads_first_track_after_last() -> None:
     )
 
 
-@pytest.mark.skip(reason="DRIFT: GStreamerEngine missing _gapless_pending_index / _commit_gapless_progress — convergence feature not yet implemented")
 def test_eos_requests_domain_decision_without_internal_advance() -> None:
     engine = _engine()
 

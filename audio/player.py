@@ -113,6 +113,8 @@ class GStreamerEngine(QObject):
         self._replaygain = False
         self._gapless_enabled = True
         self._gapless_active = False
+        self._gapless_pending_index: int | None = None
+        self._queue_revision: int = 0
         self._audio_profile = "standard"
 
     def _on_backend_state_changed(self, state):
@@ -620,28 +622,44 @@ class GStreamerEngine(QObject):
         current_uri = getattr(self, '_current', '')
         if current_uri and (current_uri.startswith("http") or "icy" in current_uri):
             return
-        if (self._queue_index >= 0
-                and self._queue_index < len(self._queue) - 1):
-            next_fp = self._queue[self._queue_index + 1]
-            next_uri = self._to_uri(next_fp)
+        if not (0 <= self._queue_index < len(self._queue)):
+            self._on_media_finished_eos()
+            return
+
+        next_index: int | None = None
+        if self._repeat == "one":
+            next_index = self._queue_index
+        elif self._repeat == "all" and self._queue_index >= len(self._queue) - 1:
+            next_index = 0
+        elif self._queue_index < len(self._queue) - 1:
+            next_index = self._queue_index + 1
+
+        if next_index is not None:
+            self._gapless_pending_index = next_index
+            next_uri = self._to_uri(self._queue[next_index])
             playbin.set_property("uri", next_uri)
-            self._gapless_active = True
+
+        self._on_media_finished_eos()
+
+    def _commit_gapless_progress(self):
+        idx = self._gapless_pending_index
+        self._gapless_pending_index = None
+        if idx is not None and 0 <= idx < len(self._queue):
+            self._queue_index = idx
+            self._current = self._queue[idx]
+            self.queue_progressed.emit(idx, self._queue[idx], "gapless", self._queue_revision)
 
     def _classify_and_emit(self, classification: str, details: str):
         self._error_message = f"{classification}: {details}"
         self.error_occurred.emit(self._error_message)
 
     def _on_media_finished_eos(self):
-        if self._gapless_active:
-            self._gapless_active = False
-            next_idx = self._queue_index + 1
-            if 0 <= next_idx < len(self._queue):
-                self._queue_index = next_idx
-                self._current = self._queue[next_idx]
-                self.queue_changed.emit(self._queue)
-                if self._db:
-                    self._db.save_queue(self._queue, self._queue_index)
-                self.state_changed.emit(self._state)
+        if self._gapless_pending_index is not None:
+            return
+        if 0 <= self._queue_index < len(self._queue):
+            self.queue_progressed.emit(
+                self._queue_index, self._queue[self._queue_index], "eos", self._queue_revision
+            )
         else:
             self._on_media_finished()
 
@@ -657,6 +675,8 @@ class GStreamerEngine(QObject):
         t = message.type
         if t == Gst.MessageType.EOS:
             self._on_media_finished_eos()
+        elif t == Gst.MessageType.STREAM_START:
+            self._commit_gapless_progress()
         elif t == Gst.MessageType.ERROR:
             err, debug = message.parse_error()
             debug_text = debug or ""
