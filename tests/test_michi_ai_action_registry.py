@@ -1,24 +1,29 @@
 """Tests for Michi AI integration with ActionRegistry."""
 
 
+class _MockNav:
+    def navigate(self, route):
+        return True
+
+
 class TestMichiAIActionRegistry:
     def test_action_registry_execute(self):
         from ui_qml_bridge.action_registry import ActionRegistry
         ar = ActionRegistry()
-        ar.bind_default_handlers()
         assert hasattr(ar, 'execute')
 
     def test_action_registry_has_play(self):
         from ui_qml_bridge.action_registry import ActionRegistry
         ar = ActionRegistry()
-        ar.bind_default_handlers()
         actions = {a["id"]: a for a in ar.actions}
         assert "playback_playpause" in actions
 
     def test_action_has_handler_after_bind(self):
         from ui_qml_bridge.action_registry import ActionRegistry
+        from ui_qml_bridge.action_registry_binder import ActionRegistryBinder
         ar = ActionRegistry()
-        ar.bind_default_handlers()
+        binder = ActionRegistryBinder(ar, {"navigation": _MockNav()})
+        binder.bind_all()
         # Navigate actions should have a handler after bind (via _actions dict)
         if hasattr(ar, '_actions') and 'navigate_home' in ar._actions:
             a = ar._actions['navigate_home']
