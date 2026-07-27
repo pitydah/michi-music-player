@@ -111,6 +111,7 @@ class ApplicationBootstrap:
         app_bridge = self._bridges.get("app")
         if app_bridge and hasattr(app_bridge, 'setReady'):
             app_bridge.setReady()
+        self.restore_settings()
         return True
 
     def shutdown(self) -> None:
@@ -133,6 +134,24 @@ class ApplicationBootstrap:
         if engine is not None:
             self.register_context(engine)
             self.load_qml(engine, qml_path)
+
+    def restore_settings(self) -> None:
+        """Apply persisted appearance & accessibility settings to runtime bridges.
+
+        ThemeStore notification requires the QML engine to be ready, so this
+        must be called *after* load_qml().  Mono/balance are applied directly
+        to the playback service.
+        """
+        theme = self._bridges.get("theme")
+        accessibility = self._bridges.get("accessibility")
+        if theme:
+            theme._notify_theme_store()
+            theme.themeChanged.emit()
+        if accessibility:
+            accessibility._apply_mono_to_playback()
+            accessibility._apply_balance_to_playback()
+            accessibility.dataChanged.emit()
+        logger.info("Bootstrap: bridge settings restored")
 
     def _handler(
         self,

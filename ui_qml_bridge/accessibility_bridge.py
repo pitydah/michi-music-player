@@ -6,6 +6,8 @@ from PySide6.QtCore import QObject, Signal, Property, Slot
 
 from core.settings_manager import SETTINGS
 
+_instance = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -22,7 +24,9 @@ class AccessibilityBridge(QObject):
 
     def __init__(self, service=None, coordinator=None, playback_service=None,
                  settings_service=None, settings_coordinator=None, parent=None):
+        global _instance
         super().__init__(parent)
+        _instance = self
         logger.debug("AccessibilityBridge.__init__ called")
         if playback_service is None:
             logger.warning("AccessibilityBridge: playback_service is None — running in degraded mode")
@@ -37,6 +41,9 @@ class AccessibilityBridge(QObject):
         self._balance = _to_float(SETTINGS.value("accessibility/balance", 0.0), 0.0)
         self._last_error = ""
         self._reduce_transparency = bool(SETTINGS.value("accessibility/reduce_transparency", False))
+
+        self._apply_mono_to_playback()
+        self._apply_balance_to_playback()
 
     def _set_via_service(self, key: str, value):
         if self._svc:

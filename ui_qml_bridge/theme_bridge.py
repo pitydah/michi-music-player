@@ -4,6 +4,8 @@ from PySide6.QtCore import QObject, Signal, Property, Slot
 
 from core.settings_manager import SETTINGS
 
+_instance = None
+
 
 def _to_float(value, default: float) -> float:
     """Coerce a QSettings value to float, falling back to default."""
@@ -20,7 +22,9 @@ class ThemeBridge(QObject):
     VALID_THEMES = ("dark", "light", "system", "high_contrast")
 
     def __init__(self, service=None, coordinator=None, parent=None):
+        global _instance
         super().__init__(parent)
+        _instance = self
         if coordinator is None:
             import logging
             logging.getLogger("michi.theme_bridge").warning("ThemeBridge: coordinator is None — running in degraded mode")

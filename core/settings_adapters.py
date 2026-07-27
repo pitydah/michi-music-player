@@ -128,16 +128,14 @@ class ThemeSettingsAdapter(BaseSettingsAdapter):
 
     def apply(self, key: str, value: Any) -> SettingsApplyResult:
         try:
-            from ui_qml_bridge.theme_bridge import ThemeBridge
-            bridge = ThemeBridge()
-            if key == "appearance/theme":
-                bridge.theme = str(value)
-            elif key == "appearance/accent_color":
-                bridge.accentColor = str(value)
-            elif key == "appearance/compact_mode":
-                bridge.compactMode = bool(value)
-            elif key == "accessibility/high_contrast":
-                bridge.highContrast = bool(value)
+            from ui_qml_bridge.theme_bridge import _instance as bridge
+            if bridge is not None:
+                if key == "appearance/theme":
+                    bridge.theme = str(value)
+                elif key == "appearance/accent_color":
+                    bridge.accentColor = str(value)
+                elif key == "appearance/compact_mode":
+                    bridge.compactMode = bool(value)
             return SettingsApplyResult(
                 ok=True, key=key, requested_value=value,
                 applied=True, message="Tema actualizado"
