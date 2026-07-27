@@ -1,8 +1,6 @@
 """Tests for Metadata v12 — MetadataBridge with MetadataService."""
 from unittest.mock import MagicMock
 
-import pytest
-
 
 class MockMetadataResult:
     def __init__(self, ok=True, data=None, code="", message=""):
@@ -17,11 +15,6 @@ class MockMetadataResult:
 
 
 class TestMetadataBridgeCreation:
-    def test_requires_metadata_service(self):
-        from ui_qml_bridge.metadata_bridge import MetadataBridge
-        mb = MetadataBridge(metadata_service=MagicMock())
-        assert mb is not None
-
     def test_creation(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
         mb = MetadataBridge(metadata_service=MagicMock())
