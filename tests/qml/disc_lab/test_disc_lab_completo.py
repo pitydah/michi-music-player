@@ -14,6 +14,8 @@ def mock_service():
     svc.detect_drives.return_value = ["/dev/sr0"]
     svc.get_default_drive.return_value = "/dev/sr0"
     svc.detect_audio_cd.return_value = True
+    # Expose the real backend contract so the bridge reads formats from the service.
+    svc.supported_formats = ["flac", "wav", "mp3", "opus", "aac"]
     svc.get_cd_info.return_value = {
         "tracks": [
             {"title": "Track 1", "duration": 180.0},
@@ -108,10 +110,17 @@ def test_scan_disc_no_drive(no_svc_bridge):
 
 
 def test_extraction_format_valid(bridge):
-    for fmt in ("flac", "wav", "mp3", "ogg"):
+    for fmt in ("flac", "wav", "mp3", "opus", "aac"):
         result = bridge.setFormat(fmt)
         assert result["ok"] is True
         assert bridge.extractionFormat == fmt
+
+
+def test_extraction_format_rejects_ogg(bridge):
+    # ogg is NOT in CDRipperService.SUPPORTED_FORMATS — must be rejected.
+    result = bridge.setFormat("ogg")
+    assert result["ok"] is False
+    assert result["error"] == "INVALID_FORMAT"
 
 
 def test_extraction_format_invalid(bridge):

@@ -6,8 +6,11 @@ destination, extraction, progress, cancel, error, dependency capability.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
+import re
 import subprocess
+from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
@@ -19,12 +22,28 @@ class DiscLabBridge(QObject):
     dataChanged = Signal()
     progressChanged = Signal(float, str)
     extractionComplete = Signal(dict)
+    ejectComplete = Signal(dict)
 
-    def __init__(self, disc_detection_service: Any = None, worker_manager=None, parent=None):
+    # Canonical fallback matching CDRipperService.SUPPORTED_FORMATS.
+    # Used when the backend service is unavailable (e.g. no drive / tests).
+    _FALLBACK_FORMATS: tuple[str, ...] = ("flac", "wav", "mp3", "opus", "aac")
+
+    # Format → file extension mapping. aac uses the m4a (MP4) container.
+    _FORMAT_EXTENSIONS: dict[str, str] = {
+        "flac": "flac",
+        "wav": "wav",
+        "mp3": "mp3",
+        "opus": "opus",
+        "aac": "m4a",
+    }
+
+    def __init__(self, disc_detection_service: Any = None, worker_manager=None,
+                 process_controller: Any = None, parent=None):
         super().__init__(parent)
         assert worker_manager is not None, "DiscLabBridge: worker_manager is REQUIRED"
         self._svc = disc_detection_service
         self._wm = worker_manager
+        self._process_controller = process_controller
         self._status = "unavailable"
         self._tracks: list[dict] = []
         self._drive_info = ""
@@ -34,6 +53,7 @@ class DiscLabBridge(QObject):
         self._extraction_dest = ""
         self._dependencies_ok = False
         self._extraction_gen = 0
+        self._eject_gen = 0
 
     @Property(str, notify=dataChanged)
     def status(self):
@@ -62,6 +82,22 @@ class DiscLabBridge(QObject):
     @Property(bool, notify=dataChanged)
     def dependenciesOk(self):
         return self._dependencies_ok
+
+    @Property("QVariantList", constant=True)
+    def supportedFormats(self):
+        """Formats supported by the backend (CDRipperService.supported_formats).
+
+        Falls back to the canonical list when the service is unavailable or
+        returns a non-list value (e.g. a MagicMock in tests).
+        """
+        if self._svc is not None:
+            try:
+                fmts = getattr(self._svc, "supported_formats", None)
+                if isinstance(fmts, (list, tuple)) and fmts:
+                    return list(fmts)
+            except Exception:
+                logger.debug("supported_formats lookup failed", exc_info=True)
+        return list(self._FALLBACK_FORMATS)
 
     @Slot(result=dict)
     def refresh(self):
@@ -145,12 +181,14 @@ class DiscLabBridge(QObject):
 
     @Slot(str, result=dict)
     def setFormat(self, fmt: str):
-        valid = {"flac", "wav", "mp3", "ogg"}
+        # Reject formats not in the backend's list (not a hardcoded set).
+        valid = set(self.supportedFormats)
         if fmt.lower() in valid:
             self._extraction_format = fmt.lower()
             self.dataChanged.emit()
             return {"ok": True}
-        return {"ok": False, "error": "INVALID_FORMAT"}
+        return {"ok": False, "error": "INVALID_FORMAT",
+                "supported": list(valid)}
 
     @Slot(str, result=dict)
     def setDestination(self, path: str):
@@ -159,6 +197,21 @@ class DiscLabBridge(QObject):
             self.dataChanged.emit()
             return {"ok": True}
         return {"ok": False, "error": "EMPTY_PATH"}
+
+    def _build_output_path(self, dest_dir: str, track_info: dict, fmt: str) -> str:
+        """Build a full output file path for a track.
+
+        Format: ``dest_dir / f"{track_number:02d}. {sanitized_title}.{extension}"``
+        where the extension is mapped from the audio format (aac → m4a).
+        """
+        track_number = int(track_info.get("track", 0) or 0)
+        title = str(track_info.get("title") or f"Track {track_number:02d}")
+        # Sanitize: remove path separators and null bytes.
+        sanitized = re.sub(r"[/\\\x00]", "_", title).strip()
+        if not sanitized:
+            sanitized = f"Track {track_number:02d}"
+        ext = self._FORMAT_EXTENSIONS.get(fmt, fmt)
+        return str(Path(dest_dir) / f"{track_number:02d}. {sanitized}.{ext}")
 
     @Slot(result=dict)
     def startExtraction(self):
@@ -186,31 +239,48 @@ class DiscLabBridge(QObject):
         drive = self._drive_info or (self._drives[0] if self._drives else "")
         fmt = self._extraction_format
         dest = self._extraction_dest
-        track_nums = [t["track"] for t in selected_tracks]
         svc = self._svc
+        build_path = self._build_output_path
 
         def _task(ctx):
             ctx.token.raise_if_cancelled()
-            total = len(track_nums)
+            total = len(selected_tracks)
             results = []
-            for idx, tn in enumerate(track_nums):
+            for idx, track_info in enumerate(selected_tracks):
                 ctx.token.raise_if_cancelled()
+                tn = track_info["track"]
                 ctx.report_progress((idx + 1) / total, f"Extrayendo pista {tn}...")
                 try:
-                    if hasattr(svc, 'rip_track'):
-                        rip_result = svc.rip_track(drive, tn, dest, format=fmt)
+                    if hasattr(svc, "rip_track"):
+                        output_path = build_path(dest, track_info, fmt)
+                        rip_result = svc.rip_track(drive, tn, output_path, format=fmt)
                         if isinstance(rip_result, dict):
                             ok = rip_result.get("success", False)
-                            out_path = rip_result.get("output_file", "")
+                            out_path = rip_result.get("output_file", output_path)
+                            err = rip_result.get("error", "") if not ok else ""
                         else:
                             ok = False
-                            out_path = ""
-                        results.append({"track": tn, "ok": ok, "path": out_path})
+                            out_path = output_path
+                            err = "INVALID_RIP_RESULT"
+                        results.append({"track": tn, "ok": ok, "path": out_path,
+                                        "error": err})
                     else:
-                        results.append({"track": tn, "ok": False, "error": "EXTRACT_NOT_IMPLEMENTED"})
+                        results.append({"track": tn, "ok": False,
+                                        "error": "EXTRACT_NOT_IMPLEMENTED"})
                 except Exception as e:
                     results.append({"track": tn, "ok": False, "error": str(e)})
-            return {"tracks": results, "ok": True}
+            # Calculate overall result from real per-track success/failure.
+            completed = [r for r in results if r["ok"]]
+            failed = [r for r in results if not r["ok"]]
+            overall_ok = len(failed) == 0
+            partial = len(completed) > 0 and len(failed) > 0
+            return {
+                "tracks": results,
+                "ok": overall_ok,
+                "partial": partial,
+                "completed_count": len(completed),
+                "failed_count": len(failed),
+            }
 
         def _on_done(result):
             if gen != self._extraction_gen:
@@ -253,6 +323,12 @@ class DiscLabBridge(QObject):
     def cancelExtraction(self):
         if self._wm:
             self._wm.cancel_task("disc_lab_extract")
+        # Also cancel the physical CD rip process if the backend exposes cancel().
+        if self._svc is not None and hasattr(self._svc, "cancel"):
+            try:
+                self._svc.cancel()
+            except Exception as exc:
+                logger.warning("CD ripper cancel failed: %s", exc)
         self._status = "cancelled"
         self._extraction_progress = 0.0
         self.progressChanged.emit(0.0, "Cancelado")
@@ -279,28 +355,110 @@ class DiscLabBridge(QObject):
 
     @Slot(result=dict)
     def eject(self):
+        """Clear disc state immediately and eject the physical disc async.
+
+        The Slot returns immediately (state cleared). The hardware eject runs
+        in the WorkerManager to avoid blocking the UI thread. The async result
+        is emitted via ``ejectComplete`` and logged.
+        """
         drive = self._drive_info or (self._drives[0] if self._drives else "")
-        hardware_ok = False
-        if drive:
-            try:
-                result = subprocess.run(
-                    ["eject", drive], capture_output=True, timeout=5
-                )
-                if result.returncode == 0:
-                    hardware_ok = True
-                else:
-                    logger.warning(
-                        "eject returned %d for %s: %s",
-                        result.returncode, drive, result.stderr.decode().strip(),
-                    )
-            except (FileNotFoundError, TimeoutError, OSError) as exc:
-                logger.warning("Hardware eject unavailable for %s: %s", drive, exc)
-        else:
-            logger.warning("No drive info available for eject")
+        # State is cleared synchronously regardless of hardware eject outcome.
         self._status = "no_disc"
         self._tracks = []
         self._extraction_progress = 0.0
         self.dataChanged.emit()
-        if hardware_ok:
-            return {"ok": True, "message": "Drive ejected"}
-        return {"ok": True, "message": "State cleared (hardware eject unavailable)"}
+
+        if not drive:
+            result = {"ok": True, "ejected": False,
+                      "message": "Estado limpiado (eject no disponible)"}
+            self.ejectComplete.emit(result)
+            return result
+        if not self._wm:
+            result = {"ok": True, "ejected": False,
+                      "message": "Estado limpiado (eject no disponible)"}
+            self.ejectComplete.emit(result)
+            return result
+
+        # Submit non-blocking eject task. Fire-and-forget with signal completion.
+        def _task():
+            return self._do_eject(drive)
+
+        self._eject_gen += 1
+        gen = self._eject_gen
+
+        def _on_done(eject_result):
+            if gen != self._eject_gen:
+                return
+            if isinstance(eject_result, dict):
+                self.ejectComplete.emit(eject_result)
+            else:
+                self.ejectComplete.emit(
+                    {"ok": bool(eject_result), "ejected": bool(eject_result),
+                     "message": "Eject completado" if eject_result
+                     else "Error al expulsar"})
+
+        self._wm.run_task(
+            "disc_lab_eject", _task,
+            owner="disc_lab", on_done=_on_done,
+        )
+        return {"ok": True, "ejected": False,
+                "message": "Estado limpiado (eject en proceso)"}
+
+    def _do_eject(self, drive: str) -> dict[str, Any]:
+        """Run hardware eject in a worker thread.
+
+        Prefers ProcessController.spawn; falls back to subprocess.run when no
+        ProcessController is configured. Returns a distinguished result dict.
+        """
+        if self._process_controller is not None:
+            try:
+                ejected = self._eject_via_process_controller(drive)
+            except Exception as exc:
+                logger.warning("Eject via ProcessController failed: %s", exc)
+                ejected = False
+        else:
+            ejected = self._eject_via_subprocess(drive)
+
+        if ejected:
+            logger.info("Disc ejected from %s", drive)
+            return {"ok": True, "ejected": True, "message": "Disco expulsado"}
+        return {"ok": False, "ejected": False,
+                "message": f"Error al expulsar: {drive}"}
+
+    def _eject_via_process_controller(self, drive: str) -> bool:
+        """Eject using ProcessController.spawn (async, run synchronously here)."""
+
+        async def _run() -> bool:
+            mp = await self._process_controller.spawn("eject", [drive])
+            if mp is None or mp.pid == 0:
+                return False
+            # Poll exit status (ProcessController has no public wait()).
+            for _ in range(100):  # max ~10s
+                if mp.exit_status() is not None:
+                    return mp.exit_status() == 0
+                await asyncio.sleep(0.1)
+            return False
+
+        try:
+            return asyncio.run(_run())
+        except RuntimeError:
+            # Event loop already running in this thread — fall back to subprocess.
+            return self._eject_via_subprocess(drive)
+
+    @staticmethod
+    def _eject_via_subprocess(drive: str) -> bool:
+        """Fallback eject using subprocess.run (blocking, but runs in worker)."""
+        try:
+            result = subprocess.run(
+                ["eject", drive], capture_output=True, timeout=5,
+            )
+            if result.returncode != 0:
+                logger.warning(
+                    "eject returned %d for %s: %s",
+                    result.returncode, drive,
+                    result.stderr.decode(errors="replace").strip(),
+                )
+            return result.returncode == 0
+        except (FileNotFoundError, TimeoutError, OSError) as exc:
+            logger.warning("Hardware eject unavailable for %s: %s", drive, exc)
+            return False

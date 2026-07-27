@@ -100,7 +100,7 @@ CONTEXT_BINDINGS: list[ContextBinding] = [
     ContextBinding(LibraryDoctorBridge, "libraryDoctorBridge", required_services=("database", "worker_manager")),
     ContextBinding(MichiAIBridge,       "michiAiBridge",   required_services=("device_sync_service", "job_service")),
     ContextBinding(DiagnosticsBridge,   "diagnosticsBridge", required_services=("playback_service", "connection_factory", "worker_manager", "query_executor"), optional_services=("radio_service", "device_sync_service")),
-    ContextBinding(DiscLabBridge,       "discLabBridge",   required_services=("cd_ripper_service",), optional_services=("worker_manager",)),
+    ContextBinding(DiscLabBridge,       "discLabBridge",   required_services=("cd_ripper_service",), optional_services=("worker_manager", "process_controller")),
     ContextBinding(RuntimeQualityBridge,"runtimeQualityBridge"),
     ContextBinding(PhysicalAudioBridge, "physicalAudioBridge"),
     ContextBinding(CommandPaletteBridge,"commandPaletteBridge"),

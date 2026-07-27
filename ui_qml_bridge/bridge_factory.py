@@ -367,6 +367,7 @@ class BridgeFactory(QObject):
             self._bridges["disc_lab"] = DiscLabBridge(
                 disc_detection_service=self._get("cd_ripper_service"),
                 worker_manager=self._get("worker_manager"),
+                process_controller=self._get("process_controller"),
             )
 
     def create_library_doctor_bridge(self):
