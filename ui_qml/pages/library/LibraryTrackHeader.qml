@@ -18,6 +18,7 @@ Rectangle {
     property var bridge: null
     property string sortKey: "title"
     property bool sortAsc: true
+    property bool compactMode: false
 
     color: MichiTheme.colors.surfaceCard
 
@@ -33,10 +34,31 @@ Rectangle {
 
         HeaderCell { Layout.fillWidth: true; label: qsTr("Título"); sortField: "title" }
         HeaderCell { Layout.preferredWidth: responsive.compact ? 120 : 160; label: qsTr("Artista"); sortField: "artist" }
-        HeaderCell { Layout.preferredWidth: responsive.compact ? 120 : 160; label: qsTr("Álbum"); sortField: "album" }
-        HeaderCell { visible: !responsive.compact; Layout.preferredWidth: 40; label: qsTr("Cal.") }
-        HeaderCell { visible: !responsive.compact; Layout.preferredWidth: 40; label: qsTr("Año"); sortField: "year"; alignRight: true }
-        HeaderCell { visible: !responsive.compact; Layout.preferredWidth: 48; label: qsTr("Dur."); sortField: "duration"; alignRight: true }
+        HeaderCell {
+            visible: !root.compactMode
+            Layout.preferredWidth: responsive.compact ? 120 : 160
+            label: qsTr("Álbum")
+            sortField: "album"
+        }
+        HeaderCell {
+            visible: !responsive.compact && !root.compactMode
+            Layout.preferredWidth: 40
+            label: qsTr("Cal.")
+        }
+        HeaderCell {
+            visible: !responsive.compact && !root.compactMode
+            Layout.preferredWidth: 40
+            label: qsTr("Año")
+            sortField: "year"
+            alignRight: true
+        }
+        HeaderCell {
+            visible: !responsive.compact
+            Layout.preferredWidth: 48
+            label: qsTr("Dur.")
+            sortField: "duration"
+            alignRight: true
+        }
     }
 
     component HeaderCell: Item {

@@ -21,37 +21,147 @@ MichiPage {
     property var sel: typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null
     property int _currentLibrarySection: 0
     readonly property int _navigationSection: _currentLibrarySection === 3 ? 5 : _currentLibrarySection
-    readonly property var _localSectionTitles: [qsTr("Canciones"), qsTr("Álbumes"), qsTr("Artistas"), qsTr("Carpetas")]
-    readonly property var _albumViewModes: [
-        { icon: "../../../icons/view/view-grid.svg", tooltip: qsTr("Cuadrícula") },
-        { icon: "../../../icons/view/view-coverflow.svg", tooltip: qsTr("CoverFlow") },
-        { icon: "../../../icons/view/warm_view_vinyl.svg", tooltip: qsTr("Muro de vinilos") },
-        { icon: "../../../icons/view/warm_view_timeline.svg", tooltip: qsTr("Línea de tiempo") },
-        { icon: "../../../icons/view/warm_view_magazine.svg", tooltip: qsTr("Magazine") }
+    property int _songView: 0
+    property int _artistView: 0
+    property int _folderView: 0
+    property string headerSearchText: ""
+    readonly property bool headerContextEnabled: true
+    readonly property bool headerSearchEnabled: true
+    readonly property string headerSearchPlaceholder: {
+        switch (root._currentLibrarySection) {
+        case 0: return qsTr("Buscar canciones…")
+        case 1: return qsTr("Buscar álbumes…")
+        case 2: return qsTr("Buscar artistas…")
+        case 3: return qsTr("Buscar en la carpeta…")
+        default: return qsTr("Buscar en Biblioteca…")
+        }
+    }
+    readonly property var _songViewModes: [
+        {
+            id: "detailed",
+            icon: "../../icons/view/library-table.svg",
+            label: qsTr("Tabla detallada"),
+            description: qsTr("Muestra columnas técnicas y metadatos")
+        },
+        {
+            id: "compact",
+            icon: "../../icons/view/library-compact.svg",
+            label: qsTr("Lista compacta"),
+            description: qsTr("Prioriza título y artista para mostrar más canciones")
+        }
     ]
-    property bool _searchActive: false
+    readonly property var _albumViewModes: [
+        {
+            id: "grid",
+            icon: "../../icons/view/library-grid.svg",
+            label: qsTr("Cuadrícula"),
+            description: qsTr("Carátulas adaptables para explorar la colección")
+        },
+        {
+            id: "coverflow",
+            icon: "../../icons/view/library-coverflow.svg",
+            label: qsTr("CoverFlow"),
+            description: qsTr("Exploración horizontal centrada en las carátulas")
+        },
+        {
+            id: "vinyl",
+            icon: "../../icons/view/library-vinyl.svg",
+            label: qsTr("Muro de vinilos"),
+            description: qsTr("Presentación visual inspirada en discos físicos")
+        },
+        {
+            id: "timeline",
+            icon: "../../icons/view/library-timeline.svg",
+            label: qsTr("Línea de tiempo"),
+            description: qsTr("Organiza los álbumes por año y década")
+        },
+        {
+            id: "editorial",
+            icon: "../../icons/view/library-editorial.svg",
+            label: qsTr("Editorial"),
+            description: qsTr("Composición amplia con jerarquía de revista")
+        }
+    ]
+    readonly property var _artistViewModes: [
+        {
+            id: "grid",
+            icon: "../../icons/view/library-artist-grid.svg",
+            label: qsTr("Cuadrícula de artistas"),
+            description: qsTr("Retratos y estadísticas en tarjetas")
+        },
+        {
+            id: "list",
+            icon: "../../icons/view/library-artist-list.svg",
+            label: qsTr("Lista de artistas"),
+            description: qsTr("Lectura compacta ordenada por nombre")
+        }
+    ]
+    readonly property var _folderViewModes: [
+        {
+            id: "split",
+            icon: "../../icons/view/library-folder-split.svg",
+            label: qsTr("Explorador dividido"),
+            description: qsTr("Árbol de carpetas y contenido en paralelo")
+        },
+        {
+            id: "tree",
+            icon: "../../icons/view/library-folder-tree.svg",
+            label: qsTr("Árbol de carpetas"),
+            description: qsTr("Dedica todo el espacio a navegar la jerarquía")
+        }
+    ]
+    readonly property var headerViewModes: {
+        switch (root._currentLibrarySection) {
+        case 0: return root._songViewModes
+        case 1: return root._albumViewModes
+        case 2: return root._artistViewModes
+        case 3: return root._folderViewModes
+        default: return []
+        }
+    }
+    readonly property int headerCurrentView: {
+        switch (root._currentLibrarySection) {
+        case 0: return root._songView
+        case 1: return albumViewHost.currentView
+        case 2: return root._artistView
+        case 3: return root._folderView
+        default: return 0
+        }
+    }
+    readonly property bool headerFilterEnabled: root._currentLibrarySection !== 3
+    readonly property int headerFilterCount: filterBar.activeFilterCount
+    readonly property bool headerRefreshEnabled: true
+    readonly property bool headerLoading: root.lib
+                                          ? ["INITIALIZING", "LOADING", "SCANNING", "INDEXING"]
+                                            .indexOf(root.lib.state) >= 0
+                                          : false
+    readonly property string headerStatusText: {
+        if (!root.lib)
+            return ""
+        switch (root._currentLibrarySection) {
+        case 0: return qsTr("%1 canciones").arg(root.lib.songCount)
+        case 1: return qsTr("%1 álbumes").arg(root.lib.albumCount)
+        case 2: return qsTr("%1 artistas").arg(root.lib.artistCount)
+        case 3: return folderBrowser.headerStatusText
+        default: return ""
+        }
+    }
     property bool _restoringState: false
 
     MichiResponsive { id: responsive; availableWidth: root.width }
 
-    header: MichiPageHeader {
+    header: LibraryNavigationBar {
         width: parent ? parent.width : 0
-        title: qsTr("Biblioteca")
-        subtitle: qsTr("Explora canciones, álbumes, artistas y carpetas")
-        iconKey: "library"
-        tabs: LibraryNavigationBar {
-            width: parent ? parent.width : 0
-            currentIndex: root._navigationSection
-            onSectionRequested: function(index, route) {
-                if (index <= 2) {
-                    root._currentLibrarySection = index
-                    pageState.currentTab = index
-                } else if (index === 5) {
-                    root._currentLibrarySection = 3
-                    pageState.currentTab = 3
-                } else if (typeof navigationBridge !== "undefined") {
-                    navigationBridge.navigate(route)
-                }
+        currentIndex: root._navigationSection
+        onSectionRequested: function(index, route) {
+            if (index <= 2) {
+                root._currentLibrarySection = index
+                pageState.currentTab = index
+            } else if (index === 5) {
+                root._currentLibrarySection = 3
+                pageState.currentTab = 3
+            } else if (typeof navigationBridge !== "undefined") {
+                navigationBridge.navigate(route)
             }
         }
     }
@@ -92,12 +202,56 @@ MichiPage {
     }
 
     function clearFilters() {
-        toolbar.setSearchText("")
+        root.headerSearchText = ""
+        folderBrowser.applyHeaderSearch("", false)
         filterBar.specialFilter = ""
         filterBar.genreText = ""
         filterBar.composerText = ""
         filterBar.yearText = ""
         if (root.lib && root.lib.clearFilters) root.lib.clearFilters()
+    }
+
+    function applyHeaderSearch(text, submitted) {
+        var normalized = text || ""
+        if (root.headerSearchText !== normalized)
+            root.headerSearchText = normalized
+        if (root.lib && root.lib.search)
+            root.lib.search(normalized)
+        folderBrowser.applyHeaderSearch(normalized, submitted)
+        pageState.searchText = normalized
+        pageState.save()
+    }
+
+    function applyHeaderView(index) {
+        if (index < 0 || index >= root.headerViewModes.length)
+            return
+        switch (root._currentLibrarySection) {
+        case 0:
+            root._songView = index
+            break
+        case 1:
+            albumViewHost.selectView(index)
+            pageState.currentView = index
+            break
+        case 2:
+            root._artistView = index
+            artistView.selectView(index)
+            break
+        case 3:
+            root._folderView = index
+            folderBrowser.selectView(index)
+            break
+        }
+        pageState.save()
+    }
+
+    function openHeaderFilters() {
+        if (root.headerFilterEnabled)
+            filterBar.open()
+    }
+
+    function refreshHeaderContext() {
+        root.refreshData()
     }
 
     function showArtistDetail(name) {
@@ -151,7 +305,7 @@ MichiPage {
         root._restoringState = true
         var state = pageState.restore()
         root._currentLibrarySection = pageState.currentTab
-        toolbar.setSearchText(pageState.searchText)
+        root.headerSearchText = pageState.searchText
         albumViewHost.currentView = pageState.currentView
         var filters = state.filterState || ({})
         filterBar.specialFilter = filters.specialFilter || ""
@@ -208,38 +362,6 @@ MichiPage {
         anchors.fill: parent
         spacing: MichiTheme.spacing.xs
 
-        MichiLibraryToolbar {
-            id: toolbar
-            Layout.fillWidth: true
-            Layout.preferredHeight: implicitHeight
-            title: root._localSectionTitles[root._currentLibrarySection]
-            filterModel: []
-            currentFilterIndex: root._navigationSection
-            selectionActive: selectionBar.visible
-            selectedCount: selectionBar.selectedCount
-            viewModes: root._currentLibrarySection === 1 ? root._albumViewModes : []
-            currentViewMode: albumViewHost.currentView
-            activeFilterCount: filterBar.activeFilterCount
-            onFilterChanged: function(index) {
-                root._currentLibrarySection = index
-                pageState.currentTab = index
-            }
-            onSearchChanged: function(text) {
-                if (root._restoringState) return
-                if (root.lib && root.lib.search) root.lib.search(text)
-                root._searchActive = text.length > 0
-                pageState.searchText = text
-                pageState.save()
-            }
-            onRefreshRequested: root.refreshData()
-            onFiltersRequested: filterBar.open()
-            onViewModeChanged: function(index) {
-                albumViewHost.selectView(index)
-                pageState.currentView = index
-                pageState.save()
-            }
-        }
-
         LibraryFilterPopover {
             id: filterBar
             Layout.fillWidth: true
@@ -294,6 +416,7 @@ MichiPage {
                     bridge: root.lib
                     notif: root.notif
                     selectionController: root.sel
+                    compactMode: root._songView === 1
                     activeFocusOnTab: true
                     onSelectionChanged: function(ids) {
                         selectionBar.selectedIds = ids.slice()
@@ -324,11 +447,15 @@ MichiPage {
             FocusScope {
                 focus: root._currentLibrarySection === 2
                 ArtistGridPage {
+                    id: artistView
                     anchors.fill: parent
+                    embedded: true
                     artistModel: root.lib ? root.lib.artistModel : null
                     bridge: root.lib
+                    currentView: root._artistView
                     activeFocusOnTab: true
                     onArtistClicked: function(name) { root.showArtistDetail(name) }
+                    onViewChanged: function(index) { root._artistView = index }
                 }
             }
 
@@ -339,7 +466,9 @@ MichiPage {
                     folderModel: root.lib ? root.lib.folderModel : null
                     bridge: root.lib
                     embedded: true
+                    currentView: root._folderView
                     activeFocusOnTab: true
+                    onViewChanged: function(index) { root._folderView = index }
                 }
             }
         }

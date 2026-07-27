@@ -18,17 +18,75 @@ Item {
     property var routeHistory: []
     property var breadcrumbs: []
     property var mainWindow: null
+    property var contextPage: null
+
+    readonly property bool hasContext: root.contextPage &&
+                                       root.contextPage.headerContextEnabled === true
+    readonly property bool contextSearchEnabled: root.hasContext &&
+                                                 root.contextPage.headerSearchEnabled === true
+    readonly property var contextViewModes: root.hasContext &&
+                                            root.contextPage.headerViewModes
+                                            ? root.contextPage.headerViewModes : []
+    readonly property int contextCurrentView: root.hasContext &&
+                                              root.contextPage.headerCurrentView !== undefined
+                                              ? root.contextPage.headerCurrentView : 0
+    readonly property bool contextFilterEnabled: root.hasContext &&
+                                                 root.contextPage.headerFilterEnabled === true
+    readonly property int contextFilterCount: root.hasContext &&
+                                              root.contextPage.headerFilterCount !== undefined
+                                              ? root.contextPage.headerFilterCount : 0
+    readonly property bool contextRefreshEnabled: root.hasContext &&
+                                                  root.contextPage.headerRefreshEnabled === true
+    readonly property bool contextLoading: root.hasContext &&
+                                           root.contextPage.headerLoading === true
+    readonly property string contextStatusText: root.hasContext &&
+                                                root.contextPage.headerStatusText
+                                                ? root.contextPage.headerStatusText : ""
+    readonly property string effectiveSearchPlaceholder: root.contextSearchEnabled &&
+                                                         root.contextPage.headerSearchPlaceholder
+                                                         ? root.contextPage.headerSearchPlaceholder
+                                                         : qsTr("Buscar en Michi…")
+    property bool _lastSearchWasContextual: false
 
     signal backClicked()
     signal forwardClicked()
     signal breadcrumbClicked(string route)
     signal searchRequested(string query, bool submitted)
+    signal viewModeRequested(int index)
+    signal filtersRequested()
+    signal refreshRequested()
 
     function focusSearch() {
         searchField.forceInputFocus()
     }
 
+    function syncContextSearch() {
+        if (root.contextSearchEnabled) {
+            var value = root.contextPage.headerSearchText !== undefined
+                        ? root.contextPage.headerSearchText : ""
+            searchField.setTextSilently(value)
+        } else if (root._lastSearchWasContextual) {
+            searchField.setTextSilently("")
+        }
+        root._lastSearchWasContextual = root.contextSearchEnabled
+    }
+
+    onContextPageChanged: Qt.callLater(root.syncContextSearch)
+
     height: MichiTheme.headerHeight
+
+    Shortcut {
+        sequence: StandardKey.Find
+        context: Qt.ApplicationShortcut
+        onActivated: root.focusSearch()
+    }
+
+    Shortcut {
+        sequence: "F5"
+        context: Qt.ApplicationShortcut
+        enabled: root.contextRefreshEnabled && !root.contextLoading
+        onActivated: root.refreshRequested()
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -69,7 +127,8 @@ Item {
                 Layout.alignment: Qt.AlignVCenter
                 Layout.preferredWidth: Math.min(340, implicitWidth)
                 spacing: 0
-                visible: breadcrumbs.length > 1
+                visible: breadcrumbs.length > 1 &&
+                         (!root.hasContext || root.width >= 1050)
 
                 Repeater {
                     model: breadcrumbs
@@ -120,7 +179,8 @@ Item {
             }
 
             Text {
-                visible: breadcrumbs.length <= 1
+                visible: breadcrumbs.length <= 1 &&
+                         (!root.hasContext || root.width >= 900)
                 text: root.pageTitle
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
@@ -128,7 +188,8 @@ Item {
                 elide: Text.ElideRight
                 maximumLineCount: 1
                 Layout.alignment: Qt.AlignVCenter
-                Layout.fillWidth: true
+                Layout.fillWidth: !root.hasContext
+                Layout.maximumWidth: root.hasContext ? 190 : 100000
             }
 
             Item {
@@ -147,15 +208,44 @@ Item {
                 }
             }
 
+            Text {
+                visible: root.hasContext && root.contextStatusText !== "" &&
+                         root.width >= 1060
+                text: root.contextStatusText
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.metaSize
+                font.weight: MichiTheme.typography.weightMedium
+                elide: Text.ElideRight
+                Layout.maximumWidth: 130
+                Layout.alignment: Qt.AlignVCenter
+            }
+
+            HeaderViewSwitcher {
+                id: viewSwitcher
+                Layout.alignment: Qt.AlignVCenter
+                modes: root.contextViewModes
+                currentIndex: root.contextCurrentView
+                loading: root.contextLoading
+                onActivated: function(index) { root.viewModeRequested(index) }
+            }
+
             MichiSearchField {
                 id: searchField
                 Layout.alignment: Qt.AlignVCenter
-                Layout.preferredWidth: Math.min(340, Math.max(220, root.width * 0.28))
-                Layout.maximumWidth: 340
-                placeholderText: qsTr("Buscar en Michi...")
+                Layout.preferredWidth: root.hasContext
+                                       ? Math.min(360, Math.max(210, root.width * 0.27))
+                                       : Math.min(340, Math.max(220, root.width * 0.28))
+                Layout.maximumWidth: root.hasContext ? 360 : 340
+                placeholderText: root.effectiveSearchPlaceholder
                 controlObjectName: "searchField"
-                accessibleName: qsTr("Buscar en Michi")
-                debounceMs: 300
+                accessibleName: root.contextSearchEnabled
+                                ? root.effectiveSearchPlaceholder
+                                : qsTr("Buscar en Michi")
+                accessibleDescription: root.contextSearchEnabled
+                                       ? qsTr("Filtra la sección de biblioteca visible")
+                                       : qsTr("Busca en todas las secciones de Michi")
+                loading: root.contextLoading
+                debounceMs: root.contextSearchEnabled ? 240 : 300
                 onSearchTextChanged: function(query) {
                     root.searchRequested(query, false)
                 }
@@ -164,6 +254,41 @@ Item {
                         root.searchRequested(query.trim(), true)
                 }
                 onClearRequested: root.searchRequested("", false)
+            }
+
+            MichiIconButton {
+                id: filterButton
+                visible: root.contextFilterEnabled
+                iconSource: "../../icons/view/filter.svg"
+                tooltipText: root.contextFilterCount > 0
+                             ? qsTr("Filtros de Biblioteca (%1 activos)").arg(root.contextFilterCount)
+                             : qsTr("Filtros de Biblioteca")
+                accessibleName: tooltipText
+                selected: root.contextFilterCount > 0
+                symbolic: true
+                enabled: !root.contextLoading
+                onClicked: root.filtersRequested()
+            }
+
+            MichiIconButton {
+                id: refreshButton
+                visible: root.contextRefreshEnabled && root.width >= 980
+                iconSource: "../../icons/refresh.svg"
+                tooltipText: root.contextLoading
+                             ? qsTr("Actualizando biblioteca…")
+                             : qsTr("Actualizar sección (F5)")
+                accessibleName: tooltipText
+                symbolic: true
+                enabled: !root.contextLoading
+                onClicked: root.refreshRequested()
+
+                RotationAnimator on rotation {
+                    from: 0
+                    to: 360
+                    duration: 900
+                    loops: Animation.Infinite
+                    running: root.contextLoading
+                }
             }
 
             MichiIconButton {
@@ -190,5 +315,13 @@ Item {
     Connections {
         target: typeof themeBridge !== "undefined" ? themeBridge : null
         function onThemeChanged() { MichiTheme.setDarkMode(themeBridge.darkMode) }
+    }
+
+    Connections {
+        target: root.contextPage
+        ignoreUnknownSignals: true
+        function onHeaderSearchTextChanged() {
+            root.syncContextSearch()
+        }
     }
 }

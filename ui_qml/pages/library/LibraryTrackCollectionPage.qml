@@ -1,23 +1,15 @@
 import QtQuick
-import "../"
 
 LibrarySectionPage {
     id: root
-    objectName: "tracksPage"
-    focus: true
-    sectionTitle: qsTr("Canciones")
-    sectionSubtitle: qsTr("Todas las pistas indexadas de tu biblioteca")
-    sectionIcon: "songs"
-    navigationIndex: 0
-    standardFiltersEnabled: true
-
-    Accessible.role: Accessible.Pane
-    Accessible.name: qsTr("Canciones")
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property int currentView: 0
+    standardFiltersEnabled: true
 
-    headerSearchPlaceholder: qsTr("Buscar canciones…")
+    headerSearchPlaceholder: qsTr("Buscar en %1…").arg(
+                                 root.sectionTitle.toLowerCase()
+                             )
     headerViewModes: [
         {
             id: "detailed",
@@ -34,12 +26,15 @@ LibrarySectionPage {
     ]
     headerCurrentView: root.currentView
     headerStatusText: root.lib
-                      ? qsTr("%1 canciones").arg(root.lib.songCount)
+                      ? qsTr("%1 canciones").arg(root.lib.visibleCount)
                       : ""
     headerLoading: root.lib
                    ? ["INITIALIZING", "LOADING", "SCANNING", "INDEXING"]
                      .indexOf(root.lib.state) >= 0
                    : false
+
+    function reloadCollection() {
+    }
 
     function applyHeaderView(index) {
         if (index >= 0 && index < root.headerViewModes.length)
@@ -53,13 +48,11 @@ LibrarySectionPage {
     }
 
     function refreshHeaderContext() {
-        if (root.lib && root.lib.refresh)
-            root.lib.refresh()
+        root.reloadCollection()
     }
 
     function routeEnter(route, params) {
-        if (root.lib && root.lib.ensureLoaded)
-            root.lib.ensureLoaded()
+        root.reloadCollection()
     }
 
     LibraryTrackTable {
@@ -69,8 +62,5 @@ LibrarySectionPage {
         compactMode: root.currentView === 1
     }
 
-    Component.onCompleted: {
-        if (root.lib && root.lib.ensureLoaded)
-            root.lib.ensureLoaded()
-    }
+    Component.onCompleted: root.reloadCollection()
 }

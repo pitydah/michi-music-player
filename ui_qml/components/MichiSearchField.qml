@@ -26,6 +26,17 @@ Item {
         field.selectAll()
     }
 
+    function setTextSilently(value) {
+        var normalized = value || ""
+        if (root.text === normalized && field.text === normalized)
+            return
+        debounceTimer.stop()
+        root._clearing = true
+        root.text = normalized
+        field.text = normalized
+        root._clearing = false
+    }
+
     function clear() {
         if (root.text === "")
             return

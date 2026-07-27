@@ -1,13 +1,9 @@
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
-import "../../theme"
-import "../../components"
 
 LibrarySectionPage {
+    id: root
     objectName: "composersPage"
     focus: true
-    id: root
     sectionTitle: qsTr("Compositores")
     sectionSubtitle: qsTr("Obras agrupadas por autor y compositor")
     sectionIcon: "artists"
@@ -15,91 +11,87 @@ LibrarySectionPage {
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property var _composers: []
+    property int currentView: 0
+    readonly property var visibleComposers: root.filteredEntries(
+                                                       root._composers,
+                                                       root.headerSearchText
+                                                   )
+
+    headerSearchPlaceholder: qsTr("Buscar compositores…")
+    headerViewModes: [
+        {
+            id: "grid",
+            icon: "../../icons/view/library-artist-grid.svg",
+            label: qsTr("Mosaico de compositores"),
+            description: qsTr("Tarjetas amplias con cantidad de obras")
+        },
+        {
+            id: "list",
+            icon: "../../icons/view/library-artist-list.svg",
+            label: qsTr("Lista de compositores"),
+            description: qsTr("Lectura compacta ordenada por nombre")
+        }
+    ]
+    headerCurrentView: root.currentView
+    headerStatusText: qsTr("%1 compositores").arg(root.visibleComposers.length)
 
     signal composerSelected(string composer)
 
+    function entryName(entry) {
+        if (typeof entry !== "object")
+            return entry || ""
+        return entry.name || entry.composer || ""
+    }
+
+    function filteredEntries(entries, query) {
+        var normalized = (query || "").trim().toLocaleLowerCase()
+        if (normalized === "")
+            return entries || []
+        return (entries || []).filter(function(entry) {
+            return root.entryName(entry).toLocaleLowerCase().indexOf(normalized) >= 0
+        })
+    }
+
     function reload() {
-        if (root.lib && root.lib.getComposers) {
+        if (root.lib && root.lib.getComposers)
             root._composers = root.lib.getComposers() || []
-        }
     }
 
     function openComposer(composer) {
         root.composerSelected(composer)
         if (typeof navigationBridge !== "undefined" && composer)
-            navigationBridge.navigateWithParams("library.composer_detail", {composer: composer})
+            navigationBridge.navigateWithParams(
+                "library.composer_detail",
+                {composer: composer}
+            )
+    }
+
+    function applyHeaderSearch(text, submitted) {
+        root.headerSearchText = text || ""
+    }
+
+    function applyHeaderView(index) {
+        if (index >= 0 && index < root.headerViewModes.length)
+            root.currentView = index
+    }
+
+    function refreshHeaderContext() {
+        root.reload()
+    }
+
+    function routeEnter(route, params) {
+        root.reload()
+    }
+
+    LibraryFacetView {
+        anchors.fill: parent
+        entries: root.visibleComposers
+        currentView: root.currentView
+        singularName: qsTr("compositor")
+        pluralName: qsTr("compositores")
+        iconKey: "artists"
+        onEntryActivated: function(value) { root.openComposer(value) }
     }
 
     Component.onCompleted: reload()
-
-    ColumnLayout {
-        anchors.fill: parent; spacing: 0
-
-        Rectangle {
-            Layout.fillWidth: true; Layout.preferredHeight: 40
-            color: MichiTheme.colors.surfaceCard
-
-            Text {
-                anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                anchors.leftMargin: MichiTheme.spacing.md
-                text: qsTr("Compositores")
-                color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.sectionTitleSize
-                font.weight: MichiTheme.typography.weightSemiBold
-            }
-        }
-
-        ListView {
-            id: composerList
-            Accessible.role: Accessible.List
-
-            Accessible.name: "Lista de compositores"
-
-            activeFocusOnTab: true
-
-            focusPolicy: Qt.StrongFocus
-            Layout.fillWidth: true; Layout.fillHeight: true
-            model: root._composers
-            clip: true; spacing: MichiTheme.spacing.xs
-
-            ScrollBar.vertical: ScrollBar { width: 8; policy: ScrollBar.AsNeeded }
-
-            function activateCurrent() {
-                if (currentIndex < 0 || currentIndex >= root._composers.length) return
-                var value = root._composers[currentIndex]
-                root.openComposer(typeof value === "object" ? value.name || value.composer : value)
-            }
-
-            Keys.onReturnPressed: function(event) { activateCurrent(); event.accepted = true }
-            Keys.onEnterPressed: function(event) { activateCurrent(); event.accepted = true }
-            Keys.onSpacePressed: function(event) { activateCurrent(); event.accepted = true }
-
-            delegate: Item {
-                width: parent.width; height: 40
-                Rectangle {
-                    anchors.fill: parent; color: mouse.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-                    RowLayout {
-                        anchors.fill: parent; anchors.leftMargin: MichiTheme.spacing.md
-                        spacing: MichiTheme.spacing.sm
-                        Text {
-                            text: typeof modelData === "object" ? (modelData.name || modelData.composer) : modelData
-                            color: MichiTheme.colors.textPrimary
-                            font.pixelSize: MichiTheme.typography.bodySize
-                            Layout.fillWidth: true
-                        }
-                        Text {
-                            text: typeof modelData === "object" && modelData.count ? modelData.count + " canciones" : ""
-                            color: MichiTheme.colors.textMuted
-                            font.pixelSize: MichiTheme.typography.metaSize
-                        }
-                    }
-                    MouseArea {
-                        id: mouse
-                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: root.openComposer(typeof modelData === "object" ? modelData.name || modelData.composer : modelData)
-                    }
-                }
-            }
-        }
-    }
 }

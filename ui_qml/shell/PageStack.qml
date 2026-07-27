@@ -21,6 +21,9 @@ Item {
     property bool transitionRunning: false
     readonly property Loader _displayLoader: transitionRunning ? _incomingLoader : _activeLoader
     readonly property string loadedObjectName: _displayLoader && _displayLoader.item ? _displayLoader.item.objectName : ""
+    readonly property var currentPage: _displayLoader && _displayLoader.item
+                                       ? _displayLoader.item
+                                       : null
     property bool loading: false
     property string _prevRoute: ""
     property var _prevParams: ({})

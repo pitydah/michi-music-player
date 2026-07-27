@@ -9,6 +9,7 @@ Item {
     focus: true
 
     property string path: ""
+    property bool embedded: false
     readonly property var entries: root.buildEntries(root.path)
 
     signal navigate(int index)
@@ -53,9 +54,9 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: MichiTheme.radius.md
-        color: MichiTheme.colors.surfaceToolbar
-        border.width: MichiTheme.borderWidth
-        border.color: MichiTheme.colors.borderSubtle
+        color: root.embedded ? "transparent" : MichiTheme.colors.surfaceToolbar
+        border.width: root.embedded ? 0 : MichiTheme.borderWidth
+        border.color: root.embedded ? "transparent" : MichiTheme.colors.borderSubtle
 
         Flickable {
             id: breadcrumbFlick

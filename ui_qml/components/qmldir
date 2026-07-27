@@ -33,6 +33,7 @@ JobStatusBanner 1.0 JobStatusBanner.qml
 MichiIcon 1.0 MichiIcon.qml
 MichiFeatureCard 1.0 MichiFeatureCard.qml
 ContextToolbar 1.0 ContextToolbar.qml
+HeaderViewSwitcher 1.0 HeaderViewSwitcher.qml
 
 AsyncStateView 1.0 AsyncStateView.qml
 LoadingState 1.0 LoadingState.qml

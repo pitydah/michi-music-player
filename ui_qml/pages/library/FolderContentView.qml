@@ -12,7 +12,10 @@ Item {
     property var bridge: null
     property string currentPath: ""
     property var _tracks: []
+    property string searchText: ""
     property bool loading: false
+    readonly property var visibleTracks: root.filterTracks(root._tracks, root.searchText)
+    readonly property int visibleTrackCount: root.visibleTracks.length
 
     signal playFolder(string path)
     signal navigateToFolder(string path)
@@ -40,6 +43,22 @@ Item {
             trackList.currentIndex = root._tracks.length > 0 ? 0 : -1
     }
 
+    function filterTracks(tracks, query) {
+        var normalized = (query || "").trim().toLocaleLowerCase()
+        if (normalized === "")
+            return tracks || []
+        return (tracks || []).filter(function(track) {
+            var haystack = [
+                track.title || "",
+                track.artist || "",
+                track.album || "",
+                track.genre || "",
+                track.format || ""
+            ].join(" ").toLocaleLowerCase()
+            return haystack.indexOf(normalized) >= 0
+        })
+    }
+
     function trackIdOf(track) {
         return track ? (track.track_id || track.trackId || track.id || 0) : 0
     }
@@ -51,9 +70,10 @@ Item {
     }
 
     function playSelected() {
-        if (trackList.currentIndex < 0 || trackList.currentIndex >= root._tracks.length)
+        if (trackList.currentIndex < 0 ||
+                trackList.currentIndex >= root.visibleTracks.length)
             return
-        root.playTrack(root._tracks[trackList.currentIndex])
+        root.playTrack(root.visibleTracks[trackList.currentIndex])
     }
 
     function playCurrentFolder() {
@@ -77,73 +97,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: MichiTheme.spacing.sm
-
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 52
-            radius: MichiTheme.radius.md
-            color: MichiTheme.colors.surfaceToolbar
-            border.width: MichiTheme.borderWidth
-            border.color: MichiTheme.colors.borderSubtle
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: MichiTheme.spacing.md
-                anchors.rightMargin: MichiTheme.spacing.md
-                spacing: MichiTheme.spacing.sm
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 0
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: root.currentPath
-                              ? root.currentPath.split(/[\\/]/).filter(
-                                    function(part) { return part !== "" }
-                                ).slice(-1)[0] || root.currentPath
-                              : qsTr("Contenido de la carpeta")
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        font.weight: MichiTheme.typography.weightSemiBold
-                        elide: Text.ElideMiddle
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: root.currentPath
-                              ? qsTr("%1 canciones").arg(root._tracks.length)
-                              : qsTr("Selecciona una carpeta para ver sus canciones")
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.captionSize
-                        elide: Text.ElideRight
-                    }
-                }
-
-                BusyIndicator {
-                    Layout.preferredWidth: 22
-                    Layout.preferredHeight: 22
-                    visible: root.loading
-                    running: visible
-                    Accessible.name: qsTr("Cargando contenido")
-                }
-
-                MichiButton {
-                    text: qsTr("Reproducir carpeta")
-                    variant: "primary"
-                    visible: root._tracks.length > 0
-                    onClicked: root.playCurrentFolder()
-                }
-
-                MichiButton {
-                    text: qsTr("Añadir a cola")
-                    variant: "ghost"
-                    visible: root._tracks.length > 0
-                    onClicked: root.enqueueFolder()
-                }
-            }
-        }
+        spacing: 0
 
         Rectangle {
             Layout.fillWidth: true
@@ -159,7 +113,7 @@ Item {
                 objectName: "folderTrackList"
                 anchors.fill: parent
                 anchors.margins: MichiTheme.spacing.xs
-                model: root._tracks
+                model: root.visibleTracks
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 spacing: 2
@@ -302,7 +256,7 @@ Item {
             Column {
                 anchors.centerIn: parent
                 spacing: MichiTheme.spacing.sm
-                visible: !root.loading && root._tracks.length === 0
+                visible: !root.loading && root.visibleTracks.length === 0
 
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -313,9 +267,11 @@ Item {
 
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: root.currentPath
-                          ? qsTr("Sin canciones en esta carpeta")
-                          : qsTr("Selecciona una carpeta")
+                    text: root.searchText !== ""
+                          ? qsTr("Sin coincidencias en esta carpeta")
+                          : root.currentPath
+                            ? qsTr("Sin canciones en esta carpeta")
+                            : qsTr("Selecciona una carpeta")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.bodySize
                     font.weight: MichiTheme.typography.weightSemiBold

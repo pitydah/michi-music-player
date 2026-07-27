@@ -1,13 +1,11 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 import "../../theme"
-import "../../components"
 
 LibrarySectionPage {
+    id: root
     objectName: "yearsPage"
     focus: true
-    id: root
     sectionTitle: qsTr("Años y décadas")
     sectionSubtitle: qsTr("Explora la colección cronológicamente")
     sectionIcon: "albums"
@@ -15,13 +13,40 @@ LibrarySectionPage {
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property var _years: []
+    readonly property var visibleYears: root.filteredYears(
+                                               root._years,
+                                               root.headerSearchText
+                                           )
+
+    headerSearchPlaceholder: qsTr("Buscar año o década…")
+    headerStatusText: qsTr("%1 años").arg(root.visibleYears.length)
 
     signal yearSelected(string year)
 
+    function valueOf(entry) {
+        if (typeof entry !== "object")
+            return String(entry || "")
+        return String(entry.year || entry.name || "")
+    }
+
+    function countOf(entry) {
+        return typeof entry === "object"
+               ? Number(entry.count || entry.track_count || 0)
+               : 0
+    }
+
+    function filteredYears(entries, query) {
+        var normalized = (query || "").trim().toLocaleLowerCase()
+        if (normalized === "")
+            return entries || []
+        return (entries || []).filter(function(entry) {
+            return root.valueOf(entry).toLocaleLowerCase().indexOf(normalized) >= 0
+        })
+    }
+
     function reload() {
-        if (root.lib && root.lib.getYears) {
+        if (root.lib && root.lib.getYears)
             root._years = root.lib.getYears() || []
-        }
     }
 
     function openYear(year) {
@@ -32,68 +57,110 @@ LibrarySectionPage {
             navigationBridge.navigate("library")
     }
 
-    Component.onCompleted: reload()
+    function applyHeaderSearch(text, submitted) {
+        root.headerSearchText = text || ""
+    }
 
-    ColumnLayout {
-        anchors.fill: parent; spacing: 0
+    function refreshHeaderContext() {
+        root.reload()
+    }
 
-        Rectangle {
-            Layout.fillWidth: true; Layout.preferredHeight: 40
-            color: MichiTheme.colors.surfaceCard
+    function routeEnter(route, params) {
+        root.reload()
+    }
 
-            Text {
-                anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                anchors.leftMargin: MichiTheme.spacing.md
-                text: qsTr("Años")
-                color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.sectionTitleSize
-                font.weight: MichiTheme.typography.weightSemiBold
-            }
+    GridView {
+        id: yearsGrid
+        anchors.fill: parent
+        model: root.visibleYears
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        activeFocusOnTab: true
+        focus: true
+        cellWidth: 104
+        cellHeight: 78
+        leftMargin: MichiTheme.spacing.xs
+        rightMargin: MichiTheme.spacing.xs
+
+        ScrollBar.vertical: ScrollBar {
+            width: 8
+            policy: ScrollBar.AsNeeded
         }
 
-        Flow {
-            Layout.fillWidth: true; Layout.fillHeight: true
-            anchors.margins: MichiTheme.spacing.md
-            spacing: MichiTheme.spacing.sm
+        Keys.onReturnPressed: {
+            if (currentIndex >= 0 && currentIndex < root.visibleYears.length)
+                root.openYear(root.valueOf(root.visibleYears[currentIndex]))
+        }
+        Keys.onEnterPressed: {
+            if (currentIndex >= 0 && currentIndex < root.visibleYears.length)
+                root.openYear(root.valueOf(root.visibleYears[currentIndex]))
+        }
 
-            Repeater {
-                model: root._years
+        delegate: Item {
+            id: yearDelegate
+            required property int index
+            required property var modelData
+            readonly property bool selected: GridView.isCurrentItem
 
-                Rectangle {
-                    width: 80; height: 60; radius: MichiTheme.radius.sm
-                    color: mouse.containsMouse ? MichiTheme.colors.surfaceHover : MichiTheme.colors.surfaceCard
-                    activeFocusOnTab: true
-                    border.width: activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
-                    border.color: activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
+            width: yearsGrid.cellWidth
+            height: yearsGrid.cellHeight
 
-                    Column {
-                        anchors.centerIn: parent; spacing: 2
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: typeof modelData === "object" ? (modelData.year || modelData.name) : modelData
-                            color: MichiTheme.colors.textPrimary
-                            font.pixelSize: MichiTheme.typography.bodySize
-                            font.weight: MichiTheme.typography.weightSemiBold
-                        }
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: typeof modelData === "object" && modelData.count ? modelData.count + "" : ""
-                            color: MichiTheme.colors.textMuted
-                            font.pixelSize: MichiTheme.typography.captionSize
-                        }
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: MichiTheme.spacing.xs
+                radius: MichiTheme.radius.md
+                color: yearMouse.pressed
+                       ? MichiTheme.colors.surfacePressed
+                       : yearDelegate.selected
+                         ? MichiTheme.colors.accentSelection
+                         : yearMouse.containsMouse
+                           ? MichiTheme.colors.surfaceCardHover
+                           : MichiTheme.colors.surfaceCard
+                border.width: yearDelegate.selected || yearMouse.containsMouse
+                              ? MichiTheme.borderWidth : 0
+                border.color: yearDelegate.selected
+                              ? MichiTheme.colors.borderActive
+                              : MichiTheme.colors.borderHover
+
+                Column {
+                    anchors.centerIn: parent
+                    spacing: 2
+
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: root.valueOf(yearDelegate.modelData)
+                        color: yearDelegate.selected
+                               ? MichiTheme.colors.accentBlue
+                               : MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.cardTitleSize
+                        font.weight: MichiTheme.typography.weightSemiBold
                     }
 
-                    MouseArea {
-                        id: mouse
-                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: root.openYear(typeof modelData === "object" ? (modelData.year || modelData.name) : modelData)
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: root.countOf(yearDelegate.modelData) > 0
+                              ? qsTr("%1 canciones").arg(
+                                    root.countOf(yearDelegate.modelData)
+                                )
+                              : qsTr("Abrir")
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.metaSize
                     }
+                }
 
-                    Keys.onReturnPressed: root.openYear(typeof modelData === "object" ? (modelData.year || modelData.name) : modelData)
-                    Keys.onEnterPressed: root.openYear(typeof modelData === "object" ? (modelData.year || modelData.name) : modelData)
-                    Keys.onSpacePressed: root.openYear(typeof modelData === "object" ? (modelData.year || modelData.name) : modelData)
+                MouseArea {
+                    id: yearMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onPressed: yearsGrid.currentIndex = yearDelegate.index
+                    onClicked: root.openYear(
+                                   root.valueOf(yearDelegate.modelData)
+                               )
                 }
             }
         }
     }
+
+    Component.onCompleted: reload()
 }

@@ -1,4 +1,5 @@
 """Static contracts for the compact library chrome."""
+from __future__ import annotations
 
 from pathlib import Path
 
@@ -12,15 +13,23 @@ def test_library_uses_filter_popover_without_layout_height() -> None:
 
     assert "LibraryFilterPopover {" in source
     assert "implicitHeight: 0" in popover
-    assert "onFiltersRequested: filterBar.open()" in source
+    assert "function openHeaderFilters()" in source
+    assert "filterBar.open()" in source
 
 
-def test_album_view_selector_lives_in_context_toolbar() -> None:
+def test_album_view_selector_lives_in_shell_header() -> None:
     page = (QML_ROOT / "pages/library/LibraryPage.qml").read_text()
+    header = (QML_ROOT / "shell/HeaderBar.qml").read_text()
 
-    assert "viewModes: root._currentLibrarySection === 1" in page
-    assert "onViewModeChanged:" in page
-    assert "albumViewHost.selectView(index)" in page
+    assert "readonly property var headerViewModes:" in page
+    assert "function applyHeaderView(index)" in page
+    assert "HeaderViewSwitcher {" in header
+
+
+def test_library_has_no_second_search_field_or_context_toolbar() -> None:
+    source = (QML_ROOT / "pages/library/LibraryPage.qml").read_text()
+    assert "MichiSearchField {" not in source
+    assert "MichiLibraryToolbar {" not in source
 
 
 def test_formats_are_compact_combo_box_options() -> None:

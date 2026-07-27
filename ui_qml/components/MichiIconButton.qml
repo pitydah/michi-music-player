@@ -12,6 +12,12 @@ QQC2.Button {
     property string iconSource: ""
     property string tooltipText: ""
     property bool selected: false
+    property bool symbolic: false
+    property color symbolicColor: root.selected
+                                  ? MichiTheme.colors.accentBlue
+                                  : root.hovered
+                                    ? MichiTheme.colors.textPrimary
+                                    : MichiTheme.colors.textSecondary
     property int btnSize: MichiTheme.minimumInteractiveSize
     property string accessibleName: tooltipText
     property string accessibleDescription: tooltipText
@@ -42,11 +48,21 @@ QQC2.Button {
             width: 18
             height: 18
             source: root.iconSource !== "" ? Qt.resolvedUrl(root.iconSource) : ""
-            visible: root.iconSource !== ""
             sourceSize.width: 32
             sourceSize.height: 32
             fillMode: Image.PreserveAspectFit
             opacity: root.enabled ? 1.0 : MichiTheme.opacity.disabled
+            visible: root.iconSource !== "" && !root.symbolic
+        }
+
+        MichiIcon {
+            anchors.centerIn: parent
+            source: root.iconSource
+            size: 18
+            color: root.symbolicColor
+            disabled: !root.enabled
+            visible: root.iconSource !== "" && root.symbolic
+            accessibleName: ""
         }
 
         Text {

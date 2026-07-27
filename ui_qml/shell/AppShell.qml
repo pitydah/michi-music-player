@@ -101,6 +101,7 @@ Item {
                     Layout.preferredHeight: 56
                     pageTitle: "Inicio"
                     mainWindow: mainWindow
+                    contextPage: pageStack.currentPage
 
                     canGoBack: navigationBridge ? navigationBridge.canGoBack : false
                     canGoForward: navigationBridge ? navigationBridge.canGoForward : false
@@ -122,6 +123,14 @@ Item {
                     }
 
                     onSearchRequested: function(query, submitted) {
+                        var contextPage = pageStack.currentPage
+                        if (contextPage &&
+                                contextPage.headerContextEnabled === true &&
+                                contextPage.headerSearchEnabled === true &&
+                                typeof contextPage.applyHeaderSearch === "function") {
+                            contextPage.applyHeaderSearch(query, submitted)
+                            return
+                        }
                         if (typeof navigationBridge === "undefined" || !navigationBridge)
                             return
                         var normalized = query.trim()
@@ -131,6 +140,24 @@ Item {
                             query: normalized,
                             submitted: submitted
                         })
+                    }
+
+                    onViewModeRequested: function(index) {
+                        var contextPage = pageStack.currentPage
+                        if (contextPage && typeof contextPage.applyHeaderView === "function")
+                            contextPage.applyHeaderView(index)
+                    }
+
+                    onFiltersRequested: {
+                        var contextPage = pageStack.currentPage
+                        if (contextPage && typeof contextPage.openHeaderFilters === "function")
+                            contextPage.openHeaderFilters()
+                    }
+
+                    onRefreshRequested: {
+                        var contextPage = pageStack.currentPage
+                        if (contextPage && typeof contextPage.refreshHeaderContext === "function")
+                            contextPage.refreshHeaderContext()
                     }
                 }
 
@@ -168,6 +195,7 @@ Item {
     ShortcutLayer {
         anchors.fill: parent
         cmdPalette: commandPalette
+        searchTarget: header
     }
 
     Dialog {

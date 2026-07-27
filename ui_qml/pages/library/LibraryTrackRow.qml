@@ -24,6 +24,7 @@ Item {
     property bool trackFavorite: false
     property bool trackMissing: false
     property int trackQuality: 0
+    property bool compactMode: false
     property bool isSelected: false
     property bool isShiftPressed: false
     property int lastClickedIndex: -1
@@ -35,7 +36,7 @@ Item {
     signal rightClicked(int mx, int my)
     signal selectionToggled(int id, bool ctrl, bool shift)
 
-    height: MichiTheme.rowHeightComfortable
+    height: root.compactMode ? MichiTheme.rowHeightCompact : MichiTheme.rowHeightComfortable
     activeFocusOnTab: true
     Accessible.onPressAction: root.playClicked()
 
@@ -78,7 +79,9 @@ Item {
         Text {
             text: root.trackTitle || ""
             color: root.isSelected ? MichiTheme.colors.accentPrimary : MichiTheme.colors.textPrimary
-            font.pixelSize: MichiTheme.typography.bodySize
+            font.pixelSize: root.compactMode
+                            ? MichiTheme.typography.secondarySize
+                            : MichiTheme.typography.bodySize
             font.weight: root.isSelected ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
             Layout.fillWidth: true
             elide: Text.ElideRight
@@ -88,7 +91,9 @@ Item {
         Text {
             text: root.trackArtist || ""
             color: MichiTheme.colors.textSecondary
-            font.pixelSize: MichiTheme.typography.bodySize
+            font.pixelSize: root.compactMode
+                            ? MichiTheme.typography.secondarySize
+                            : MichiTheme.typography.bodySize
             Layout.preferredWidth: responsive.compact ? 120 : 160
             elide: Text.ElideRight
         }
@@ -98,6 +103,7 @@ Item {
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.bodySize
             Layout.preferredWidth: responsive.compact ? 120 : 160
+            visible: !root.compactMode
             elide: Text.ElideRight
         }
 
@@ -105,7 +111,7 @@ Item {
             format: root.trackFormat
             bitDepth: root.trackQuality
             width: 40
-            visible: !responsive.compact
+            visible: !responsive.compact && !root.compactMode
         }
 
         Text {
@@ -113,7 +119,7 @@ Item {
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
             width: 40
-            visible: !responsive.compact
+            visible: !responsive.compact && !root.compactMode
             horizontalAlignment: Text.AlignRight
         }
 

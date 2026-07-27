@@ -75,20 +75,17 @@ def test_library_uses_canonical_page_surface_at_supported_widths(engine, width):
     instance = component.createWithInitialProperties({"width": width, "height": 700})
     assert instance is not None, component.errorString()
 
-    header = instance.findChild(QObject, "michiPageHeader")
     body = instance.findChild(QObject, "michiPageBody")
-    toolbar = instance.findChild(QObject, "michiLibraryToolbar")
-    visible_headers = [
+    navigation = instance.findChild(QObject, "libraryNavigationBar")
+    assert body is not None
+    assert body.property("height") > 0
+    assert navigation is not None
+    assert instance.property("headerContextEnabled") is True
+    assert instance.findChild(QObject, "michiLibraryToolbar") is None
+    assert not [
         item for item in instance.findChildren(QObject, "michiPageHeader")
         if item.property("visible")
     ]
-    assert header is not None
-    assert header.property("title") == "Biblioteca"
-    assert body is not None
-    assert body.property("height") > 0
-    assert toolbar is not None
-    assert toolbar.property("title") == "Canciones"
-    assert len(visible_headers) == 1
 
     instance.deleteLater()
 
@@ -132,12 +129,13 @@ def test_library_section_pages_share_secondary_navigation(
     assert instance is not None, component.errorString()
 
     navigation = instance.findChild(QObject, "libraryNavigationBar")
-    header = instance.findChild(QObject, "michiPageHeader")
     assert navigation is not None
     assert navigation.property("currentIndex") == expected_index
-    assert header is not None
-    assert header.property("visible") is True
-    assert header.property("title") != ""
+    assert instance.property("headerContextEnabled") is True
+    assert not [
+        item for item in instance.findChildren(QObject, "michiPageHeader")
+        if item.property("visible")
+    ]
 
     instance.deleteLater()
 
@@ -148,13 +146,13 @@ def test_library_section_actions_use_canonical_routes_and_model_api() -> None:
     years = (QML_ROOT / "pages/library/YearsPage.qml").read_text()
     folders = (QML_ROOT / "pages/library/FolderBrowserPage.qml").read_text()
 
-    assert 'navigateWithParams("library.genre_detail"' in genres
-    assert 'navigateWithParams("library.composer_detail"' in composers
+    assert 'navigateWithParams(' in genres and 'library.genre_detail' in genres
+    assert 'navigateWithParams(' in composers and 'library.composer_detail' in composers
     assert "root.lib.setYearFilter(String(year))" in years
     assert "root.folderModel.refresh(root._currentPath)" in folders
     assert 'refresh("parent_path"' not in folders
-    assert "Keys.onReturnPressed" in genres
-    assert "Keys.onReturnPressed" in composers
+    assert "Keys.onReturnPressed" in genres or "onEntryActivated" in genres
+    assert "Keys.onReturnPressed" in composers or "onEntryActivated" in composers
     assert "Keys.onReturnPressed" in years
 
 

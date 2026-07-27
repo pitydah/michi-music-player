@@ -1,71 +1,120 @@
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
 import "../../theme"
-import "../../components"
-import "../../materials"
+import "album"
 
-Item {
+LibrarySectionPage {
     id: root
     objectName: "albumGridPage"
     focus: true
+    sectionTitle: qsTr("Álbumes")
+    sectionSubtitle: qsTr("Explora discos, ediciones y archivos cronológicos")
+    sectionIcon: "albums"
+    navigationIndex: 1
+    standardFiltersEnabled: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Álbumes"
+    Accessible.name: qsTr("Álbumes")
+    Accessible.description: qsTr("Explorador visual de álbumes")
 
-    property var albumModel: null
-    property var bridge: null
+    property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
+    property var albumModel: root.lib ? root.lib.albumModel : null
+    property var bridge: root.lib
+    property int currentView: 0
+
+    headerSearchPlaceholder: qsTr("Buscar álbumes…")
+    headerViewModes: [
+        {
+            id: "grid",
+            icon: "../../icons/view/library-grid.svg",
+            label: qsTr("Cuadrícula"),
+            description: qsTr("Carátulas adaptables para explorar la colección")
+        },
+        {
+            id: "coverflow",
+            icon: "../../icons/view/library-coverflow.svg",
+            label: qsTr("CoverFlow"),
+            description: qsTr("Exploración horizontal centrada en las carátulas")
+        },
+        {
+            id: "vinyl",
+            icon: "../../icons/view/library-vinyl.svg",
+            label: qsTr("Muro de vinilos"),
+            description: qsTr("Presentación visual inspirada en discos físicos")
+        },
+        {
+            id: "timeline",
+            icon: "../../icons/view/library-timeline.svg",
+            label: qsTr("Línea de tiempo"),
+            description: qsTr("Organiza los álbumes por año y década")
+        },
+        {
+            id: "editorial",
+            icon: "../../icons/view/library-editorial.svg",
+            label: qsTr("Editorial"),
+            description: qsTr("Composición amplia con jerarquía de revista")
+        }
+    ]
+    headerCurrentView: root.currentView
+    headerStatusText: root.albumModel
+                      ? qsTr("%1 álbumes").arg(root.albumModel.totalCount)
+                      : ""
+    headerLoading: root.albumModel
+                   ? root.albumModel.loading || root.albumModel.loadingMore
+                   : false
 
     signal albumClicked(string albumKey, string title, string artist, int year)
+    signal viewChanged(int index)
 
-    ColumnLayout {
-        anchors.fill: parent; spacing: 0
+    function selectView(index) {
+        if (index < 0 || index >= root.headerViewModes.length ||
+                index === root.currentView)
+            return
+        root.currentView = index
+        root.viewChanged(index)
+    }
 
-        Rectangle {
-            Layout.fillWidth: true; Layout.preferredHeight: MichiTheme.spacing.xxxl
-            color: MichiTheme.colors.surfaceCard
+    function applyHeaderView(index) {
+        albumViewHost.selectView(index)
+    }
 
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: MichiTheme.spacing.md; anchors.rightMargin: MichiTheme.spacing.md
+    function applyHeaderSearch(text, submitted) {
+        root.headerSearchText = text || ""
+        if (root.lib && root.lib.search)
+            root.lib.search(root.headerSearchText)
+    }
 
-                LibraryViewSelector {
-                    id: viewSelector
-                    currentView: 0
-                    onViewChanged: function(idx) { albumContainer.currentView = idx }
-                }
+    function refreshHeaderContext() {
+        if (root.albumModel && root.albumModel.refresh)
+            root.albumModel.refresh()
+    }
 
-                Item { Layout.fillWidth: true }
+    function routeEnter(route, params) {
+        if (root.lib && root.lib.ensureLoaded)
+            root.lib.ensureLoaded()
+    }
 
-                Text {
-                    text: root.albumModel ? root.albumModel.totalCount + " álbumes" : ""
-                    color: MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.metaSize
-                    visible: root.albumModel && root.albumModel.totalCount > 0
-                }
-            }
+    AlbumViewHost {
+        id: albumViewHost
+        anchors.fill: parent
+        albumModel: root.albumModel
+        bridge: root.bridge
+        currentView: root.currentView
+        onViewChanged: function(index) {
+            root.currentView = index
+            root.viewChanged(index)
         }
-
-        Item {
-            Layout.fillWidth: true; Layout.fillHeight: true
-
-            AlbumGridView {
-                id: albumGridView
-                anchors.fill: parent
-                visible: viewSelector.currentView === 0
-                albumModel: root.albumModel
-                bridge: root.bridge
-                onAlbumClicked: function(key, title, artist, year) { root.albumClicked(key, title, artist, year) }
-            }
-
-            AlbumListView {
-                id: albumListView
-                anchors.fill: parent
-                visible: viewSelector.currentView === 1
-                albumModel: root.albumModel
-                bridge: root.bridge
-                onAlbumClicked: function(key, title, artist, year) { root.albumClicked(key, title, artist, year) }
-            }
+        onAlbumClicked: function(key, title, artist, year) {
+            root.albumClicked(key, title, artist, year)
+            if (typeof navigationBridge !== "undefined" && key)
+                navigationBridge.navigateWithParams(
+                    "library.album_detail",
+                    {album_key: key}
+                )
         }
+    }
+
+    Component.onCompleted: {
+        if (root.lib && root.lib.ensureLoaded)
+            root.lib.ensureLoaded()
     }
 }

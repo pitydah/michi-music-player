@@ -4,21 +4,74 @@ import QtQuick.Layouts
 import "../../theme"
 import "../../components"
 
-Item {
+LibrarySectionPage {
     id: root
     objectName: "artistGridPage"
     focus: true
+    sectionTitle: qsTr("Artistas")
+    sectionSubtitle: qsTr("Explora intérpretes y creadores de tu biblioteca")
+    sectionIcon: "artists"
+    navigationIndex: 2
+    standardFiltersEnabled: true
 
     Accessible.role: Accessible.Pane
     Accessible.name: qsTr("Artistas")
-    Accessible.description: qsTr("Cuadrícula adaptable de artistas de la biblioteca")
+    Accessible.description: qsTr("Explorador adaptable de artistas de la biblioteca")
 
-    property var artistModel: null
-    property var bridge: null
+    property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
+    property var artistModel: root.lib ? root.lib.artistModel : null
+    property var bridge: root.lib
     property int minimumCardWidth: width < 760 ? 158 : 184
     property bool automaticPagination: true
+    property int currentView: 0
+    headerSearchPlaceholder: qsTr("Buscar artistas…")
+    headerViewModes: [
+        {
+            id: "grid",
+            icon: "../../icons/view/library-artist-grid.svg",
+            label: qsTr("Cuadrícula de artistas"),
+            description: qsTr("Retratos y estadísticas en tarjetas")
+        },
+        {
+            id: "list",
+            icon: "../../icons/view/library-artist-list.svg",
+            label: qsTr("Lista de artistas"),
+            description: qsTr("Lectura compacta ordenada por nombre")
+        }
+    ]
+    headerCurrentView: root.currentView
+    headerStatusText: root.artistModel
+                      ? qsTr("%1 artistas").arg(root.artistModel.totalCount)
+                      : ""
+    headerLoading: root.artistModel
+                   ? root.artistModel.loading || root.artistModel.loadingMore
+                   : false
 
     signal artistClicked(string name)
+    signal viewChanged(int index)
+
+    function selectView(index) {
+        if (index < 0 || index >= root.headerViewModes.length ||
+                index === root.currentView)
+            return
+        root.currentView = index
+        root.viewChanged(index)
+    }
+
+    function applyHeaderView(index) {
+        root.selectView(index)
+    }
+
+    function applyHeaderSearch(text, submitted) {
+        root.headerSearchText = text || ""
+        if (root.lib && root.lib.search)
+            root.lib.search(root.headerSearchText)
+    }
+
+    function refreshHeaderContext() {
+        if (root.artistModel && root.artistModel.refresh)
+            root.artistModel.refresh()
+    }
 
     function openCurrentArtist() {
         if (!root.artistModel || gridView.currentIndex < 0 || !root.artistModel.get)
@@ -38,51 +91,9 @@ Item {
             root.artistModel.fetchMore()
     }
 
-    ColumnLayout {
+    StackLayout {
         anchors.fill: parent
-        spacing: MichiTheme.spacing.sm
-
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 44
-            radius: MichiTheme.radius.md
-            color: MichiTheme.colors.surfaceToolbar
-            border.width: MichiTheme.borderWidth
-            border.color: MichiTheme.colors.borderSubtle
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: MichiTheme.spacing.md
-                anchors.rightMargin: MichiTheme.spacing.md
-                spacing: MichiTheme.spacing.sm
-
-                Text {
-                    text: root.artistModel
-                          ? qsTr("%1 artistas").arg(root.artistModel.totalCount)
-                          : qsTr("Artistas")
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.bodySize
-                    font.weight: MichiTheme.typography.weightSemiBold
-                }
-
-                Text {
-                    visible: root.width >= 760
-                    text: qsTr("Enter abre el artista seleccionado")
-                    color: MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.captionSize
-                }
-
-                Item { Layout.fillWidth: true }
-
-                BusyIndicator {
-                    Layout.preferredWidth: 20
-                    Layout.preferredHeight: 20
-                    visible: root.artistModel && root.artistModel.loadingMore
-                    running: visible
-                    Accessible.name: qsTr("Cargando más artistas")
-                }
-            }
-        }
+        currentIndex: root.currentView
 
         GridView {
             id: gridView
@@ -188,5 +199,18 @@ Item {
                 }
             }
         }
+
+        ArtistListView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            artistModel: root.artistModel
+            bridge: root.bridge
+            onArtistClicked: function(name) { root.artistClicked(name) }
+        }
+    }
+
+    Component.onCompleted: {
+        if (root.lib && root.lib.ensureLoaded)
+            root.lib.ensureLoaded()
     }
 }

@@ -18,6 +18,28 @@ LibrarySectionPage {
         { title: qsTr("Años y décadas"), description: qsTr("Explora la colección cronológicamente"), route: "library.years", icon: "albums" },
         { title: qsTr("Archivos faltantes"), description: qsTr("Contenido indexado que ya no está disponible"), route: "library.missing", icon: "folders" }
     ]
+    readonly property var visibleCollections: root.filteredCollections(
+                                                  root.collections,
+                                                  root.headerSearchText
+                                              )
+    headerSearchPlaceholder: qsTr("Buscar colecciones…")
+    headerRefreshEnabled: false
+    headerStatusText: qsTr("%1 colecciones").arg(root.visibleCollections.length)
+
+    function filteredCollections(entries, query) {
+        var normalized = (query || "").trim().toLocaleLowerCase()
+        if (normalized === "")
+            return entries || []
+        return (entries || []).filter(function(entry) {
+            var haystack = (entry.title + " " + entry.description)
+                           .toLocaleLowerCase()
+            return haystack.indexOf(normalized) >= 0
+        })
+    }
+
+    function applyHeaderSearch(text, submitted) {
+        root.headerSearchText = text || ""
+    }
 
     Column {
         width: parent.width
@@ -27,7 +49,7 @@ LibrarySectionPage {
             width: parent.width
 
             Repeater {
-                model: root.collections
+                model: root.visibleCollections
 
                 MichiFeatureCard {
                     required property var modelData

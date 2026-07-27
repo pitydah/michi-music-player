@@ -17,6 +17,7 @@ Item {
     property var notif: null
     property var actionRegistry: null
     property var selectionController: null
+    property bool compactMode: false
     property bool _fetchingMore: false
     property bool _shiftPressed: false
     property var _selectedIds: []
@@ -94,6 +95,7 @@ Item {
             bridge: root.bridge
             sortKey: root.bridge ? root.bridge.activeSortKey : "title"
             sortAsc: root.bridge ? root.bridge.activeSortAscending : true
+            compactMode: root.compactMode
         }
 
         ListView {
@@ -167,6 +169,7 @@ Item {
                 trackFavorite: model.favorite || false
                 trackMissing: model.missing || false
                 trackQuality: model.bitDepth || model.bitrate || 0
+                compactMode: root.compactMode
                 isSelected: root._selectedIds.indexOf(model.trackId || 0) !== -1
                 isShiftPressed: root._shiftPressed
                 lastClickedIndex: root._lastClickedIndex

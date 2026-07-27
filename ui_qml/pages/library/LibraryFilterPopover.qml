@@ -76,10 +76,10 @@ Item {
         id: filterPopup
         objectName: "libraryFiltersPopup"
         parent: Overlay.overlay
-        width: 420
-        height: advancedToggle.checked ? 330 : 220
+        width: Math.min(420, parent ? parent.width - MichiTheme.spacing.xl * 2 : 420)
+        height: advancedToggle.checked ? 410 : 238
         x: parent ? parent.width - width - MichiTheme.spacing.xl : 0
-        y: 96
+        y: MichiTheme.headerHeight + MichiTheme.spacing.sm
         modal: false
         focus: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
