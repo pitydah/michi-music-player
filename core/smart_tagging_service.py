@@ -50,6 +50,36 @@ class SmartTaggingService:
             logger.error("Identification error for %s: %s", filepath, e)
             return {"ok": False, "error": str(e)}
 
+    def suggest_for_track(self, track_id: int) -> dict:
+        """Bridge-compatible suggestion interface. Resolves track_id to filepath and runs identify."""
+        if not self._library_query:
+            return {"ok": False, "error": "NO_LIBRARY_QUERY", "suggestions": []}
+        try:
+            results = self._library_query.get_track(track_id)
+            if not results:
+                return {"ok": False, "error": "TRACK_NOT_FOUND", "suggestions": []}
+            filepath = results.get("filepath") or results.get("path", "")
+            if not filepath:
+                return {"ok": False, "error": "NO_FILEPATH", "suggestions": []}
+            result = self.identify(filepath)
+            suggestions_raw = result.get("suggestions", [])
+            suggestions = []
+            for s in suggestions_raw:
+                field = s.get("field", "")
+                suggestions.append({
+                    "field": field,
+                    "current_value": s.get("current_value", ""),
+                    "proposed_value": s.get("proposed_value", ""),
+                    "confidence": s.get("confidence", 0.0),
+                    "source": s.get("source", ""),
+                    "warning": s.get("warning", ""),
+                    "selected": False,
+                })
+            return {"ok": True, "suggestions": suggestions}
+        except Exception as e:
+            logger.error("suggest_for_track(%s) failed: %s", track_id, e)
+            return {"ok": False, "error": str(e), "suggestions": []}
+
     def batch_identify(self, paths: list[str]) -> dict:
         results = []
         for p in paths:
