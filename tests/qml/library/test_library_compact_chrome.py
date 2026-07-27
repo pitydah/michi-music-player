@@ -24,7 +24,10 @@ def test_album_view_selector_lives_in_shell_header() -> None:
     assert "readonly property var headerViewModes:" in page
     assert "function applyHeaderView(index)" in page
     assert "HeaderViewSwitcher {" in header
-
+    host = (QML_ROOT / "pages/library/album/AlbumViewHost.qml").read_text()
+    assert 'objectName: "albumViewSelector"' not in host
+    assert "modeSelector" not in host
+    assert 'qsTr("Ctrl+1…5 · Ctrl+Tab")' not in host
 
 def test_library_has_no_second_search_field_or_context_toolbar() -> None:
     source = (QML_ROOT / "pages/library/LibraryPage.qml").read_text()

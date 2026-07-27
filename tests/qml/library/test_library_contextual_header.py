@@ -32,6 +32,10 @@ def test_shell_exposes_active_page_context_to_header() -> None:
     assert "contextFilterCount" in header
     assert "width: MichiTheme.minimumInteractiveSize" in switcher
     assert "height: MichiTheme.minimumInteractiveSize" in switcher
+    assert "width: root.segmentVisualWidth" in switcher
+    assert "height: root.segmentVisualHeight" in switcher
+    assert "radius: MichiTheme.radius.sm" in switcher
+    assert "Accessible.selected: selected" in switcher
 
 
 def test_library_root_declares_real_view_matrix() -> None:

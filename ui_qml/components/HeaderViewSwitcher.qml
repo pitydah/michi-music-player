@@ -14,9 +14,11 @@ Item {
     signal activated(int index)
 
     readonly property bool hasMultipleModes: root.modes && root.modes.length > 1
+    readonly property int segmentVisualWidth: 40
+    readonly property int segmentVisualHeight: 34
 
     visible: hasMultipleModes
-    implicitWidth: hasMultipleModes ? modeRow.implicitWidth + 4 : 0
+    implicitWidth: hasMultipleModes ? modeRow.implicitWidth + 8 : 0
     implicitHeight: MichiTheme.minimumInteractiveSize
 
     Accessible.role: Accessible.ToolBar
@@ -26,7 +28,7 @@ Item {
     Rectangle {
         anchors.centerIn: parent
         width: parent.width
-        height: MichiTheme.minimumInteractiveSize
+        height: 40
         radius: MichiTheme.radius.pill
         color: MichiTheme.colors.surfaceInput
         border.width: MichiTheme.borderWidth
@@ -45,9 +47,10 @@ Item {
     Row {
         id: modeRow
         anchors.centerIn: parent
-        spacing: 2
+        spacing: 0
 
         Repeater {
+            id: modeRepeater
             model: root.modes || []
 
             QQC2.Button {
@@ -67,42 +70,83 @@ Item {
                 Accessible.role: Accessible.Button
                 Accessible.name: modelData.label || modelData.tooltip || qsTr("Vista")
                 Accessible.description: modelData.description || Accessible.name
-                Accessible.checked: selected
+                Accessible.selected: selected
 
-                background: Rectangle {
-                    radius: MichiTheme.radius.pill
-                    color: modeButton.down
-                           ? MichiTheme.colors.surfacePressed
-                           : modeButton.selected
-                             ? MichiTheme.colors.accentSelection
-                             : modeButton.hovered
-                               ? MichiTheme.colors.surfaceHover
-                               : "transparent"
-                    border.width: modeButton.activeFocus
-                                  ? MichiTheme.focusWidth
-                                  : modeButton.selected
-                                    ? MichiTheme.borderWidth
-                                    : 0
-                    border.color: modeButton.activeFocus
-                                  ? MichiTheme.colors.borderFocus
-                                  : MichiTheme.colors.borderActive
+                background: Item {
+                    Rectangle {
+                        id: segmentSurface
+                        anchors.centerIn: parent
+                        width: root.segmentVisualWidth
+                        height: root.segmentVisualHeight
+                        radius: MichiTheme.radius.sm
+                        color: modeButton.down
+                               ? MichiTheme.colors.surfacePressed
+                               : modeButton.selected
+                                 ? MichiTheme.colors.accentSelection
+                                 : modeButton.hovered
+                                   ? MichiTheme.colors.surfaceHover
+                                   : "transparent"
+                        border.width: modeButton.activeFocus
+                                      ? MichiTheme.focusWidth
+                                      : modeButton.selected || modeButton.hovered
+                                        ? MichiTheme.borderWidth
+                                        : 0
+                        border.color: modeButton.activeFocus
+                                      ? MichiTheme.colors.borderFocus
+                                      : modeButton.selected
+                                        ? MichiTheme.colors.borderActive
+                                        : MichiTheme.colors.borderHover
 
-                    Behavior on color {
-                        enabled: !MichiTheme.reducedMotion
-                        ColorAnimation { duration: MichiTheme.motionFast }
+                        Behavior on color {
+                            enabled: !MichiTheme.reducedMotion
+                            ColorAnimation { duration: MichiTheme.motionFast }
+                        }
+
+                        Behavior on border.color {
+                            enabled: !MichiTheme.reducedMotion
+                            ColorAnimation { duration: MichiTheme.motionFast }
+                        }
+
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 3
+                            width: modeButton.selected ? 16 : 0
+                            height: 2
+                            radius: 1
+                            color: MichiTheme.colors.accentBlue
+                            visible: width > 0
+
+                            Behavior on width {
+                                enabled: !MichiTheme.reducedMotion
+                                NumberAnimation {
+                                    duration: MichiTheme.motionFast
+                                    easing.type: Easing.OutCubic
+                                }
+                            }
+                        }
                     }
                 }
 
                 contentItem: MichiIcon {
                     anchors.centerIn: parent
                     source: modeButton.modelData.icon || ""
-                    size: 19
+                    size: 18
                     color: modeButton.selected
                            ? MichiTheme.colors.accentBlue
                            : modeButton.hovered
                              ? MichiTheme.colors.textPrimary
                              : MichiTheme.colors.textSecondary
                     accessibleName: ""
+                    scale: modeButton.down ? 0.92 : 1.0
+
+                    Behavior on scale {
+                        enabled: !MichiTheme.reducedMotion
+                        NumberAnimation {
+                            duration: MichiTheme.motionFast
+                            easing.type: Easing.OutCubic
+                        }
+                    }
                 }
 
                 onClicked: root.activated(index)

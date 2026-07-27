@@ -59,13 +59,19 @@ def test_album_view_host_exposes_all_five_modes(engine):
     host.deleteLater()
 
 
-def test_album_view_selector_supports_keyboard_cycle() -> None:
-    source = (QML_ROOT / "pages/library/album/AlbumViewHost.qml").read_text()
+def test_album_view_host_keeps_shortcuts_without_local_selector() -> None:
+    host = (QML_ROOT / "pages/library/album/AlbumViewHost.qml").read_text()
+    switcher = (QML_ROOT / "components/HeaderViewSwitcher.qml").read_text()
 
-    assert "function cycleView(delta)" in source
-    assert "Key_Tab" in source
-    assert "Keys.onReturnPressed" in source
-    assert "Keys.onSpacePressed" in source
+    assert "function cycleView(" in host
+    assert "Qt.Key_Tab" in host
+    assert "Qt.Key_1" in host
+    assert "Qt.Key_5" in host
+    assert 'objectName: "albumViewSelector"' not in host
+    assert "modeSelector" not in host
+    assert "QQC2.Button {" in switcher
+    assert "focusPolicy: Qt.StrongFocus" in switcher
+    assert "onClicked: root.activated(index)" in switcher
 
 
 @pytest.mark.parametrize("width", (800, 1200, 1600))
