@@ -92,7 +92,7 @@ Item {
                     Text {
                         Layout.fillWidth: true
                         text: _errorText
-                        color: "white"
+                        color: MichiTheme.colors.textOnError
                         font.pixelSize: MichiTheme.typography.metaSize
                         elide: Text.ElideRight
                         verticalAlignment: Text.AlignVCenter

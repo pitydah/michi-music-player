@@ -1,6 +1,16 @@
 import QtQuick
 import "../theme"
 
+/* Michi Music Player — Texture Overlay
+ * 
+ * Texture system for subtle surface depth.
+ * - grain: replaced by blue-noise overlay (see BlueNoiseOverlay.qml)
+ * - contours: decorative SVG curves, restricted to hero surfaces only
+ *
+ * Blue-noise tile approach replaces the periodic SVG grain pattern
+ * that produced visible seams and banding at 96px intervals.
+ */
+
 Item {
     id: root
 
@@ -14,18 +24,18 @@ Item {
         anchors.fill: parent
         source: root.variant === "contours"
                 ? "../assets/textures/michi-contours.svg"
-                : "../assets/textures/michi-grain.svg"
+                : ""  /* grain variant replaced by BlueNoiseOverlay */
         fillMode: root.variant === "contours" ? Image.PreserveAspectCrop : Image.Tile
         sourceSize.width: root.variant === "contours"
                           ? Math.max(640, root.width)
-                          : MichiTheme.textureTileSize
+                          : 64
         sourceSize.height: root.variant === "contours"
                            ? Math.max(320, root.height)
-                           : MichiTheme.textureTileSize
-        opacity: root.strength * (root.variant === "contours"
-                                  ? (MichiTheme.darkMode ? 0.30 : 0.18)
-                                  : (MichiTheme.darkMode ? 0.20 : 0.12))
-        smooth: true
+                           : 64
+        opacity: root.variant === "contours"
+                 ? root.strength * (MichiTheme.darkMode ? 0.15 : 0.10)
+                 : 0.0
+        smooth: false
         mipmap: root.variant === "contours"
     }
 }

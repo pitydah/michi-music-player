@@ -26,7 +26,7 @@ Item {
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
                     GradientStop { position: 0.0; color: MichiTheme.colors.accentGlow }
-                    GradientStop { position: 0.68; color: "transparent" }
+                    GradientStop { position: 0.68; color: Qt.rgba(0.561, 0.718, 1.0, 0.0) }
                     GradientStop { position: 1.0; color: MichiTheme.colors.surfaceSheen }
                 }
             }
@@ -38,7 +38,7 @@ Item {
                 height: Math.min(parent.height * 0.34, 320)
                 gradient: Gradient {
                     GradientStop { position: 0.0; color: MichiTheme.colors.accentGlowSubtle }
-                    GradientStop { position: 1.0; color: "transparent" }
+                    GradientStop { position: 1.0; color: Qt.rgba(0.561, 0.718, 1.0, 0.0) }
                 }
             }
 
@@ -62,7 +62,7 @@ Item {
                 opacity: MichiTheme.darkMode ? 0.26 : 0.12
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
-                    GradientStop { position: 0.0; color: "transparent" }
+                    GradientStop { position: 0.0; color: Qt.rgba(0.0, 0.0, 0.0, 0.0) }
                     GradientStop {
                         position: 1.0
                         color: MichiTheme.colors.shadowSoft

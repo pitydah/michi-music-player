@@ -139,18 +139,18 @@ QtObject {
     readonly property color nowPlayingBackground: lightMode ? "#F5F6FA" : bgBase
     readonly property color nowPlayingBorder: lightMode ? Qt.rgba(0, 0, 0, 0.08) : Qt.rgba(1, 1, 1, 0.06)
     readonly property color nowPlayingTrack: lightMode ? "#D0D4DC" : "#24272E"
-    readonly property color nowPlayingThumb: "#FF7A00"
+    readonly property color nowPlayingThumb: accentPrimary
     readonly property color nowPlayingThumbBorder: lightMode ? "#FFFFFF" : "#FFFFFF"
-    readonly property color nowPlayingGradientStart: "#FF7A00"
-    readonly property color nowPlayingGradientMiddle: "#FF4F72"
-    readonly property color nowPlayingGradientEnd: "#C65CFF"
+    readonly property color nowPlayingGradientStart: accentPrimary
+    readonly property color nowPlayingGradientMiddle: accentHover
+    readonly property color nowPlayingGradientEnd: accentPrimary
     readonly property color nowPlayingTransportBg: lightMode ? "#E8EAF0" : "#1B1D23"
     readonly property color nowPlayingTransportBorder: lightMode ? Qt.rgba(0, 0, 0, 0.10) : Qt.rgba(255, 255, 255, 0.09)
     readonly property color nowPlayingTransportHover: lightMode ? Qt.rgba(0, 0, 0, 0.06) : Qt.rgba(255, 255, 255, 0.12)
     readonly property color nowPlayingTransportHoverBorder: lightMode ? Qt.rgba(0, 0, 0, 0.15) : Qt.rgba(255, 255, 255, 0.145)
     readonly property color nowPlayingTransportPressed: lightMode ? Qt.rgba(0, 0, 0, 0.03) : Qt.rgba(255, 255, 255, 0.055)
-    readonly property color nowPlayingShuffleActive: Qt.rgba(249, 33, 65, 0.135)
-    readonly property color nowPlayingShuffleActiveBorder: Qt.rgba(249, 33, 65, 0.26)
+    readonly property color nowPlayingShuffleActive: Qt.rgba(159, 140, 255, 0.135)
+    readonly property color nowPlayingShuffleActiveBorder: Qt.rgba(159, 140, 255, 0.26)
     readonly property color nowPlayingTransmitActive: Qt.rgba(52, 199, 89, 0.13)
     readonly property color nowPlayingTransmitActiveBorder: Qt.rgba(52, 199, 89, 0.28)
     readonly property color nowPlayingQualityBg: surfaceElevation4
