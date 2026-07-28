@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any
 
 from core.connection_factory import LibraryConnectionFactory
-from core.library_sources_service import LibrarySourcesService
 from core.settings_manager import get as get_setting
 
 logger = logging.getLogger("michi.library_query")
@@ -67,13 +66,15 @@ def _artist_key_sql() -> str:
     return "COALESCE(NULLIF(albumartist, ''), artist, '')"
 
 
-def _lib_sources() -> list[str]:
-    """Return configured library roots, falling back to the legacy setting."""
-    try:
-        svc = LibrarySourcesService()
-        return svc.root_paths()
-    except Exception:
-        pass
+def _lib_sources(sources_service=None) -> list[str]:
+    """Return configured library roots, falling back to the legacy setting.
+
+    When a ``LibrarySourcesService`` instance is injected (preferred path from
+    the composition root), delegate to its canonical ``root_paths()``. Otherwise
+    fall back to the legacy ``general/music_folder`` setting.
+    """
+    if sources_service is not None:
+        return sources_service.root_paths()
     try:
         folder = get_setting("general/music_folder")
         if folder and Path(folder).is_dir():
@@ -86,9 +87,11 @@ def _lib_sources() -> list[str]:
 class LibraryQueryService:
     """Provide read-only, parameterized access to the canonical music library."""
 
-    def __init__(self, db: Any | None = None, db_path: str = "") -> None:
+    def __init__(self, db: Any | None = None, db_path: str = "",
+                 library_sources_service: Any | None = None) -> None:
         self._db = db
         self._db_path = db_path
+        self._lib_sources_service = library_sources_service
 
     def _get_conn(self) -> sqlite3.Connection:
         """Return the current thread's library connection."""
@@ -279,7 +282,7 @@ class LibraryQueryService:
 
     def count_folders(self, parent_path: str = "") -> int:
         self._check_db()
-        roots = _lib_sources()
+        roots = _lib_sources(self._lib_sources_service)
         try:
             if parent_path:
                 like = f"{parent_path}/%"
@@ -306,7 +309,7 @@ class LibraryQueryService:
     def fetch_folders(self, parent_path: str = "", offset: int = 0,
                       limit: int = 100) -> list[dict[str, Any]]:
         self._check_db()
-        roots = _lib_sources()
+        roots = _lib_sources(self._lib_sources_service)
         try:
             if parent_path:
                 like = f"{parent_path}/%"

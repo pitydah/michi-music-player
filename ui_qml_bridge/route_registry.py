@@ -754,10 +754,10 @@ ROUTES: dict[str, dict] = {
     "audio_lab.cd_ripper": {
         "route": "audio_lab.cd_ripper", "parent": "audio_lab",
         "title": "Ripeo de CD", "breadcrumb_title": "CD",
-        "source": "../pages/audio_lab/AudioBackupPage.qml",
+        "source": "../pages/disc_lab/DiscLabPage.qml",
         "icon": "capture", "order": 0, "sidebar_visible": False,
         "sidebar_group": None, "expandable": False,
-        "status": "experimental", "capability": "audio_lab",
+        "status": "functional", "capability": "disc_lab",
         "aliases": [],
         "keywords": [],
         "placeholder_state": None,
@@ -766,7 +766,7 @@ ROUTES: dict[str, dict] = {
     "audio_lab.adc_recorder": {
         "route": "audio_lab.adc_recorder", "parent": "audio_lab",
         "title": "Grabación ADC", "breadcrumb_title": "ADC",
-        "source": "../pages/audio_lab/AudioBackupPage.qml",
+        "source": "../pages/audio_lab/AdcRecorderPlaceholder.qml",
         "icon": "capture", "order": 0, "sidebar_visible": False,
         "sidebar_group": None, "expandable": False,
         "status": "experimental", "capability": "audio_lab",
@@ -1453,6 +1453,9 @@ def is_child_active(parent_route: str, current_route: str) -> bool:
     return False
 
 
+# CAPABILITY_MAP is for INFORMATIONAL DISPLAY ONLY (e.g. sidebar capability hints).
+# It is NOT used to block navigation. NavigationBridge.routeAvailability() reads the
+# `capability` field directly from each route's RouteSpec in ROUTES above.
 CAPABILITY_MAP: dict[str, str] = {
     "audio_lab.*": "audio_lab",
     "metadata.*": "metadata",

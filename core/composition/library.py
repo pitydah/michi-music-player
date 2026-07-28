@@ -25,10 +25,11 @@ def build(container: ServiceContainer) -> None:
     db = container.get("database")
     wm = container.get("worker_manager")
 
-    canonical_query_service = LibraryQueryService(cf)
+    sources_svc = LibrarySourcesService(cf)
+    container.register("library_sources_service", sources_svc)
+    canonical_query_service = LibraryQueryService(cf, library_sources_service=sources_svc)
     lqs = LibraryFilteredQueryService(canonical_query_service)
     container.register("library_query_service", lqs)
-    container.register("library_sources_service", LibrarySourcesService(cf))
     container.register("library_mutation_service", MetadataEditorService(db=db))
     container.register("library_service", LibraryService(db=db, worker_manager=wm, library_query_service=lqs))
     playlist_service = PlaylistService(cf)
