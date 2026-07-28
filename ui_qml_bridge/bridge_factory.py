@@ -10,6 +10,11 @@ import logging
 from PySide6.QtCore import QObject
 
 from core.service_container import ServiceContainer
+from ui_qml_bridge.context_bindings import (
+    CONTEXT_BINDINGS,
+    ContextBinding,
+    QML_CONTEXT_BINDINGS,
+)
 
 logger = logging.getLogger("michi.bridge_factory")
 
@@ -24,6 +29,12 @@ class BridgeFactory(QObject):
         self._container = container
         self._bridges: dict[str, QObject] = {}
         self._capabilities: dict[str, bool] = {}
+        self._degraded: list[tuple[str, str]] = []
+        self._binding_by_key: dict[str, ContextBinding] = {}
+        for _binding in CONTEXT_BINDINGS:
+            _bridge_key = QML_CONTEXT_BINDINGS.get(_binding.context_name)
+            if _bridge_key is not None:
+                self._binding_by_key[_bridge_key] = _binding
 
     @property
     def bridges(self) -> dict[str, QObject]:
@@ -38,6 +49,48 @@ class BridgeFactory(QObject):
 
     def has(self, name: str) -> bool:
         return name in self._bridges
+
+    @property
+    def degraded_bridges(self) -> list[tuple[str, str]]:
+        """Bridges skipped due to missing dependencies.
+
+        Each entry is a ``(bridge_key, reason)`` tuple.
+        """
+        return list(self._degraded)
+
+    def validate_binding(self, binding: ContextBinding) -> tuple[bool, str | None]:
+        """Check that all required_services for a binding exist in container or bridges.
+
+        Returns ``(True, None)`` when all required services are available, or
+        ``(False, reason)`` when a required service is missing.
+        """
+        for svc in binding.required_services:
+            if not self._container.contains(svc) and svc not in self._bridges:
+                return False, f"Missing {svc} for {binding.context_name}"
+        return True, None
+
+    def _try_create(self, bridge_key: str, create_fn) -> None:
+        """Validate the binding for *bridge_key*, then create or skip.
+
+        If the binding's required services are missing, the bridge is skipped
+        and recorded in :attr:`degraded_bridges`. If no binding exists for the
+        key (e.g. internal helpers like ``query_executor``), the create function
+        is called directly.
+        """
+        if bridge_key in self._bridges:
+            return
+        binding = self._binding_by_key.get(bridge_key)
+        if binding is not None:
+            ok, reason = self.validate_binding(binding)
+            if not ok:
+                self._degraded.append((bridge_key, reason or ""))
+                logger.warning("BridgeFactory: skipping %s — %s", bridge_key, reason)
+                return
+        try:
+            create_fn()
+        except Exception as exc:  # noqa: BLE001 — graceful degradation
+            self._degraded.append((bridge_key, f"Creation failed: {exc}"))
+            logger.warning("BridgeFactory: failed to create %s — %s", bridge_key, exc)
 
     def _get(self, name: str):
         return self._container.get(name)
@@ -501,72 +554,58 @@ class BridgeFactory(QObject):
             from ui_qml_bridge.app_state_bridge import AppStateBridge
             self._bridges["app_state"] = AppStateBridge()
 
-    def validate_required_dependencies(self) -> list[str]:
-        missing = []
-        required_keys = [
-            "playback_service", "connection_factory", "worker_manager",
-            "settings_service", "queue_service", "action_registry",
-        ]
-        for key in required_keys:
-            if not self._container.contains(key):
-                missing.append(key)
-        return missing
-
     def create_all(self) -> dict[str, QObject]:
-        missing = self.validate_required_dependencies()
-        if missing:
-            logger.error("BridgeFactory: MISSING REQUIRED dependencies: %s", missing)
-            raise RuntimeError(f"BridgeFactory cannot start: missing {missing}")
+        self._degraded.clear()
 
         # 1. Infraestructura
-        self.create_page_state_store()
-        self.create_route_registry_bridge()
-        self.create_navigation_bridge()
-        self.create_job_bridge()
-        self.create_confirmation_bridge()
-        self.create_accessibility_bridge()
-        self.create_theme_bridge()
-        self.create_capability_bridge()
-        self.create_action_registry_bridge()
+        self._try_create("page_state", self.create_page_state_store)
+        self._try_create("route_registry", self.create_route_registry_bridge)
+        self._try_create("navigation", self.create_navigation_bridge)
+        self._try_create("job_bridge", self.create_job_bridge)
+        self._try_create("confirmation", self.create_confirmation_bridge)
+        self._try_create("accessibility", self.create_accessibility_bridge)
+        self._try_create("theme", self.create_theme_bridge)
+        self._try_create("capability", self.create_capability_bridge)
+        self._try_create("action_registry", self.create_action_registry_bridge)
 
         # 2. Dominio
-        self.create_playlists_bridge()
-        self.create_library_bridge()
-        self.create_library_sources_bridge()
-        self.create_nowplaying_bridge()
-        self.create_queue_bridge()
-        self.create_history_bridge()
-        self.create_search_bridge()
-        self.create_mix_bridge()
-        self.create_lyrics_bridge()
-        self.create_settings_bridge()
-        self.create_output_profiles_bridge()
-        self.create_eq_bridge()
-        self.create_connections_bridge()
-        self.create_home_audio_bridge()
-        self.create_devices_bridge()
-        self.create_mobile_sync_bridge()
-        self.create_radio_bridge()
-        self.create_audio_lab_bridge()
-        self.create_metadata_bridge()
-        self.create_disc_lab_bridge()
-        self.create_smart_tagging_bridge()
-        self.create_library_doctor_bridge()
-        self.create_diagnostics_bridge()
-        self.create_michi_ai_bridge()
+        self._try_create("playlists", self.create_playlists_bridge)
+        self._try_create("library", self.create_library_bridge)
+        self._try_create("library_sources", self.create_library_sources_bridge)
+        self._try_create("nowplaying", self.create_nowplaying_bridge)
+        self._try_create("queue", self.create_queue_bridge)
+        self._try_create("history", self.create_history_bridge)
+        self._try_create("global_search", self.create_search_bridge)
+        self._try_create("mix", self.create_mix_bridge)
+        self._try_create("lyrics", self.create_lyrics_bridge)
+        self._try_create("settings", self.create_settings_bridge)
+        self._try_create("output_profiles", self.create_output_profiles_bridge)
+        self._try_create("eq", self.create_eq_bridge)
+        self._try_create("connections", self.create_connections_bridge)
+        self._try_create("home_audio", self.create_home_audio_bridge)
+        self._try_create("devices", self.create_devices_bridge)
+        self._try_create("mobile_sync", self.create_mobile_sync_bridge)
+        self._try_create("radio", self.create_radio_bridge)
+        self._try_create("audio_lab", self.create_audio_lab_bridge)
+        self._try_create("metadata", self.create_metadata_bridge)
+        self._try_create("disc_lab", self.create_disc_lab_bridge)
+        self._try_create("smart_tagging", self.create_smart_tagging_bridge)
+        self._try_create("library_doctor", self.create_library_doctor_bridge)
+        self._try_create("diagnostics", self.create_diagnostics_bridge)
+        self._try_create("michi_ai", self.create_michi_ai_bridge)
 
         # 3. Agregadores
-        self.create_command_palette_bridge()
-        self.create_home_bridge()
-        self.create_app_bridge()
-        self.create_desktop_bridge()
+        self._try_create("command_palette", self.create_command_palette_bridge)
+        self._try_create("home", self.create_home_bridge)
+        self._try_create("app", self.create_app_bridge)
+        self._try_create("desktop", self.create_desktop_bridge)
 
-        self.create_runtime_quality_bridge()
-        self.create_physical_audio_bridge()
-        self.create_cover_provider_bridge()
-        self.create_app_state_bridge()
-        self.create_selection_context_bridge()
-        self.create_query_executor()
+        self._try_create("runtime_quality", self.create_runtime_quality_bridge)
+        self._try_create("physical_audio", self.create_physical_audio_bridge)
+        self._try_create("cover_provider", self.create_cover_provider_bridge)
+        self._try_create("app_state", self.create_app_state_bridge)
+        self._try_create("selection_context", self.create_selection_context_bridge)
+        self._try_create("query_executor", self.create_query_executor)
 
         capability = self._bridges.get("capability")
         if capability and hasattr(capability, 'refresh'):
@@ -580,7 +619,6 @@ class BridgeFactory(QObject):
 
     def _validate_bridge_identities(self):
         keys = set(self._bridges.keys())
-        from ui_qml_bridge.context_bindings import QML_CONTEXT_BINDINGS
         missing = [k for k in QML_CONTEXT_BINDINGS.values() if k not in keys]
         if missing:
             logger.warning("BridgeFactory: missing context bindings: %s", missing)
@@ -590,7 +628,7 @@ class BridgeFactory(QObject):
         factory = self
 
         reg = factory._bridges.get("action_registry")
-        if reg is not None:
+        if reg is not None and container.contains("action_registry"):
             container_reg = container.require("action_registry")
             if reg is not container_reg:
                 raise RuntimeError("action_registry identity mismatch")
@@ -624,7 +662,11 @@ class BridgeFactory(QObject):
             raise RuntimeError("mix_bridge.mix_service identity mismatch")
 
         ai = factory._bridges.get("michi_ai")
-        if ai is not None and ai._registry is not container.require("action_registry"):
+        if (
+            ai is not None
+            and container.contains("action_registry")
+            and ai._registry is not container.require("action_registry")
+        ):
             raise RuntimeError("ai_bridge.action_registry identity mismatch")
 
     def bind_action_handlers(self):

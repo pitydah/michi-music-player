@@ -28,7 +28,7 @@ def _make_minimal_container() -> ServiceContainer:
     c.register("notification_service", MagicMock())
     c.register("diagnostics_service", MagicMock())
     c.register("job_service", MagicMock())
-    c.register("mix_query_service", MagicMock())
+    c.register("mix_service", MagicMock())
     c.register("playlist_service", MagicMock())
     c.register("queue_service", MagicMock())
     c.register("history_query_service", MagicMock())
@@ -41,6 +41,10 @@ def _make_minimal_container() -> ServiceContainer:
     c.register("smart_tagging_service", MagicMock())
     c.register("library_doctor_service", MagicMock())
     c.register("library_sources_service", MagicMock())
+    c.register("library_query_service", MagicMock())
+    c.register("navigation_service", MagicMock())
+    c.register("query_executor", MagicMock())
+    c.register("michi_ai_service", MagicMock())
     c.register("process_controller", MagicMock())
     return c
 

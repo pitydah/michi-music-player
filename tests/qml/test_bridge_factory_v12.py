@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 from core.service_container import ServiceContainer
 from ui_qml_bridge.bridge_factory import BridgeFactory, create_all_bridges
+from ui_qml_bridge.context_bindings import CONTEXT_BINDINGS
 
 
 BRIDGE_FACTORY_PATH = (
@@ -124,16 +125,22 @@ class TestContainerAccess:
             assert container.contains(name)
 
     def test_missing_services_detected(self):
-        missing = BridgeFactory(ServiceContainer()).validate_required_dependencies()
+        factory = BridgeFactory(ServiceContainer())
+        binding = next(b for b in CONTEXT_BINDINGS if b.context_name == "navigationBridge")
 
-        assert "playback_service" in missing
-        assert "connection_factory" in missing
-        assert "action_registry" in missing
+        ok, reason = factory.validate_binding(binding)
 
-    def test_validate_required_dependencies_all_present(self):
-        missing = BridgeFactory(_make_container()).validate_required_dependencies()
+        assert ok is False
+        assert "navigation_service" in reason
 
-        assert missing == []
+    def test_validate_binding_all_present(self):
+        factory = BridgeFactory(_make_container())
+
+        for binding in CONTEXT_BINDINGS:
+            if not binding.required_services:
+                continue
+            ok, reason = factory.validate_binding(binding)
+            assert ok, f"{binding.context_name} should validate: {reason}"
 
 
 class TestBridgeLifecycle:
