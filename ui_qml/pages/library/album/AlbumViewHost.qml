@@ -22,6 +22,11 @@ Item {
     readonly property bool hasError: root.albumModel && root.albumModel.errorMessage !== ""
     readonly property int loadedCount: root.albumModel ? root.albumModel.count : 0
     readonly property int totalCount: root.albumModel ? root.albumModel.totalCount : 0
+    readonly property bool modelContentMismatch: root.totalCount > 0
+        && !root.initialLoading
+        && !root.loadingMore
+        && root.loadedCount === 0
+        && !root.hasError
     readonly property var viewModes: [
         { name: qsTr("Grid"), shortName: qsTr("Grid"), description: qsTr("Colección adaptable") },
         { name: qsTr("CoverFlow"), shortName: qsTr("Flow"), description: qsTr("Exploración cinematográfica") },
@@ -63,7 +68,8 @@ Item {
 
         Item {
             id: contentArea
-
+            anchors.fill: parent
+            clip: true
 
             Loader {
                 id: viewLoader
@@ -157,11 +163,26 @@ Item {
                 }
             }
 
+            LibraryPages.LibraryErrorState {
+                objectName: "albumModelContentMismatchState"
+                anchors.centerIn: parent
+                z: 35
+                visible: root.modelContentMismatch
+                title: qsTr("Inconsistencia de modelo")
+                message: qsTr("La biblioteca reporta álbumes pero no se cargó ninguno. Puede deberse a un índice dañado o a un filtro incompatible.")
+                actionText: qsTr("Reintentar")
+                onActionRequested: {
+                    if (root.albumModel && root.albumModel.retry)
+                        root.albumModel.retry()
+                }
+            }
+
             LibraryPages.LibraryEmptyState {
                 anchors.centerIn: parent
                 z: 30
                 visible: root.albumModel && root.albumModel.initialized &&
-                         root.albumModel.count === 0 && !root.initialLoading && !root.hasError
+                         root.albumModel.count === 0 && !root.initialLoading &&
+                         !root.hasError && !root.modelContentMismatch
                 title: qsTr("Sin álbumes")
                 message: qsTr("No hay álbumes que coincidan con la búsqueda y los filtros actuales.")
             }

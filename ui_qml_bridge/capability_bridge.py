@@ -96,21 +96,8 @@ class CapabilityBridge(QObject):
         caps["has_smart_tagging"] = "available" if (container and container.contains("smart_tagging_service")) else "unavailable"
         caps["has_metadata_writer"] = "available" if self._check_metadata_writer(container) else "unavailable"
         self._caps = caps
-        self._wire_navigation()
         self.dataChanged.emit()
         return {"ok": True, "capabilities": dict(self._caps)}
-
-    def _wire_navigation(self):
-        if not self._factory:
-            return
-        nav = self._factory.get("navigation")
-        if nav is None or not hasattr(nav, 'set_capabilities'):
-            return
-        available = {key for key, val in self._caps.items() if val == "available"}
-        try:
-            nav.set_capabilities(available)
-        except Exception:
-            logger.debug("Failed to wire navigation capabilities", exc_info=True)
 
     @Property("QVariantMap", notify=dataChanged)
     def capabilities(self):
