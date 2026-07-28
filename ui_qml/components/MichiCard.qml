@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../theme"
+import "../materials"
 
 Item {
     id: root
@@ -25,32 +26,6 @@ Item {
 
     signal clicked()
 
-    function baseColor() {
-        if (variant === "ghost") return "transparent"
-        if (variant === "glass") return MichiTheme.colors.surfaceGlass
-        if (variant === "base" || variant === "solid") return MichiTheme.colors.surfaceCard
-        if (variant === "primary") return MichiTheme.colors.accentSurface
-        if (variant === "accent") return MichiTheme.colors.accentSurface
-        if (variant === "info") return MichiTheme.colors.badgeInfoBg
-        if (variant === "success") return MichiTheme.colors.badgeActiveBg
-        if (variant === "warning") return MichiTheme.colors.badgeWarningBg
-        if (variant === "danger" || variant === "error") return MichiTheme.colors.badgeDangerBg
-        if (variant === "elevated" || elevated) return MichiTheme.colors.surfaceCardElevated
-        return MichiTheme.colors.surfaceCard
-    }
-
-    function baseBorderColor() {
-        if (variant === "ghost") return "transparent"
-        if (variant === "glass") return MichiTheme.colors.borderCard
-        if (variant === "primary") return MichiTheme.colors.accentSeparator
-        if (variant === "accent") return MichiTheme.colors.borderActive
-        if (variant === "info") return MichiTheme.colors.info
-        if (variant === "success") return MichiTheme.colors.success
-        if (variant === "warning") return MichiTheme.colors.warning
-        if (variant === "danger" || variant === "error") return MichiTheme.colors.borderError
-        return MichiTheme.colors.borderCard
-    }
-
     implicitWidth: 240
     implicitHeight: Math.max(MichiTheme.minimumInteractiveSize,
                              contentColumn.implicitHeight + MichiTheme.spacing.lg * 2)
@@ -61,29 +36,19 @@ Item {
     Keys.onReturnPressed: if (interactive && enabled) clicked()
     Keys.onSpacePressed: if (interactive && enabled) clicked()
 
-    Rectangle {
+    MichiBaseSurface {
         id: background
         objectName: "michiCardBackground"
         anchors.fill: parent
         radius: MichiTheme.radius.md
-        color: {
-            if (!root.enabled)
-                return MichiTheme.colors.surfaceDisabled
-            if (root.selected)
-                return MichiTheme.colors.accentSelection
-            if (root.pressed)
-                return MichiTheme.colors.surfacePressed
-            if (root.hovered || root.activeFocus)
-                return MichiTheme.colors.surfaceCardHover
-            return root.baseColor()
-        }
-        border.width: root.activeFocus ? MichiTheme.borderWidthFocus
-                                      : MichiTheme.borderWidth
-        border.color: root.activeFocus ? MichiTheme.colors.borderFocus
-                                       : root.hovered ? MichiTheme.colors.borderHover
-                                                      : root.baseBorderColor()
-        Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
-        Behavior on border.color { ColorAnimation { duration: MichiTheme.motion.fast } }
+        level: root.elevated || root.variant === "elevated" ? 3 : 2
+        borderVisible: root.variant !== "ghost" || root.hovered || root.selected || root.activeFocus
+        selected: root.selected || root.activeFocus
+        hovered: root.hovered
+        pressed: root.pressed
+        enabled: root.enabled
+        visible: root.variant !== "ghost" || root.hovered || root.pressed
+                 || root.selected || root.activeFocus
         scale: root.pressed && root.animateInteraction ? 0.992 : 1.0
         Behavior on scale {
             NumberAnimation {
@@ -91,41 +56,6 @@ Item {
                 easing.type: MichiTheme.motion.easing.emphasis
             }
         }
-    }
-
-    Rectangle {
-        anchors.left: background.left
-        anchors.right: background.right
-        anchors.top: background.top
-        anchors.leftMargin: MichiTheme.spacing.sm
-        anchors.rightMargin: MichiTheme.spacing.sm
-        height: MichiTheme.borderWidth
-        color: MichiTheme.colors.surfaceEdgeHighlight
-        visible: root.variant === "glass" || root.elevated
-    }
-
-    Rectangle {
-        anchors.fill: background
-        anchors.margins: MichiTheme.borderWidth
-        radius: Math.max(0, background.radius - MichiTheme.borderWidth)
-        color: "transparent"
-        border.width: MichiTheme.borderWidth
-        border.color: MichiTheme.colors.borderInner
-        visible: root.variant === "glass"
-    }
-
-    Rectangle {
-        anchors.left: background.left
-        anchors.right: background.right
-        anchors.top: background.top
-        anchors.margins: MichiTheme.borderWidth
-        height: Math.max(1, background.height * 0.42)
-        radius: Math.max(0, background.radius - MichiTheme.borderWidth)
-        color: "transparent"
-        border.width: MichiTheme.borderWidth
-        border.color: root.variant === "glass"
-                      ? MichiTheme.colors.borderInner : "transparent"
-        opacity: root.variant === "glass" ? 0.8 : 0
     }
 
     MouseArea {

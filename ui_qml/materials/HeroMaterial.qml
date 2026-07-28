@@ -24,16 +24,6 @@ Item {
             radius: root.radius
             color: MichiTheme.colors.surfaceHero
 
-            Rectangle {
-                anchors.fill: parent
-                radius: parent.radius
-                gradient: Gradient {
-                    GradientStop { position: 0.0; color: MichiTheme.colors.accentSurface }
-                    GradientStop { position: 0.5; color: Qt.rgba(0.561, 0.718, 1.0, 0.0) }
-                    GradientStop { position: 1.0; color: MichiTheme.colors.shadowSoft }
-                }
-            }
-
             TextureOverlay {
                 anchors.fill: parent
                 variant: "contours"

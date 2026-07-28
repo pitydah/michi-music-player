@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import "../theme"
+import "../materials"
 
 QQC2.Popup {
     id: root
@@ -85,12 +86,9 @@ QQC2.Popup {
         NumberAnimation { target: contentScale; property: "scale"; from: 1.0; to: 0.92; duration: MichiTheme.motion.fast; easing.type: Easing.InCubic }
     }
 
-    background: Rectangle {
+    background: PopupMaterial {
         id: dialogBg
         radius: MichiTheme.radius.md
-        color: MichiTheme.colors.surfaceCardElevated
-        border.width: MichiTheme.borderWidth
-        border.color: MichiTheme.colors.borderCard
     }
 
     contentItem: Item {

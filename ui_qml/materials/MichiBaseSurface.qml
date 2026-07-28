@@ -28,6 +28,7 @@ Item {
     property bool borderVisible: true
     property bool selected: false
     property bool hovered: false
+    property bool pressed: false
     property bool glow: false
 
     default property alias content: contentLayer.data
@@ -36,6 +37,8 @@ Item {
         anchors.fill: parent
         radius: root.radius
         color: {
+            if (!root.enabled) return MichiTheme.colors.surfaceDisabled
+            if (root.pressed) return MichiTheme.colors.surfacePressed
             if (root.level >= 4) return MichiTheme.colors.surfaceElevation4
             if (root.level >= 3) return MichiTheme.colors.surfaceElevation3
             if (root.level >= 2) return MichiTheme.colors.surfaceElevation2
@@ -45,7 +48,7 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: parent.radius
-            visible: root.hovered
+            visible: root.hovered && root.enabled && !root.pressed
             color: MichiTheme.colors.surfaceCardHover
         }
 
@@ -63,8 +66,10 @@ Item {
             anchors.fill: parent
             radius: parent.radius
             visible: root.borderVisible
-            border.width: root.selected ? MichiTheme.borderWidth * 2 : MichiTheme.borderWidth
-            border.color: root.selected ? MichiTheme.colors.accentPrimary : MichiTheme.colors.borderSubtle
+            border.width: root.selected ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
+            border.color: root.selected ? MichiTheme.colors.accentPrimary
+                                        : root.hovered ? MichiTheme.colors.borderHover
+                                                       : MichiTheme.colors.borderSubtle
             color: "transparent"
         }
     }

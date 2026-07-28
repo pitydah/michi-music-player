@@ -10,6 +10,26 @@ Rectangle {
     property string text: ""
     property string kind: "info"
     property bool pulse: false
+    readonly property string semanticKind: {
+        switch (root.kind.toLowerCase()) {
+        case "success":
+        case "succeeded":
+        case "completed":
+        case "done":
+        case "connected": return "success"
+        case "warning":
+        case "degraded":
+        case "reconnecting":
+        case "experimental": return "warning"
+        case "error":
+        case "danger":
+        case "failed":
+        case "failure":
+        case "unavailable":
+        case "disconnected": return "error"
+        default: return "info"
+        }
+    }
 
     property int maximumWidth: 200
 
@@ -19,13 +39,10 @@ Rectangle {
     radius: MichiTheme.radius.pill
 
     color: {
-        switch (root.kind) {
+        switch (root.semanticKind) {
             case "success": return MichiTheme.colors.badgeActiveBg
             case "warning": return MichiTheme.colors.badgeWarningBg
             case "error": return MichiTheme.colors.badgeDangerBg
-            case "experimental": return MichiTheme.colors.badgeExperimentalBg
-            case "disconnected": return MichiTheme.colors.badgeMutedBg
-            case "active": return MichiTheme.colors.badgeActiveBg
             default: return MichiTheme.colors.badgeInfoBg
         }
     }
@@ -39,13 +56,10 @@ Rectangle {
         spacing: MichiTheme.spacing.xs
 
         readonly property color statusColor: {
-            switch (root.kind) {
+            switch (root.semanticKind) {
             case "success": return MichiTheme.colors.success
             case "warning": return MichiTheme.colors.warning
             case "error": return MichiTheme.colors.error
-            case "experimental": return MichiTheme.colors.experimental
-            case "disconnected": return MichiTheme.colors.disconnected
-            case "active": return MichiTheme.colors.success
             default: return MichiTheme.colors.accentBlue
             }
         }

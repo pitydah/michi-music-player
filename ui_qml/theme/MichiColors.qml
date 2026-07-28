@@ -18,10 +18,8 @@ QtObject {
     readonly property color surfaceElevation4: lightMode ? "#D8E1ED" : "#192230"
     readonly property color surfaceElevation5: lightMode ? "#CFDAE8" : "#1D2838"
 
-    readonly property color surfaceCard: lightMode ? Qt.rgba(1.0, 1.0, 1.0, 0.72)
-                                                   : Qt.rgba(0.075, 0.094, 0.133, 0.78)
-    readonly property color surfaceCardHover: lightMode ? Qt.rgba(1.0, 1.0, 1.0, 0.94)
-                                                        : Qt.rgba(0.102, 0.129, 0.184, 0.88)
+    readonly property color surfaceCard: surfaceElevation2
+    readonly property color surfaceCardHover: surfaceElevation3
     readonly property color surfaceCardElevated: surfaceElevation3
     readonly property color surfaceGlass: lightMode ? Qt.rgba(0.97, 0.98, 1.0, 0.78)
                                                     : Qt.rgba(0.052, 0.071, 0.108, 0.84)
@@ -32,8 +30,8 @@ QtObject {
     readonly property color surfaceChrome: lightMode ? Qt.rgba(0.94, 0.96, 0.99, 0.96)
                                                      : Qt.rgba(0.025, 0.035, 0.058, 0.96)
     readonly property color surfaceSidebar: lightMode ? "#EEF3F9" : "#080B12"
-    readonly property color surfacePopup: lightMode ? "#FAFAFE" : "#0F1219"
-    readonly property color surfaceInput: lightMode ? "#FFFFFF" : "#0C0E15"
+    readonly property color surfacePopup: surfaceElevation4
+    readonly property color surfaceInput: surfaceElevation3
     readonly property color surfaceHero: lightMode ? "#EDF3FB" : "#0A101A"
     readonly property color surfaceHeroGlow: lightMode ? Qt.rgba(0.561, 0.718, 1.0, 0.10)
                                                        : Qt.rgba(0.561, 0.718, 1.0, 0.07)
@@ -111,8 +109,6 @@ QtObject {
     readonly property color badgeInfoText: accentInfo
     readonly property color badgeActiveBg: Qt.rgba(0.29, 0.87, 0.50, 0.20)
     readonly property color badgeActiveText: success
-    readonly property color badgeExperimentalBg: Qt.rgba(0.655, 0.545, 0.980, 0.15)
-    readonly property color badgeExperimentalText: accentSecondary
     readonly property color badgeWarningBg: Qt.rgba(1, 0.75, 0.14, 0.20)
     readonly property color badgeWarningText: warning
     readonly property color badgeDangerBg: Qt.rgba(1, 0.44, 0.44, 0.20)
