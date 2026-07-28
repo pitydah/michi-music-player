@@ -30,6 +30,15 @@ Item {
     property int _loadGeneration: 0
     property Loader _activeLoader: loaderA
     property Loader _incomingLoader: loaderB
+    // Track whether the pending route renders a degraded/placeholder page so
+    // the load outcome can be surfaced as routeUnavailableRendered.
+    property bool _pendingDegraded: false
+    property string _pendingDegradedReason: ""
+
+    // Every navigation request ends in exactly one of these outcomes.
+    signal routeLoaded(string route)
+    signal routeUnavailableRendered(string route, string reason)
+    signal routeErrorRendered(string route, string reason)
 
     function currentParams() {
         return typeof navigationBridge !== "undefined" && navigationBridge
@@ -37,6 +46,15 @@ Item {
     }
 
     function loadRoute(route) {
+        // If a cross-fade is mid-flight, finalize it first so the visible page
+        // is promoted to active and the freed loader becomes the new incoming.
+        // Without this, reusing _incomingLoader would destroy the page the user
+        // is currently looking at (transition race).
+        if (root.transitionRunning) {
+            transitionTimer.stop()
+            root._finalizeTransition()
+        }
+
         var canonical = registry ? registry.resolveRoute(route) : route
         var valid = registry ? registry.isValidRoute(route) : false
         var requestedSource = valid ? registry.getSource(canonical) : getFallbackSource(route)
@@ -49,13 +67,29 @@ Item {
         lastRequestedSource = requestedSource
         loading = true
         _loadGeneration += 1
-        var gen = _loadGeneration
+
+        // A route is "degraded" when it is unknown (renders the generic
+        // placeholder) or when its registry status is not "functional"
+        // (renders a FeatureStatePage). Functional routes emit routeLoaded.
+        var degradeReason = ""
+        if (!valid) {
+            degradeReason = qsTr("Route not found")
+        } else if (registry && registry.getStatus(canonical) !== "functional") {
+            degradeReason = registry.getStatus(canonical)
+        }
+        _pendingDegraded = degradeReason !== ""
+        _pendingDegradedReason = degradeReason
 
         if (_activeLoader.item && typeof _activeLoader.item.routeLeave === "function") {
             _activeLoader.item.routeLeave(_prevRoute, _prevParams)
         }
 
         _incomingLoader.source = ""
+        // Re-enable in case this loader was disabled by a prior finalize.
+        _incomingLoader.enabled = true
+        // Stamp the generation so stale loads can be discarded on completion.
+        _incomingLoader.requestGeneration = _loadGeneration
+        _incomingLoader.requestedRoute = pendingRoute
         _incomingLoader.source = requestedSource
     }
 
@@ -94,9 +128,12 @@ Item {
     Item {
         objectName: "pageStackContainer"
         anchors.fill: parent
+        clip: true
 
         Rectangle {
             anchors.fill: parent
+            // Dark opaque backdrop so cross-fades never show through to the
+            // surface below during the atomic page swap.
             color: MichiTheme.colors.bgApp
         }
 
@@ -109,6 +146,8 @@ Item {
 
             Loader {
                 id: loaderA
+                property int requestGeneration: -1
+                property string requestedRoute: ""
                 anchors.fill: parent
                 asynchronous: true
                 source: ""
@@ -125,6 +164,8 @@ Item {
 
             Loader {
                 id: loaderB
+                property int requestGeneration: -1
+                property string requestedRoute: ""
                 anchors.fill: parent
                 asynchronous: true
                 source: ""
@@ -187,8 +228,13 @@ Item {
     function _finalizeTransition() {
         if (_activeLoader !== _incomingLoader) {
             var oldLoader = _activeLoader
-            _swapLoaders()
+            // Disable and release the old page before the new one takes over
+            // so there is no window where both pages are interactive.
+            oldLoader.enabled = false
+            oldLoader.visible = false
+            oldLoader.opacity = 0
             oldLoader.source = ""
+            _swapLoaders()
         }
         root.transitionRunning = false
     }

@@ -18,6 +18,11 @@ Item {
     property var cmdPalette: commandPalette
     property bool fatalError: false
     property string fatalMessage: ""
+    // Navigation rejection state — set by onInvalidRouteError so the error
+    // overlay can surface routes rejected by the bridge before reaching PageStack.
+    property bool _navError: false
+    property string _navErrorRoute: ""
+    property string _navErrorReason: ""
 
     MichiResponsive { id: responsive; availableWidth: root.width }
 
@@ -38,6 +43,12 @@ Item {
     function dismissFatal() {
         root.fatalError = false
         root.fatalMessage = ""
+    }
+
+    function _clearNavError() {
+        root._navError = false
+        root._navErrorRoute = ""
+        root._navErrorReason = ""
     }
 
     ColumnLayout {
@@ -304,17 +315,31 @@ Item {
 
     ErrorState {
         id: errorOverlay
+        // route/reason recorded for the latest navigation rejection so callers
+        // and tests can inspect which route failed and why.
+        property string route: ""
+        property string reason: ""
         anchors.fill: parent
         z: 9999
-        visible: pageStack.lastError !== "" && !root.fatalError
+        visible: (pageStack.lastError !== "" || root._navError) && !root.fatalError
         showRetry: true
-        message: pageStack.lastError
+        message: root._navError ? root._navErrorReason : pageStack.lastError
         secondaryActionText: qsTr("Ir a Inicio")
-        onRetryRequested: pageStack.loadRoute(pageStack.pendingRoute)
+        onRetryRequested: {
+            if (root._navError) {
+                // Retrying an invalid route would fail again — go home instead.
+                root._clearNavError()
+                if (typeof navigationBridge !== "undefined" && navigationBridge)
+                    navigationBridge.navigate("home")
+            } else {
+                pageStack.loadRoute(pageStack.pendingRoute)
+            }
+        }
         onSecondaryActionRequested: {
+            root._clearNavError()
+            pageStack.lastError = ""
             if (typeof navigationBridge !== "undefined" && navigationBridge)
                 navigationBridge.navigate("home")
-            pageStack.lastError = ""
         }
     }
 
@@ -332,6 +357,9 @@ Item {
     Connections {
         target: typeof navigationBridge !== "undefined" ? navigationBridge : null
         function onRouteChanged(route) {
+            // A new bridge-accepted navigation supersedes any prior rejection;
+            // clear it now so a subsequent load error shows fresh, not stale.
+            root._clearNavError()
             pageStack.loadRoute(route)
             sidebar.currentRoute = route
             updateHeaderTitle(route)
@@ -345,6 +373,39 @@ Item {
                 pendingSettingsError.text = ""
                 pendingSettingsDialog.open()
             }
+        }
+        function onInvalidRouteError(route, reason) {
+            // Surface the rejection via the notification center.
+            if (typeof notificationBridge !== "undefined" && notificationBridge
+                    && typeof notificationBridge.showMessage === "function") {
+                notificationBridge.showMessage(
+                    qsTr("No se pudo navegar a '%1': %2").arg(route).arg(reason),
+                    "error"
+                )
+            }
+            // Update the error overlay so the user sees which route failed.
+            root._navError = true
+            root._navErrorRoute = route
+            root._navErrorReason = reason
+            errorOverlay.route = route
+            errorOverlay.reason = reason
+            console.warn("InvalidRouteError:", route, reason)
+        }
+    }
+
+    Connections {
+        target: pageStack
+        // Every navigation request ends in exactly one of these outcomes;
+        // surface them at the shell level for observability and state cleanup.
+        function onRouteLoaded(route) {
+            // A successful load clears any prior navigation rejection.
+            root._clearNavError()
+        }
+        function onRouteUnavailableRendered(route, reason) {
+            console.info("[AppShell] Route unavailable:", route, reason)
+        }
+        function onRouteErrorRendered(route, reason) {
+            console.warn("[AppShell] Route error:", route, reason)
         }
     }
 
