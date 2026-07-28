@@ -21,6 +21,7 @@ Item {
     property bool _showError: false
     property string _errorText: ""
     property int pageState: !root.ps ? stateError : (root.ps.commandPending ? stateLoading : !root._hasTrack ? stateEmpty : stateReady)
+    readonly property bool wideLayout: readyView.width >= 760
 
     readonly property int stateLoading: 0
     readonly property int stateReady: 1
@@ -57,6 +58,7 @@ Item {
     }
 
     Flickable {
+        id: readyView
         visible: root.pageState === root.stateReady
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.md
@@ -111,18 +113,22 @@ Item {
             }
 
             GridLayout {
+                id: playbackGrid
                 width: parent.width
-                columns: parent.width > 800 ? 2 : 1
-                rowSpacing: MichiTheme.spacing.md
-                columnSpacing: MichiTheme.spacing.lg
+                columns: root.wideLayout ? 2 : 1
+                rowSpacing: MichiTheme.spacing.xl
+                columnSpacing: MichiTheme.spacing.xl
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: MichiTheme.spacing.sm
+                    Layout.alignment: Qt.AlignTop
+                    Layout.preferredWidth: root.wideLayout ? 520 : playbackGrid.width
+                    spacing: MichiTheme.spacing.md
 
                     NowPlayingArtwork {
                         Layout.alignment: Qt.AlignHCenter
-                        Layout.preferredWidth: Math.min(240, parent.width * 0.55)
+                        Layout.preferredWidth: Math.min(root.wideLayout ? 280 : 240,
+                                                        parent.width * (root.wideLayout ? 0.58 : 0.52))
                         Layout.preferredHeight: Layout.preferredWidth
                         coverKey: root.ps ? root.ps.coverPath : ""
                         placeholderMode: !root._hasTrack
@@ -158,41 +164,49 @@ Item {
                         ps: root.ps
                     }
 
-                    NowPlayingControls {
-                        Layout.alignment: Qt.AlignHCenter
-                        isPlaying: root.ps ? root.ps.isPlaying : false
-                        shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
-                        repeatMode: root.ps ? root.ps.repeatMode : "none"
-                        playPauseSupported: root.ps ? root.ps.playPauseSupported : false
-                        previousSupported: root.ps ? root.ps.previousSupported : false
-                        nextSupported: root.ps ? root.ps.nextSupported : false
-                        shuffleSupported: root.ps ? root.ps.shuffleSupported : false
-                        repeatSupported: root.ps ? root.ps.repeatSupported : false
-                        onPlayClicked: { root.ps && root.ps.togglePlay() }
-                        onPrevClicked: { root.ps && root.ps.previous() }
-                        onNextClicked: { root.ps && root.ps.next() }
-                        onShuffleClicked: { root.ps && root.ps.toggleShuffle() }
-                        onRepeatClicked: { root.ps && root.ps.toggleRepeat() }
-                    }
-
-                    RowLayout {
+                    GridLayout {
                         Layout.fillWidth: true
-                        Layout.maximumWidth: 200
-                        Layout.alignment: Qt.AlignHCenter
-                        spacing: MichiTheme.spacing.sm
+                        columns: parent.width >= 500 ? 2 : 1
+                        rowSpacing: MichiTheme.spacing.sm
+                        columnSpacing: MichiTheme.spacing.lg
 
-                        Text {
-                            text: qsTr("Vol.")
-                            color: MichiTheme.colors.textMuted
-                            font.pixelSize: MichiTheme.typography.metaSize
+                        NowPlayingControls {
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.preferredWidth: 230
+                            isPlaying: root.ps ? root.ps.isPlaying : false
+                            shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
+                            repeatMode: root.ps ? root.ps.repeatMode : "none"
+                            playPauseSupported: root.ps ? root.ps.playPauseSupported : false
+                            previousSupported: root.ps ? root.ps.previousSupported : false
+                            nextSupported: root.ps ? root.ps.nextSupported : false
+                            shuffleSupported: root.ps ? root.ps.shuffleSupported : false
+                            repeatSupported: root.ps ? root.ps.repeatSupported : false
+                            onPlayClicked: { root.ps && root.ps.togglePlay() }
+                            onPrevClicked: { root.ps && root.ps.previous() }
+                            onNextClicked: { root.ps && root.ps.next() }
+                            onShuffleClicked: { root.ps && root.ps.toggleShuffle() }
+                            onRepeatClicked: { root.ps && root.ps.toggleRepeat() }
                         }
 
-                        NowPlayingVolume {
+                        RowLayout {
                             Layout.fillWidth: true
-                            volume: root.ps ? root.ps.volume : 80
-                            muted: root.ps ? root.ps.muted : false
-                            onVolumeAdjusted: function(vol) { root.ps && root.ps.setVolume(vol) }
-                            onMuteClicked: { root.ps && root.ps.toggleMute() }
+                            Layout.maximumWidth: 220
+                            Layout.alignment: Qt.AlignHCenter
+                            spacing: MichiTheme.spacing.sm
+
+                            Text {
+                                text: qsTr("Vol.")
+                                color: MichiTheme.colors.textMuted
+                                font.pixelSize: MichiTheme.typography.metaSize
+                            }
+
+                            NowPlayingVolume {
+                                Layout.fillWidth: true
+                                volume: root.ps ? root.ps.volume : 80
+                                muted: root.ps ? root.ps.muted : false
+                                onVolumeAdjusted: function(vol) { root.ps && root.ps.setVolume(vol) }
+                                onMuteClicked: { root.ps && root.ps.toggleMute() }
+                            }
                         }
                     }
 
@@ -204,53 +218,17 @@ Item {
                         MichiButton { text: qsTr("Letra"); variant: "ghost"; onClicked: { root.nav && root.nav.navigate("lyrics") } }
                         MichiButton { text: qsTr("Cola"); variant: "ghost"; onClicked: { root.nav && root.nav.navigate("queue") } }
                     }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 1
-                        color: MichiTheme.colors.borderSubtle
-                        visible: root._hasTrack
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: qsTr("Información técnica")
-                        color: MichiTheme.colors.textMeta
-                        font.pixelSize: MichiTheme.typography.captionSize
-                        font.weight: MichiTheme.typography.weightMedium
-                        visible: root._hasTrack
-                    }
-
-                    NowPlayingTechnicalInfo {
-                        Layout.fillWidth: true
-                        ps: root.ps
-                        visible: root._hasTrack
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: qsTr("Salida de audio")
-                        color: MichiTheme.colors.textMeta
-                        font.pixelSize: MichiTheme.typography.captionSize
-                        font.weight: MichiTheme.typography.weightMedium
-                        visible: root._hasTrack
-                    }
-
-                    NowPlayingOutputSelector {
-                        Layout.fillWidth: true
-                        ps: root.ps
-                        visible: root._hasTrack
-                    }
                 }
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.preferredWidth: parent.width > 700 ? parent.width * 0.35 : parent.width
-                    spacing: MichiTheme.spacing.sm
+                    Layout.alignment: Qt.AlignTop
+                    Layout.preferredWidth: root.wideLayout ? 340 : playbackGrid.width
+                    spacing: MichiTheme.spacing.md
 
                     NowPlayingQueuePreview {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 220
+                        Layout.preferredHeight: root.wideLayout ? 260 : 220
                         ps: root.ps
                         nav: root.nav
                     }
@@ -260,6 +238,26 @@ Item {
                         Layout.preferredHeight: 180
                         ps: root.ps
                     }
+                }
+            }
+
+            GridLayout {
+                width: parent.width
+                columns: width >= 680 ? 2 : 1
+                rowSpacing: MichiTheme.spacing.lg
+                columnSpacing: MichiTheme.spacing.xl
+                visible: root._hasTrack
+
+                NowPlayingTechnicalInfo {
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignTop
+                    ps: root.ps
+                }
+
+                NowPlayingOutputSelector {
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignTop
+                    ps: root.ps
                 }
             }
         }
