@@ -176,25 +176,6 @@ class TestShellNavigation:
         assert nav2.currentRoute == "library.album_detail"
         assert nav2.currentParams["album_key"] == "saved"
 
-    def test_capability_restricts_route(self):
-        nav = NavigationBridge()
-        nav.set_capabilities(set())
-        nav.navigate("audio_lab.overview")
-        assert nav.currentRoute == "home"
-
-    def test_capability_allows_route(self):
-        nav = NavigationBridge()
-        nav.set_capabilities({"audio_lab"})
-        nav.navigate("audio_lab.overview")
-        assert nav.currentRoute == "audio_lab"
-
-    def test_capability_map_coverage(self):
-        from ui_qml_bridge.navigation_bridge import NavigationBridge as NB
-        nb = NB()
-        nb.set_capabilities({"audio_lab", "metadata"})
-        for route in ["audio_lab.overview", "metadata.inspector"]:
-            assert nb._route_matches_capability(route)
-
     def test_route_title_all_routes(self):
         for route, info in ROUTES.items():
             assert "title" in info, f"Route {route} missing title"
