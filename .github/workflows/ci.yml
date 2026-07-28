@@ -87,6 +87,7 @@ jobs:
             tests/qml/runtime/test_capability_does_not_block_route.py \
             tests/qml/runtime/test_disc_lab_route.py \
             tests/qml/runtime/test_e2e_navigation_sequence.py \
+            tests/qml/runtime/test_runtime_productive_gate.py \
             tests/qml/library/test_album_view_productive_layout.py \
             -q --timeout=300 --junitxml=results-reintegration.xml
       - name: Build wheel
