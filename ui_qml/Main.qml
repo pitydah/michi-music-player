@@ -47,8 +47,8 @@ Window {
         if (appSettings.value("maximized", false))
             mainWindow.showMaximized()
 
-        var darkMode = appearanceSettings.value("dark_mode", true)
-        MichiTheme.setDarkMode(darkMode)
+        var themeMode = appearanceSettings.value("theme", "dark")
+        MichiTheme.setDarkMode(themeMode !== "light")
     }
 
     MichiApp {
