@@ -1,0 +1,102 @@
+# Textures Inventory — P0-UI0 Premium Visual Refactor
+# Generated: Mon Jul 27 2026
+
+texture_system:
+  component: ui_qml/materials/TextureOverlay.qml
+  description: >
+    Presentational noise/texture overlay component. Uses Image with SVG sources.
+    Two variants: grain (tiled noise pattern) and contours (acrylic fluid curves).
+    Always decorative — enabled=false, Accessible.ignored=true.
+
+variants:
+  - id: TX01
+    name: grain
+    source: ui_qml/assets/textures/michi-grain.svg
+    source_size: [96, 96]  # MichiTheme.textureTileSize
+    fill_mode: Image.Tile
+    description: >
+      White 1×1px dots at ~40 positions with opacities 0.18 and 0.34.
+      Tiled at 96×96px to create fine film-grain noise.
+    opacity_formula:
+      dark_mode: "strength × 0.20"
+      light_mode: "strength × 0.12"
+    svg_colors:
+      fill: "#fff"
+      fill_opacity: [0.18, 0.34]
+    default_strength: 1.0
+    file_size_bytes: 949
+    lines: 4
+
+  - id: TX02
+    name: contours
+    source: ui_qml/assets/textures/michi-contours.svg
+    source_size: [960, 320]
+    fill_mode: Image.PreserveAspectCrop
+    description: >
+      6 acrylic flowing curves in cool blue accent (#8FB7FF) at opacities 0.09–0.26,
+      plus one filled corner wedge at 0.08 opacity. Cropped to fill with mipmapping.
+    opacity_formula:
+      dark_mode: "strength × 0.30"
+      light_mode: "strength × 0.18"
+    svg_colors:
+      stroke: "#8FB7FF"
+      stroke_opacity: [0.09, 0.12, 0.15, 0.18, 0.20, 0.26]
+      fill: "#8FB7FF"
+      fill_opacity: [0.08]
+    default_strength: 1.0
+    file_size_bytes: 799
+    lines: 11
+
+usage_sites:
+  - file: ui_qml/materials/SidebarMaterial.qml
+    lines: "45-48"
+    variant: grain
+    strength: 0.40
+    effective_dark_opacity: 0.080  # 0.40 × 0.20
+    effective_light_opacity: 0.048  # 0.40 × 0.12
+    layer: background (z=0)
+
+  - file: ui_qml/materials/HeroMaterial.qml
+    lines: "37-41"
+    variant: contours
+    strength: 0.62  # default (no glow)
+    strength_glow: 0.90  # when showGlow=true
+    effective_dark_opacity_no_glow: 0.186  # 0.62 × 0.30
+    effective_dark_opacity_glow: 0.270  # 0.90 × 0.30
+    layer: background
+
+  - file: ui_qml/materials/AcrylicBackdrop.qml
+    lines: "31-36"
+    variant: grain  # default
+    variant_hero: contours  # when textureHint="hero"
+    strength: 0.46  # default (grain)
+    strength_hero: 0.72  # when textureHint="hero"
+    effective_dark_opacity_grain: 0.092  # 0.46 × 0.20
+    effective_dark_opacity_contours: 0.216  # 0.72 × 0.30
+    layer: background
+
+  - file: ui_qml/shell/HeaderBar.qml
+    lines: "96-100"
+    variant: grain
+    strength: 0.34
+    effective_dark_opacity: 0.068  # 0.34 × 0.20
+    effective_light_opacity: 0.041  # 0.34 × 0.12
+    layer: surface chrome
+
+# Gradient inside texture SVGs (not runtime):
+#   michi-contours.svg uses hardcoded #8FB7FF (cool blue accent) for strokes/fills
+#   michi-grain.svg uses hardcoded #fff for dots
+# These are decorative assets and the opacity formula handles blending.
+# If accent color changes, contours SVG would need regeneration.
+
+opacity_formula_analysis:
+  summary: >
+    The effective opacity of textures is: SVG pixel opacity × strength × mode_base.
+    mode_base differs by variant and dark/light mode.
+    This means changing 'strength' from 1.0 to 0.5 has a proportional effect,
+    but the baseline opacity is baked into the formula.
+  recommendation: >
+    Consider extracting mode_base values as theme tokens for easier tuning.
+
+# Key: the 'strength' property is a convenience multiplier.
+# It does NOT directly control Image opacity — the formula applies.

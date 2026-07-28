@@ -31,10 +31,10 @@ Rectangle {
     color: {
         switch (root.status) {
             case ConnectionStatusBadge.CONNECTED: return MichiTheme.colors.badgeActiveBg
-            case ConnectionStatusBadge.DISCONNECTED: return MichiTheme.colors.badgeMutedBg
+            case ConnectionStatusBadge.DISCONNECTED: return MichiTheme.colors.badgeDangerBg
             case ConnectionStatusBadge.RECONNECTING: return MichiTheme.colors.badgeWarningBg
         }
-        return MichiTheme.colors.badgeMutedBg
+        return MichiTheme.colors.badgeInfoBg
     }
     border.width: MichiTheme.borderWidth
     border.color: MichiTheme.colors.borderInner
@@ -52,10 +52,10 @@ Rectangle {
             color: {
                 switch (root.status) {
                     case ConnectionStatusBadge.CONNECTED: return MichiTheme.colors.success
-                    case ConnectionStatusBadge.DISCONNECTED: return MichiTheme.colors.disconnected
+                    case ConnectionStatusBadge.DISCONNECTED: return MichiTheme.colors.error
                     case ConnectionStatusBadge.RECONNECTING: return MichiTheme.colors.warning
                 }
-                return MichiTheme.colors.disconnected
+                return MichiTheme.colors.accentBlue
             }
 
             SequentialAnimation on opacity {
@@ -79,10 +79,10 @@ Rectangle {
             color: {
                 switch (root.status) {
                     case ConnectionStatusBadge.CONNECTED: return MichiTheme.colors.badgeActiveText
-                    case ConnectionStatusBadge.DISCONNECTED: return MichiTheme.colors.disconnected
+                    case ConnectionStatusBadge.DISCONNECTED: return MichiTheme.colors.error
                     case ConnectionStatusBadge.RECONNECTING: return MichiTheme.colors.warning
                 }
-                return MichiTheme.colors.textMuted
+                return MichiTheme.colors.accentBlue
             }
             font.pixelSize: MichiTheme.typography.badgeSize
             font.weight: MichiTheme.typography.weightMedium

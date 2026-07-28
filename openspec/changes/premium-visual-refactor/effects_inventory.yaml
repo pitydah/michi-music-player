@@ -1,0 +1,121 @@
+# Effects Inventory — P0-UI0 Premium Visual Refactor
+# Generated: Mon Jul 27 2026
+# Scope: ShaderEffect, MultiEffect, DropShadow, GaussianBlur, Glow, etc.
+
+summary:
+  total_shader_effects: 0
+  total_multieffects: 1
+  total_dropshadows: 0
+  total_blurs: 0
+  total_glow_effects: 0
+  assessment: >
+    The QML UI is intentionally lean on GPU effects. The only QtQuick.Effects
+    usage is MultiEffect for icon colorization. All visual "glow" effects are
+    achieved through gradient overlays on Rectangle primitives.
+
+multi_effects:
+
+  - id: ME01
+    file: ui_qml/components/MichiIcon.qml
+    lines: "53-58"
+    type: MultiEffect
+    import: QtQuick.Effects
+    config:
+      colorization: 1.0
+      colorizationColor: root.color
+    purpose: >
+      Tints SVG/PNG icons to the specified theme color. This is the standard
+      approach for symbolic/monochrome icon tinting in Qt Quick.
+    source: image item (anchors.fill)
+    performance_note: >
+      Single MultiEffect per MichiIcon instance. With ~40 icons visible at most
+      (sidebar), this is lightweight. No layer.smooth or mipmap on the effect itself.
+
+shader_effects: []
+  # Zero ShaderEffect instances found anywhere in ui_qml/
+
+blur_effects: []
+  # Zero GaussianBlur / FastBlur instances found
+
+shadow_effects: []
+  # Zero DropShadow / RectangularGlow instances found
+
+opacity_mask_effects: []
+  # Zero OpacityMask instances found
+
+# ── Visual "glow" (non-effect Rectangle gradients) ──
+pseudo_glow_effects:
+
+  - id: PG01
+    file: ui_qml/materials/HeroMaterial.qml
+    lines: "46-51"
+    technique: Conditional gradient Rectangle
+    config:
+      visible: showGlow property
+      gradient: Vertical surfaceHeroGlow → transparent
+      surfaceHeroGlow: rgba(0.561, 0.718, 1.0, 0.07)
+    usage_sites:
+      - MicroServerHero.qml (showGlow: true)
+      - HomeAudioHubPage.qml (showGlow: true)
+      - ZoneDetailPage.qml (showGlow: conditional on "playing")
+      - AssistantPage.qml (showGlow: conditional on ai !== null)
+      - SmartTaggingWorkflowPage.qml (showGlow: true)
+      - PlaylistsPage.qml (showGlow: true)
+      - AudioLabHubPage.qml (showGlow: true)
+      - LibraryDoctorOverview.qml (showGlow: true)
+      - MixHubPage.qml (showGlow: true)
+      - RadioPage.qml (showGlow: true)
+      - GlobalSearchPage.qml (showGlow: true)
+      - DiscLabPage.qml (showGlow: true)
+      - StreamingHubPage.qml (showGlow: true)
+      - SyncHubPage.qml (showGlow: true)
+      - SmartTaggingPage.qml (showGlow: true)
+
+  - id: PG02
+    file: ui_qml/materials/SidebarMaterial.qml
+    lines: "26-31, 34-42"
+    technique: Gradient overlay Rectangles
+    config:
+      - Horizontal: accentGlow → transparent → surfaceSheen (full sidebar)
+      - Vertical: accentGlowSubtle → transparent (top 34%)
+    purpose: Subtle ambient accent glow on sidebar surface
+
+  - id: PG03
+    file: ui_qml/shell/Sidebar.qml
+    lines: "222-223, 383-384, 603-604"
+    technique: Conditional solid-color Rectangle backgrounds
+    config:
+      - accentGlow: rgba(0.561, 0.718, 1.0, 0.16) — active section icon bg
+      - accentGlowSubtle: rgba(0.561, 0.718, 1.0, 0.08) — active child icon bg
+    purpose: Active-state icon container background
+
+# ── Animation / Transition ──
+animations:
+  total_color_animations: ~15 (ColorAnimation on Behavior blocks)
+  total_rotation_animations: 1 (Sidebar chevron)
+  total_number_animations: 0
+  notes: >
+    ColorAnimation is used for hover/press state transitions in:
+    - Sidebar items (Behavior on color)
+    - GlassMaterial (border.color transitions)
+    - NowPlayingBar metadata card (color and border.color)
+    - HeaderBar refresh button (RotationAnimator for loading spinner)
+
+# ── Transitions ──
+transitions: []
+  # Zero Transition elements found. Page transitions use PageStack component.
+
+# ── Performance Assessment ──
+performance:
+  gpu_overhead: minimal
+  rasterization: standard
+  concerns: []
+  notes: >
+    No blur effects, no drop shadows, no layer.enabled, no clipping with
+    complex shaders. The only GPU work is:
+    1. MultiEffect colorization (cheap, ~40 instances max)
+    2. Rectangle anti-aliased borders (native)
+    3. Image.Tile for grain texture (lightweight)
+    4. Image.PreserveAspectCrop with mipmap for contours (standard)
+    5. Gradient Rectangle rendering (native, no shader needed)
+    All gradients use standard GradientStop — no conical or complex gradients.

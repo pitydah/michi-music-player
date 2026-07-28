@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import "../../theme"
+import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
@@ -126,12 +127,9 @@ Item {
             NumberAnimation { duration: MichiTheme.motion.normal; easing.type: Easing.OutCubic }
         }
 
-        Rectangle {
+        PopupMaterial {
             anchors.fill: parent
             radius: MichiTheme.radius.md
-            color: MichiTheme.colors.surfaceCardElevated
-            border.width: MichiTheme.borderWidth
-            border.color: MichiTheme.colors.borderCard
 
             ColumnLayout {
                 id: contentLayout

@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import logging
+from typing import Any
+
 from PySide6.QtCore import QObject, Signal, Property, Slot
 
-from core.settings_manager import SETTINGS
+from core.settings_manager import SETTINGS, set_
 
 _instance = None
+logger = logging.getLogger("michi.theme_bridge")
 
 
 def _to_float(value, default: float) -> float:
@@ -16,18 +20,26 @@ def _to_float(value, default: float) -> float:
 
 
 class ThemeBridge(QObject):
+    """Expose persisted theme and accessibility preferences to QML."""
+
     themeChanged = Signal()
     highContrastChanged = Signal(bool)
 
     VALID_THEMES = ("dark", "light", "system", "high_contrast")
 
-    def __init__(self, service=None, coordinator=None, parent=None):
+    def __init__(
+        self,
+        service: Any | None = None,
+        coordinator: Any | None = None,
+        parent: QObject | None = None,
+    ) -> None:
         global _instance
         super().__init__(parent)
         _instance = self
         if coordinator is None:
-            import logging
-            logging.getLogger("michi.theme_bridge").warning("ThemeBridge: coordinator is None — running in degraded mode")
+            logger.warning(
+                "ThemeBridge: coordinator is None — running in degraded mode"
+            )
         self._service = service or coordinator
         self._theme = SETTINGS.value("appearance/theme", "dark")
         self._accent_color = SETTINGS.value("appearance/accent_color", "#8FB7FF")
@@ -42,8 +54,7 @@ class ThemeBridge(QObject):
         if self._service and hasattr(self._service, 'set_'):
             self._service.set_(key, value)
         else:
-            SETTINGS.setValue(key, value)
-            SETTINGS.sync()
+            set_(key, value)
 
     def _notify_theme_store(self):
         try:
@@ -54,7 +65,7 @@ class ThemeBridge(QObject):
                 if store and hasattr(store, 'updateFromBridge'):
                     store.updateFromBridge(self)
         except Exception:
-            pass
+            logger.exception("ThemeBridge: failed to notify ThemeStore")
 
     @Property(bool, notify=themeChanged)
     def darkMode(self):
@@ -143,6 +154,11 @@ class ThemeBridge(QObject):
             self._write("accessibility/reduced_motion", val)
             self._notify_theme_store()
             self.themeChanged.emit()
+
+    @Property(float, notify=themeChanged)
+    def animationScale(self) -> float:
+        """Return the global animation multiplier for the current motion setting."""
+        return 0.0 if self._reduced_motion else 1.0
 
     @Property(bool, notify=themeChanged)
     def reduceTransparency(self):

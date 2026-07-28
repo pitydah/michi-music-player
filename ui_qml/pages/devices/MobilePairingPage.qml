@@ -82,7 +82,7 @@ Item {
                         width: 200; height: 200
                         radius: MichiTheme.radius.sm
                         anchors.horizontalCenter: parent.horizontalCenter
-                        color: "white"
+                        color: MichiTheme.colors.textOnError
                         visible: root.msb && root.msb.qrDataUrl !== ""
 
                         Image {

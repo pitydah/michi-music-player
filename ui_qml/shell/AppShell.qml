@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import "../theme"
 import "../components"
 import "../components/foundations"
+import "../materials"
 import "."
 
 Item {
@@ -49,6 +50,12 @@ Item {
         root._navError = false
         root._navErrorRoute = ""
         root._navErrorReason = ""
+    }
+
+    // Single global backdrop — shared by all pages
+    MichiBackdrop {
+        anchors.fill: parent
+        z: -1
     }
 
     ColumnLayout {

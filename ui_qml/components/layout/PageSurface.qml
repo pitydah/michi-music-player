@@ -16,12 +16,6 @@ Rectangle {
     property alias pageToolbarZone: toolbarHost.data
     default property alias pageContent: contentViewport.data
 
-    AcrylicBackdrop {
-        anchors.fill: parent
-        textureHint: "dark"
-        textured: true
-    }
-
     ColumnLayout {
         anchors.fill: parent
         spacing: 0

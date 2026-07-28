@@ -138,7 +138,7 @@ Item {
                     anchors.fill: parent
                     gradient: Gradient {
                         GradientStop { position: 0.0; color: MichiTheme.colors.accentSoft }
-                        GradientStop { position: 0.7; color: "transparent" }
+                        GradientStop { position: 0.7; color: Qt.rgba(0.561, 0.718, 1.0, 0.0) }
                         GradientStop { position: 1.0; color: MichiTheme.colors.surfaceSubtle }
                     }
                 }

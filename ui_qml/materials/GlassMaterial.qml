@@ -76,14 +76,14 @@ Item {
                 radius: parent.radius
                 gradient: Gradient {
                     GradientStop { position: 0.0; color: MichiTheme.colors.surfaceSheen }
-                    GradientStop { position: 1.0; color: "transparent" }
+                    GradientStop { position: 1.0; color: Qt.rgba(1.0, 1.0, 1.0, 0.0) }
                 }
             }
 
             Rectangle {
                 anchors.fill: parent
                 radius: parent.radius
-                color: "transparent"
+                color: Qt.rgba(1.0, 1.0, 1.0, 0.0)
                 border.color: MichiTheme.colors.borderInner
                 border.width: MichiTheme.borderWidth
             }

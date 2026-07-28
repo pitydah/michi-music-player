@@ -1,0 +1,216 @@
+# Gradient Inventory — P0-UI0 Premium Visual Refactor
+# Generated: Mon Jul 27 2026
+# Total: 19 gradient instances across 11 files
+
+gradients:
+  - id: G01
+    file: ui_qml/materials/SidebarMaterial.qml
+    lines: "26-31"
+    orientation: horizontal
+    layer: full-sidebar-overlay
+    stops:
+      - position: 0.0
+        color: MichiTheme.colors.accentGlow
+      - position: 0.68
+        color: "transparent"
+      - position: 1.0
+        color: MichiTheme.colors.surfaceSheen
+    notes: Creates a subtle accent → transparent → sheen sweep across the sidebar
+
+  - id: G02
+    file: ui_qml/materials/SidebarMaterial.qml
+    lines: "39-42"
+    orientation: vertical
+    layer: top-accent-wash
+    stops:
+      - position: 0.0
+        color: MichiTheme.colors.accentGlowSubtle
+      - position: 1.0
+        color: "transparent"
+    notes: Top 34% of sidebar, subtle accent wash fading down
+
+  - id: G03
+    file: ui_qml/materials/SidebarMaterial.qml
+    lines: "63-70"
+    orientation: horizontal
+    layer: right-shadow-band
+    stops:
+      - position: 0.0
+        color: "transparent"
+      - position: 1.0
+        color: MichiTheme.colors.shadowSoft
+    notes: Right-edge 8px shadow band, opacity 0.26 (dark) / 0.12 (light)
+
+  - id: G04
+    file: ui_qml/materials/HeroMaterial.qml
+    lines: "30-34"
+    orientation: vertical
+    layer: depth-stack
+    stops:
+      - position: 0.0
+        color: MichiTheme.colors.accentSurface
+      - position: 0.5
+        color: "transparent"
+      - position: 1.0
+        color: MichiTheme.colors.shadowSoft
+    notes: Hero card depth gradient — accent top → clear middle → shadow bottom
+
+  - id: G05
+    file: ui_qml/materials/HeroMaterial.qml
+    lines: "47-50"
+    orientation: vertical
+    layer: conditional-glow
+    visible: showGlow == true
+    stops:
+      - position: 0.0
+        color: MichiTheme.colors.surfaceHeroGlow
+      - position: 0.6
+        color: "transparent"
+    notes: Top-down glow layer, visible only when showGlow is true
+
+  - id: G06
+    file: ui_qml/materials/AcrylicBackdrop.qml
+    lines: "24-28"
+    orientation: vertical
+    layer: backdrop-depth
+    stops:
+      - position: 0.0
+        color: MichiTheme.colors.accentSurface
+      - position: 0.38
+        color: "transparent"
+      - position: 1.0
+        color: MichiTheme.colors.shadowSoft
+    notes: Backdrop depth — accent fades to clear at 38%, then to shadow
+
+  - id: G07
+    file: ui_qml/materials/GlassMaterial.qml
+    lines: "77-80"
+    orientation: vertical
+    layer: sheen-reflection
+    stops:
+      - position: 0.0
+        color: MichiTheme.colors.surfaceSheen
+      - position: 1.0
+        color: "transparent"
+    notes: Top 44% sheen reflection on glass surfaces
+
+  - id: G08
+    file: ui_qml/components/NowPlayingBar.qml
+    lines: "154-167"
+    orientation: vertical
+    layer: metadata-accent-strip
+    stops:
+      - position: 0.0
+        color: MichiTheme.colors.nowPlayingGradientStart
+      - position: 0.5
+        color: MichiTheme.colors.nowPlayingGradientMiddle
+      - position: 1.0
+        color: MichiTheme.colors.nowPlayingGradientEnd
+    notes: 3px wide accent strip on metadata card, warm palette
+
+  - id: G09
+    file: ui_qml/components/MichiWarmSlider.qml
+    lines: "55-61"
+    orientation: horizontal
+    layer: slider-fill
+    stops:
+      - position: 0.0
+        color: MichiTheme.colors.nowPlayingGradientStart
+      - position: 0.33
+        color: MichiTheme.colors.nowPlayingGradientMiddle
+      - position: 0.66
+        color: MichiTheme.colors.nowPlayingGradientEnd
+      - position: 1.0
+        color: MichiTheme.colors.nowPlayingThumb
+    notes: 4-stop warm gradient for seek bar fill
+
+  - id: G10
+    file: ui_qml/pages/library/AlbumDetailPage.qml
+    lines: "127-130"
+    orientation: vertical
+    layer: header-overlay
+    stops:
+      - position: 0.0
+        color: MichiTheme.colors.accentSoft
+      - position: 0.65
+        color: "transparent"
+      - position: 1.0
+        color: MichiTheme.colors.surfaceSubtle
+    notes: Album detail header overlay fade
+
+  - id: G11
+    file: ui_qml/pages/library/ArtistDetailPage.qml
+    lines: "139-142"
+    orientation: vertical
+    layer: header-overlay
+    stops:
+      - position: 0.0
+        color: MichiTheme.colors.accentSoft
+      - position: 0.7
+        color: "transparent"
+      - position: 1.0
+        color: MichiTheme.colors.surfaceSubtle
+    notes: Artist detail header overlay fade (matches album pattern)
+
+  - id: G12
+    file: ui_qml/pages/library/album/AlbumGridView.qml
+    lines: "205-207"
+    orientation: vertical
+    layer: card-bottom-fade
+    stops:
+      - position: 0.35
+        color: "transparent"
+      - position: 1.0
+        color: MichiTheme.colors.overlayDark
+    notes: Album card bottom text protection gradient
+
+  - id: G13
+    file: ui_qml/pages/library/album/AlbumMagazineView.qml
+    lines: "198-201"
+    orientation: vertical
+    layer: magazine-header
+    stops:
+      - position: 0.0
+        color: MichiTheme.colors.accentSoft
+      - position: 0.52
+        color: MichiTheme.colors.surfaceHero
+      - position: 1.0
+        color: MichiTheme.colors.bgContent
+    notes: Magazine view header → content transition
+
+  - id: G14
+    file: ui_qml/pages/assistant/AIModelSelector.qml
+    lines: "131-135"
+    orientation: horizontal
+    layer: card-header
+    stops:
+      - position: 0.0
+        color: MichiTheme.colors.accentSoft
+      - position: 0.52
+        color: MichiTheme.colors.surfaceSubtle
+      - position: 1.0
+        color: MichiTheme.colors.surfaceHero
+    notes: AI model selector card header gradient
+
+# Token color breakdown of gradient stops:
+#   accentGlow:          rgba(0.561, 0.718, 1.0, 0.16)
+#   accentGlowSubtle:    rgba(0.561, 0.718, 1.0, 0.08)
+#   accentSurface:       rgba(0.561, 0.718, 1.0, 0.12)
+#   surfaceSheen:        rgba(1.0, 1.0, 1.0, 0.045)
+#   surfaceHeroGlow:     rgba(0.561, 0.718, 1.0, 0.07)
+#   shadowSoft:          rgba(0.0, 0.0, 0.0, 0.34)
+#   accentSoft:          rgba(0.561, 0.718, 1.0, 0.12)
+#   surfaceSubtle:       rgba(1.0, 1.0, 1.0, 0.03)
+#   surfaceHero:         #0A101A
+#   bgContent:           #090B11
+#   overlayDark:         rgba(0.02, 0.03, 0.05, 0.70)
+#   nowPlayingGradientStart:  #FF7A00 (orange)
+#   nowPlayingGradientMiddle: #FF4F72 (pink/rose)
+#   nowPlayingGradientEnd:    #C65CFF (purple)
+#   nowPlayingThumb:          #FF7A00 (orange)
+
+transparent_stops_summary:
+  total_occurrences: 11
+  files: 5
+  rationale: "Deliberate technique for smooth gradient fades into the parent color"
+  risk: "None — 'transparent' in a gradient Stop is a well-defined Qt behavior"

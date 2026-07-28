@@ -22,30 +22,14 @@ Item {
             color: MichiTheme.colors.surfaceSidebar
 
             Rectangle {
-                anchors.fill: parent
-                gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                    GradientStop { position: 0.0; color: MichiTheme.colors.accentGlow }
-                    GradientStop { position: 0.68; color: "transparent" }
-                    GradientStop { position: 1.0; color: MichiTheme.colors.surfaceSheen }
-                }
-            }
-
-            Rectangle {
                 anchors.left: parent.left
                 anchors.top: parent.top
                 width: parent.width
-                height: Math.min(parent.height * 0.34, 320)
+                height: Math.min(parent.height * 0.28, 240)
                 gradient: Gradient {
                     GradientStop { position: 0.0; color: MichiTheme.colors.accentGlowSubtle }
-                    GradientStop { position: 1.0; color: "transparent" }
+                    GradientStop { position: 1.0; color: Qt.rgba(0.561, 0.718, 1.0, 0.0) }
                 }
-            }
-
-            TextureOverlay {
-                anchors.fill: parent
-                variant: "grain"
-                strength: 0.40
             }
 
             Rectangle {
@@ -57,16 +41,13 @@ Item {
 
             Rectangle {
                 anchors.right: parent.right
-                width: 8
+                width: 6
                 height: parent.height
-                opacity: MichiTheme.darkMode ? 0.26 : 0.12
+                opacity: MichiTheme.darkMode ? 0.20 : 0.08
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
-                    GradientStop { position: 0.0; color: "transparent" }
-                    GradientStop {
-                        position: 1.0
-                        color: MichiTheme.colors.shadowSoft
-                    }
+                    GradientStop { position: 0.0; color: Qt.rgba(0.0, 0.0, 0.0, 0.0) }
+                    GradientStop { position: 1.0; color: MichiTheme.colors.shadowSoft }
                 }
             }
         }

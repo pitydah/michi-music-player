@@ -57,8 +57,11 @@ class ApplicationBootstrap:
         intel_builder.build(self.container)
 
         self._has_built = True
-        logger.info("Bootstrap: build complete — %d services",
-                     len(self.container._services))
+        service_count = sum(
+            service["available"]
+            for service in self.container.list_services().values()
+        )
+        logger.info("Bootstrap: build complete — %d services", service_count)
         return self
 
     def start(self) -> Self:
@@ -90,6 +93,9 @@ class ApplicationBootstrap:
             bridge = self._bridges.get(bridge_key)
             if bridge is not None:
                 registrar.register(qml_name, bridge)
+        theme_bridge = self._bridges.get("theme")
+        if theme_bridge is not None:
+            registrar.register("visualQuality", theme_bridge)
         audit = registrar.audit()
         logger.info("Bootstrap: registered %d context properties", audit["total"])
         if audit["duplicates"]:

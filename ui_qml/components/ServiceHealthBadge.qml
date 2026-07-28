@@ -34,7 +34,7 @@ Rectangle {
             case ServiceHealthBadge.DEGRADED: return MichiTheme.colors.badgeWarningBg
             case ServiceHealthBadge.UNAVAILABLE: return MichiTheme.colors.badgeDangerBg
         }
-        return MichiTheme.colors.badgeMutedBg
+        return MichiTheme.colors.badgeInfoBg
     }
     border.width: MichiTheme.borderWidth
     border.color: MichiTheme.colors.borderInner
@@ -55,7 +55,7 @@ Rectangle {
                     case ServiceHealthBadge.DEGRADED: return MichiTheme.colors.warning
                     case ServiceHealthBadge.UNAVAILABLE: return MichiTheme.colors.error
                 }
-                return MichiTheme.colors.disconnected
+                return MichiTheme.colors.accentBlue
             }
 
             SequentialAnimation on opacity {
@@ -82,7 +82,7 @@ Rectangle {
                     case ServiceHealthBadge.DEGRADED: return MichiTheme.colors.warning
                     case ServiceHealthBadge.UNAVAILABLE: return MichiTheme.colors.error
                 }
-                return MichiTheme.colors.textMuted
+                return MichiTheme.colors.accentBlue
             }
             font.pixelSize: MichiTheme.typography.badgeSize
             font.weight: MichiTheme.typography.weightMedium
