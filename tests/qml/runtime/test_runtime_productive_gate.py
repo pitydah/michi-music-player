@@ -528,3 +528,67 @@ def test_clean_shutdown(runtime: _Runtime) -> None:
     """bootstrap.shutdown() leaves the container STOPPED."""
     runtime.bootstrap.shutdown()
     assert runtime.bootstrap.container.state == ContainerState.STOPPED
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Reusable productive boot
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def build_and_boot() -> _Runtime:
+    """Boot the full productive stack and return a runtime handle.
+
+    This is the fixture-free form of the ``runtime`` module fixture: it
+    builds the composition root, starts services, creates every bridge
+    through ``BridgeFactory(container).create_all()``, registers the real
+    context properties on a ``QQmlApplicationEngine`` and loads
+    ``Main.qml``. Intended for test modules that want their own one-shot
+    productive boot (e.g. the sidebar route matrix) without depending on
+    the module-scoped ``runtime`` fixture.
+
+    Soft-skips via ``pytest.skip`` when the container cannot reach
+    READY/DEGRADED (e.g. missing GStreamer plugins on a minimal CI image).
+    The caller owns the returned runtime and should shut down its
+    ``bootstrap`` (or rely on process-exit teardown).
+    """
+    app = QGuiApplication.instance()
+    if app is None:
+        app = QGuiApplication(sys.argv)
+
+    rt = _Runtime()
+
+    bootstrap = ApplicationBootstrap()
+    bootstrap.build()
+    bootstrap.start()
+    if bootstrap.container.state not in (ContainerState.READY, ContainerState.DEGRADED):
+        try:
+            bootstrap.shutdown()
+        except Exception:  # noqa: BLE001 — best-effort teardown
+            pass
+        pytest.skip(
+            f"Container did not reach READY/DEGRADED "
+            f"(state={bootstrap.container.state.value}); "
+            "likely missing GStreamer plugins or system deps on this host."
+        )
+
+    bridges = bootstrap.create_bridges()
+    assert "navigation" in bridges, "navigation bridge missing after create_bridges()"
+
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(QML_ROOT))
+    registrar = bootstrap.register_context(engine)
+    audit = registrar.audit()
+    assert audit["total"] > 0, "no context properties registered"
+    assert audit["violations"] == [], f"context violations: {audit['violations']}"
+
+    loaded = bootstrap.load_qml(engine, str(MAIN_QML))
+    assert loaded, "Main.qml failed to load (no root objects produced)"
+    assert engine.rootObjects(), "engine produced no root objects after load_qml"
+
+    rt.bootstrap = bootstrap
+    rt.engine = engine
+    rt.navigation = bridges["navigation"]
+    rt.bridges = bridges
+
+    _process_events(5)
+    return rt

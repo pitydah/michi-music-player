@@ -406,21 +406,36 @@ Item {
                                 }
 
                                 Rectangle {
+                                    // C8: visual indicator only — never disables the
+                                    // click. Available (functional) routes show no dot
+                                    // (the default state); planned → yellow,
+                                    // degraded/unavailable → gray.
                                     visible: child.childStatus !== "functional"
                                     Layout.preferredWidth: 7
                                     Layout.preferredHeight: 7
                                     radius: width / 2
-                                    color: child.childStatus === "experimental"
-                                           ? MichiTheme.colors.accentExperimental
-                                           : child.childStatus === "configuration_required"
-                                             ? MichiTheme.colors.warning
-                                             : MichiTheme.colors.accentInfo
+                                    color: {
+                                        var s = child.childStatus
+                                        if (s === "planned" || s === "configuration_required")
+                                            return MichiTheme.colors.warning
+                                        if (s === "experimental")
+                                            return MichiTheme.colors.accentExperimental
+                                        // degraded, unavailable, partial, error, unknown
+                                        return MichiTheme.colors.textMuted
+                                    }
 
                                     ToolTip.visible: statusHover.containsMouse
-                                    ToolTip.text: child.childStatus === "planned" ? qsTr("Planificado")
-                                                  : child.childStatus === "experimental" ? qsTr("Experimental")
-                                                  : child.childStatus === "partial" ? qsTr("Parcial")
-                                                  : qsTr("Configuración requerida")
+                                    ToolTip.text: {
+                                        var s = child.childStatus
+                                        if (s === "planned") return qsTr("Planificado")
+                                        if (s === "experimental") return qsTr("Experimental")
+                                        if (s === "configuration_required") return qsTr("Configuración requerida")
+                                        if (s === "degraded") return qsTr("Degradado")
+                                        if (s === "unavailable") return qsTr("No disponible")
+                                        if (s === "partial") return qsTr("Parcial")
+                                        if (s === "error") return qsTr("Error")
+                                        return qsTr("No disponible")
+                                    }
                                     MouseArea { id: statusHover; anchors.fill: parent; hoverEnabled: true }
                                 }
                             }

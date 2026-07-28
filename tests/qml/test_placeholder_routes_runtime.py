@@ -43,17 +43,10 @@ PLACEHOLDERS = (
     ("sync.history", "pages/sync/SyncHistoryPlaceholderPage.qml", "planned", "syncHistoryPlaceholderPage"),
 )
 
-CAPABILITY_FOR_ROUTE = {
-    "streaming.podcasts": "podcasts",
-    "connections.big_server": "big_server",
-    "connections.navidrome": "navidrome",
-    "connections.jellyfin": "jellyfin",
-    "connections.home_assistant": "home_assistant",
-    "home_audio.chain_planner": "home_audio",
-    "sync.portable_players": "sync",
-    "sync.plans": "sync",
-    "sync.history": "sync",
-}
+# C7: planned placeholder pages must ALWAYS be reachable regardless of
+# capability state. Capability is informational only (NavigationBridge.
+# routeAvailability) and never blocks navigation, so every route below must
+# load its placeholder page even when its capability is absent.
 
 
 def _wait_until(app: QGuiApplication, predicate, timeout_ms: int = 3000) -> None:
@@ -188,10 +181,8 @@ def test_placeholder_route_loads_through_navigation_and_page_stack(
     _expected_state: str,
     expected_object_name: str,
 ) -> None:
-    # Routes with capabilities require them to be present for navigation
-    req = CAPABILITY_FOR_ROUTE.get(route)
-    if req and req not in capabilities:
-        pytest.skip(f"Route {route} requires capability '{req}', not provided")
+    # C7: capability never blocks navigation. The route must load its
+    # placeholder page even when its capability is not in the provided set.
     engine, registry, navigation, component, stack = _page_stack(
         gui_app, qml_messages, capabilities
     )

@@ -1358,6 +1358,8 @@ def get_sidebar_sections() -> list[dict]:
     {
         "route": str, "title": str, "icon": str, "expandable": bool,
         "order": int, "status": str,
+        "navigable": True,   # C8: always True for sidebar-visible routes;
+                              # capability/state never disables navigation.
         "children": [{..."route"..., "title"..., "icon"..., "active": False}]
     }
     """
@@ -1373,6 +1375,10 @@ def get_sidebar_sections() -> list[dict]:
             "expandable": spec.get("expandable", False),
             "order": spec.get("order", 0),
             "status": spec.get("status", "functional"),
+            # C8: every sidebar-visible route is navigable regardless of
+            # capability or status. The status field drives a visual
+            # indicator only; it never blocks the click.
+            "navigable": True,
             "children": [],
         }
         if section["expandable"]:
@@ -1388,6 +1394,7 @@ def get_sidebar_sections() -> list[dict]:
                     "icon": c.get("icon", ""),
                     "status": c.get("status", "functional"),
                     "order": c.get("order", 0),
+                    "navigable": True,
                 }
                 for c in children
             ]
@@ -1406,6 +1413,7 @@ def get_sidebar_sections() -> list[dict]:
             "expandable": False,
             "order": spec.get("order", 0),
             "status": spec.get("status", "functional"),
+            "navigable": True,
             "children": [],
         })
     return sections, fixed
