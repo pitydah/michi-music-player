@@ -781,6 +781,28 @@ class NowPlayingBridge(QObject):
             return _err(op, PLAYBACK_ERROR)
 
     @Slot(result=dict)
+    def stop(self) -> dict:
+        """Stop playback and reset position (transport control)."""
+        op = "stop"
+        self._begin_command(op)
+        if not self._player:
+            self._set_command_failure(op, NO_PLAYER_SERVICE)
+            return _err(op, NO_PLAYER_SERVICE)
+        try:
+            if hasattr(self._player, 'stop'):
+                self._player.stop()
+                self._position = 0
+                self._set_command_success(op)
+                self._emit_state()
+                return _ok(op, {"state_confirmed": False})
+            self._set_command_failure(op, UNSUPPORTED)
+            return _err(op, UNSUPPORTED)
+        except Exception as e:
+            logger.warning("stop failed: %s", e)
+            self._set_command_failure(op, PLAYBACK_ERROR)
+            return _err(op, PLAYBACK_ERROR)
+
+    @Slot(result=dict)
     def toggleShuffle(self) -> dict:
         op = "toggleShuffle"
         self._begin_command(op)

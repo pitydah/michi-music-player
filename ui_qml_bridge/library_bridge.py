@@ -645,6 +645,25 @@ class LibraryBridge(QObject):
             return {"ok": False, "error": str(e)}
 
     @Slot(str, result=dict)
+    def playAlbumNext(self, album_key: str):
+        """Insert album tracks right after the current track in the queue."""
+        if not self._query_svc:
+            return {"ok": False, "error": "NO_QUERY_SERVICE"}
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
+        try:
+            internal = self._query_svc.fetch_album_tracks_internal(album_key)
+            if not internal:
+                return {"ok": False, "error": "NO_TRACKS"}
+            tracks = [t for t in internal if t.get("filepath")]
+            if not tracks:
+                return {"ok": False, "error": "NO_VALID_TRACKS"}
+            idx = self._queue_service.current_index + 1
+            return self._queue_service.insert(idx, tracks)
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
     def getArtistDetail(self, artist_name: str):
         if not self._query_svc:
             return {"ok": False, "error": "NO_QUERY_SERVICE"}

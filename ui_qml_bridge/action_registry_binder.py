@@ -75,6 +75,9 @@ class ActionRegistryBinder(QObject):
     def _audio_lab(self):
         return self._bridges.get("audio_lab")
 
+    def _library_doctor(self):
+        return self._bridges.get("library_doctor")
+
     def _selection(self):
         return self._bridges.get("selection_context")
 
@@ -173,6 +176,38 @@ class ActionRegistryBinder(QObject):
             return result if isinstance(result, dict) else {"ok": True}
         return handler
 
+    def _unavailable_handler(self, reason: str = ""):
+        """Handler for actions with no direct backend operation.
+
+        Returns a clear UNAVAILABLE error instead of silently navigating
+        to an unrelated page.
+        """
+        def handler():
+            return {"ok": False, "error": "UNAVAILABLE",
+                    "error_code": "UNAVAILABLE",
+                    "message": reason or "This operation is not available."}
+        return handler
+
+    def _library_doctor_handler(self, method: str):
+        """Call a LibraryDoctorBridge method directly when available."""
+        def handler():
+            doc = self._library_doctor()
+            if not doc or not hasattr(doc, method):
+                return {"ok": False, "error": "UNAVAILABLE",
+                        "error_code": "UNAVAILABLE",
+                        "message": "Library Doctor is not available."}
+            fn = getattr(doc, method)
+            if not callable(fn):
+                return {"ok": False, "error": "UNAVAILABLE",
+                        "error_code": "UNAVAILABLE",
+                        "message": "Library Doctor is not available."}
+            try:
+                result = fn()
+                return result if isinstance(result, dict) else {"ok": True}
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        return handler
+
     # ── navigation actions ──────────────────────────────────────────────
     def _bind_navigation(self):
         routes = {
@@ -250,6 +285,18 @@ class ActionRegistryBinder(QObject):
         action = reg.get("playback_seek_back")
         if action:
             action.handler = self._seek_relative_handler(-10)
+        action = reg.get("playback_stop")
+        if action:
+            action.handler = self._no_arg_handler("nowplaying", "stop")
+        action = reg.get("playback_shuffle")
+        if action:
+            action.handler = self._no_arg_handler("nowplaying", "toggleShuffle")
+        action = reg.get("playback_repeat")
+        if action:
+            action.handler = self._no_arg_handler("nowplaying", "toggleRepeat")
+        action = reg.get("queue_clear")
+        if action:
+            action.handler = self._no_arg_handler("queue", "clearQueue")
 
     # ── library actions ─────────────────────────────────────────────────
     def _bind_library(self):
@@ -334,6 +381,24 @@ class ActionRegistryBinder(QObject):
                 except Exception as e:
                     return {"ok": False, "error": str(e)}
             return {"ok": False, "error": "NO_SELECTION"}
+        return handler
+
+    def _track_replace_queue_handler(self):
+        """Replace the queue with the selected track without starting playback."""
+        def handler():
+            fp = self._sel_filepath()
+            if not fp:
+                return {"ok": False, "error": "NO_SELECTION"}
+            queue = self._queue()
+            if not queue or not hasattr(queue, "clearQueue") or not hasattr(queue, "add"):
+                return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+            try:
+                clear_result = queue.clearQueue()
+                if isinstance(clear_result, dict) and not clear_result.get("ok", True):
+                    return clear_result
+                return queue.add([{"filepath": fp}])
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
         return handler
 
     def _track_favorite_handler(self):
@@ -423,10 +488,12 @@ class ActionRegistryBinder(QObject):
 
     def _bind_tracks(self):
         reg = self._registry
-        for aid in ("track_play_now", "track_replace_queue"):
-            action = reg.get(aid)
-            if action:
-                action.handler = self._track_play_handler()
+        action = reg.get("track_play_now")
+        if action:
+            action.handler = self._track_play_handler()
+        action = reg.get("track_replace_queue")
+        if action:
+            action.handler = self._track_replace_queue_handler()
         action = reg.get("track_play_next")
         if action:
             action.handler = self._sel_arg_handler(
@@ -468,11 +535,18 @@ class ActionRegistryBinder(QObject):
             action = reg.get(aid)
             if action:
                 action.handler = self._audio_lab_file_handler(method, route)
-        for aid in ("track_check_integrity", "track_find_duplicates", "track_relocate",
-                    "track_delete_from_disk", "track_delete_from_library", "track_exclude"):
+        # Library Doctor operations — call the bridge directly when available
+        for aid in ("track_check_integrity", "track_find_duplicates"):
             action = reg.get(aid)
             if action:
-                action.handler = self._navigate_handler("library_doctor")
+                action.handler = self._library_doctor_handler("scan")
+        # Destructive operations with no direct backend — UNAVAILABLE, not silent nav
+        for aid in ("track_relocate", "track_delete_from_disk",
+                    "track_delete_from_library", "track_exclude"):
+            action = reg.get(aid)
+            if action:
+                action.handler = self._unavailable_handler(
+                    "Use Library Doctor to perform this operation.")
         action = reg.get("track_send_to_device")
         if action:
             action.handler = self._navigate_handler("sync")
@@ -490,10 +564,14 @@ class ActionRegistryBinder(QObject):
             action.handler = self._play_with_shuffle_handler(play)
         enqueue = self._sel_arg_handler("library", "enqueueAlbum", self._sel_album_key,
                                         empty=lambda v: not v)
-        for aid in ("album_queue", "album_play_next"):
-            action = reg.get(aid)
-            if action:
-                action.handler = enqueue
+        action = reg.get("album_queue")
+        if action:
+            action.handler = enqueue
+        play_next = self._sel_arg_handler("library", "playAlbumNext", self._sel_album_key,
+                                          empty=lambda v: not v)
+        action = reg.get("album_play_next")
+        if action:
+            action.handler = play_next
         action = reg.get("album_add_to_playlist")
         if action:
             action.handler = self._navigate_handler("playlists")

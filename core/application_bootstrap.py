@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Self
+from typing import TYPE_CHECKING, Any, Self
 
 from PySide6.QtCore import QObject
 from PySide6.QtQml import QQmlApplicationEngine
@@ -22,7 +22,6 @@ from core.composition import settings as settings_builder
 from core.composition import intelligence as intel_builder
 
 if TYPE_CHECKING:
-    from ui_qml_bridge.action_registry import ActionRegistry
     from ui_qml_bridge.context_registrar import ContextRegistrar
 
 logger = logging.getLogger("michi.bootstrap")
@@ -56,9 +55,7 @@ class ApplicationBootstrap:
         self.container.register("navigation_service", NavigationService())
 
         intel_builder.build(self.container)
-        ar = self.container.require("action_registry")
 
-        self._register_actions(ar)
         self._has_built = True
         logger.info("Bootstrap: build complete — %d services",
                      len(self.container._services))
@@ -153,31 +150,6 @@ class ApplicationBootstrap:
             accessibility.dataChanged.emit()
         logger.info("Bootstrap: bridge settings restored")
 
-    def _handler(
-        self,
-        service_name: str,
-        method: str,
-        *default_args: Any,
-    ) -> Callable[..., dict[str, Any]]:
-        """Create an action handler that normalizes service calls and failures."""
-        svc = self.container.get(service_name)
-
-        def _call(*args: Any) -> dict[str, Any]:
-            if not svc:
-                return {"ok": False, "error": f"Service not available: {service_name}",
-                        "error_code": "SERVICE_UNAVAILABLE"}
-            if not hasattr(svc, method):
-                return {"ok": False, "error": f"Method not found: {service_name}.{method}",
-                        "error_code": "METHOD_NOT_FOUND"}
-            try:
-                result = getattr(svc, method)(*default_args, *args)
-                return result if isinstance(result, dict) else {"ok": True, "result": str(result)}
-            except Exception as e:
-                return {"ok": False, "error": str(e), "error_code": "EXECUTION_ERROR",
-                        "recoverable": True}
-
-        return _call
-
     def _restore_session_once(self) -> None:
         """Restore the canonical queue once when session memory is enabled."""
         if self._session_restore_attempted:
@@ -199,28 +171,6 @@ class ApplicationBootstrap:
                 logger.warning("Bootstrap: queue session restore skipped: %s", result)
         except Exception:
             logger.exception("Bootstrap: queue session restore failed")
-
-    def _register_actions(self, ar: ActionRegistry) -> None:
-        """Register bootstrap-owned playback actions with their service handlers."""
-        from ui_qml_bridge.action_registry import ActionDescriptor
-        h = self._handler
-
-        ids = [
-            ("play", "playback", "playback_service", "play"),
-            ("pause", "playback", "playback_service", "pause"),
-            ("next", "playback", "queue_service", "next"),
-            ("previous", "playback", "queue_service", "previous"),
-            ("stop", "playback", "playback_service", "stop"),
-            ("playback.shuffle", "playback", "queue_service", "toggle_shuffle"),
-            ("playback.repeat", "playback", "queue_service", "toggle_repeat"),
-            ("queue.clear", "playback", "queue_service", "clear"),
-            ("playback.volume.up", "playback", "playback_service", "volume_up"),
-            ("playback.volume.down", "playback", "playback_service", "volume_down"),
-            ("playback.seek", "playback", "playback_service", "seek"),
-        ]
-        for action_id, category, svc, method in ids:
-            ar.register(ActionDescriptor(action_id=action_id, title=action_id, category=category,
-                                         handler=h(svc, method)))
 
     def get_queue_service(self) -> Any | None:
         """Return the queue service when it has been registered."""

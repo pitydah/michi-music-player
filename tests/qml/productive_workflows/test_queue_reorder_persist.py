@@ -11,8 +11,8 @@ pytestmark = [
 class TestQueueReorderPersist:
     def test_queue_clear_action(self, bootstrap, bridges):
         ar = bridges.get("action_registry")
-        a = ar.get("queue.clear")
-        assert a is not None, "queue.clear action exists"
+        a = ar.get("queue_clear")
+        assert a is not None, "queue_clear action exists"
 
     def test_queue_save_playlist_action(self, bootstrap, bridges):
         ar = bridges.get("action_registry")
