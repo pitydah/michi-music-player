@@ -56,3 +56,15 @@ def test_start_does_not_restore_when_session_memory_is_disabled():
     bootstrap.start()
 
     queue.restore.assert_not_called()
+
+
+def test_register_context_exposes_visual_quality_alias():
+    bootstrap = ApplicationBootstrap()
+    engine = MagicMock()
+    theme_bridge = MagicMock()
+    bootstrap._bridges = {"theme": theme_bridge}
+
+    registrar = bootstrap.register_context(engine)
+
+    assert registrar.names == ["themeBridge", "visualQuality"]
+    assert registrar._registered["visualQuality"] is theme_bridge
