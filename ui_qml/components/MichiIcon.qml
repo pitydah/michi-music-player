@@ -54,8 +54,11 @@ Item {
     readonly property var _fluentCache: ({
         "ai": true, "albums": true, "artists": true,
         "capture": true, "devices": true, "folders": true,
-        "history": true, "home": true, "library": true,
-        "search": true, "settings": true, "streaming": true,
+        "history": true, "home": true, "home_audio": true,
+        "library": true, "connections": true, "mix": true,
+        "outputs": true, "playlists": true, "queue": true,
+        "radio": true, "search": true, "settings": true,
+        "songs": true, "streaming": true, "sync": true,
     })
 
     function fluentIconExists(key) {
