@@ -17,6 +17,10 @@ Item {
     property string editingRouteId: ""
     property string routeTransactionMode: "atomic"
     property bool loading: false
+    property bool simpleMode: true
+    property string simpleSourceId: "local_playback"
+    property string simplePolicy: "atomic"
+    property bool simpleDistributionActive: false
     readonly property bool operationBusy: root.bridge ? root.bridge.operationInProgress : false
 
     Accessible.role: Accessible.Pane
@@ -133,6 +137,12 @@ Item {
                 kind: root.statusKind(root.bridge ? root.bridge.distributionState : "unavailable")
             }
 
+            MichiButton {
+                text: root.simpleMode ? qsTr("Modo avanzado") : qsTr("Modo simple")
+                variant: "ghost"
+                onClicked: root.simpleMode = !root.simpleMode
+            }
+
             BusyIndicator {
                 running: root.operationBusy
                 visible: running
@@ -169,6 +179,161 @@ Item {
                 wrapMode: Text.WordWrap
             }
         }
+
+        Loader {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            active: root.simpleMode
+            sourceComponent: simpleSheet
+        }
+
+        Loader {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            active: !root.simpleMode
+            sourceComponent: advancedTabs
+        }
+    }
+}
+
+Component {
+    id: simpleSheet
+
+    ColumnLayout {
+        spacing: MichiTheme.spacing.lg
+
+        GlassCard {
+            width: parent.width
+            height: 320
+            variant: "base"
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: MichiTheme.spacing.lg
+                spacing: MichiTheme.spacing.md
+
+                Text {
+                    text: qsTr("Distribución simple")
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.sectionTitleSize
+                    font.weight: MichiTheme.typography.weightSemiBold
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    text: qsTr("Selecciona la fuente y los destinos para comenzar a distribuir audio.")
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    wrapMode: Text.WordWrap
+                }
+
+                // Source selection
+                Label {
+                    text: qsTr("Fuente de audio")
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    font.weight: MichiTheme.typography.weightMedium
+                }
+
+                ComboBox {
+                    id: sourceCombo
+                    Layout.fillWidth: true
+                    model: root.bridge ? (root.bridge.sources || []) : []
+                    textRole: "name"
+                    onCurrentIndexChanged: {
+                        var src = sourceCombo.currentValue || {}
+                        root.simpleSourceId = src.id || "local_playback"
+                    }
+                    Accessible.name: qsTr("Seleccionar fuente de audio")
+                }
+
+                // Destination selection
+                Label {
+                    text: qsTr("Habitaciones destino")
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    font.weight: MichiTheme.typography.weightMedium
+                }
+
+                Repeater {
+                    model: root.bridge ? (root.bridge.zones || []) : []
+                    delegate: CheckBox {
+                        text: modelData.name || qsTr("Zona")
+                        checked: root.selectedDestinationIds.indexOf(modelData.id) >= 0
+                        onCheckedChanged: {
+                            root.toggleDestination(modelData.id, checked)
+                        }
+                        Accessible.name: qsTr("Seleccionar %1").arg(modelData.name || "")
+                    }
+                }
+
+                // Policy selection
+                Label {
+                    text: qsTr("Política ante fallos")
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    font.weight: MichiTheme.typography.weightMedium
+                }
+
+                RowLayout {
+                    spacing: MichiTheme.spacing.sm
+
+                    RadioButton {
+                        text: qsTr("Detener todo")
+                        checked: root.simplePolicy === "atomic"
+                        onClicked: root.simplePolicy = "atomic"
+                        Accessible.name: qsTr("Política: detener todo si falla un destino")
+                    }
+                    RadioButton {
+                        text: qsTr("Reproducir donde sea posible")
+                        checked: root.simplePolicy === "best_effort"
+                        onClicked: root.simplePolicy = "best_effort"
+                        Accessible.name: qsTr("Política: continuar en los destinos exitosos")
+                    }
+                }
+
+                // Actions
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: MichiTheme.spacing.md
+
+                    MichiButton {
+                        text: qsTr("Iniciar distribución")
+                        variant: "primary"
+                        enabled: root.simpleSourceId !== "" && root.selectedDestinationIds.length > 0
+                        Layout.fillWidth: true
+                        onClicked: {
+                            if (!root.bridge) return
+                            var result = root.bridge.createRoute(
+                                root.simpleSourceId,
+                                root.selectedDestinationIds,
+                                "Distribución simple",
+                                root.simplePolicy
+                            )
+                            root.showResult(result, qsTr("Distribución iniciada."))
+                        }
+                    }
+
+                    MichiButton {
+                        text: qsTr("Cancelar")
+                        variant: "ghost"
+                        Layout.fillWidth: true
+                        onClicked: {
+                            root.selectedSourceId = ""
+                            root.selectedDestinationIds = []
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+Component {
+    id: advancedTabs
+
+    ColumnLayout {
+        spacing: MichiTheme.spacing.md
 
         TabBar {
             id: tabs
