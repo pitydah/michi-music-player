@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../theme"
 import "../../components"
+import "../../components/foundations"
 import "../../materials"
 
 Item {
@@ -15,6 +16,11 @@ Item {
 
     property var ha: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
     property string selectedZoneId: ""
+
+    MichiResponsive {
+        id: responsive
+        availableWidth: root.width
+    }
 
     function selectZone(zoneId) {
         root.selectedZoneId = String(zoneId || "")
@@ -103,7 +109,7 @@ Item {
             Grid {
                 id: zoneGrid
                 width: parent.width
-                columns: parent.width > 900 ? 3 : 2
+                columns: responsive.columnCount
                 columnSpacing: MichiTheme.spacing.md
                 rowSpacing: MichiTheme.spacing.md
 

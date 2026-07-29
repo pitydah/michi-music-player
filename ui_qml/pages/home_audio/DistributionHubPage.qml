@@ -16,6 +16,7 @@ Item {
     property bool feedbackError: false
     property string editingRouteId: ""
     property string routeTransactionMode: "atomic"
+    property bool loading: false
     readonly property bool operationBusy: root.bridge ? root.bridge.operationInProgress : false
 
     Accessible.role: Accessible.Pane
@@ -32,8 +33,19 @@ Item {
     function routeEnter(route, params) {
         if (params && params.tab !== undefined)
             tabs.currentIndex = root.tabIndex(params.tab)
-        if (root.bridge && typeof root.bridge.refreshDistribution === "function")
-            root.bridge.refreshDistribution()
+        root.refreshDistribution()
+    }
+
+    function refreshDistribution() {
+        if (!root.bridge || typeof root.bridge.refreshDistribution !== "function") {
+            root.loading = false
+            return { ok: false, error: qsTr("Servicio no disponible") }
+        }
+        root.loading = true
+        var result = root.bridge.refreshDistribution()
+        if (!result || !result.pending)
+            root.loading = false
+        return result
     }
 
     function statusKind(state) {
@@ -55,7 +67,7 @@ Item {
         else
             root.feedback = successText
         if (root.bridge && !result.pending)
-            root.bridge.refreshDistribution()
+            root.refreshDistribution()
     }
 
     function toggleDestination(destinationId, checked) {
@@ -70,13 +82,27 @@ Item {
 
     Component.onCompleted: {
         if (root.bridge)
-            root.bridge.refreshDistribution()
+            root.refreshDistribution()
     }
 
-    ColumnLayout {
+    AsyncStateView {
+        id: stateView
         anchors.fill: parent
-        anchors.margins: MichiTheme.spacing.xl
-        spacing: MichiTheme.spacing.md
+        state: root.loading ? AsyncStateView.LOADING
+                            : root.bridge ? AsyncStateView.READY
+                                          : AsyncStateView.UNAVAILABLE
+        title: root.loading ? qsTr("Actualizando distribución")
+                            : qsTr("Distribución no disponible")
+        message: root.loading
+                 ? qsTr("Consultando fuentes, servidores, receptores y rutas.")
+                 : qsTr("El servicio Home Audio no está disponible.")
+        retryAvailable: !root.loading
+        onRetryRequested: root.refreshDistribution()
+
+        readyContent: ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: MichiTheme.spacing.xl
+            spacing: MichiTheme.spacing.md
 
         RowLayout {
             Layout.fillWidth: true
@@ -148,11 +174,26 @@ Item {
             id: tabs
             Layout.fillWidth: true
 
-            TabButton { text: qsTr("Fuentes") }
-            TabButton { text: qsTr("Servidores") }
-            TabButton { text: qsTr("Receptores") }
-            TabButton { text: qsTr("Destinos") }
-            TabButton { text: qsTr("Rutas") }
+            TabButton {
+                text: qsTr("Fuentes")
+                Accessible.name: qsTr("Pestaña de fuentes")
+            }
+            TabButton {
+                text: qsTr("Servidores")
+                Accessible.name: qsTr("Pestaña de servidores")
+            }
+            TabButton {
+                text: qsTr("Receptores")
+                Accessible.name: qsTr("Pestaña de receptores")
+            }
+            TabButton {
+                text: qsTr("Destinos")
+                Accessible.name: qsTr("Pestaña de destinos")
+            }
+            TabButton {
+                text: qsTr("Rutas")
+                Accessible.name: qsTr("Pestaña de rutas")
+            }
         }
 
         StackLayout {
@@ -770,10 +811,12 @@ Item {
             }
         }
     }
+    }
 
     Connections {
         target: root.bridge
         function onOperationFinished(result) {
+            root.loading = false
             root.feedbackError = !result || !result.ok
             root.feedback = root.feedbackError
                           ? qsTr("La operación falló: %1").arg(result && result.error ? result.error : qsTr("error desconocido"))

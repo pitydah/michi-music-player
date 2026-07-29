@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../theme"
 import "../../components"
+import "../../components/foundations"
 import "../../materials"
 
 Item {
@@ -14,6 +15,11 @@ Item {
     Accessible.name: "Home Audio"
 
     property var bridge: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
+
+    MichiResponsive {
+        id: responsive
+        availableWidth: root.width
+    }
 
     function routeEnter(route, params) {
         if (root.bridge && typeof root.bridge.refresh === "function")
@@ -69,12 +75,12 @@ Item {
 
             Grid {
                 width: parent.width
-                columns: 2
+                columns: responsive.columnCount
                 columnSpacing: MichiTheme.spacing.md
                 rowSpacing: MichiTheme.spacing.md
 
                 GlassCard {
-                    width: (parent.width - MichiTheme.spacing.md) / 2
+                    width: (parent.width - parent.columnSpacing * (parent.columns - 1)) / parent.columns
                     height: 100
                     title: qsTr("Michi Music Stream")
                     subtitle: qsTr("Transmision de audio en tiempo real entre dispositivos.")
@@ -89,7 +95,7 @@ Item {
                 }
 
                 GlassCard {
-                    width: (parent.width - MichiTheme.spacing.md) / 2
+                    width: (parent.width - parent.columnSpacing * (parent.columns - 1)) / parent.columns
                     height: 100
                     title: qsTr("Habitaciones y zonas")
                     subtitle: qsTr("Gestion de zonas multiroom y agrupacion de dispositivos.")
@@ -112,7 +118,7 @@ Item {
                 }
 
                 GlassCard {
-                    width: (parent.width - MichiTheme.spacing.md) / 2
+                    width: (parent.width - parent.columnSpacing * (parent.columns - 1)) / parent.columns
                     height: 100
                     title: qsTr("Distribucion de audio")
                     subtitle: qsTr("Fuentes, servidores, receptores y rutas activas.")
@@ -135,7 +141,7 @@ Item {
                 }
 
                 GlassCard {
-                    width: (parent.width - MichiTheme.spacing.md) / 2
+                    width: (parent.width - parent.columnSpacing * (parent.columns - 1)) / parent.columns
                     height: 100
                     title: qsTr("Planificador de cadenas")
                     subtitle: qsTr("Diseno y configuracion de cadenas de audio fisicas.")

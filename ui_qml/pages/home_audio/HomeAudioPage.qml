@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../theme"
 import "../../components"
+import "../../components/foundations"
 import "."
 
 Item {
@@ -16,6 +17,7 @@ Item {
     property var ha: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
     property var _volumeTimers: ({})
     property bool diagnosticsVisible: false
+    property int selectedMode: 0
     property int pageState: {
         if (!root.ha) return stateUnavailable
         if (root.ha.available === false) return stateUnavailable
@@ -28,6 +30,11 @@ Item {
     readonly property int stateError: 2
     readonly property int stateEmpty: 3
     readonly property int stateUnavailable: 4
+
+    MichiResponsive {
+        id: responsive
+        availableWidth: root.width
+    }
 
     function routeEnter(route, params) {
         if (root.ha && typeof root.ha.refresh === "function")
@@ -96,19 +103,42 @@ Item {
                     font.weight: MichiTheme.typography.weightSemiBold
                 }
 
-                HomeAudioModeSelector {
+                Grid {
                     id: modeSelector
                     width: parent.width
-                    activeFocusOnTab: true
-                    KeyNavigation.tab: haPanel
-                    KeyNavigation.backtab: flickable
-                    Keys.onReturnPressed: { modeSelector.selectedMode = (modeSelector.selectedMode + 1) % 2 }
-                    Keys.onSpacePressed: { modeSelector.selectedMode = (modeSelector.selectedMode + 1) % 2 }
+                    columns: Math.min(2, responsive.columnCount)
+                    columnSpacing: MichiTheme.spacing.md
+                    rowSpacing: MichiTheme.spacing.md
+
+                    Repeater {
+                        model: [
+                            {
+                                title: qsTr("Home Assistant"),
+                                subtitle: qsTr("Integración con asistentes del hogar")
+                            },
+                            {
+                                title: qsTr("Michi Music Stream"),
+                                subtitle: qsTr("Streaming local del ecosistema Michi")
+                            }
+                        ]
+
+                        GlassCard {
+                            width: (modeSelector.width - modeSelector.columnSpacing * (modeSelector.columns - 1)) / modeSelector.columns
+                            height: 120
+                            title: modelData.title
+                            subtitle: modelData.subtitle
+                            selected: root.selectedMode === index
+                            activeFocusOnTab: true
+                            KeyNavigation.tab: haPanel
+                            KeyNavigation.backtab: flickable
+                            onClicked: root.selectedMode = index
+                        }
+                    }
                 }
 
                 StackLayout {
                     width: parent.width
-                    currentIndex: modeSelector.selectedMode
+                    currentIndex: root.selectedMode
 
                     HomeAssistantPanel {
                         id: haPanel
