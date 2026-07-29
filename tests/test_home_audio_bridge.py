@@ -15,28 +15,29 @@ class TestHomeAudioPhaseFeatures:
     """Cover bridge behavior introduced by Home Audio phases 3 through 7."""
 
     def test_assign_source_to_zone_sets_and_verifies_stream(self) -> None:
-        snapcast = MagicMock()
-        snapcast.get_groups.return_value = [
-            {"id": "group-1", "stream_id": "stream-jazz", "clients": []}
-        ]
         service = MagicMock()
-        service._snapcast = snapcast
+        service.assign_source_to_zone.return_value = {
+            "ok": True,
+            "stream_id": "stream-jazz",
+            "verified": True,
+        }
         bridge = HomeAudioBridge(home_audio_service=service)
         bridge._groups = [{"id": "group-1", "stream_id": "stream-old"}]
         bridge._sources = [{"id": "stream-jazz"}]
 
         result = bridge.assignSourceToZone("group-1", "stream-jazz")
 
-        snapcast.set_group_stream.assert_called_once_with("group-1", "stream-jazz")
+        service.assign_source_to_zone.assert_called_once_with("group-1", "stream-jazz")
         assert result == {"ok": True, "stream_id": "stream-jazz", "verified": True}
 
     def test_assign_source_to_zone_reports_failed_readback(self) -> None:
-        snapcast = MagicMock()
-        snapcast.get_groups.return_value = [
-            {"id": "group-1", "stream_id": "stream-old", "clients": []}
-        ]
         service = MagicMock()
-        service._snapcast = snapcast
+        service.assign_source_to_zone.return_value = {
+            "ok": False,
+            "error": "STREAM_ASSIGNMENT_NOT_VERIFIED",
+            "stream_id": "stream-old",
+            "verified": False,
+        }
         bridge = HomeAudioBridge(home_audio_service=service)
         bridge._zones = [{"id": "group-1", "stream_id": "stream-old"}]
         bridge._sources = [{"id": "stream-jazz"}]
@@ -97,15 +98,16 @@ class TestHomeAudioPhaseFeatures:
         assert result["ok"] is True
 
     def test_disconnect_ha_closes_client_and_clears_credentials(self) -> None:
-        client = MagicMock()
-        service = MagicMock(spec=[])
-        service._ha_client = client
+        service = MagicMock()
+        service.disconnect_home_assistant.return_value = {
+            "ok": True,
+            "disconnected": True,
+        }
         bridge = HomeAudioBridge(home_audio_service=service)
 
         result = bridge.disconnectHa()
 
-        client.close.assert_called_once_with()
-        client.configure.assert_called_once_with("", "")
+        service.disconnect_home_assistant.assert_called_once_with()
         assert result == {"ok": True, "disconnected": True}
 
     def test_create_group_returns_service_error_instead_of_raising(self) -> None:
@@ -118,17 +120,8 @@ class TestHomeAudioPhaseFeatures:
         assert result == {"ok": False, "error": "group backend offline"}
 
     def test_update_group_sets_exact_snapcast_membership_and_verifies(self) -> None:
-        snapcast = MagicMock()
-        snapcast.get_groups.return_value = [
-            {
-                "id": "group-1",
-                "name": "Downstairs",
-                "stream_id": "stream-1",
-                "clients": [{"id": "receiver-2", "connected": True}],
-            }
-        ]
         service = MagicMock()
-        service._snapcast = snapcast
+        service.update_group.return_value = {"ok": True, "errors": []}
         bridge = HomeAudioBridge(home_audio_service=service)
         bridge._groups = [
             {"id": "group-1", "name": "Downstairs", "members": ["receiver-1"]}
@@ -136,7 +129,9 @@ class TestHomeAudioPhaseFeatures:
 
         result = bridge.updateGroup("group-1", "Downstairs", ["receiver-2"])
 
-        snapcast.set_group_clients.assert_called_once_with("group-1", ["receiver-2"])
+        service.update_group.assert_called_once_with(
+            "group-1", "Downstairs", ["receiver-2"]
+        )
         assert result == {"ok": True, "errors": []}
 
     def test_configure_ha_rejects_missing_token_without_calling_service(self) -> None:

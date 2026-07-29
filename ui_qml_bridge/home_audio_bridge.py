@@ -40,16 +40,24 @@ class HomeAudioBridge(QObject):
         snapcast_ctrl: Any = None,
         parent: QObject | None = None,
     ) -> None:
+        """Initialize the QML bridge with optional application services.
+
+        Args:
+            home_audio_service: Home Audio domain service.
+            job_service: Optional background job service.
+            action_registry: Optional application action registry.
+            navigation_bridge: Optional navigation bridge.
+            page_state_store: Optional persisted page-state store.
+            capability_bridge: Optional capability bridge.
+            accessibility_bridge: Optional accessibility bridge.
+            notification_bridge: Optional notification bridge.
+            worker_manager: Optional worker manager for blocking operations.
+            ha_controller: Legacy Home Assistant service alias.
+            snapcast_ctrl: Legacy Snapcast service alias.
+            parent: Optional Qt parent object.
+        """
         super().__init__(parent)
         self._ha_svc = home_audio_service or ha_controller or snapcast_ctrl
-        self._legacy_snapcast = snapcast_ctrl
-        self._job_svc = job_service
-        self._registry = action_registry
-        self._nav = navigation_bridge
-        self._page_state = page_state_store
-        self._capability = capability_bridge
-        self._accessibility = accessibility_bridge
-        self._notification = notification_bridge
         self._worker_manager = worker_manager
 
         self._ha_state = "not_configured"
@@ -477,21 +485,22 @@ class HomeAudioBridge(QObject):
             "distribution_state": self._distribution_state,
         }
 
-    @Slot(result=dict)
-    def refreshDistribution(self) -> dict:
+    @Slot(result=dict, name="refreshDistribution")
+    def refresh_distribution(self) -> dict:
         return self.refresh()
 
     def _mutate_and_refresh(self, method: str, *args) -> dict:
         return self._dispatch(method, method, *args)
 
-    @Slot(str, int, str, result=dict)
-    def configureHomeAssistant(
+    @Slot(str, int, str, result=dict, name="configureHomeAssistant")
+    def configure_home_assistant(
         self, host: str = "", port: int = 0, token: str = ""
     ) -> dict:
-        return self.configureHa(host, port, token)
+        return self.configure_ha(host, port, token)
 
-    @Slot(str, int, str, result=dict)
-    def configureHa(self, host: str = "", port: int = 0, token: str = "") -> dict:
+    @Slot(str, int, str, result=dict, name="configureHa")
+    def configure_ha(self, host: str = "", port: int = 0, token: str = "") -> dict:
+        """Validate and forward Home Assistant connection settings."""
         if not self._service_defines("configure"):
             return {"ok": False, "error": "UNSUPPORTED"}
         if not host.strip() or not token.strip():
@@ -509,8 +518,8 @@ class HomeAudioBridge(QObject):
             self.stateChanged.emit()
         return result
 
-    @Slot(result=dict)
-    def testHomeAssistant(self) -> dict:
+    @Slot(result=dict, name="testHomeAssistant")
+    def test_home_assistant(self) -> dict:
         result = self._call_svc("test_connection")
         if result.get("ok"):
             self.refresh()
@@ -518,8 +527,8 @@ class HomeAudioBridge(QObject):
             self._retry_with_backoff("connected")
         return result
 
-    @Slot(result=dict)
-    def discoverReceivers(self) -> dict:
+    @Slot(result=dict, name="discoverReceivers")
+    def discover_receivers(self) -> dict:
         if not self._service_defines("discover_receivers"):
             return {"ok": False, "error": "UNSUPPORTED"}
         result = self._call_svc("discover_receivers")
@@ -529,24 +538,24 @@ class HomeAudioBridge(QObject):
             return result
         return {"ok": True, "receivers": list(self._receivers)}
 
-    @Slot(str, result=dict)
-    def startServer(self, server_id: str = "local_snapserver") -> dict:
+    @Slot(str, result=dict, name="startServer")
+    def start_server(self, server_id: str = "local_snapserver") -> dict:
         return self._mutate_and_refresh("start_server", server_id)
 
-    @Slot(result=dict)
-    def startLocalServer(self) -> dict:
-        return self.startServer("local_snapserver")
+    @Slot(result=dict, name="startLocalServer")
+    def start_local_server(self) -> dict:
+        return self.start_server("local_snapserver")
 
-    @Slot(str, result=dict)
-    def stopServer(self, server_id: str = "local_snapserver") -> dict:
+    @Slot(str, result=dict, name="stopServer")
+    def stop_server(self, server_id: str = "local_snapserver") -> dict:
         return self._mutate_and_refresh("stop_server", server_id)
 
-    @Slot(result=dict)
-    def stopLocalServer(self) -> dict:
-        return self.stopServer("local_snapserver")
+    @Slot(result=dict, name="stopLocalServer")
+    def stop_local_server(self) -> dict:
+        return self.stop_server("local_snapserver")
 
-    @Slot(str, str, "QVariantList", result=dict)
-    def createRoute(
+    @Slot(str, str, "QVariantList", result=dict, name="createRoute")
+    def create_route(
         self,
         name: str,
         source_id: str,
@@ -559,8 +568,8 @@ class HomeAudioBridge(QObject):
             return {"ok": False, "error": "UNKNOWN_DESTINATION"}
         return self._mutate_and_refresh("create_route", name, source_id, ids)
 
-    @Slot(str, str, str, "QVariantList", result=dict)
-    def updateRoute(
+    @Slot(str, str, str, "QVariantList", result=dict, name="updateRoute")
+    def update_route(
         self,
         route_id: str,
         name: str,
@@ -572,48 +581,48 @@ class HomeAudioBridge(QObject):
             return {"ok": False, "error": "UNKNOWN_ROUTE"}
         return self._mutate_and_refresh("update_route", route_id, name, source_id, ids)
 
-    @Slot(str, result=dict)
-    def startRoute(self, route_id: str) -> dict:
+    @Slot(str, result=dict, name="startRoute")
+    def start_route(self, route_id: str) -> dict:
         return self._mutate_and_refresh("start_route", route_id)
 
-    @Slot(str, result=dict)
-    def stopRoute(self, route_id: str) -> dict:
+    @Slot(str, result=dict, name="stopRoute")
+    def stop_route(self, route_id: str) -> dict:
         return self._mutate_and_refresh("stop_route", route_id)
 
-    @Slot(str, result=dict)
-    def deleteRoute(self, route_id: str) -> dict:
+    @Slot(str, result=dict, name="deleteRoute")
+    def delete_route(self, route_id: str) -> dict:
         return self._mutate_and_refresh("delete_route", route_id)
 
-    @Slot(str, result=dict)
-    def recoverRoute(self, route_id: str) -> dict:
+    @Slot(str, result=dict, name="recoverRoute")
+    def recover_route(self, route_id: str) -> dict:
         return self._mutate_and_refresh("recover_route", route_id)
 
-    @Slot(str, result=dict)
-    def retryRoute(self, route_id: str) -> dict:
-        return self.recoverRoute(route_id)
+    @Slot(str, result=dict, name="retryRoute")
+    def retry_route(self, route_id: str) -> dict:
+        return self.recover_route(route_id)
 
-    @Slot(str, int, result=dict)
-    def setReceiverVolume(self, receiver_id: str, volume: int) -> dict:
+    @Slot(str, int, result=dict, name="setReceiverVolume")
+    def set_receiver_volume(self, receiver_id: str, volume: int) -> dict:
         return self._mutate_and_refresh("set_receiver_volume", receiver_id, volume)
 
-    @Slot(str, bool, result=dict)
-    def setReceiverMute(self, receiver_id: str, muted: bool) -> dict:
+    @Slot(str, bool, result=dict, name="setReceiverMute")
+    def set_receiver_mute(self, receiver_id: str, muted: bool) -> dict:
         return self._mutate_and_refresh("set_receiver_mute", receiver_id, muted)
 
-    @Slot(str, int, result=dict)
-    def setReceiverLatency(self, receiver_id: str, latency_ms: int) -> dict:
+    @Slot(str, int, result=dict, name="setReceiverLatency")
+    def set_receiver_latency(self, receiver_id: str, latency_ms: int) -> dict:
         return self._mutate_and_refresh("set_receiver_latency", receiver_id, latency_ms)
 
-    @Slot(str, str, result=dict)
-    def setReceiverName(self, receiver_id: str, name: str) -> dict:
+    @Slot(str, str, result=dict, name="setReceiverName")
+    def set_receiver_name(self, receiver_id: str, name: str) -> dict:
         return self._mutate_and_refresh("set_receiver_name", receiver_id, name)
 
-    @Slot(str, str, result=dict)
-    def moveReceiver(self, receiver_id: str, group_id: str) -> dict:
+    @Slot(str, str, result=dict, name="moveReceiver")
+    def move_receiver(self, receiver_id: str, group_id: str) -> dict:
         return self._mutate_and_refresh("move_receiver", receiver_id, group_id)
 
-    @Slot(result=dict)
-    def openDiagnostics(self) -> dict:
+    @Slot(result=dict, name="openDiagnostics")
+    def open_diagnostics(self) -> dict:
         """Return a live Snapserver, FIFO, stream, and receiver health report."""
         health = self._call_svc("health")
         health_data = health.get("result", health) if health.get("ok") else {}
@@ -677,8 +686,8 @@ class HomeAudioBridge(QObject):
             "health": health_data,
         }
 
-    @Slot(result=dict)
-    def testTone(self) -> dict:
+    @Slot(result=dict, name="testTone")
+    def test_tone(self) -> dict:
         if not self._ha_svc:
             return {"ok": False, "error": "UNSUPPORTED"}
         for method_name in ("test_tone", "play_test_tone"):
@@ -686,52 +695,30 @@ class HomeAudioBridge(QObject):
                 return self._call_svc(method_name)
         return {"ok": False, "error": "TEST_TONE_UNSUPPORTED"}
 
-    @Slot(str, float, result=dict)
-    def setZoneVolume(self, zone_id: str, volume: float = 0.5) -> dict:
+    @Slot(str, float, result=dict, name="setZoneVolume")
+    def set_zone_volume(self, zone_id: str, volume: float = 0.5) -> dict:
         return self._mutate_and_refresh("set_volume", zone_id, volume)
 
-    @Slot(str, bool, result=dict)
-    def setZoneMute(self, zone_id: str, muted: bool = False) -> dict:
+    @Slot(str, bool, result=dict, name="setZoneMute")
+    def set_zone_mute(self, zone_id: str, muted: bool = False) -> dict:
         return self._mutate_and_refresh("set_mute", zone_id, muted)
 
-    @Slot(str, result=dict)
-    def assignStream(self, stream_id: str = "") -> dict:
+    @Slot(str, result=dict, name="assignStream")
+    def assign_stream(self, stream_id: str = "") -> dict:
         return self._mutate_and_refresh("assign_stream", stream_id)
 
-    @Slot(result=dict)
-    def disconnectHa(self) -> dict:
+    @Slot(result=dict, name="disconnectHa")
+    def disconnect_ha(self) -> dict:
         self._cancel_retry()
-        disconnected = False
-        if self._ha_svc:
-            disconnect = getattr(self._ha_svc, "disconnect", None)
-            if callable(disconnect):
-                result = self._call_svc("disconnect")
-                disconnected = bool(result.get("ok"))
-            else:
-                client = getattr(self._ha_svc, "_ha_client", None)
-                if client is not None:
-                    close = getattr(client, "close", None)
-                    if callable(close):
-                        close()
-                    else:
-                        network_manager = getattr(client, "_nam", None)
-                        clear_connections = getattr(
-                            network_manager, "clearConnectionCache", None
-                        )
-                        if callable(clear_connections):
-                            clear_connections()
-                    configure = getattr(client, "configure", None)
-                    if callable(configure):
-                        configure("", "")
-                    disconnected = True
+        result = self._call_svc("disconnect_home_assistant")
         self._ha_state = "not_configured"
         self._devices = []
         self._last_contact = 0.0
         self.stateChanged.emit()
-        return {"ok": True, "disconnected": disconnected}
+        return result
 
-    @Slot(str, str, result=dict)
-    def assignSourceToZone(self, zone_id: str, source_id: str) -> dict:
+    @Slot(str, str, result=dict, name="assignSourceToZone")
+    def assign_source_to_zone(self, zone_id: str, source_id: str) -> dict:
         """Assign a Snapcast stream to a zone and verify it by readback."""
         destination = next(
             (
@@ -755,53 +742,22 @@ class HomeAudioBridge(QObject):
                 "stream_id": str(destination.get("stream_id", "")),
                 "verified": False,
             }
-        snapcast = getattr(self._ha_svc, "_snapcast", None) if self._ha_svc else None
-        if snapcast is None or not callable(getattr(snapcast, "set_group_stream", None)):
-            return {
-                "ok": False,
-                "error": "SNAPCAST_CONTROL_UNAVAILABLE",
-                "stream_id": str(destination.get("stream_id", "")),
-                "verified": False,
-            }
-        try:
-            snapcast.set_group_stream(zone_id, source_id)
-            raw_groups = snapcast.get_groups() or []
-        except Exception as exc:
-            self._last_error = str(exc)
-            return {
-                "ok": False,
-                "error": str(exc),
-                "stream_id": str(destination.get("stream_id", "")),
-                "verified": False,
-            }
-        actual_group = next(
-            (item for item in raw_groups if str(item.get("id", "")) == zone_id),
-            {},
-        )
-        actual_stream = str(
-            actual_group.get("stream_id", actual_group.get("streamId", "")) or ""
-        )
-        verified = actual_stream == source_id
-        if verified:
+        result = self._call_svc("assign_source_to_zone", zone_id, source_id)
+        if result.get("ok"):
             self.refresh()
-        return {
-            "ok": verified,
-            "stream_id": actual_stream,
-            "verified": verified,
-            **({} if verified else {"error": "STREAM_ASSIGNMENT_NOT_VERIFIED"}),
-        }
+        return result
 
-    @Slot(result=dict)
-    def reconnectHa(self) -> dict:
+    @Slot(result=dict, name="reconnectHa")
+    def reconnect_ha(self) -> dict:
         self._cancel_retry()
-        return self.testHomeAssistant()
+        return self.test_home_assistant()
 
-    @Slot(result=dict)
-    def serverHandoff(self) -> dict:
+    @Slot(result=dict, name="serverHandoff")
+    def server_handoff(self) -> dict:
         return self._call_svc("server_handoff")
 
-    @Slot(str, "QVariantList", result=dict)
-    def createGroup(self, name: str, receiver_ids: list) -> dict:
+    @Slot(str, "QVariantList", result=dict, name="createGroup")
+    def create_group(self, name: str, receiver_ids: list) -> dict:
         """Create a new group with the given receivers."""
         if not self._ha_svc:
             return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
@@ -812,12 +768,11 @@ class HomeAudioBridge(QObject):
         self.stateChanged.emit()
         return result
 
-    @Slot(str, str, "QVariantList", result=dict)
-    def updateGroup(self, group_id: str, name: str, receiver_ids: list) -> dict:
+    @Slot(str, str, "QVariantList", result=dict, name="updateGroup")
+    def update_group(self, group_id: str, name: str, receiver_ids: list) -> dict:
         """Update an existing group's name and receiver membership."""
         if not self._ha_svc:
             return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
-        errors: list[str] = []
         receiver_id_list = [
             str(receiver.get("id", receiver))
             if isinstance(receiver, dict)
@@ -828,92 +783,54 @@ class HomeAudioBridge(QObject):
         current = next((g for g in self._groups if g.get("id") == group_id), None)
         if current is None:
             return {"ok": False, "errors": ["GROUP_NOT_FOUND"]}
-        if current and current.get("name") != name:
-            r = self._call_svc("set_group_name", group_id, name)
-            if not r.get("ok"):
-                errors.append(r.get("error", "RENAME_FAILED"))
-        snapcast = getattr(self._ha_svc, "_snapcast", None)
-        if snapcast is not None and callable(getattr(snapcast, "set_group_clients", None)):
-            try:
-                snapcast.set_group_clients(group_id, receiver_id_list)
-                verified_group = next(
-                    (
-                        group
-                        for group in (snapcast.get_groups() or [])
-                        if str(group.get("id", "")) == group_id
-                    ),
-                    None,
-                )
-                verified_members = {
-                    str(member.get("id", member))
-                    if isinstance(member, dict)
-                    else str(member)
-                    for member in (verified_group or {}).get(
-                        "clients", (verified_group or {}).get("members", [])
-                    )
-                }
-                if verified_members != set(receiver_id_list):
-                    errors.append("GROUP_MEMBERSHIP_NOT_VERIFIED")
-            except Exception as exc:
-                errors.append(str(exc))
-        else:
-            current_ids = {
-                str(member.get("id", member))
-                if isinstance(member, dict)
-                else str(member)
-                for member in current.get("members", [])
-            }
-            for receiver_id in set(receiver_id_list) - current_ids:
-                result = self._call_svc("move_receiver", receiver_id, group_id)
-                if not result.get("ok"):
-                    errors.append(result.get("error", f"MOVE_FAILED_{receiver_id}"))
-        if not errors:
+        result = self._call_svc("update_group", group_id, name, receiver_id_list)
+        if result.get("ok"):
             self._refresh_models()
         self.stateChanged.emit()
-        return {"ok": not errors, "errors": errors}
+        return result
 
-    @Slot(str, result=dict)
-    def groupZones(self, zone_ids: str = "") -> dict:
+    @Slot(str, result=dict, name="groupZones")
+    def group_zones(self, zone_ids: str = "") -> dict:
         if not zone_ids:
             return {"ok": False, "error": "EMPTY_ZONES"}
         return self._mutate_and_refresh("group", zone_ids)
 
-    @Slot(result=dict)
-    def recoverFromOffline(self) -> dict:
+    @Slot(result=dict, name="recoverFromOffline")
+    def recover_from_offline(self) -> dict:
         self._offline = False
         result = self.refresh()
         return {"ok": True, "refresh": result}
 
-    @Slot(result=dict)
-    def getLatencyReport(self) -> dict:
+    @Slot(result=dict, name="getLatencyReport")
+    def get_latency_report(self) -> dict:
         return {"ok": True, "latency_ms": self._latency_ms, "offline": self._offline}
 
-    @Slot(str, result=dict)
-    def ungroupZone(self, zone_id: str = "") -> dict:
+    @Slot(str, result=dict, name="ungroupZone")
+    def ungroup_zone(self, zone_id: str = "") -> dict:
         if not zone_id:
             return {"ok": False, "error": "EMPTY_ZONE"}
         return self._mutate_and_refresh("ungroup", zone_id)
 
-    @Slot(str, str, result=dict)
-    def renameZone(self, zone_id: str = "", new_name: str = "") -> dict:
+    @Slot(str, str, result=dict, name="renameZone")
+    def rename_zone(self, zone_id: str = "", new_name: str = "") -> dict:
         if not zone_id or not new_name:
             return {"ok": False, "error": "MISSING_ARGS"}
         return self._mutate_and_refresh("set_group_name", zone_id, new_name)
 
-    @Slot(str, result=dict)
-    def deleteZone(self, zone_id: str = "") -> dict:
+    @Slot(str, result=dict, name="deleteZone")
+    def delete_zone(self, zone_id: str = "") -> dict:
         if not zone_id:
             return {"ok": False, "error": "EMPTY_ZONE"}
         return self._mutate_and_refresh("delete_group", zone_id)
 
-    @Slot(str, int, result=dict)
-    def setLatency(self, zone_id: str = "", latency_ms: int = 0) -> dict:
+    @Slot(str, int, result=dict, name="setLatency")
+    def set_latency(self, zone_id: str = "", latency_ms: int = 0) -> dict:
         if not zone_id:
             return {"ok": False, "error": "EMPTY_ZONE"}
         return self._mutate_and_refresh("set_latency", zone_id, latency_ms)
 
-    @Slot(str, result=dict)
-    def setSource(self, source: str = "") -> dict:
+    @Slot(str, result=dict, name="setSource")
+    def set_source(self, source: str = "") -> dict:
         if not source:
             return {"ok": False, "error": "EMPTY_SOURCE"}
         return self._mutate_and_refresh("select_source", source)
@@ -944,18 +861,64 @@ class HomeAudioBridge(QObject):
             ),
         }
 
-    @Slot(str, str, result=dict)
-    def transferPlayback(self, from_zone: str = "", to_zone: str = "") -> dict:
+    @Slot(str, str, result=dict, name="transferPlayback")
+    def transfer_playback(self, from_zone: str = "", to_zone: str = "") -> dict:
         if not from_zone or not to_zone:
             return {"ok": False, "error": "MISSING_ARGS"}
         return self._mutate_and_refresh("transfer_playback", from_zone, to_zone)
 
-    @Slot(result=dict)
-    def handoffToServer(self) -> dict:
+    @Slot(result=dict, name="handoffToServer")
+    def handoff_to_server(self) -> dict:
         return self._call_svc("handoff")
 
-    @Slot(str, result=dict)
-    def playbackTransfer(self, zone_id: str = "") -> dict:
+    @Slot(str, result=dict, name="playbackTransfer")
+    def playback_transfer(self, zone_id: str = "") -> dict:
         if not zone_id:
             return {"ok": False, "error": "EMPTY_ZONE"}
         return self._mutate_and_refresh("playback_transfer", zone_id)
+
+
+# Python compatibility aliases for the established QML-facing bridge API.
+HomeAudioBridge.refreshDistribution = HomeAudioBridge.refresh_distribution
+HomeAudioBridge.configureHomeAssistant = HomeAudioBridge.configure_home_assistant
+HomeAudioBridge.configureHa = HomeAudioBridge.configure_ha
+HomeAudioBridge.testHomeAssistant = HomeAudioBridge.test_home_assistant
+HomeAudioBridge.discoverReceivers = HomeAudioBridge.discover_receivers
+HomeAudioBridge.startServer = HomeAudioBridge.start_server
+HomeAudioBridge.startLocalServer = HomeAudioBridge.start_local_server
+HomeAudioBridge.stopServer = HomeAudioBridge.stop_server
+HomeAudioBridge.stopLocalServer = HomeAudioBridge.stop_local_server
+HomeAudioBridge.createRoute = HomeAudioBridge.create_route
+HomeAudioBridge.updateRoute = HomeAudioBridge.update_route
+HomeAudioBridge.startRoute = HomeAudioBridge.start_route
+HomeAudioBridge.stopRoute = HomeAudioBridge.stop_route
+HomeAudioBridge.deleteRoute = HomeAudioBridge.delete_route
+HomeAudioBridge.recoverRoute = HomeAudioBridge.recover_route
+HomeAudioBridge.retryRoute = HomeAudioBridge.retry_route
+HomeAudioBridge.setReceiverVolume = HomeAudioBridge.set_receiver_volume
+HomeAudioBridge.setReceiverMute = HomeAudioBridge.set_receiver_mute
+HomeAudioBridge.setReceiverLatency = HomeAudioBridge.set_receiver_latency
+HomeAudioBridge.setReceiverName = HomeAudioBridge.set_receiver_name
+HomeAudioBridge.moveReceiver = HomeAudioBridge.move_receiver
+HomeAudioBridge.openDiagnostics = HomeAudioBridge.open_diagnostics
+HomeAudioBridge.testTone = HomeAudioBridge.test_tone
+HomeAudioBridge.setZoneVolume = HomeAudioBridge.set_zone_volume
+HomeAudioBridge.setZoneMute = HomeAudioBridge.set_zone_mute
+HomeAudioBridge.assignStream = HomeAudioBridge.assign_stream
+HomeAudioBridge.disconnectHa = HomeAudioBridge.disconnect_ha
+HomeAudioBridge.assignSourceToZone = HomeAudioBridge.assign_source_to_zone
+HomeAudioBridge.reconnectHa = HomeAudioBridge.reconnect_ha
+HomeAudioBridge.serverHandoff = HomeAudioBridge.server_handoff
+HomeAudioBridge.createGroup = HomeAudioBridge.create_group
+HomeAudioBridge.updateGroup = HomeAudioBridge.update_group
+HomeAudioBridge.groupZones = HomeAudioBridge.group_zones
+HomeAudioBridge.recoverFromOffline = HomeAudioBridge.recover_from_offline
+HomeAudioBridge.getLatencyReport = HomeAudioBridge.get_latency_report
+HomeAudioBridge.ungroupZone = HomeAudioBridge.ungroup_zone
+HomeAudioBridge.renameZone = HomeAudioBridge.rename_zone
+HomeAudioBridge.deleteZone = HomeAudioBridge.delete_zone
+HomeAudioBridge.setLatency = HomeAudioBridge.set_latency
+HomeAudioBridge.setSource = HomeAudioBridge.set_source
+HomeAudioBridge.transferPlayback = HomeAudioBridge.transfer_playback
+HomeAudioBridge.handoffToServer = HomeAudioBridge.handoff_to_server
+HomeAudioBridge.playbackTransfer = HomeAudioBridge.playback_transfer

@@ -12,6 +12,7 @@ import json
 import logging
 import time
 from copy import deepcopy
+from typing import Any
 from uuid import uuid4
 
 from PySide6.QtCore import QSettings
@@ -23,18 +24,33 @@ _SELECTED_SOURCE_KEY = "home_audio/selected_source"
 
 
 class HomeAudioService:
+    """Coordinate Snapcast, Home Assistant, discovery, and persisted routes."""
+
     def __init__(
         self,
-        snapcast_group_manager=None,
-        snapcast_discovery=None,
-        snapserver_manager=None,
-        snapcast_control=None,
-        ha_client=None,
-        local_media_server=None,
-        playback_service=None,
-        event_bus=None,
-        settings=None,
-    ):
+        snapcast_group_manager: Any = None,
+        snapcast_discovery: Any = None,
+        snapserver_manager: Any = None,
+        snapcast_control: Any = None,
+        ha_client: Any = None,
+        local_media_server: Any = None,
+        playback_service: Any = None,
+        event_bus: Any = None,
+        settings: Any = None,
+    ) -> None:
+        """Initialize Home Audio adapters and restore persisted routes.
+
+        Args:
+            snapcast_group_manager: Optional configured-group manager.
+            snapcast_discovery: Optional Snapclient discovery service.
+            snapserver_manager: Optional local Snapserver lifecycle manager.
+            snapcast_control: Optional Snapcast JSON-RPC client.
+            ha_client: Optional Home Assistant client.
+            local_media_server: Optional local media handoff service.
+            playback_service: Optional playback state provider.
+            event_bus: Optional domain event publisher.
+            settings: Optional settings implementation.
+        """
         self._group_mgr = snapcast_group_manager
         self._event_bus = event_bus
         self._discovery = snapcast_discovery
@@ -207,6 +223,7 @@ class HomeAudioService:
         }
 
     def get_servers(self) -> list[dict]:
+        """Return normalized local and remote Snapserver snapshots."""
         servers = []
         if self._snapserver is None:
             if self._snapcast is not None:
@@ -273,6 +290,7 @@ class HomeAudioService:
         }
 
     def start_server(self, server_id: str = "local_snapserver") -> dict:
+        """Start the owned local Snapserver and return verified state."""
         if server_id != "local_snapserver" or self._snapserver is None:
             return {"ok": False, "error": "SERVER_UNAVAILABLE"}
         if bool(getattr(self._snapserver, "is_running", False)):
@@ -290,6 +308,7 @@ class HomeAudioService:
             return {"ok": False, "error": str(exc)}
 
     def stop_server(self, server_id: str = "local_snapserver") -> dict:
+        """Stop only Michi's owned local Snapserver process."""
         if server_id != "local_snapserver" or self._snapserver is None:
             return {"ok": False, "error": "SERVER_UNAVAILABLE"}
         if not bool(getattr(self._snapserver, "is_running", False)):
@@ -304,6 +323,7 @@ class HomeAudioService:
             return {"ok": False, "error": str(exc)}
 
     def get_streams(self) -> list[dict]:
+        """Return normalized Snapcast streams, recording transport failures."""
         if self._snapcast is None:
             return []
         try:
@@ -316,6 +336,7 @@ class HomeAudioService:
             return []
 
     def get_sources(self) -> list[dict]:
+        """Return routeable streams plus truthful local-playback context."""
         sources = self.get_streams()
         if self._playback is not None:
             current = getattr(self._playback, "current_track", None)
@@ -343,6 +364,7 @@ class HomeAudioService:
         return sources
 
     def discover_receivers(self) -> list[dict]:
+        """Refresh network discovery and return merged receiver state."""
         if self._discovery is not None:
             refresh = getattr(self._discovery, "refresh", None)
             if callable(refresh):
@@ -354,6 +376,7 @@ class HomeAudioService:
         return self.get_receivers()
 
     def get_receivers(self) -> list[dict]:
+        """Merge controlled and discovered receivers into one normalized list."""
         merged: dict[str, dict] = {}
         if self._snapcast is not None:
             try:
@@ -432,6 +455,7 @@ class HomeAudioService:
         return self._get_ha_devices()
 
     def get_groups(self) -> list[dict]:
+        """Return verified Snapcast groups or configured-group fallbacks."""
         if self._snapcast is not None:
             try:
                 groups = self._snapcast.get_groups() or []
@@ -455,6 +479,7 @@ class HomeAudioService:
         return []
 
     def get_zones(self) -> list[dict]:
+        """Combine Snapcast groups and Home Assistant devices as zones."""
         zones = self.get_groups()
         for device in self._get_ha_devices():
             zones.append(
@@ -511,6 +536,7 @@ class HomeAudioService:
         source_id: str,
         destination_ids: list[str],
     ) -> dict:
+        """Validate and persist an inactive route configuration."""
         sources = {source["id"]: source for source in self.get_sources()}
         source = sources.get(source_id)
         if source is None:
@@ -553,6 +579,7 @@ class HomeAudioService:
         source_id: str,
         destination_ids: list[str],
     ) -> dict:
+        """Update and persist an inactive route with rollback on failure."""
         route = self._route(route_id)
         if route is None:
             return {"ok": False, "error": "UNKNOWN_ROUTE"}
@@ -565,7 +592,9 @@ class HomeAudioService:
             return {"ok": False, "error": "SOURCE_NOT_ROUTEABLE"}
         destinations = {destination["id"]: destination for destination in self.get_destinations()}
         unique_ids = list(dict.fromkeys(destination_ids))
-        if not unique_ids or any(destination_id not in destinations for destination_id in unique_ids):
+        if not unique_ids or any(
+            destination_id not in destinations for destination_id in unique_ids
+        ):
             return {"ok": False, "error": "UNKNOWN_DESTINATION"}
         if any(not destinations[item].get("routeable") for item in unique_ids):
             return {"ok": False, "error": "DESTINATION_NOT_ROUTEABLE"}
@@ -589,6 +618,7 @@ class HomeAudioService:
         return {"ok": True, "route": deepcopy(route)}
 
     def start_route(self, route_id: str) -> dict:
+        """Activate and verify every destination in a persisted route."""
         route = self._route(route_id)
         if route is None:
             return {"ok": False, "error": "UNKNOWN_ROUTE"}
@@ -683,6 +713,7 @@ class HomeAudioService:
         }
 
     def stop_route(self, route_id: str) -> dict:
+        """Restore and verify the previous stream for every route destination."""
         route = self._route(route_id)
         if route is None:
             return {"ok": False, "error": "UNKNOWN_ROUTE"}
@@ -746,6 +777,7 @@ class HomeAudioService:
         }
 
     def delete_route(self, route_id: str) -> dict:
+        """Delete an inactive route and persist the updated route list."""
         route = self._route(route_id)
         if route is None:
             return {"ok": False, "error": "UNKNOWN_ROUTE"}
@@ -771,6 +803,7 @@ class HomeAudioService:
         )
 
     def set_receiver_volume(self, receiver_id: str, volume: int) -> dict:
+        """Set receiver volume and verify the resulting value."""
         if self._snapcast is None:
             return {"ok": False, "error": "SNAPCAST_CONTROL_UNAVAILABLE"}
         current = self._receiver(receiver_id)
@@ -789,6 +822,7 @@ class HomeAudioService:
         return {"ok": True, "receiver": verified}
 
     def set_receiver_mute(self, receiver_id: str, muted: bool) -> dict:
+        """Set receiver mute and verify the resulting value."""
         if self._snapcast is None:
             return {"ok": False, "error": "SNAPCAST_CONTROL_UNAVAILABLE"}
         current = self._receiver(receiver_id)
@@ -810,6 +844,7 @@ class HomeAudioService:
         return {"ok": True, "receiver": verified}
 
     def set_receiver_latency(self, receiver_id: str, latency_ms: int) -> dict:
+        """Set receiver latency and verify the resulting value."""
         if self._snapcast is None:
             return {"ok": False, "error": "SNAPCAST_CONTROL_UNAVAILABLE"}
         current = self._receiver(receiver_id)
@@ -847,6 +882,7 @@ class HomeAudioService:
         return {"ok": True, "receiver": verified}
 
     def move_receiver(self, receiver_id: str, group_id: str) -> dict:
+        """Move a connected receiver and verify its target group."""
         if self._snapcast is None:
             return {"ok": False, "error": "SNAPCAST_CONTROL_UNAVAILABLE"}
         receiver = self._receiver(receiver_id)
@@ -861,7 +897,11 @@ class HomeAudioService:
         current_group_id = receiver.get("group", "")
         try:
             if current_group_id and current_group_id in groups and current_group_id != group_id:
-                old_members = [item for item in groups[current_group_id]["members"] if item != receiver_id]
+                old_members = [
+                    item
+                    for item in groups[current_group_id]["members"]
+                    if item != receiver_id
+                ]
                 self._snapcast.set_group_clients(current_group_id, old_members)
             target_members = list(dict.fromkeys([*target.get("members", []), receiver_id]))
             self._snapcast.set_group_clients(group_id, target_members)
@@ -873,6 +913,7 @@ class HomeAudioService:
         return {"ok": True, "receiver": verified}
 
     def create_group(self, name: str, zone_ids: list[str]) -> dict:
+        """Create a configured group and verify that it can be read back."""
         if self._group_mgr is None:
             return {"ok": False, "error": "GROUP_MANAGER_UNAVAILABLE"}
         add_group = getattr(self._group_mgr, "add_group", None)
@@ -889,6 +930,7 @@ class HomeAudioService:
             return {"ok": False, "error": str(exc)}
 
     def delete_group(self, group_id: str) -> dict:
+        """Delete a configured group and verify its removal."""
         if self._group_mgr is None:
             return {"ok": False, "error": "GROUP_MANAGER_UNAVAILABLE"}
         remove = getattr(self._group_mgr, "remove_group", None)
@@ -904,6 +946,7 @@ class HomeAudioService:
             return {"ok": False, "error": str(exc)}
 
     def set_group_name(self, group_id: str, new_name: str) -> dict:
+        """Rename a group through the available backend and verify it."""
         if self._snapcast is not None:
             try:
                 self._snapcast.set_group_name(group_id, new_name)
@@ -943,6 +986,7 @@ class HomeAudioService:
         return self.delete_group(group_id)
 
     def set_volume(self, zone_id: str, volume: float) -> dict:
+        """Set zone volume through Home Assistant or connected receivers."""
         zone = next((item for item in self.get_zones() if item.get("id") == zone_id), None)
         if zone is None:
             return {"ok": False, "error": "UNKNOWN_ZONE"}
@@ -971,6 +1015,7 @@ class HomeAudioService:
         return {"ok": not failures, "failures": failures, "physical_applied": True}
 
     def set_mute(self, zone_id: str, muted: bool) -> dict:
+        """Set zone mute through Home Assistant or connected receivers."""
         zone = next((item for item in self.get_zones() if item.get("id") == zone_id), None)
         if zone is None:
             return {"ok": False, "error": "UNKNOWN_ZONE"}
@@ -991,6 +1036,7 @@ class HomeAudioService:
         return {"ok": not failures, "failures": failures}
 
     def set_latency(self, zone_id: str, latency_ms: int) -> dict:
+        """Apply latency to every connected receiver in a zone."""
         receivers = [
             receiver
             for receiver in self.get_receivers()
@@ -1006,6 +1052,7 @@ class HomeAudioService:
         return {"ok": not failures, "failures": failures}
 
     def configure(self, host: str = "", port: int = 0, access_token: str = "") -> dict:
+        """Configure the Home Assistant endpoint and access token."""
         if self._ha_client is None:
             return {"ok": False, "error": "HOME_ASSISTANT_UNAVAILABLE"}
         configure = getattr(self._ha_client, "configure", None)
@@ -1019,6 +1066,7 @@ class HomeAudioService:
             return {"ok": False, "error": str(exc)}
 
     def test_connection(self) -> dict:
+        """Probe configured Snapcast and Home Assistant backends."""
         snapcast_ok = False
         ha_ok = False
         errors = []
@@ -1045,6 +1093,7 @@ class HomeAudioService:
         }
 
     def assign_stream(self, stream_id: str) -> dict:
+        """Assign a stream to the active group and verify the readback."""
         active_group = None
         if self._group_mgr is not None:
             active_group = getattr(self._group_mgr, "active_group", None)
@@ -1065,6 +1114,99 @@ class HomeAudioService:
             return {"ok": False, "error": "STREAM_ASSIGNMENT_NOT_VERIFIED"}
         return {"ok": True, "group": verified}
 
+    def assign_source_to_zone(self, zone_id: str, source_id: str) -> dict:
+        """Assign a Snapcast source to one zone and verify the readback."""
+        if source_id not in {source["id"] for source in self.get_sources()}:
+            return {
+                "ok": False,
+                "error": "UNKNOWN_SOURCE",
+                "stream_id": "",
+                "verified": False,
+            }
+        group = next(
+            (item for item in self.get_groups() if item.get("id") == zone_id),
+            None,
+        )
+        if group is None:
+            return {
+                "ok": False,
+                "error": "UNKNOWN_DESTINATION",
+                "stream_id": "",
+                "verified": False,
+            }
+        if self._snapcast is None:
+            return {
+                "ok": False,
+                "error": "SNAPCAST_CONTROL_UNAVAILABLE",
+                "stream_id": group.get("stream_id", ""),
+                "verified": False,
+            }
+        try:
+            self._snapcast.set_group_stream(zone_id, source_id)
+        except Exception as exc:
+            return {
+                "ok": False,
+                "error": str(exc),
+                "stream_id": group.get("stream_id", ""),
+                "verified": False,
+            }
+        verified_group = next(
+            (item for item in self.get_groups() if item.get("id") == zone_id),
+            None,
+        )
+        actual_stream = str((verified_group or {}).get("stream_id", "") or "")
+        verified = actual_stream == source_id
+        return {
+            "ok": verified,
+            "stream_id": actual_stream,
+            "verified": verified,
+            **({} if verified else {"error": "STREAM_ASSIGNMENT_NOT_VERIFIED"}),
+        }
+
+    def update_group(self, group_id: str, name: str, receiver_ids: list[str]) -> dict:
+        """Replace a Snapcast group's name and exact receiver membership."""
+        current = next(
+            (group for group in self.get_groups() if group.get("id") == group_id),
+            None,
+        )
+        if current is None:
+            return {"ok": False, "errors": ["GROUP_NOT_FOUND"]}
+        if self._snapcast is None:
+            return {"ok": False, "errors": ["SNAPCAST_CONTROL_UNAVAILABLE"]}
+        try:
+            if current.get("name") != name:
+                self._snapcast.set_group_name(group_id, name)
+            self._snapcast.set_group_clients(group_id, receiver_ids)
+        except Exception as exc:
+            return {"ok": False, "errors": [str(exc)]}
+        verified = next(
+            (group for group in self.get_groups() if group.get("id") == group_id),
+            None,
+        )
+        errors = []
+        if verified is None or verified.get("name") != name:
+            errors.append("GROUP_RENAME_NOT_VERIFIED")
+        if set((verified or {}).get("members", [])) != set(receiver_ids):
+            errors.append("GROUP_MEMBERSHIP_NOT_VERIFIED")
+        return {"ok": not errors, "errors": errors}
+
+    def disconnect_home_assistant(self) -> dict:
+        """Close the Home Assistant client and clear its credentials."""
+        if self._ha_client is None:
+            return {"ok": True, "disconnected": False}
+        disconnect = getattr(self._ha_client, "disconnect_home_assistant", None)
+        try:
+            if callable(disconnect):
+                disconnect()
+            else:
+                configure = getattr(self._ha_client, "configure", None)
+                if not callable(configure):
+                    return {"ok": False, "error": "DISCONNECT_UNSUPPORTED"}
+                configure("", "")
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)}
+        return {"ok": True, "disconnected": True}
+
     def select_source(self, source: str) -> dict:
         if source not in {item["id"] for item in self.get_sources()}:
             return {"ok": False, "error": "UNKNOWN_SOURCE"}
@@ -1073,6 +1215,7 @@ class HomeAudioService:
         return {"ok": True, "source_id": source}
 
     def transfer_playback(self, from_zone: str, to_zone: str) -> dict:
+        """Copy a source zone's stream to another zone and verify it."""
         groups = {group["id"]: group for group in self.get_groups()}
         source_group = groups.get(from_zone)
         target_group = groups.get(to_zone)
@@ -1116,13 +1259,14 @@ class HomeAudioService:
             return route
         return self.start_route(route["route"]["id"])
 
-    def start(self):
+    def start(self) -> dict:
         return {"ok": True, "routes": len(self._routes)}
 
-    def cancel(self):
+    def cancel(self) -> dict:
         return {"ok": True, "cancelled": True}
 
     def health(self) -> dict:
+        """Return aggregate Home Audio backend and route health."""
         servers = self.get_servers()
         return {
             "available": self.available,
@@ -1139,6 +1283,6 @@ class HomeAudioService:
             "last_refresh": self._last_refresh,
         }
 
-    def shutdown(self):
+    def shutdown(self) -> dict:
         self._save_routes()
         return {"ok": True}
