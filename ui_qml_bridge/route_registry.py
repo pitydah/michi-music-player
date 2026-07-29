@@ -841,6 +841,20 @@ ROUTES: dict[str, dict] = {
         "params": None, "category": "home_audio",
     },
 
+    "home_audio.diagnostics": {
+        "route": "home_audio.diagnostics", "parent": "home_audio",
+        "title": "Diagnóstico Home Audio",
+        "breadcrumb_title": "Diagnóstico",
+        "source": "../pages/home_audio/DiagnosticsPage.qml",
+        "icon": "eq", "order": 45, "sidebar_visible": False,
+        "sidebar_group": "home_audio", "expandable": False,
+        "status": "functional", "capability": "home_audio",
+        "aliases": [],
+        "keywords": ["diagnóstico", "health", "signal", "latency"],
+        "placeholder_state": None,
+        "params": None, "category": "home_audio",
+    },
+
     "home_audio.chain_planner":
  {
         "route": "home_audio.chain_planner", "parent": "home_audio",

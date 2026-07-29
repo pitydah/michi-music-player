@@ -148,14 +148,15 @@ class TestDiagnostics:
     def test_fifo_manager_tracks_bytes(self):
         """FIFO manager tracks bytes written."""
         from integrations.snapcast.fifo_manager import (
-            fifo_metrics, fifo_path, ensure_fifo, close_fifo
+            fifo_metrics, ensure_fifo, close_fifo
         )
-        import os, tempfile
-        
+        import os
+        import tempfile
+
         # Create temp FIFO for testing
         tmpdir = tempfile.mkdtemp()
         test_path = os.path.join(tmpdir, "test.fifo")
-        
+
         ensure_fifo(test_path)
         old_metrics = fifo_metrics()
         assert "bytes_written" in old_metrics

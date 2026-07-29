@@ -282,6 +282,21 @@ Item {
                                 navigationBridge.navigate("home_audio.distribution")
                         }
                     }
+
+                    GlassCard {
+                        width: (parent.width - parent.columnSpacing * (parent.columns - 1)) / parent.columns
+                        height: 80
+                        title: qsTr("Diagnóstico")
+                        subtitle: qsTr("Señal, latencia y salud del sistema.")
+                        variant: "base"
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: clicked()
+                        Keys.onSpacePressed: clicked()
+                        onClicked: {
+                            if (typeof navigationBridge !== "undefined" && navigationBridge)
+                                navigationBridge.navigate("home_audio.diagnostics")
+                        }
+                    }
                 }
             }
         }
