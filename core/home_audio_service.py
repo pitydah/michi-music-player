@@ -109,7 +109,12 @@ class RouteTransaction:
 
 
 class HomeAudioService(QObject):
-    """Coordinate Snapcast, Home Assistant, discovery, and persisted routes."""
+    """Coordinate Snapcast, Home Assistant, discovery, and persisted routes.
+
+    Server handoff is intentionally not implemented. Home Audio distributes
+    local PCM playback through Snapcast instead of transferring playback to a
+    separate media server.
+    """
 
     state_changed = Signal(dict)
 
@@ -120,7 +125,6 @@ class HomeAudioService(QObject):
         snapserver_manager: Any = None,
         snapcast_control: Any = None,
         ha_client: Any = None,
-        local_media_server: Any = None,
         playback_service: Any = None,
         event_bus: Any = None,
         settings: Any = None,
@@ -134,7 +138,6 @@ class HomeAudioService(QObject):
             snapserver_manager: Optional local Snapserver lifecycle manager.
             snapcast_control: Optional Snapcast JSON-RPC client.
             ha_client: Optional Home Assistant client.
-            local_media_server: Optional local media handoff service.
             playback_service: Optional playback state provider.
             event_bus: Optional domain event publisher.
             settings: Optional settings implementation.
@@ -146,7 +149,6 @@ class HomeAudioService(QObject):
         self._snapserver = snapserver_manager
         self._snapcast = snapcast_control
         self._ha_client = ha_client
-        self._local_media = local_media_server
         self._playback = playback_service
         self._settings = settings or QSettings("Michi", "MusicPlayer")
         self._routes: list[dict] = []
@@ -184,10 +186,6 @@ class HomeAudioService(QObject):
                 self._ha_client,
             )
         )
-
-    @property
-    def server_handoff_available(self) -> bool:
-        return self._local_media is not None and hasattr(self._local_media, "handoff")
 
     @property
     def latency_ms(self) -> int:
@@ -1709,15 +1707,6 @@ class HomeAudioService(QObject):
         if verified is None or verified.get("stream_id") != stream_id:
             return {"ok": False, "error": "TRANSFER_NOT_VERIFIED"}
         return {"ok": True, "from_zone": from_zone, "to_zone": to_zone, "stream_id": stream_id}
-
-    def server_handoff(self) -> dict:
-        if not self.server_handoff_available:
-            return {"ok": False, "error": "HANDOFF_UNAVAILABLE"}
-        result = self._local_media.handoff()
-        return result if isinstance(result, dict) else {"ok": bool(result)}
-
-    def handoff(self) -> dict:
-        return self.server_handoff()
 
     def playback_transfer(self, zone_id: str) -> dict:
         if not self._selected_source:

@@ -2,21 +2,28 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 import socket
 import subprocess
 import threading
 import time
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from typing import Callable
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, QTimer, Signal
 
 from core.paths import app_config_dir
 from integrations.snapcast.json_rpc_client import SnapcastJsonRpcClient
 
 SNAPSERVER_BIN = shutil.which("snapserver") or ""
+logger = logging.getLogger("michi.snapserver")
+_RECONNECT_EXECUTOR = ThreadPoolExecutor(
+    max_workers=1,
+    thread_name_prefix="michi-snapserver-reconnect",
+)
 
 DEFAULT_CONFIG = """\
 [server]
@@ -35,6 +42,8 @@ class SnapServerManager(QObject):
     state_changed = Signal(str)
     error_occurred = Signal(str)
     server_ready = Signal(int, int)
+    reconnected = Signal()
+    _reconnect_attempt_finished = Signal(object)
 
     def __init__(
         self,
@@ -58,6 +67,17 @@ class SnapServerManager(QObject):
         self._config_path = str(Path(app_config_dir()) / "snapserver.conf")
         self._last_error = ""
         self._lock = threading.RLock()
+        self._should_run = False
+        self._next_reconnect_ms = 1_000
+        self._reconnect_future: Future | None = None
+        self._reconnect_timer = QTimer(self)
+        self._reconnect_timer.setSingleShot(True)
+        self._reconnect_timer.timeout.connect(self._attempt_reconnect)
+        self._reconnect_attempt_finished.connect(self._on_reconnect_attempt_finished)
+        self._monitor_timer = QTimer(self)
+        self._monitor_timer.setInterval(1_000)
+        self._monitor_timer.timeout.connect(self._monitor_process)
+        self._monitor_timer.start()
 
     @property
     def state(self) -> str:
@@ -117,6 +137,45 @@ class SnapServerManager(QObject):
         if exit_code is not None:
             self._process = None
             self._set_state("error", f"SNAPSERVER_EXITED: {exit_code}")
+            self._schedule_reconnect()
+
+    def _monitor_process(self) -> None:
+        """Detect an unexpected exit of the owned Snapserver process."""
+        self._reconcile_process()
+
+    def _schedule_reconnect(self) -> None:
+        if not self._should_run or self._reconnect_timer.isActive():
+            return
+        delay_ms = self._next_reconnect_ms
+        self._next_reconnect_ms = min(delay_ms * 2, 30_000)
+        logger.warning(
+            "Snapserver unavailable; scheduling reconnection in %.1fs",
+            delay_ms / 1_000,
+        )
+        self._reconnect_timer.start(delay_ms)
+
+    def _attempt_reconnect(self) -> None:
+        if not self._should_run:
+            return
+        if self._reconnect_future is not None and not self._reconnect_future.done():
+            return
+        logger.info("Snapserver reconnection attempt")
+        self._reconnect_future = _RECONNECT_EXECUTOR.submit(self.start)
+        self._reconnect_future.add_done_callback(
+            self._reconnect_attempt_finished.emit
+        )
+
+    def _on_reconnect_attempt_finished(self, future: Future) -> None:
+        try:
+            result = future.result()
+        except Exception:
+            logger.exception("Snapserver reconnection attempt failed")
+            result = {"ok": False}
+        if result.get("ok"):
+            logger.info("Snapserver reconnected")
+            self.reconnected.emit()
+            return
+        self._schedule_reconnect()
 
     @staticmethod
     def _probe_control(host: str, port: int, timeout: float) -> bool:
@@ -154,6 +213,7 @@ class SnapServerManager(QObject):
         """
         with self._lock:
             if self.is_running:
+                self._should_run = True
                 return {"ok": True, "state": "running", "pid": self.pid, "already_running": True}
             if not self.is_binary_available():
                 self._set_state("unavailable", "SNAPSERVER_BINARY_UNAVAILABLE")
@@ -188,6 +248,8 @@ class SnapServerManager(QObject):
                 return {"ok": False, "error": "SNAPSERVER_EXITED", "exit_code": exit_code}
             if self._readiness_probe("127.0.0.1", self._control_port, 0.25):
                 self._set_state("running")
+                self._should_run = True
+                self._next_reconnect_ms = 1_000
                 self.started.emit()
                 self.server_ready.emit(self._tcp_port, self._control_port)
                 return {"ok": True, "state": "running", "pid": self.pid}
@@ -213,6 +275,8 @@ class SnapServerManager(QObject):
     def stop(self) -> dict:
         """Stop only the process created by this manager."""
         with self._lock:
+            self._should_run = False
+            self._reconnect_timer.stop()
             if self._process is None:
                 if self._readiness_probe("127.0.0.1", self._control_port, 0.2):
                     return {"ok": False, "error": "FOREIGN_SNAPSERVER_NOT_OWNED", "state": self._state}

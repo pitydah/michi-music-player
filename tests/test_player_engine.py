@@ -267,6 +267,16 @@ class TestGStreamerEngine:
         assert eq.bands_parametric == []
         assert eq.preamp_db == 0.0
 
+    def test_warns_when_distribution_conflicts_with_bitperfect(self, engine, caplog):
+        engine._audio_profile = "bitperfect_pcm"
+        engine._snapcast_fifo_enabled = True
+
+        with caplog.at_level("WARNING", logger="michi.player"):
+            distribution_requires_pcm = engine._check_distribution_vs_bitperfect()
+
+        assert distribution_requires_pcm is True
+        assert "distribution requires PCM output" in caplog.text
+
     def test_player_engine_alias(self, engine):
         import audio.player
 

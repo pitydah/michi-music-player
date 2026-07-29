@@ -30,6 +30,8 @@ from audio.dff_parser import parse_dff  # noqa: E402
 
 Gst.init(None)
 
+logger = logging.getLogger("michi.player")
+
 
 class PlaybackState(Enum):
     STOPPED = 0
@@ -268,6 +270,7 @@ class GStreamerEngine(QObject):
 
             fmt = probe_format(filepath_or_url)
             profile = get_profile(self._audio_profile)
+            distribution_requires_pcm = self._check_distribution_vs_bitperfect()
             dev = get_device(self._dac.output_device_id or "auto")
             if not dev:
                 from audio.output_device_manager import list_devices
@@ -311,6 +314,8 @@ class GStreamerEngine(QObject):
             dm = DacManager(self)
             dm.refresh_devices()
             route = dm.select_output_route(fmt, profile, dev)
+            if distribution_requires_pcm:
+                route.bitperfect_expected = False
 
             factory = PipelineFactory()
             pipeline = factory.build_for_uri(
@@ -393,9 +398,12 @@ class GStreamerEngine(QObject):
 
         fmt = probe_format(filepath)
         profile = get_profile(self._audio_profile)
+        distribution_requires_pcm = self._check_distribution_vs_bitperfect()
         dm = DacManager(self)
         dm.refresh_devices()
         route = dm.select_output_route(fmt, profile, None)
+        if distribution_requires_pcm:
+            route.bitperfect_expected = False
 
         dsp = DspState(
             eq_enabled=self._eq.enabled if hasattr(self._eq, 'enabled') else False,
@@ -546,6 +554,20 @@ class GStreamerEngine(QObject):
         profile = get_profile(self._audio_profile)
         if profile.bitperfect and self._eq.mode != "bypass":
             self.eq_bitperfect_warning.emit()
+
+    def _check_distribution_vs_bitperfect(self) -> bool:
+        """Return whether distribution must override a bit-perfect route."""
+        from audio.output_profiles import get_profile
+
+        profile = get_profile(self._audio_profile)
+        if profile.bitperfect and self._snapcast_fifo_enabled:
+            logger.warning(
+                "Disabling bit-perfect profile %s because Snapcast "
+                "distribution requires PCM output",
+                profile.key,
+            )
+            return True
+        return False
 
     def set_eq_preamp(self, db: float):
         self._eq.preamp_db = db

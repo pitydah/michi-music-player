@@ -1,5 +1,7 @@
 """Tests for Home Audio — handoff, Snapcast, HA, zone groups."""
 
+import inspect
+
 import pytest
 
 
@@ -26,6 +28,16 @@ class TestHomeAudioHandoff:
         from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
         assert not hasattr(HomeAudioBridge, 'handoffToServer')
         assert not hasattr(HomeAudioBridge, 'serverHandoff')
+
+    def test_service_handoff_is_not_implemented(self):
+        from core.home_audio_service import HomeAudioService
+
+        parameters = inspect.signature(HomeAudioService.__init__).parameters
+
+        assert "local_media_server" not in parameters
+        assert not hasattr(HomeAudioService, "server_handoff_available")
+        assert not hasattr(HomeAudioService, "server_handoff")
+        assert not hasattr(HomeAudioService, "handoff")
 
     def test_bridge_group_operations(self):
         from ui_qml_bridge.home_audio_bridge import HomeAudioBridge

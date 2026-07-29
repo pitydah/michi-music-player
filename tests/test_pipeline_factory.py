@@ -1,4 +1,6 @@
 """Tests for PipelineFactory module."""
+from unittest.mock import MagicMock, call
+
 import pytest
 
 
@@ -7,6 +9,19 @@ class TestPipelineFactory:
         from audio.pipeline_factory import PipelineFactory
         factory = PipelineFactory()
         assert factory is not None
+
+    def test_snapcast_fifo_queue_is_bounded_and_leaky(self):
+        from audio.pipeline_factory import PipelineFactory
+
+        queue = MagicMock()
+
+        PipelineFactory._configure_snapcast_queue(queue)
+
+        assert queue.set_property.call_args_list == [
+            call("leaky", 2),
+            call("max-size-buffers", 10),
+            call("max-size-time", 2_000_000_000),
+        ]
 
     @pytest.mark.skip(reason="requires full GStreamer pipeline elements")
     def test_build_for_uri_standard(self):

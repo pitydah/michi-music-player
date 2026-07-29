@@ -236,6 +236,8 @@ class PipelineFactory:
             # Branch 4: Snapcast FIFO (HomeAudioPlaybackTap)
             if dsp.snapcast_fifo_enabled:
                 q4 = Gst.ElementFactory.make("queue", None)
+                if q4:
+                    self._configure_snapcast_queue(q4)
                 c4 = Gst.ElementFactory.make("audioconvert", None)
                 r4 = Gst.ElementFactory.make("audioresample", None)
                 caps = Gst.Caps.from_string(
@@ -263,6 +265,13 @@ class PipelineFactory:
         audio_sink.add_pad(
             Gst.GhostPad.new("sink", queue.get_static_pad("sink")))
         return audio_sink
+
+    @staticmethod
+    def _configure_snapcast_queue(queue: Gst.Element) -> None:
+        """Bound the FIFO branch so a slow Snapclient cannot block local audio."""
+        queue.set_property("leaky", 2)
+        queue.set_property("max-size-buffers", 10)
+        queue.set_property("max-size-time", 2_000_000_000)
 
     def _build_fakesink(self, uri) -> Gst.Element | None:
         pipeline = Gst.Pipeline.new("michi-fake")
