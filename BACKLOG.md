@@ -185,7 +185,7 @@ class RouteTransaction:
 |-----------|-------|-------------------|
 | **P0** | 2 (WebSocket HA + Gapless real) | 3-4 días |
 | **P1** | 3 (atomic policy + Chain Planner + audio_lab) | 5-10 días |
-| **P2** | 3 (iconos + orphan pages + light mode) | 3-5 días |
+| **P2** | 3 (iconos + orphan pages + accentHover) | ✅ COMPLETADO |
 | **P3** | 4 (latencia + HW tests + 624 failures + eject) | Variable |
 
 **Total estimado:** 14-23 días hábiles para cerrar todo el backlog conocido.
