@@ -17,6 +17,14 @@ Item {
     property var albumModel: null
     property var bridge: null
     property int currentView: 0
+    property string sortOrder: "year"
+    readonly property var sortOptions: [
+        { label: qsTr("Año"), key: "year" },
+        { label: qsTr("Título"), key: "title" },
+        { label: qsTr("Artista"), key: "artist" },
+        { label: qsTr("Fecha añadida"), key: "added" },
+        { label: qsTr("Reproducciones"), key: "play_count" }
+    ]
     readonly property bool initialLoading: root.albumModel && root.albumModel.loading && root.albumModel.count === 0
     readonly property bool loadingMore: root.albumModel && root.albumModel.loadingMore
     readonly property bool hasError: root.albumModel && root.albumModel.errorMessage !== ""
@@ -50,6 +58,16 @@ Item {
         root.selectView(next)
     }
 
+    function applySort(index) {
+        if (index < 0 || index >= root.sortOptions.length)
+            return
+        var option = root.sortOptions[index]
+        root.sortOrder = option.key
+        var ascending = option.key === "title" || option.key === "artist"
+        if (root.albumModel && root.albumModel.refreshForSort)
+            root.albumModel.refreshForSort(option.key, ascending)
+    }
+
     Keys.onPressed: function(event) {
         if ((event.modifiers & Qt.ControlModifier) &&
                 event.key >= Qt.Key_1 && event.key <= Qt.Key_5) {
@@ -66,9 +84,45 @@ Item {
     Item {
         anchors.fill: parent
 
+        Rectangle {
+            id: sortToolbar
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            height: 46
+            color: MichiTheme.colors.surfaceElevation0
+
+            RowLayout {
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.rightMargin: MichiTheme.spacing.md
+                spacing: MichiTheme.spacing.sm
+
+                Text {
+                    text: qsTr("Ordenar por")
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.metaSize
+                }
+
+                ComboBox {
+                    id: sortSelector
+                    objectName: "albumSortSelector"
+                    Layout.preferredWidth: 174
+                    model: root.sortOptions
+                    textRole: "label"
+                    valueRole: "key"
+                    Accessible.name: qsTr("Orden de los álbumes")
+                    onActivated: root.applySort(index)
+                }
+            }
+        }
+
         Item {
             id: contentArea
-            anchors.fill: parent
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: sortToolbar.bottom
+            anchors.bottom: parent.bottom
             clip: true
 
             Loader {
@@ -90,6 +144,7 @@ Item {
                 }
 
                 Behavior on opacity {
+                    enabled: !MichiTheme.reducedMotion
                     NumberAnimation {
                         duration: MichiTheme.motionFast
                         easing.type: Easing.OutCubic

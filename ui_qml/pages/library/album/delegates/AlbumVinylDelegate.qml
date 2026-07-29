@@ -37,6 +37,7 @@ Item {
             border.width: 2
             border.color: hover.hovered ? MichiTheme.colors.accentBlue : MichiTheme.colors.borderSubtle
             Behavior on border.color {
+                enabled: !MichiTheme.reducedMotion
                 ColorAnimation { duration: MichiTheme.motionNormal; easing.type: Easing.OutQuad }
             }
 
@@ -112,7 +113,7 @@ Item {
 
         NumberAnimation on rotation {
             id: vinylSpin
-            running: hover.hovered
+            running: !MichiTheme.reducedMotion && hover.hovered
             loops: Animation.Infinite
             from: 0
             to: 360

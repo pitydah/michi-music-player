@@ -139,9 +139,11 @@ Item {
                 clip: true
 
                 Behavior on color {
+                    enabled: !MichiTheme.reducedMotion
                     ColorAnimation { duration: MichiTheme.motionFast }
                 }
                 Behavior on border.color {
+                    enabled: !MichiTheme.reducedMotion
                     ColorAnimation { duration: MichiTheme.motionFast }
                 }
 
@@ -182,6 +184,7 @@ Item {
                         z: 0
 
                         Behavior on anchors.horizontalCenterOffset {
+                            enabled: !MichiTheme.reducedMotion
                             NumberAnimation {
                                 duration: MichiTheme.motionNormal
                                 easing.type: Easing.OutCubic
@@ -226,7 +229,8 @@ Item {
                             to: 360
                             duration: 9000
                             loops: Animation.Infinite
-                            running: tileMouse.containsMouse || tile.selected
+                            running: !MichiTheme.reducedMotion &&
+                                     (tileMouse.containsMouse || tile.selected)
                         }
                     }
 
@@ -245,6 +249,7 @@ Item {
                         scale: tileMouse.pressed ? 0.98 : 1.0
 
                         Behavior on scale {
+                            enabled: !MichiTheme.reducedMotion
                             NumberAnimation { duration: MichiTheme.motionFast }
                         }
 
@@ -276,9 +281,11 @@ Item {
                             scale: opacity > 0 ? 1 : 0.88
 
                             Behavior on opacity {
+                                enabled: !MichiTheme.reducedMotion
                                 NumberAnimation { duration: MichiTheme.motionFast }
                             }
                             Behavior on scale {
+                                enabled: !MichiTheme.reducedMotion
                                 NumberAnimation {
                                     duration: MichiTheme.motionFast
                                     easing.type: Easing.OutCubic

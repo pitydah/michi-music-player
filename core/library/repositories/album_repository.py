@@ -10,6 +10,7 @@ _ALBUM_SORT_WHITELIST = {
     "duration": "SUM(COALESCE(m.duration, 0))",
     "track_count": "COUNT(*)",
     "added": "MAX(COALESCE(m.created_at, 0))",
+    "play_count": "SUM(COALESCE(m.play_count, 0))",
 }
 
 _ALBUM_SELECT = (

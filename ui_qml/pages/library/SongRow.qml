@@ -27,7 +27,10 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: root.hovered ? MichiTheme.colors.surfaceCardHover : "transparent"
-        Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
+        Behavior on color {
+            enabled: !MichiTheme.reducedMotion
+            ColorAnimation { duration: MichiTheme.motion.fast }
+        }
 
         Row {
             anchors.fill: parent

@@ -42,12 +42,15 @@ Rectangle {
     Accessible.onPressAction: root.clicked()
 
     Behavior on color {
+        enabled: !MichiTheme.reducedMotion
         ColorAnimation { duration: MichiTheme.motionFast }
     }
     Behavior on border.color {
+        enabled: !MichiTheme.reducedMotion
         ColorAnimation { duration: MichiTheme.motionFast }
     }
     Behavior on scale {
+        enabled: !MichiTheme.reducedMotion
         NumberAnimation {
             duration: MichiTheme.motionFast
             easing.type: Easing.OutCubic

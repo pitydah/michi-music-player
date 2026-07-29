@@ -41,6 +41,8 @@ _ALBUM_SORT = {
     "track_count": "COUNT(*)",
     "duration": "SUM(COALESCE(m.duration, 0))",
     "metadata": "AVG(COALESCE(m.metadata_completeness, 0))",
+    "added": "MAX(COALESCE(m.created_at, m.date_added, 0))",
+    "play_count": "SUM(COALESCE(m.play_count, 0))",
 }
 
 _ARTIST_SORT = {

@@ -21,7 +21,19 @@ LibrarySectionPage {
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property var artistModel: root.lib ? root.lib.artistModel : null
     property var bridge: root.lib
-    property int minimumCardWidth: width < 760 ? 158 : 184
+    property string density: "regular"
+    readonly property var densityOptions: [
+        { label: qsTr("Compacta"), key: "compact" },
+        { label: qsTr("Regular"), key: "regular" },
+        { label: qsTr("Cómoda"), key: "comfortable" }
+    ]
+    readonly property int minimumCardWidth: {
+        if (root.density === "compact")
+            return width < 760 ? 142 : 152
+        if (root.density === "comfortable")
+            return width < 760 ? 190 : 216
+        return width < 760 ? 158 : 184
+    }
     property bool automaticPagination: true
     property int currentView: 0
     headerSearchPlaceholder: qsTr("Buscar artistas…")
@@ -100,6 +112,7 @@ LibrarySectionPage {
             objectName: "artistGrid"
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.topMargin: 46
             model: root.artistModel
             clip: true
             boundsBehavior: Flickable.StopAtBounds
@@ -206,6 +219,41 @@ LibrarySectionPage {
             artistModel: root.artistModel
             bridge: root.bridge
             onArtistClicked: function(name) { root.artistClicked(name) }
+        }
+    }
+
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: 46
+        color: MichiTheme.colors.surfaceElevation0
+        visible: root.currentView === 0
+        z: 10
+
+        RowLayout {
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.rightMargin: MichiTheme.spacing.md
+            spacing: MichiTheme.spacing.sm
+
+            Text {
+                text: qsTr("Densidad")
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.metaSize
+            }
+
+            ComboBox {
+                objectName: "artistDensitySelector"
+                Layout.preferredWidth: 150
+                model: root.densityOptions
+                textRole: "label"
+                valueRole: "key"
+                currentIndex: root.density === "compact" ? 0
+                              : root.density === "comfortable" ? 2 : 1
+                Accessible.name: qsTr("Densidad de la cuadrícula de artistas")
+                onActivated: root.density = currentValue
+            }
         }
     }
 

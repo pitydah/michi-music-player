@@ -293,9 +293,11 @@ Item {
                     }
 
                     Behavior on opacity {
+                        enabled: !MichiTheme.reducedMotion
                         NumberAnimation { duration: MichiTheme.motionFast }
                     }
                     Behavior on scale {
+                        enabled: !MichiTheme.reducedMotion
                         NumberAnimation { duration: MichiTheme.motionFast }
                     }
 
@@ -351,12 +353,14 @@ Item {
             }
 
             Behavior on scale {
+                enabled: !MichiTheme.reducedMotion
                 NumberAnimation {
                     duration: MichiTheme.motionNormal
                     easing.type: Easing.OutCubic
                 }
             }
             Behavior on opacity {
+                enabled: !MichiTheme.reducedMotion
                 NumberAnimation { duration: MichiTheme.motionNormal }
             }
         }

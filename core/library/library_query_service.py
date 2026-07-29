@@ -39,6 +39,8 @@ _ALBUM_SORT = {
     "year": "MIN(year)", "title": "LOWER(COALESCE(MIN(album), ''))",
     "artist": "LOWER(COALESCE(MIN(NULLIF(albumartist,'')), MIN(artist), ''))",
     "duration": "SUM(COALESCE(duration, 0))", "track_count": "COUNT(*)",
+    "added": "MAX(COALESCE(created_at, date_added, 0))",
+    "play_count": "SUM(COALESCE(play_count, 0))",
 }
 
 _ARTIST_SORT = {

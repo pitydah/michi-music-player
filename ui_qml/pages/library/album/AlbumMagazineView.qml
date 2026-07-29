@@ -439,6 +439,7 @@ Item {
                         clip: true
 
                         Behavior on scale {
+                            enabled: !MichiTheme.reducedMotion
                             NumberAnimation { duration: MichiTheme.motionFast }
                         }
 

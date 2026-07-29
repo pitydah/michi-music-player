@@ -60,6 +60,15 @@ class AlbumListModel(BasePagedListModel):
     def refreshForArtist(self, artist: str):
         return self.refresh(search=artist, sort="year", asc=True)
 
+    @Slot(str, bool, result=dict)
+    def refreshForSort(self, sort_key: str, asc: bool):
+        filters = {
+            key: value
+            for key, value in self._query_args.items()
+            if key not in ("sort", "asc")
+        }
+        return self.refresh(sort=sort_key, asc=asc, **filters)
+
     def _fetch_count(self, **kwargs) -> int:
         if not self._qs:
             return 0

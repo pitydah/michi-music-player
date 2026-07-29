@@ -17,7 +17,19 @@ Item {
 
     property var albumModel: null
     property var bridge: null
-    property int minimumCardWidth: width < 760 ? 158 : width < 1120 ? 176 : 192
+    property string density: "regular"
+    readonly property var densityOptions: [
+        { label: qsTr("Compacta"), key: "compact" },
+        { label: qsTr("Regular"), key: "regular" },
+        { label: qsTr("Cómoda"), key: "comfortable" }
+    ]
+    readonly property int minimumCardWidth: {
+        if (root.density === "compact")
+            return width < 760 ? 142 : 152
+        if (root.density === "comfortable")
+            return width < 760 ? 190 : 216
+        return width < 760 ? 158 : width < 1120 ? 176 : 192
+    }
     property bool automaticPagination: true
     signal albumClicked(string albumKey, string title, string artist, int year)
 
@@ -48,10 +60,48 @@ Item {
             root.albumModel.fetchMore()
     }
 
+    Rectangle {
+        id: densityToolbar
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: 46
+        color: MichiTheme.colors.surfaceElevation0
+
+        RowLayout {
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.rightMargin: MichiTheme.spacing.md
+            spacing: MichiTheme.spacing.sm
+
+            Text {
+                text: qsTr("Densidad")
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.metaSize
+            }
+
+            ComboBox {
+                id: densitySelector
+                objectName: "albumDensitySelector"
+                Layout.preferredWidth: 150
+                model: root.densityOptions
+                textRole: "label"
+                valueRole: "key"
+                currentIndex: root.density === "compact" ? 0
+                              : root.density === "comfortable" ? 2 : 1
+                Accessible.name: qsTr("Densidad de la cuadrícula")
+                onActivated: root.density = currentValue
+            }
+        }
+    }
+
     GridView {
         id: gridView
         objectName: "albumGrid"
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: densityToolbar.bottom
+        anchors.bottom: parent.bottom
         anchors.leftMargin: MichiTheme.spacing.sm
         anchors.rightMargin: MichiTheme.spacing.sm
         anchors.bottomMargin: MichiTheme.spacing.sm
@@ -149,12 +199,15 @@ Item {
                 clip: true
 
                 Behavior on color {
+                    enabled: !MichiTheme.reducedMotion
                     ColorAnimation { duration: MichiTheme.motionFast }
                 }
                 Behavior on border.color {
+                    enabled: !MichiTheme.reducedMotion
                     ColorAnimation { duration: MichiTheme.motionFast }
                 }
                 Behavior on scale {
+                    enabled: !MichiTheme.reducedMotion
                     NumberAnimation {
                         duration: MichiTheme.motionFast
                         easing.type: Easing.OutCubic
@@ -207,6 +260,7 @@ Item {
                                     GradientStop { position: 1.0; color: MichiTheme.colors.overlayDark }
                                 }
                                 Behavior on opacity {
+                                    enabled: !MichiTheme.reducedMotion
                                     NumberAnimation { duration: MichiTheme.motionFast }
                                 }
                             }
@@ -233,9 +287,11 @@ Item {
                                 }
 
                                 Behavior on opacity {
+                                    enabled: !MichiTheme.reducedMotion
                                     NumberAnimation { duration: MichiTheme.motionFast }
                                 }
                                 Behavior on scale {
+                                    enabled: !MichiTheme.reducedMotion
                                     NumberAnimation {
                                         duration: MichiTheme.motionFast
                                         easing.type: Easing.OutCubic
