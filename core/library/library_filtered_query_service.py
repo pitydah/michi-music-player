@@ -318,7 +318,13 @@ class LibraryFilteredQueryService:
             f"SELECT MAX({_ARTIST_DISPLAY}) AS artist_name, COUNT(*) AS track_count, "
             f"COUNT(DISTINCT {_ALBUM_KEY}) AS album_count, "
             "SUM(COALESCE(m.duration, 0)) AS duration, "
-            "ROUND(AVG(COALESCE(m.metadata_completeness, 0)), 1) "
+            "ROUND(AVG(COALESCE(m.metadata_completeness, 0)), 1), "
+            "(SELECT cover.album_key FROM media_items cover "
+            "WHERE cover.deleted_at IS NULL AND NULLIF(cover.album_key, '') IS NOT NULL "
+            "AND COALESCE(NULLIF(cover.normalized_albumartist, ''), "
+            "NULLIF(cover.normalized_artist, ''), "
+            "LOWER(COALESCE(NULLIF(cover.albumartist, ''), cover.artist, ''))) "
+            f"= {_NORM_ARTIST} ORDER BY cover.id LIMIT 1) AS cover_key "
             "FROM media_items m WHERE m.deleted_at IS NULL "
             "AND COALESCE(m.artist, m.albumartist, '')!=''"
             f"{where} GROUP BY {_NORM_ARTIST} "
@@ -333,6 +339,7 @@ class LibraryFilteredQueryService:
             "album_count": int(row[2] or 0),
             "duration": float(row[3] or 0),
             "metadata_completeness": float(row[4] or 0),
+            "cover_key": row[5] or "",
         } for row in rows]
 
     def fetch_album_tracks_internal(self, album_key: str) -> list[dict]:

@@ -2,9 +2,12 @@ from __future__ import annotations
 """Advanced tests for LibraryTrackContextMenu via ActionRegistry — 10+ tests."""
 
 import pytest
+from pathlib import Path
 
 from ui_qml_bridge.action_registry import ActionRegistry
 pytestmark = [pytest.mark.qml_module("library")]
+
+QML_PATH = Path(__file__).resolve().parents[3] / "ui_qml/pages/library/LibraryContextMenu.qml"
 
 
 @pytest.fixture
@@ -13,6 +16,15 @@ def registry():
 
 
 class TestLibraryContextMenu:
+    def test_context_menu_uses_fluent_icons_instead_of_unicode_glyphs(self):
+        source = QML_PATH.read_text(encoding="utf-8")
+
+        for glyph in ("▶", "♡", 'glyph: "+"', "▣", "◎", "↗"):
+            assert glyph not in source
+        assert source.count("MichiIcon {") == 1
+        for icon_key in ("songs", "queue", "library", "albums", "artists", "folders"):
+            assert f'iconKey: "{icon_key}"' in source
+
     def test_context_menu_play_actions_exist(self, registry):
         for action_id in ["track_play_now", "track_play_next", "track_add_to_queue",
                           "track_replace_queue"]:

@@ -15,6 +15,16 @@ from library.schema import Schema
 
 logger = logging.getLogger("michi.library")
 
+_FTS_COLUMNS = (
+    "title", "artist", "album", "albumartist", "genre", "composer",
+    "filepath", "filename", "isrc", "label", "conductor", "grouping", "mood",
+)
+_FTS_TRIGGER_NAMES = (
+    "media_items_fts_insert",
+    "media_items_fts_update",
+    "media_items_fts_delete",
+)
+
 
 # ── Re-exports from split modules ──
 from library.metadata_extractor import AUDIO_EXTS, ALL_EXTS, extract_metadata, extract_metadata_full, extract_metadata_combined  # noqa: E402, F401
@@ -40,10 +50,12 @@ class LibraryDB:
         self._conn.execute("PRAGMA busy_timeout=5000")
         self._conn.execute("PRAGMA foreign_keys=ON")
         Schema.initialize(self._conn)
-        self._init_fts()
+        self._fts_checked = False
+        self._fts_available = False
 
     @property
     def conn(self):
+        self._ensure_fts()
         return self._conn
 
     @property
@@ -122,25 +134,79 @@ class LibraryDB:
                  updated, skipped, missing, finished))
         self._conn.commit()
 
-    def _init_fts(self):
-        """Create FTS5 full-text search index on media_items (if available)."""
+    def _ensure_fts(self) -> bool:
+        """Lazily create and incrementally maintain the media FTS index."""
+        if self._fts_checked:
+            return self._fts_available
         try:
             self._conn.execute("SELECT fts5('test')")
         except sqlite3.OperationalError:
-            return  # FTS5 not available — LIKE fallback will be used
+            self._fts_checked = True
+            return False
         try:
-            self._conn.execute("""
-                CREATE VIRTUAL TABLE IF NOT EXISTS media_fts
-                USING fts5(title, artist, album, albumartist, genre, composer,
-                            filepath, filename, isrc, label, conductor, grouping, mood,
-                            content='media_items', content_rowid='id')
-            """)
-            # Populate FTS5 with existing data (content= sync is for new rows only)
-            self._conn.execute(
-                "INSERT INTO media_fts(media_fts) VALUES('rebuild')")
+            table_exists = self._conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='media_fts'"
+            ).fetchone() is not None
+            columns = tuple(
+                row[1] for row in self._conn.execute("PRAGMA table_info(media_fts)")
+            ) if table_exists else ()
+            trigger_names = {
+                row[0] for row in self._conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='trigger' "
+                    "AND name IN (?, ?, ?)",
+                    _FTS_TRIGGER_NAMES,
+                )
+            }
+            schema_changed = columns != _FTS_COLUMNS or trigger_names != set(_FTS_TRIGGER_NAMES)
+            if not schema_changed:
+                self._fts_checked = True
+                self._fts_available = True
+                return True
+
+            self._drop_fts_triggers()
+            if table_exists and columns != _FTS_COLUMNS:
+                self._conn.execute("DROP TABLE media_fts")
+                table_exists = False
+            if not table_exists:
+                columns_sql = ", ".join(_FTS_COLUMNS)
+                self._conn.execute(
+                    f"CREATE VIRTUAL TABLE media_fts USING fts5({columns_sql}, "
+                    "content='media_items', content_rowid='id')"
+                )
+            self._create_fts_triggers()
+            self._conn.execute("INSERT INTO media_fts(media_fts) VALUES('rebuild')")
             self._conn.commit()
+            self._fts_checked = True
+            self._fts_available = True
+            return True
         except sqlite3.Error as e:
             logger.debug("FTS5 initialization/rebuild failed: %s", e)
+            return False
+
+    def _drop_fts_triggers(self) -> None:
+        for trigger_name in _FTS_TRIGGER_NAMES:
+            self._conn.execute(f"DROP TRIGGER IF EXISTS {trigger_name}")
+
+    def _create_fts_triggers(self) -> None:
+        columns = ", ".join(_FTS_COLUMNS)
+        new_values = ", ".join(f"new.{column}" for column in _FTS_COLUMNS)
+        old_values = ", ".join(f"old.{column}" for column in _FTS_COLUMNS)
+        update_columns = ", ".join(_FTS_COLUMNS)
+        self._conn.executescript(f"""
+            CREATE TRIGGER media_items_fts_insert AFTER INSERT ON media_items BEGIN
+                INSERT INTO media_fts(rowid, {columns}) VALUES (new.id, {new_values});
+            END;
+            CREATE TRIGGER media_items_fts_delete AFTER DELETE ON media_items BEGIN
+                INSERT INTO media_fts(media_fts, rowid, {columns})
+                VALUES ('delete', old.id, {old_values});
+            END;
+            CREATE TRIGGER media_items_fts_update AFTER UPDATE OF {update_columns}
+            ON media_items BEGIN
+                INSERT INTO media_fts(media_fts, rowid, {columns})
+                VALUES ('delete', old.id, {old_values});
+                INSERT INTO media_fts(rowid, {columns}) VALUES (new.id, {new_values});
+            END;
+        """)
 
     def close(self):
         self._conn.close()
@@ -682,6 +748,7 @@ class LibraryDB:
     def search_advanced(self, query: str, limit: int = 200) -> list[MediaItem]:
         """Search using SearchEngine 2.0 (FTS5 + field filters)."""
         from library.search_engine import SearchEngine
+        self._ensure_fts()
         engine = SearchEngine(self._conn)
         results = engine.search(query, limit=limit)
         items = []

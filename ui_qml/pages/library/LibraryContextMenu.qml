@@ -100,12 +100,12 @@ Popup {
 
         Repeater {
             model: [
-                { label: qsTr("Reproducir ahora"), actionId: "track_play_now", glyph: "▶", enabled: true },
-                { label: qsTr("Añadir a la cola"), actionId: "track_add_to_queue", glyph: "+", enabled: true },
-                { label: qsTr("Marcar o quitar favorito"), actionId: "track_favorite", glyph: "♡", enabled: true },
-                { label: qsTr("Abrir álbum"), actionId: "track_open_album", glyph: "▣", enabled: root.albumKey !== "" },
-                { label: qsTr("Abrir artista"), actionId: "track_open_artist", glyph: "◎", enabled: root.trackArtist !== "" },
-                { label: qsTr("Mostrar en carpeta"), actionId: "track_open_folder", glyph: "↗", enabled: true }
+                { label: qsTr("Reproducir ahora"), actionId: "track_play_now", iconKey: "songs", enabled: true },
+                { label: qsTr("Añadir a la cola"), actionId: "track_add_to_queue", iconKey: "queue", enabled: true },
+                { label: qsTr("Marcar o quitar favorito"), actionId: "track_favorite", iconKey: "library", enabled: true },
+                { label: qsTr("Abrir álbum"), actionId: "track_open_album", iconKey: "albums", enabled: root.albumKey !== "" },
+                { label: qsTr("Abrir artista"), actionId: "track_open_artist", iconKey: "artists", enabled: root.trackArtist !== "" },
+                { label: qsTr("Mostrar en carpeta"), actionId: "track_open_folder", iconKey: "folders", enabled: true }
             ]
 
             Rectangle {
@@ -130,12 +130,13 @@ Popup {
                     anchors.rightMargin: MichiTheme.spacing.md
                     spacing: MichiTheme.spacing.sm
 
-                    Text {
+                    MichiIcon {
                         Layout.preferredWidth: 22
-                        text: modelData.glyph
+                        Layout.preferredHeight: 18
+                        iconKey: modelData.iconKey
+                        size: 18
                         color: actionMouse.containsMouse ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        horizontalAlignment: Text.AlignHCenter
+                        accessibleName: modelData.label
                     }
                     Text {
                         Layout.fillWidth: true

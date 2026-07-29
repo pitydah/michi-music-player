@@ -569,6 +569,47 @@ class LibraryBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    @Slot(str, bool, result=dict)
+    def setFavoriteBulk(self, track_ids_json: str, favorite: bool):
+        """Set favorite status on multiple tracks in one SQL operation."""
+        if not self._db or not hasattr(self._db, "conn"):
+            return {"ok": False, "error": "NO_DB"}
+        try:
+            track_ids = json.loads(track_ids_json)
+        except json.JSONDecodeError as e:
+            return {"ok": False, "error": f"INVALID_JSON: {e}"}
+        if (
+            not isinstance(track_ids, list)
+            or not track_ids
+            or any(not isinstance(track_id, int) or isinstance(track_id, bool)
+                   for track_id in track_ids)
+        ):
+            return {"ok": False, "error": "INVALID_TRACK_IDS"}
+
+        unique_ids = list(dict.fromkeys(track_ids))
+        placeholders = ", ".join("?" for _ in unique_ids)
+        try:
+            if favorite:
+                sql = (
+                    "INSERT OR IGNORE INTO favorites (track_id) "
+                    "SELECT filepath FROM media_items "
+                    f"WHERE deleted_at IS NULL AND id IN ({placeholders})"
+                )
+            else:
+                sql = (
+                    "DELETE FROM favorites WHERE track_id IN ("
+                    "SELECT filepath FROM media_items "
+                    f"WHERE id IN ({placeholders}))"
+                )
+            with self._db.conn:
+                cursor = self._db.conn.execute(sql, unique_ids)
+            self._refresh_coordinator.refresh_tracks()
+            self._sync_state()
+            self.dataChanged.emit()
+            return {"ok": True, "favorite": favorite, "count": cursor.rowcount}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     @Slot(str, result=dict)
     def enqueueSong(self, filepath: str):
         if not filepath:

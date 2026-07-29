@@ -192,7 +192,11 @@ def test_album_and_artist_models_share_active_filters(service):
     assert service.count_artists(fmt="mp3") == 1
     artists = service.fetch_artists(fmt="mp3")
     assert artists[0]["name"] == "B"
+    assert artists[0]["cover_key"] == "second"
     assert artists[0]["metadata_completeness"] > 0
+
+    jazz_artist = service.fetch_artists(genre="Jazz")[0]
+    assert jazz_artist["cover_key"] == "first"
 
 
 def test_detail_queries_return_real_metadata(service):
