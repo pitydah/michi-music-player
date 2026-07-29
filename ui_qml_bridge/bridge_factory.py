@@ -172,6 +172,8 @@ class BridgeFactory(QObject):
                 songs_service=self._get("songs_service"),
                 track_service=self._get("track_service"),
                 genres_service=self._get("genres_service"),
+                collection_service=self._get("collection_service"),
+                folder_tree_model=self._get("folder_tree_model"),
                 playlists_bridge=self._bridges.get("playlists"),
                 container=self._container,
             )

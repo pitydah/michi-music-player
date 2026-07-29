@@ -18,21 +18,23 @@ Dialog {
     signal collectionSaved(var collection)
 
     readonly property var fieldOptions: [
-        { label: qsTr("Título"), value: "title" },
         { label: qsTr("Artista"), value: "artist" },
         { label: qsTr("Álbum"), value: "album" },
         { label: qsTr("Género"), value: "genre" },
-        { label: qsTr("Compositor"), value: "composer" },
         { label: qsTr("Año"), value: "year" },
-        { label: qsTr("Formato"), value: "format" }
+        { label: qsTr("Formato"), value: "format" },
+        { label: qsTr("Reproducciones"), value: "plays" },
+        { label: qsTr("Valoración"), value: "rating" }
     ]
     readonly property var operatorOptions: [
         { label: qsTr("contiene"), value: "contains" },
-        { label: qsTr("es igual a"), value: "equals" },
-        { label: qsTr("no es igual a"), value: "not_equals" },
-        { label: qsTr("empieza por"), value: "starts_with" },
-        { label: qsTr("es mayor que"), value: "greater_than" },
-        { label: qsTr("es menor que"), value: "less_than" }
+        { label: qsTr("es igual a"), value: "eq" },
+        { label: qsTr("no es igual a"), value: "neq" },
+        { label: qsTr("es mayor que"), value: "gt" },
+        { label: qsTr("es menor que"), value: "lt" },
+        { label: qsTr("es mayor o igual que"), value: "gte" },
+        { label: qsTr("es menor o igual que"), value: "lte" },
+        { label: qsTr("está entre"), value: "between" }
     ]
 
     function optionIndex(options, value) {
@@ -47,12 +49,12 @@ Dialog {
         rulesModel.clear()
         root.collectionId = collection && collection.id ? collection.id : ""
         nameField.text = collection && collection.name ? collection.name : ""
-        matchMode.currentIndex = collection && collection.matchMode === "OR" ? 1 : 0
+        matchMode.currentIndex = collection && collection.logic === "OR" ? 1 : 0
         var rules = collection && collection.rules ? collection.rules : []
         for (var index = 0; index < rules.length; index++)
             rulesModel.append(rules[index])
         if (rulesModel.count === 0)
-            rulesModel.append({ field: "title", operator: "contains", value: "" })
+            rulesModel.append({ field: "artist", operator: "contains", value: "" })
         root.open()
         nameField.forceActiveFocus()
     }
@@ -74,7 +76,7 @@ Dialog {
         root.collectionSaved({
             id: root.collectionId,
             name: nameField.text.trim(),
-            matchMode: matchMode.currentValue,
+            logic: matchMode.currentValue,
             rules: rules
         })
         root.close()
@@ -192,7 +194,7 @@ Dialog {
             MichiButton {
                 text: qsTr("Añadir regla")
                 variant: "secondary"
-                onClicked: rulesModel.append({ field: "title", operator: "contains", value: "" })
+                onClicked: rulesModel.append({ field: "artist", operator: "contains", value: "" })
             }
 
             Item { Layout.fillWidth: true }

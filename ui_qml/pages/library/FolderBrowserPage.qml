@@ -15,6 +15,7 @@ LibrarySectionPage {
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property var folderModel: root.lib ? root.lib.folderModel : null
+    property var folderTreeModel: root.lib ? root.lib.folderTreeModel : null
     property var bridge: root.lib
     property int currentView: 0
     property string _currentPath: ""
@@ -217,7 +218,7 @@ LibrarySectionPage {
                                                : splitView.height
                     SplitView.minimumHeight: root.compact ? 150 : 0
                     currentPath: root._currentPath
-                    folderModel: root.folderModel
+                    folderModel: root.folderTreeModel
 
                     onFolderSelected: function(path) {
                         root.navigateTo(path)
@@ -246,7 +247,7 @@ LibrarySectionPage {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 currentPath: root._currentPath
-                folderModel: root.folderModel
+                folderModel: root.folderTreeModel
                 onFolderSelected: function(path) { root.navigateTo(path) }
             }
         }

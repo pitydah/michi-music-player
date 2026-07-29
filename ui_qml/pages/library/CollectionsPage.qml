@@ -25,7 +25,7 @@ LibrarySectionPage {
         root.customCollections.map(function(collection) {
             return {
                 title: collection.name,
-                description: qsTr("%1 reglas · %2").arg(collection.rules.length).arg(collection.matchMode),
+                description: qsTr("%1 reglas · %2").arg(collection.rules.length).arg(collection.logic),
                 icon: "library",
                 custom: true,
                 definition: collection
@@ -61,8 +61,11 @@ LibrarySectionPage {
     }
 
     function saveCollection(collection) {
-        if (root.lib && root.lib.saveCollection) {
-            var result = root.lib.saveCollection(JSON.stringify(collection))
+        if (root.lib && root.lib.createCollection) {
+            var result = root.lib.createCollection(
+                        collection.name,
+                        JSON.stringify(collection.rules),
+                        collection.logic)
             if (!result || !result.ok)
                 return
             root.reloadCollections()
@@ -72,6 +75,24 @@ LibrarySectionPage {
         entries.push(collection)
         root.customCollections = entries
     }
+
+    function deleteCollection(collectionId) {
+        if (!root.lib || !root.lib.deleteCollection)
+            return
+        var result = root.lib.deleteCollection(collectionId)
+        if (result && result.ok)
+            root.reloadCollections()
+    }
+
+    function openCollection(collection) {
+        if (!root.lib || !root.lib.queryCollection)
+            return
+        var result = root.lib.queryCollection(collection.id, 250, 0)
+        if (result && result.ok)
+            root.collectionSelected(collection, result)
+    }
+
+    signal collectionSelected(var collection, var result)
 
     Column {
         width: parent.width
@@ -106,10 +127,10 @@ LibrarySectionPage {
                     description: modelData.description
                     iconKey: modelData.icon
                     route: modelData.route
-                    primaryActionText: modelData.custom ? qsTr("Editar") : qsTr("Abrir")
+                    primaryActionText: qsTr("Abrir")
                     onClicked: {
                         if (modelData.custom) {
-                            collectionEditor.openFor(modelData.definition)
+                            root.openCollection(modelData.definition)
                         } else if (typeof navigationBridge !== "undefined") {
                             navigationBridge.navigate(modelData.route)
                         }

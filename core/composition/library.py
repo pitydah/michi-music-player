@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 def build(container: ServiceContainer) -> None:
     from core.library.library_query_service import LibraryQueryService
     from core.library.library_filtered_query_service import LibraryFilteredQueryService
+    from core.library.collection_service import CollectionService
+    from library.folder_tree_model import FolderTreeModel
     from core.library_sources_service import LibrarySourcesService
     from core.metadata_editor_service import MetadataEditorService
     from core.library_service import LibraryService
@@ -30,6 +32,9 @@ def build(container: ServiceContainer) -> None:
     canonical_query_service = LibraryQueryService(cf, library_sources_service=sources_svc)
     lqs = LibraryFilteredQueryService(canonical_query_service)
     container.register("library_query_service", lqs)
+    container.register("library_filtered_query_service", lqs)
+    container.register("collection_service", CollectionService(db=db, query_service=lqs))
+    container.register("folder_tree_model", FolderTreeModel(sources_svc.root_paths()))
     container.register("library_mutation_service", MetadataEditorService(db=db))
     container.register("library_service", LibraryService(db=db, worker_manager=wm, library_query_service=lqs))
     playlist_service = PlaylistService(cf)

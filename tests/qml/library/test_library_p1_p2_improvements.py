@@ -4,7 +4,7 @@ import json
 import sqlite3
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -75,8 +75,20 @@ def test_artist_favorite_matches_artist_and_album_artist(favorite_bridge):
 
 
 def test_custom_collection_is_validated_and_upserted():
-    bridge = LibraryBridge(query_service=MagicMock())
-    stored = []
+    collection_service = MagicMock()
+    collection_service.create.return_value = {
+        "ok": True,
+        "collection": {
+            "id": "collection-1",
+            "name": "Late-night jazz",
+            "logic": "OR",
+            "rules": [
+                {"field": "genre", "operator": "eq", "value": "Jazz"},
+                {"field": "year", "operator": "lt", "value": "1970"},
+            ],
+        },
+    }
+    bridge = LibraryBridge(query_service=MagicMock(), collection_service=collection_service)
     payload = {
         "name": "Late-night jazz",
         "matchMode": "OR",
@@ -86,15 +98,12 @@ def test_custom_collection_is_validated_and_upserted():
         ],
     }
 
-    with (
-        patch("core.settings_manager.get_list", side_effect=lambda key: list(stored)),
-        patch("core.settings_manager.set_", side_effect=lambda key, value: stored.extend(value)),
-    ):
-        result = bridge.saveCollection(json.dumps(payload))
+    result = bridge.saveCollection(json.dumps(payload))
 
     assert result["ok"] is True
-    assert result["collection"]["matchMode"] == "OR"
+    assert result["collection"]["logic"] == "OR"
     assert len(result["collection"]["rules"]) == 2
+    collection_service.create.assert_called_once()
 
 
 def test_collection_editor_and_paginated_facets_are_wired():
@@ -104,7 +113,7 @@ def test_collection_editor_and_paginated_facets_are_wired():
     composers = (QML_LIBRARY / "ComposersPage.qml").read_text()
 
     assert 'objectName: "createCollectionButton"' in collections
-    assert "saveCollection(JSON.stringify(collection))" in collections
+    assert "createCollection(" in collections
     assert 'value: "AND"' in editor and 'value: "OR"' in editor
     assert "rulesModel.append" in editor
     assert "function fetchMore()" in genres

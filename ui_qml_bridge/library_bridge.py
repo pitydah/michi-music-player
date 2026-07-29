@@ -5,7 +5,6 @@ import contextlib
 import json
 import logging
 import os
-import uuid
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -47,6 +46,8 @@ class LibraryBridge(QObject):
                  library_sources_service: Any | None = None,
                  library_service: Any | None = None, songs_service: Any | None = None,
                  track_service: Any | None = None, genres_service: Any | None = None,
+                 collection_service: Any | None = None,
+                 folder_tree_model: Any | None = None,
                  playlists_bridge: Any | None = None, container: Any | None = None,
                  queue_service: Any | None = None, parent: QObject | None = None) -> None:
         assert query_service is not None, "LibraryBridge: query_service is REQUIRED"
@@ -66,6 +67,8 @@ class LibraryBridge(QObject):
         self._songs_svc = songs_service
         self._track_svc = track_service
         self._genres_svc = genres_service
+        self._collection_svc = collection_service
+        self._folder_tree_model = folder_tree_model
         self._search_query = ""
         self._sort_key = "title"
         self._sort_asc = True
@@ -235,6 +238,11 @@ class LibraryBridge(QObject):
     @Property("QVariant", notify=dataChanged)
     def folderModel(self):
         return self._folder_model
+
+    @Property("QVariant", constant=True)
+    def folderTreeModel(self):
+        """Return the hierarchical filesystem model for QML TreeView."""
+        return self._folder_tree_model
 
     @Property(int, notify=dataChanged)
     def pageSize(self):
@@ -1090,60 +1098,69 @@ class LibraryBridge(QObject):
     @Slot(result="QVariantList")
     def getCollections(self):
         """Return persisted user-defined smart collections."""
-        from core.settings_manager import get_list
+        service = self._collection_svc
+        return service.list() if service is not None else []
 
-        collections = get_list("library/custom_collections")
-        return [entry for entry in collections if isinstance(entry, dict)]
+    @Slot(str, str, str, result=dict)
+    def createCollection(self, name: str, rules_json: str, logic: str):
+        """Create a validated smart collection through CollectionService."""
+        if self._collection_svc is None:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        try:
+            rules = json.loads(rules_json)
+        except json.JSONDecodeError as error:
+            return {"ok": False, "error": f"INVALID_JSON: {error}"}
+        if not isinstance(rules, list):
+            return {"ok": False, "error": "INVALID_RULES"}
+        return self._collection_svc.create(name, rules, logic)
+
+    @Slot(str, result=dict)
+    def deleteCollection(self, collection_id: str):
+        """Delete one smart collection."""
+        if self._collection_svc is None:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        return self._collection_svc.delete(collection_id)
+
+    @Slot(str, int, int, result=dict)
+    def queryCollection(self, collection_id: str, limit: int, offset: int):
+        """Return one page of tracks matching a smart collection."""
+        if self._collection_svc is None:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE", "items": [], "total": 0}
+        return self._collection_svc.query(collection_id, limit, offset)
 
     @Slot(str, result=dict)
     def saveCollection(self, collection_json: str):
-        """Validate and persist one user-defined smart collection."""
-        from core.settings_manager import get_list, set_
-
+        """Compatibility adapter for the previous collection editor contract."""
+        if self._collection_svc is None:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
         try:
             collection = json.loads(collection_json)
         except json.JSONDecodeError as e:
             return {"ok": False, "error": f"INVALID_JSON: {e}"}
         if not isinstance(collection, dict):
             return {"ok": False, "error": "INVALID_COLLECTION"}
-        name = str(collection.get("name") or "").strip()
-        match_mode = str(collection.get("matchMode") or "AND").upper()
-        rules = collection.get("rules")
-        if not name or match_mode not in {"AND", "OR"} or not isinstance(rules, list) or not rules:
-            return {"ok": False, "error": "INVALID_COLLECTION"}
-        allowed_fields = {"title", "artist", "album", "genre", "composer", "year", "format"}
-        allowed_operators = {"contains", "equals", "not_equals", "starts_with", "greater_than", "less_than"}
-        normalized_rules = []
-        for rule in rules:
-            if not isinstance(rule, dict):
-                return {"ok": False, "error": "INVALID_RULE"}
-            field = str(rule.get("field") or "")
-            operator = str(rule.get("operator") or "")
-            value = str(rule.get("value") or "").strip()
-            if field not in allowed_fields or operator not in allowed_operators or not value:
-                return {"ok": False, "error": "INVALID_RULE"}
-            normalized_rules.append({"field": field, "operator": operator, "value": value})
-
-        collection_id = str(collection.get("id") or "").strip()
-        if not collection_id:
-            collection_id = f"collection-{uuid.uuid4().hex}"
-        saved = {
-            "id": collection_id,
-            "name": name,
-            "matchMode": match_mode,
-            "rules": normalized_rules,
+        operator_aliases = {
+            "equals": "eq",
+            "not_equals": "neq",
+            "greater_than": "gt",
+            "less_than": "lt",
         }
-        collections = [entry for entry in get_list("library/custom_collections") if isinstance(entry, dict)]
-        replaced = False
-        for index, entry in enumerate(collections):
-            if entry.get("id") == collection_id:
-                collections[index] = saved
-                replaced = True
-                break
-        if not replaced:
-            collections.append(saved)
-        set_("library/custom_collections", collections)
-        return {"ok": True, "collection": saved}
+        rules = collection.get("rules", [])
+        if isinstance(rules, list):
+            rules = [
+                {**rule, "operator": operator_aliases.get(rule.get("operator"), rule.get("operator"))}
+                for rule in rules
+                if isinstance(rule, dict)
+            ]
+        collection_id = str(collection.get("id") or "").strip()
+        values = {
+            "name": collection.get("name"),
+            "rules": rules,
+            "logic": collection.get("logic", collection.get("matchMode", "AND")),
+        }
+        if collection_id:
+            return self._collection_svc.update(collection_id, **values)
+        return self._collection_svc.create(values["name"], values["rules"], values["logic"])
 
     @Slot(result="QVariantList")
     def getYears(self):
