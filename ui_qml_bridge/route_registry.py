@@ -827,7 +827,22 @@ ROUTES: dict[str, dict] = {
         "placeholder_state": None,
         "params": None, "category": "core",
     },
-    "home_audio.chain_planner": {
+        "home_audio.setup": {
+        "route": "home_audio.setup", "parent": "home_audio",
+        "title": "Configurar Home Audio",
+        "breadcrumb_title": "Configurar",
+        "source": "../pages/home_audio/SetupWizardPage.qml",
+        "icon": "settings", "order": 50, "sidebar_visible": False,
+        "sidebar_group": "home_audio", "expandable": False,
+        "status": "functional", "capability": "home_audio",
+        "aliases": ["ha_setup", "home_audio.wizard"],
+        "keywords": ["configurar", "setup", "wizard", "asistente"],
+        "placeholder_state": None,
+        "params": None, "category": "home_audio",
+    },
+
+    "home_audio.chain_planner":
+ {
         "route": "home_audio.chain_planner", "parent": "home_audio",
         "title": "Planificador de cadenas", "breadcrumb_title": "Cadenas",
         "source": "../pages/home_audio/ChainPlannerPlaceholderPage.qml",
