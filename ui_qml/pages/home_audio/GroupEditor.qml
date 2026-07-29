@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Group Editor"
+    Accessible.name: qsTr("Group Editor")
     objectName: "groupEditor"
     focus: true
     id: root
@@ -39,7 +39,7 @@ Item {
             TextField {
                 Accessible.role: Accessible.EditableText
 
-                Accessible.name: "Campo de texto"
+                Accessible.name: qsTr("Campo de texto")
 
                 activeFocusOnTab: true
 

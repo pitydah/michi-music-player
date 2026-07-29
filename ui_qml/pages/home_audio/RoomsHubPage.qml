@@ -12,10 +12,18 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Habitaciones y zonas"
+    Accessible.name: qsTr("Habitaciones y zonas")
 
     property var ha: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
     property string selectedZoneId: ""
+    property bool loading: false
+    property string pageError: ""
+    readonly property var zones: root.ha && root.ha.zones ? root.ha.zones : []
+    readonly property int pageState: root.loading ? AsyncStateView.LOADING
+                                                  : root.pageError !== "" ? AsyncStateView.ERROR
+                                                                          : !root.ha ? AsyncStateView.ERROR
+                                                                                     : root.zones.length === 0 ? AsyncStateView.EMPTY
+                                                                                                              : AsyncStateView.READY
 
     MichiResponsive {
         id: responsive
@@ -46,9 +54,24 @@ Item {
     }
 
     function routeEnter(route, params) {
-        if (root.ha && typeof root.ha.refresh === "function")
-            root.ha.refresh()
+        root.refreshRooms()
         root.selectZone(params ? (params.zoneId || params.zone_id || "") : "")
+    }
+
+    function refreshRooms() {
+        root.pageError = ""
+        if (!root.ha || typeof root.ha.refresh !== "function") {
+            root.loading = false
+            root.pageError = qsTr("El servicio Home Audio no está disponible.")
+            return
+        }
+        root.loading = true
+        var result = root.ha.refresh()
+        if (result && result.pending)
+            return
+        root.loading = false
+        if (result && result.ok === false)
+            root.pageError = result.error || qsTr("No se pudieron actualizar las zonas.")
     }
 
     Connections {
@@ -57,10 +80,38 @@ Item {
             if (root.selectedZoneId !== "")
                 root.selectZone(root.selectedZoneId)
         }
+        function onOperationFinished(result) {
+            if (!root.loading)
+                return
+            root.loading = false
+            if (!result || result.ok === false)
+                root.pageError = result && result.error
+                                 ? result.error
+                                 : qsTr("No se pudieron actualizar las zonas.")
+        }
     }
 
-    Flickable {
-        id: flickable
+    AsyncStateView {
+        anchors.fill: parent
+        state: root.pageState
+        title: root.pageState === AsyncStateView.LOADING
+               ? qsTr("Actualizando habitaciones y zonas")
+               : root.pageState === AsyncStateView.EMPTY
+                 ? qsTr("No hay zonas configuradas")
+                 : qsTr("No se pudieron cargar las zonas")
+        message: root.pageState === AsyncStateView.LOADING
+                 ? qsTr("Consultando los dispositivos y grupos disponibles.")
+                 : root.pageState === AsyncStateView.EMPTY
+                   ? qsTr("Agrega dispositivos desde Conexiones para comenzar.")
+                   : qsTr("Comprueba el servicio Home Audio e inténtalo de nuevo.")
+        details: root.pageError
+        retryAvailable: root.pageState === AsyncStateView.ERROR && root.ha !== null
+        primaryActionText: root.pageState === AsyncStateView.EMPTY ? qsTr("Actualizar") : ""
+        onRetryRequested: root.refreshRooms()
+        onPrimaryActionRequested: root.refreshRooms()
+
+        readyContent: Flickable {
+            id: flickable
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
@@ -151,6 +202,7 @@ Item {
                     visible: !root.ha || !root.ha.zones || root.ha.zones.length === 0
                 }
             }
+        }
         }
     }
 }

@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Playback Transfer"
+    Accessible.name: qsTr("Playback Transfer")
     objectName: "playbackTransferDialog"
     focus: true
     id: root

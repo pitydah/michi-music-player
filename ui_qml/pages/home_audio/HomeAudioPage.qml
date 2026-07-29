@@ -12,7 +12,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Home Audio"
+    Accessible.name: qsTr("Home Audio")
 
     property var ha: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
     property var _volumeTimers: ({})

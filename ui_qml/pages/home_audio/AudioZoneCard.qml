@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Audio Zone Card"
+    Accessible.name: qsTr("Audio Zone Card")
     objectName: "audioZoneCard"
     focus: true
     id: root

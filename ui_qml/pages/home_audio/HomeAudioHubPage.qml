@@ -12,9 +12,20 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Home Audio"
+    Accessible.name: qsTr("Home Audio")
 
     property var bridge: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
+    property bool loading: false
+    property string pageError: ""
+    readonly property bool hasComponents: root.bridge
+                                          && (root.bridge.homeAssistantAvailable
+                                              || root.bridge.snapcastAvailable
+                                              || root.bridge.zonesSupported)
+    readonly property int pageState: root.loading ? AsyncStateView.LOADING
+                                                  : root.pageError !== "" ? AsyncStateView.ERROR
+                                                                          : !root.bridge ? AsyncStateView.ERROR
+                                                                                         : !root.hasComponents ? AsyncStateView.EMPTY
+                                                                                                               : AsyncStateView.READY
 
     MichiResponsive {
         id: responsive
@@ -22,12 +33,59 @@ Item {
     }
 
     function routeEnter(route, params) {
-        if (root.bridge && typeof root.bridge.refresh === "function")
-            root.bridge.refresh()
+        root.refreshHub()
     }
 
-    Flickable {
-        id: flickable
+    function refreshHub() {
+        root.pageError = ""
+        if (!root.bridge || typeof root.bridge.refresh !== "function") {
+            root.loading = false
+            root.pageError = qsTr("El servicio Home Audio no está disponible.")
+            return
+        }
+        root.loading = true
+        var result = root.bridge.refresh()
+        if (result && result.pending)
+            return
+        root.loading = false
+        if (result && result.ok === false)
+            root.pageError = result.error || qsTr("No se pudo actualizar Home Audio.")
+    }
+
+    Connections {
+        target: root.bridge
+        function onOperationFinished(result) {
+            if (!root.loading)
+                return
+            root.loading = false
+            if (!result || result.ok === false)
+                root.pageError = result && result.error
+                                 ? result.error
+                                 : qsTr("No se pudo actualizar Home Audio.")
+        }
+    }
+
+    AsyncStateView {
+        anchors.fill: parent
+        state: root.pageState
+        title: root.pageState === AsyncStateView.LOADING
+               ? qsTr("Actualizando Home Audio")
+               : root.pageState === AsyncStateView.EMPTY
+                 ? qsTr("Home Audio no está configurado")
+                 : qsTr("No se pudo cargar Home Audio")
+        message: root.pageState === AsyncStateView.LOADING
+                 ? qsTr("Consultando servicios y dispositivos disponibles.")
+                 : root.pageState === AsyncStateView.EMPTY
+                   ? qsTr("Configura Home Assistant o conecta un receptor compatible para comenzar.")
+                   : qsTr("Comprueba el servicio Home Audio e inténtalo de nuevo.")
+        details: root.pageError
+        retryAvailable: root.pageState === AsyncStateView.ERROR && root.bridge !== null
+        primaryActionText: root.pageState === AsyncStateView.EMPTY ? qsTr("Actualizar") : ""
+        onRetryRequested: root.refreshHub()
+        onPrimaryActionRequested: root.refreshHub()
+
+        readyContent: Flickable {
+            id: flickable
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
@@ -163,6 +221,7 @@ Item {
                     }
                 }
             }
+        }
         }
     }
 }

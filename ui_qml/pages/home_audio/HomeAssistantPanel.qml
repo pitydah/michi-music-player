@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Home Assistant"
+    Accessible.name: qsTr("Home Assistant")
     objectName: "homeAssistantPanel"
     focus: true
     id: root
@@ -21,7 +21,16 @@ Item {
     signal disconnectClicked()
     signal openDiagnostics()
 
-    implicitHeight: root.state === "not_configured" ? 400 : 240
+    readonly property real cardHeight: root.state === "not_configured"
+                                       ? (responsive.compact ? 560 : 460)
+                                       : (responsive.compact ? 320 : 240)
+
+    implicitHeight: root.cardHeight
+
+    MichiResponsive {
+        id: responsive
+        availableWidth: root.width
+    }
 
     function routeEnter(route, params) {
         if (root.bridge && root.bridge.homeAssistantState !== undefined)
@@ -34,13 +43,15 @@ Item {
 
         GlassMaterial {
             width: parent.width
-            height: root.state === "not_configured" ? 360 : 200
+            height: root.cardHeight
             variant: "base"
             radius: MichiTheme.radius.md
 
             Column {
                 anchors.fill: parent
-                anchors.margins: MichiTheme.spacing.lg
+                anchors.margins: responsive.compact
+                                 ? MichiTheme.spacing.md
+                                 : MichiTheme.spacing.lg
                 spacing: MichiTheme.spacing.md
 
                 Text {
@@ -60,6 +71,7 @@ Item {
                 }
 
                 SpinBox {
+                    width: responsive.compact ? parent.width : Math.min(parent.width, 240)
                     visible: root.state === "not_configured"
                     from: 1
                     to: 65535
@@ -81,22 +93,33 @@ Item {
 
                 Text {
                     text: root.state === "not_configured"
-                        ? "Home Assistant no está configurado. Conéctalo para controlar la reproducción en tu hogar."
-                        : "Home Assistant conectado y operativo."
+                        ? qsTr("Home Assistant no está configurado. Conéctalo para controlar la reproducción en tu hogar.")
+                        : qsTr("Home Assistant conectado y operativo.")
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width
                     wrapMode: Text.WordWrap
                 }
 
-                Row {
-                    spacing: MichiTheme.spacing.sm
+                Grid {
+                    id: actionGrid
+                    width: parent.width
+                    columns: responsive.compact
+                             ? 1
+                             : root.state === "not_configured" ? 2 : 3
+                    columnSpacing: MichiTheme.spacing.sm
+                    rowSpacing: MichiTheme.spacing.sm
+
                     MichiButton {
                         Accessible.role: Accessible.Button
 
                         activeFocusOnTab: true
 
-                        text: root.state === "not_configured" ? "Configurar Home Assistant" : qsTr("Abrir Home Assistant")
+                        width: (parent.width - parent.columnSpacing * (parent.columns - 1))
+                               / parent.columns
+                        text: root.state === "not_configured"
+                              ? qsTr("Configurar Home Assistant")
+                              : qsTr("Abrir Home Assistant")
                         variant: "primary"
                         enabled: root.state !== "not_configured"
                                  || (root.host.trim() !== "" && root.token.trim() !== "")
@@ -106,12 +129,16 @@ Item {
                         }
                     }
                     MichiButton {
+                        width: (parent.width - parent.columnSpacing * (parent.columns - 1))
+                               / parent.columns
                         text: qsTr("Desconectar")
                         variant: "danger"
                         visible: root.state !== "not_configured"
                         onClicked: root.disconnectClicked()
                     }
                     MichiButton {
+                        width: (parent.width - parent.columnSpacing * (parent.columns - 1))
+                               / parent.columns
                         text: qsTr("Diagnóstico")
                         variant: "ghost"
                         onClicked: root.openDiagnostics()
@@ -119,7 +146,7 @@ Item {
                 }
 
                 StatusBadge {
-                    text: root.state === "not_configured" ? "No configurado" : qsTr("Conectado")
+                    text: root.state === "not_configured" ? qsTr("No configurado") : qsTr("Conectado")
                     kind: root.state === "not_configured" ? "disconnected" : "success"
                 }
             }

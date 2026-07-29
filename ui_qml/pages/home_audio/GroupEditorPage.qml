@@ -27,6 +27,11 @@ Item {
 
     signal groupCancelled()
 
+    MichiResponsive {
+        id: responsive
+        availableWidth: root.width
+    }
+
     function groupForId(id) {
         var groups = root.bridge && root.bridge.groups ? root.bridge.groups : []
         for (var index = 0; index < groups.length; ++index) {
@@ -153,20 +158,24 @@ Item {
         }
 
         QQC2.ScrollView {
+            id: receiverScroll
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
 
-            ColumnLayout {
-                width: parent.width
-                spacing: MichiTheme.spacing.sm
+            Grid {
+                width: receiverScroll.availableWidth
+                columns: responsive.columnCount
+                columnSpacing: MichiTheme.spacing.sm
+                rowSpacing: MichiTheme.spacing.sm
 
                 Repeater {
                     model: root.availableReceivers
 
                     QQC2.CheckBox {
                         required property var modelData
-                        Layout.fillWidth: true
+                        width: (parent.width - parent.columnSpacing * (parent.columns - 1))
+                               / parent.columns
                         text: modelData.name || modelData.id || qsTr("Receptor")
                         checked: root.selectedReceiverIds.indexOf(String(modelData.id || "")) >= 0
                         enabled: modelData.available !== false

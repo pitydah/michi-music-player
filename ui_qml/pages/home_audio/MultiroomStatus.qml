@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Multiroom Status"
+    Accessible.name: qsTr("Multiroom Status")
     objectName: "multiroomStatus"
     focus: true
     id: root

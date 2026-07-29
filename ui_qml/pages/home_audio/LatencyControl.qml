@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Latency Control"
+    Accessible.name: qsTr("Latency Control")
     objectName: "latencyControl"
     focus: true
     id: root
