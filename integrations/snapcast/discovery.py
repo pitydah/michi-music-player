@@ -52,7 +52,7 @@ class SnapClientDiscovery(QObject):
                 if "_snapcast" not in line.lower():
                     continue
                 parts = line.split(";")
-                if len(parts) >= 7:
+                if len(parts) > 7:
                     clients.append({
                         "id": f"avahi:{parts[6]}:{parts[7]}",
                         "name": parts[3] if len(parts) > 3 else "Snapclient",

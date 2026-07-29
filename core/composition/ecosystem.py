@@ -41,6 +41,8 @@ def build(container: ServiceContainer) -> None:
 
         discovery = SnapClientDiscovery()
         snapserver = SnapServerManager()
+        from integrations.snapcast.group_manager import GroupManager
+        group_manager = GroupManager()
         snapserver.configure(
             get_int("home_audio/snapserver_tcp_port") or 1704,
             get_int("home_audio/snapserver_control_port") or 1705,
@@ -61,6 +63,7 @@ def build(container: ServiceContainer) -> None:
         ha_token = get_str("home_audio/ha_token")
         ha_client = HomeAssistantService(ha_url, ha_token) if ha_url and ha_token else None
         home_audio = HomeAudioService(
+            snapcast_group_manager=group_manager,
             snapcast_discovery=discovery,
             snapserver_manager=snapserver,
             snapcast_control=snapcast_control,

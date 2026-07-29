@@ -70,6 +70,29 @@ class HomeAudioBridge(QObject):
         self._operation_error = ""
         self._operation_generation = 0
 
+    @Property(bool, notify=stateChanged)
+    def available(self):
+        """General availability: service exists AND (snapcast reachable OR HA configured)."""
+        return (
+            self._ha_svc is not None
+            and (self._snapcast_state not in ("unavailable", "concept")
+                 or self._ha_state not in ("not_configured", "unavailable"))
+        )
+
+    @Property(str, notify=stateChanged)
+    def streamState(self):
+        """Current stream state: inactive, playing, paused, error."""
+        if not self._streams:
+            return "inactive"
+        active = [s for s in self._streams if s.get("active") or s.get("status") == "playing"]
+        if active:
+            return "playing"
+        if any(s.get("status") == "paused" for s in self._streams):
+            return "paused"
+        if any(s.get("status") == "error" for s in self._streams):
+            return "error"
+        return "inactive"
+
     @Property(bool, constant=True)
     def homeAssistantAvailable(self):
         return self._ha_svc is not None
@@ -562,6 +585,41 @@ class HomeAudioBridge(QObject):
     @Slot(result=dict)
     def serverHandoff(self):
         return self._call_svc("server_handoff")
+
+    @Slot(str, "QVariantList", result=dict)
+    def createGroup(self, name: str, receiver_ids: list) -> dict:
+        """Create a new group with the given receivers."""
+        if not self._ha_svc:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        zone_ids = [str(r.get("id", r)) if isinstance(r, dict) else str(r) for r in receiver_ids]
+        result = self._ha_svc.create_group(name, zone_ids)
+        self.stateChanged.emit()
+        return result
+
+    @Slot(str, str, "QVariantList", result=dict)
+    def updateGroup(self, group_id: str, name: str, receiver_ids: list) -> dict:
+        """Update an existing group's name and receiver membership."""
+        if not self._ha_svc:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        ok = True
+        errors = []
+        rid_set = set(str(r.get("id", r)) if isinstance(r, dict) else str(r) for r in receiver_ids)
+        current = next((g for g in self._groups if g.get("id") == group_id), None)
+        if current and current.get("name") != name:
+            r = self._ha_svc.set_group_name(group_id, name)
+            if not r.get("ok"):
+                ok = False
+                errors.append(r.get("error", "RENAME_FAILED"))
+        current_ids = {str(m.get("id", m)) if isinstance(m, dict) else str(m)
+                       for m in (current or {}).get("members", [])}
+        to_add = rid_set - current_ids
+        for rid in to_add:
+            r = self._ha_svc.move_receiver(rid, group_id)
+            if not r.get("ok"):
+                ok = False
+                errors.append(r.get("error", f"MOVE_FAILED_{rid}"))
+        self.stateChanged.emit()
+        return {"ok": ok, "errors": errors}
 
     @Slot(str, result=dict)
     def groupZones(self, zone_ids: str = ""):
