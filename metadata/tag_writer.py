@@ -2,13 +2,15 @@
 
 Atomic write strategy:
   1. Backup original → {filepath}.bak
-  2. Write to temp file
-  3. os.replace(temp, original)
-  4. Remove .bak on success
-  5. If step 2 or 3 fails, restore from .bak
+  2. Copy original to temp → {filepath}.tmp
+  3. Save modified tags to temp (copy ensures audio data is present)
+  4. Verify temp file is valid
+  5. os.replace(temp, original)
+  6. Remove .bak on success
+  7. If verify fails: restore from .bak & return error
+  8. If step 3 or 5 fails: restore from .bak
 """
 import os
-import tempfile
 import shutil
 
 from metadata.tag_model import TrackTags
@@ -91,12 +93,15 @@ def write_tags(tags: TrackTags) -> bool:
         if use_all or tags.artwork_dirty or "artwork" in dirty:
             _write_artwork(f, kind, tags)
 
-        # Atomic write: backup → temp → replace
+        # Atomic write: backup → copy → save → verify → replace → cleanup
         shutil.copy2(filepath, backup_path)
-        fd, tmp_path = tempfile.mkstemp(suffix=ext, dir=os.path.dirname(filepath))
+        tmp_path = filepath + ".tmp"
+        shutil.copy2(filepath, tmp_path)
         try:
-            os.close(fd)
             f.save(tmp_path)
+            verify = mutagen.File(tmp_path)
+            if verify is None:
+                raise RuntimeError("VERIFY_FAILED")
             os.replace(tmp_path, filepath)
         except BaseException:
             with contextlib.suppress(OSError):
@@ -162,7 +167,7 @@ def _add_mp3_frame(f, frame_id: str, value: str):
 # ── Vorbis ──
 
 def _set_vorbis_field(f, attr: str, value: str):
-    if not hasattr(f, 'tags'):
+    if not hasattr(f, 'tags') or f.tags is None:
         return
     if value.strip():
         f.tags[attr] = value

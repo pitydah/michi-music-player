@@ -18,6 +18,8 @@ from typing import Any
 
 from PySide6.QtCore import QObject, Signal
 
+from core.models.operation_result import OperationResult
+
 logger = logging.getLogger("michi.metadata.service")
 
 
@@ -83,6 +85,50 @@ class MetadataService(QObject):
             return {"ok": True, "tags": tags, "has_artwork": state.has_artwork}
         except Exception as e:
             return {"ok": False, "error": str(e)}
+
+    def read(self, filepath: str) -> OperationResult:
+        """Load metadata using the typed result expected by MetadataBridge."""
+        result = self.load(filepath)
+        if not result.get("ok"):
+            error = str(result.get("error", "READ_FAILED"))
+            return OperationResult.fail(error, error)
+
+        fields = self._bridge_fields(
+            result.get("tags", {}),
+            has_artwork=bool(result.get("has_artwork", False)),
+        )
+        return OperationResult.success({"fields": fields})
+
+    @staticmethod
+    def _bridge_fields(
+        tags: dict[str, Any],
+        *,
+        has_artwork: bool,
+    ) -> dict[str, Any]:
+        fields = dict(tags)
+        aliases = {
+            "albumartist": "album_artist",
+            "date": "year",
+            "tracknumber": "track_number",
+            "tracktotal": "track_total",
+            "discnumber": "disc_number",
+            "disctotal": "disc_total",
+        }
+        for source, target in aliases.items():
+            if source in fields:
+                fields[target] = fields[source]
+
+        for key in ("bitrate", "sample_rate", "bit_depth", "channels"):
+            try:
+                fields[key] = int(fields.get(key, 0) or 0)
+            except (TypeError, ValueError):
+                fields[key] = 0
+        try:
+            fields["duration"] = float(fields.get("duration", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            fields["duration"] = 0.0
+        fields["has_artwork"] = has_artwork
+        return fields
 
     def _read_tags(self, filepath: str) -> dict[str, str]:
         if self._tag_reader:
@@ -197,11 +243,69 @@ class MetadataService(QObject):
         self.confirmationRequested.emit(filepath, token)
         return {"ok": True, "confirmation_token": token, "message": message}
 
-    def confirm_and_apply(self, filepath: str, confirmation_token: str) -> dict[str, Any]:
+    def create_confirmation_token(self, review_id: str, tags: Any) -> str:
+        """Create a confirmation token for the bridge review operation."""
+        del tags
+        result = self.request_confirmation(review_id, message="")
+        return str(result["confirmation_token"])
+
+    def confirm_and_apply(
+        self,
+        review_id: str,
+        tags: Any,
+    ) -> dict[str, Any] | OperationResult:
+        """Apply canonical token requests or bridge review operations.
+
+        String second arguments preserve the canonical ``filepath, token`` API.
+        Metadata objects use the bridge-facing ``review_id, tags`` API.
+        """
+        if isinstance(tags, str):
+            return self._confirm_with_token(review_id, tags)
+
+        filepath = self._confirmation_tokens.pop(review_id, None)
+        if not filepath:
+            return OperationResult.fail(
+                "INVALID_CONFIRMATION_TOKEN",
+                "INVALID_CONFIRMATION_TOKEN",
+            )
+
+        self._sync_bridge_edits(filepath, tags)
+        return self._as_operation_result(self._apply_changes(filepath))
+
+    def _confirm_with_token(
+        self,
+        filepath: str,
+        confirmation_token: str,
+    ) -> dict[str, Any]:
         expected_fp = self._confirmation_tokens.pop(confirmation_token, None)
         if expected_fp != filepath:
             return {"ok": False, "error": "INVALID_CONFIRMATION_TOKEN"}
         return self._apply_changes(filepath)
+
+    def _sync_bridge_edits(self, filepath: str, tags: Any) -> None:
+        state = self._active.get(filepath)
+        if state is None:
+            return
+
+        for field_name in getattr(tags, "dirty_fields", set()):
+            old_value = str(state.tags.get(field_name, "") or "")
+            new_value = str(getattr(tags, field_name, "") or "")
+            state.tags[field_name] = new_value
+            state.edits.append(
+                MetadataEdit(
+                    field=field_name,
+                    old_value=old_value,
+                    new_value=new_value,
+                )
+            )
+
+    @staticmethod
+    def _as_operation_result(result: dict[str, Any]) -> OperationResult:
+        if result.get("ok"):
+            data = {key: value for key, value in result.items() if key != "ok"}
+            return OperationResult.success(data)
+        error = str(result.get("error", "APPLY_FAILED"))
+        return OperationResult.fail(error, error)
 
     def _apply_changes(self, filepath: str) -> dict[str, Any]:
         state = self._active.get(filepath)
@@ -282,7 +386,8 @@ class MetadataService(QObject):
                     "title": "title", "artist": "artist", "album": "album",
                     "albumartist": "albumartist", "genre": "genre",
                     "date": "date", "tracknumber": "tracknumber",
-                    "discnumber": "discnumber", "composer": "composer",
+                    "tracktotal": "tracktotal", "discnumber": "discnumber",
+                    "disctotal": "disctotal", "composer": "composer",
                     "comment": "comment", "bpm": "bpm",
                 }
                 tf = field_map.get(edit.field)
@@ -306,7 +411,8 @@ class MetadataService(QObject):
                     "title": "title", "artist": "artist", "album": "album",
                     "albumartist": "albumartist", "genre": "genre",
                     "date": "date", "tracknumber": "tracknumber",
-                    "discnumber": "discnumber", "composer": "composer",
+                    "tracktotal": "tracktotal", "discnumber": "discnumber",
+                    "disctotal": "disctotal", "composer": "composer",
                     "comment": "comment", "bpm": "bpm",
                 }
                 tf = field_map.get(edit.field)

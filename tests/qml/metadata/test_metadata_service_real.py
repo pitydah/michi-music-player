@@ -126,6 +126,40 @@ class TestMetadataServiceReal:
         assert result["ok"] is False
         assert result["error"] == "FILE_NOT_FOUND"
 
+    def test_read_exposes_bridge_result_contract(self, svc, sample_file):
+        svc._tag_reader = lambda _filepath: {
+            "title": "Bridge Title",
+            "artist": "Bridge Artist",
+            "albumartist": "Bridge Album Artist",
+            "bitrate": "1411000",
+            "sample_rate": "44100",
+        }
+
+        result = svc.read(sample_file)
+
+        assert result.ok is True
+        assert result.data["fields"]["title"] == "Bridge Title"
+        assert result.data["fields"]["album_artist"] == "Bridge Album Artist"
+        assert result.data["fields"]["bitrate"] == 1411000
+        assert result.data["fields"]["sample_rate"] == 44100
+
+    def test_bridge_loads_metadata_from_real_service(self, svc, sample_file):
+        from ui_qml_bridge.metadata_bridge import MetadataBridge
+
+        svc._tag_reader = lambda _filepath: {
+            "title": "Runtime Title",
+            "artist": "Runtime Artist",
+            "bitrate": "320000",
+            "sample_rate": "48000",
+        }
+        bridge = MetadataBridge(metadata_service=svc)
+
+        result = bridge.loadMetadata(sample_file)
+
+        assert result["ok"] is True
+        assert bridge.trackTitle == "Runtime Title"
+        assert bridge.trackArtist == "Runtime Artist"
+
     def test_edit_field_after_load(self, svc, sample_file):
         svc.load(sample_file)
         result = svc.edit_field(sample_file, "title", "New Title")
@@ -176,6 +210,32 @@ class TestMetadataServiceReal:
         result = svc.request_confirmation(sample_file)
         assert result["ok"] is True
         assert "confirmation_token" in result
+
+    def test_create_confirmation_token_exposes_bridge_contract(self, svc, sample_file):
+        svc.load(sample_file)
+
+        token = svc.create_confirmation_token(sample_file, 1)
+
+        assert isinstance(token, str)
+        assert svc._confirmation_tokens[token] == sample_file
+
+    def test_confirm_and_apply_accepts_bridge_review_and_tags(self, svc, sample_file):
+        svc._tag_reader = lambda _filepath: {
+            "title": "Original",
+            "artist": "Artist",
+        }
+        svc.load(sample_file)
+        token = svc.create_confirmation_token(sample_file, 1)
+        tags = MockTags(filepath=sample_file, title="Updated", artist="Artist")
+        tags.dirty = True
+        tags.dirty_fields.add("title")
+
+        with patch.object(svc, "_apply_changes", return_value={"ok": True}):
+            result = svc.confirm_and_apply(token, tags)
+
+        assert result.ok is True
+        assert svc._active[sample_file].tags["title"] == "Updated"
+        assert svc._active[sample_file].edits[-1].new_value == "Updated"
 
     @patch("core.metadata_service.MetadataService._write_tags", return_value=True)
     @patch("core.metadata_service.MetadataService._verify_changes", return_value=True)
