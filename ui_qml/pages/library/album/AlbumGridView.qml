@@ -203,7 +203,7 @@ Item {
                                 radius: parent.radius
                                 opacity: cardMouse.containsMouse || card.selected ? 1 : 0
                                 gradient: Gradient {
-                                    GradientStop { position: 0.35; color: "transparent" }
+                                    GradientStop { position: 0.35; color: Qt.rgba(0.0, 0.0, 0.0, 0.0) }
                                     GradientStop { position: 1.0; color: MichiTheme.colors.overlayDark }
                                 }
                                 Behavior on opacity {

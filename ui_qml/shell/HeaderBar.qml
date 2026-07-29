@@ -93,12 +93,6 @@ Item {
         anchors.fill: parent
         color: MichiTheme.colors.surfaceChrome
 
-        TextureOverlay {
-            anchors.fill: parent
-            variant: "grain"
-            strength: 0.34
-        }
-
         Rectangle {
             anchors.bottom: parent.bottom
             width: parent.width
