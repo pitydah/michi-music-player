@@ -17,7 +17,9 @@ Item {
     property var _volumeTimers: ({})
     property bool diagnosticsVisible: false
     property int pageState: {
-        if (!root.ha) return stateError
+        if (!root.ha) return stateUnavailable
+        if (root.ha.available === false) return stateUnavailable
+        if (root.ha.streamState === "error") return stateError
         return stateReady
     }
 
@@ -25,6 +27,14 @@ Item {
     readonly property int stateReady: 1
     readonly property int stateError: 2
     readonly property int stateEmpty: 3
+    readonly property int stateUnavailable: 4
+
+    function routeEnter(route, params) {
+        if (root.ha && typeof root.ha.refresh === "function")
+            root.ha.refresh()
+        var s = root.pageState
+        homeAudioGuard.checkCapability(root.ha)
+    }
 
     Component.onCompleted: {
         if (root.ha && typeof root.ha.refresh !== "undefined")
@@ -42,6 +52,15 @@ Item {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
         sourceComponent: ErrorState { message: qsTr("Home Audio no disponible") }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: root.pageState === root.stateUnavailable
+        sourceComponent: UnavailableState {
+            title: qsTr("Home Audio no disponible")
+            message: qsTr("Configura un servicio Home Audio para usar esta sección.")
+        }
     }
 
     Loader {
@@ -245,6 +264,14 @@ Item {
         z: 10
         sourceComponent: DiagnosticsPage {
             onCloseRequested: root.diagnosticsVisible = false
+        }
+    }
+
+    Connections {
+        target: root.ha
+        function onStateChanged() {
+            // Force property re-evaluation
+            var s = root.pageState
         }
     }
 }

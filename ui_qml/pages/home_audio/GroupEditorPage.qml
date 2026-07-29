@@ -18,6 +18,7 @@ Item {
     property bool editMode: groupId !== ""
     property string feedback: ""
     property bool feedbackError: false
+    property bool _loading: false
     readonly property bool operationBusy: root.bridge
                                                ? root.bridge.operationInProgress : false
 
@@ -35,17 +36,24 @@ Item {
         return null
     }
 
-    function routeEnter(route, params) {
-        root.groupId = params ? String(params.groupId || params.group_id || "") : ""
-        root.feedback = ""
-        root.feedbackError = false
-        if (root.bridge)
-            root.bridge.refresh()
+    function applySelectedGroup() {
         var group = root.groupForId(root.groupId)
         root.groupName = group ? String(group.name || "") : ""
         root.selectedReceiverIds = group
                                    ? (group.members || group.devices || []).slice(0)
                                    : []
+    }
+
+    function routeEnter(route, params) {
+        root._loading = true
+        root.groupId = params ? String(params.groupId || params.group_id || "") : ""
+        root.feedback = ""
+        root.feedbackError = false
+        var result = root.bridge ? root.bridge.refresh() : null
+        if (result && result.pending)
+            return
+        root.applySelectedGroup()
+        root._loading = false
     }
 
     function toggleReceiver(receiverId) {
@@ -92,10 +100,17 @@ Item {
             navigationBridge.back()
     }
 
+    Loader {
+        anchors.centerIn: parent
+        active: root._loading
+        sourceComponent: LoadingState { title: qsTr("Cargando grupo") }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
         spacing: MichiTheme.spacing.lg
+        visible: !root._loading
 
         RowLayout {
             Layout.fillWidth: true
@@ -204,6 +219,11 @@ Item {
     Connections {
         target: root.bridge
         function onOperationFinished(result) {
+            if (root._loading) {
+                root.applySelectedGroup()
+                root._loading = false
+                return
+            }
             if (root.operationBusy || root.feedback === qsTr("Guardando grupo…"))
                 root.showResult(result)
         }

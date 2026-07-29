@@ -21,6 +21,21 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: qsTr("Distribución de audio")
 
+    function tabIndex(tab) {
+        if (typeof tab === "number")
+            return Math.max(0, Math.min(4, tab))
+        var names = ["sources", "servers", "receivers", "destinations", "routes"]
+        var index = names.indexOf(String(tab || "").toLowerCase())
+        return index >= 0 ? index : 0
+    }
+
+    function routeEnter(route, params) {
+        if (params && params.tab !== undefined)
+            tabs.currentIndex = root.tabIndex(params.tab)
+        if (root.bridge && typeof root.bridge.refreshDistribution === "function")
+            root.bridge.refreshDistribution()
+    }
+
     function statusKind(state) {
         if (state === "active" || state === "running" || state === "online" || state === "ready")
             return "success"

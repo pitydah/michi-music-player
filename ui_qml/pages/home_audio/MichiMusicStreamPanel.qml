@@ -11,8 +11,14 @@ Item {
     id: root
 
     property string streamState: "concept"
+    property var bridge: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
 
     implicitHeight: 420
+
+    function routeEnter(route, params) {
+        if (root.bridge && root.bridge.streamState !== undefined)
+            root.streamState = root.bridge.streamState
+    }
 
     Column {
         anchors.fill: parent

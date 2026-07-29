@@ -14,6 +14,44 @@ Item {
     Accessible.name: "Habitaciones y zonas"
 
     property var ha: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
+    property string selectedZoneId: ""
+
+    function selectZone(zoneId) {
+        root.selectedZoneId = String(zoneId || "")
+        if (root.selectedZoneId === "")
+            return
+        for (var index = 0; index < zonesRepeater.count; ++index) {
+            var zone = zonesRepeater.model[index]
+            if (String(zone.id || "") !== root.selectedZoneId)
+                continue
+            Qt.callLater(function() {
+                var card = zonesRepeater.itemAt(index)
+                if (!card)
+                    return
+                card.forceActiveFocus()
+                flickable.contentY = Math.max(
+                    0,
+                    Math.min(flickable.contentHeight - flickable.height,
+                             zoneGrid.y + card.y - MichiTheme.spacing.lg)
+                )
+            })
+            return
+        }
+    }
+
+    function routeEnter(route, params) {
+        if (root.ha && typeof root.ha.refresh === "function")
+            root.ha.refresh()
+        root.selectZone(params ? (params.zoneId || params.zone_id || "") : "")
+    }
+
+    Connections {
+        target: root.ha
+        function onStateChanged() {
+            if (root.selectedZoneId !== "")
+                root.selectZone(root.selectedZoneId)
+        }
+    }
 
     Flickable {
         id: flickable
@@ -63,12 +101,14 @@ Item {
             }
 
             Grid {
+                id: zoneGrid
                 width: parent.width
                 columns: parent.width > 900 ? 3 : 2
                 columnSpacing: MichiTheme.spacing.md
                 rowSpacing: MichiTheme.spacing.md
 
                 Repeater {
+                    id: zonesRepeater
                     model: root.ha && root.ha.zones ? root.ha.zones : []
 
                     GlassCard {
@@ -77,6 +117,7 @@ Item {
                         title: modelData.name || qsTr("Zona")
                         subtitle: (modelData.devices ? modelData.devices.length : 0) + " dispositivo(s)"
                         variant: "base"
+                        selected: String(modelData.id || "") === root.selectedZoneId
                         activeFocusOnTab: true
                         Keys.onReturnPressed: clicked()
                         Keys.onSpacePressed: clicked()

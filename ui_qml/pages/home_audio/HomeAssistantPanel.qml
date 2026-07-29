@@ -15,12 +15,18 @@ Item {
     property string host: ""
     property int port: 8123
     property string token: ""
+    property var bridge: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
 
     signal configureClicked(string host, int port, string token)
     signal disconnectClicked()
     signal openDiagnostics()
 
     implicitHeight: root.state === "not_configured" ? 400 : 240
+
+    function routeEnter(route, params) {
+        if (root.bridge && root.bridge.homeAssistantState !== undefined)
+            root.state = root.bridge.homeAssistantState
+    }
 
     Column {
         anchors.fill: parent

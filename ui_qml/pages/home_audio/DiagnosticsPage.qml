@@ -13,6 +13,7 @@ Rectangle {
     property var bridge: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
     property var diagnostics: ({})
     property string feedback: ""
+    property bool _loading: true
     readonly property string snapserverState: diagnostics.snapserver_state || "stopped"
     readonly property bool fifoExists: diagnostics.fifo_exists === true
     readonly property bool fifoWritable: diagnostics.fifo_writable === true
@@ -27,12 +28,21 @@ Rectangle {
     Accessible.name: qsTr("Diagnóstico de Home Audio")
 
     function refreshDiagnostics() {
+        root.routeEnter("home_audio.diagnostics", {})
+    }
+
+    function routeEnter(route, params) {
+        root._loading = true
         if (!root.bridge) {
             root.diagnostics = ({})
+            root._loading = false
             return
         }
-        root.bridge.refresh()
-        root.diagnostics = root.bridge.openDiagnostics()
+        if (typeof root.bridge.refresh === "function")
+            root.bridge.refresh()
+        if (typeof root.bridge.openDiagnostics === "function")
+            root.diagnostics = root.bridge.openDiagnostics()
+        root._loading = false
     }
 
     function testTone() {
@@ -47,10 +57,17 @@ Rectangle {
 
     Component.onCompleted: root.refreshDiagnostics()
 
+    Loader {
+        anchors.centerIn: parent
+        active: root._loading
+        sourceComponent: LoadingState { title: qsTr("Cargando diagnóstico") }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
         spacing: MichiTheme.spacing.md
+        visible: !root._loading
 
         RowLayout {
             Layout.fillWidth: true

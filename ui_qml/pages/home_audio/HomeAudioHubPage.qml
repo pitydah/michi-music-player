@@ -13,6 +13,13 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Home Audio"
 
+    property var bridge: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
+
+    function routeEnter(route, params) {
+        if (root.bridge && typeof root.bridge.refresh === "function")
+            root.bridge.refresh()
+    }
+
     Flickable {
         id: flickable
         anchors.fill: parent
