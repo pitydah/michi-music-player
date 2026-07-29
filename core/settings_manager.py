@@ -1,9 +1,10 @@
 """Settings Manager — unified QSettings for Michi Music Player."""
 
-import os
 import json
-from PySide6.QtCore import QSettings
+import os
+from typing import Any
 
+from PySide6.QtCore import QSettings
 
 SETTINGS = QSettings("Michi", "MusicPlayer")
 
@@ -86,6 +87,7 @@ DEFAULTS = {
     "home_audio/local_media_server_enabled": False,
     "home_audio/local_media_server_port": 8125,
     "home_audio/play_local_monitor": True,
+    "home_audio/manual_snapcast_receivers_v1": [],
     "artist_enrichment/enabled": False,
     "artist_enrichment/provider": "musicbrainz",
     "artist_enrichment/api_key": "",
@@ -176,7 +178,7 @@ DEFAULTS = {
 }
 
 
-def get(key: str):
+def get(key: str) -> Any:
     return SETTINGS.value(key, DEFAULTS.get(key))
 
 def get_bool(key: str) -> bool:
@@ -215,8 +217,7 @@ def get_str(key: str) -> str:
         return ""
     return str(v)
 
-def get_list(key: str) -> list:
-    import json as _json
+def get_list(key: str) -> list[Any]:
     v = SETTINGS.value(key, DEFAULTS.get(key))
     if v is None:
         return []
@@ -224,34 +225,34 @@ def get_list(key: str) -> list:
         return v
     if isinstance(v, str):
         try:
-            return _json.loads(v)
-        except (_json.JSONDecodeError, ValueError):
+            return json.loads(v)
+        except (json.JSONDecodeError, ValueError):
             return []
     return []
 
-def set_(key: str, value):
+def set_(key: str, value: Any) -> None:
     SETTINGS.setValue(key, value)
 
-def set_bool(key: str, value: bool):
+def set_bool(key: str, value: bool) -> None:
     SETTINGS.setValue(key, bool(value))
 
-def set_int(key: str, value: int):
+def set_int(key: str, value: int) -> None:
     SETTINGS.setValue(key, int(value))
 
-def set_float(key: str, value: float):
+def set_float(key: str, value: float) -> None:
     SETTINGS.setValue(key, float(value))
 
-def set_str(key: str, value: str):
+def set_str(key: str, value: str) -> None:
     SETTINGS.setValue(key, str(value))
 
 
-def export_to_file(path: str):
+def export_to_file(path: str) -> None:
     data = {k: get(k) for k in DEFAULTS}
     with open(path, "w") as f:
         json.dump(data, f, indent=2)
 
 
-def import_from_file(path: str):
+def import_from_file(path: str) -> None:
     if not os.path.exists(path):
         raise FileNotFoundError(path)
     with open(path) as f:
@@ -261,6 +262,6 @@ def import_from_file(path: str):
             set_(k, v)
 
 
-def restore_defaults():
+def restore_defaults() -> None:
     for k in DEFAULTS:
         set_(k, DEFAULTS[k])

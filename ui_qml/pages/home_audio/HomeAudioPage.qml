@@ -15,9 +15,9 @@ Item {
 
     property var ha: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
     property var _volumeTimers: ({})
+    property bool diagnosticsVisible: false
     property int pageState: {
         if (!root.ha) return stateError
-        if (!root.ha.available && root.ha.devices.length === 0 && root.ha.zones.length === 0) return stateEmpty
         return stateReady
     }
 
@@ -95,11 +95,14 @@ Item {
                         id: haPanel
                         width: parent.width
                         state: root.ha ? root.ha.homeAssistantState : "not_configured"
-                        onConfigureClicked: {
-                            if (root.ha) root.ha.configureHomeAssistant()
+                        onConfigureClicked: function(host, port, token) {
+                            if (root.ha) root.ha.configureHa(host, port, token)
+                        }
+                        onDisconnectClicked: {
+                            if (root.ha) root.ha.disconnectHa()
                         }
                         onOpenDiagnostics: {
-                            if (root.ha) root.ha.openDiagnostics()
+                            root.diagnosticsVisible = true
                         }
                         activeFocusOnTab: true
                         KeyNavigation.tab: streamPanel
@@ -223,6 +226,7 @@ Item {
                     KeyNavigation.backtab: devicesHeader
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
+                    onClicked: root.diagnosticsVisible = true
                 }
 
                 StatusBadge {
@@ -232,6 +236,15 @@ Item {
                     KeyNavigation.backtab: diagCard
                 }
             }
+        }
+    }
+
+    Loader {
+        anchors.fill: parent
+        active: root.diagnosticsVisible
+        z: 10
+        sourceComponent: DiagnosticsPage {
+            onCloseRequested: root.diagnosticsVisible = false
         }
     }
 }
