@@ -16,6 +16,8 @@ Item {
 
     property var ha: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
     property int pageState: stateLoading
+    property bool distributionActive: false
+    property bool distributionBusy: false
 
     readonly property int stateLoading: 0
     readonly property int stateReady: 1
@@ -226,6 +228,76 @@ Item {
                 }
             }
 
+            // Distribution control
+            GlassMaterial {
+                width: parent.width
+                height: responsive.compact ? 200 : 140
+                variant: "base"
+                radius: MichiTheme.radius.md
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: MichiTheme.spacing.lg
+                    spacing: MichiTheme.spacing.md
+
+                    Text {
+                        text: qsTr("Distribución local")
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.sectionTitleSize
+                        font.weight: MichiTheme.typography.weightSemiBold
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: root.distributionActive
+                            ? qsTr("Distribuyendo audio a receptores Snapcast")
+                            : qsTr("Inicia la distribución para enviar la reproducción local a los receptores de tu red.")
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        wrapMode: Text.WordWrap
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: MichiTheme.spacing.md
+
+                        MichiButton {
+                            text: root.distributionActive
+                                ? qsTr("Detener distribución")
+                                : qsTr("Iniciar distribución")
+                            variant: root.distributionActive ? "danger" : "primary"
+                            enabled: !root.distributionBusy && root.ha !== null
+                            Layout.fillWidth: true
+                            onClicked: {
+                                if (!root.ha) return
+                                root.distributionBusy = true
+                                if (root.distributionActive)
+                                    root.ha.disableDistribution()
+                                else
+                                    root.ha.enableDistribution()
+                            }
+                        }
+
+                        MichiButton {
+                            text: qsTr("Configurar")
+                            variant: "ghost"
+                            Layout.fillWidth: true
+                            onClicked: {
+                                if (typeof navigationBridge !== "undefined" && navigationBridge)
+                                    navigationBridge.navigate("home_audio.distribution")
+                            }
+                        }
+                    }
+
+                    StatusBadge {
+                        text: root.distributionActive
+                            ? qsTr("Activa")
+                            : qsTr("Inactiva")
+                        kind: root.distributionActive ? "success" : "disconnected"
+                    }
+                }
+            }
+
             // Quick actions
             Text {
                 text: qsTr("Acciones rápidas")
@@ -239,12 +311,12 @@ Item {
                 spacing: MichiTheme.spacing.md
 
                 MichiButton {
-                    text: qsTr("Configurar distribución")
+                    text: qsTr("Habitaciones y zonas")
                     variant: "primary"
                     Layout.fillWidth: true
                     onClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.navigate("home_audio.distribution")
+                            navigationBridge.navigate("home_audio.rooms")
                     }
                 }
 
@@ -269,6 +341,8 @@ Item {
             if (s === "error") root.pageState = stateError
             else if (s === "inactive") root.pageState = stateEmpty
             else root.pageState = stateReady
+            root.distributionBusy = false
+            root.distributionActive = root.ha.localPlaybackRouteable || root.distributionActive
         }
     }
 }
