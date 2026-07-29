@@ -28,6 +28,30 @@ Item {
         availableWidth: root.width
     }
 
+    readonly property string _statusText: {
+        if (!root.ha) return ""
+        var s = root.ha.streamState
+        if (s === "playing") return qsTr("Transmitiendo audio a receptores")
+        if (s === "paused") return qsTr("Transmisión en pausa")
+        return qsTr("Sistema de transmisión de audio a equipos en la red local")
+    }
+
+    readonly property string _badgeText: {
+        if (!root.ha) return qsTr("No disponible")
+        var s = root.ha.streamState
+        if (s === "playing") return qsTr("Transmitiendo")
+        if (s === "paused") return qsTr("Pausado")
+        return qsTr("Inactivo")
+    }
+
+    readonly property string _badgeKind: {
+        if (!root.ha) return "disconnected"
+        var s = root.ha.streamState
+        if (s === "playing") return "success"
+        if (s === "paused") return "warning"
+        return "disconnected"
+    }
+
     function routeEnter(route, params) {
         if (!root.ha) {
             root.pageState = stateUnavailable
@@ -53,7 +77,7 @@ Item {
         active: root.pageState === root.stateError
         sourceComponent: ErrorState {
             message: qsTr("Error en la transmisión: ") + (root.ha ? root.ha.lastError : "")
-            onRetryClicked: root.routeEnter("home_audio.stream", {})
+            onRetryRequested: root.routeEnter("home_audio.stream", {})
         }
     }
 
@@ -121,12 +145,7 @@ Item {
 
                         Text {
                             Layout.fillWidth: true
-                            text: root.ha ? {
-                                var s = root.ha.streamState
-                                if (s === "playing") return qsTr("Transmitiendo audio a receptores")
-                                if (s === "paused") return qsTr("Transmisión en pausa")
-                                return qsTr("Sistema de transmisión de audio a equipos en la red local")
-                            } : ""
+                            text: root._statusText
                             color: MichiTheme.colors.textSecondary
                             font.pixelSize: MichiTheme.typography.bodySize
                             wrapMode: Text.WordWrap
@@ -135,18 +154,8 @@ Item {
 
                     StatusBadge {
                         Layout.alignment: responsive.compact ? Qt.AlignLeft : Qt.AlignVCenter
-                        text: root.ha ? {
-                            var s = root.ha.streamState
-                            if (s === "playing") return qsTr("Transmitiendo")
-                            if (s === "paused") return qsTr("Pausado")
-                            return qsTr("Inactivo")
-                        } : qsTr("No disponible")
-                        kind: root.ha ? {
-                            var s = root.ha.streamState
-                            if (s === "playing") return "success"
-                            if (s === "paused") return "warning"
-                            return "disconnected"
-                        } : "disconnected"
+                        text: root._badgeText
+                        kind: root._badgeKind
                     }
                 }
             }
