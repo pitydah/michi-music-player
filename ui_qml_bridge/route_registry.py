@@ -794,7 +794,7 @@ ROUTES: dict[str, dict] = {
     "home_audio.stream": {
         "route": "home_audio.stream", "parent": "home_audio",
         "title": "Michi Music Stream", "breadcrumb_title": "Stream",
-        "source": "../pages/home_audio/HomeAudioPage.qml",
+        "source": "../pages/home_audio/MichiMusicStreamPage.qml",
         "icon": "michi_stream", "order": 10, "sidebar_visible": True,
         "sidebar_group": "home_audio", "expandable": False,
         "status": "functional", "capability": "home_audio",
