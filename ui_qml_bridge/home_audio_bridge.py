@@ -8,7 +8,8 @@ import time
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, QUrl, Signal, Slot
+from PySide6.QtGui import QGuiApplication
 
 logger = logging.getLogger("michi.home_audio")
 
@@ -705,16 +706,22 @@ class HomeAudioBridge(QObject):
         health = self._call_svc("health")
         health_data = health.get("result", health) if health.get("ok") else {}
         try:
-            from integrations.snapcast.fifo_manager import fifo_path
+            from integrations.snapcast.fifo_manager import fifo_metrics, fifo_path
 
             fifo = Path(fifo_path())
             fifo_exists = fifo.exists()
             fifo_writable = fifo_exists and os.access(fifo, os.W_OK)
             fifo_size = fifo.stat().st_size if fifo_exists else 0
+            metrics = fifo_metrics()
         except OSError as exc:
             fifo_exists = False
             fifo_writable = False
             fifo_size = 0
+            metrics = {
+                "bytes_written": 0,
+                "last_write_time": 0.0,
+                "throughput_bytes_per_second": 0.0,
+            }
             self._last_error = str(exc)
         receiver_latencies = [
             {
@@ -749,6 +756,7 @@ class HomeAudioBridge(QObject):
             "fifo_exists": fifo_exists,
             "fifo_writable": fifo_writable,
             "fifo_size": fifo_size,
+            **metrics,
             "active_streams": [
                 stream
                 for stream in self._streams
@@ -768,10 +776,33 @@ class HomeAudioBridge(QObject):
     def test_tone(self) -> dict:
         if not self._ha_svc:
             return {"ok": False, "error": "UNSUPPORTED"}
-        for method_name in ("test_tone", "play_test_tone"):
+        for method_name in ("generate_test_tone", "test_tone", "play_test_tone"):
             if callable(getattr(self._ha_svc, method_name, None)):
                 return self._call_svc(method_name)
         return {"ok": False, "error": "TEST_TONE_UNSUPPORTED"}
+
+    @Slot(str, result=dict, name="measureLatency")
+    def measure_latency(self, receiver_id: str) -> dict:
+        return self._call_svc("measure_latency", receiver_id)
+
+    @Slot(str, result=dict, name="copyDiagnostics")
+    def copy_diagnostics(self, report: str) -> dict:
+        clipboard = QGuiApplication.clipboard()
+        if clipboard is None:
+            return {"ok": False, "error": "CLIPBOARD_UNAVAILABLE"}
+        clipboard.setText(report)
+        return {"ok": True}
+
+    @Slot(str, str, result=dict, name="exportDiagnostics")
+    def export_diagnostics(self, destination: str, report: str) -> dict:
+        path = QUrl(destination).toLocalFile() if destination.startswith("file:") else destination
+        if not path:
+            return {"ok": False, "error": "INVALID_DESTINATION"}
+        try:
+            Path(path).write_text(report, encoding="utf-8")
+        except OSError as exc:
+            return {"ok": False, "error": str(exc)}
+        return {"ok": True, "path": path}
 
     @Slot(str, float, result=dict, name="setZoneVolume")
     def set_zone_volume(self, zone_id: str, volume: float = 0.5) -> dict:
@@ -972,6 +1003,9 @@ HomeAudioBridge.setReceiverName = HomeAudioBridge.set_receiver_name
 HomeAudioBridge.moveReceiver = HomeAudioBridge.move_receiver
 HomeAudioBridge.openDiagnostics = HomeAudioBridge.open_diagnostics
 HomeAudioBridge.testTone = HomeAudioBridge.test_tone
+HomeAudioBridge.measureLatency = HomeAudioBridge.measure_latency
+HomeAudioBridge.copyDiagnostics = HomeAudioBridge.copy_diagnostics
+HomeAudioBridge.exportDiagnostics = HomeAudioBridge.export_diagnostics
 HomeAudioBridge.setZoneVolume = HomeAudioBridge.set_zone_volume
 HomeAudioBridge.setZoneMute = HomeAudioBridge.set_zone_mute
 HomeAudioBridge.assignStream = HomeAudioBridge.assign_stream

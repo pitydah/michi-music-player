@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
+import struct
 import time
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -1160,6 +1162,59 @@ class HomeAudioService(QObject):
         if verified is None or int(verified.get("latency_ms", -1)) != target:
             return {"ok": False, "error": "LATENCY_VERIFICATION_FAILED"}
         return {"ok": True, "receiver": verified}
+
+    def generate_test_tone(
+        self,
+        duration_ms: int = 500,
+        frequency_hz: int = 440,
+    ) -> dict:
+        """Generate stereo PCM and write it through the Snapcast FIFO path."""
+        from integrations.snapcast.fifo_manager import write_fifo
+
+        duration_ms = max(50, min(2000, int(duration_ms)))
+        frequency_hz = max(20, min(20000, int(frequency_hz)))
+        sample_rate = 44100
+        frame_count = sample_rate * duration_ms // 1000
+        amplitude = 8192
+        frames = bytearray(frame_count * 4)
+        for index in range(frame_count):
+            sample = round(
+                amplitude * math.sin(2 * math.pi * frequency_hz * index / sample_rate)
+            )
+            struct.pack_into("<hh", frames, index * 4, sample, sample)
+        written = write_fifo(bytes(frames))
+        if written <= 0:
+            return {"ok": False, "error": "FIFO_WRITE_FAILED", "bytes_written": 0}
+        return {"ok": True, "bytes_written": written, "duration_ms": duration_ms}
+
+    def generateTestTone(
+        self,
+        durationMs: int = 500,
+        frequencyHz: int = 440,
+    ) -> dict:
+        """QML-compatible alias for generate_test_tone()."""
+        return self.generate_test_tone(durationMs, frequencyHz)
+
+    def measure_latency(self, receiver_id: str) -> dict:
+        """Read receiver latency and measure the Snapcast control round trip."""
+        started_at = time.perf_counter()
+        receiver = self._receiver(receiver_id)
+        control_rtt_ms = round((time.perf_counter() - started_at) * 1000)
+        if receiver is None:
+            return {"ok": False, "error": "RECEIVER_NOT_FOUND"}
+        if not receiver.get("connected"):
+            return {"ok": False, "error": "RECEIVER_OFFLINE"}
+        return {
+            "ok": True,
+            "receiver_id": receiver_id,
+            "receiver_name": receiver.get("name", receiver_id),
+            "latency_ms": int(receiver.get("latency_ms", 0) or 0),
+            "control_rtt_ms": control_rtt_ms,
+        }
+
+    def measureLatency(self, receiverId: str) -> dict:
+        """QML-compatible alias for measure_latency()."""
+        return self.measure_latency(receiverId)
 
     def set_receiver_name(self, receiver_id: str, name: str) -> dict:
         if self._snapcast is None:
