@@ -4,7 +4,9 @@ from unittest.mock import MagicMock, patch
 
 
 class TestSnapcastAdapter:
-    def test_snapcast_adapter_connects(self):
+    """Cover Snapcast connection adapter behavior."""
+
+    def test_snapcast_adapter_connects(self) -> None:
         from integrations.connections.adapters.snapcast_adapter import SnapcastAdapter
         adapter = SnapcastAdapter("192.168.1.100", port=1705, ssl=False)
         assert adapter._host == "192.168.1.100"
@@ -12,7 +14,7 @@ class TestSnapcastAdapter:
         assert adapter.base_url == "http://192.168.1.100:1705"
 
     @patch("integrations.connections.adapters.snapcast_adapter.urllib.request.urlopen")
-    def test_snapcast_adapter_rpc(self, mock_urlopen):
+    def test_snapcast_adapter_rpc(self, mock_urlopen) -> None:
         fake_resp = MagicMock()
         fake_resp.read.return_value = json.dumps({
             "jsonrpc": "2.0", "id": 1,
@@ -30,7 +32,9 @@ class TestSnapcastAdapter:
 
 
 class TestTransmitManagerLifecycle:
-    def test_transmit_manager_add_device(self):
+    """Cover transmit-device lifecycle and persistence."""
+
+    def test_transmit_manager_add_device(self) -> None:
         from streaming.transmit_manager import TransmitManager
         mgr = TransmitManager()
         mgr._devices = []
@@ -41,7 +45,7 @@ class TestTransmitManagerLifecycle:
         assert dev.port == 1704
         assert len(mgr.get_devices()) == 1
 
-    def test_transmit_manager_remove_device(self):
+    def test_transmit_manager_remove_device(self) -> None:
         from streaming.transmit_manager import TransmitManager
         mgr = TransmitManager()
         mgr._devices = []
@@ -54,20 +58,28 @@ class TestTransmitManagerLifecycle:
     @patch("streaming.transmit_manager.os.path.exists")
     @patch("streaming.transmit_manager.os.makedirs")
     @patch("streaming.transmit_manager.open", new_callable=MagicMock)
-    def test_transmit_manager_persistence(self, mock_open, mock_makedirs,
-                                          mock_exists, mock_load, mock_dump):
+    def test_transmit_manager_persistence(
+        self, mock_open, mock_makedirs, mock_exists, mock_load, mock_dump
+    ) -> None:
         mock_exists.return_value = False
         mock_file = MagicMock()
         mock_file.__enter__.return_value = mock_file
         mock_open.return_value = mock_file
 
-        from streaming.transmit_manager import TransmitManager, TransmitDevice
+        from streaming.transmit_manager import TransmitDevice, TransmitManager
         mgr = TransmitManager()
         mgr._devices = []
         mgr.add_device("Cocina", "http", "10.0.0.60", 8554)
 
         written = mock_dump.call_args[0][0]
-        assert written == [{"name": "Cocina", "stype": "http", "address": "10.0.0.60", "port": 8554}]
+        assert written == [
+            {
+                "name": "Cocina",
+                "stype": "http",
+                "address": "10.0.0.60",
+                "port": 8554,
+            }
+        ]
 
         reloaded = [TransmitDevice.from_dict(d) for d in written]
         assert reloaded[0].name == "Cocina"
@@ -75,9 +87,11 @@ class TestTransmitManagerLifecycle:
 
 
 class TestSnapcastDiscovery:
-    def test_snapcast_discovery_mdns(self):
+    """Cover Avahi and manual receiver discovery."""
+
+    def test_snapcast_discovery_mdns(self) -> None:
         from integrations.snapcast import discovery as disc_module
-        disc_module.AVAHi_BROWSE = "/usr/bin/avahi-browse"
+        disc_module.AVAHI_BROWSE = "/usr/bin/avahi-browse"
 
         fake_stdout = (
             "+;eth0;IPv4;Snapcast-Living;_snapcast._tcp;local;10.0.0.10;1704;\n"
@@ -98,3 +112,53 @@ class TestSnapcastDiscovery:
         assert result[1]["host"] == "10.0.0.20"
         assert result[1]["port"] == 1704
         mock_subp.run.assert_called_once()
+
+    def test_manual_receiver_persists_across_instances(self) -> None:
+        from integrations.snapcast.discovery import SnapClientDiscovery
+
+        settings = MemorySettings()
+        first = SnapClientDiscovery(settings=settings)
+        first.add_manual("10.0.0.30", 1704, "Studio")
+
+        second = SnapClientDiscovery(settings=settings)
+
+        assert second.clients() == [
+            {
+                "id": "manual:10.0.0.30:1704",
+                "name": "Studio",
+                "host": "10.0.0.30",
+                "port": 1704,
+                "type": "snapclient",
+                "backend": "snapcast",
+                "manual": True,
+                "available": True,
+            }
+        ]
+
+    def test_remove_manual_receiver_updates_persistence(self) -> None:
+        from integrations.snapcast.discovery import SnapClientDiscovery
+
+        settings = MemorySettings()
+        discovery = SnapClientDiscovery(settings=settings)
+        discovery.add_manual("10.0.0.30", 1704, "Studio")
+
+        discovery.remove_manual("manual:10.0.0.30:1704")
+
+        reloaded = SnapClientDiscovery(settings=settings)
+        assert reloaded.clients() == []
+
+
+class MemorySettings:
+    """Minimal in-memory QSettings substitute for persistence tests."""
+
+    def __init__(self) -> None:
+        self.values: dict[str, object] = {}
+
+    def value(self, key: str, default: object = None) -> object:
+        return self.values.get(key, default)
+
+    def setValue(self, key: str, value: object) -> None:
+        self.values[key] = value
+
+    def sync(self) -> None:
+        return None
