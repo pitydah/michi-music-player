@@ -17,6 +17,8 @@ Item {
 
     property var albumModel: null
     property var bridge: null
+    property alias scrollPosition: gridView.contentY
+    property alias selectionIndex: gridView.currentIndex
     property string density: "regular"
     readonly property var densityOptions: [
         { label: qsTr("Compacta"), key: "compact" },

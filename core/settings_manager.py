@@ -20,6 +20,7 @@ DEFAULTS = {
     "library/auto_scan": True,
     "library/exclude_hidden": True,
     "library/covers_cache_size": 100,
+    "library/custom_collections": [],
     "playback/default_volume": 70,
     "playback/repeat_mode": "none",
     "playback/shuffle_default": False,

@@ -52,33 +52,37 @@ class TestArtistGridPage:
 class TestGenresPage:
     def test_genres_initial_empty(self):
         bridge = MagicMock()
-        bridge.getGenres.return_value = []
-        genres = bridge.getGenres()
-        assert genres == []
+        bridge.getGenres.return_value = {"items": [], "total": 0, "has_more": False}
+        page = bridge.getGenres(0, 100)
+        assert page["items"] == []
 
     def test_genres_populated(self):
         bridge = MagicMock()
-        bridge.getGenres.return_value = [
-            {"name": "Rock", "count": 42},
-            {"name": "Jazz", "count": 15},
-        ]
-        genres = bridge.getGenres()
+        bridge.getGenres.return_value = {
+            "items": [
+                {"name": "Rock", "count": 42},
+                {"name": "Jazz", "count": 15},
+            ],
+            "total": 2,
+            "has_more": False,
+        }
+        genres = bridge.getGenres(0, 100)["items"]
         assert len(genres) == 2
         assert genres[0]["name"] == "Rock"
         assert genres[0]["count"] == 42
 
     def test_genres_signal_emitted(self):
         bridge = MagicMock()
-        bridge.getGenres.return_value = [{"name": "Classical", "count": 7}]
-        genres = bridge.getGenres()
+        bridge.getGenres.return_value = {"items": [{"name": "Classical", "count": 7}]}
+        genres = bridge.getGenres(0, 100)["items"]
         names = [g["name"] for g in genres]
         assert "Classical" in names
 
     def test_genres_list_view_model(self):
         bridge = MagicMock()
         genres = [{"name": "Rock", "count": 42}]
-        bridge.getGenres.return_value = genres
-        assert bridge.getGenres() == genres
+        bridge.getGenres.return_value = {"items": genres}
+        assert bridge.getGenres(0, 100)["items"] == genres
 
     def test_genres_header_title(self):
         with open("ui_qml/pages/library/GenresPage.qml") as f:
@@ -89,15 +93,15 @@ class TestGenresPage:
 
     def test_genres_reload_calls_bridge(self):
         bridge = MagicMock()
-        bridge.getGenres.return_value = [{"name": "Pop", "count": 20}]
+        bridge.getGenres.return_value = {"items": [{"name": "Pop", "count": 20}]}
         bridge.getGenres.assert_not_called()
-        _ = bridge.getGenres()
-        bridge.getGenres.assert_called_once()
+        _ = bridge.getGenres(0, 100)
+        bridge.getGenres.assert_called_once_with(0, 100)
 
     def test_genres_empty_after_reload(self):
         bridge = MagicMock()
-        bridge.getGenres.return_value = []
-        assert bridge.getGenres() == []
+        bridge.getGenres.return_value = {"items": []}
+        assert bridge.getGenres(0, 100)["items"] == []
 
     def test_genre_selected_signal(self):
         bridge = MagicMock()
@@ -116,31 +120,33 @@ class TestGenresPage:
 class TestComposersPage:
     def test_composers_initial_empty(self):
         bridge = MagicMock()
-        bridge.getComposers.return_value = []
-        composers = bridge.getComposers()
+        bridge.getComposers.return_value = {"items": []}
+        composers = bridge.getComposers(0, 100)["items"]
         assert composers == []
 
     def test_composers_populated(self):
         bridge = MagicMock()
-        bridge.getComposers.return_value = [
-            "Beethoven",
-            "Mozart",
-        ]
-        composers = bridge.getComposers()
+        bridge.getComposers.return_value = {
+            "items": [
+                {"name": "Beethoven", "count": 3},
+                {"name": "Mozart", "count": 4},
+            ]
+        }
+        composers = bridge.getComposers(0, 100)["items"]
         assert len(composers) == 2
-        assert composers[0] == "Beethoven"
+        assert composers[0]["name"] == "Beethoven"
 
     def test_composers_single_entry(self):
         bridge = MagicMock()
-        bridge.getComposers.return_value = ["Chopin"]
-        composers = bridge.getComposers()
-        assert composers == ["Chopin"]
+        bridge.getComposers.return_value = {"items": [{"name": "Chopin", "count": 1}]}
+        composers = bridge.getComposers(0, 100)["items"]
+        assert composers == [{"name": "Chopin", "count": 1}]
 
     def test_composers_list_view_model(self):
         bridge = MagicMock()
-        composers = ["Bach", "Vivaldi", "Debussy"]
-        bridge.getComposers.return_value = composers
-        assert bridge.getComposers() == composers
+        composers = [{"name": name} for name in ("Bach", "Vivaldi", "Debussy")]
+        bridge.getComposers.return_value = {"items": composers}
+        assert bridge.getComposers(0, 100)["items"] == composers
 
     def test_composers_header_title(self):
         with open("ui_qml/pages/library/ComposersPage.qml") as f:
@@ -151,10 +157,10 @@ class TestComposersPage:
 
     def test_composers_reload_calls_bridge(self):
         bridge = MagicMock()
-        bridge.getComposers.return_value = ["Liszt"]
+        bridge.getComposers.return_value = {"items": [{"name": "Liszt"}]}
         bridge.getComposers.assert_not_called()
-        _ = bridge.getComposers()
-        bridge.getComposers.assert_called_once()
+        _ = bridge.getComposers(0, 100)
+        bridge.getComposers.assert_called_once_with(0, 100)
 
     def test_composer_selected_signal(self):
         bridge = MagicMock()

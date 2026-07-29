@@ -17,6 +17,8 @@ Item {
 
     property var albumModel: null
     property var bridge: null
+    property alias scrollPosition: vinylGrid.contentY
+    property alias selectionIndex: vinylGrid.currentIndex
     property bool automaticPagination: true
     signal albumClicked(string albumKey, string title, string artist, int year)
 

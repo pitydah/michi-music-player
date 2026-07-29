@@ -17,6 +17,8 @@ Item {
 
     property var albumModel: null
     property var bridge: null
+    property alias scrollPosition: listView.contentY
+    property alias selectionIndex: listView.currentIndex
     property bool groupByDecade: false
     property bool automaticPagination: true
     signal albumClicked(string albumKey, string title, string artist, int year)

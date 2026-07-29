@@ -12,6 +12,10 @@ LibrarySectionPage {
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property var _genres: []
     property int currentView: 0
+    property int pageSize: 100
+    property bool hasMore: false
+    property bool loadingMore: false
+    property int totalGenres: 0
     readonly property var visibleGenres: root.filteredEntries(
                                                     root._genres,
                                                     root.headerSearchText
@@ -33,7 +37,9 @@ LibrarySectionPage {
         }
     ]
     headerCurrentView: root.currentView
-    headerStatusText: qsTr("%1 géneros").arg(root.visibleGenres.length)
+    headerStatusText: root.totalGenres > root.visibleGenres.length && root.headerSearchText === ""
+                      ? qsTr("%1 de %2 géneros").arg(root._genres.length).arg(root.totalGenres)
+                      : qsTr("%1 géneros").arg(root.visibleGenres.length)
 
     signal genreSelected(string genre)
 
@@ -53,8 +59,22 @@ LibrarySectionPage {
     }
 
     function reload() {
-        if (root.lib && root.lib.getGenres)
-            root._genres = root.lib.getGenres() || []
+        root._genres = []
+        root.hasMore = false
+        root.totalGenres = 0
+        root.fetchMore()
+    }
+
+    function fetchMore() {
+        if (!root.lib || !root.lib.getGenres || root.loadingMore)
+            return
+        root.loadingMore = true
+        var result = root.lib.getGenres(root._genres.length, root.pageSize) || {}
+        var items = result.items || []
+        root._genres = root._genres.concat(items)
+        root.totalGenres = Number(result.total || root._genres.length)
+        root.hasMore = Boolean(result.has_more)
+        root.loadingMore = false
     }
 
     function openGenre(genre) {
@@ -90,7 +110,10 @@ LibrarySectionPage {
         singularName: qsTr("género")
         pluralName: qsTr("géneros")
         iconKey: "songs"
+        hasMore: root.hasMore
+        loadingMore: root.loadingMore
         onEntryActivated: function(value) { root.openGenre(value) }
+        onFetchMoreRequested: root.fetchMore()
     }
 
     Component.onCompleted: reload()

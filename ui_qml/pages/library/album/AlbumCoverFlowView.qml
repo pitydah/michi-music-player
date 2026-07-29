@@ -17,6 +17,8 @@ Item {
 
     property var albumModel: null
     property var bridge: null
+    property alias scrollPosition: pathView.offset
+    property alias selectionIndex: pathView.currentIndex
     property int coverSize: Math.max(
         176,
         Math.min(300, Math.min(width * 0.235, height * 0.44))

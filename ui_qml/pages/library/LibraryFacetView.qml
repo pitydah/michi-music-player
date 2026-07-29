@@ -13,8 +13,19 @@ StackLayout {
     property string singularName: qsTr("elemento")
     property string pluralName: qsTr("elementos")
     property string iconKey: "songs"
+    property bool hasMore: false
+    property bool loadingMore: false
 
     signal entryActivated(string value)
+    signal fetchMoreRequested()
+
+    function maybeFetchMore(view) {
+        if (!root.hasMore || root.loadingMore || !view || view.moving)
+            return
+        var remaining = view.contentHeight - (view.contentY + view.height)
+        if (remaining <= Math.max(160, view.height * 0.35))
+            root.fetchMoreRequested()
+    }
 
     function labelOf(entry) {
         if (typeof entry !== "object")
@@ -43,6 +54,15 @@ StackLayout {
         cacheBuffer: cellHeight * 2
         leftMargin: MichiTheme.spacing.xs
         rightMargin: MichiTheme.spacing.xs
+        onMovementEnded: root.maybeFetchMore(facetGrid)
+        onContentYChanged: gridFetchTimer.restart()
+
+        Timer {
+            id: gridFetchTimer
+            interval: 90
+            repeat: false
+            onTriggered: root.maybeFetchMore(facetGrid)
+        }
 
         readonly property int minimumCellWidth: 220
         readonly property int columns: Math.max(1, Math.floor(width / minimumCellWidth))
@@ -168,6 +188,15 @@ StackLayout {
         spacing: 2
         leftMargin: MichiTheme.spacing.xs
         rightMargin: MichiTheme.spacing.xs
+        onMovementEnded: root.maybeFetchMore(facetList)
+        onContentYChanged: listFetchTimer.restart()
+
+        Timer {
+            id: listFetchTimer
+            interval: 90
+            repeat: false
+            onTriggered: root.maybeFetchMore(facetList)
+        }
 
         Keys.onReturnPressed: {
             if (currentIndex >= 0 && currentIndex < root.entries.length)

@@ -12,6 +12,10 @@ LibrarySectionPage {
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property var _composers: []
     property int currentView: 0
+    property int pageSize: 100
+    property bool hasMore: false
+    property bool loadingMore: false
+    property int totalComposers: 0
     readonly property var visibleComposers: root.filteredEntries(
                                                        root._composers,
                                                        root.headerSearchText
@@ -33,7 +37,9 @@ LibrarySectionPage {
         }
     ]
     headerCurrentView: root.currentView
-    headerStatusText: qsTr("%1 compositores").arg(root.visibleComposers.length)
+    headerStatusText: root.totalComposers > root.visibleComposers.length && root.headerSearchText === ""
+                      ? qsTr("%1 de %2 compositores").arg(root._composers.length).arg(root.totalComposers)
+                      : qsTr("%1 compositores").arg(root.visibleComposers.length)
 
     signal composerSelected(string composer)
 
@@ -53,8 +59,22 @@ LibrarySectionPage {
     }
 
     function reload() {
-        if (root.lib && root.lib.getComposers)
-            root._composers = root.lib.getComposers() || []
+        root._composers = []
+        root.hasMore = false
+        root.totalComposers = 0
+        root.fetchMore()
+    }
+
+    function fetchMore() {
+        if (!root.lib || !root.lib.getComposers || root.loadingMore)
+            return
+        root.loadingMore = true
+        var result = root.lib.getComposers(root._composers.length, root.pageSize) || {}
+        var items = result.items || []
+        root._composers = root._composers.concat(items)
+        root.totalComposers = Number(result.total || root._composers.length)
+        root.hasMore = Boolean(result.has_more)
+        root.loadingMore = false
     }
 
     function openComposer(composer) {
@@ -90,7 +110,10 @@ LibrarySectionPage {
         singularName: qsTr("compositor")
         pluralName: qsTr("compositores")
         iconKey: "artists"
+        hasMore: root.hasMore
+        loadingMore: root.loadingMore
         onEntryActivated: function(value) { root.openComposer(value) }
+        onFetchMoreRequested: root.fetchMore()
     }
 
     Component.onCompleted: reload()

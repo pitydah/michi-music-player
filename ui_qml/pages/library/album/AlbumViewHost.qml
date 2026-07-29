@@ -18,6 +18,7 @@ Item {
     property var bridge: null
     property int currentView: 0
     property string sortOrder: "year"
+    property var viewStates: ({})
     readonly property var sortOptions: [
         { label: qsTr("Año"), key: "year" },
         { label: qsTr("Título"), key: "title" },
@@ -46,9 +47,31 @@ Item {
     signal albumClicked(string albumKey, string title, string artist, int year)
     signal viewChanged(int viewIndex)
 
+    function saveCurrentViewState() {
+        if (viewLoader.status !== Loader.Ready || !viewLoader.item)
+            return
+        var states = Object.assign({}, root.viewStates)
+        states[String(root.currentView)] = {
+            scrollPosition: Number(viewLoader.item.scrollPosition || 0),
+            selectionIndex: Number(viewLoader.item.selectionIndex)
+        }
+        root.viewStates = states
+    }
+
+    function restoreCurrentViewState() {
+        if (viewLoader.status !== Loader.Ready || !viewLoader.item)
+            return
+        var state = root.viewStates[String(root.currentView)]
+        if (!state)
+            return
+        viewLoader.item.selectionIndex = state.selectionIndex
+        viewLoader.item.scrollPosition = state.scrollPosition
+    }
+
     function selectView(index) {
         if (index < 0 || index >= root.viewModes.length || index === root.currentView)
             return
+        root.saveCurrentViewState()
         root.currentView = index
         root.viewChanged(index)
     }
@@ -157,6 +180,7 @@ Item {
                     item.albumModel = root.albumModel
                     item.bridge = root.bridge
                     item.albumClicked.connect(root.albumClicked)
+                    Qt.callLater(root.restoreCurrentViewState)
                     item.forceActiveFocus()
                 }
             }

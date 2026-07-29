@@ -17,6 +17,8 @@ Item {
 
     property var albumModel: null
     property var bridge: null
+    property alias scrollPosition: magazineList.contentY
+    property alias selectionIndex: magazineList.currentIndex
     property int featuredIndex: 0
     property bool automaticPagination: true
     readonly property bool compact: width < 900

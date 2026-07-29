@@ -222,6 +222,20 @@ def test_sort_and_pagination_are_deterministic(service):
     assert first[0]["track_id"] != second[0]["track_id"]
 
 
+def test_genres_and_composers_are_paginated_with_counts(service):
+    assert service.count_genres() == 2
+    assert service.fetch_genres(offset=0, limit=1) == [{"name": "Jazz", "count": 2}]
+    assert service.fetch_genres(offset=1, limit=1) == [{"name": "Rock", "count": 1}]
+
+    assert service.count_composers() == 2
+    assert service.fetch_composers(offset=0, limit=1) == [
+        {"name": "Composer One", "count": 2}
+    ]
+    assert service.fetch_composers(offset=1, limit=1) == [
+        {"name": "Composer Two", "count": 1}
+    ]
+
+
 def test_invalid_year_is_safe_and_empty(service):
     assert service.count_tracks(year="not-a-year") == 0
     assert service.fetch_tracks(year="not-a-year") == []
