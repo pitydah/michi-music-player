@@ -2,6 +2,18 @@ import QtQuick
 import QtQuick.Effects
 import "../theme"
 
+/* MichiIcon — canonical icon component using Fluent System Icons.
+ *
+ * Resolution order:
+ *   1. Explicit source URL (if set)
+ *   2. Fluent icon: ../assets/icons/fluent/{variant}/{key}.svg
+ *   3. Legacy fallback: ../../icons/sidebar/{key}.svg
+ *
+ * Variant selection:
+ *   active=true  → "filled" variant
+ *   active=false → "regular" variant
+ */
+
 Item {
     id: root
     objectName: controlObjectName
@@ -15,7 +27,6 @@ Item {
     property bool active: false
     property bool disabled: false
     property string accessibleName: ""
-    // Compatibility with the former IconSlot-backed MichiIcon registration.
     property alias iconName: root.iconKey
     property alias iconSource: root.source
     property alias iconSize: root.size
@@ -23,13 +34,32 @@ Item {
     property bool rounded: false
     property string iconText: ""
 
-    readonly property url resolvedSource: source.toString() !== ""
-                                          ? source : sourceForKey(iconKey)
+    readonly property string _variant: root.active ? "filled" : "regular"
 
-    function sourceForKey(key) {
-        if (!key)
-            return ""
+    readonly property url resolvedSource: {
+        if (source.toString() !== "")
+            return source
+        var key = iconKey
+        if (!key) return ""
+
+        // Try Fluent icon first
+        var fluentPath = "../assets/icons/fluent/" + root._variant + "/" + key + ".svg"
+        if (typeof fluentIconExists !== "undefined" && fluentIconExists(key))
+            return fluentPath
+
+        // Fallback to legacy icon
         return "../../icons/sidebar/" + key + ".svg"
+    }
+
+    readonly property var _fluentCache: ({
+        "ai": true, "albums": true, "artists": true,
+        "capture": true, "devices": true, "folders": true,
+        "history": true, "home": true, "library": true,
+        "search": true, "settings": true, "streaming": true,
+    })
+
+    function fluentIconExists(key) {
+        return _fluentCache.hasOwnProperty(key)
     }
 
     implicitWidth: size
