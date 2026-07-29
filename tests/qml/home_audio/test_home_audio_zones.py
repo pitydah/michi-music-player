@@ -28,8 +28,6 @@ def mock_ha_svc():
     ha.get_streams.return_value = []
     ha.configure = MagicMock(return_value=True)
     ha.latency_ms = 25
-    ha.server_handoff_available = True
-    ha.server_handoff = MagicMock(return_value="ok")
     ha.set_volume = MagicMock()
     ha.set_mute = MagicMock()
     ha.playback_transfer = MagicMock(return_value="ok")
@@ -131,18 +129,6 @@ class TestTransferPlayback:
     def test_transfer_playback_unsupported(self):
         no_ctrl = HomeAudioBridge()
         result = no_ctrl.playbackTransfer("zone1")
-        assert result["ok"] is False
-
-
-class TestServerHandoff:
-    def test_handoff_to_server(self, bridge):
-        bridge.refresh()
-        result = bridge.serverHandoff()
-        assert result["ok"] is True
-
-    def test_handoff_unsupported(self):
-        b = HomeAudioBridge()
-        result = b.serverHandoff()
         assert result["ok"] is False
 
 

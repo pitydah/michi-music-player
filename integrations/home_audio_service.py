@@ -8,6 +8,8 @@ import socket
 import threading
 from typing import Any
 
+from PySide6.QtCore import QObject, QTimer, Signal
+
 logger = logging.getLogger(__name__)
 
 
@@ -218,14 +220,19 @@ class SnapcastJsonRpcClient:
 SnapcastService = SnapcastJsonRpcClient
 
 
-class HomeAssistantService:
+class HomeAssistantService(QObject):
     """Client for the Home Assistant REST API, limited to media players."""
 
-    def __init__(self, host: str = "", token: str = "", timeout: float = 10.0):
+    state_changed = Signal()
+
+    def __init__(self, host: str = "", token: str = "", timeout: float = 10.0, parent=None):
+        super().__init__(parent)
         self._host = host.rstrip("/")
         self._token = token
         self._timeout = float(timeout)
         self._connected = False
+        self._poll_timer: QTimer | None = None
+        self._last_state_hash = 0
 
     @property
     def connected(self) -> bool:
@@ -296,3 +303,24 @@ class HomeAssistantService:
             "volume_mute",
             {"entity_id": entity_id, "is_volume_muted": bool(muted)},
         )
+
+    def subscribe_events(self, interval_ms: int = 5000):
+        if self._poll_timer is not None:
+            self._poll_timer.stop()
+        self._poll_timer = QTimer(self)
+        self._poll_timer.setInterval(interval_ms)
+        self._poll_timer.timeout.connect(self._poll_state)
+        self._poll_timer.start()
+
+    def unsubscribe_events(self):
+        if self._poll_timer is not None:
+            self._poll_timer.stop()
+            self._poll_timer = None
+
+    def _poll_state(self):
+        states = self.get_states()
+        state_hash = hash(json.dumps(states, sort_keys=True, default=str))
+        if state_hash != self._last_state_hash:
+            self._last_state_hash = state_hash
+            if states:
+                self.state_changed.emit()

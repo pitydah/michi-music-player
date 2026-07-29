@@ -78,12 +78,6 @@ class TestHomeAudioOperations:
         result = hab.discoverReceivers()
         assert isinstance(result, dict)
 
-    def test_server_handoff(self):
-        from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
-        hab = HomeAudioBridge()
-        result = hab.serverHandoff()
-        assert not result.get("ok")
-
     def test_recover_from_offline(self):
         from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
         hab = HomeAudioBridge()
@@ -112,8 +106,4 @@ class TestHomeAudioOperations:
         result = hab.reconnectHa()
         assert isinstance(result, dict)
 
-    def test_handoff_to_server(self):
-        from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
-        hab = HomeAudioBridge()
-        result = hab.handoffToServer()
-        assert not result.get("ok")
+

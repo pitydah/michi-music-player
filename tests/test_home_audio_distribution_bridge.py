@@ -3,7 +3,6 @@ from core.worker_manager import WorkerManager
 
 
 class DistributionService:
-    server_handoff_available = False
     latency_ms = 18
 
     def __init__(self):

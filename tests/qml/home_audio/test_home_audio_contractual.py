@@ -37,7 +37,6 @@ def mock_ha_svc():
         {"id": "stream1", "name": "Main", "active": True},
     ]
     ha.latency_ms = 25
-    ha.server_handoff_available = True
     ha.set_volume = MagicMock()
     ha.set_mute = MagicMock()
     ha.assign_stream = MagicMock()
@@ -48,7 +47,6 @@ def mock_ha_svc():
     ha.set_latency = MagicMock()
     ha.reconnect = MagicMock(return_value=True)
     ha.transfer_playback = MagicMock(return_value={"ok": True})
-    ha.server_handoff = MagicMock(return_value="ok")
     ha.playback_transfer = MagicMock(return_value={"ok": True})
     return ha
 
@@ -119,16 +117,6 @@ class TestStreamServerHandoffContract:
     def test_assign_stream_no_svc(self):
         b = HomeAudioBridge()
         result = b.assignStream("stream_main")
-        assert result["ok"] is False
-
-    def test_handoff_to_server(self, bridge):
-        bridge.refresh()
-        result = bridge.serverHandoff()
-        assert result["ok"] is True
-
-    def test_handoff_unsupported(self):
-        b = HomeAudioBridge()
-        result = b.serverHandoff()
         assert result["ok"] is False
 
     def test_transfer_playback(self, bridge, mock_ha_svc):

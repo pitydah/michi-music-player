@@ -22,9 +22,10 @@ class TestHomeAudioHandoff:
         except ImportError:
             pytest.skip("HA adapter not available")
 
-    def test_bridge_handoff(self):
+    def test_bridge_handoff_removed(self):
         from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
-        assert hasattr(HomeAudioBridge, 'handoffToServer') or hasattr(HomeAudioBridge, 'serverHandoff')
+        assert not hasattr(HomeAudioBridge, 'handoffToServer')
+        assert not hasattr(HomeAudioBridge, 'serverHandoff')
 
     def test_bridge_group_operations(self):
         from ui_qml_bridge.home_audio_bridge import HomeAudioBridge

@@ -94,21 +94,9 @@ class GroupManager(QObject):
             try:
                 self._groups = json.loads(raw)
             except json.JSONDecodeError:
-                self._groups = self._default_groups()
+                self._groups = []
         else:
-            self._groups = self._default_groups()
-
-    def _default_groups(self) -> list[dict]:
-        return [
-            {"id": "living", "name": "Sala de estar", "members": [],
-             "active": False},
-            {"id": "bedroom", "name": "Dormitorio", "members": [],
-             "active": False},
-            {"id": "kitchen", "name": "Cocina", "members": [],
-             "active": False},
-            {"id": "all", "name": "Toda la casa", "members": [],
-             "active": False},
-        ]
+            self._groups = []
 
     def _save(self):
         import json

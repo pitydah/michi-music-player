@@ -22,7 +22,6 @@ def mock_ha_svc():
     ha.get_groups.return_value = [{"id": "g1", "name": "All"}]
     ha.get_streams.return_value = [{"id": "s1", "name": "Main Stream"}]
     ha.latency_ms = 45
-    ha.server_handoff_available = True
     ha.configure = MagicMock()
     ha.transfer_playback = MagicMock(return_value="done")
     ha.handoff = MagicMock(return_value="handoff_ok")
@@ -35,7 +34,6 @@ def mock_ha_svc():
     ha.set_group_name = MagicMock()
     ha.delete_group = MagicMock()
     ha.set_latency = MagicMock()
-    ha.server_handoff = MagicMock(return_value="done")
     ha.playback_transfer = MagicMock(return_value="done")
     return ha
 
@@ -84,15 +82,6 @@ class TestCapabilities:
 
     def test_receivers_unsupported(self, bridge):
         assert bridge.receiversAvailable is False
-
-    def test_server_handoff_no_controller(self):
-        b = HomeAudioBridge()
-        assert b.serverHandoffAvailable is False
-
-    def test_server_handoff_available(self, bridge, mock_ha_svc):
-        bridge.refresh()
-        assert bridge.serverHandoffAvailable is True
-
 
 class TestRefresh:
     def test_refresh_returns_ok(self, bridge):
@@ -260,20 +249,6 @@ class TestGroupOperations:
         assert result["error"] == "EMPTY_ZONE"
 
 
-class TestServerHandoff:
-    def test_handoff_ha(self, bridge, mock_ha_svc):
-        bridge.refresh()
-        result = bridge.serverHandoff()
-        assert result["ok"] is True
-        assert mock_ha_svc.server_handoff.called
-
-    def test_handoff_not_available(self):
-        b = HomeAudioBridge()
-        result = b.serverHandoff()
-        assert result["ok"] is False
-        assert result["error"] == "UNSUPPORTED"
-
-
 class TestPlaybackTransfer:
     def test_transfer_to_zone(self, bridge, mock_ha_svc):
         result = bridge.transferPlayback("group1", "group2")
@@ -289,19 +264,6 @@ class TestPlaybackTransfer:
         b = HomeAudioBridge()
         result = b.transferPlayback("group1", "group2")
         assert result["ok"] is False
-
-
-class TestHandoffToServer:
-    def test_handoff_to_server(self, bridge, mock_ha_svc):
-        result = bridge.handoffToServer()
-        assert result["ok"] is True
-        mock_ha_svc.handoff.assert_called_once()
-
-    def test_handoff_to_server_no_controller(self):
-        b = HomeAudioBridge()
-        result = b.handoffToServer()
-        assert result["ok"] is False
-        assert result["error"] == "UNSUPPORTED"
 
 
 class TestLatency:

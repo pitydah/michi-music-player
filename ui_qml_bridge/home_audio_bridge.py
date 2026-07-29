@@ -77,7 +77,6 @@ class HomeAudioBridge(QObject):
         self._retry_count = 0
         self._retry_timer: QTimer | None = None
         self._latency_ms = 0
-        self._server_handoff_available = False
         self._offline = False
         self._operation_in_progress = False
         self._current_operation = ""
@@ -130,10 +129,6 @@ class HomeAudioBridge(QObject):
     @Property(bool, constant=True)
     def volumeSupported(self) -> bool:
         return self._ha_svc is not None
-
-    @Property(bool, notify=state_changed)
-    def serverHandoffAvailable(self) -> bool:
-        return self._server_handoff_available
 
     @Property(str, notify=state_changed)
     def homeAssistantState(self) -> str:
@@ -361,9 +356,6 @@ class HomeAudioBridge(QObject):
             connected = connected_raw() if callable(connected_raw) else bool(connected_raw)
         except Exception:
             connected = False
-        self._server_handoff_available = bool(
-            getattr(self._ha_svc, "server_handoff_available", False)
-        )
         server_running = any(server.get("state") == "running" for server in self._servers)
         receiver_online = any(
             receiver.get("connected") or receiver.get("state") == "online"
@@ -520,12 +512,7 @@ class HomeAudioBridge(QObject):
 
     @Slot(result=dict, name="testHomeAssistant")
     def test_home_assistant(self) -> dict:
-        result = self._call_svc("test_connection")
-        if result.get("ok"):
-            self.refresh()
-        else:
-            self._retry_with_backoff("connected")
-        return result
+        return self._dispatch("test_home_assistant", "test_connection")
 
     @Slot(result=dict, name="discoverReceivers")
     def discover_receivers(self) -> dict:
@@ -752,10 +739,6 @@ class HomeAudioBridge(QObject):
         self._cancel_retry()
         return self.test_home_assistant()
 
-    @Slot(result=dict, name="serverHandoff")
-    def server_handoff(self) -> dict:
-        return self._call_svc("server_handoff")
-
     @Slot(str, "QVariantList", result=dict, name="createGroup")
     def create_group(self, name: str, receiver_ids: list) -> dict:
         """Create a new group with the given receivers."""
@@ -867,10 +850,6 @@ class HomeAudioBridge(QObject):
             return {"ok": False, "error": "MISSING_ARGS"}
         return self._mutate_and_refresh("transfer_playback", from_zone, to_zone)
 
-    @Slot(result=dict, name="handoffToServer")
-    def handoff_to_server(self) -> dict:
-        return self._call_svc("handoff")
-
     @Slot(str, result=dict, name="playbackTransfer")
     def playback_transfer(self, zone_id: str = "") -> dict:
         if not zone_id:
@@ -908,7 +887,6 @@ HomeAudioBridge.assignStream = HomeAudioBridge.assign_stream
 HomeAudioBridge.disconnectHa = HomeAudioBridge.disconnect_ha
 HomeAudioBridge.assignSourceToZone = HomeAudioBridge.assign_source_to_zone
 HomeAudioBridge.reconnectHa = HomeAudioBridge.reconnect_ha
-HomeAudioBridge.serverHandoff = HomeAudioBridge.server_handoff
 HomeAudioBridge.createGroup = HomeAudioBridge.create_group
 HomeAudioBridge.updateGroup = HomeAudioBridge.update_group
 HomeAudioBridge.groupZones = HomeAudioBridge.group_zones
@@ -920,5 +898,4 @@ HomeAudioBridge.deleteZone = HomeAudioBridge.delete_zone
 HomeAudioBridge.setLatency = HomeAudioBridge.set_latency
 HomeAudioBridge.setSource = HomeAudioBridge.set_source
 HomeAudioBridge.transferPlayback = HomeAudioBridge.transfer_playback
-HomeAudioBridge.handoffToServer = HomeAudioBridge.handoff_to_server
 HomeAudioBridge.playbackTransfer = HomeAudioBridge.playback_transfer
