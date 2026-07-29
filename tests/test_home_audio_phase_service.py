@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from core.home_audio_service import HomeAudioService
 
@@ -101,3 +101,106 @@ def test_disconnect_closes_home_assistant_client() -> None:
 
     client.disconnect_home_assistant.assert_called_once_with()
     assert result == {"ok": True, "disconnected": True}
+
+
+def test_discovers_home_assistant_instances_via_avahi() -> None:
+    completed = MagicMock(
+        stdout=(
+            "=;eth0;IPv4;Home Assistant;_home-assistant._tcp;local;"
+            "homeassistant.local;192.168.1.25;8123;\"version=2026.7\"\n"
+            "=;eth0;IPv4;Home Assistant;_home-assistant._tcp;local;"
+            "homeassistant.local;192.168.1.25;8123;\"version=2026.7\"\n"
+        )
+    )
+    service = HomeAudioService(settings=MemorySettings())
+
+    with (
+        patch("core.home_audio_service.shutil.which", return_value="/usr/bin/avahi-browse"),
+        patch("core.home_audio_service.subprocess.run", return_value=completed) as run,
+    ):
+        instances = service.discover_home_assistant_instances()
+
+    run.assert_called_once_with(
+        [
+            "/usr/bin/avahi-browse",
+            "--resolve",
+            "--terminate",
+            "--parsable",
+            "_home-assistant._tcp",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=8,
+        check=False,
+    )
+    assert instances == [
+        {
+            "name": "Home Assistant",
+            "host": "192.168.1.25",
+            "hostname": "homeassistant.local",
+            "port": 8123,
+            "url": "http://192.168.1.25:8123",
+            "discovered_by": "mdns",
+        }
+    ]
+
+
+def test_home_assistant_discovery_returns_empty_without_avahi() -> None:
+    service = HomeAudioService(settings=MemorySettings())
+
+    with patch("core.home_audio_service.shutil.which", return_value=None):
+        instances = service.discover_home_assistant_instances()
+
+    assert instances == []
+
+
+def test_import_home_assistant_entities_filters_zones_and_persists_selection() -> None:
+    client = MagicMock()
+    client.get_states.return_value = [
+        {
+            "entity_id": "media_player.living_room",
+            "state": "playing",
+            "attributes": {"friendly_name": "Living room", "volume_level": 0.4},
+        },
+        {
+            "entity_id": "media_player.kitchen",
+            "state": "idle",
+            "attributes": {"friendly_name": "Kitchen", "volume_level": 0.2},
+        },
+    ]
+    settings = MemorySettings()
+    service = HomeAudioService(ha_client=client, settings=settings)
+
+    result = service.import_home_assistant_entities(["media_player.kitchen"])
+
+    assert result == {
+        "ok": True,
+        "imported": ["media_player.kitchen"],
+        "count": 1,
+    }
+    assert [device["imported"] for device in service.get_devices()] == [False, True]
+    assert [zone["id"] for zone in service.get_zones()] == ["media_player.kitchen"]
+    assert settings.values["home_audio/ha_selected_entities_v1"] == (
+        '["media_player.kitchen"]'
+    )
+
+
+def test_import_home_assistant_entities_rejects_unknown_entity() -> None:
+    client = MagicMock()
+    client.get_states.return_value = [
+        {
+            "entity_id": "media_player.living_room",
+            "state": "idle",
+            "attributes": {},
+        }
+    ]
+    service = HomeAudioService(ha_client=client, settings=MemorySettings())
+
+    result = service.import_home_assistant_entities(["media_player.missing"])
+
+    assert result == {
+        "ok": False,
+        "error": "UNKNOWN_HOME_ASSISTANT_ENTITY",
+        "unknown": ["media_player.missing"],
+    }
+

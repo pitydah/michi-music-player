@@ -264,6 +264,15 @@ Item {
             width: parent.width
             bridge: root.ha
             state: root.ha ? root.ha.homeAssistantState || "not_configured" : "not_configured"
+            onConfigureClicked: function(host, port, token) {
+                if (root.ha) root.ha.configureHa(host, port, token)
+            }
+            onDisconnectClicked: {
+                if (root.ha) root.ha.disconnectHa()
+            }
+            onOpenDiagnostics: {
+                if (root.ha) root.ha.openDiagnostics()
+            }
         }
     }
 

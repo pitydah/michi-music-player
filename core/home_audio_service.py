@@ -12,7 +12,9 @@ import json
 import logging
 import math
 import os
+import shutil
 import struct
+import subprocess
 import time
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -25,6 +27,7 @@ logger = logging.getLogger("michi.home_audio")
 
 _ROUTES_KEY = "home_audio/distribution_routes_v1"
 _SELECTED_SOURCE_KEY = "home_audio/selected_source"
+_HA_SELECTED_ENTITIES_KEY = "home_audio/ha_selected_entities_v1"
 _ROUTE_TRANSACTION_MODES = {"atomic", "best_effort"}
 
 
@@ -147,6 +150,8 @@ class HomeAudioService(QObject):
         self._playback = playback_service
         self._settings = settings or QSettings("Michi", "MusicPlayer")
         self._routes: list[dict] = []
+        self._home_assistant_instances: list[dict] = []
+        self._selected_ha_entity_ids = self._load_selected_ha_entity_ids()
         self._selected_source = str(self._settings.value(_SELECTED_SOURCE_KEY, "") or "")
         self._last_error = ""
         self._last_refresh = 0.0
@@ -204,7 +209,13 @@ class HomeAudioService(QObject):
         return value if isinstance(value, bool) else False
 
     def _on_home_assistant_state_changed(self, state: dict) -> None:
-        self.state_changed.emit(state)
+        current = dict(state)
+        entity_id = str(current.get("entity_id", ""))
+        current["imported"] = (
+            self._selected_ha_entity_ids is None
+            or entity_id in self._selected_ha_entity_ids
+        )
+        self.state_changed.emit(current)
 
     def _on_home_assistant_connection_changed(self, connected: bool) -> None:
         self.state_changed.emit(
@@ -236,6 +247,19 @@ class HomeAudioService(QObject):
         except (TypeError, ValueError):
             logger.warning("Invalid persisted home-audio routes; resetting them")
             self._routes = []
+
+    def _load_selected_ha_entity_ids(self) -> set[str] | None:
+        raw = self._settings.value(_HA_SELECTED_ENTITIES_KEY, None)
+        if raw is None:
+            return None
+        try:
+            values = json.loads(raw) if isinstance(raw, str) else raw
+        except (TypeError, ValueError, json.JSONDecodeError):
+            logger.warning("Invalid Home Assistant entity selection; importing all entities")
+            return None
+        if not isinstance(values, list):
+            return None
+        return {str(entity_id) for entity_id in values if str(entity_id)}
 
     def _save_routes(self) -> None:
         self._settings.setValue(_ROUTES_KEY, json.dumps(self._routes, ensure_ascii=False))
@@ -556,6 +580,58 @@ class HomeAudioService(QObject):
                     logger.debug("Receiver discovery failed", exc_info=True)
         return self.get_receivers()
 
+    def discover_home_assistant_instances(self) -> list[dict]:
+        """Discover Home Assistant instances advertised through mDNS/Avahi."""
+        avahi_browse = shutil.which("avahi-browse")
+        if not avahi_browse:
+            self._home_assistant_instances = []
+            return []
+        try:
+            completed = subprocess.run(
+                [
+                    avahi_browse,
+                    "--resolve",
+                    "--terminate",
+                    "--parsable",
+                    "_home-assistant._tcp",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=8,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            self._last_error = str(exc)
+            logger.debug("Home Assistant mDNS discovery failed", exc_info=True)
+            self._home_assistant_instances = []
+            return []
+
+        instances: dict[tuple[str, int], dict] = {}
+        for line in completed.stdout.splitlines():
+            parts = line.split(";")
+            if len(parts) < 9 or parts[0] != "=":
+                continue
+            try:
+                port = int(parts[8])
+            except ValueError:
+                continue
+            host = parts[7] or parts[6].rstrip(".")
+            key = (host, port)
+            instances[key] = {
+                "name": parts[3] or "Home Assistant",
+                "host": host,
+                "hostname": parts[6].rstrip("."),
+                "port": port,
+                "url": f"http://{host}:{port}",
+                "discovered_by": "mdns",
+            }
+        self._home_assistant_instances = list(instances.values())
+        return deepcopy(self._home_assistant_instances)
+
+    def get_home_assistant_instances(self) -> list[dict]:
+        """Return the latest Home Assistant mDNS discovery snapshot."""
+        return deepcopy(self._home_assistant_instances)
+
     def get_receivers(self) -> list[dict]:
         """Merge controlled and discovered receivers into one normalized list."""
         merged: dict[str, dict] = {}
@@ -602,7 +678,7 @@ class HomeAudioService(QObject):
                 }
         return list(merged.values())
 
-    def _get_ha_devices(self) -> list[dict]:
+    def _get_ha_devices(self, *, imported_only: bool = False) -> list[dict]:
         if self._ha_client is None:
             return []
         getter = getattr(self._ha_client, "get_states", None)
@@ -618,6 +694,12 @@ class HomeAudioService(QObject):
         normalised = []
         for device in devices:
             entity_id = str(device.get("entity_id", "") or "")
+            imported = (
+                self._selected_ha_entity_ids is None
+                or entity_id in self._selected_ha_entity_ids
+            )
+            if imported_only and not imported:
+                continue
             attributes = device.get("attributes", {}) or {}
             normalised.append(
                 {
@@ -628,12 +710,33 @@ class HomeAudioService(QObject):
                     "volume": attributes.get("volume_level", 0.0),
                     "muted": bool(attributes.get("is_volume_muted", False)),
                     "backend": "home_assistant",
+                    "imported": imported,
                 }
             )
         return normalised
 
     def get_devices(self) -> list[dict]:
         return self._get_ha_devices()
+
+    def import_home_assistant_entities(self, entity_ids: list[str]) -> dict:
+        """Persist which discovered media-player entities become Michi zones."""
+        selected = list(dict.fromkeys(str(entity_id) for entity_id in entity_ids))
+        available = {device["entity_id"] for device in self._get_ha_devices()}
+        unknown = [entity_id for entity_id in selected if entity_id not in available]
+        if unknown:
+            return {
+                "ok": False,
+                "error": "UNKNOWN_HOME_ASSISTANT_ENTITY",
+                "unknown": unknown,
+            }
+        self._selected_ha_entity_ids = set(selected)
+        self._settings.setValue(
+            _HA_SELECTED_ENTITIES_KEY,
+            json.dumps(selected, ensure_ascii=False),
+        )
+        if hasattr(self._settings, "sync"):
+            self._settings.sync()
+        return {"ok": True, "imported": selected, "count": len(selected)}
 
     def get_groups(self) -> list[dict]:
         """Return verified Snapcast groups or configured-group fallbacks."""
@@ -662,7 +765,7 @@ class HomeAudioService(QObject):
     def get_zones(self) -> list[dict]:
         """Combine Snapcast groups and Home Assistant devices as zones."""
         zones = self.get_groups()
-        for device in self._get_ha_devices():
+        for device in self._get_ha_devices(imported_only=True):
             zones.append(
                 {
                     "id": device["id"],

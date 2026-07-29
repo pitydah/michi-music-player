@@ -18,15 +18,22 @@ Item {
     property string host: ""
     property int port: 8123
     property string token: ""
+    property var selectedEntityIds: []
+    property bool selectionDirty: false
     property var bridge: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
+
+    readonly property var discoveredInstances: root.bridge
+                                               ? root.bridge.homeAssistantInstances || []
+                                               : []
+    readonly property var entities: root.bridge ? root.bridge.devices || [] : []
 
     signal configureClicked(string host, int port, string token)
     signal disconnectClicked()
     signal openDiagnostics()
 
     readonly property real cardHeight: root.state === "not_configured"
-                                       ? (responsive.compact ? 600 : 500)
-                                       : (responsive.compact ? 360 : 280)
+                                       ? (responsive.compact ? 720 : 600)
+                                       : (responsive.compact ? 760 : 620)
 
     implicitHeight: root.loading ? 160 : root.cardHeight
 
@@ -40,6 +47,39 @@ Item {
         var s = root.bridge.homeAssistantState
         if (s !== undefined)
             root.state = s
+        root.syncSelectedEntities()
+    }
+
+    function syncSelectedEntities() {
+        if (root.selectionDirty)
+            return
+        var selected = []
+        for (var index = 0; index < root.entities.length; index++) {
+            var entity = root.entities[index]
+            if (entity.imported !== false)
+                selected.push(entity.entity_id)
+        }
+        root.selectedEntityIds = selected
+    }
+
+    function isEntitySelected(entityId) {
+        return root.selectedEntityIds.indexOf(entityId) >= 0
+    }
+
+    function setEntitySelected(entityId, selected) {
+        var next = root.selectedEntityIds.slice()
+        var index = next.indexOf(entityId)
+        if (selected && index < 0)
+            next.push(entityId)
+        else if (!selected && index >= 0)
+            next.splice(index, 1)
+        root.selectedEntityIds = next
+        root.selectionDirty = true
+    }
+
+    function useDiscoveredInstance(instance) {
+        root.host = instance.host || instance.hostname || ""
+        root.port = instance.port || 8123
     }
 
     // Loading state
@@ -118,6 +158,29 @@ Item {
                     Accessible.name: qsTr("Host de Home Assistant")
                 }
 
+                MichiButton {
+                    width: parent.width
+                    visible: root.state === "not_configured"
+                    text: qsTr("Detectar Home Assistant en la red")
+                    variant: "ghost"
+                    enabled: root.bridge && !root.bridge.operationInProgress
+                    onClicked: root.bridge.discoverHomeAssistantInstances()
+                }
+
+                ComboBox {
+                    width: parent.width
+                    visible: root.state === "not_configured"
+                             && root.discoveredInstances.length > 0
+                    model: root.discoveredInstances
+                    textRole: "name"
+                    Accessible.name: qsTr("Instancias de Home Assistant detectadas")
+                    onActivated: root.useDiscoveredInstance(root.discoveredInstances[currentIndex])
+                    onCountChanged: {
+                        if (count > 0 && root.host.trim() === "")
+                            root.useDiscoveredInstance(root.discoveredInstances[0])
+                    }
+                }
+
                 SpinBox {
                     width: responsive.compact ? parent.width : Math.min(parent.width, 240)
                     visible: root.state === "not_configured"
@@ -146,6 +209,108 @@ Item {
                     font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width
                     wrapMode: Text.WordWrap
+                }
+
+                Row {
+                    width: parent.width
+                    spacing: MichiTheme.spacing.sm
+                    visible: root.state !== "not_configured"
+
+                    Text {
+                        text: qsTr("Entidades media_player")
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        font.weight: MichiTheme.typography.weightSemiBold
+                    }
+
+                    StatusBadge {
+                        text: root.bridge && root.bridge.haWebSocketConnected
+                              ? qsTr("Tiempo real")
+                              : qsTr("Actualización periódica")
+                        kind: root.bridge && root.bridge.haWebSocketConnected
+                              ? "success"
+                              : "warning"
+                    }
+                }
+
+                ListView {
+                    id: entityList
+                    width: parent.width
+                    height: Math.min(contentHeight, responsive.compact ? 300 : 220)
+                    visible: root.state !== "not_configured"
+                    model: root.entities
+                    spacing: MichiTheme.spacing.xs
+                    reuseItems: true
+
+                    delegate: Rectangle {
+                        required property var modelData
+
+                        width: entityList.width
+                        height: MichiTheme.minimumInteractiveSize + MichiTheme.spacing.sm
+                        radius: MichiTheme.radius.sm
+                        color: MichiTheme.colors.surfaceSubtle
+                        border.width: 1
+                        border.color: MichiTheme.colors.borderSubtle
+
+                        Row {
+                            anchors.fill: parent
+                            anchors.margins: MichiTheme.spacing.sm
+                            spacing: MichiTheme.spacing.sm
+
+                            CheckBox {
+                                anchors.verticalCenter: parent.verticalCenter
+                                checked: root.isEntitySelected(modelData.entity_id)
+                                Accessible.name: qsTr("Importar %1").arg(modelData.name)
+                                onToggled: root.setEntitySelected(modelData.entity_id, checked)
+                            }
+
+                            Column {
+                                width: Math.max(0, parent.width - stateBadge.width
+                                                - MichiTheme.minimumInteractiveSize
+                                                - parent.spacing * 2)
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                Text {
+                                    width: parent.width
+                                    text: modelData.name || modelData.entity_id
+                                    color: MichiTheme.colors.textPrimary
+                                    font.pixelSize: MichiTheme.typography.bodySize
+                                    elide: Text.ElideRight
+                                }
+
+                                Text {
+                                    width: parent.width
+                                    text: modelData.entity_id
+                                    color: MichiTheme.colors.textSecondary
+                                    font.pixelSize: MichiTheme.typography.captionSize
+                                    elide: Text.ElideRight
+                                }
+                            }
+
+                            StatusBadge {
+                                id: stateBadge
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: modelData.state || qsTr("desconocido")
+                                kind: modelData.state === "playing" ? "success" : "neutral"
+                            }
+                        }
+                    }
+                }
+
+                MichiButton {
+                    width: parent.width
+                    visible: root.state !== "not_configured" && root.entities.length > 0
+                    text: qsTr("Importar entidades seleccionadas (%1)")
+                          .arg(root.selectedEntityIds.length)
+                    variant: "primary"
+                    onClicked: {
+                        var result = root.bridge.importHomeAssistantEntities(
+                                         root.selectedEntityIds)
+                        if (result && result.ok && !result.pending) {
+                            root.selectionDirty = false
+                            root.selectedEntityIds = result.imported || []
+                        }
+                    }
                 }
 
                 Grid {
@@ -207,6 +372,13 @@ Item {
                     root.lastError = root.bridge.lastError || qsTr("Error de conexión")
                 }
                 root.loading = false
+                root.syncSelectedEntities()
+            }
+        }
+        function onOperationFinished(result) {
+            if (result && result.imported !== undefined) {
+                root.selectionDirty = false
+                root.selectedEntityIds = result.imported
             }
         }
     }

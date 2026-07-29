@@ -44,6 +44,30 @@ def test_home_assistant_form_passes_host_port_and_token() -> None:
     assert "configureHa(host, port, token)" in source
 
 
+def test_home_assistant_panel_supports_discovery_entity_selection_and_live_state() -> None:
+    source = (HOME_AUDIO_DIR / "HomeAssistantPanel.qml").read_text(encoding="utf-8")
+
+    for contract in (
+        "discoverHomeAssistantInstances",
+        "homeAssistantInstances",
+        "bridge.devices",
+        "selectedEntityIds",
+        "importHomeAssistantEntities",
+        "haWebSocketConnected",
+        "modelData.state",
+    ):
+        assert contract in source
+
+
+def test_setup_wizard_wires_home_assistant_panel_actions() -> None:
+    source = (HOME_AUDIO_DIR / "SetupWizardPage.qml").read_text(encoding="utf-8")
+
+    assert "onConfigureClicked" in source
+    assert "root.ha.configureHa(host, port, token)" in source
+    assert "onDisconnectClicked" in source
+    assert "root.ha.disconnectHa()" in source
+
+
 def test_diagnostics_page_exposes_required_operational_status() -> None:
     source = (HOME_AUDIO_DIR / "DiagnosticsPage.qml").read_text(encoding="utf-8")
 

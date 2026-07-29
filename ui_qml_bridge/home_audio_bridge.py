@@ -65,6 +65,7 @@ class HomeAudioBridge(QObject):
         self._snapcast_state = "concept"
         self._distribution_state = "unavailable"
         self._devices: list[dict] = []
+        self._home_assistant_instances: list[dict] = []
         self._zones: list[dict] = []
         self._receivers: list[dict] = []
         self._streams: list[dict] = []
@@ -99,6 +100,7 @@ class HomeAudioBridge(QObject):
                 "volume": attributes.get("volume_level", 0.0),
                 "muted": bool(attributes.get("is_volume_muted", False)),
                 "backend": "home_assistant",
+                "imported": bool(state.get("imported", True)),
             }
             self._devices = [
                 item for item in self._devices if item.get("id") != entity_id
@@ -121,7 +123,9 @@ class HomeAudioBridge(QObject):
                 item
                 for item in self._zones
                 if item.get("id") != entity_id
-            ] + [zone]
+            ]
+            if device["imported"]:
+                self._zones.append(zone)
         self.state_changed.emit()
 
     @Property(bool, notify=state_changed)
@@ -218,6 +222,10 @@ class HomeAudioBridge(QObject):
     @Property("QVariantList", notify=state_changed)
     def devices(self) -> list[dict]:
         return self._devices
+
+    @Property("QVariantList", notify=state_changed)
+    def homeAssistantInstances(self) -> list[dict]:
+        return self._home_assistant_instances
 
     @Property("QVariantList", notify=state_changed)
     def zones(self) -> list[dict]:
@@ -360,6 +368,9 @@ class HomeAudioBridge(QObject):
         """Read all Home Audio models as one coherent bridge snapshot."""
         return {
             "devices": self._list_from_service("get_devices"),
+            "home_assistant_instances": self._list_from_service(
+                "get_home_assistant_instances"
+            ),
             "zones": self._list_from_service("get_zones", "discover_zones"),
             "groups": self._list_from_service("get_groups"),
             "streams": self._list_from_service("get_streams"),
@@ -373,6 +384,7 @@ class HomeAudioBridge(QObject):
     def _apply_snapshot(self, snapshot: dict) -> None:
         """Replace bridge models and reconcile persisted routes."""
         self._devices = snapshot.get("devices", [])
+        self._home_assistant_instances = snapshot.get("home_assistant_instances", [])
         self._zones = snapshot.get("zones", [])
         self._groups = snapshot.get("groups", [])
         self._streams = snapshot.get("streams", [])
@@ -579,6 +591,7 @@ class HomeAudioBridge(QObject):
             access_token=token,
         )
         if result.get("ok"):
+            self._refresh_models()
             self._ha_state = "configured"
             self.state_changed.emit()
         return result
@@ -597,6 +610,20 @@ class HomeAudioBridge(QObject):
         if not result.get("ok"):
             return result
         return {"ok": True, "receivers": list(self._receivers)}
+
+    @Slot(result=dict, name="discoverHomeAssistantInstances")
+    def discover_home_assistant_instances(self) -> dict:
+        """Discover Home Assistant endpoints without blocking when workers exist."""
+        return self._dispatch(
+            "discover_home_assistant_instances",
+            "discover_home_assistant_instances",
+        )
+
+    @Slot("QVariantList", result=dict, name="importHomeAssistantEntities")
+    def import_home_assistant_entities(self, entity_ids: list | tuple | None) -> dict:
+        """Persist the Home Assistant entities selected for zone import."""
+        selected = [str(entity_id) for entity_id in (entity_ids or [])]
+        return self._mutate_and_refresh("import_home_assistant_entities", selected)
 
     @Slot(str, result=dict, name="startServer")
     def start_server(self, server_id: str = "local_snapserver") -> dict:
@@ -985,6 +1012,10 @@ HomeAudioBridge.configureHomeAssistant = HomeAudioBridge.configure_home_assistan
 HomeAudioBridge.configureHa = HomeAudioBridge.configure_ha
 HomeAudioBridge.testHomeAssistant = HomeAudioBridge.test_home_assistant
 HomeAudioBridge.discoverReceivers = HomeAudioBridge.discover_receivers
+HomeAudioBridge.discoverHomeAssistantInstances = (
+    HomeAudioBridge.discover_home_assistant_instances
+)
+HomeAudioBridge.importHomeAssistantEntities = HomeAudioBridge.import_home_assistant_entities
 HomeAudioBridge.startServer = HomeAudioBridge.start_server
 HomeAudioBridge.startLocalServer = HomeAudioBridge.start_local_server
 HomeAudioBridge.stopServer = HomeAudioBridge.stop_server

@@ -148,8 +148,29 @@ def test_home_audio_bridge_applies_websocket_state_change() -> None:
             "volume": 0.35,
             "muted": False,
             "backend": "home_assistant",
+            "imported": True,
         }
     ]
+
+
+def test_home_audio_bridge_keeps_unselected_websocket_entity_out_of_zones() -> None:
+    service = FakeHomeAudioService()
+    bridge = HomeAudioBridge(home_audio_service=service)
+    bridge._zones = [
+        {"id": "media_player.living_room", "backend": "home_assistant"}
+    ]
+
+    service.state_changed.emit(
+        {
+            "entity_id": "media_player.living_room",
+            "state": "idle",
+            "imported": False,
+            "attributes": {"friendly_name": "Living room"},
+        }
+    )
+
+    assert bridge.devices[0]["imported"] is False
+    assert bridge.zones == []
 
 
 def test_home_audio_bridge_passes_route_transaction_mode() -> None:

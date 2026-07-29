@@ -97,6 +97,24 @@ class TestHomeAudioPhaseFeatures:
         assert service.configuration == ("ha.local", 8123, "secret")
         assert result["ok"] is True
 
+    def test_configure_ha_loads_media_player_entities_after_connecting(self) -> None:
+        service = ConfigurableService()
+        service.devices = [
+            {
+                "id": "media_player.living_room",
+                "entity_id": "media_player.living_room",
+                "name": "Living room",
+                "state": "idle",
+                "imported": True,
+            }
+        ]
+        bridge = HomeAudioBridge(home_audio_service=service)
+
+        result = bridge.configureHa("ha.local", 8123, "secret")
+
+        assert result["ok"] is True
+        assert bridge.devices == service.devices
+
     def test_disconnect_ha_closes_client_and_clears_credentials(self) -> None:
         service = MagicMock()
         service.disconnect_home_assistant.return_value = {
@@ -109,6 +127,47 @@ class TestHomeAudioPhaseFeatures:
 
         service.disconnect_home_assistant.assert_called_once_with()
         assert result == {"ok": True, "disconnected": True}
+
+    def test_import_home_assistant_entities_forwards_selection(self) -> None:
+        service = MagicMock()
+        service.import_home_assistant_entities.return_value = {
+            "ok": True,
+            "imported": ["media_player.kitchen"],
+            "count": 1,
+        }
+        bridge = HomeAudioBridge(home_audio_service=service)
+
+        result = bridge.importHomeAssistantEntities(["media_player.kitchen"])
+
+        service.import_home_assistant_entities.assert_called_once_with(
+            ["media_player.kitchen"]
+        )
+        assert result["count"] == 1
+
+    def test_discover_home_assistant_instances_exposes_service_results(self) -> None:
+        service = MagicMock()
+        service.discover_home_assistant_instances.return_value = [
+            {
+                "name": "Home Assistant",
+                "host": "192.168.1.25",
+                "port": 8123,
+            }
+        ]
+        service.get_home_assistant_instances.return_value = (
+            service.discover_home_assistant_instances.return_value
+        )
+        bridge = HomeAudioBridge(home_audio_service=service)
+
+        result = bridge.discoverHomeAssistantInstances()
+
+        assert result["ok"] is True
+        assert bridge.homeAssistantInstances == [
+            {
+                "name": "Home Assistant",
+                "host": "192.168.1.25",
+                "port": 8123,
+            }
+        ]
 
     def test_create_group_returns_service_error_instead_of_raising(self) -> None:
         service = MagicMock()
@@ -207,13 +266,16 @@ class TestHomeAudioPhaseFeatures:
 
         assert result == {"ok": False, "error": "TEST_TONE_UNSUPPORTED"}
 
-
 class ConfigurableService:
     """Record Home Assistant configuration forwarded by the bridge."""
 
     def __init__(self) -> None:
         self.configuration: tuple[str, int, str] | None = None
+        self.devices: list[dict] = []
 
     def configure(self, *, host: str, port: int, access_token: str) -> dict:
         self.configuration = (host, port, access_token)
         return {"ok": True}
+
+    def get_devices(self) -> list[dict]:
+        return self.devices
