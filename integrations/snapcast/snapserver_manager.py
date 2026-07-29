@@ -23,7 +23,7 @@ DEFAULT_CONFIG = """\
 tcp_port = {tcp}
 control_port = {ctrl}
 http_port = {http}
-stream = pipe:///tmp/michi-snapfifo?name=michi&codec=flac&sampleformat=44100:16:2
+stream = pipe://{fifo}?name=michi&codec=flac&sampleformat=44100:16:2
 """
 
 
@@ -133,11 +133,14 @@ class SnapServerManager(QObject):
     def _write_config(self) -> str:
         path = Path(self._config_path)
         path.parent.mkdir(parents=True, exist_ok=True)
+        from integrations.snapcast.fifo_manager import ensure_fifo, fifo_path
+        ensure_fifo()
         path.write_text(
             DEFAULT_CONFIG.format(
                 tcp=self._tcp_port,
                 ctrl=self._control_port,
                 http=self._http_port,
+                fifo=fifo_path(),
             ),
             encoding="utf-8",
         )

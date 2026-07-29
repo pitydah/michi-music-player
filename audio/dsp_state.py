@@ -19,6 +19,7 @@ class DspState:
     crossfade_seconds: int = 0
     spectrum_enabled: bool = False
     transmit_enabled: bool = False
+    snapcast_fifo_enabled: bool = False
     digital_volume_enabled: bool = True
 
     def is_dsp_active(self: "DspState") -> bool:
@@ -29,4 +30,5 @@ class DspState:
             or self.crossfade_seconds > 0
             or self.spectrum_enabled
             or self.transmit_enabled
+            or self.snapcast_fifo_enabled
         )

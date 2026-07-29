@@ -92,6 +92,7 @@ class GStreamerEngine(QObject):
 
         self._spectrum_enabled = False
         self._spectrum_sink = None
+        self._snapcast_fifo_enabled = False
 
         self._dff_header = None
         self._dff_thread = None
@@ -186,6 +187,13 @@ class GStreamerEngine(QObject):
 
     def get_output_device_id(self) -> str:
         return self._dac.device or self._dac.output_device_id
+
+    def set_snapcast_fifo(self, enabled: bool) -> None:
+        """Enable/disable the Snapcast distribution FIFO in the pipeline."""
+        self._snapcast_fifo_enabled = enabled
+        import logging
+        logging.getLogger("michi.player").info(
+            "Snapcast FIFO distribution %s", "enabled" if enabled else "disabled")
 
     def set_transmit_device(self, device) -> None:
         self._transmit_device = device
@@ -297,6 +305,7 @@ class GStreamerEngine(QObject):
                 replaygain_db=(rg_gain_db or 0.0),
                 spectrum_enabled=self._spectrum_enabled,
                 transmit_enabled=self._transmit_device is not None,
+                snapcast_fifo_enabled=getattr(self, '_snapcast_fifo_enabled', False),
             )
             from audio.dac_manager import DacManager
             dm = DacManager(self)
@@ -397,6 +406,7 @@ class GStreamerEngine(QObject):
             replaygain_enabled=self._replaygain,
             spectrum_enabled=self._spectrum_enabled,
             transmit_enabled=self._transmit_device is not None,
+            snapcast_fifo_enabled=getattr(self, '_snapcast_fifo_enabled', False),
         )
 
         factory = PipelineFactory()

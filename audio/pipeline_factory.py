@@ -232,6 +232,28 @@ class PipelineFactory:
                     c3.link(r3)
                     r3.link_filtered(t_sink, caps)
                     tee.link(q3)
+
+            # Branch 4: Snapcast FIFO (HomeAudioPlaybackTap)
+            if dsp.snapcast_fifo_enabled:
+                q4 = Gst.ElementFactory.make("queue", None)
+                c4 = Gst.ElementFactory.make("audioconvert", None)
+                r4 = Gst.ElementFactory.make("audioresample", None)
+                caps = Gst.Caps.from_string(
+                    "audio/x-raw,rate=44100,channels=2,format=S16LE")
+                from integrations.snapcast.fifo_manager import get_snapfifo_fd
+                fd = get_snapfifo_fd()
+                f_sink = None
+                if fd is not None:
+                    f_sink = Gst.ElementFactory.make("fdsink", "snapfifo_sink")
+                    if f_sink:
+                        f_sink.set_property("fd", fd)
+                if all([q4, c4, r4, f_sink]):
+                    for e in [q4, c4, r4, f_sink]:
+                        audio_sink.add(e)
+                    q4.link(c4)
+                    c4.link(r4)
+                    r4.link_filtered(f_sink, caps)
+                    tee.link(q4)
         else:
             s = self._make_sink_from_route(route)
             if s:
