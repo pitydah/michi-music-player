@@ -447,6 +447,16 @@ class PlayerService(QObject):
         if self._engine:
             self._engine.set_transmit_device(device)
 
+    def set_snapcast_fifo(self, enabled: bool) -> None:
+        """Enable or disable the Snapcast distribution FIFO branch.
+
+        When enabled, the GStreamer pipeline will tee audio into
+        /tmp/michi-snapfifo for Snapserver to consume.
+        Requires an active pipeline (restart if currently playing).
+        """
+        if self._engine:
+            self._engine.set_snapcast_fifo(enabled)
+
     def get_transmit_device(self) -> Any:
         return self._engine.get_transmit_device() if self._engine else None
 

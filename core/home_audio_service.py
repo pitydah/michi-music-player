@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -401,6 +402,71 @@ class HomeAudioService(QObject):
             "error": str(getattr(self._snapcast, "last_error", "") or ""),
         }
 
+    def enable_distribution(self) -> dict:
+        """Start Snapserver and enable the FIFO distribution pipeline.
+
+        Returns:
+            {"ok": True, "fifo": True, "snapserver": True, "pipeline": True}
+            or {"ok": False, "error": ..., "step": ...} on failure.
+        """
+        steps = {}
+
+        # 1. Ensure FIFO exists
+        from integrations.snapcast.fifo_manager import ensure_fifo, open_fifo
+        fifo_ok = ensure_fifo()
+        if not fifo_ok:
+            return {"ok": False, "error": "FIFO_CREATE_FAILED", "step": "fifo"}
+        steps["fifo"] = True
+
+        # 2. Start Snapserver if not running
+        if self._snapserver and not self._snapserver.is_running:
+            result = self._snapserver.start()
+            if not result.get("ok"):
+                return {"ok": False, "error": result.get("error", "SNAPSERVER_START_FAILED"), "step": "snapserver"}
+        steps["snapserver"] = True
+
+        # 3. Open FIFO writer
+        fd = open_fifo()
+        if fd is None:
+            import logging
+            logging.getLogger("michi.home_audio").warning(
+                "FIFO opened non-blocking — Snapserver may not have reader yet")
+        steps["fifo_open"] = True
+
+        # 4. Enable pipeline FIFO branch
+        if self._playback and hasattr(self._playback, "set_snapcast_fifo"):
+            try:
+                self._playback.set_snapcast_fifo(True)
+            except Exception as exc:
+                return {"ok": False, "error": str(exc), "step": "pipeline"}
+        steps["pipeline"] = True
+
+        return {"ok": True, **steps}
+
+    def disable_distribution(self) -> dict:
+        """Stop distribution: disable FIFO pipeline, stop Snapserver."""
+        steps = {}
+
+        if self._playback and hasattr(self._playback, "set_snapcast_fifo"):
+            try:
+                self._playback.set_snapcast_fifo(False)
+            except Exception as exc:
+                steps["pipeline_error"] = str(exc)
+            else:
+                steps["pipeline"] = True
+
+        from integrations.snapcast.fifo_manager import close_fifo
+        close_fifo()
+        steps["fifo_closed"] = True
+
+        if self._snapserver and self._snapserver.is_running:
+            result = self._snapserver.stop()
+            steps["snapserver_stopped"] = result.get("ok", False)
+        else:
+            steps["snapserver_stopped"] = True
+
+        return {"ok": True, **steps}
+
     def start_server(self, server_id: str = "local_snapserver") -> dict:
         """Start the owned local Snapserver and return verified state."""
         if server_id != "local_snapserver" or self._snapserver is None:
@@ -451,12 +517,13 @@ class HomeAudioService(QObject):
         """Return routeable streams plus truthful local-playback context."""
         sources = self.get_streams()
         if self._playback is not None:
-            current = getattr(self._playback, "current_track", None)
-            if callable(current):
-                try:
-                    current = current()
-                except Exception:
-                    current = None
+            current = getattr(self._playback, "current", None)
+            playback_state = getattr(self._playback, "state", None)
+            is_playing = playback_state in ("playing", "PLAYING") if playback_state else bool(current)
+            fifo_path = "/tmp/michi-snapfifo"
+            fifo_ready = os.path.exists(fifo_path) and os.access(fifo_path, os.W_OK)
+            snapcast_running = self._snapserver.is_running if self._snapserver else False
+            routeable = fifo_ready and snapcast_running
             sources.append(
                 {
                     "id": "local_playback",
@@ -466,11 +533,11 @@ class HomeAudioService(QObject):
                     "sample_rate": 0,
                     "bit_depth": 0,
                     "channels": 0,
-                    "state": "playing" if current else "idle",
-                    "routeable": False,
-                    "routable": False,
+                    "state": "playing" if is_playing else "idle",
+                    "routeable": routeable,
+                    "routable": routeable,
                     "backend": "michi",
-                    "reason": "El motor local aún no está conectado a un stream Snapcast",
+                    "reason": "" if routeable else "FIFO o Snapserver no disponible. Inicia la distribución para activar.",
                 }
             )
         return sources

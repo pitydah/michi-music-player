@@ -133,18 +133,36 @@ class HomeAudioBridge(QObject):
         )
 
     @Property(str, notify=state_changed)
+    @Property(str, notify=state_changed)
     def streamState(self) -> str:
         """Current stream state: inactive, playing, paused, error."""
         if not self._streams:
             return "inactive"
-        active = [s for s in self._streams if s.get("active") or s.get("status") == "playing"]
-        if active:
+        for s in self._streams:
+            st = s.get("state") or s.get("status") or ""
+            if st == "playing":
+                return "playing"
+            if st == "paused":
+                return "paused"
+            if st in ("error", "failed"):
+                return "error"
+        if any(s.get("active") for s in self._streams):
             return "playing"
-        if any(s.get("status") == "paused" for s in self._streams):
-            return "paused"
-        if any(s.get("status") == "error" for s in self._streams):
-            return "error"
         return "inactive"
+
+    @Property(bool, notify=state_changed)
+    def localPlaybackRouteable(self) -> bool:
+        """Whether local playback can be routed to Snapcast zones."""
+        try:
+            svc = self._ha_svc
+            if svc and hasattr(svc, "get_sources"):
+                sources = svc.get_sources()
+                for s in (sources or []):
+                    if s.get("id") == "local_playback":
+                        return bool(s.get("routeable") or s.get("routable"))
+        except Exception:
+            pass
+        return False
 
     @Property(bool, constant=True)
     def homeAssistantAvailable(self) -> bool:
@@ -582,6 +600,20 @@ class HomeAudioBridge(QObject):
     @Slot(str, result=dict, name="startServer")
     def start_server(self, server_id: str = "local_snapserver") -> dict:
         return self._mutate_and_refresh("start_server", server_id)
+
+    @Slot(result=dict, name="enableDistribution")
+    def enable_distribution(self) -> dict:
+        """Enable local playback distribution: FIFO + Snapserver + pipeline."""
+        result = self._call_svc("enable_distribution")
+        self.stateChanged.emit()
+        return result
+
+    @Slot(result=dict, name="disableDistribution")
+    def disable_distribution(self) -> dict:
+        """Disable local playback distribution: stop FIFO + Snapserver."""
+        result = self._call_svc("disable_distribution")
+        self.stateChanged.emit()
+        return result
 
     @Slot(result=dict, name="startLocalServer")
     def start_local_server(self) -> dict:
