@@ -37,7 +37,9 @@ Item {
 
     Flickable {
         anchors.fill: parent
-        anchors.margins: MichiTheme.spacing.xl
+        anchors.margins: responsive.compact
+                         ? MichiTheme.spacing.md
+                         : MichiTheme.spacing.xl
         contentHeight: contentColumn.height + MichiTheme.spacing.xxl
         clip: true
 

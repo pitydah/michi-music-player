@@ -113,7 +113,9 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: MichiTheme.spacing.xl
+        anchors.margins: responsive.compact
+                         ? MichiTheme.spacing.md
+                         : MichiTheme.spacing.xl
         spacing: MichiTheme.spacing.lg
         visible: !root._loading
 

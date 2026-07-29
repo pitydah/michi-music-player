@@ -151,7 +151,8 @@ Item {
                 Grid {
                     id: actionGrid
                     width: parent.width
-                    columns: responsive.compact ? 1 : (root.state === "not_configured" ? 2 : 3)
+                    columns: Math.min(root.state === "not_configured" ? 2 : 3,
+                                      responsive.columnCount)
                     columnSpacing: MichiTheme.spacing.sm
                     rowSpacing: MichiTheme.spacing.sm
 

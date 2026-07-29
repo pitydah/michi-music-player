@@ -27,6 +27,11 @@ Rectangle {
     Accessible.role: Accessible.Pane
     Accessible.name: qsTr("Diagnóstico de Home Audio")
 
+    MichiResponsive {
+        id: responsive
+        availableWidth: root.width
+    }
+
     function refreshDiagnostics() {
         root.routeEnter("home_audio.diagnostics", {})
     }
@@ -65,7 +70,9 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: MichiTheme.spacing.xl
+        anchors.margins: responsive.compact
+                         ? MichiTheme.spacing.md
+                         : MichiTheme.spacing.xl
         spacing: MichiTheme.spacing.md
         visible: !root._loading
 
@@ -89,7 +96,7 @@ Rectangle {
 
         GridLayout {
             Layout.fillWidth: true
-            columns: width >= 900 ? 2 : 1
+            columns: Math.min(2, responsive.columnCount)
             columnSpacing: MichiTheme.spacing.md
             rowSpacing: MichiTheme.spacing.md
 
@@ -162,18 +169,26 @@ Rectangle {
 
         Item { Layout.fillHeight: true }
 
-        RowLayout {
+        GridLayout {
             Layout.fillWidth: true
+            columns: responsive.compact ? 1 : 3
+            columnSpacing: MichiTheme.spacing.md
+            rowSpacing: MichiTheme.spacing.sm
 
             MichiButton {
+                Layout.fillWidth: responsive.compact
                 text: qsTr("Actualizar")
                 variant: "ghost"
                 onClicked: root.refreshDiagnostics()
             }
 
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+                visible: !responsive.compact
+            }
 
             MichiButton {
+                Layout.fillWidth: responsive.compact
                 text: qsTr("Reproducir tono de prueba")
                 variant: "primary"
                 onClicked: root.testTone()
