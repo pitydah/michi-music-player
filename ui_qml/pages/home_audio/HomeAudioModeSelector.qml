@@ -61,11 +61,12 @@ Item {
                             radius: MichiTheme.radius.sm
                             color: root.selectedMode === index ? MichiTheme.colors.accentSelection : "transparent"
 
-                            Image {
+                            MichiIcon {
                                 anchors.centerIn: parent
-                                source: Qt.resolvedUrl("../../../icons/" + modelData.icon + ".svg")
-                                sourceSize.width: 22; sourceSize.height: 22
-                                fillMode: Image.PreserveAspectFit
+                                iconKey: modelData.icon
+                                size: 22
+                                active: root.selectedMode === index
+                                accessibleName: modelData.title
                             }
                         }
 

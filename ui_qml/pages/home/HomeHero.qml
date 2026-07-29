@@ -40,14 +40,12 @@ Item {
                 border.color: MichiTheme.colors.borderFocus
                 border.width: MichiTheme.borderWidth
 
-                Image {
+                MichiIcon {
                     anchors.centerIn: parent
-                    width: parent.width * 0.58
-                    height: width
+                    size: parent.width * 0.58
                     source: "../../../icons/app_icon.svg"
-                    sourceSize.width: 64
-                    sourceSize.height: 64
-                    fillMode: Image.PreserveAspectFit
+                    color: MichiTheme.colors.accentPrimary
+                    accessibleName: "Michi Music Player"
                 }
             }
 
