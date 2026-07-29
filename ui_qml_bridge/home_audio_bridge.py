@@ -82,6 +82,46 @@ class HomeAudioBridge(QObject):
         self._current_operation = ""
         self._operation_error = ""
         self._operation_generation = 0
+        service_state_changed = getattr(self._ha_svc, "state_changed", None)
+        if service_state_changed is not None and hasattr(service_state_changed, "connect"):
+            service_state_changed.connect(self._on_service_state_changed)
+
+    def _on_service_state_changed(self, state: dict) -> None:
+        entity_id = str(state.get("entity_id", ""))
+        if entity_id.startswith("media_player."):
+            attributes = state.get("attributes", {}) or {}
+            device = {
+                "id": entity_id,
+                "entity_id": entity_id,
+                "name": attributes.get("friendly_name") or entity_id,
+                "state": state.get("state", "unknown"),
+                "volume": attributes.get("volume_level", 0.0),
+                "muted": bool(attributes.get("is_volume_muted", False)),
+                "backend": "home_assistant",
+            }
+            self._devices = [
+                item for item in self._devices if item.get("id") != entity_id
+            ] + [device]
+            zone = {
+                "id": entity_id,
+                "name": device["name"],
+                "members": [entity_id],
+                "devices": [entity_id],
+                "stream_id": "",
+                "active": device["state"] == "playing",
+                "volume": device["volume"],
+                "muted": device["muted"],
+                "state": device["state"],
+                "backend": "home_assistant",
+                "routeable": False,
+                "routable": False,
+            }
+            self._zones = [
+                item
+                for item in self._zones
+                if item.get("id") != entity_id
+            ] + [zone]
+        self.state_changed.emit()
 
     @Property(bool, notify=state_changed)
     def available(self) -> bool:
@@ -133,6 +173,20 @@ class HomeAudioBridge(QObject):
     @Property(str, notify=state_changed)
     def homeAssistantState(self) -> str:
         return self._ha_state
+
+    def _get_ha_websocket_connected(self) -> bool:
+        """Whether Home Assistant real-time state updates are active."""
+        value = getattr(self._ha_svc, "websocket_connected", False)
+        return value if isinstance(value, bool) else False
+
+    # QML property names are camelCase by contract. Declaring Property with a
+    # snake_case getter keeps Python methods compliant because PySide6 Property
+    # does not provide the explicit name override available to Signal and Slot.
+    haWebSocketConnected = Property(
+        bool,
+        _get_ha_websocket_connected,
+        notify=state_changed,
+    )
 
     @Property(str, notify=state_changed)
     def snapcastState(self) -> str:
@@ -392,7 +446,7 @@ class HomeAudioBridge(QObject):
         if self._worker_manager is None:
             result = self._call_svc(method, *args) if method else {"ok": True}
             self._refresh_models()
-            self.stateChanged.emit()
+            self.state_changed.emit()
             return result
 
         self._operation_generation += 1
@@ -401,7 +455,7 @@ class HomeAudioBridge(QObject):
         self._operation_in_progress = True
         self._current_operation = operation
         self._operation_error = ""
-        self.stateChanged.emit()
+        self.state_changed.emit()
 
         def run_operation() -> dict:
             result = self._call_svc(method, *args) if method else {"ok": True}
@@ -418,8 +472,8 @@ class HomeAudioBridge(QObject):
             self._operation_error = (
                 "" if result.get("ok") else str(result.get("error", "OPERATION_FAILED"))
             )
-            self.stateChanged.emit()
-            self.operationFinished.emit(result)
+            self.state_changed.emit()
+            self.operation_finished.emit(result)
 
         def failed(code: str, message: str) -> None:
             if generation != self._operation_generation:
@@ -430,8 +484,8 @@ class HomeAudioBridge(QObject):
             self._last_error = self._operation_error
             self._offline = True
             result = {"ok": False, "error": code, "message": message}
-            self.stateChanged.emit()
-            self.operationFinished.emit(result)
+            self.state_changed.emit()
+            self.operation_finished.emit(result)
 
         handle = self._worker_manager.run_task(
             task_id,
@@ -444,7 +498,7 @@ class HomeAudioBridge(QObject):
             self._operation_in_progress = False
             self._current_operation = ""
             self._operation_error = getattr(handle, "error_code", "WORKER_REJECTED")
-            self.stateChanged.emit()
+            self.state_changed.emit()
             return {"ok": False, "error": self._operation_error}
         return {"ok": True, "accepted": True, "pending": True, "task_id": task_id}
 
@@ -456,7 +510,7 @@ class HomeAudioBridge(QObject):
             self._ha_state = "not_configured"
             self._snapcast_state = "concept"
             self._distribution_state = "unavailable"
-            self.stateChanged.emit()
+            self.state_changed.emit()
             return {"ok": True, "available": False, "state": "unavailable"}
 
         if self._worker_manager is not None:
@@ -464,7 +518,7 @@ class HomeAudioBridge(QObject):
         self._refresh_models()
         connected = self._derive_connection_state()
 
-        self.stateChanged.emit()
+        self.state_changed.emit()
         return {
             "ok": connected or bool(
                 self._devices
@@ -507,7 +561,7 @@ class HomeAudioBridge(QObject):
         )
         if result.get("ok"):
             self._ha_state = "configured"
-            self.stateChanged.emit()
+            self.state_changed.emit()
         return result
 
     @Slot(result=dict, name="testHomeAssistant")
@@ -520,7 +574,7 @@ class HomeAudioBridge(QObject):
             return {"ok": False, "error": "UNSUPPORTED"}
         result = self._call_svc("discover_receivers")
         self._refresh_models()
-        self.stateChanged.emit()
+        self.state_changed.emit()
         if not result.get("ok"):
             return result
         return {"ok": True, "receivers": list(self._receivers)}
@@ -640,7 +694,7 @@ class HomeAudioBridge(QObject):
             snapserver_state = "running"
         else:
             snapserver_state = "stopped"
-        self.stateChanged.emit()
+        self.state_changed.emit()
         return {
             "ok": True,
             "ha_state": self._ha_state,
@@ -701,7 +755,7 @@ class HomeAudioBridge(QObject):
         self._ha_state = "not_configured"
         self._devices = []
         self._last_contact = 0.0
-        self.stateChanged.emit()
+        self.state_changed.emit()
         return result
 
     @Slot(str, str, result=dict, name="assignSourceToZone")
@@ -748,7 +802,7 @@ class HomeAudioBridge(QObject):
         result = self._call_svc("create_group", name, zone_ids)
         if result.get("ok"):
             self._refresh_models()
-        self.stateChanged.emit()
+        self.state_changed.emit()
         return result
 
     @Slot(str, str, "QVariantList", result=dict, name="updateGroup")
@@ -769,7 +823,7 @@ class HomeAudioBridge(QObject):
         result = self._call_svc("update_group", group_id, name, receiver_id_list)
         if result.get("ok"):
             self._refresh_models()
-        self.stateChanged.emit()
+        self.state_changed.emit()
         return result
 
     @Slot(str, result=dict, name="groupZones")

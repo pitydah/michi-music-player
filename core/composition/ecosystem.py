@@ -10,6 +10,15 @@ logger = logging.getLogger(__name__)
 
 
 def build(container: ServiceContainer) -> None:
+    """Register ecosystem integrations in the application service container.
+
+    Each integration is composed independently so an unavailable optional
+    dependency does not prevent the remaining ecosystem services from loading.
+
+    Args:
+        container: Application container that provides shared dependencies and
+            receives the composed services.
+    """
     event_bus = container.get("event_bus")
 
     try:
@@ -61,7 +70,14 @@ def build(container: ServiceContainer) -> None:
             if ha_host:
                 ha_url = f"{ha_host.rstrip('/')}:{ha_port}" if ha_port else ha_host
         ha_token = get_str("home_audio/ha_token")
-        ha_client = HomeAssistantService(ha_url, ha_token) if ha_url and ha_token else None
+        ha_ws_port = get_int("home_audio/ha_ws_port") or 8123
+        ha_client = HomeAssistantService(
+            ha_url,
+            ha_token,
+            websocket_port=ha_ws_port,
+        )
+        if ha_url and ha_token:
+            ha_client.subscribe_events()
         home_audio = HomeAudioService(
             snapcast_group_manager=group_manager,
             snapcast_discovery=discovery,

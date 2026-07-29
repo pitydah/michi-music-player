@@ -15,7 +15,7 @@ from copy import deepcopy
 from typing import Any
 from uuid import uuid4
 
-from PySide6.QtCore import QSettings
+from PySide6.QtCore import QObject, QSettings, Signal
 
 logger = logging.getLogger("michi.home_audio")
 
@@ -23,8 +23,10 @@ _ROUTES_KEY = "home_audio/distribution_routes_v1"
 _SELECTED_SOURCE_KEY = "home_audio/selected_source"
 
 
-class HomeAudioService:
+class HomeAudioService(QObject):
     """Coordinate Snapcast, Home Assistant, discovery, and persisted routes."""
+
+    state_changed = Signal(dict)
 
     def __init__(
         self,
@@ -37,6 +39,7 @@ class HomeAudioService:
         playback_service: Any = None,
         event_bus: Any = None,
         settings: Any = None,
+        parent: QObject | None = None,
     ) -> None:
         """Initialize Home Audio adapters and restore persisted routes.
 
@@ -51,6 +54,7 @@ class HomeAudioService:
             event_bus: Optional domain event publisher.
             settings: Optional settings implementation.
         """
+        super().__init__(parent)
         self._group_mgr = snapcast_group_manager
         self._event_bus = event_bus
         self._discovery = snapcast_discovery
@@ -65,6 +69,21 @@ class HomeAudioService:
         self._last_error = ""
         self._last_refresh = 0.0
         self._load_routes()
+        ha_state_changed = getattr(self._ha_client, "state_changed", None)
+        if ha_state_changed is not None and hasattr(ha_state_changed, "connect"):
+            ha_state_changed.connect(self._on_home_assistant_state_changed)
+        websocket_connection_changed = getattr(
+            self._ha_client,
+            "websocket_connection_changed",
+            None,
+        )
+        if websocket_connection_changed is not None and hasattr(
+            websocket_connection_changed,
+            "connect",
+        ):
+            websocket_connection_changed.connect(
+                self._on_home_assistant_connection_changed
+            )
 
     @property
     def available(self) -> bool:
@@ -95,6 +114,20 @@ class HomeAudioService:
     @property
     def last_error(self) -> str:
         return self._last_error
+
+    @property
+    def websocket_connected(self) -> bool:
+        """Whether Home Assistant has an authenticated WebSocket subscription."""
+        value = getattr(self._ha_client, "websocket_connected", False)
+        return value if isinstance(value, bool) else False
+
+    def _on_home_assistant_state_changed(self, state: dict) -> None:
+        self.state_changed.emit(state)
+
+    def _on_home_assistant_connection_changed(self, connected: bool) -> None:
+        self.state_changed.emit(
+            {"source": "home_assistant_websocket", "connected": connected}
+        )
 
     def is_connected(self) -> bool:
         snapcast_connected = bool(
@@ -1060,7 +1093,14 @@ class HomeAudioService:
             return {"ok": False, "error": "CONFIGURATION_UNSUPPORTED"}
         endpoint = f"{host.rstrip('/')}:{port}" if port else host.rstrip("/")
         try:
-            configure(endpoint, access_token)
+            configure(endpoint, access_token, websocket_port=port or 8123)
+            self._settings.setValue("home_audio/ha_host", host.rstrip("/"))
+            self._settings.setValue("home_audio/ha_port", port or 8123)
+            self._settings.setValue("home_audio/ha_ws_port", port or 8123)
+            self._settings.setValue("home_audio/ha_base_url", endpoint)
+            self._settings.setValue("home_audio/ha_token", access_token)
+            if hasattr(self._settings, "sync"):
+                self._settings.sync()
             return {"ok": True, "configured": True}
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
@@ -1203,6 +1243,14 @@ class HomeAudioService:
                 if not callable(configure):
                     return {"ok": False, "error": "DISCONNECT_UNSUPPORTED"}
                 configure("", "")
+            for key, value in (
+                ("home_audio/ha_host", ""),
+                ("home_audio/ha_base_url", ""),
+                ("home_audio/ha_token", ""),
+            ):
+                self._settings.setValue(key, value)
+            if hasattr(self._settings, "sync"):
+                self._settings.sync()
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
         return {"ok": True, "disconnected": True}
