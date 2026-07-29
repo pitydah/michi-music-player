@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from core.home_audio_service import HomeAudioService
+from core.home_audio_service import HomeAudioService, RouteTransaction
 
 
 class MemorySettings:
@@ -317,9 +317,9 @@ def test_partial_activation_is_degraded():
     route = service.create_route("House", "music", ["living", "kitchen"])["route"]
     control.failures.add(("kitchen", "music"))
 
-    result = service.start_route(route["id"])
+    result = service.start_route(route["id"], mode="best_effort")
 
-    assert result["ok"] is False
+    assert result["ok"] is True
     assert result["partial"] is True
     assert result["route"]["state"] == "degraded"
 
@@ -357,3 +357,116 @@ def test_route_creation_reports_persistence_failure():
     assert result["ok"] is False
     assert result["error"] == "ROUTE_PERSISTENCE_FAILED"
     assert service.list_routes() == []
+
+
+def test_route_transaction_rolls_back_snapshotted_data_after_atomic_failure():
+    route = {"name": "Original", "destination_ids": ["living"]}
+    transaction = RouteTransaction(mode="atomic")
+    transaction.snapshot(route)
+    route.update(name="Changed", destination_ids=["kitchen"])
+    transaction.fail({"destination_id": "kitchen", "error": "OFFLINE"})
+
+    result = transaction.commit()
+
+    assert result == {
+        "ok": False,
+        "mode": "atomic",
+        "degraded": [{"destination_id": "kitchen", "error": "OFFLINE"}],
+        "rolled_back": True,
+    }
+    assert route == {"name": "Original", "destination_ids": ["living"]}
+
+
+def test_route_transaction_best_effort_keeps_snapshotted_data():
+    route = {"destination_ids": ["living"]}
+    transaction = RouteTransaction(mode="best_effort")
+    transaction.snapshot(route)
+    route["destination_ids"].append("kitchen")
+    transaction.fail({"destination_id": "garage", "error": "OFFLINE"})
+
+    result = transaction.commit()
+
+    assert result == {
+        "ok": True,
+        "mode": "best_effort",
+        "degraded": [{"destination_id": "garage", "error": "OFFLINE"}],
+        "rolled_back": False,
+    }
+    assert route == {"destination_ids": ["living", "kitchen"]}
+
+
+def test_atomic_route_activation_rolls_back_all_changed_destinations():
+    control = TwoGroupSnapcast()
+    service = build_service(control)
+    route = service.create_route("House", "music", ["living", "kitchen"])["route"]
+    control.failures.add(("kitchen", "music"))
+
+    result = service.start_route(route["id"], mode="atomic")
+
+    assert result["ok"] is False
+    assert result["mode"] == "atomic"
+    assert result["degraded"] == [
+        {"destination_id": "kitchen", "error": "rpc failed"}
+    ]
+    assert result["rolled_back"] is True
+    assert [group["stream_id"] for group in control.groups] == ["old", "old"]
+
+
+def test_best_effort_route_activation_keeps_successful_destinations():
+    control = TwoGroupSnapcast()
+    service = build_service(control)
+    route = service.create_route("House", "music", ["living", "kitchen"])["route"]
+    control.failures.add(("kitchen", "music"))
+
+    result = service.start_route(route["id"], mode="best_effort")
+
+    assert result["ok"] is True
+    assert result["mode"] == "best_effort"
+    assert result["degraded"] == [
+        {"destination_id": "kitchen", "error": "rpc failed"}
+    ]
+    assert result["route"]["state"] == "degraded"
+    assert [group["stream_id"] for group in control.groups] == ["music", "old"]
+
+
+def test_best_effort_route_update_keeps_valid_destinations_and_reports_rejected_ones():
+    service = build_service(TwoGroupSnapcast())
+    route = service.create_route("House", "music", ["living"])["route"]
+
+    result = service.update_route(
+        route["id"],
+        "Updated",
+        "music",
+        ["living", "missing", "kitchen"],
+        mode="best_effort",
+    )
+
+    assert result["ok"] is True
+    assert result["mode"] == "best_effort"
+    assert result["degraded"] == [
+        {"destination_id": "missing", "error": "UNKNOWN_DESTINATION"}
+    ]
+    assert result["route"]["destination_ids"] == ["living", "kitchen"]
+
+
+def test_route_operations_reject_unknown_transaction_mode():
+    service = build_service(FakeSnapcast())
+    route = service.create_route("Sala", "music", ["living"])["route"]
+
+    updated = service.update_route(
+        route["id"], "Sala", "music", ["living"], mode="eventual"
+    )
+    started = service.start_route(route["id"], mode="eventual")
+
+    assert updated == {
+        "ok": False,
+        "mode": "eventual",
+        "degraded": [],
+        "error": "INVALID_TRANSACTION_MODE",
+    }
+    assert started == {
+        "ok": False,
+        "mode": "eventual",
+        "degraded": [],
+        "error": "INVALID_TRANSACTION_MODE",
+    }

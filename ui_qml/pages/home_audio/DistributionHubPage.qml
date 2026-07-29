@@ -15,6 +15,7 @@ Item {
     property string feedback: ""
     property bool feedbackError: false
     property string editingRouteId: ""
+    property string routeTransactionMode: "atomic"
     readonly property bool operationBusy: root.bridge ? root.bridge.operationInProgress : false
 
     Accessible.role: Accessible.Pane
@@ -613,7 +614,7 @@ Item {
                                 enabled: !root.operationBusy && root.selectedSourceId !== "" && root.selectedDestinationIds.length > 0
                                 onClicked: {
                                     var result = root.editingRouteId
-                                               ? root.bridge.updateRoute(root.editingRouteId, routeName.text, root.selectedSourceId, root.selectedDestinationIds)
+                                               ? root.bridge.updateRoute(root.editingRouteId, routeName.text, root.selectedSourceId, root.selectedDestinationIds, root.routeTransactionMode)
                                                : root.bridge.createRoute(routeName.text, root.selectedSourceId, root.selectedDestinationIds)
                                     root.showResult(result, root.editingRouteId ? qsTr("Ruta actualizada.") : qsTr("Ruta creada y pendiente de activación."))
                                     if (result && result.ok) {
@@ -711,7 +712,7 @@ Item {
                                         onClicked: {
                                             var result = modelData.state === "active" || modelData.state === "degraded"
                                                        ? root.bridge.stopRoute(modelData.id)
-                                                       : root.bridge.startRoute(modelData.id)
+                                                       : root.bridge.startRoute(modelData.id, root.routeTransactionMode)
                                             root.showResult(result, modelData.state === "active" ? qsTr("Ruta detenida y stream anterior restaurado.") : qsTr("Ruta activada y verificada."))
                                         }
                                     }

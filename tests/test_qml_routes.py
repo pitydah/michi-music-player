@@ -19,7 +19,7 @@ class TestQmlRoutes:
 
     def test_no_placeholder_routes_functional(self):
         from ui_qml_bridge.route_registry import ROUTES
-        non_blocking = {"deprecated", "planned", "configuration_required"}
+        non_blocking = {"deprecated", "planned", "removed", "configuration_required"}
         placeholders = []
         for route_id, info in ROUTES.items():
             src = info.get("source", "")
@@ -35,7 +35,8 @@ class TestQmlRoutes:
     def test_all_routes_have_status(self):
         from ui_qml_bridge.route_registry import ROUTES
         valid = {"functional", "partial", "experimental", "unavailable", "deprecated",
-                 "hardware_validation_pending", "planned", "configuration_required"}
+                 "removed", "hardware_validation_pending", "planned",
+                 "configuration_required"}
         for route_id, info in ROUTES.items():
             assert info.get("status") in valid, f"{route_id}: invalid status {info.get('status')}"
 

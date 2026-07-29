@@ -150,3 +150,19 @@ def test_home_audio_bridge_applies_websocket_state_change() -> None:
             "backend": "home_assistant",
         }
     ]
+
+
+def test_home_audio_bridge_passes_route_transaction_mode() -> None:
+    bridge = HomeAudioBridge()
+    calls = []
+    bridge._mutate_and_refresh = lambda method, *args: calls.append((method, args)) or {
+        "ok": True
+    }
+
+    bridge.update_route("route-1", "House", "music", ["living"], "best_effort")
+    bridge.start_route("route-1", "best_effort")
+
+    assert calls == [
+        ("update_route", ("route-1", "House", "music", ["living"], "best_effort")),
+        ("start_route", ("route-1", "best_effort")),
+    ]

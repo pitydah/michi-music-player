@@ -12,6 +12,7 @@ import json
 import logging
 import time
 from copy import deepcopy
+from dataclasses import dataclass, field
 from typing import Any
 from uuid import uuid4
 
@@ -21,6 +22,84 @@ logger = logging.getLogger("michi.home_audio")
 
 _ROUTES_KEY = "home_audio/distribution_routes_v1"
 _SELECTED_SOURCE_KEY = "home_audio/selected_source"
+_ROUTE_TRANSACTION_MODES = {"atomic", "best_effort"}
+
+
+@dataclass
+class RouteTransaction:
+    """Transaction for multi-destination route operations.
+
+    Atomic transactions restore every snapshotted mutable value when any
+    destination fails. Best-effort transactions retain successful changes and
+    expose failed destinations through the commit result.
+    """
+
+    mode: str = "atomic"
+    _snapshots: list[tuple[Any, Any]] = field(default_factory=list)
+    _failed: list[dict] = field(default_factory=list)
+    _result: dict | None = field(default=None, init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        if self.mode not in _ROUTE_TRANSACTION_MODES:
+            raise ValueError(f"Unsupported route transaction mode: {self.mode}")
+
+    def __enter__(self) -> RouteTransaction:
+        return self
+
+    def __exit__(self, exc_type: Any, exc: BaseException | None, traceback: Any) -> bool:
+        if self._result is None:
+            self.rollback() if exc is not None else self.commit()
+        return False
+
+    def snapshot(self, data: Any) -> Any:
+        """Capture a mutable value for a possible in-place rollback."""
+        self._snapshots.append((data, deepcopy(data)))
+        return data
+
+    def fail(self, failure: dict) -> None:
+        """Record one failed destination operation."""
+        self._failed.append(deepcopy(failure))
+
+    @staticmethod
+    def _restore(target: Any, snapshot: Any) -> None:
+        if isinstance(target, dict) and isinstance(snapshot, dict):
+            target.clear()
+            target.update(deepcopy(snapshot))
+            return
+        if isinstance(target, list) and isinstance(snapshot, list):
+            target[:] = deepcopy(snapshot)
+            return
+        raise TypeError("RouteTransaction snapshots must be mutable dicts or lists")
+
+    def commit(self) -> dict:
+        """Commit successful work or atomically roll it back after failures."""
+        if self._result is not None:
+            return deepcopy(self._result)
+        if self.mode == "atomic" and self._failed:
+            return self.rollback()
+        self._snapshots.clear()
+        self._result = {
+            "ok": True,
+            "mode": self.mode,
+            "degraded": deepcopy(self._failed),
+            "rolled_back": False,
+        }
+        return deepcopy(self._result)
+
+    def rollback(self) -> dict:
+        """Restore all snapshots in reverse order."""
+        if self._result is not None:
+            return deepcopy(self._result)
+        for target, snapshot in reversed(self._snapshots):
+            self._restore(target, snapshot)
+        self._snapshots.clear()
+        self._result = {
+            "ok": False,
+            "mode": self.mode,
+            "degraded": deepcopy(self._failed),
+            "rolled_back": True,
+        }
+        return deepcopy(self._result)
 
 
 class HomeAudioService(QObject):
@@ -611,113 +690,251 @@ class HomeAudioService(QObject):
         name: str,
         source_id: str,
         destination_ids: list[str],
+        mode: str = "atomic",
     ) -> dict:
-        """Update and persist an inactive route with rollback on failure."""
+        """Update an inactive route under the requested transaction policy."""
+        if mode not in _ROUTE_TRANSACTION_MODES:
+            return {
+                "ok": False,
+                "mode": mode,
+                "degraded": [],
+                "error": "INVALID_TRANSACTION_MODE",
+            }
         route = self._route(route_id)
         if route is None:
-            return {"ok": False, "error": "UNKNOWN_ROUTE"}
+            return {"ok": False, "mode": mode, "degraded": [], "error": "UNKNOWN_ROUTE"}
         if route.get("state") in {"active", "degraded"}:
-            return {"ok": False, "error": "ACTIVE_ROUTE_MUST_BE_STOPPED"}
+            return {
+                "ok": False,
+                "mode": mode,
+                "degraded": [],
+                "error": "ACTIVE_ROUTE_MUST_BE_STOPPED",
+            }
         sources = {source["id"]: source for source in self.get_sources()}
         if source_id not in sources:
-            return {"ok": False, "error": "UNKNOWN_SOURCE"}
+            return {"ok": False, "mode": mode, "degraded": [], "error": "UNKNOWN_SOURCE"}
         if not sources[source_id].get("routeable"):
-            return {"ok": False, "error": "SOURCE_NOT_ROUTEABLE"}
+            return {
+                "ok": False,
+                "mode": mode,
+                "degraded": [],
+                "error": "SOURCE_NOT_ROUTEABLE",
+            }
         destinations = {destination["id"]: destination for destination in self.get_destinations()}
         unique_ids = list(dict.fromkeys(destination_ids))
-        if not unique_ids or any(
-            destination_id not in destinations for destination_id in unique_ids
-        ):
-            return {"ok": False, "error": "UNKNOWN_DESTINATION"}
-        if any(not destinations[item].get("routeable") for item in unique_ids):
-            return {"ok": False, "error": "DESTINATION_NOT_ROUTEABLE"}
-        previous_route = deepcopy(route)
-        route.update(
-            name=name.strip() or route.get("name", "Ruta"),
-            source_id=source_id,
-            destination_ids=unique_ids,
-            state="configured",
-            previous_streams={},
-            last_error="",
-            destination_errors={},
-            updated_at=int(time.time()),
-        )
-        try:
-            self._save_routes()
-        except RuntimeError as exc:
-            route.clear()
-            route.update(previous_route)
-            return {"ok": False, "error": "ROUTE_PERSISTENCE_FAILED", "message": str(exc)}
-        return {"ok": True, "route": deepcopy(route)}
+        if not unique_ids:
+            return {
+                "ok": False,
+                "mode": mode,
+                "degraded": [],
+                "error": "UNKNOWN_DESTINATION",
+            }
 
-    def start_route(self, route_id: str) -> dict:
-        """Activate and verify every destination in a persisted route."""
-        route = self._route(route_id)
-        if route is None:
-            return {"ok": False, "error": "UNKNOWN_ROUTE"}
-        if self._snapcast is None:
+        rejected = []
+        valid_ids = []
+        for destination_id in unique_ids:
+            destination = destinations.get(destination_id)
+            if destination is None:
+                rejected.append(
+                    {"destination_id": destination_id, "error": "UNKNOWN_DESTINATION"}
+                )
+            elif not destination.get("routeable"):
+                rejected.append(
+                    {"destination_id": destination_id, "error": "DESTINATION_NOT_ROUTEABLE"}
+                )
+            else:
+                valid_ids.append(destination_id)
+
+        with RouteTransaction(mode=mode) as transaction:
+            transaction.snapshot(route)
+            for failure in rejected:
+                transaction.fail(failure)
+            if rejected and mode == "atomic":
+                result = transaction.commit()
+                result["error"] = rejected[0]["error"]
+                return result
+            if not valid_ids:
+                result = transaction.rollback()
+                result["error"] = rejected[0]["error"]
+                return result
+
             route.update(
-                state="error",
-                error="SNAPCAST_CONTROL_UNAVAILABLE",
-                last_error="SNAPCAST_CONTROL_UNAVAILABLE",
+                name=name.strip() or route.get("name", "Ruta"),
+                source_id=source_id,
+                destination_ids=valid_ids,
+                state="configured",
+                previous_streams={},
+                last_error="",
+                destination_errors={},
+                updated_at=int(time.time()),
             )
             try:
                 self._save_routes()
             except RuntimeError as exc:
-                return {"ok": False, "error": "ROUTE_PERSISTENCE_FAILED", "message": str(exc)}
-            return {"ok": False, "error": route["error"], "route": deepcopy(route)}
+                result = transaction.rollback()
+                result.update(error="ROUTE_PERSISTENCE_FAILED", message=str(exc))
+                return result
+            result = transaction.commit()
+            result["route"] = deepcopy(route)
+            return result
+
+    def start_route(self, route_id: str, mode: str = "atomic") -> dict:
+        """Activate destinations using atomic or best-effort semantics."""
+        if mode not in _ROUTE_TRANSACTION_MODES:
+            return {
+                "ok": False,
+                "mode": mode,
+                "degraded": [],
+                "error": "INVALID_TRANSACTION_MODE",
+            }
+        route = self._route(route_id)
+        if route is None:
+            return {"ok": False, "mode": mode, "degraded": [], "error": "UNKNOWN_ROUTE"}
+        if self._snapcast is None:
+            return self._route_start_precondition_error(
+                route, mode, "SNAPCAST_CONTROL_UNAVAILABLE"
+            )
 
         source = next(
             (item for item in self.get_sources() if item.get("id") == route.get("source_id")),
             None,
         )
         if source is None:
-            route.update(state="error", last_error="UNKNOWN_SOURCE", error="UNKNOWN_SOURCE")
-            try:
-                self._save_routes()
-            except RuntimeError as exc:
-                return {"ok": False, "error": "ROUTE_PERSISTENCE_FAILED", "message": str(exc)}
-            return {"ok": False, "error": "UNKNOWN_SOURCE", "route": deepcopy(route)}
+            return self._route_start_precondition_error(route, mode, "UNKNOWN_SOURCE")
         if not source.get("routeable"):
-            route.update(
-                state="error",
-                last_error="SOURCE_NOT_ROUTEABLE",
-                error="SOURCE_NOT_ROUTEABLE",
-            )
-            try:
-                self._save_routes()
-            except RuntimeError as exc:
-                return {"ok": False, "error": "ROUTE_PERSISTENCE_FAILED", "message": str(exc)}
-            return {"ok": False, "error": "SOURCE_NOT_ROUTEABLE", "route": deepcopy(route)}
+            return self._route_start_precondition_error(route, mode, "SOURCE_NOT_ROUTEABLE")
 
         groups = {group["id"]: group for group in self.get_groups()}
         previous = {}
+        changed = []
         failures = []
-        for destination_id in route.get("destination_ids", []):
-            group = groups.get(destination_id)
-            if group is None or group.get("backend") != "snapcast" or not group.get("connected"):
-                failures.append({"destination_id": destination_id, "error": "DESTINATION_OFFLINE"})
-                continue
-            previous[destination_id] = group.get("stream_id", "")
-            try:
-                self._snapcast.set_group_stream(destination_id, route["source_id"])
-            except Exception as exc:
-                failures.append({"destination_id": destination_id, "error": str(exc)})
+        with RouteTransaction(mode=mode) as transaction:
+            transaction.snapshot(route)
+            for destination_id in route.get("destination_ids", []):
+                group = groups.get(destination_id)
+                if (
+                    group is None
+                    or group.get("backend") != "snapcast"
+                    or not group.get("connected")
+                ):
+                    failures.append(
+                        {"destination_id": destination_id, "error": "DESTINATION_OFFLINE"}
+                    )
+                    continue
+                previous[destination_id] = group.get("stream_id", "")
+                try:
+                    self._snapcast.set_group_stream(destination_id, route["source_id"])
+                    changed.append(destination_id)
+                except Exception as exc:
+                    failures.append({"destination_id": destination_id, "error": str(exc)})
 
-        verified_groups = {group["id"]: group for group in self.get_groups()}
-        for destination_id in route.get("destination_ids", []):
-            if any(item["destination_id"] == destination_id for item in failures):
-                continue
-            actual = verified_groups.get(destination_id, {}).get("stream_id", "")
-            if actual != route["source_id"]:
+            verified_groups = {group["id"]: group for group in self.get_groups()}
+            failed_ids = {item["destination_id"] for item in failures}
+            for destination_id in changed:
+                if destination_id in failed_ids:
+                    continue
+                actual = verified_groups.get(destination_id, {}).get("stream_id", "")
+                if actual != route["source_id"]:
+                    failures.append(
+                        {
+                            "destination_id": destination_id,
+                            "error": "ROUTE_VERIFICATION_FAILED",
+                            "actual_stream": actual,
+                        }
+                    )
+
+            for failure in failures:
+                transaction.fail(failure)
+
+            if failures and mode == "atomic":
+                rollback_failures = self._restore_route_destinations(changed, previous)
+                for failure in rollback_failures:
+                    transaction.fail(failure)
+                result = transaction.commit()
+                self._record_route_start_result(route, failures + rollback_failures, {}, "error")
+            else:
+                successful = len(changed) - len(
+                    {item["destination_id"] for item in failures if item["destination_id"] in changed}
+                )
+                state = "active" if not failures else ("degraded" if successful else "error")
+                self._record_route_start_result(route, failures, previous, state)
+                result = None
+
+            try:
+                self._save_routes()
+            except RuntimeError as exc:
+                if result is None:
+                    self._restore_route_destinations(changed, previous)
+                    result = transaction.rollback()
+                result.update(error="ROUTE_PERSISTENCE_FAILED", message=str(exc))
+                return result
+            if result is None:
+                result = transaction.commit()
+                result["ok"] = not failures or (mode == "best_effort" and successful > 0)
+
+        self._publish("home_audio.route.started", deepcopy(route))
+        result.update(
+            partial=bool(failures) and route["state"] == "degraded",
+            failures=failures,
+            route=deepcopy(route),
+        )
+        if failures and "error" not in result:
+            result["error"] = failures[0]["error"]
+        return result
+
+    def _route_start_precondition_error(self, route: dict, mode: str, error: str) -> dict:
+        route.update(state="error", error=error, last_error=error)
+        try:
+            self._save_routes()
+        except RuntimeError as exc:
+            return {
+                "ok": False,
+                "mode": mode,
+                "degraded": [],
+                "error": "ROUTE_PERSISTENCE_FAILED",
+                "message": str(exc),
+            }
+        return {
+            "ok": False,
+            "mode": mode,
+            "degraded": [],
+            "error": error,
+            "route": deepcopy(route),
+        }
+
+    def _restore_route_destinations(
+        self, destination_ids: list[str], previous: dict[str, str]
+    ) -> list[dict]:
+        failures = []
+        for destination_id in destination_ids:
+            try:
+                self._snapcast.set_group_stream(destination_id, previous[destination_id])
+            except Exception as exc:
                 failures.append(
                     {
                         "destination_id": destination_id,
-                        "error": "ROUTE_VERIFICATION_FAILED",
-                        "actual_stream": actual,
+                        "error": f"ROLLBACK_FAILED: {exc}",
                     }
                 )
+        if failures:
+            return failures
+        restored_groups = {group["id"]: group for group in self.get_groups()}
+        for destination_id in destination_ids:
+            if restored_groups.get(destination_id, {}).get("stream_id", "") != previous[
+                destination_id
+            ]:
+                failures.append(
+                    {"destination_id": destination_id, "error": "ROLLBACK_VERIFICATION_FAILED"}
+                )
+        return failures
 
+    @staticmethod
+    def _record_route_start_result(
+        route: dict,
+        failures: list[dict],
+        previous: dict[str, str],
+        state: str,
+    ) -> None:
         route["previous_streams"] = previous
         route["updated_at"] = int(time.time())
         route["error"] = json.dumps(failures, ensure_ascii=False) if failures else ""
@@ -725,25 +942,7 @@ class HomeAudioService(QObject):
         route["destination_errors"] = {
             item["destination_id"]: item["error"] for item in failures
         }
-        route["state"] = "active" if not failures else (
-            "degraded" if len(failures) < len(route.get("destination_ids", [])) else "error"
-        )
-        try:
-            self._save_routes()
-        except RuntimeError as exc:
-            return {
-                "ok": False,
-                "error": "ROUTE_PERSISTENCE_FAILED",
-                "message": str(exc),
-                "route": deepcopy(route),
-            }
-        self._publish("home_audio.route.started", deepcopy(route))
-        return {
-            "ok": not failures,
-            "partial": bool(failures) and route["state"] == "degraded",
-            "failures": failures,
-            "route": deepcopy(route),
-        }
+        route["state"] = state
 
     def stop_route(self, route_id: str) -> dict:
         """Restore and verify the previous stream for every route destination."""

@@ -52,7 +52,6 @@ class TestRouteRegistryBridge:
                 "home_audio.stream",
                 "home_audio.rooms",
                 "home_audio.distribution",
-                "home_audio.chain_planner",
             ],
             "sync": [
                 "sync.mobile",
@@ -61,3 +60,11 @@ class TestRouteRegistryBridge:
                 "sync.history",
             ],
         }
+
+    def test_removed_chain_planner_is_not_visible_in_sidebar(self):
+        from ui_qml_bridge.route_registry import ROUTES
+
+        route = ROUTES["home_audio.chain_planner"]
+
+        assert route["sidebar_visible"] is False
+        assert route["status"] == "removed"

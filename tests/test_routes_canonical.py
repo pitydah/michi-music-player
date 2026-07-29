@@ -67,8 +67,9 @@ def test_all_params_defined():
 
 def test_no_placeholder_routes():
     from ui_qml_bridge.route_registry import ROUTES
-    allowed_states = {"planned", "experimental", "deprecated", "configuration_required",
-                      "dependency_missing", "hardware_validation_pending", "unavailable"}
+    allowed_states = {"planned", "experimental", "deprecated", "removed",
+                      "configuration_required", "dependency_missing",
+                      "hardware_validation_pending", "unavailable"}
     for route_id, info in ROUTES.items():
         src = info.get("source", "")
         status = info.get("status", "")

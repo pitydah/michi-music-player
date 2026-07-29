@@ -147,9 +147,9 @@ class TestNoStatusField:
     def test_valid_status_values(self, routes):
         ROUTES, _ = routes
         valid = {"functional", "partial", "experimental", "planned",
-                 "configuration_required", "dependency_missing",
-                 "hardware_validation_pending", "unavailable", "deprecated",
-                 "new", "placeholder", "disabled"}
+                  "configuration_required", "dependency_missing",
+                  "hardware_validation_pending", "unavailable", "deprecated",
+                  "removed", "new", "placeholder", "disabled"}
         for key, info in ROUTES.items():
             if "status" in info:
                 assert info["status"] in valid, \

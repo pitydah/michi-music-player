@@ -10,7 +10,7 @@ RouteSpec structure (all keys):
   - order: int               display order within parent group
   - sidebar_visible: bool    whether this route appears in sidebar
   - sidebar_group: str       group label shown as section header
-  - status: str              functional|partial|experimental|planned|configuration_required|dependency_missing|hardware_validation_pending|unavailable|deprecated
+  - status: str              functional|partial|experimental|planned|configuration_required|dependency_missing|hardware_validation_pending|unavailable|deprecated|removed
   - capability: str | None   capability key required for this route
   - aliases: list[str]       legacy route keys that redirect here
   - keywords: list[str]      search keywords
@@ -831,9 +831,9 @@ ROUTES: dict[str, dict] = {
         "route": "home_audio.chain_planner", "parent": "home_audio",
         "title": "Planificador de cadenas", "breadcrumb_title": "Cadenas",
         "source": "../pages/home_audio/ChainPlannerPlaceholderPage.qml",
-        "icon": "chain_planner", "order": 40, "sidebar_visible": True,
+        "icon": "chain_planner", "order": 40, "sidebar_visible": False,
         "sidebar_group": "home_audio", "expandable": False,
-        "status": "planned",
+        "status": "removed",
         "capability": "home_audio",
         "aliases": [],
         "keywords": ["cadena", "chain", "planificador", "dac", "amplificador", "parlantes"],

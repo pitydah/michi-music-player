@@ -610,21 +610,26 @@ class HomeAudioBridge(QObject):
         return self._mutate_and_refresh("create_route", name, source_id, ids)
 
     @Slot(str, str, str, "QVariantList", result=dict, name="updateRoute")
+    @Slot(str, str, str, "QVariantList", str, result=dict, name="updateRoute")
     def update_route(
         self,
         route_id: str,
         name: str,
         source_id: str,
         destination_ids: list | tuple | None,
+        mode: str = "atomic",
     ) -> dict:
         ids = [str(item) for item in (destination_ids or []) if str(item)]
         if not route_id:
             return {"ok": False, "error": "UNKNOWN_ROUTE"}
-        return self._mutate_and_refresh("update_route", route_id, name, source_id, ids)
+        return self._mutate_and_refresh(
+            "update_route", route_id, name, source_id, ids, mode
+        )
 
     @Slot(str, result=dict, name="startRoute")
-    def start_route(self, route_id: str) -> dict:
-        return self._mutate_and_refresh("start_route", route_id)
+    @Slot(str, str, result=dict, name="startRoute")
+    def start_route(self, route_id: str, mode: str = "atomic") -> dict:
+        return self._mutate_and_refresh("start_route", route_id, mode)
 
     @Slot(str, result=dict, name="stopRoute")
     def stop_route(self, route_id: str) -> dict:
