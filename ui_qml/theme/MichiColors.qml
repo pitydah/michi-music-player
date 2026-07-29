@@ -85,6 +85,7 @@ QtObject {
     // Cool blue is Michi's navigation and interaction accent. Warm colors are
     // intentionally scoped to playback and equalizer controls below.
     readonly property color accentPrimary: "#8FB7FF"
+    readonly property color accentHover: "#B4A5FF"
     readonly property color accentInfo: "#8FB7FF"
     readonly property color accentExperimental: "#A78BFA"
     readonly property color accentSecondary: accentExperimental
