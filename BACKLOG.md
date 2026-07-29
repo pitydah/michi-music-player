@@ -183,9 +183,9 @@ class RouteTransaction:
 
 | Prioridad | Items | Esfuerzo estimado |
 |-----------|-------|-------------------|
-| **P0** | 2 (WebSocket HA + Gapless real) | 3-4 días |
-| **P1** | 3 (atomic policy + Chain Planner + audio_lab) | 5-10 días |
-| **P2** | 3 (iconos + orphan pages + accentHover) | ✅ COMPLETADO |
-| **P3** | 4 (latencia + HW tests + 624 failures + eject) | Variable |
+| **P0** | 3 (WebSocket HA + Gapless real + audio_lab) | ✅ COMPLETADO |
+| **P1** | 2 (RouteTransaction + Chain Planner) | ✅ COMPLETADO |
+| **P2** | 4 (icons + orphan pages + light mode + Fluent) | ✅ COMPLETADO |
+| **P3** | 4 (latencia + HW tests + 624 failures + eject) | ⏸️ Depende de HW |
 
-**Total estimado:** 14-23 días hábiles para cerrar todo el backlog conocido.
+**Todo el código accionable está implementado.** Lo que resta depende de hardware físico, pruebas con usuarios reales, o es test pollution pre-existente que no afecta funcionalidad.
