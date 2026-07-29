@@ -344,6 +344,48 @@ class LibraryFilteredQueryService:
             "cover_key": row[5] or "",
         } for row in rows]
 
+    def count_genres(self) -> int:
+        """Return the number of non-empty genres in the catalogue."""
+        self._delegate._check_db()
+        row = self._delegate._exec(
+            "SELECT COUNT(DISTINCT genre) FROM media_items "
+            "WHERE deleted_at IS NULL AND COALESCE(genre, '') != ''"
+        ).fetchone()
+        return int(row[0]) if row else 0
+
+    def fetch_genres(self, offset: int = 0, limit: int = 100) -> list[dict[str, Any]]:
+        """Return one deterministic page of genres with track counts."""
+        self._delegate._check_db()
+        rows = self._delegate._exec(
+            "SELECT genre, COUNT(*) FROM media_items "
+            "WHERE deleted_at IS NULL AND COALESCE(genre, '') != '' "
+            "GROUP BY genre ORDER BY genre COLLATE NOCASE, genre "
+            "LIMIT ? OFFSET ?",
+            (max(1, int(limit)), max(0, int(offset))),
+        ).fetchall()
+        return [{"name": row[0] or "", "count": int(row[1] or 0)} for row in rows]
+
+    def count_composers(self) -> int:
+        """Return the number of non-empty composers in the catalogue."""
+        self._delegate._check_db()
+        row = self._delegate._exec(
+            "SELECT COUNT(DISTINCT composer) FROM media_items "
+            "WHERE deleted_at IS NULL AND COALESCE(composer, '') != ''"
+        ).fetchone()
+        return int(row[0]) if row else 0
+
+    def fetch_composers(self, offset: int = 0, limit: int = 100) -> list[dict[str, Any]]:
+        """Return one deterministic page of composers with track counts."""
+        self._delegate._check_db()
+        rows = self._delegate._exec(
+            "SELECT composer, COUNT(*) FROM media_items "
+            "WHERE deleted_at IS NULL AND COALESCE(composer, '') != '' "
+            "GROUP BY composer ORDER BY composer COLLATE NOCASE, composer "
+            "LIMIT ? OFFSET ?",
+            (max(1, int(limit)), max(0, int(offset))),
+        ).fetchall()
+        return [{"name": row[0] or "", "count": int(row[1] or 0)} for row in rows]
+
     def fetch_album_tracks_internal(self, album_key: str) -> list[dict]:
         self._delegate._check_db()
         rows = self._delegate._exec(
@@ -450,4 +492,34 @@ class LibraryFilteredQueryService:
             "track_count": 0, "average_completeness": 0.0,
             "low_quality_count": 0, "missing_artist_count": 0,
             "missing_album_count": 0, "unhashed_count": 0,
+        }
+
+    def get_metadata_completeness(self) -> dict:
+        """Return detailed metadata completeness diagnostics.
+
+        Returns:
+            Total tracks, counts of tracks missing each core field,
+            and the average completeness score.
+        """
+        self._delegate._check_db()
+        row = self._delegate._exec(
+            "SELECT COUNT(*), "
+            "SUM(CASE WHEN COALESCE(title, '')='' THEN 1 ELSE 0 END), "
+            "SUM(CASE WHEN COALESCE(artist, '')='' AND COALESCE(albumartist, '')='' THEN 1 ELSE 0 END), "
+            "SUM(CASE WHEN COALESCE(album, '')='' THEN 1 ELSE 0 END), "
+            "SUM(CASE WHEN COALESCE(genre, '')='' THEN 1 ELSE 0 END), "
+            "ROUND(AVG(COALESCE(metadata_completeness, 0)), 1) "
+            "FROM media_items WHERE deleted_at IS NULL"
+        ).fetchone()
+        return {
+            "total_tracks": int(row[0] or 0),
+            "missing_title": int(row[1] or 0),
+            "missing_artist": int(row[2] or 0),
+            "missing_album": int(row[3] or 0),
+            "missing_genre": int(row[4] or 0),
+            "average_completeness": float(row[5] or 0.0),
+        } if row else {
+            "total_tracks": 0, "missing_title": 0,
+            "missing_artist": 0, "missing_album": 0,
+            "missing_genre": 0, "average_completeness": 0.0,
         }

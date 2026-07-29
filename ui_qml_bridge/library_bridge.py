@@ -5,6 +5,7 @@ import contextlib
 import json
 import logging
 import os
+import uuid
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -610,6 +611,69 @@ class LibraryBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    def _set_group_favorite(
+        self,
+        where_clause: str,
+        params: tuple[Any, ...],
+        favorite: bool,
+    ) -> dict:
+        """Set favorite state for every track matching a trusted SQL predicate."""
+        if not self._db or not hasattr(self._db, "conn"):
+            return {"ok": False, "error": "NO_DB"}
+        try:
+            count_row = self._db.conn.execute(
+                f"SELECT COUNT(*) FROM media_items WHERE deleted_at IS NULL AND {where_clause}",
+                params,
+            ).fetchone()
+            matched = int(count_row[0]) if count_row else 0
+            if favorite:
+                sql = (
+                    "INSERT OR IGNORE INTO favorites (track_id) "
+                    "SELECT filepath FROM media_items "
+                    f"WHERE deleted_at IS NULL AND {where_clause}"
+                )
+            else:
+                sql = (
+                    "DELETE FROM favorites WHERE track_id IN ("
+                    "SELECT filepath FROM media_items WHERE deleted_at IS NULL AND "
+                    f"{where_clause} UNION SELECT CAST(id AS TEXT) FROM media_items "
+                    f"WHERE deleted_at IS NULL AND {where_clause} UNION SELECT track_uid "
+                    f"FROM media_items WHERE deleted_at IS NULL AND {where_clause})"
+                )
+                params = params * 3
+            with self._db.conn:
+                self._db.conn.execute(sql, params)
+            self._refresh_coordinator.refresh_all()
+            self._sync_state()
+            self.dataChanged.emit()
+            return {"ok": True, "favorite": favorite, "count": matched}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, bool, result=dict)
+    def setAlbumFavorite(self, album_key: str, favorite: bool):
+        """Set favorite state for every track belonging to an album."""
+        key = str(album_key or "").strip()
+        if not key:
+            return {"ok": False, "error": "EMPTY_ALBUM_KEY"}
+        return self._set_group_favorite(
+            "COALESCE(NULLIF(album_key, ''), album, '') = ? COLLATE NOCASE",
+            (key,),
+            favorite,
+        )
+
+    @Slot(str, bool, result=dict)
+    def setArtistFavorite(self, artist_name: str, favorite: bool):
+        """Set favorite state for every track belonging to an artist."""
+        artist = str(artist_name or "").strip()
+        if not artist:
+            return {"ok": False, "error": "EMPTY_ARTIST_NAME"}
+        return self._set_group_favorite(
+            "(artist = ? COLLATE NOCASE OR albumartist = ? COLLATE NOCASE)",
+            (artist, artist),
+            favorite,
+        )
+
     @Slot(str, result=dict)
     def enqueueSong(self, filepath: str):
         if not filepath:
@@ -738,6 +802,18 @@ class LibraryBridge(QObject):
                 if key and key not in seen:
                     seen[key] = True
             return [{"album_key": k, "title": k} for k in seen]
+        except Exception:
+            return []
+
+    @Slot(str, result="QVariantList")
+    def getRelatedArtists(self, artist_name: str):
+        if not self._query_svc:
+            return []
+        try:
+            detail = self._query_svc.fetch_artist_detail(artist_name)
+            if not detail:
+                return []
+            return detail.get("related_artists", [])
         except Exception:
             return []
 
@@ -980,19 +1056,94 @@ class LibraryBridge(QObject):
 
     # ── Slots called from sub-pages (discovery) ──
 
-    @Slot(result="QVariantList")
-    def getGenres(self):
-        return self.listGenres()
+    @Slot(int, int, result=dict)
+    def getGenres(self, offset: int = 0, limit: int = 100):
+        svc = getattr(self, '_query_svc', None)
+        if svc is None or not hasattr(svc, "fetch_genres"):
+            entries = self.listGenres()
+            page = entries[max(0, offset):max(0, offset) + max(1, limit)]
+            return {"items": page, "total": len(entries), "has_more": offset + len(page) < len(entries)}
+        try:
+            items = svc.fetch_genres(offset=offset, limit=limit)
+            total = svc.count_genres()
+            return {"items": items, "total": total, "has_more": offset + len(items) < total}
+        except Exception as e:
+            return {"items": [], "total": 0, "has_more": False, "error": str(e)}
 
-    @Slot(result="QVariantList")
-    def getComposers(self):
+    @Slot(int, int, result=dict)
+    def getComposers(self, offset: int = 0, limit: int = 100):
         svc = getattr(self, '_query_svc', None)
         if svc is None:
-            return []
+            return {"items": [], "total": 0, "has_more": False}
         try:
-            return svc.list_composers()
-        except Exception:
-            return []
+            if hasattr(svc, "fetch_composers"):
+                items = svc.fetch_composers(offset=offset, limit=limit)
+                total = svc.count_composers()
+            else:
+                entries = svc.list_composers()
+                items = entries[max(0, offset):max(0, offset) + max(1, limit)]
+                total = len(entries)
+            return {"items": items, "total": total, "has_more": offset + len(items) < total}
+        except Exception as e:
+            return {"items": [], "total": 0, "has_more": False, "error": str(e)}
+
+    @Slot(result="QVariantList")
+    def getCollections(self):
+        """Return persisted user-defined smart collections."""
+        from core.settings_manager import get_list
+
+        collections = get_list("library/custom_collections")
+        return [entry for entry in collections if isinstance(entry, dict)]
+
+    @Slot(str, result=dict)
+    def saveCollection(self, collection_json: str):
+        """Validate and persist one user-defined smart collection."""
+        from core.settings_manager import get_list, set_
+
+        try:
+            collection = json.loads(collection_json)
+        except json.JSONDecodeError as e:
+            return {"ok": False, "error": f"INVALID_JSON: {e}"}
+        if not isinstance(collection, dict):
+            return {"ok": False, "error": "INVALID_COLLECTION"}
+        name = str(collection.get("name") or "").strip()
+        match_mode = str(collection.get("matchMode") or "AND").upper()
+        rules = collection.get("rules")
+        if not name or match_mode not in {"AND", "OR"} or not isinstance(rules, list) or not rules:
+            return {"ok": False, "error": "INVALID_COLLECTION"}
+        allowed_fields = {"title", "artist", "album", "genre", "composer", "year", "format"}
+        allowed_operators = {"contains", "equals", "not_equals", "starts_with", "greater_than", "less_than"}
+        normalized_rules = []
+        for rule in rules:
+            if not isinstance(rule, dict):
+                return {"ok": False, "error": "INVALID_RULE"}
+            field = str(rule.get("field") or "")
+            operator = str(rule.get("operator") or "")
+            value = str(rule.get("value") or "").strip()
+            if field not in allowed_fields or operator not in allowed_operators or not value:
+                return {"ok": False, "error": "INVALID_RULE"}
+            normalized_rules.append({"field": field, "operator": operator, "value": value})
+
+        collection_id = str(collection.get("id") or "").strip()
+        if not collection_id:
+            collection_id = f"collection-{uuid.uuid4().hex}"
+        saved = {
+            "id": collection_id,
+            "name": name,
+            "matchMode": match_mode,
+            "rules": normalized_rules,
+        }
+        collections = [entry for entry in get_list("library/custom_collections") if isinstance(entry, dict)]
+        replaced = False
+        for index, entry in enumerate(collections):
+            if entry.get("id") == collection_id:
+                collections[index] = saved
+                replaced = True
+                break
+        if not replaced:
+            collections.append(saved)
+        set_("library/custom_collections", collections)
+        return {"ok": True, "collection": saved}
 
     @Slot(result="QVariantList")
     def getYears(self):
@@ -1104,3 +1255,13 @@ class LibraryBridge(QObject):
             except Exception as e:
                 return {"ok": False, "error": str(e)}
         return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    @Slot(result=dict)
+    def getMetadataCompleteness(self):
+        if not self._query_svc or not hasattr(self._query_svc, 'get_metadata_completeness'):
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        try:
+            result = self._query_svc.get_metadata_completeness()
+            return {"ok": True, **result}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}

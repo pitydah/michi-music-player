@@ -14,6 +14,10 @@ class FolderTreeModel(BasePagedListModel):
     TrackCountRole = Qt.UserRole + 3
     IsExpandableRole = Qt.UserRole + 4
     ExpandedRole = Qt.UserRole + 5
+    ExistsRole = Qt.UserRole + 6
+    ReadableRole = Qt.UserRole + 7
+    FolderStatusRole = Qt.UserRole + 8
+    ErrorCodeRole = Qt.UserRole + 9
 
     def __init__(self, query_service=None, query_executor=None, parent=None):
         super().__init__(page_size=200, query_executor=query_executor, parent=parent)
@@ -25,7 +29,9 @@ class FolderTreeModel(BasePagedListModel):
     def roleNames(self):
         return {self.PathRole: b"folderPath", self.NameRole: b"folderName",
                 self.TrackCountRole: b"trackCount",
-                self.IsExpandableRole: b"isExpandable", self.ExpandedRole: b"expanded"}
+                self.IsExpandableRole: b"isExpandable", self.ExpandedRole: b"expanded",
+                self.ExistsRole: b"exists", self.ReadableRole: b"readable",
+                self.FolderStatusRole: b"folderStatus", self.ErrorCodeRole: b"errorCode"}
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid() or index.row() >= len(self._items):
@@ -33,7 +39,9 @@ class FolderTreeModel(BasePagedListModel):
         item = self._items[index.row()]
         mapping = {self.PathRole: "path", self.NameRole: "name",
                    self.TrackCountRole: "track_count",
-                   self.IsExpandableRole: "is_expandable", self.ExpandedRole: "expanded"}
+                   self.IsExpandableRole: "is_expandable", self.ExpandedRole: "expanded",
+                   self.ExistsRole: "exists", self.ReadableRole: "readable",
+                   self.FolderStatusRole: "status", self.ErrorCodeRole: "error_code"}
         key = mapping.get(role, "")
         if key:
             return item.get(key, "")

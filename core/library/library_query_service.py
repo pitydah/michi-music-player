@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import sqlite3
 import threading
 from pathlib import Path
@@ -332,9 +333,30 @@ class LibraryQueryService:
             )
             params.extend([limit, offset])
             rows = self._exec(sql, params).fetchall()
-            return [{"path": r[0] or "", "name": (r[0] or "").rsplit("/", 1)[-1] if "/" in (r[0] or "") else r[0] or "",
-                     "track_count": r[1], "is_expandable": True, "expanded": False}
-                    for r in rows]
+            result = []
+            for r in rows:
+                path = r[0] or ""
+                name = path.rsplit("/", 1)[-1] if "/" in path else (path or "")
+                exists = os.path.isdir(path) if path else False
+                readable = os.access(path, os.R_OK) if path and exists else False
+                status = "ok"
+                error_code = ""
+                if not path:
+                    status = "missing"
+                    error_code = "EMPTY_PATH"
+                elif not exists:
+                    status = "unavailable"
+                    error_code = "NOT_FOUND"
+                elif not readable:
+                    status = "error"
+                    error_code = "PERMISSION_DENIED"
+                result.append({
+                    "path": path, "name": name,
+                    "track_count": r[1], "is_expandable": True, "expanded": False,
+                    "exists": exists, "readable": readable,
+                    "status": status, "error_code": error_code,
+                })
+            return result
         except LibraryQueryError:
             raise
         except Exception as e:
@@ -515,14 +537,74 @@ class LibraryQueryService:
                 if t.get("album"):
                     albums.add(t["album"])
             genres = next((t.get("genre", "") for t in internal if t.get("genre")), "")
+            biography = self._fetch_artist_biography(artist_name)
+            related = self._fetch_related_artists(artist_name, genres)
             return {"artist": artist_name, "track_count": len(internal),
                     "album_count": len(albums),
-                    "genre": genres,
+                    "genre": genres, "biography": biography,
+                    "related_artists": related,
                     "tracks": [{k: v for k, v in t.items() if k != "filepath"} for t in internal]}
         except LibraryQueryError:
             raise
         except Exception as e:
             raise LibraryQueryError("QUERY_FAILED", "fetch_artist_detail", str(e)) from e
+
+    def _fetch_artist_biography(self, artist_name: str) -> str:
+        self._check_db()
+        try:
+            row = self._exec(
+                "SELECT comment FROM media_items WHERE deleted_at IS NULL AND "
+                "COALESCE(comment, '')!='' AND "
+                f"({_artist_key_sql()}=? OR artist=?) "
+                "ORDER BY LENGTH(comment) DESC LIMIT 1",
+                (artist_name, artist_name),
+            ).fetchone()
+            return row[0].strip() if row and row[0] else ""
+        except Exception:
+            return ""
+
+    def _fetch_related_artists(self, artist_name: str, genre: str) -> list[dict]:
+        genres_list: list[str] = []
+        if genre:
+            genres_list = [g.strip() for g in genre.split(";") if g.strip()]
+        if not genres_list:
+            self._check_db()
+            try:
+                row = self._exec(
+                    "SELECT genre FROM media_items WHERE deleted_at IS NULL AND "
+                    f"({_artist_key_sql()}=? OR artist=?) "
+                    "AND COALESCE(genre, '')!='' "
+                    "LIMIT 1", (artist_name, artist_name),
+                ).fetchone()
+                if row and row[0]:
+                    genres_list = [g.strip() for g in row[0].split(";") if g.strip()]
+            except Exception:
+                pass
+        if not genres_list:
+            return []
+        like_clauses = " OR ".join(
+            ["m.genre LIKE ? ESCAPE '\\\\'" for _ in genres_list]
+        )
+        self._check_db()
+        try:
+            params: list[str] = []
+            for g in genres_list:
+                clean = g.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                params.append(f"%{clean}%")
+            rows = self._exec(
+                "SELECT COALESCE(NULLIF(m.albumartist, ''), m.artist, '') AS name, "
+                "COUNT(*) AS track_count, "
+                "COUNT(DISTINCT COALESCE(m.album_key, m.album, '')) AS album_count "
+                "FROM media_items m WHERE m.deleted_at IS NULL "
+                "AND COALESCE(NULLIF(m.albumartist, ''), m.artist, '')!='' "
+                f"AND ({like_clauses}) "
+                "AND LOWER(COALESCE(NULLIF(m.albumartist, ''), m.artist, ''))!=LOWER(?) "
+                "GROUP BY name ORDER BY track_count DESC LIMIT 10",
+                [*params, artist_name],
+            ).fetchall()
+            return [{"name": r[0], "track_count": r[1], "album_count": r[2]} for r in rows]
+        except Exception:
+            return []
 
     def _row_to_public(self, r: sqlite3.Row | tuple[Any, ...]) -> dict[str, Any]:
         """Convert a canonical track row to the public QML representation."""

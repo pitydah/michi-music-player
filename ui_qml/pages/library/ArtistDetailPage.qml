@@ -20,6 +20,8 @@ Item {
     property int artistTrackCount: 0
     property int artistAlbumCount: 0
     property string artistGenre: ""
+    property string artistBiography: ""
+    property var relatedArtists: []
     property bool loading: false
 
     function routeEnter(route, params) {
@@ -35,11 +37,15 @@ Item {
         if (!name || !root.lib) return
         root.loading = true
         root.artistName = name
+        root.relatedArtists = []
+        root.artistBiography = ""
         var detail = root.lib.getArtistDetail ? root.lib.getArtistDetail(name) : null
         if (detail && detail.ok) {
             root.artistTrackCount = Number(detail.track_count || 0)
             root.artistAlbumCount = Number(detail.album_count || 0)
             root.artistGenre = detail.genre || ""
+            root.artistBiography = detail.biography || ""
+            root.relatedArtists = detail.related_artists || []
         }
         root.artistTracks = root.lib.getArtistTracks ? root.lib.getArtistTracks(name) : []
         root.artistAlbums = root.deriveAlbums(root.artistTracks)
@@ -287,12 +293,131 @@ Item {
                 }
             }
 
+    Rectangle {
+        id: biographySection
+        Layout.fillWidth: true
+        implicitHeight: bioLabel.implicitHeight + bioText.implicitHeight + MichiTheme.spacing.lg * 3
+        radius: MichiTheme.radius.lg
+        visible: root.artistBiography !== ""
+        color: MichiTheme.colors.surfaceCard
+        border.width: MichiTheme.borderWidth
+        border.color: MichiTheme.colors.borderCard
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: MichiTheme.spacing.lg
+            spacing: MichiTheme.spacing.sm
+
             Text {
-                text: qsTr("Canciones")
+                id: bioLabel
+                text: qsTr("Biografía")
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightBold
             }
+            Text {
+                id: bioText
+                Layout.fillWidth: true
+                text: root.artistBiography
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
+                wrapMode: Text.WordWrap
+                maximumLineCount: 6
+                elide: Text.ElideRight
+            }
+        }
+    }
+
+    Text {
+        id: relatedLabel
+        visible: root.relatedArtists.length > 0
+        text: qsTr("Artistas relacionados")
+        color: MichiTheme.colors.textPrimary
+        font.pixelSize: MichiTheme.typography.pageTitleSize
+        font.weight: MichiTheme.typography.weightBold
+    }
+
+    ListView {
+        id: relatedRail
+        Layout.fillWidth: true
+        Layout.preferredHeight: root.relatedArtists.length > 0 ? 150 : 0
+        visible: root.relatedArtists.length > 0
+        orientation: ListView.Horizontal
+        model: root.relatedArtists
+        spacing: MichiTheme.spacing.md
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        snapMode: ListView.SnapToItem
+        ScrollBar.horizontal: ScrollBar { height: 6; policy: ScrollBar.AsNeeded }
+
+        delegate: Rectangle {
+            required property int index
+            required property var modelData
+            width: 140
+            height: 140
+            radius: MichiTheme.radius.lg
+            color: relMouse.containsMouse ? MichiTheme.colors.surfaceCardHover : MichiTheme.colors.surfaceCard
+            border.width: MichiTheme.borderWidth
+            border.color: relMouse.containsMouse ? MichiTheme.colors.borderHover : MichiTheme.colors.borderCard
+
+            ColumnLayout {
+                anchors.centerIn: parent
+                spacing: MichiTheme.spacing.xs
+
+                Rectangle {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: 60
+                    Layout.preferredHeight: 60
+                    radius: 30
+                    color: MichiTheme.colors.surfaceElevation3
+                    border.width: MichiTheme.borderWidthFocus
+                    border.color: MichiTheme.colors.borderActive
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: modelData.name.charAt(0).toUpperCase()
+                        color: MichiTheme.colors.accentBlue
+                        font.pixelSize: 24
+                        font.weight: MichiTheme.typography.weightBold
+                    }
+                }
+                Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
+                    text: modelData.name
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    font.weight: MichiTheme.typography.weightSemiBold
+                    elide: Text.ElideRight
+                    horizontalAlignment: Text.AlignHCenter
+                }
+                Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: modelData.track_count + " " + qsTr("canciones")
+                    color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.captionSize
+                }
+            }
+
+            MouseArea {
+                id: relMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    if (typeof navigationBridge !== "undefined")
+                        navigationBridge.navigateWithParams("library.artist_detail", {artist: modelData.name})
+                }
+            }
+        }
+    }
+
+    Text {
+        text: qsTr("Canciones")
+        color: MichiTheme.colors.textPrimary
+        font.pixelSize: MichiTheme.typography.pageTitleSize
+        font.weight: MichiTheme.typography.weightBold
+    }
 
             Rectangle {
                 Layout.fillWidth: true
