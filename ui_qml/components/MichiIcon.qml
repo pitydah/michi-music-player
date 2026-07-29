@@ -53,7 +53,7 @@ Item {
 
     readonly property var _fluentCache: ({
         "ai": true, "albums": true, "artists": true,
-        "capture": true, "devices": true, "folders": true,
+        "capture": true, "devices": true, "eq": true, "folders": true,
         "history": true, "home": true, "home_audio": true,
         "library": true, "connections": true, "mix": true,
         "outputs": true, "playlists": true, "queue": true,
