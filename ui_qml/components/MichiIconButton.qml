@@ -22,6 +22,8 @@ QQC2.Button {
                                     ? MichiTheme.colors.textPrimary
                                     : MichiTheme.colors.textSecondary
     property int btnSize: MichiTheme.minimumInteractiveSize
+    property int iconVisualSize: MichiTheme.iconSizeRegular
+    property real disabledVisualOpacity: MichiTheme.disabledOpacity
     property string accessibleName: tooltipText
     property string accessibleDescription: tooltipText
 
@@ -73,13 +75,13 @@ QQC2.Button {
     contentItem: Item {
         Image {
             anchors.centerIn: parent
-            width: MichiTheme.iconSizeRegular
-            height: MichiTheme.iconSizeRegular
+            width: root.iconVisualSize
+            height: root.iconVisualSize
             source: root.iconSource !== "" ? Qt.resolvedUrl(root.iconSource) : (root.iconKey ? "" : "")
             sourceSize.width: 32
             sourceSize.height: 32
             fillMode: Image.PreserveAspectFit
-            opacity: root.enabled ? 1.0 : MichiTheme.opacity.disabled
+            opacity: root.enabled ? 1.0 : root.disabledVisualOpacity
             visible: root.iconSource !== "" && !root.symbolic
         }
 
@@ -87,7 +89,7 @@ QQC2.Button {
             anchors.centerIn: parent
             source: root.iconSource
             iconKey: root.iconKey
-            size: MichiTheme.iconSizeRegular
+            size: root.iconVisualSize
             color: root.symbolicColor
             active: root.selected
             disabled: !root.enabled
@@ -100,7 +102,7 @@ QQC2.Button {
             text: root.iconText
             font.pixelSize: MichiTheme.typography.cardTitleSize
             color: root.selected ? MichiTheme.colors.accentBlue : MichiTheme.colors.textPrimary
-            opacity: root.enabled ? 1.0 : MichiTheme.opacity.disabled
+            opacity: root.enabled ? 1.0 : root.disabledVisualOpacity
             visible: root.iconSource === "" && root.iconText !== ""
         }
     }

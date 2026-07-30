@@ -12,6 +12,8 @@ Item {
     property string repeatMode: "none"
     property bool commandPending: false
     property bool compact: false
+    property string variant: "default"
+    readonly property bool isBar: variant === "bar"
     property bool showShuffle: true
     property bool showPrevious: true
     property bool showNext: true
@@ -24,17 +26,22 @@ Item {
     signal shuffleToggled(bool enabled)
     signal repeatCycled(string mode)
 
-    implicitHeight: compact ? 40 : 56
-    implicitWidth: compact ? 200 : 280
+    implicitHeight: root.isBar ? 54 : (root.compact ? 40 : 56)
+    implicitWidth: root.isBar ? 270 : (root.compact ? 200 : 280)
 
     RowLayout {
         anchors.centerIn: parent
-        spacing: root.compact ? MichiTheme.spacing.xs : MichiTheme.spacing.sm
+        spacing: root.isBar ? 12
+                       : root.compact ? MichiTheme.spacing.xs
+                                       : MichiTheme.spacing.sm
 
         MichiIconButton {
+            controlObjectName: "shuffleButton"
             visible: root.showShuffle && !root.compact
             iconSource: "../../icons/nowplaying_clean/warm_shuffle_32.png"
             symbolic: false
+            iconVisualSize: root.isBar ? 20 : MichiTheme.iconSizeRegular
+            btnSize: root.isBar ? 40 : MichiTheme.minimumInteractiveSize
             selected: root.shuffleEnabled
             enabled: !root.commandPending
             accessibleName: qsTr("Aleatorio")
@@ -43,11 +50,13 @@ Item {
         }
 
         MichiIconButton {
+            controlObjectName: "previousButton"
             visible: root.showPrevious
             iconSource: "../../icons/nowplaying_clean/warm_prev_32.png"
             symbolic: false
+            iconVisualSize: root.isBar ? 22 : MichiTheme.iconSizeRegular
+            btnSize: root.isBar ? 44 : (root.compact ? 40 : MichiTheme.minimumInteractiveSize)
             enabled: !root.commandPending
-            btnSize: root.compact ? 40 : MichiTheme.minimumInteractiveSize
             accessibleName: qsTr("Anterior")
             tooltipText: accessibleName
             onClicked: root.previousRequested()
@@ -59,10 +68,11 @@ Item {
                         ? "../../icons/nowplaying_clean/warm_pause_32.png"
                         : "../../icons/nowplaying_clean/warm_play_32.png"
             symbolic: false
+            iconVisualSize: root.isBar ? 28 : MichiTheme.iconSizeRegular
             enabled: !root.commandPending
             circular: true
             selected: true
-            btnSize: root.compact ? 40 : 52
+            btnSize: root.isBar ? 54 : (root.compact ? 40 : 52)
             accessibleName: root.isPlaying ? qsTr("Pausar") : qsTr("Reproducir")
             tooltipText: accessibleName
             onClicked: {
@@ -72,11 +82,13 @@ Item {
         }
 
         MichiIconButton {
+            controlObjectName: "nextButton"
             visible: root.showNext
             iconSource: "../../icons/nowplaying_clean/warm_next_32.png"
             symbolic: false
+            iconVisualSize: root.isBar ? 22 : MichiTheme.iconSizeRegular
+            btnSize: root.isBar ? 44 : (root.compact ? 40 : MichiTheme.minimumInteractiveSize)
             enabled: !root.commandPending
-            btnSize: root.compact ? 40 : MichiTheme.minimumInteractiveSize
             accessibleName: qsTr("Siguiente")
             tooltipText: accessibleName
             onClicked: root.nextRequested()
@@ -87,6 +99,7 @@ Item {
             visible: root.showRepeat && !root.compact
             iconSource: "../../icons/nowplaying_clean/warm_repeat_32.png"
             symbolic: false
+            iconVisualSize: root.isBar ? 20 : MichiTheme.iconSizeRegular
             selected: root.repeatMode !== "none"
             enabled: !root.commandPending
             accessibleName: root.repeatMode === "one"
