@@ -1348,3 +1348,10 @@ class LibraryBridge(QObject):
             return {"ok": True, **result}
         except Exception as e:
             return {"ok": False, "error": str(e)}
+
+    @Slot(result="QVariantList")
+    def getFormats(self):
+        """Return distinct audio formats present in the library."""
+        if self._query_svc and hasattr(self._query_svc, "get_formats"):
+            return self._query_svc.get_formats()
+        return []

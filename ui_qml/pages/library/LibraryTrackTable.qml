@@ -64,6 +64,19 @@ Item {
         root.commitSelection(ids)
     }
 
+    function selectAllResults() {
+        /* Select ALL matching results across all pages via bridge query. */
+        if (root.lib && typeof root.lib.selectAllFiltered === "function") {
+            var result = root.lib.selectAllFiltered()
+            if (result && result.ok) {
+                root.commitSelection(result.ids || [])
+                return
+            }
+        }
+        /* Fallback: select loaded only */
+        root.selectAllLoaded()
+    }
+
     function toggleSelection(id, index, ctrl, shift) {
         var ids = root._selectedIds.slice()
         if (shift && root._lastClickedIndex >= 0) {

@@ -525,3 +525,17 @@ class LibraryFilteredQueryService:
             "missing_artist": 0, "missing_album": 0,
             "missing_genre": 0, "average_completeness": 0.0,
         }
+
+    def get_formats(self) -> list[str]:
+        """Return distinct audio formats present in the library."""
+        if self._db is None or self._db.conn is None:
+            return []
+        try:
+            cursor = self._db.conn.execute(
+                "SELECT DISTINCT UPPER(LTRIM(COALESCE(ext, ''), '.')) AS fmt "
+                "FROM media_items WHERE ext IS NOT NULL AND ext != '' "
+                "ORDER BY fmt"
+            )
+            return [row[0] for row in cursor.fetchall()]
+        except Exception:
+            return []

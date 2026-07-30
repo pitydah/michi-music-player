@@ -115,14 +115,24 @@ Item {
             ComboBox {
                 id: formatCombo
                 Layout.fillWidth: true
-                model: [qsTr("Todos los formatos"), "FLAC", "MP3", "AAC", "M4A", "WAV", "DSF", "DFF"]
+                model: {
+                    var lib = typeof libraryBridge !== "undefined" ? libraryBridge : null
+                    var formats = lib ? lib.getFormats() : []
+                    var result = [qsTr("Todos los formatos")]
+                    for (var i = 0; i < formats.length; i++)
+                        result.push(formats[i])
+                    return result
+                }
                 currentIndex: {
-                    var values = ["", "flac", "mp3", "aac", "m4a", "wav", "dsf", "dff"]
-                    return Math.max(0, values.indexOf(root.activeFormat))
+                    var lib = typeof libraryBridge !== "undefined" ? libraryBridge : null
+                    var formats = lib ? lib.getFormats() : []
+                    var idx = formats.indexOf(root.activeFormat.toUpperCase())
+                    return idx >= 0 ? idx + 1 : 0
                 }
                 onActivated: {
-                    var values = ["", "flac", "mp3", "aac", "m4a", "wav", "dsf", "dff"]
-                    root.chooseFormat(values[currentIndex])
+                    var lib = typeof libraryBridge !== "undefined" ? libraryBridge : null
+                    var formats = lib ? lib.getFormats() : []
+                    root.chooseFormat(currentIndex === 0 ? "" : (formats[currentIndex - 1] || ""))
                 }
                 Accessible.name: qsTr("Formato de audio")
             }
