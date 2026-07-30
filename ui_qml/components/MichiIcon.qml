@@ -52,20 +52,20 @@ Item {
     }
 
     readonly property var _fluentCache: ({
-        "ai": true, "albums": true, "artists": true,
-        "big_server": true, "capture": true, "connections": true,
-        "devices": true, "distribution": true, "eq": true,
-        "folders": true, "history": true, "home": true,
+        "ai": true, "albums": true, "analysis": true,
+        "artists": true, "big_server": true, "capture": true,
+        "connections": true, "devices": true, "distribution": true,
+        "eq": true, "folders": true, "history": true, "home": true,
         "home_assistant": true, "home_audio": true,
         "jellyfin": true, "library": true, "library_health": true,
         "metadata": true, "michi_ai": true, "michi_stream": true,
         "micro_server": true, "mix": true, "mobile": true,
         "navidrome": true, "outputs": true, "playlists": true,
-        "portable_player": true, "processing": true,
+        "podcasts": true, "portable_player": true, "processing": true,
         "queue": true, "radio": true, "rooms": true,
         "search": true, "settings": true, "songs": true,
         "streaming": true, "sync": true, "sync_history": true,
-        "sync_plans": true, "podcasts": true,
+        "sync_plans": true,
     })
 
     function fluentIconExists(key) {
