@@ -228,6 +228,7 @@ Item {
 
             MichiIconButton {
                 x: 0; y: 2; width: 40; height: 40; btnSize: 40
+                symbolicColor: "#FFFFFF"
                 iconKey: "speaker"
                 enabled: root._hasTrack && root.ps && root.ps.muteSupported
                 Accessible.name: root.ps && root.ps.muted ? qsTr("Activar sonido") : qsTr("Silenciar")
@@ -261,6 +262,7 @@ Item {
             }
             MichiIconButton {
                 x: 136; y: 2; width: 40; height: 40; btnSize: 40
+                symbolicColor: "#FFFFFF"
                 iconKey: "eq"
                 enabled: typeof capabilityBridge === "undefined" || !capabilityBridge || capabilityBridge.has("eq")
                 Accessible.name: qsTr("Ecualizador"); tooltipText: qsTr("Ecualizador")
@@ -268,6 +270,7 @@ Item {
             }
             MichiIconButton {
                 x: 184; y: 2; width: 40; height: 40; btnSize: 40
+                symbolicColor: "#FFFFFF"
                 iconKey: "streaming"
                 enabled: root._hasTrack
                 Accessible.name: qsTr("Transmitir"); tooltipText: qsTr("Transmitir")
@@ -291,6 +294,7 @@ Item {
                 /* Shuffle — 40×40 */
                 MichiIconButton {
                     x: 0; y: 7; width: 40; height: 40; btnSize: 40
+                symbolicColor: "#FFFFFF"
                     iconKey: "shuffle"
                     selected: root.ps ? root.ps.shuffleEnabled : false
                     enabled: root._hasTrack && root.ps && root.ps.shuffleSupported && !root.ps.commandPending
@@ -300,6 +304,7 @@ Item {
                 /* Previous — 44×44 */
                 MichiIconButton {
                     x: 52; y: 5; width: 44; height: 44; btnSize: 44
+                symbolicColor: "#FFFFFF"
                     iconKey: "previous"
                     enabled: root._hasTrack && root.ps && root.ps.previousSupported && !root.ps.commandPending
                     Accessible.name: qsTr("Anterior")
@@ -313,6 +318,7 @@ Item {
                         anchors.centerIn: parent
                         iconKey: root.ps && root.ps.isPlaying ? "pause" : "play"
                         btnSize: 54; width: 54; height: 54
+                symbolicColor: "#FFFFFF"
                         enabled: root._hasTrack && !root.ps.commandPending
                         Accessible.name: root.ps && root.ps.isPlaying ? qsTr("Pausar") : qsTr("Reproducir")
                         onClicked: if (root.ps) root.ps.togglePlay()
@@ -321,6 +327,7 @@ Item {
                 /* Next — 44×44 */
                 MichiIconButton {
                     x: 174; y: 5; width: 44; height: 44; btnSize: 44
+                symbolicColor: "#FFFFFF"
                     iconKey: "next"
                     enabled: root._hasTrack && root.ps && root.ps.nextSupported && !root.ps.commandPending
                     Accessible.name: qsTr("Siguiente")
@@ -329,6 +336,7 @@ Item {
                 /* Repeat — 40×40 */
                 MichiIconButton {
                     x: 230; y: 7; width: 40; height: 40; btnSize: 40
+                symbolicColor: "#FFFFFF"
                     iconKey: root.ps && root.ps.repeatMode === "one" ? "repeat_one" : "repeat"
                     selected: root.ps && root.ps.repeatMode !== "none"
                     enabled: root._hasTrack && root.ps && root.ps.repeatSupported && !root.ps.commandPending
@@ -347,6 +355,7 @@ Item {
             /* Audio Output */
             MichiIconButton {
                 x: 0; y: 7; width: 40; height: 40; btnSize: 40
+                symbolicColor: "#FFFFFF"
                 iconKey: "speaker"
                 enabled: root._backendAvailable
                 Accessible.name: qsTr("Elegir salida de audio"); tooltipText: qsTr("Elegir salida de audio")
@@ -360,6 +369,7 @@ Item {
             /* Output Profile */
             MichiIconButton {
                 x: 48; y: 7; width: 40; height: 40; btnSize: 40
+                symbolicColor: "#FFFFFF"
                 iconKey: "eq"
                 enabled: root.outputBridge !== null
                 Accessible.name: qsTr("Elegir perfil de salida"); tooltipText: qsTr("Elegir perfil de salida")
