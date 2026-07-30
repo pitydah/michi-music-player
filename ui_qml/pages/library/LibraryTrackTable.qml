@@ -66,8 +66,8 @@ Item {
 
     function selectAllResults() {
         /* Select ALL matching results across all pages via bridge query. */
-        if (root.lib && typeof root.lib.selectAllFiltered === "function") {
-            var result = root.lib.selectAllFiltered()
+        if (root.bridge && typeof root.bridge.selectAllFiltered === "function") {
+            var result = root.bridge.selectAllFiltered()
             if (result && result.ok) {
                 root.commitSelection(result.ids || [])
                 return
@@ -132,7 +132,7 @@ Item {
                     root.clearSelection()
                     event.accepted = true
                 } else if (event.key === Qt.Key_A && (event.modifiers & Qt.ControlModifier)) {
-                    root.selectAllLoaded()
+                    root.selectAllResults()
                     event.accepted = true
                 } else if (event.key === Qt.Key_Down) {
                     incrementCurrentIndex()

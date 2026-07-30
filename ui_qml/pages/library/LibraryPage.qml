@@ -228,18 +228,21 @@ MichiPage {
         switch (root._currentLibrarySection) {
         case 0:
             root._songView = index
+            pageState.songView = index
             break
         case 1:
             albumViewHost.selectView(index)
-            pageState.currentView = index
+            pageState.albumView = index
             break
         case 2:
             root._artistView = index
             artistView.selectView(index)
+            pageState.artistView = index
             break
         case 3:
             root._folderView = index
             folderBrowser.selectView(index)
+            pageState.folderView = index
             break
         }
         pageState.save()
@@ -306,7 +309,10 @@ MichiPage {
         var state = pageState.restore()
         root._currentLibrarySection = pageState.currentTab
         root.headerSearchText = pageState.searchText
-        albumViewHost.currentView = pageState.currentView
+        root._songView = pageState.songView
+        albumViewHost.currentView = pageState.albumView
+        root._artistView = pageState.artistView
+        root._folderView = pageState.folderView
         var filters = state.filterState || ({})
         filterBar.specialFilter = filters.specialFilter || ""
         filterBar.genreText = filters.genreText || ""
@@ -430,7 +436,7 @@ MichiPage {
                         root.showAlbumDetail(key, title, artist, year)
                     }
                     onViewChanged: function(index) {
-                        pageState.currentView = index
+                        pageState.albumView = index
                         pageState.save()
                     }
                 }
@@ -447,7 +453,11 @@ MichiPage {
                     currentView: root._artistView
                     activeFocusOnTab: true
                     onArtistClicked: function(name) { root.showArtistDetail(name) }
-                    onViewChanged: function(index) { root._artistView = index }
+                    onViewChanged: function(index) {
+                        root._artistView = index
+                        pageState.artistView = index
+                        pageState.save()
+                    }
                 }
             }
 
@@ -460,7 +470,11 @@ MichiPage {
                     embedded: true
                     currentView: root._folderView
                     activeFocusOnTab: true
-                    onViewChanged: function(index) { root._folderView = index }
+                    onViewChanged: function(index) {
+                        root._folderView = index
+                        pageState.folderView = index
+                        pageState.save()
+                    }
                 }
             }
         }

@@ -19,6 +19,33 @@ _NUMERIC_FIELDS = {"year", "plays", "rating"}
 _TRACK_FIELDS = {"plays": "play_count", "format": "ext"}
 _FETCH_BATCH_SIZE = 500
 
+# SQL compilation map for paginated collection queries.
+# Maps a rule field to (kind, column) where kind is text/format/numeric.
+_SQL_FIELD: dict[str, tuple[str, str]] = {
+    "artist": ("text", "m.artist"),
+    "album": ("text", "m.album"),
+    "genre": ("text", "m.genre"),
+    "title": ("text", "m.title"),
+    "format": ("format", "LOWER(LTRIM(COALESCE(m.ext, ''), '.'))"),
+    "year": ("numeric", "m.year"),
+    "plays": ("numeric", "m.play_count"),
+    "rating": ("numeric", "m.rating"),
+}
+_SQL_SORT_COLUMN: dict[str, str] = {
+    "title": "LOWER(COALESCE(m.title, ''))",
+    "artist": "LOWER(COALESCE(m.artist, ''))",
+    "album": "LOWER(COALESCE(m.album, ''))",
+    "genre": "LOWER(COALESCE(m.genre, ''))",
+    "format": "LOWER(LTRIM(COALESCE(m.ext, ''), '.'))",
+    "year": "COALESCE(m.year, 0)",
+    "plays": "COALESCE(m.play_count, 0)",
+    "rating": "COALESCE(m.rating, 0)",
+}
+
+
+def _escape_like(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
 
 @dataclass(slots=True)
 class CollectionRule:
@@ -158,6 +185,11 @@ class CollectionService:
         collection = self._find(collection_id)
         if collection is None:
             return {"ok": False, "error": "NOT_FOUND", "items": [], "total": 0}
+        # Prefer the paginated SQL path when a database is wired so we never
+        # load the whole catalogue into memory. The in-memory fallback below
+        # remains for environments that only inject a query service (tests).
+        if self._db is not None and getattr(self._db, "conn", None) is not None:
+            return self.query_collection_page(collection_id, offset, limit)
         if self._qs is None:
             return {"ok": False, "error": "QUERY_SERVICE_UNAVAILABLE", "items": [], "total": 0}
         safe_limit = max(1, min(1000, int(limit)))
@@ -180,6 +212,149 @@ class CollectionService:
             "offset": safe_offset,
             "collection": asdict(collection),
         }
+
+    def query_collection_page(
+        self,
+        collection_id: str,
+        offset: int = 0,
+        limit: int = 250,
+    ) -> dict[str, Any]:
+        """Compile collection rules to SQL and return one paginated page.
+
+        Runs a COUNT plus a single LIMIT/OFFSET page against ``media_items`` so
+        large collections no longer load every track into memory. The returned
+        ``items`` mirror the minimal track shape consumed by the QML detail page.
+        """
+        collection = self._find(collection_id)
+        if collection is None:
+            return {"ok": False, "error": "NOT_FOUND", "items": [], "total": 0}
+        if self._db is None or getattr(self._db, "conn", None) is None:
+            return {"ok": False, "error": "DATABASE_UNAVAILABLE", "items": [], "total": 0}
+        safe_limit = max(1, min(1000, int(limit)))
+        safe_offset = max(0, int(offset))
+        try:
+            where_sql, params = self._compile_rules(collection)
+        except (TypeError, ValueError) as error:
+            return {"ok": False, "error": str(error), "items": [], "total": 0}
+        conn = self._db.conn
+        try:
+            total_row = conn.execute(
+                f"SELECT COUNT(*) FROM media_items m "
+                f"WHERE m.deleted_at IS NULL AND ({where_sql})",
+                params,
+            ).fetchone()
+            total = int(total_row[0]) if total_row else 0
+            sort_column = _SQL_SORT_COLUMN.get(collection.sort_by, _SQL_SORT_COLUMN["title"])
+            order = "ASC" if collection.sort_order == "asc" else "DESC"
+            page_sql = (
+                "SELECT m.id, m.filepath, m.title, m.artist, m.album, m.album_key, "
+                "m.duration, m.ext, m.year, m.genre "
+                "FROM media_items m "
+                f"WHERE m.deleted_at IS NULL AND ({where_sql}) "
+                f"ORDER BY {sort_column} {order}, m.id ASC "
+                "LIMIT ? OFFSET ?"
+            )
+            rows = conn.execute(page_sql, [*params, safe_limit, safe_offset]).fetchall()
+        except Exception as error:
+            logger.warning("Smart collection SQL page failed: %s", error)
+            return {"ok": False, "error": str(error), "items": [], "total": 0}
+        items = [self._row_to_collection_item(row) for row in rows]
+        return {
+            "ok": True,
+            "items": items,
+            "total": total,
+            "limit": safe_limit,
+            "offset": safe_offset,
+            "collection": asdict(collection),
+        }
+
+    @staticmethod
+    def _row_to_collection_item(row: Any) -> dict[str, Any]:
+        """Map a paginated collection row to the minimal QML track shape."""
+        album_key = row[5] or ""
+        return {
+            "track_id": row[0],
+            "filepath": row[1] or "",
+            "title": row[2] or "",
+            "artist": row[3] or "",
+            "album": row[4] or "",
+            "album_key": album_key,
+            "cover_key": album_key,
+            "duration": float(row[6] or 0),
+            "format": str(row[7] or "").lstrip("."),
+            "year": int(row[8] or 0),
+            "genre": row[9] or "",
+        }
+
+    def _compile_rules(self, collection: SmartCollection) -> tuple[str, list[Any]]:
+        """Compile a collection's rules into a SQL predicate and bound params."""
+        fragments: list[str] = []
+        params: list[Any] = []
+        for rule in collection.rules:
+            fragment, rule_params = self._compile_rule(rule)
+            fragments.append(fragment)
+            params.extend(rule_params)
+        if not fragments:
+            return "1=1", []
+        joiner = " AND " if collection.logic == "AND" else " OR "
+        return joiner.join(f"({fragment})" for fragment in fragments), params
+
+    @classmethod
+    def _compile_rule(cls, rule: CollectionRule) -> tuple[str, list[Any]]:
+        kind, column = _SQL_FIELD[rule.field]
+        if kind == "numeric":
+            return cls._compile_numeric_rule(column, rule.operator, rule.value)
+        return cls._compile_text_rule(column, rule.operator, rule.value, is_format=kind == "format")
+
+    @classmethod
+    def _compile_text_rule(
+        cls, column: str, operator: str, value: Any, *, is_format: bool
+    ) -> tuple[str, list[Any]]:
+        text_value = str(value)
+        target = column if is_format else f"LOWER(COALESCE({column}, ''))"
+        if operator == "eq":
+            return f"{target} = LOWER(?)", [text_value]
+        if operator == "neq":
+            return f"{target} != LOWER(?)", [text_value]
+        if operator == "contains":
+            pattern = f"%{_escape_like(text_value.lower())}%"
+            return f"{target} LIKE ? ESCAPE '\\'", [pattern]
+        return "1=0", []
+
+    @classmethod
+    def _compile_numeric_rule(
+        cls, column: str, operator: str, value: Any
+    ) -> tuple[str, list[Any]]:
+        base = f"CAST(COALESCE({column}, 0) AS REAL)"
+        if operator == "between":
+            bounds = cls._normalize_between_bounds(value)
+            if bounds is None:
+                return "1=0", []
+            return f"{base} BETWEEN ? AND ?", [bounds[0], bounds[1]]
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return "1=0", []
+        symbols = {"eq": "=", "neq": "!=", "gt": ">", "lt": "<", "gte": ">=", "lte": "<="}
+        symbol = symbols.get(operator)
+        if symbol is None:
+            return "1=0", []
+        return f"{base} {symbol} ?", [number]
+
+    @staticmethod
+    def _normalize_between_bounds(value: Any) -> tuple[float, float] | None:
+        if isinstance(value, str):
+            parts = [part.strip() for part in value.split(",", 1)]
+        elif isinstance(value, (list, tuple)):
+            parts = list(value)
+        else:
+            return None
+        if len(parts) != 2:
+            return None
+        try:
+            return float(parts[0]), float(parts[1])
+        except (TypeError, ValueError):
+            return None
 
     def _fetch_all_tracks(self) -> list[dict[str, Any]]:
         total = max(0, int(self._qs.count_tracks()))
