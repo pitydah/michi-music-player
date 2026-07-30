@@ -365,10 +365,11 @@ Item {
                 onClicked: profilePopup.open()
             }
 
-            /* Quality Badge */
+            /* Quality Badge — right-aligned in lowerUtilityZone */
             Rectangle {
-                x: 164; anchors.verticalCenter: parent.verticalCenter
-                width: 150; height: 34; radius: 16
+                anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                width: Math.min(160, parent.width - 164)
+                height: 34; radius: 16
                 color: "#1C1814"; border { width: 1; color: "#3D3028" }
                 Row {
                     anchors.centerIn: parent; spacing: 6
@@ -378,6 +379,7 @@ Item {
                         text: root._hasTrack ? root.technicalLabel : qsTr("SIN REPRODUCCIÓN")
                         color: "#F4F6FA"
                         font { pixelSize: 11; weight: Font.Medium; letterSpacing: 0.5 }
+                        elide: Text.ElideRight
                     }
                 }
             }
