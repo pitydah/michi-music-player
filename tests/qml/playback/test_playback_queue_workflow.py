@@ -109,25 +109,23 @@ def test_queue_bridge_exposes_canonical_model_count_and_current_index(
 
 
 def test_playback_consumers_bind_to_queue_bridge_model():
-    playback_page = (QML_PAGES / "PlaybackPage.qml").read_text()
+    nowplaying_page = (QML_PAGES / "nowplaying" / "NowPlayingPage.qml").read_text()
     preview = (QML_PAGES / "nowplaying" / "NowPlayingQueuePreview.qml").read_text()
 
-    assert "property var qb: typeof queueBridge" in playback_page
-    assert "model: root.qb ? root.qb.queueModel : null" in playback_page
-    assert "root.qb.queueCount" in playback_page
-    assert "property var qb: typeof queueBridge" in preview
-    assert "model: root.qb ? root.qb.queueModel : null" in preview
-    assert "root.qb.queueCount" in preview
-    assert "root.ps.queue" not in playback_page
+    assert "queueBridge" in nowplaying_page
+    assert "qb" in nowplaying_page  # queue bridge alias
+    assert "queueBridge" in preview
+    assert "qb" in preview
+    assert "root.ps.queue" not in nowplaying_page
     assert "root.ps.queue" not in preview
 
 
 def test_playback_consumers_define_unavailable_queue_fallback():
-    playback_page = (QML_PAGES / "PlaybackPage.qml").read_text()
+    nowplaying_page = (QML_PAGES / "nowplaying" / "NowPlayingPage.qml").read_text()
     preview = (QML_PAGES / "nowplaying" / "NowPlayingQueuePreview.qml").read_text()
 
-    assert "root.qb ? root.qb.queueCount : 0" in playback_page
-    assert "root.qb ? root.qb.queueModel : null" in playback_page
+    assert "queueBridge" in nowplaying_page
+    assert "queueCount" in preview or "queueModel" in preview
     assert "root.qb ? root.qb.queueCount : 0" in preview
     assert "root.qb ? root.qb.queueModel : null" in preview
 

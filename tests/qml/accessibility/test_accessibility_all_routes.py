@@ -137,7 +137,7 @@ class TestAccessibilityCommonComponents:
         assert "Accessible." in content
 
     def test_pages_now_playing_accessible(self):
-        self._check_qml_file("pages/PlaybackPage.qml", require_accessible=False)
+        self._check_qml_file("pages/nowplaying/NowPlayingPage.qml", require_accessible=False)
 
     def test_pages_settings_all_controls_have_accessible(self):
         content = (QML_DIR / "components/settings/SettingsRow.qml").read_text()

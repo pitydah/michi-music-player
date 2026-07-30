@@ -15,7 +15,7 @@ import pytest
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 PAGES = [
-    "pages/PlaybackPage.qml",
+    "pages/nowplaying/NowPlayingPage.qml",
     "pages/nowplaying/NowPlayingPage.qml",
     "pages/LyricsPage.qml",
     "pages/DiagnosticsPage.qml",

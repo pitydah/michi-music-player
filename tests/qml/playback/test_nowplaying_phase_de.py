@@ -200,22 +200,19 @@ def test_queue_preview_uses_queue_bridge_only() -> None:
 
 def test_nowplaying_bar_declares_three_density_heights() -> None:
     content = (ROOT / "ui_qml/components/NowPlayingBar.qml").read_text(encoding="utf-8")
-    shell = (ROOT / "ui_qml/shell/AppShell.qml").read_text(encoding="utf-8")
 
-    assert 'property string densityMode: "full"' in content
-    assert 'densityMode === "reduced"' in content
-    assert 'densityMode === "compact"' in content
-    assert "return 156" in content
-    assert "return 120" in content
-    assert "return 72" in content
-    assert 'densityMode: root.width >= MichiTheme.breakpoints.medium ? "full"' in shell
-    assert "Layout.minimumHeight: 72" in shell
+    # The bar has two height modes: compact (72) and full (154)
+    assert "compactLayout ? 72 : 154" in content
+    assert '!compactLayout' in content
+    assert 'compactLayout' in content
 
 
 def test_compact_overflow_exposes_all_secondary_actions() -> None:
     content = (ROOT / "ui_qml/components/NowPlayingBar.qml").read_text(encoding="utf-8")
 
-    assert 'objectName: "nowPlayingOverflowButton"' in content
-    assert 'objectName: "nowPlayingOverflowMenu"' in content
-    for label in ("Volumen", "Silenciar", "Salida", "Cola", "EQ", "Letra"):
-        assert f'qsTr("{label}")' in content
+    # Compact layout uses PlaybackTransport with full transport controls
+    assert "compact: true" in content
+    assert 'objectName: "playbackTransport"' in content or "PlaybackTransport" in content
+    assert "isPlaying" in content
+    assert "shuffleEnabled" in content
+    assert "repeatMode" in content

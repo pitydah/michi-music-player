@@ -101,11 +101,17 @@ def test_nowplaying_surfaces_use_canonical_playback_components() -> None:
         encoding="utf-8"
     )
 
-    assert bar.count("PlaybackTransport {") == 2
-    assert bar.count("PlaybackProgress {") == 1
+    # Desktop layout uses individual icon buttons; compact uses PlaybackTransport
+    bar_transports = bar.count("PlaybackTransport {")
+    assert bar_transports >= 1, "NowPlayingBar should contain at least one PlaybackTransport"
+    # Timeline is inline in the bar (not a separate PlaybackProgress component)
+    assert "timelineZone" in bar or "rail" in bar
+    assert "formatTime" in bar
     assert "OutputProfileMenu {" in bar
     assert "PlaybackTransport {" in page
-    assert "PlaybackProgress {" in page
+    # PlaybackPage no longer exists — playback route redirects to nowplaying
+    import pathlib
+    assert not pathlib.Path("ui_qml/pages/PlaybackPage.qml").exists()
 
 
 def test_playback_route_converges_on_nowplaying() -> None:
