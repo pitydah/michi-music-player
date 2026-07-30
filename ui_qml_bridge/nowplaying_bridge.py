@@ -109,12 +109,13 @@ class NowPlayingBridge(QObject):
     capabilitiesChanged = Signal()
 
     def __init__(self, player_service=None, queue_service=None,
-                 audio_quality_adapter=None, parent=None):
+                 audio_quality_adapter=None, cover_provider=None, parent=None):
         super().__init__(parent)
         if player_service is None:
             logger.warning("NowPlayingBridge: player_service is None — running in degraded mode")
         self._player = player_service
         self._queue_service = queue_service
+        self._cover_provider = cover_provider
         self._quality_adapter = audio_quality_adapter
         self._track_title = "—"
         self._track_artist = ""
@@ -262,6 +263,10 @@ class NowPlayingBridge(QObject):
         self._last_context = context
         self._context_source = context.get("filepath", "") or ""
         self._set_cover_from_context(context)
+        # Update cover provider with current filepath for resolution fallback
+        fp = context.get("filepath", "") or ""
+        if fp and self._cover_provider and hasattr(self._cover_provider, "set_filepath"):
+            self._cover_provider.set_filepath(fp)
         self.stateChanged.emit()
 
     def _set_cover_from_current_path(self):

@@ -198,6 +198,7 @@ class BridgeFactory(QObject):
                 player_service=self._get("playback_service"),
                 queue_service=self._get("queue_service"),
                 audio_quality_adapter=quality_adapter,
+                cover_provider=self._bridges.get("cover_provider"),
             )
 
     def create_queue_bridge(self):

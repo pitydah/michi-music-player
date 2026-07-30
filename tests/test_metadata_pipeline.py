@@ -83,6 +83,28 @@ class TestCoverArtServiceResolution:
         os.rmdir(tmpdir)
 
 
+class TestCoverProviderFilepath:
+    def test_cover_provider_stores_filepath(self):
+        """CoverProviderBridge stores and retrieves last filepath."""
+        from ui_qml_bridge.cover_provider_bridge import CoverProviderBridge
+        cp = CoverProviderBridge()
+        cp.set_filepath("/test/path/track.flac")
+        assert cp._last_filepath == "/test/path/track.flac"
+
+    def test_request_cover_passes_filepath_to_service(self):
+        """_request_from_service passes stored filepath to resolve method."""
+        from ui_qml_bridge.cover_provider_bridge import CoverProviderBridge
+        from unittest.mock import MagicMock
+        svc = MagicMock()
+        svc.resolve_cover_with_mime.return_value = (None, None)
+        cp = CoverProviderBridge(artwork_service=svc)
+        cp.set_filepath("/music/test.flac")
+        cp._request_from_service("file:test")
+        # Verifica que se llamó con el filepath
+        args, kwargs = svc.resolve_cover_with_mime.call_args
+        assert kwargs.get("filepath") == "/music/test.flac"
+
+
 class TestNowPlayingBridgeContext:
     def test_cover_key_from_context(self):
         """NowPlayingBridge coverPath comes from context dict."""
