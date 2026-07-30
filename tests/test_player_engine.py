@@ -246,6 +246,7 @@ class TestGStreamerEngine:
         result.queue_changed = MagicMock()
         result.audio_route_changed = MagicMock()
         result.eq_bitperfect_warning = MagicMock()
+        result.queue_progressed = MagicMock()
         return result
 
     # ── Initialisation ──
@@ -923,9 +924,9 @@ class TestGStreamerEngine:
         assert any(s == PlaybackState.STOPPED for s in signals)
         engine.finished.emit.assert_called_once()
 
-    def test_on_media_finished_eos_gapless_advances_index(self, engine):
-        """DRIFT: origin/main _on_media_finished_eos sets _current and
-        emits state_changed."""
+    def test_on_media_finished_eos_gapless_clears_flag_and_emits(self, engine):
+        """EOS with more items clears gapless flag and emits queue_progressed.
+        Queue index advance is delegated to queue_service via the signal."""
         engine._gapless_active = True
         engine._queue = ["a.flac", "b.flac"]
         engine._queue_index = 0
@@ -933,10 +934,9 @@ class TestGStreamerEngine:
         engine._on_media_finished_eos()
 
         assert engine._gapless_active is False
-        assert engine._queue_index == 1
-        assert engine._current == "b.flac"
-        engine.queue_changed.emit.assert_called_with(["a.flac", "b.flac"])
-        engine.state_changed.emit.assert_called()
+        engine.queue_progressed.emit.assert_called_with(
+            0, "a.flac", "eos", engine._queue_revision
+        )
 
     def test_on_media_finished_eos_no_gapless_falls_through(self, engine):
         engine._gapless_active = False

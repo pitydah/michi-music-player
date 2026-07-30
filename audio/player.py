@@ -689,6 +689,7 @@ class GStreamerEngine(QObject):
         if self._gapless_pending_index is not None:
             return
         if 0 <= self._queue_index < len(self._queue):
+            self._gapless_active = False
             self.queue_progressed.emit(
                 self._queue_index, self._queue[self._queue_index], "eos", self._queue_revision
             )

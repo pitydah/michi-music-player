@@ -21,7 +21,8 @@ def test_qml_compile_zero_errors() -> None:
               'libraryBridge','playlistsBridge','historyBridge',
               'globalSearchBridge','settingsBridge','devicesBridge',
               'notificationBridge','michiAiBridge','commandPaletteBridge',
-              'capabilityBridge','jobBridge','desktopBridge','homeBridge']:
+              'capabilityBridge','jobBridge','desktopBridge','homeBridge',
+              'homeAudioBridge']:
         engine.rootContext().setContextProperty(n, D())
 
     errors = []

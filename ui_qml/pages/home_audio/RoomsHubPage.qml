@@ -51,7 +51,7 @@ Item {
 
     Connections {
         target: root.ha
-        function onStateChanged() { /* reactive updates */ }
+        onStateChanged: {}
     }
 
     AsyncStateView {
@@ -145,19 +145,21 @@ Item {
                                 }
 
                                 StatusBadge {
-                                    text: modelData ? {
+                                    text: {
+                                        if (!modelData) return ""
                                         var s = modelData.state || modelData.status || ""
                                         if (s === "playing") return qsTr("Reproduciendo")
                                         if (s === "active") return qsTr("Activa")
                                         if (s === "idle") return qsTr("En espera")
                                         return s
-                                    } : ""
-                                    kind: modelData ? {
+                                    }
+                                    kind: {
+                                        if (!modelData) return "info"
                                         var s = modelData.state || modelData.status || ""
                                         if (s === "playing") return "success"
                                         if (s === "active") return "success"
                                         return "info"
-                                    } : "info"
+                                    }
                                 }
                             }
 

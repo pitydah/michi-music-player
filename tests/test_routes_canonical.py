@@ -90,7 +90,8 @@ def test_no_route_duplicates():
 def test_all_categories_valid():
     from ui_qml_bridge.route_registry import ROUTES
     valid = {"core", "library", "detail", "tools", "settings", "audio_lab",
-             "playback", "navigation", "experimental", "migration", "system"}
+             "playback", "navigation", "experimental", "migration", "system",
+             "home_audio"}
     for route_id, info in ROUTES.items():
         cat = info.get("category", "")
         assert cat in valid, f"{route_id}: invalid category {cat}"

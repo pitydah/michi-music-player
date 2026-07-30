@@ -178,6 +178,26 @@ class ApplicationBootstrap:
         except Exception:
             logger.exception("Bootstrap: queue session restore failed")
 
+    def _register_actions(self, registry: Any) -> None:
+        """Register next/previous actions routed through queue_service, not playback_service."""
+        queue_service = self.container.get("queue_service")
+        if queue_service is None:
+            return
+        from ui_qml_bridge.action_registry import ActionDescriptor
+        for action_id in ("next", "previous"):
+            if registry.get(action_id) is not None:
+                continue
+            method = getattr(queue_service, action_id, None)
+            if method is None:
+                continue
+            registry.register(ActionDescriptor(
+                action_id=action_id,
+                title="Siguiente" if action_id == "next" else "Anterior",
+                category="playback",
+                icon_key="next" if action_id == "next" else "prev",
+                handler=lambda m=method: m(),
+            ))
+
     def get_queue_service(self) -> Any | None:
         """Return the queue service when it has been registered."""
         return self.container.get("queue_service")
