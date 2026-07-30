@@ -334,7 +334,12 @@ Item {
                 iconKey: "speaker"
                 enabled: root._backendAvailable
                 Accessible.name: qsTr("Elegir salida de audio"); tooltipText: qsTr("Elegir salida de audio")
-                onClicked: outputPopup.open()
+                onClicked: {
+                    if (typeof audioOutputBridge !== "undefined" && audioOutputBridge)
+                        outputPopup.open()
+                    else if (typeof navigationBridge !== "undefined")
+                        navigationBridge.navigate("outputs")
+                }
             }
             MichiIconButton {
                 x: 106; y: 7; width: 40; height: 40; btnSize: 40
@@ -396,7 +401,7 @@ Item {
         }
     }
 
-    OutputProfileMenu {
+    AudioOutputMenu {
         id: outputPopup
         x: Math.round(parent.width - width - 48); y: Math.round(-height - 8)
         outputBridge: root.outputBridge
@@ -404,6 +409,6 @@ Item {
     OutputProfileMenu {
         id: profilePopup
         x: Math.round(parent.width - width - 100); y: Math.round(-height - 8)
-        outputBridge: root.outputBridge; showProfiles: true
+        outputBridge: root.outputBridge
     }
 }
