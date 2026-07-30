@@ -10,6 +10,7 @@ QQC2.Button {
 
     property string iconText: ""
     property string iconSource: ""
+    property string iconKey: ""
     property string tooltipText: ""
     property bool selected: false
     property bool symbolic: true
@@ -74,7 +75,7 @@ QQC2.Button {
             anchors.centerIn: parent
             width: MichiTheme.iconSizeRegular
             height: MichiTheme.iconSizeRegular
-            source: root.iconSource !== "" ? Qt.resolvedUrl(root.iconSource) : ""
+            source: root.iconSource !== "" ? Qt.resolvedUrl(root.iconSource) : (root.iconKey ? "" : "")
             sourceSize.width: 32
             sourceSize.height: 32
             fillMode: Image.PreserveAspectFit
@@ -85,10 +86,12 @@ QQC2.Button {
         MichiIcon {
             anchors.centerIn: parent
             source: root.iconSource
+            iconKey: root.iconKey
             size: MichiTheme.iconSizeRegular
             color: root.symbolicColor
+            active: root.selected
             disabled: !root.enabled
-            visible: root.iconSource !== "" && root.symbolic
+            visible: (root.iconSource !== "" || root.iconKey !== "") && root.symbolic
             accessibleName: ""
         }
 
