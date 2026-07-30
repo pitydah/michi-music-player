@@ -1,5 +1,49 @@
 """Test full metadata pipeline: extraction → normalization → persistence → display."""
+import json
+import sqlite3
+from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+
+from PySide6.QtCore import QObject, QUrl, Signal, Slot
+from PySide6.QtQml import QQmlComponent, QQmlEngine
+
+
+PNG_COVER = b"\x89PNG\r\n\x1a\nreal-cover"
+JPEG_COVER = b"\xff\xd8\xffreal-cover"
+
+
+class _CoverBridgeStub(QObject):
+    coverReady = Signal(str, str)
+    coverInvalidated = Signal(str)
+
+    @Slot(str, int, result=str)
+    def requestCover(self, _cover_key: str, _requested_size: int) -> str:
+        return ""
+
+
+def _write_mp3_with_cover(path: Path, cover: bytes = PNG_COVER) -> None:
+    from mutagen.id3 import APIC, ID3
+
+    path.write_bytes((b"\xff\xfb\x90\x64" + b"\x00" * 413) * 3)
+    tags = ID3()
+    tags.add(APIC(mime="image/png", type=3, desc="Cover", data=cover))
+    tags.save(path)
+
+
+def _write_flac_with_cover(path: Path, cover: bytes = JPEG_COVER) -> None:
+    import numpy as np
+    import soundfile as sf
+    from mutagen.flac import FLAC, Picture
+
+    sf.write(path, np.zeros(64, dtype=np.float32), 8000, format="FLAC")
+    audio = FLAC(path)
+    picture = Picture()
+    picture.type = 3
+    picture.mime = "image/jpeg"
+    picture.data = cover
+    audio.add_picture(picture)
+    audio.save()
 
 
 class TestPlayerServicePipeline:
@@ -101,6 +145,26 @@ class TestPlayerServicePipeline:
 
 
 class TestCoverArtServiceResolution:
+    def test_extracts_real_embedded_cover_from_mp3_and_flac(self, tmp_path):
+        """Mutagen extracts actual APIC and FLAC picture blocks."""
+        from core.library.artwork_resolver import CoverArtService
+
+        mp3_path = tmp_path / "embedded.mp3"
+        flac_path = tmp_path / "embedded.flac"
+        _write_mp3_with_cover(mp3_path)
+        _write_flac_with_cover(flac_path)
+
+        service = CoverArtService()
+
+        assert service.resolve_cover_with_mime(f"file:{mp3_path}") == (
+            "image/png",
+            PNG_COVER,
+        )
+        assert service.resolve_cover_with_mime(f"file:{flac_path}") == (
+            "image/jpeg",
+            JPEG_COVER,
+        )
+
     def test_resolve_with_album_key(self):
         """resolve_cover_with_mime returns cached cover for album key."""
         from core.library.artwork_resolver import CoverArtService
@@ -212,6 +276,76 @@ class TestCoverArtServiceResolution:
         assert mime == "image/png"
         assert data == sidecar
 
+    def test_backfills_missing_album_art_and_reports_counts(self, tmp_path):
+        """Backfill reviews missing albums, recovers embedded art, and skips misses."""
+        from core.library.artwork_resolver import CoverArtService
+
+        recovered_track = tmp_path / "recovered.mp3"
+        skipped_track = tmp_path / "skipped.mp3"
+        _write_mp3_with_cover(recovered_track)
+        skipped_track.write_bytes((b"\xff\xfb\x90\x64" + b"\x00" * 413) * 3)
+        connection = sqlite3.connect(":memory:")
+        connection.execute(
+            "CREATE TABLE media_items ("
+            "album_key TEXT, filepath TEXT, deleted_at REAL)"
+        )
+        connection.execute(
+            "CREATE TABLE album_art_cache ("
+            "album_hash TEXT PRIMARY KEY, mime TEXT, data BLOB)"
+        )
+        connection.executemany(
+            "INSERT INTO media_items (album_key, filepath, deleted_at) VALUES (?, ?, NULL)",
+            [
+                ("album-recovered", str(recovered_track)),
+                ("album-skipped", str(skipped_track)),
+                ("album-cached", str(recovered_track)),
+            ],
+        )
+        connection.execute(
+            "INSERT INTO album_art_cache (album_hash, mime, data) VALUES (?, ?, ?)",
+            ("album-cached", "image/jpeg", JPEG_COVER),
+        )
+        service = CoverArtService(db=SimpleNamespace(conn=connection))
+
+        counts = service.backfill_missing_album_art()
+
+        assert counts == {"reviewed": 2, "recovered": 1, "failed": 0, "skipped": 1}
+        cached = connection.execute(
+            "SELECT mime, data FROM album_art_cache WHERE album_hash = ?",
+            ("album-recovered",),
+        ).fetchone()
+        assert cached == ("image/png", PNG_COVER)
+
+    def test_backfill_reports_failed_cache_write(self, tmp_path):
+        """An extracted cover with an unsuccessful cache write is reported as failed."""
+        from core.library.artwork_resolver import CoverArtService
+
+        track = tmp_path / "uncacheable.mp3"
+        _write_mp3_with_cover(track)
+        connection = sqlite3.connect(":memory:")
+        connection.execute(
+            "CREATE TABLE media_items ("
+            "album_key TEXT, filepath TEXT, deleted_at REAL)"
+        )
+        connection.execute(
+            "CREATE TABLE album_art_cache ("
+            "album_hash TEXT PRIMARY KEY, mime TEXT, data BLOB)"
+        )
+        connection.execute(
+            "CREATE TRIGGER reject_album_art BEFORE INSERT ON album_art_cache "
+            "BEGIN SELECT RAISE(FAIL, 'blocked'); END"
+        )
+        connection.execute(
+            "INSERT INTO media_items (album_key, filepath, deleted_at) VALUES (?, ?, NULL)",
+            ("album-failed", str(track)),
+        )
+
+        counts = CoverArtService(
+            db=SimpleNamespace(conn=connection)
+        ).backfill_missing_album_art()
+
+        assert counts == {"reviewed": 1, "recovered": 0, "failed": 1, "skipped": 0}
+
 
 class TestCoverProviderKeyResolution:
     def test_request_cover_uses_only_the_requested_key(self):
@@ -226,6 +360,118 @@ class TestCoverProviderKeyResolution:
 
         svc.resolve_cover_with_mime.assert_called_once_with("track:uid-1")
         assert not hasattr(cp, "_last_filepath")
+
+    def test_invalidate_cover_clears_all_references_and_emits_signal(self):
+        """Single-key invalidation removes value, expiry, and thumbnail references."""
+        from ui_qml_bridge.cover_provider_bridge import CoverProviderBridge
+
+        service = MagicMock()
+        service.resolve_cover_with_mime.return_value = ("image/png", PNG_COVER)
+        bridge = CoverProviderBridge(artwork_service=service)
+        invalidated = []
+        bridge.coverInvalidated.connect(invalidated.append)
+        bridge.requestCover("album:one", 256)
+
+        result = bridge.invalidateCover("album:one")
+
+        assert result == {"ok": True, "removed": True}
+        assert bridge.isCached("album:one") is False
+        assert "album:one" not in bridge._cache_expiry
+        assert "album:one" not in bridge._thumbnail_references
+        assert invalidated == ["album:one"]
+
+    def test_invalidate_many_deduplicates_keys_and_rejects_invalid_json(self):
+        """Batch invalidation accepts a JSON list and reports malformed input."""
+        from ui_qml_bridge.cover_provider_bridge import CoverProviderBridge
+
+        service = MagicMock()
+        service.resolve_cover_with_mime.return_value = ("image/jpeg", JPEG_COVER)
+        bridge = CoverProviderBridge(artwork_service=service)
+        invalidated = []
+        bridge.coverInvalidated.connect(invalidated.append)
+        bridge.requestCover("album:one", 128)
+        bridge.requestCover("album:two", 128)
+
+        result = bridge.invalidateMany(json.dumps(["album:one", "album:two", "album:one", ""]))
+
+        assert result == {"ok": True, "invalidated": 2, "removed": 2}
+        assert invalidated == ["album:one", "album:two"]
+        assert bridge.cacheSize == 0
+        assert bridge.invalidateMany("not-json") == {
+            "ok": False,
+            "invalidated": 0,
+            "removed": 0,
+            "error": "invalid_json",
+        }
+
+    def test_lru_eviction_clears_thumbnail_reference(self):
+        """Evicting an LRU entry cannot leave a stale thumbnail reference."""
+        from ui_qml_bridge.cover_provider_bridge import CoverProviderBridge
+
+        service = MagicMock()
+        service.resolve_cover_with_mime.return_value = ("image/jpeg", JPEG_COVER)
+        bridge = CoverProviderBridge(artwork_service=service)
+        bridge._max_cache = 1
+
+        bridge.requestCover("album:old", 64)
+        bridge.requestCover("album:new", 128)
+
+        assert "album:old" not in bridge._thumbnail_references
+        assert "album:new" in bridge._thumbnail_references
+
+
+class TestCoverImageContract:
+    def test_semantic_state_initials_and_stale_ready_guard(self, qapp):
+        """CoverImage exposes semantic state and ignores stale cover results."""
+        bridge = _CoverBridgeStub()
+        engine = QQmlEngine()
+        engine.rootContext().setContextProperty("coverProviderBridge", bridge)
+        component = QQmlComponent(engine)
+        component.loadUrl(
+            QUrl.fromLocalFile(
+                str(Path(__file__).parents[1] / "ui_qml/components/CoverImage.qml")
+            )
+        )
+        assert component.isReady(), [str(error) for error in component.errors()]
+        cover = component.create()
+        assert cover is not None
+        cover.setProperty("fallbackTitle", "Dark Side")
+        cover.setProperty("coverKey", "album:current")
+        qapp.processEvents()
+
+        assert cover.property("artworkState") == "missing"
+        assert cover.property("placeholderText") == "DS"
+        assert cover.property("accessibleLabel") == "Dark Side"
+        bridge.coverReady.emit("album:stale", "data:image/png;base64,c3RhbGU=")
+        assert cover.property("coverUrl") == ""
+        bridge.coverReady.emit("album:current", "data:image/png;base64,Y3VycmVudA==")
+        assert cover.property("coverUrl") == "data:image/png;base64,Y3VycmVudA=="
+        bridge.coverInvalidated.emit("album:current")
+        qapp.processEvents()
+        assert cover.property("coverUrl") == ""
+
+    def test_cover_change_clears_url_and_reduced_motion_disables_fade(self, qapp):
+        """Changing identity clears stale artwork and reduced motion removes fade time."""
+        bridge = _CoverBridgeStub()
+        engine = QQmlEngine()
+        engine.rootContext().setContextProperty("coverProviderBridge", bridge)
+        component = QQmlComponent(
+            engine,
+            QUrl.fromLocalFile(
+                str(Path(__file__).parents[1] / "ui_qml/components/CoverImage.qml")
+            ),
+        )
+        assert component.isReady(), [str(error) for error in component.errors()]
+        cover = component.create()
+        assert cover is not None
+        cover.setProperty("coverUrl", "data:image/png;base64,b2xk")
+        cover.setProperty("reducedMotion", True)
+
+        cover.setProperty("coverKey", "album:new")
+        qapp.processEvents()
+
+        assert cover.property("coverUrl") == ""
+        assert cover.property("fadeDuration") == 0
 
 
 class TestNowPlayingBridgeContext:

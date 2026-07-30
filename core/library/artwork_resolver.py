@@ -141,6 +141,10 @@ class CoverArtService:
             audio = mutagen.File(path)
             if audio is None:
                 return None
+            for picture in getattr(audio, "pictures", ()):
+                resolved = self._picture_bytes(picture, path)
+                if resolved:
+                    return resolved
             tags = getattr(audio, "tags", None)
             for tag in ("APIC:", "covr", "metadata_block_picture"):
                 picture = audio.get(tag) or (tags.get(tag) if tags else None)
@@ -217,3 +221,64 @@ class CoverArtService:
         except Exception:
             logger.exception("Failed to cache cover for %s", album_key)
             return False
+
+    def backfill_missing_album_art(self) -> dict[str, int]:
+        """Recover embedded artwork for albums without a populated cache entry."""
+        counts = {"reviewed": 0, "recovered": 0, "failed": 0, "skipped": 0}
+        if self._db is None:
+            return counts
+        try:
+            album_rows = self._db.conn.execute(
+                "SELECT DISTINCT media.album_key FROM media_items AS media "
+                "WHERE media.deleted_at IS NULL "
+                "AND COALESCE(media.album_key, '') != '' "
+                "AND NOT EXISTS ("
+                "SELECT 1 FROM album_art_cache AS cache "
+                "WHERE cache.album_hash = media.album_key "
+                "AND cache.data IS NOT NULL AND length(cache.data) > 0) "
+                "ORDER BY media.album_key"
+            ).fetchall()
+        except Exception as exc:
+            logger.error("Unable to query albums missing artwork: %s", exc)
+            return counts
+
+        for (album_key,) in album_rows:
+            key = str(album_key or "").strip()
+            if not key:
+                continue
+            counts["reviewed"] += 1
+            try:
+                track_rows = self._db.conn.execute(
+                    "SELECT filepath FROM media_items "
+                    "WHERE deleted_at IS NULL AND album_key = ? "
+                    "ORDER BY filepath",
+                    (key,),
+                ).fetchall()
+            except Exception as exc:
+                logger.debug("Artwork backfill track lookup failed for %s: %s", key, exc)
+                counts["failed"] += 1
+                continue
+
+            embedded = None
+            for (filepath,) in track_rows:
+                embedded = self._embedded_cover(str(filepath or ""))
+                if embedded:
+                    break
+            if not embedded:
+                counts["skipped"] += 1
+                continue
+
+            mime, data = embedded
+            if self.cache_cover(key, data, mime):
+                counts["recovered"] += 1
+            else:
+                counts["failed"] += 1
+
+        logger.info(
+            "Artwork backfill reviewed=%d recovered=%d failed=%d skipped=%d",
+            counts["reviewed"],
+            counts["recovered"],
+            counts["failed"],
+            counts["skipped"],
+        )
+        return counts

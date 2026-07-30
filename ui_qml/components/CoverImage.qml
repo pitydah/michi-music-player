@@ -6,26 +6,52 @@ Item {
     objectName: "coverImage"
 
     Accessible.role: Accessible.Graphic
-    Accessible.name: qsTr("Carátula del álbum")
+    Accessible.name: root.accessibleLabel
 
     property string coverKey: ""
+    property string fallbackTitle: ""
     property int coverRadius: MichiTheme.radius.xs
     property bool showPlaceholder: true
     property string coverUrl: ""
-    readonly property bool ready: coverArtwork.status === Image.Ready
+    property string artworkState: "idle"
+    property bool reducedMotion: MichiTheme.reducedMotion || MichiTheme.motion.reducedMotion
+    readonly property int fadeDuration: root.reducedMotion ? 0 : MichiTheme.motion.durationNormal
+    readonly property string placeholderText: root.initialsForTitle(root.fallbackTitle)
+    readonly property string accessibleLabel: root.fallbackTitle || qsTr("Carátula del álbum")
+    readonly property bool ready: root.artworkState === "ready"
+
+    function initialsForTitle(title) {
+        const words = String(title || "").trim().split(/\s+/).filter(Boolean)
+        if (words.length === 0)
+            return ""
+        if (words.length === 1)
+            return words[0].slice(0, 2).toUpperCase()
+        return (words[0][0] + words[1][0]).toUpperCase()
+    }
 
     function refreshCover() {
         if (!root.coverKey || typeof coverProviderBridge === "undefined" || !coverProviderBridge) {
             root.coverUrl = ""
+            root.artworkState = root.coverKey ? "missing" : "idle"
             return
         }
-        root.coverUrl = coverProviderBridge.requestCover(
-            root.coverKey,
+        const requestedKey = root.coverKey
+        root.artworkState = "loading"
+        const resolvedUrl = coverProviderBridge.requestCover(
+            requestedKey,
             Math.max(64, Math.ceil(Math.max(root.width, root.height)))
         ) || ""
+        if (requestedKey !== root.coverKey)
+            return
+        root.coverUrl = resolvedUrl
+        root.artworkState = resolvedUrl ? "loading" : "missing"
     }
 
-    onCoverKeyChanged: refreshCover()
+    onCoverKeyChanged: {
+        root.coverUrl = ""
+        root.artworkState = root.coverKey ? "loading" : "idle"
+        root.refreshCover()
+    }
     Component.onCompleted: refreshCover()
 
     Rectangle {
@@ -43,7 +69,23 @@ Item {
             fillMode: Image.PreserveAspectCrop
             sourceSize.width: Math.max(64, Math.ceil(width))
             sourceSize.height: Math.max(64, Math.ceil(height))
-            visible: status === Image.Ready
+            opacity: status === Image.Ready ? 1 : 0
+
+            onStatusChanged: {
+                if (status === Image.Ready)
+                    root.artworkState = "ready"
+                else if (status === Image.Loading)
+                    root.artworkState = "loading"
+                else if (status === Image.Error)
+                    root.artworkState = root.coverUrl ? "error" : "missing"
+            }
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: root.fadeDuration
+                    easing.type: MichiTheme.motion.easing.entrance
+                }
+            }
         }
 
         Rectangle {
@@ -53,13 +95,21 @@ Item {
 
             Text {
                 anchors.centerIn: parent
-                text: typeof coverProviderBridge !== "undefined" && coverProviderBridge
-                      ? coverProviderBridge.getFallbackGlyph(root.coverKey)
-                      : qsTr("MM")
+                text: root.placeholderText
+                visible: text !== ""
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: Math.max(14, Math.min(width, height) * 0.18)
                 font.weight: MichiTheme.typography.weightBold
-                opacity: 0.72
+                Accessible.ignored: true
+            }
+
+            MichiIcon {
+                anchors.centerIn: parent
+                size: Math.max(18, Math.min(parent.width, parent.height) * 0.24)
+                iconName: "albums"
+                visible: root.placeholderText === ""
+                accessibleName: ""
+                Accessible.ignored: true
             }
         }
     }
@@ -67,8 +117,17 @@ Item {
     Connections {
         target: typeof coverProviderBridge !== "undefined" ? coverProviderBridge : null
         function onCoverReady(key, url) {
-            if (key === root.coverKey)
+            if (key === root.coverKey) {
                 root.coverUrl = url || ""
+                root.artworkState = url ? "loading" : "missing"
+            }
+        }
+        function onCoverInvalidated(key) {
+            if (key === root.coverKey) {
+                root.coverUrl = ""
+                root.artworkState = root.coverKey ? "loading" : "idle"
+                Qt.callLater(root.refreshCover)
+            }
         }
     }
 }

@@ -6,7 +6,9 @@ No direct SQLite connections — the service handles all persistence.
 from __future__ import annotations
 
 import base64
+import json
 import logging
+import time
 from collections import OrderedDict
 
 from PySide6.QtCore import QObject, Property, Signal, Slot
@@ -22,6 +24,7 @@ _HIT_TTL_SECONDS = 3600  # cache hits expire after 1 hour
 
 class CoverProviderBridge(QObject):
     coverReady = Signal(str, str)  # cover_key, data_url
+    coverInvalidated = Signal(str)  # cover_key
     cacheChanged = Signal()
 
     def __init__(self, artwork_service=None, parent=None):
@@ -29,6 +32,7 @@ class CoverProviderBridge(QObject):
         self._artwork_service = artwork_service
         self._cache: OrderedDict[str, str] = OrderedDict()
         self._cache_expiry: dict[str, float] = {}  # key → expiry timestamp
+        self._thumbnail_references: dict[str, set[int]] = {}
         self._max_cache = _MAX_CACHE
 
     @Property(int, constant=True)
@@ -51,7 +55,6 @@ class CoverProviderBridge(QObject):
     @Slot(str, int, result=str)
     def requestCover(self, cover_key: str, requested_size: int = 180) -> str:
         """Return a data URL for ``cover_key`` and cache both hits and misses."""
-        del requested_size  # reserved for a future thumbnail provider
         key = str(cover_key or "").strip()
         if not key:
             return ""
@@ -59,16 +62,21 @@ class CoverProviderBridge(QObject):
         if key in self._cache:
             # Check expiry
             expiry = self._cache_expiry.get(key)
-            if expiry is not None and expiry < __import__("time").time():
+            if expiry is not None and expiry < time.time():
                 # Expired — remove and re-fetch
                 self._cache.pop(key, None)
                 self._cache_expiry.pop(key, None)
+                self._thumbnail_references.pop(key, None)
             else:
                 value = self._cache.pop(key)
                 self._cache[key] = value
+                self._thumbnail_references.setdefault(key, set()).add(
+                    max(1, requested_size)
+                )
                 return value
 
         data_url = self._request_from_service(key)
+        self._thumbnail_references.setdefault(key, set()).add(max(1, requested_size))
         self._insert_cache(key, data_url)
         self.coverReady.emit(key, data_url)
         return data_url
@@ -101,26 +109,81 @@ class CoverProviderBridge(QObject):
         self._cache[key] = data_url
         # Set TTL: short for misses, longer for hits
         ttl = _MISS_TTL_SECONDS if not data_url else _HIT_TTL_SECONDS
-        self._cache_expiry[key] = __import__("time").time() + ttl
+        self._cache_expiry[key] = time.time() + ttl
         while len(self._cache) > self._max_cache:
             oldest = next(iter(self._cache))
             self._cache.pop(oldest, None)
             self._cache_expiry.pop(oldest, None)
+            self._thumbnail_references.pop(oldest, None)
         self.cacheChanged.emit()
 
     @Slot(str, result=dict)
-    def invalidateCover(self, cover_key: str):
-        removed = self._cache.pop(str(cover_key or ""), None) is not None
-        if removed:
+    def invalidateCover(self, cover_key: str) -> dict:
+        """Invalidate every cached reference for one cover key."""
+        key = str(cover_key or "").strip()
+        removed = self._invalidate_key(key)
+        if key:
             self.cacheChanged.emit()
+            self.coverInvalidated.emit(key)
         return {"ok": True, "removed": removed}
 
+    @Slot(str, result=dict)
+    def invalidateMany(self, keys_json: str) -> dict:
+        """Invalidate a JSON array of cover keys in one cache notification."""
+        try:
+            raw_keys = json.loads(str(keys_json or ""))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return {
+                "ok": False,
+                "invalidated": 0,
+                "removed": 0,
+                "error": "invalid_json",
+            }
+        if not isinstance(raw_keys, list):
+            return {
+                "ok": False,
+                "invalidated": 0,
+                "removed": 0,
+                "error": "invalid_json",
+            }
+
+        keys = list(
+            dict.fromkeys(str(raw_key or "").strip() for raw_key in raw_keys)
+        )
+        keys = [key for key in keys if key]
+        removed = sum(self._invalidate_key(key) for key in keys)
+        if keys:
+            self.cacheChanged.emit()
+            for key in keys:
+                self.coverInvalidated.emit(key)
+        return {"ok": True, "invalidated": len(keys), "removed": removed}
+
+    def _invalidate_key(self, key: str) -> bool:
+        if not key:
+            return False
+        had_cache = key in self._cache
+        had_expiry = key in self._cache_expiry
+        had_thumbnail = key in self._thumbnail_references
+        self._cache.pop(key, None)
+        self._cache_expiry.pop(key, None)
+        self._thumbnail_references.pop(key, None)
+        return had_cache or had_expiry or had_thumbnail
+
     @Slot(result=dict)
-    def clearCache(self):
+    def clearCache(self) -> dict:
+        keys = list(
+            dict.fromkeys(
+                (*self._cache, *self._cache_expiry, *self._thumbnail_references)
+            )
+        )
         count = len(self._cache)
         self._cache.clear()
-        if count:
+        self._cache_expiry.clear()
+        self._thumbnail_references.clear()
+        if keys:
             self.cacheChanged.emit()
+            for key in keys:
+                self.coverInvalidated.emit(key)
         return {"ok": True, "cleared": count}
 
     @Slot(result=dict)
