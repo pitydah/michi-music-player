@@ -5,12 +5,21 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 
-from audio.backends.hybrid_audio_manager import HybridAudioManager, MPD_PROFILES
+from audio.backends.hybrid_audio_manager import (
+    HybridAudioManager,
+    MPD_PROFILES,
+    BACKEND_STATE_UNINITIALIZED,
+    BACKEND_STATE_READY,
+    BACKEND_STATE_DEGRADED,
+    BACKEND_STATE_FAILED,
+)
 
 
 def _mock_backend(backend_id: str):
     b = MagicMock()
     b.backend_id = backend_id
+    b.is_ready.return_value = True
+    b.is_playing.return_value = False
     return b
 
 
@@ -106,3 +115,93 @@ class TestProperties:
     def test_active_returns_none_when_no_backend(self):
         mgr = HybridAudioManager()
         assert mgr.active is None
+
+
+class TestBackendStateMachine:
+    def test_no_default_backend_is_uninitialized(self):
+        mgr = HybridAudioManager()
+        assert mgr.backend_state == BACKEND_STATE_UNINITIALIZED
+
+    def test_ready_default_backend_is_ready(self):
+        mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
+        assert mgr.backend_state == BACKEND_STATE_READY
+
+    def test_register_flips_uninitialized_to_ready(self):
+        mgr = HybridAudioManager()
+        assert mgr.backend_state == BACKEND_STATE_UNINITIALIZED
+        mgr.register(_mock_backend("gstreamer"))
+        assert mgr.backend_state == BACKEND_STATE_READY
+
+    def test_switch_for_profile_sets_ready_on_success(self):
+        mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
+        mgr.register(_mock_backend("mpd"))
+        assert mgr.switch_for_profile("michi_hifi_mpd") is True
+        assert mgr.backend_state == BACKEND_STATE_READY
+
+    def test_fallback_to_default_is_degraded(self):
+        mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
+        mgr.register(_mock_backend("mpd"))
+        mgr.switch_to("mpd")
+        assert mgr.fallback_to_default("test") is True
+        assert mgr.backend_state == BACKEND_STATE_DEGRADED
+
+
+class TestTransactionalSwitch:
+    def test_roll_back_when_target_not_ready(self):
+        mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
+        mpd = _mock_backend("mpd")
+        mpd.is_ready.return_value = False
+        mgr.register(mpd)
+
+        result = mgr.switch_for_profile("michi_hifi_mpd")
+
+        assert result is False
+        # Active backend restored to the previous one.
+        assert mgr.active_id == "gstreamer"
+
+    def test_roll_back_preserves_state_on_failure(self):
+        gst = _mock_backend("gstreamer")
+        mgr = HybridAudioManager(default_backend=gst)
+        mpd = _mock_backend("mpd")
+        mpd.is_ready.return_value = False
+        mgr.register(mpd)
+        mgr.switch_for_profile("michi_hifi_mpd")  # fails + rolls back
+
+        assert mgr.backend_state == BACKEND_STATE_READY
+        assert mgr.active is gst
+
+    def test_unregistered_target_marks_failed(self):
+        # Default backend is mpd; a standard profile needs gstreamer, which is
+        # not registered → switch_for_profile must fail and mark state FAILED.
+        mgr = HybridAudioManager(default_backend=_mock_backend("mpd"))
+        result = mgr.switch_for_profile("standard")
+        assert result is False
+        assert mgr.backend_state == BACKEND_STATE_FAILED
+        assert mgr.active_id == "mpd"
+
+
+class TestDualPlaybackGuard:
+    def test_play_stops_active_when_playing(self):
+        gst = _mock_backend("gstreamer")
+        gst.is_playing.return_value = True
+        mgr = HybridAudioManager(default_backend=gst)
+
+        mgr.play("/track.flac")
+
+        gst.stop.assert_called_once()
+        gst.play.assert_called_once_with("/track.flac")
+
+    def test_play_does_not_stop_when_not_playing(self):
+        gst = _mock_backend("gstreamer")
+        gst.is_playing.return_value = False
+        mgr = HybridAudioManager(default_backend=gst)
+
+        mgr.play("/track.flac")
+
+        gst.stop.assert_not_called()
+        gst.play.assert_called_once_with("/track.flac")
+
+    def test_play_noop_without_active_backend(self):
+        mgr = HybridAudioManager()
+        # Should not raise when there is no active backend.
+        mgr.play("/track.flac")

@@ -45,6 +45,13 @@ class TestPlayerServiceGStreamer:
         service.play("/tmp/test.flac")
         service._engine.play.assert_called_once()
 
+    def test_play_routes_through_hybrid_not_engine_bypass(self, service):
+        """play() must delegate to HybridAudioManager, never bypass it."""
+        service._hybrid.play = MagicMock()
+        service.play("/tmp/test.flac", "Title", "Artist")
+        service._hybrid.play.assert_called_once_with("/tmp/test.flac")
+        service._engine.play.assert_not_called()
+
     def test_pause_calls_engine(self, service):
         service._hybrid._active_id = "gstreamer"
         service.pause()

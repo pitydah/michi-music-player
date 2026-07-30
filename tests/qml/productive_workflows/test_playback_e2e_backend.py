@@ -65,6 +65,12 @@ class FakeBackend:
         else:
             self.resume()
 
+    def is_playing(self) -> bool:
+        return self._state == "playing"
+
+    def is_ready(self) -> bool:
+        return True
+
     def stop(self) -> None:
         self._state = "stopped"
         self._position = 0.0

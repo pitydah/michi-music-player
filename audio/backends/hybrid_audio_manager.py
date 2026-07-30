@@ -32,6 +32,13 @@ MPD_PROFILES = {
     "michi_server_renderer_mpd",
 }
 
+# Backend lifecycle states for the active backend.
+BACKEND_STATE_UNINITIALIZED = "uninitialized"
+BACKEND_STATE_INITIALIZING = "initializing"
+BACKEND_STATE_READY = "ready"
+BACKEND_STATE_DEGRADED = "degraded"
+BACKEND_STATE_FAILED = "failed"
+
 
 @dataclass
 class _SwitchState:
@@ -56,6 +63,7 @@ class HybridAudioManager(QObject):
         self._fallback_active: bool = False
         self._switch_state = _SwitchState()
         self._connected_signals: list = []
+        self._backend_state: str = BACKEND_STATE_UNINITIALIZED
 
         if default_backend:
             self.register(default_backend)
@@ -64,6 +72,8 @@ class HybridAudioManager(QObject):
 
     def register(self, backend: "AudioBackend") -> None:
         self._backends[backend.backend_id] = backend
+        if self._backend_state == BACKEND_STATE_UNINITIALIZED and backend.is_ready():
+            self._backend_state = BACKEND_STATE_READY
 
     def unregister(self, backend_id: str) -> None:
         self._backends.pop(backend_id, None)
@@ -79,6 +89,10 @@ class HybridAudioManager(QObject):
     @property
     def is_fallback(self) -> bool:
         return self._fallback_active
+
+    @property
+    def backend_state(self) -> str:
+        return self._backend_state
 
     def _connect_backend_signals(self, backend):
         self._disconnect_backend_signals()
@@ -138,21 +152,56 @@ class HybridAudioManager(QObject):
         logger.info("Switched audio backend: %s → %s",
                      old_backend.backend_id if old_backend else "none",
                      backend_id)
+        self._backend_state = BACKEND_STATE_READY
         return True
 
     def switch_for_profile(self, profile_key: str) -> bool:
-        target = self.choose_backend_for_profile(profile_key)
-        if target == self._active_id and not self._fallback_active:
+        """Switch to the backend required by ``profile_key`` transactionally.
+
+        On failure the previously active backend is restored so the manager
+        never ends up pointing at a half-initialized backend.
+        """
+        old_id = self._active_id
+        old_fallback = self._fallback_active
+        old_state = self._backend_state
+        try:
+            target = self.choose_backend_for_profile(profile_key)
+            if target == self._active_id and not self._fallback_active:
+                self._backend_state = BACKEND_STATE_READY
+                return True
+            if target not in self._backends:
+                logger.error("Target backend %s is not registered", target)
+                self._backend_state = BACKEND_STATE_FAILED
+                return False
+
+            self._backend_state = BACKEND_STATE_INITIALIZING
+            if not self.switch_to(target):
+                raise RuntimeError(f"switch_to({target}) failed")
+
+            new_backend = self.active
+            if new_backend is None or not new_backend.is_ready():
+                raise RuntimeError(f"Backend {target} failed to initialize")
+
+            self._backend_state = BACKEND_STATE_READY
             return True
-        if target not in self._backends:
-            logger.error("Target backend %s is not registered", target)
+        except Exception as exc:
+            logger.error("Backend switch for profile '%s' failed, rolling back: %s",
+                         profile_key, exc)
+            self._active_id = old_id
+            self._fallback_active = old_fallback
+            self._backend_state = old_state
+            restored = self.active
+            if restored is not None:
+                self._connect_backend_signals(restored)
             return False
-        return self.switch_to(target)
 
     def fallback_to_default(self, reason: str = "") -> bool:
         self._fallback_active = True
         logger.warning("Falling back to GStreamer: %s", reason)
-        return self.switch_to("gstreamer")
+        result = self.switch_to("gstreamer")
+        if result:
+            self._backend_state = BACKEND_STATE_DEGRADED
+        return result
 
     def mark_fallback(self, active: bool = True) -> None:
         self._fallback_active = active
@@ -177,8 +226,11 @@ class HybridAudioManager(QObject):
 
     def play(self, path_or_uri: str) -> None:
         b = self.active
-        if b:
-            b.play(path_or_uri)
+        if b is None:
+            return
+        if b.is_playing():
+            b.stop()
+        b.play(path_or_uri)
 
     def pause(self) -> None:
         b = self.active

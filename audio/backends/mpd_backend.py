@@ -176,6 +176,16 @@ class MpdBackend(QObject):
         except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
             raise BackendPlaybackError(str(e)) from e
 
+    def is_playing(self) -> bool:
+        try:
+            self._ensure()
+            return self._client.status().state == "play"
+        except (MpdConnectionError, MpdAckError, MpdProtocolError):
+            return False
+
+    def is_ready(self) -> bool:
+        return self._client.connected
+
     def stop(self) -> None:
         try:
             self._ensure()

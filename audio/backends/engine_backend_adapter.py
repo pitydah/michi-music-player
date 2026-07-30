@@ -82,6 +82,12 @@ class EngineBackendAdapter(QObject):
     def toggle(self) -> None:
         self._engine.toggle()
 
+    def is_playing(self) -> bool:
+        return self._engine.state == PlaybackState.PLAYING
+
+    def is_ready(self) -> bool:
+        return self._engine is not None and self._engine.state != PlaybackState.FAILED
+
     def set_volume(self, volume: int) -> None:
         clamped = max(0, min(100, int(volume)))
         self._engine.set_volume(clamped)

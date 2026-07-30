@@ -272,13 +272,10 @@ class PlayerService(QObject):
         self._current_title = title or ""
         self._current_artist = artist or ""
         self._current_album = album or ""
-        if self._engine:
-            self._engine.play(filepath)
-        elif self._hybrid.active:
-            self._hybrid.play(filepath)
-        else:
+        if not self._hybrid.active:
             self.error_occurred.emit("No hay motor de reproducción disponible")
             return
+        self._hybrid.play(filepath)
         if title:
             self.track_changed.emit(title, artist)
         self._emitTrackContext(filepath=filepath, title=title, artist=artist, album=album)

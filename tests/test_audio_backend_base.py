@@ -106,7 +106,8 @@ class TestAudioBackendProtocol:
         from audio.backends.base import AudioBackend
         methods = [
             "play", "pause", "resume", "toggle", "stop", "seek",
-            "set_volume", "set_queue", "enqueue", "enqueue_next",
+            "set_volume", "is_playing", "is_ready",
+            "set_queue", "enqueue", "enqueue_next",
             "clear_queue", "play_next", "play_prev",
             "get_queue", "get_queue_index",
             "get_snapshot", "get_diagnostics", "shutdown",
@@ -128,6 +129,8 @@ class TestAudioBackendProtocol:
             def stop(self): pass
             def seek(self, seconds): pass
             def set_volume(self, volume): pass
+            def is_playing(self): return False
+            def is_ready(self): return True
             def set_queue(self, paths, start_index=0): pass
             def enqueue(self, paths, play_now=True): pass
             def enqueue_next(self, paths): pass
