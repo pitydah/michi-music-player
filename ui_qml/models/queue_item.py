@@ -2,16 +2,8 @@
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 from typing import Any
-
-
-def _cover_key_for_path(filepath: str) -> str:
-    """Return the stable cover cache key derived from a private media path."""
-    if not filepath:
-        return ""
-    return f"track_{hashlib.md5(filepath.encode()).hexdigest()[:12]}"
 
 
 def _value(raw: Any, *names: str, default: Any = "") -> Any:
@@ -75,7 +67,7 @@ class QueueItem:
 def queue_item_from_raw(raw: Any, index: int, current_index: int) -> QueueItem:
     """Normalize dict or object queue input into the canonical typed item."""
     filepath = _text(_value(raw, "filepath", "path", "url"))
-    cover_key = _text(_value(raw, "cover_key")) or _cover_key_for_path(filepath)
+    cover_key = _text(_value(raw, "cover_key")) or (f"file:{filepath}" if filepath else "")
     position = int(index)
     return QueueItem(
         queue_index=position,

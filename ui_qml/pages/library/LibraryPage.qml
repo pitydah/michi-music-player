@@ -335,22 +335,14 @@ MichiPage {
         if (!root.lib || !ids || ids.length === 0) return
         var succeeded = 0
         if (actionId === "track_play_now") {
-            var playResult = root.lib.playTrackById(ids[0])
-            if (playResult && playResult.ok) succeeded++
-            for (var i = 1; i < ids.length; i++) {
-                var enqueueAfterPlay = root.lib.enqueueTrackById(ids[i])
-                if (enqueueAfterPlay && enqueueAfterPlay.ok) succeeded++
-            }
+            var playResult = root.lib.playBulk(JSON.stringify(ids))
+            if (playResult && playResult.ok) succeeded = ids.length
         } else if (actionId === "track_add_to_queue") {
-            for (var q = 0; q < ids.length; q++) {
-                var queueResult = root.lib.enqueueTrackById(ids[q])
-                if (queueResult && queueResult.ok) succeeded++
-            }
+            var queueResult = root.lib.enqueueBulk(JSON.stringify(ids))
+            if (queueResult && queueResult.ok) succeeded = ids.length
         } else if (actionId === "track_favorite") {
-            for (var f = 0; f < ids.length; f++) {
-                var favoriteResult = root.lib.toggleFavoriteById(ids[f])
-                if (favoriteResult && favoriteResult.ok) succeeded++
-            }
+            var favoriteResult = root.lib.setFavoriteBulk(JSON.stringify(ids), true)
+            if (favoriteResult && favoriteResult.ok) succeeded = ids.length
         }
         if (root.notif)
             root.notif.showMessage(qsTr("Acción aplicada a %1 de %2 elementos").arg(succeeded).arg(ids.length),

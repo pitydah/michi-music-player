@@ -59,7 +59,7 @@ def test_album_view_host_exposes_all_five_modes(engine):
     host.deleteLater()
 
 
-def test_album_view_host_keeps_shortcuts_without_local_selector() -> None:
+def test_album_view_host_keeps_shortcuts_with_consolidated_selector() -> None:
     host = (QML_ROOT / "pages/library/album/AlbumViewHost.qml").read_text()
     switcher = (QML_ROOT / "components/HeaderViewSwitcher.qml").read_text()
 
@@ -67,7 +67,9 @@ def test_album_view_host_keeps_shortcuts_without_local_selector() -> None:
     assert "Qt.Key_Tab" in host
     assert "Qt.Key_1" in host
     assert "Qt.Key_5" in host
-    assert 'objectName: "albumViewSelector"' not in host
+    assert 'objectName: "albumViewSelector"' in host
+    assert 'objectName: "albumSortSelector"' in host
+    assert 'objectName: "albumDensitySelector"' in host
     assert "modeSelector" not in host
     assert "QQC2.Button {" in switcher
     assert "focusPolicy: Qt.StrongFocus" in switcher

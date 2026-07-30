@@ -303,11 +303,13 @@ Item {
                         NumberAnimation { duration: MichiTheme.motionFast }
                     }
 
-                    Text {
+                    MichiIcon {
                         anchors.centerIn: parent
-                        text: "▶"
+                        source: "../../../../icons/sidebar/play.svg"
+                        size: 18
                         color: MichiTheme.colors.textOnAccent
-                        font.pixelSize: 15
+                        accessibleName: ""
+                        Accessible.ignored: true
                     }
 
                     MouseArea {

@@ -230,13 +230,15 @@ Item {
                                              )
                             Accessible.onPressAction: root.playTrack(trackRow.track)
 
-                            Text {
+                            MichiIcon {
                                 anchors.centerIn: parent
-                                text: "▶"
+                                source: "../../../icons/sidebar/play.svg"
+                                size: 14
                                 color: rowMouse.containsMouse || trackRow.selected
                                        ? MichiTheme.colors.textOnAccent
                                        : MichiTheme.colors.textSecondary
-                                font.pixelSize: 10
+                                accessibleName: ""
+                                Accessible.ignored: true
                             }
 
                             MouseArea {
@@ -258,11 +260,13 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 visible: !root.loading && root.visibleTracks.length === 0
 
-                Text {
+                MichiIcon {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: root.currentPath ? "♫" : "▰"
+                    iconKey: root.currentPath ? "songs" : "folders"
+                    size: MichiTheme.iconSizeLarge
                     color: MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.displaySize
+                    accessibleName: ""
+                    Accessible.ignored: true
                 }
 
                 Text {

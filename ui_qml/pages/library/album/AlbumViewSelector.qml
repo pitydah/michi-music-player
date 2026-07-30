@@ -14,11 +14,11 @@ RowLayout {
 
     Repeater {
         model: [
-            {icon: "../../../../icons/view/warm_view_grid.svg", tooltip: "Vista cuadrícula"},
-            {icon: "../../../../icons/view/warm_view_coverflow.svg", tooltip: "Cover Flow"},
-            {icon: "../../../../icons/view/warm_view_vinyl.svg", tooltip: "Pared de vinilos"},
-            {icon: "../../../../icons/view/warm_view_timeline.svg", tooltip: "Línea de tiempo"},
-            {icon: "../../../../icons/view/warm_view_magazine.svg", tooltip: "Revista"},
+            {icon: "../../../../icons/view/library-grid.svg", tooltip: qsTr("Vista cuadrícula")},
+            {icon: "../../../../icons/view/library-coverflow.svg", tooltip: qsTr("Cover Flow")},
+            {icon: "../../../../icons/view/library-vinyl.svg", tooltip: qsTr("Pared de vinilos")},
+            {icon: "../../../../icons/view/library-timeline.svg", tooltip: qsTr("Línea de tiempo")},
+            {icon: "../../../../icons/view/library-editorial.svg", tooltip: qsTr("Revista")},
         ]
 
         MichiIconButton {

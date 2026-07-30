@@ -8,10 +8,12 @@ QML_LIBRARY = Path(__file__).resolve().parents[3] / "ui_qml" / "pages" / "librar
 
 def test_collections_page_uses_collection_service_contract() -> None:
     source = (QML_LIBRARY / "CollectionsPage.qml").read_text(encoding="utf-8")
+    detail = (QML_LIBRARY / "CollectionDetailPage.qml").read_text(encoding="utf-8")
 
     assert "createCollection(" in source
     assert "deleteCollection(" in source
-    assert "queryCollection(" in source
+    assert 'navigateWithParams("library.collection_detail"' in source
+    assert "queryCollection(" in detail
 
 
 def test_folder_browser_uses_hierarchical_tree_model() -> None:

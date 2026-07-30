@@ -61,6 +61,7 @@ def test_now_playing_utility_routes_load_functional_pages(qapp) -> None:
         ("library.composers", "composersPage"),
         ("library.folders", "folderBrowserPage"),
         ("library.collections", "libraryCollectionsPage"),
+        ("library.collection_detail", "libraryCollectionDetailPage"),
         ("library.favorites", "favoritesPage"),
         ("library.recent", "recentPage"),
         ("library.most_played", "mostPlayedPage"),

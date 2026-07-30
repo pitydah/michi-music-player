@@ -70,7 +70,7 @@ def test_folder_navigation_never_mutates_private_python_model_state():
     assert "._items" not in browser
     assert 'refresh("parent_path"' not in tree
     assert 'refresh("parent_path"' not in browser
-    assert "root.folderModel.refresh(root.currentPath)" in tree
+    assert "folderTree.toggleExpanded(folderRow.row)" in tree
     assert "root.folderModel.refresh(root._currentPath)" in browser
 
 

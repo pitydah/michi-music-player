@@ -14,18 +14,18 @@ class ArtistListModel(BasePagedListModel):
     AlbumCountRole = Qt.UserRole + 3
     CoverKeyRole = Qt.UserRole + 4
 
-    def __init__(self, query_service=None, query_executor=None, parent=None, page_size=100):
+    def __init__(self, query_service=None, query_executor=None, parent=None, page_size=100) -> None:
         super().__init__(page_size=page_size, query_executor=query_executor, parent=parent)
         self._qs = query_service
 
     def _owner(self) -> str:
         return "artists"
 
-    def roleNames(self):
+    def roleNames(self) -> dict[int, bytes]:
         return {self.NameRole: b"name", self.TrackCountRole: b"trackCount",
                 self.AlbumCountRole: b"albumCount", self.CoverKeyRole: b"coverKey"}
 
-    def data(self, index, role=Qt.DisplayRole):
+    def data(self, index: Any, role: int = Qt.DisplayRole) -> Any:
         if not index.isValid() or index.row() >= len(self._items):
             return None
         item = self._items[index.row()]
@@ -33,7 +33,10 @@ class ArtistListModel(BasePagedListModel):
                    self.AlbumCountRole: "album_count", self.CoverKeyRole: "cover_key"}
         key = mapping.get(role, "")
         if key:
-            return item.get(key, "")
+            value = item.get(key, "")
+            if role == self.CoverKeyRole and value and ":" not in str(value):
+                return f"album:{value}"
+            return value
         if role == Qt.DisplayRole:
             return item.get("name", "")
         return None

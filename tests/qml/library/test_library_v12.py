@@ -28,10 +28,14 @@ class TestLibraryBridgeCreation:
         with pytest.raises(Exception):
             LibraryBridge()
 
-    def test_requires_track_action_service(self):
+    def test_track_action_service_is_optional_until_an_action_is_requested(self):
         from ui_qml_bridge.library_bridge import LibraryBridge
-        with pytest.raises(Exception):
-            LibraryBridge(query_service=MagicMock())
+        bridge = LibraryBridge(query_service=MagicMock())
+
+        assert bridge.playTrackById(1) == {
+            "ok": False,
+            "error": "NO_TRACK_ACTION_SERVICE",
+        }
 
     def test_creation_success(self):
         lb = _make_lib_bridge()

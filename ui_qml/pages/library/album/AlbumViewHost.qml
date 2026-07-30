@@ -18,6 +18,7 @@ Item {
     property var bridge: null
     property int currentView: 0
     property string sortOrder: "year"
+    property string density: "regular"
     property var viewStates: ({})
     readonly property var sortOptions: [
         { label: qsTr("Año"), key: "year" },
@@ -25,6 +26,11 @@ Item {
         { label: qsTr("Artista"), key: "artist" },
         { label: qsTr("Fecha añadida"), key: "added" },
         { label: qsTr("Reproducciones"), key: "play_count" }
+    ]
+    readonly property var densityOptions: [
+        { label: qsTr("Compacta"), key: "compact" },
+        { label: qsTr("Regular"), key: "regular" },
+        { label: qsTr("Cómoda"), key: "comfortable" }
     ]
     readonly property bool initialLoading: root.albumModel && root.albumModel.loading && root.albumModel.count === 0
     readonly property bool loadingMore: root.albumModel && root.albumModel.loadingMore
@@ -91,6 +97,15 @@ Item {
             root.albumModel.refreshForSort(option.key, ascending)
     }
 
+    function applyDensity(index) {
+        if (index < 0 || index >= root.densityOptions.length)
+            return
+        root.density = root.densityOptions[index].key
+        if (viewLoader.status === Loader.Ready && viewLoader.item &&
+                typeof viewLoader.item.density !== "undefined")
+            viewLoader.item.density = root.density
+    }
+
     Keys.onPressed: function(event) {
         if ((event.modifiers & Qt.ControlModifier) &&
                 event.key >= Qt.Key_1 && event.key <= Qt.Key_5) {
@@ -109,6 +124,7 @@ Item {
 
         Rectangle {
             id: sortToolbar
+            objectName: "albumLibraryToolbar"
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
@@ -116,10 +132,18 @@ Item {
             color: MichiTheme.colors.surfaceElevation0
 
             RowLayout {
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
+                anchors.fill: parent
+                anchors.leftMargin: MichiTheme.spacing.md
                 anchors.rightMargin: MichiTheme.spacing.md
                 spacing: MichiTheme.spacing.sm
+
+                AlbumViewSelector {
+                    objectName: "albumViewSelector"
+                    currentView: root.currentView
+                    onViewChanged: function(index) { root.selectView(index) }
+                }
+
+                Item { Layout.fillWidth: true }
 
                 Text {
                     text: qsTr("Ordenar por")
@@ -136,6 +160,25 @@ Item {
                     valueRole: "key"
                     Accessible.name: qsTr("Orden de los álbumes")
                     onActivated: root.applySort(index)
+                }
+
+                Text {
+                    text: qsTr("Densidad")
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.metaSize
+                }
+
+                ComboBox {
+                    id: densitySelector
+                    objectName: "albumDensitySelector"
+                    Layout.preferredWidth: 150
+                    model: root.densityOptions
+                    textRole: "label"
+                    valueRole: "key"
+                    currentIndex: root.density === "compact" ? 0
+                                  : root.density === "comfortable" ? 2 : 1
+                    Accessible.name: qsTr("Densidad de los álbumes")
+                    onActivated: root.applyDensity(index)
                 }
             }
         }
@@ -179,6 +222,8 @@ Item {
                         return
                     item.albumModel = root.albumModel
                     item.bridge = root.bridge
+                    if (typeof item.density !== "undefined")
+                        item.density = root.density
                     item.albumClicked.connect(root.albumClicked)
                     Qt.callLater(root.restoreCurrentViewState)
                     item.forceActiveFocus()

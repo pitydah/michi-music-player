@@ -619,6 +619,72 @@ class LibraryBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    def _tracks_for_bulk(self, track_ids_json: str) -> tuple[list[dict[str, Any]], str | None]:
+        """Fetch canonical queue payloads for track IDs with one SQL query."""
+        if not self._db or not hasattr(self._db, "conn"):
+            return [], "NO_DB"
+        try:
+            track_ids = json.loads(track_ids_json)
+        except json.JSONDecodeError as error:
+            return [], f"INVALID_JSON: {error}"
+        if (
+            not isinstance(track_ids, list)
+            or not track_ids
+            or any(not isinstance(track_id, int) or isinstance(track_id, bool)
+                   for track_id in track_ids)
+        ):
+            return [], "INVALID_TRACK_IDS"
+        unique_ids = list(dict.fromkeys(track_ids))
+        placeholders = ", ".join("?" for _ in unique_ids)
+        rows = self._db.conn.execute(
+            "SELECT id, filepath, title, artist, album, album_key, track_uid, duration "
+            f"FROM media_items WHERE deleted_at IS NULL AND id IN ({placeholders})",
+            unique_ids,
+        ).fetchall()
+        by_id = {
+            int(row[0]): {
+                "track_id": int(row[0]),
+                "filepath": row[1] or "",
+                "title": row[2] or "",
+                "artist": row[3] or "",
+                "album": row[4] or "",
+                "album_key": row[5] or "",
+                "track_uid": row[6] or "",
+                "duration": float(row[7] or 0),
+                "cover_key": f"album:{row[5]}" if row[5] else f"file:{row[1]}",
+            }
+            for row in rows
+            if row[1]
+        }
+        tracks = [by_id[track_id] for track_id in unique_ids if track_id in by_id]
+        return tracks, None if tracks else "NO_TRACKS"
+
+    @Slot(str, result=dict)
+    def enqueueBulk(self, track_ids_json: str):
+        """Append multiple tracks with one SQL read and one queue mutation."""
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
+        try:
+            tracks, error = self._tracks_for_bulk(track_ids_json)
+            if error:
+                return {"ok": False, "error": error}
+            return self._queue_service.enqueue(tracks, play_now=False)
+        except Exception as error:
+            return {"ok": False, "error": str(error)}
+
+    @Slot(str, result=dict)
+    def playBulk(self, track_ids_json: str):
+        """Replace playback with multiple tracks using one queue mutation."""
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
+        try:
+            tracks, error = self._tracks_for_bulk(track_ids_json)
+            if error:
+                return {"ok": False, "error": error}
+            return self._queue_service.replace_and_play(tracks, 0)
+        except Exception as error:
+            return {"ok": False, "error": str(error)}
+
     def _set_group_favorite(
         self,
         where_clause: str,

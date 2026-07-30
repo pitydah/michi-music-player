@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import hashlib
 from types import SimpleNamespace
 
 import pytest
 
-from ui_qml.models.queue_item import QueueItem, _cover_key_for_path, queue_item_from_raw
+from ui_qml.models.queue_item import QueueItem, queue_item_from_raw
 
 pytestmark = [pytest.mark.qml_module("queue")]
 
@@ -95,15 +94,12 @@ def test_legacy_names_and_explicit_cover_key_are_normalized() -> None:
     assert projection["is_current"] is False
 
 
-def test_cover_key_is_stable_and_derived_from_private_path() -> None:
+def test_cover_key_uses_canonical_file_namespace() -> None:
     filepath = "/music/Kind of Blue.flac"
-    expected = f"track_{hashlib.md5(filepath.encode()).hexdigest()[:12]}"
 
-    assert _cover_key_for_path(filepath) == expected
     assert queue_item_from_raw(
         {"filepath": filepath}, index=0, current_index=0
-    ).as_dict()["cover_key"] == expected
-    assert _cover_key_for_path("") == ""
+    ).as_dict()["cover_key"] == f"file:{filepath}"
 
 
 def test_queue_item_defaults_match_qml_contract() -> None:

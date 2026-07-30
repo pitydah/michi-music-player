@@ -438,13 +438,15 @@ Item {
                                         root.bridge.playAlbum(timelineRow.albumKey)
                                 }
 
-                                Text {
+                                MichiIcon {
                                     anchors.centerIn: parent
-                                    text: "▶"
+                                    source: "../../../../icons/sidebar/play.svg"
+                                    size: 16
                                     color: rowMouse.containsMouse || timelineRow.selected
                                            ? MichiTheme.colors.textOnAccent
                                            : MichiTheme.colors.textSecondary
-                                    font.pixelSize: 12
+                                    accessibleName: ""
+                                    Accessible.ignored: true
                                 }
 
                                 MouseArea {

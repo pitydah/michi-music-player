@@ -301,11 +301,13 @@ Item {
                                     root.bridge.playAlbum(tile.albumKey)
                             }
 
-                            Text {
+                            MichiIcon {
                                 anchors.centerIn: parent
-                                text: "▶"
+                                source: "../../../../icons/sidebar/play.svg"
+                                size: 16
                                 color: MichiTheme.colors.textOnAccent
-                                font.pixelSize: 12
+                                accessibleName: ""
+                                Accessible.ignored: true
                             }
 
                             MouseArea {

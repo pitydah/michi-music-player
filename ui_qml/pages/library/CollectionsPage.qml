@@ -85,14 +85,13 @@ LibrarySectionPage {
     }
 
     function openCollection(collection) {
-        if (!root.lib || !root.lib.queryCollection)
+        if (typeof navigationBridge === "undefined" || !collection.id)
             return
-        var result = root.lib.queryCollection(collection.id, 250, 0)
-        if (result && result.ok)
-            root.collectionSelected(collection, result)
+        navigationBridge.navigateWithParams("library.collection_detail", {
+            collection_id: collection.id,
+            name: collection.name || qsTr("Colección")
+        })
     }
-
-    signal collectionSelected(var collection, var result)
 
     Column {
         width: parent.width

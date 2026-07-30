@@ -180,6 +180,24 @@ def test_track_rows_expose_metadata_health(service):
     assert len(track["metadata_hash"]) == 64
 
 
+def test_artist_cover_uses_most_representative_album() -> None:
+    connection = sqlite3.connect(":memory:")
+    Schema.initialize(connection)
+    writer = BatchWriter(connection)
+    writer.add(_record(1, "/music/early.flac", album="Early", album_key="early", year=1990))
+    writer.add(_record(2, "/music/best-1.flac", album="Best", album_key="best", year=2020))
+    writer.add(_record(3, "/music/best-2.flac", album="Best", album_key="best", year=2020))
+    writer.flush()
+    service = LibraryFilteredQueryService(
+        LibraryQueryService(db=SimpleNamespace(conn=connection))
+    )
+
+    artists = service.fetch_artists()
+
+    assert artists[0]["cover_key"] == "best"
+    connection.close()
+
+
 def test_album_and_artist_models_share_active_filters(service):
     assert service.count_albums(genre="Jazz", composer="Composer One") == 1
     albums = service.fetch_albums(genre="Jazz", composer="Composer One")

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../../theme"
+import "../../components"
 
 Popup {
     id: root
@@ -71,12 +72,29 @@ Popup {
                     }
                 }
 
-                Text {
+                Row {
                     anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
                     anchors.leftMargin: MichiTheme.spacing.sm
-                    text: (modelData.visible ? "☑ " : qsTr("☐ ")) + modelData.label
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.bodySize
+                    spacing: MichiTheme.spacing.xs
+
+                    MichiIcon {
+                        anchors.verticalCenter: parent.verticalCenter
+                        source: "../../../icons/actions/check.svg"
+                        size: MichiTheme.iconSizeSmall
+                        color: modelData.visible
+                               ? MichiTheme.colors.accentPrimary
+                               : MichiTheme.colors.textMuted
+                        active: modelData.visible
+                        accessibleName: ""
+                        Accessible.ignored: true
+                    }
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: modelData.label
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.bodySize
+                    }
                 }
             }
         }

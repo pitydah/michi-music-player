@@ -20,11 +20,6 @@ Item {
     property alias scrollPosition: gridView.contentY
     property alias selectionIndex: gridView.currentIndex
     property string density: "regular"
-    readonly property var densityOptions: [
-        { label: qsTr("Compacta"), key: "compact" },
-        { label: qsTr("Regular"), key: "regular" },
-        { label: qsTr("Cómoda"), key: "comfortable" }
-    ]
     readonly property int minimumCardWidth: {
         if (root.density === "compact")
             return width < 760 ? 142 : 152
@@ -62,47 +57,12 @@ Item {
             root.albumModel.fetchMore()
     }
 
-    Rectangle {
-        id: densityToolbar
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        height: 46
-        color: MichiTheme.colors.surfaceElevation0
-
-        RowLayout {
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.rightMargin: MichiTheme.spacing.md
-            spacing: MichiTheme.spacing.sm
-
-            Text {
-                text: qsTr("Densidad")
-                color: MichiTheme.colors.textSecondary
-                font.pixelSize: MichiTheme.typography.metaSize
-            }
-
-            ComboBox {
-                id: densitySelector
-                objectName: "albumDensitySelector"
-                Layout.preferredWidth: 150
-                model: root.densityOptions
-                textRole: "label"
-                valueRole: "key"
-                currentIndex: root.density === "compact" ? 0
-                              : root.density === "comfortable" ? 2 : 1
-                Accessible.name: qsTr("Densidad de la cuadrícula")
-                onActivated: root.density = currentValue
-            }
-        }
-    }
-
     GridView {
         id: gridView
         objectName: "albumGrid"
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.top: densityToolbar.bottom
+        anchors.top: parent.top
         anchors.bottom: parent.bottom
         anchors.leftMargin: MichiTheme.spacing.sm
         anchors.rightMargin: MichiTheme.spacing.sm
@@ -300,11 +260,13 @@ Item {
                                     }
                                 }
 
-                                Text {
+                                MichiIcon {
                                     anchors.centerIn: parent
-                                    text: "▶"
+                                    source: "../../../../icons/sidebar/play.svg"
+                                    size: 16
                                     color: MichiTheme.colors.textOnAccent
-                                    font.pixelSize: 13
+                                    accessibleName: ""
+                                    Accessible.ignored: true
                                 }
 
                                 MouseArea {
