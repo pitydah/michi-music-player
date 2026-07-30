@@ -87,9 +87,10 @@ class TestPlaybackQueueE2E:
     def test_qtest_click_play_pause(self, nav, playback_bridge, root_window):
         from .conftest import find_qml_item, qtest_click_item, wait_for_condition, wait_for_property
         nav.navigate("playback")
-        assert nav.currentRoute == "playback"
-        controls = find_qml_item(root_window, "nowPlayingControls")
-        assert controls is not None, "nowPlayingControls not found"
+        assert nav.currentRoute == "nowplaying"
+        QTest.qWait(100)
+        controls = find_qml_item(root_window.contentItem(), "playbackTransport")
+        assert controls is not None, "playbackTransport not found"
         state_before = getattr(playback_bridge, 'state', '')
         play_area = None
         for child in controls.childItems():
@@ -113,8 +114,9 @@ class TestPlaybackQueueE2E:
         from PySide6.QtTest import QTest
         from .conftest import find_qml_item, qtest_click_item
         nav.navigate("playback")
-        assert nav.currentRoute == "playback"
-        volume = find_qml_item(root_window, "nowPlayingVolume")
+        assert nav.currentRoute == "nowplaying"
+        QTest.qWait(100)
+        volume = find_qml_item(root_window.contentItem(), "nowPlayingVolume")
         assert volume is not None, "nowPlayingVolume not found"
         vol_before = getattr(playback_bridge, 'volume', 50)
         qtest_click_item(volume, root_window)
@@ -160,9 +162,10 @@ class TestPlaybackQueueE2E:
         from PySide6.QtTest import QTest
         from .conftest import find_qml_item
         nav.navigate("playback")
-        assert nav.currentRoute == "playback"
-        now_playing = find_qml_item(root_window, "nowPlayingControls")
-        assert now_playing is not None, "nowPlayingControls not found"
+        assert nav.currentRoute == "nowplaying"
+        QTest.qWait(100)
+        now_playing = find_qml_item(root_window.contentItem(), "playbackTransport")
+        assert now_playing is not None, "playbackTransport not found"
         result_before = playback_bridge.togglePlay()
         now_playing.forceActiveFocus()
         QTest.keyClick(now_playing, Qt.Key_Space)

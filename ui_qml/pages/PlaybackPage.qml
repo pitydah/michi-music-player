@@ -150,26 +150,33 @@ Item {
                         : root.ps.isPlaying ? "success" : "info"
                 }
 
-                NowPlayingSeekBar {
+                PlaybackProgress {
                     Layout.fillWidth: true
                     Layout.maximumWidth: 400
                     Layout.alignment: Qt.AlignHCenter
                     position: root.ps ? root.ps.position : 0
                     duration: root.ps ? root.ps.duration : 0
-                    enabled: root.ps ? root.ps.seekSupported : false
+                    seekable: root.ps ? root.ps.seekSupported : false
                     onSeekRequested: function(pos) { if (root.ps) root.ps.seek(pos) }
                 }
 
-                NowPlayingControls {
+                PlaybackTransport {
                     Layout.alignment: Qt.AlignHCenter
                     isPlaying: root.ps ? root.ps.isPlaying : false
                     shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
                     repeatMode: root.ps ? root.ps.repeatMode : "none"
-                    onPlayClicked: { if (root.ps) root.ps.togglePlay() }
-                    onPrevClicked: { if (root.ps) root.ps.previous() }
-                    onNextClicked: { if (root.ps) root.ps.next() }
-                    onShuffleClicked: { if (root.ps) root.ps.toggleShuffle() }
-                    onRepeatClicked: { if (root.ps) root.ps.toggleRepeat() }
+                    commandPending: !root._hasTrack
+                                    || (root.ps ? root.ps.commandPending || !root.ps.playPauseSupported : true)
+                    showPrevious: root.ps ? root.ps.previousSupported : false
+                    showNext: root.ps ? root.ps.nextSupported : false
+                    showShuffle: root.ps ? root.ps.shuffleSupported : false
+                    showRepeat: root.ps ? root.ps.repeatSupported : false
+                    onPlayRequested: { if (root.ps) root.ps.togglePlay() }
+                    onPauseRequested: { if (root.ps) root.ps.togglePlay() }
+                    onPreviousRequested: { if (root.ps) root.ps.previous() }
+                    onNextRequested: { if (root.ps) root.ps.next() }
+                    onShuffleToggled: { if (root.ps) root.ps.toggleShuffle() }
+                    onRepeatCycled: { if (root.ps) root.ps.toggleRepeat() }
                 }
 
                 RowLayout {

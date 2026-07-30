@@ -51,10 +51,10 @@ def test_now_playing_bar_matches_two_row_reference_structure():
 
 
 def test_now_playing_seek_commits_only_on_release() -> None:
-    path = QML_DIR / "components" / "NowPlayingSeekBar.qml"
+    path = QML_DIR / "components" / "PlaybackProgress.qml"
     content = path.read_text(encoding="utf-8")
 
-    assert "onCommit: root.seekRequested(value)" in content
+    assert "onCommit: root.seekRequested(Math.round(value))" in content
     assert "onValueChanged" not in content
 
 

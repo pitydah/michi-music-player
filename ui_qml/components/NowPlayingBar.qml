@@ -307,7 +307,7 @@ Item {
                     anchors.bottom: parent.bottom
                     anchors.right: technicalArea.left
 
-                    NowPlayingSeekBar {
+                    PlaybackProgress {
                         id: seekBar
                         objectName: "nowPlayingProgress"
                         anchors.left: parent.left
@@ -316,7 +316,7 @@ Item {
                         height: Math.round(parent.height * 0.38)
                         position: root.ps ? root.ps.position : 0
                         duration: root.ps ? root.ps.duration : 0
-                        enabled: root._hasTrack && (root.ps ? root.ps.seekSupported : false)
+                        seekable: root._hasTrack && (root.ps ? root.ps.seekSupported : false)
                         onSeekRequested: function(pos) { if (root.ps) root.ps.seek(pos) }
                     }
 
@@ -328,7 +328,7 @@ Item {
                         anchors.top: seekBar.bottom
                         anchors.bottom: parent.bottom
 
-                        NowPlayingTransport {
+                        PlaybackTransport {
                             id: desktopTransport
                             objectName: "nowPlayingCenteredTransport"
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -337,16 +337,18 @@ Item {
                             isPlaying: root.ps ? root.ps.isPlaying : false
                             shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
                             repeatMode: root.ps ? root.ps.repeatMode : "none"
-                            playPauseSupported: root._hasTrack && (root.ps ? root.ps.playPauseSupported : false)
-                            previousSupported: root._hasTrack && (root.ps ? root.ps.previousSupported : false)
-                            nextSupported: root._hasTrack && (root.ps ? root.ps.nextSupported : false)
-                            shuffleSupported: root._hasTrack && (root.ps ? root.ps.shuffleSupported : false)
-                            repeatSupported: root._hasTrack && (root.ps ? root.ps.repeatSupported : false)
-                            onPlayClicked: if (root.ps) root.ps.togglePlay()
-                            onPrevClicked: if (root.ps) root.ps.previous()
-                            onNextClicked: if (root.ps) root.ps.next()
-                            onShuffleClicked: if (root.ps) root.ps.toggleShuffle()
-                            onRepeatClicked: if (root.ps) root.ps.toggleRepeat()
+                            commandPending: !root._hasTrack
+                                            || (root.ps ? root.ps.commandPending || !root.ps.playPauseSupported : true)
+                            showPrevious: root._hasTrack && (root.ps ? root.ps.previousSupported : false)
+                            showNext: root._hasTrack && (root.ps ? root.ps.nextSupported : false)
+                            showShuffle: root._hasTrack && (root.ps ? root.ps.shuffleSupported : false)
+                            showRepeat: root._hasTrack && (root.ps ? root.ps.repeatSupported : false)
+                            onPlayRequested: if (root.ps) root.ps.togglePlay()
+                            onPauseRequested: if (root.ps) root.ps.togglePlay()
+                            onPreviousRequested: if (root.ps) root.ps.previous()
+                            onNextRequested: if (root.ps) root.ps.next()
+                            onShuffleToggled: if (root.ps) root.ps.toggleShuffle()
+                            onRepeatCycled: if (root.ps) root.ps.toggleRepeat()
                         }
 
                         NowPlayingUtilityControls {
@@ -477,7 +479,7 @@ Item {
                     }
                 }
 
-                NowPlayingSeekBar {
+                PlaybackProgress {
                     id: compactSeekBar
                     anchors.left: compactMetadataCard.right
                     anchors.leftMargin: MichiTheme.spacing.sm
@@ -486,11 +488,12 @@ Item {
                     height: Math.round(parent.height * 0.38)
                     position: root.ps ? root.ps.position : 0
                     duration: root.ps ? root.ps.duration : 0
-                    enabled: root._hasTrack && (root.ps ? root.ps.seekSupported : false)
+                    seekable: root._hasTrack && (root.ps ? root.ps.seekSupported : false)
+                    compact: true
                     onSeekRequested: function(pos) { if (root.ps) root.ps.seek(pos) }
                 }
 
-                NowPlayingTransport {
+                PlaybackTransport {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.top: compactSeekBar.bottom
                     anchors.bottom: parent.bottom
@@ -498,91 +501,23 @@ Item {
                     isPlaying: root.ps ? root.ps.isPlaying : false
                     shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
                     repeatMode: root.ps ? root.ps.repeatMode : "none"
-                    playPauseSupported: root._hasTrack && (root.ps ? root.ps.playPauseSupported : false)
-                    previousSupported: root._hasTrack && (root.ps ? root.ps.previousSupported : false)
-                    nextSupported: root._hasTrack && (root.ps ? root.ps.nextSupported : false)
-                    shuffleSupported: root._hasTrack && (root.ps ? root.ps.shuffleSupported : false)
-                    repeatSupported: root._hasTrack && (root.ps ? root.ps.repeatSupported : false)
-                    onPlayClicked: if (root.ps) root.ps.togglePlay()
-                    onPrevClicked: if (root.ps) root.ps.previous()
-                    onNextClicked: if (root.ps) root.ps.next()
-                    onShuffleClicked: if (root.ps) root.ps.toggleShuffle()
-                    onRepeatClicked: if (root.ps) root.ps.toggleRepeat()
+                    commandPending: !root._hasTrack
+                                    || (root.ps ? root.ps.commandPending || !root.ps.playPauseSupported : true)
+                    showPrevious: root._hasTrack && (root.ps ? root.ps.previousSupported : false)
+                    showNext: root._hasTrack && (root.ps ? root.ps.nextSupported : false)
+                    onPlayRequested: if (root.ps) root.ps.togglePlay()
+                    onPauseRequested: if (root.ps) root.ps.togglePlay()
+                    onPreviousRequested: if (root.ps) root.ps.previous()
+                    onNextRequested: if (root.ps) root.ps.next()
                 }
             }
         }
     }
 
-    Component.onCompleted: {
-        if (root.outputBridge && root.outputBridge.refresh)
-            root.outputBridge.refresh()
-    }
-
-    Popup {
+    OutputProfileMenu {
         id: outputPopup
         x: Math.round(parent.width - width - MichiTheme.spacing.md)
         y: Math.round(-height - MichiTheme.spacing.sm)
-        width: 240
-        height: Math.min(300, outputList.height + MichiTheme.spacing.lg * 2)
-        padding: MichiTheme.spacing.md
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        background: Rectangle {
-            color: MichiTheme.colors.surfacePopup
-            radius: MichiTheme.radius.md
-            border.width: 1
-            border.color: MichiTheme.colors.borderCard
-        }
-
-        Column {
-            id: outputList
-            width: parent.width
-            spacing: MichiTheme.spacing.sm
-
-            Text {
-                text: qsTr("Salida de audio")
-                color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.bodySize
-                font.weight: MichiTheme.typography.weightSemiBold
-            }
-
-            Repeater {
-                model: root.outputBridge ? root.outputBridge.profiles : []
-                Rectangle {
-                    required property var modelData
-                    width: parent.width
-                    height: 36
-                    radius: MichiTheme.radius.sm
-                    color: modelData.active ? MichiTheme.colors.accentSurface : "transparent"
-                    Text {
-                        anchors.fill: parent
-                        anchors.leftMargin: MichiTheme.spacing.sm
-                        anchors.rightMargin: MichiTheme.spacing.sm
-                        text: modelData.label || modelData.name || ""
-                        color: modelData.active ? MichiTheme.colors.accent : MichiTheme.colors.textSecondary
-                        font.pixelSize: MichiTheme.typography.secondarySize
-                        verticalAlignment: Text.AlignVCenter
-                        elide: Text.ElideRight
-                    }
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (root.outputBridge && root.outputBridge.setActiveProfile)
-                                root.outputBridge.setActiveProfile(modelData.id || modelData.key || "")
-                            outputPopup.close()
-                        }
-                    }
-                }
-            }
-
-            Text {
-                text: root.outputBridge && (!root.outputBridge.profiles || root.outputBridge.profiles.length === 0)
-                      ? qsTr("No hay perfiles disponibles") : ""
-                color: MichiTheme.colors.textMuted
-                font.pixelSize: MichiTheme.typography.metaSize
-                visible: text !== ""
-            }
-        }
+        outputBridge: root.outputBridge
     }
 }

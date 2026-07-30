@@ -159,9 +159,12 @@ Item {
                             : root.ps.isPlaying ? "success" : "info"
                     }
 
-                    NowPlayingProgress {
+                    PlaybackProgress {
                         Layout.fillWidth: true
-                        ps: root.ps
+                        position: root.ps ? root.ps.position : 0
+                        duration: root.ps ? root.ps.duration : 0
+                        seekable: root.ps ? root.ps.seekSupported : false
+                        onSeekRequested: function(pos) { if (root.ps) root.ps.seek(pos) }
                     }
 
                     GridLayout {
@@ -170,22 +173,24 @@ Item {
                         rowSpacing: MichiTheme.spacing.sm
                         columnSpacing: MichiTheme.spacing.lg
 
-                        NowPlayingControls {
+                        PlaybackTransport {
                             Layout.alignment: Qt.AlignHCenter
                             Layout.preferredWidth: 230
                             isPlaying: root.ps ? root.ps.isPlaying : false
                             shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
                             repeatMode: root.ps ? root.ps.repeatMode : "none"
-                            playPauseSupported: root.ps ? root.ps.playPauseSupported : false
-                            previousSupported: root.ps ? root.ps.previousSupported : false
-                            nextSupported: root.ps ? root.ps.nextSupported : false
-                            shuffleSupported: root.ps ? root.ps.shuffleSupported : false
-                            repeatSupported: root.ps ? root.ps.repeatSupported : false
-                            onPlayClicked: { root.ps && root.ps.togglePlay() }
-                            onPrevClicked: { root.ps && root.ps.previous() }
-                            onNextClicked: { root.ps && root.ps.next() }
-                            onShuffleClicked: { root.ps && root.ps.toggleShuffle() }
-                            onRepeatClicked: { root.ps && root.ps.toggleRepeat() }
+                            commandPending: !root._hasTrack
+                                            || (root.ps ? root.ps.commandPending || !root.ps.playPauseSupported : true)
+                            showPrevious: root.ps ? root.ps.previousSupported : false
+                            showNext: root.ps ? root.ps.nextSupported : false
+                            showShuffle: root.ps ? root.ps.shuffleSupported : false
+                            showRepeat: root.ps ? root.ps.repeatSupported : false
+                            onPlayRequested: { root.ps && root.ps.togglePlay() }
+                            onPauseRequested: { root.ps && root.ps.togglePlay() }
+                            onPreviousRequested: { root.ps && root.ps.previous() }
+                            onNextRequested: { root.ps && root.ps.next() }
+                            onShuffleToggled: { root.ps && root.ps.toggleShuffle() }
+                            onRepeatCycled: { root.ps && root.ps.toggleRepeat() }
                         }
 
                         RowLayout {

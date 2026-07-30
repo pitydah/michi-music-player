@@ -1042,17 +1042,17 @@ class TestNowPlayingBar:
     def test_nowplaying_bar_exists(self):
         assert (QML_DIR / "components" / "NowPlayingBar.qml").exists()
 
-    def test_nowplaying_cover_exists(self):
-        assert (QML_DIR / "components" / "NowPlayingCover.qml").exists()
+    def test_playback_progress_exists(self):
+        assert (QML_DIR / "components" / "PlaybackProgress.qml").exists()
 
-    def test_nowplaying_info_exists(self):
-        assert (QML_DIR / "components" / "NowPlayingInfo.qml").exists()
+    def test_output_profile_menu_exists(self):
+        assert (QML_DIR / "components" / "OutputProfileMenu.qml").exists()
 
     def test_nowplaying_controls_exists(self):
-        assert (QML_DIR / "components" / "NowPlayingControls.qml").exists()
+        assert (QML_DIR / "components" / "PlaybackTransport.qml").exists()
 
     def test_nowplaying_seekbar_exists(self):
-        assert (QML_DIR / "components" / "NowPlayingSeekBar.qml").exists()
+        assert (QML_DIR / "components" / "PlaybackProgress.qml").exists()
 
     def test_nowplaying_volume_exists(self):
         assert (QML_DIR / "components" / "NowPlayingVolume.qml").exists()
@@ -1242,8 +1242,8 @@ class TestNowPlayingBar:
         assert "notificationBridge" in content
 
     def test_nowplaying_bar_no_emojis(self):
-        for name in ("NowPlayingBar", "NowPlayingCover", "NowPlayingInfo",
-                     "NowPlayingControls", "NowPlayingSeekBar", "NowPlayingVolume"):
+        for name in ("NowPlayingBar", "PlaybackTransport", "PlaybackProgress",
+                     "OutputProfileMenu", "NowPlayingVolume"):
             content = (QML_DIR / "components" / f"{name}.qml").read_text()
             for ch in content:
                 if ord(ch) in set(range(0x1F300, 0x1FAFF)):
