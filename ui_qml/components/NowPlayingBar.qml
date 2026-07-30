@@ -5,7 +5,14 @@ import "../theme"
 import "../components"
 import "../components/foundations"
 
-/* NowPlayingBar — canonical playback bar, pixel-matched to QtWidgets reference at 1920×154. */
+/* NowPlayingBar — canonical playback bar, pixel-matched to QtWidgets reference at 1920×154.
+ *
+ * Geometry:
+ *   Bar: 154px tall
+ *   Top row center: y:50
+ *   Bottom row center: y:104
+ *   Metadata card spans both rows, center at y:77
+ */
 Item {
     id: root
     Accessible.role: Accessible.Pane
@@ -22,7 +29,6 @@ Item {
     property bool _backendAvailable: root.ps ? root.ps.backendAvailable : false
     property string _lastShownError: ""
     readonly property bool compactLayout: densityMode === "compact"
-    readonly property bool mediumLayout: densityMode === "reduced"
 
     readonly property string sourceLabel: {
         var source = root.bridgeValue("sourceType", "")
@@ -87,23 +93,22 @@ Item {
         }
     }
 
-    /* ── Desktop layout (>= 900) — 154px bar, two rows: top y:50, bottom y:100 ── */
+    /* ── Desktop layout (>= 900) — 154px, top row y:50, bottom row y:104 ── */
     Item {
         anchors.fill: parent
-        anchors { leftMargin: 14; rightMargin: 14 }
+        anchors.leftMargin: 14
         visible: !compactLayout
 
-        /* Metadata Card — spans both rows, center at y:77 (bar center) */
+        /* Metadata Card — spans both rows, center at bar center y:77 */
         Rectangle {
             id: metadataCard
-            x: 24; anchors.verticalCenter: parent.verticalCenter
-            width: 270; height: 86; radius: 16
+            x: 24; y: 34; width: 270; height: 86; radius: 16
             color: metadataMouse.containsMouse ? MichiTheme.colors.nowPlayingTransportHover : MichiTheme.colors.surfaceCard
             border { width: 1; color: metadataMouse.containsMouse ? MichiTheme.colors.nowPlayingTransportHoverBorder : MichiTheme.colors.nowPlayingQualityBorder }
             Behavior on color { ColorAnimation { duration: 120 } }
             Behavior on border.color { ColorAnimation { duration: 120 } }
 
-            /* Cover 64×64 */
+            /* Cover 64×64 at offset 12,11 from card */
             Rectangle {
                 x: 12; y: 11; width: 64; height: 64; radius: 10
                 color: MichiTheme.colors.nowPlayingTransportBg
@@ -120,6 +125,7 @@ Item {
                         color: root.ps && root.ps.isPlaying ? MichiTheme.colors.nowPlayingGradientMiddle : MichiTheme.colors.textMuted }
                 }
             }
+            /* Title */
             Text {
                 x: 90; y: 17; width: parent.width - 106
                 text: root._hasTrack && root.ps ? root.ps.trackTitle : qsTr("Sin reproducción")
@@ -127,6 +133,7 @@ Item {
                 font { pixelSize: 14; weight: Font.DemiBold }
                 elide: Text.ElideRight; maximumLineCount: 1
             }
+            /* Artist/Album */
             Text {
                 x: 90; y: 40; width: parent.width - 106
                 text: {
@@ -139,6 +146,7 @@ Item {
                 font.pixelSize: 12
                 elide: Text.ElideRight; maximumLineCount: 1
             }
+            /* Source/Format */
             Text {
                 x: 90; y: 61; width: parent.width - 106
                 text: root._hasTrack ? root.technicalLabel : qsTr("BIBLIOTECA LOCAL")
@@ -151,7 +159,6 @@ Item {
                 cursorShape: Qt.PointingHandCursor; onClicked: root.openTrackContext()
             }
             Accessible.role: Accessible.Button
-            Accessible.name: root._hasTrack && root.ps ? qsTr("Abrir reproducción de %1").arg(root.ps.trackTitle) : qsTr("Explorar biblioteca")
             activeFocusOnTab: true
             Keys.onSpacePressed: root.openTrackContext()
             Keys.onReturnPressed: root.openTrackContext()
@@ -159,23 +166,24 @@ Item {
 
         /* ── TOP ROW (center y:50) ── */
 
-        /* Timeline — top row, center y:42 (rail at y:38 for h:8) */
+        /* Timeline — dominates the top row */
         Item {
             id: timelineZone
             anchors.left: metadataCard.right; anchors.leftMargin: 32
-            anchors.right: volumeUtilityZone.left; anchors.rightMargin: 31
-            y: 38; height: 8
+            anchors.right: topUtilityZone.left; anchors.rightMargin: 31
+            y: 46; height: 8
 
             Text {
-                id: currentTimeLabel
-                anchors.right: rail.left; anchors.rightMargin: 8; y: -16
+                id: timeCurrent
+                anchors.right: rail.left; anchors.rightMargin: 8
+                y: -17
                 text: formatTime(root.ps ? (root.ps.position || 0) / 1000 : 0)
                 color: MichiTheme.colors.textSecondary; font.pixelSize: 11
             }
             Rectangle {
                 id: rail
                 anchors.left: parent.left; anchors.right: parent.right
-                y: 0; height: 8; radius: 4
+                height: 8; radius: 4
                 color: MichiTheme.colors.nowPlayingTrack
                 Rectangle {
                     height: parent.height; radius: 4
@@ -195,7 +203,7 @@ Item {
                     }
                     onPositionChanged: function(mouse) {
                         if (!pressed || !root.ps) return
-                        currentTimeLabel.text = formatTime((mouse.x / width) * (root.ps.duration || 0) / 1000)
+                        timeCurrent.text = formatTime((mouse.x / width) * (root.ps.duration || 0) / 1000)
                     }
                 }
             }
@@ -206,22 +214,20 @@ Item {
                 opacity: root._hasTrack ? 1.0 : 0.3
             }
             Text {
-                anchors.left: rail.right; anchors.leftMargin: 8; y: -16
+                anchors.left: rail.right; anchors.leftMargin: 8; y: -17
                 text: formatTime(root.ps ? (root.ps.duration || 0) / 1000 : 0)
                 color: MichiTheme.colors.textSecondary; font.pixelSize: 11
             }
         }
 
-        /* Top Right: Volume + EQ + Transmit — center y:50 */
+        /* Top Right: Volume slider + EQ + Transmit — centered at y:50 */
         Item {
-            id: volumeUtilityZone
+            id: topUtilityZone
             anchors.right: parent.right; anchors.rightMargin: 48
-            anchors.verticalCenter: timelineZone.verticalCenter
-            height: 44; width: 230
+            y: 28; height: 44; width: 224
 
             MichiIconButton {
-                x: 0; anchors.verticalCenter: parent.verticalCenter
-                width: 40; height: 40; btnSize: 40
+                x: 0; y: 2; width: 40; height: 40; btnSize: 40
                 iconKey: "speaker"
                 enabled: root._hasTrack && root.ps && root.ps.muteSupported
                 Accessible.name: root.ps && root.ps.muted ? qsTr("Activar sonido") : qsTr("Silenciar")
@@ -229,8 +235,7 @@ Item {
                 onClicked: if (root.ps) root.ps.toggleMute()
             }
             Item {
-                x: 48; anchors.verticalCenter: parent.verticalCenter
-                width: 80; height: 40
+                x: 48; y: 2; width: 80; height: 40
                 Rectangle {
                     y: 16; width: parent.width; height: 8; radius: 4
                     color: MichiTheme.colors.nowPlayingTrack
@@ -255,16 +260,14 @@ Item {
                 }
             }
             MichiIconButton {
-                x: 136; anchors.verticalCenter: parent.verticalCenter
-                width: 40; height: 40; btnSize: 40
+                x: 136; y: 2; width: 40; height: 40; btnSize: 40
                 iconKey: "eq"
                 enabled: typeof capabilityBridge === "undefined" || !capabilityBridge || capabilityBridge.has("eq")
                 Accessible.name: qsTr("Ecualizador"); tooltipText: qsTr("Ecualizador")
                 onClicked: if (typeof navigationBridge !== "undefined") navigationBridge.navigate("equalizer")
             }
             MichiIconButton {
-                x: 184; anchors.verticalCenter: parent.verticalCenter
-                width: 40; height: 40; btnSize: 40
+                x: 184; y: 2; width: 40; height: 40; btnSize: 40
                 iconKey: "streaming"
                 enabled: root._hasTrack
                 Accessible.name: qsTr("Transmitir"); tooltipText: qsTr("Transmitir")
@@ -272,40 +275,39 @@ Item {
             }
         }
 
-        /* ── BOTTOM ROW (center y:100) ── */
+        /* ── BOTTOM ROW (center y:104) ── */
 
-        /* Transport — lower center */
+        /* Transport — centered in its zone, not the whole window */
         Item {
             id: transportZone
             anchors.left: metadataCard.right; anchors.leftMargin: 20
             anchors.right: lowerUtilityZone.left; anchors.rightMargin: 9
-            anchors.verticalCenter: parent.verticalCenter
-            y: 23  /* shift down from bar center (77+23=100) */
+            y: 77; height: 54
 
             Item {
                 anchors.centerIn: parent
                 width: 270; height: 54
 
+                /* Shuffle — 40×40 */
                 MichiIconButton {
-                    x: 0; anchors.verticalCenter: parent.verticalCenter
-                    width: 40; height: 40; btnSize: 40
+                    x: 0; y: 7; width: 40; height: 40; btnSize: 40
                     iconKey: "shuffle"
                     selected: root.ps ? root.ps.shuffleEnabled : false
                     enabled: root._hasTrack && root.ps && root.ps.shuffleSupported && !root.ps.commandPending
                     Accessible.name: qsTr("Aleatorio")
                     onClicked: if (root.ps) root.ps.toggleShuffle()
                 }
+                /* Previous — 44×44 */
                 MichiIconButton {
-                    x: 52; anchors.verticalCenter: parent.verticalCenter
-                    width: 44; height: 44; btnSize: 44
+                    x: 52; y: 5; width: 44; height: 44; btnSize: 44
                     iconKey: "previous"
                     enabled: root._hasTrack && root.ps && root.ps.previousSupported && !root.ps.commandPending
                     Accessible.name: qsTr("Anterior")
                     onClicked: if (root.ps) root.ps.previous()
                 }
+                /* Play/Pause — 54×54, centerpiece */
                 Rectangle {
-                    x: 108; anchors.verticalCenter: parent.verticalCenter
-                    width: 54; height: 54; radius: 18
+                    x: 108; y: 0; width: 54; height: 54; radius: 18
                     color: "#1B1D24"; border { width: 1; color: "#2C313D" }
                     MichiIconButton {
                         anchors.centerIn: parent
@@ -316,17 +318,17 @@ Item {
                         onClicked: if (root.ps) root.ps.togglePlay()
                     }
                 }
+                /* Next — 44×44 */
                 MichiIconButton {
-                    x: 174; anchors.verticalCenter: parent.verticalCenter
-                    width: 44; height: 44; btnSize: 44
+                    x: 174; y: 5; width: 44; height: 44; btnSize: 44
                     iconKey: "next"
                     enabled: root._hasTrack && root.ps && root.ps.nextSupported && !root.ps.commandPending
                     Accessible.name: qsTr("Siguiente")
                     onClicked: if (root.ps) root.ps.next()
                 }
+                /* Repeat — 40×40 */
                 MichiIconButton {
-                    x: 230; anchors.verticalCenter: parent.verticalCenter
-                    width: 40; height: 40; btnSize: 40
+                    x: 230; y: 7; width: 40; height: 40; btnSize: 40
                     iconKey: root.ps && root.ps.repeatMode === "one" ? "repeat_one" : "repeat"
                     selected: root.ps && root.ps.repeatMode !== "none"
                     enabled: root._hasTrack && root.ps && root.ps.repeatSupported && !root.ps.commandPending
@@ -336,16 +338,15 @@ Item {
             }
         }
 
-        /* Lower Right: Output + Profile + Badge — y:100 center */
+        /* Lower Right: Output + Profile + Badge — centered at y:104 */
         Item {
             id: lowerUtilityZone
             anchors.right: parent.right; anchors.rightMargin: 48
-            anchors.verticalCenter: parent.verticalCenter
-            y: 23; width: 260; height: 54
+            y: 77; height: 54; width: 340
 
+            /* Audio Output */
             MichiIconButton {
-                x: 52; anchors.verticalCenter: parent.verticalCenter
-                width: 40; height: 40; btnSize: 40
+                x: 0; y: 7; width: 40; height: 40; btnSize: 40
                 iconKey: "speaker"
                 enabled: root._backendAvailable
                 Accessible.name: qsTr("Elegir salida de audio"); tooltipText: qsTr("Elegir salida de audio")
@@ -356,19 +357,18 @@ Item {
                         navigationBridge.navigate("outputs")
                 }
             }
+            /* Output Profile */
             MichiIconButton {
-                x: 106; anchors.verticalCenter: parent.verticalCenter
-                width: 40; height: 40; btnSize: 40
+                x: 48; y: 7; width: 40; height: 40; btnSize: 40
                 iconKey: "eq"
                 enabled: root.outputBridge !== null
                 Accessible.name: qsTr("Elegir perfil de salida"); tooltipText: qsTr("Elegir perfil de salida")
                 onClicked: profilePopup.open()
             }
-
-            /* Quality Badge — right-aligned in lowerUtilityZone */
+            /* Quality Badge — right-aligned */
             Rectangle {
-                anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                width: Math.min(160, parent.width - 164)
+                anchors.right: parent.right; y: 10
+                width: Math.min(150, parent.width - 100)
                 height: 34; radius: 16
                 color: "#1C1814"; border { width: 1; color: "#3D3028" }
                 Row {
@@ -386,11 +386,10 @@ Item {
         }
     }
 
-    /* ── Compact layout ── */
+    /* ── Compact layout (72px) ── */
     Item {
         anchors.fill: parent; anchors.margins: 8
         visible: compactLayout
-
         Rectangle {
             x: 0; y: 12; width: 160; height: 48; radius: 8
             color: MichiTheme.colors.surfaceCard; border { width: 1; color: MichiTheme.colors.nowPlayingQualityBorder }
@@ -422,12 +421,12 @@ Item {
 
     AudioOutputMenu {
         id: outputPopup
-        x: Math.round(parent.width - width - 48); y: Math.round(-height - 8)
+        x: parent.width - width - 48; y: -height - 8
         outputBridge: root.outputBridge
     }
     OutputProfileMenu {
         id: profilePopup
-        x: Math.round(parent.width - width - 100); y: Math.round(-height - 8)
+        x: parent.width - width - 100; y: -height - 8
         outputBridge: root.outputBridge
     }
 }
