@@ -36,7 +36,6 @@ Item {
             value: root.position
             enabled: root.enabled && root.duration > 0
             showThumb: enabled && (pressed || hovered || root.position > 0)
-            onValueChanged: { if (pressed) root.seekRequested(value) }
             onCommit: root.seekRequested(value)
         }
 

@@ -409,38 +409,6 @@ Item {
                         }
                     }
 
-                    Rectangle {
-                        id: outputProfileButton
-                        objectName: "nowPlayingOutputProfileButton"
-                        anchors.right: parent.right
-                        anchors.rightMargin: MichiTheme.spacing.lg
-                        y: Math.round(parent.height * 0.38
-                                      + ((parent.height * 0.62) - height) / 2)
-                        width: Math.min(150, parent.width - MichiTheme.spacing.md * 2)
-                        height: 34
-                        radius: MichiTheme.radius.md
-                        color: outputProfileMa.containsMouse
-                               ? MichiTheme.colors.nowPlayingTransportHover
-                               : MichiTheme.colors.nowPlayingTransportBg
-                        border.width: 1
-                        border.color: outputProfileMa.containsMouse
-                                      ? MichiTheme.colors.nowPlayingTransportHoverBorder
-                                      : MichiTheme.colors.nowPlayingTransportBorder
-
-                        MouseArea {
-                            id: outputProfileMa
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: outputPopup.open()
-                        }
-
-                        Accessible.role: Accessible.Button
-                        Accessible.name: qsTr("Seleccionar perfil de salida")
-                        activeFocusOnTab: true
-                        Keys.onSpacePressed: outputPopup.open()
-                        Keys.onReturnPressed: outputPopup.open()
-                    }
                 }
             }
 

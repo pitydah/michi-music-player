@@ -92,6 +92,7 @@ def _ok(operation: str = "", data: dict | None = None) -> dict:
 class NowPlayingBridge(QObject):
     """Expose transport, history, and quality state to QML."""
 
+    # QML-facing public API: preserve Qt camelCase for notify/Connections contracts.
     # Legacy signal (kept for compatibility)
     stateChanged = Signal()
     coverChanged = Signal()
@@ -127,6 +128,8 @@ class NowPlayingBridge(QObject):
         self._volume = 80
         self._previous_volume = 80
         self._muted = False
+        self._last_volume_request = self._volume
+        self._last_volume_time = 0.0
         self._source_type = "local_file"
         self._quality_label = ""
         self._format_label = ""
@@ -267,7 +270,7 @@ class NowPlayingBridge(QObject):
         fp = context.get("filepath", "") or ""
         if fp and self._cover_provider and hasattr(self._cover_provider, "set_filepath"):
             self._cover_provider.set_filepath(fp)
-        self.stateChanged.emit()
+        self._emit_track()
 
     def _set_cover_from_current_path(self):
         filepath = self._current_path()
@@ -296,16 +299,16 @@ class NowPlayingBridge(QObject):
 
     # ── Signal handlers (update state from backend) ──
 
-    def _add_to_history(self, title: str, artist: str, album: str):
+    def _add_to_history(self, title: str, artist: str, album: str) -> bool:
         if not title or title == "—":
-            return
+            return False
         if (
             self._history
             and self._history[0].get("title") == title
             and self._history[0].get("artist") == artist
             and self._history[0].get("album") == album
         ):
-            return
+            return False
         self._history_counter += 1
         hid = f"h{self._history_counter}_{time.time():.0f}"
         fp = self._current_path()
@@ -333,23 +336,37 @@ class NowPlayingBridge(QObject):
         if len(self._history) > self._history_max:
             removed = self._history.pop()
             self._history_internal_refs.pop(removed.get("history_id", ""), None)
+        return True
 
     def _on_track(self, title="", artist="", album=""):
+        previous_source_type = self._source_type
         self._track_title = title or ""
         self._track_artist = artist or ""
         self._track_album = album or ""
         self._set_cover_from_current_path()
-        self._add_to_history(self._track_title, self._track_artist, self._track_album)
+        history_changed = self._add_to_history(
+            self._track_title,
+            self._track_artist,
+            self._track_album,
+        )
         fp = self._current_path()
         self._source_type = self._detect_source_type(fp)
+        if self._source_type != previous_source_type:
+            self._emit_playback()
+            self._emit_quality()
         self._probe_quality(fp)
         self._emit_track()
+        if history_changed:
+            self._emit_history()
 
     def _on_state(self, state: str):
+        had_error = bool(self._error_message)
         self._is_playing = state == "playing"
         self._playback_status = state
         self._error_message = ""
         self._emit_playback()
+        if had_error:
+            self._emit_error()
 
     def _on_position(self, pos: float):
         self._position = int(pos)
@@ -377,15 +394,15 @@ class NowPlayingBridge(QObject):
 
     # ── Properties ──
 
-    @Property(str, notify=stateChanged)
+    @Property(str, notify=trackChanged)
     def trackTitle(self):
         return self._track_title
 
-    @Property(str, notify=stateChanged)
+    @Property(str, notify=trackChanged)
     def trackArtist(self):
         return self._track_artist
 
-    @Property(str, notify=stateChanged)
+    @Property(str, notify=trackChanged)
     def trackAlbum(self):
         return self._track_album
 
@@ -393,35 +410,35 @@ class NowPlayingBridge(QObject):
     def coverPath(self):
         return self._cover_key
 
-    @Property(bool, notify=stateChanged)
+    @Property(bool, notify=playbackStateChanged)
     def isPlaying(self):
         return self._is_playing
 
-    @Property(int, notify=stateChanged)
+    @Property(int, notify=positionChanged)
     def position(self):
         return self._position
 
-    @Property(int, notify=stateChanged)
+    @Property(int, notify=durationChanged)
     def duration(self):
         return self._duration
 
-    @Property(int, notify=stateChanged)
+    @Property(int, notify=volumeChanged)
     def volume(self):
         return self._volume
 
-    @Property(bool, notify=stateChanged)
+    @Property(bool, notify=volumeChanged)
     def muted(self):
         return self._muted
 
-    @Property(str, notify=stateChanged)
+    @Property(str, notify=playbackStateChanged)
     def repeatMode(self):
         return self._queue_service.repeat if self._queue_service else self._repeat_mode
 
-    @Property(bool, notify=stateChanged)
+    @Property(bool, notify=playbackStateChanged)
     def shuffleEnabled(self):
         return self._queue_service.shuffle if self._queue_service else self._shuffle_enabled
 
-    @Property(str, notify=stateChanged)
+    @Property(str, notify=trackChanged)
     def currentFilePath(self):
         return self._current_path()
 
@@ -444,25 +461,29 @@ class NowPlayingBridge(QObject):
             return "disc"
         return "local_file"
 
-    @Property(bool, notify=stateChanged)
+    @Property(bool, notify=playbackStateChanged)
     def liveSource(self):
         st = self._source_type
         return st in ("radio", "stream", "remote")
 
-    @Property(bool, notify=stateChanged)
+    @Property(bool, notify=playbackStateChanged)
     def remoteSource(self):
         st = self._source_type
         return st in ("remote", "michi_server", "network_share")
 
-    @Property(bool, notify=stateChanged)
+    @Property(bool, notify=playbackStateChanged)
     def seekableSource(self):
         return not self.liveSource and not self.remoteSource
 
     def _probe_quality(self, filepath: str):
         if not filepath or not self._quality_adapter:
+            changed = self._quality_info_available or self._quality_loading
             self._quality_info_available = False
             self._quality_loading = False
+            if changed:
+                self._emit_quality()
             return
+        previous_source_type = self._source_type
         self._quality_loading = True
         self._emit_quality()
         try:
@@ -486,61 +507,66 @@ class NowPlayingBridge(QObject):
             self._quality_info_available = False
             self._quality_error = str(e)
         self._quality_loading = False
+        if self._source_type != previous_source_type:
+            self._emit_playback()
         self._emit_quality()
 
-    @Property(str, notify=stateChanged)
+    @Property(str, notify=qualityChanged)
     def sourceType(self):
         return self._source_type
 
-    @Property(str, notify=stateChanged)
+    @Property(str, notify=qualityChanged)
     def formatLabel(self):
         return self._format_label
 
-    @Property(str, notify=stateChanged)
+    @Property(str, notify=qualityChanged)
     def qualityLabel(self):
         return self._quality_label
 
-    @Property(str, notify=stateChanged)
+    @Property(str, notify=qualityChanged)
     def sampleRate(self):
         return self._sample_rate
 
-    @Property(str, notify=stateChanged)
+    @Property(str, notify=qualityChanged)
     def bitDepth(self):
         return self._bit_depth
 
-    @Property(str, notify=stateChanged)
+    @Property(str, notify=qualityChanged)
     def channels(self):
         return self._channels
 
-    @Property(str, notify=stateChanged)
+    @Property(str, notify=qualityChanged)
     def bitrate(self):
         return self._bitrate
 
-    @Property(bool, notify=stateChanged)
+    @Property(bool, notify=qualityChanged)
     def qualityInfoAvailable(self):
         return self._quality_info_available
 
-    @Property(bool, notify=stateChanged)
+    @Property(bool, notify=qualityChanged)
     def qualityLoading(self):
         return self._quality_loading
 
-    @Property(str, notify=stateChanged)
+    @Property(str, notify=qualityChanged)
     def qualityError(self):
         return self._quality_error
 
-    @Property("QVariantList", notify=stateChanged)
+    @Property("QVariantList", notify=historyChanged)
     def history(self):
         return list(self._history)
 
-    @Property(bool, notify=stateChanged)
+    @Property(bool, notify=trackChanged)
     def hasTrack(self):
-        return self._track_title != "—" or bool(self._current_path())
+        return bool(
+            (self._track_title and self._track_title != "—")
+            or bool(self._current_path())
+        )
 
-    @Property(bool, notify=stateChanged)
+    @Property(bool, notify=capabilitiesChanged)
     def backendAvailable(self):
         return self._backend_available
 
-    @Property(str, notify=stateChanged)
+    @Property(str, notify=errorChanged)
     def errorMessage(self):
         return self._error_message
 
@@ -638,6 +664,13 @@ class NowPlayingBridge(QObject):
         if not self._player:
             return _err("refresh", NO_PLAYER_SERVICE)
         try:
+            previous_track = (
+                self._track_title,
+                self._track_artist,
+                self._track_album,
+            )
+            previous_playback = (self._is_playing, self._playback_status)
+            previous_duration = self._duration
             if hasattr(self._player, 'current'):
                 current = self._player.current
                 if current:
@@ -654,6 +687,16 @@ class NowPlayingBridge(QObject):
                 d = self._player.duration
                 if d:
                     self._duration = int(d)
+            if previous_track != (
+                self._track_title,
+                self._track_artist,
+                self._track_album,
+            ):
+                self._emit_track()
+            if previous_playback != (self._is_playing, self._playback_status):
+                self._emit_playback()
+            if previous_duration != self._duration:
+                self._emit_duration()
             self._emit_state()
             return _ok("refresh")
         except Exception as e:
@@ -748,7 +791,7 @@ class NowPlayingBridge(QObject):
                 self._player.seek(pos)
                 self._position = pos
                 self._set_command_success(op)
-                self._emit_state()
+                self._emit_position()
                 return _ok(op, {"requested_position": pos, "state_confirmed": False})
             self._set_command_failure(op, UNSUPPORTED)
             return _err(op, UNSUPPORTED)
@@ -764,18 +807,26 @@ class NowPlayingBridge(QObject):
     @Slot(int, result=dict)
     def setVolume(self, volume: int) -> dict:
         op = "setVolume"
-        self._begin_command(op)
         if not self._player:
+            self._begin_command(op)
             self._set_command_failure(op, NO_PLAYER_SERVICE)
             return _err(op, NO_PLAYER_SERVICE)
         vol = max(0, min(100, int(volume)))
+        now = time.time()
+        if abs(vol - self._last_volume_request) < 2 and now - self._last_volume_time < 0.1:
+            self._last_volume_request = vol
+            self._last_volume_time = now
+            return _ok(op, {"volume": vol, "coalesced": True})
+        self._last_volume_request = vol
+        self._last_volume_time = now
+        self._begin_command(op)
         try:
             if hasattr(self._player, 'set_volume'):
                 self._player.set_volume(vol)
                 self._volume = vol
                 self._muted = vol == 0
                 self._set_command_success(op)
-                self._emit_state()
+                self._emit_volume()
                 return _ok(op, {"volume": vol, "muted": self._muted, "state_confirmed": False})
             self._set_command_failure(op, UNSUPPORTED)
             return _err(op, UNSUPPORTED)
@@ -801,7 +852,7 @@ class NowPlayingBridge(QObject):
             self._volume = target
             self._muted = target == 0
             self._set_command_success(op)
-            self._emit_state()
+            self._emit_volume()
             return _ok(op, {"volume": target, "muted": self._muted, "state_confirmed": False})
         except Exception as e:
             logger.warning("toggleMute failed: %s", e)
@@ -821,7 +872,7 @@ class NowPlayingBridge(QObject):
                 self._player.stop()
                 self._position = 0
                 self._set_command_success(op)
-                self._emit_state()
+                self._emit_position()
                 return _ok(op, {"state_confirmed": False})
             self._set_command_failure(op, UNSUPPORTED)
             return _err(op, UNSUPPORTED)
@@ -844,7 +895,7 @@ class NowPlayingBridge(QObject):
                 return result
             self._shuffle_enabled = self._queue_service.shuffle
             self._set_command_success(op)
-            self._emit_state()
+            self._emit_playback()
             return result
         except Exception as e:
             logger.warning("toggleShuffle failed: %s", e)
@@ -865,7 +916,7 @@ class NowPlayingBridge(QObject):
                 return result
             self._repeat_mode = self._queue_service.repeat
             self._set_command_success(op)
-            self._emit_state()
+            self._emit_playback()
             return result
         except Exception as e:
             logger.warning("toggleRepeat failed: %s", e)
@@ -994,8 +1045,10 @@ class NowPlayingBridge(QObject):
         op = "clearHistory"
         self._begin_command(op)
         self._history.clear()
+        if hasattr(self, "_history_internal_refs"):
+            self._history_internal_refs.clear()
         self._set_command_success(op)
-        self._emit_state()
+        self._emit_history()
         return _ok(op)
 
     @Slot(int, result=dict)

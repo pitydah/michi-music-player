@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -54,6 +54,17 @@ class TestNowPlayingPageStateMachine:
     def test_ready_when_has_track(self):
         bridge = _make_bridge(has_track=True)
         assert bridge.hasTrack
+
+    @pytest.mark.parametrize("title", ["", None, "—"])
+    def test_empty_title_without_path_has_no_track(self, title: str | None) -> None:
+        player = MagicMock()
+        player.current = None
+        player.current_filepath = ""
+        player.current_path = ""
+        bridge = NowPlayingBridge(player_service=player)
+        bridge._track_title = title
+
+        assert not bridge.hasTrack
 
     def test_error_when_no_backend(self):
         bridge = _make_bridge()
@@ -110,6 +121,50 @@ class TestNowPlayingPageStateMachine:
         bridge._on_error("Something went wrong")
         assert "error" in bridge.errorMessage.lower() or bridge.errorMessage != ""
 
+    @pytest.mark.parametrize(
+        ("property_name", "notify_signal"),
+        [
+            ("trackTitle", "trackChanged"),
+            ("trackArtist", "trackChanged"),
+            ("trackAlbum", "trackChanged"),
+            ("coverPath", "coverChanged"),
+            ("isPlaying", "playbackStateChanged"),
+            ("position", "positionChanged"),
+            ("duration", "durationChanged"),
+            ("volume", "volumeChanged"),
+            ("muted", "volumeChanged"),
+            ("repeatMode", "playbackStateChanged"),
+            ("shuffleEnabled", "playbackStateChanged"),
+            ("currentFilePath", "trackChanged"),
+            ("liveSource", "playbackStateChanged"),
+            ("remoteSource", "playbackStateChanged"),
+            ("seekableSource", "playbackStateChanged"),
+            ("sourceType", "qualityChanged"),
+            ("formatLabel", "qualityChanged"),
+            ("qualityLabel", "qualityChanged"),
+            ("sampleRate", "qualityChanged"),
+            ("bitDepth", "qualityChanged"),
+            ("channels", "qualityChanged"),
+            ("bitrate", "qualityChanged"),
+            ("qualityInfoAvailable", "qualityChanged"),
+            ("qualityLoading", "qualityChanged"),
+            ("qualityError", "qualityChanged"),
+            ("history", "historyChanged"),
+            ("hasTrack", "trackChanged"),
+            ("backendAvailable", "capabilitiesChanged"),
+            ("errorMessage", "errorChanged"),
+        ],
+    )
+    def test_property_uses_specific_notify_signal(
+        self,
+        property_name: str,
+        notify_signal: str,
+    ) -> None:
+        meta_object = NowPlayingBridge.staticMetaObject
+        meta_property = meta_object.property(meta_object.indexOfProperty(property_name))
+
+        assert bytes(meta_property.notifySignal().name()).decode() == notify_signal
+
 
 class TestNowPlayingTransport:
     """Verify transport commands delegate correctly."""
@@ -152,6 +207,29 @@ class TestNowPlayingTransport:
         result = bridge.setVolume(75)
         assert result.get("ok") is True
         assert bridge.volume == 75
+
+    def test_set_volume_coalesces_small_rapid_changes(self) -> None:
+        bridge = _make_bridge()
+        with patch(
+            "ui_qml_bridge.nowplaying_bridge.time.time",
+            side_effect=[100.0, 100.0, 100.0, 100.05],
+        ):
+            bridge.setVolume(75)
+            bridge._player.set_volume.reset_mock()
+            result = bridge.setVolume(76)
+
+        assert result["data"]["coalesced"] is True
+        bridge._player.set_volume.assert_not_called()
+
+    def test_clear_history_removes_public_and_internal_entries(self) -> None:
+        bridge = _make_bridge()
+        bridge._history = [{"history_id": "h1", "title": "Track"}]
+        bridge._history_internal_refs = {"h1": {"filepath": "/music/track.flac"}}
+
+        bridge.clearHistory()
+
+        assert bridge.history == []
+        assert bridge._history_internal_refs == {}
 
     def test_toggle_mute(self):
         bridge = _make_bridge()
