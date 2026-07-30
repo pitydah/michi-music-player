@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt
+from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt, Signal
 
 
 class FolderNode:
@@ -26,6 +26,9 @@ class FolderTreeModel(QAbstractItemModel):
 
     PathRole = Qt.UserRole + 1
     NameRole = Qt.UserRole + 2
+    ErrorRole = Qt.UserRole + 3
+
+    errorOccurred = Signal(str, str)  # path, error_message
 
     def __init__(
         self,
@@ -113,7 +116,8 @@ class FolderTreeModel(QAbstractItemModel):
                     ),
                     key=lambda child: child.name.casefold(),
                 )
-        except (OSError, PermissionError):
+        except (OSError, PermissionError) as exc:
+            self.errorOccurred.emit(node.path, str(exc))
             children = []
         node._loaded = True
         if not children:

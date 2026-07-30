@@ -9,6 +9,7 @@ Item {
     focus: true
 
     property string path: ""
+    property string sourceName: qsTr("Biblioteca")
     property bool embedded: false
     readonly property var entries: root.buildEntries(root.path)
 
@@ -30,7 +31,7 @@ Item {
 
     function buildEntries(value) {
         var normalized = root.normalizedPath(value)
-        var result = [{ label: qsTr("Biblioteca"), path: "" }]
+        var result = [{ label: root.sourceName, path: "" }]
         if (!normalized)
             return result
 

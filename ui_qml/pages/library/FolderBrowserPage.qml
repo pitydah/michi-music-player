@@ -164,6 +164,7 @@ LibrarySectionPage {
                     id: breadcrumb
                     Layout.fillWidth: true
                     path: root._currentPath
+                    sourceName: root.lib ? (root.lib.currentSourceName || qsTr("Biblioteca")) : qsTr("Biblioteca")
                     embedded: true
                     onNavigateTo: function(path) { root.navigateTo(path) }
                 }
