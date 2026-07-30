@@ -176,6 +176,8 @@ class BridgeFactory(QObject):
                 folder_tree_model=self._get("folder_tree_model"),
                 playlists_bridge=self._bridges.get("playlists"),
                 container=self._container,
+                artwork_svc=self._get("artwork_service"),
+                cover_provider=self._bridges.get("cover_provider"),
             )
 
     def create_library_sources_bridge(self):

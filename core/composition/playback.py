@@ -17,7 +17,11 @@ def build(container: ServiceContainer) -> None:
     eb = container.get("event_bus")
     persistence = container.get("runtime_persistence")
     engine = GStreamerEngine()
-    ps = PlayerService(engine=engine, event_bus=eb)
+    ps = PlayerService(
+        engine=engine,
+        event_bus=eb,
+        library_db=container.get("database"),
+    )
     qs = QueueService(
         player_service=ps,
         event_bus=eb,

@@ -336,12 +336,154 @@ class NowPlayingBridge(QObject):
             self._cover_key = cover
             self.coverChanged.emit()
 
+    def _apply_quality_from_context(self, context: dict) -> bool:
+        """Populate format/quality fields from the canonical track context."""
+        def _str_val(value: Any) -> str:
+            if value is None or value == 0 or value == "":
+                return ""
+            return str(value)
+
+        candidates = {
+            "_format_label": str(context.get("format") or ""),
+            "_sample_rate": _str_val(context.get("sample_rate")),
+            "_bit_depth": _str_val(context.get("bit_depth")),
+            "_channels": _str_val(context.get("channels")),
+            "_bitrate": _str_val(context.get("bitrate")),
+        }
+        changed = any(getattr(self, attr) != value for attr, value in candidates.items())
+        for attr, value in candidates.items():
+            if getattr(self, attr) != value:
+                setattr(self, attr, value)
+        has_quality = any(candidates.values())
+        if has_quality:
+            if not self._quality_info_available:
+                self._quality_info_available = True
+                changed = True
+            if self._quality_loading:
+                self._quality_loading = False
+                changed = True
+            if self._quality_error:
+                self._quality_error = ""
+                changed = True
+        return changed
+
+    def _add_history_from_context(self, context: dict) -> bool:
+        """Record or enrich a history entry from the canonical track context."""
+        title = str(context.get("title", "") or "")
+        artist = str(context.get("artist", "") or "")
+        album = str(context.get("album", "") or "")
+        if not title or title == "—":
+            return False
+
+        track_uid = str(context.get("track_uid", "") or "")
+        album_key = str(context.get("album_key", "") or "")
+        cover_key = str(context.get("cover_key", "") or "")
+        if not cover_key:
+            cover_key = (
+                f"album:{album_key}" if album_key
+                else f"track:{track_uid}" if track_uid
+                else self._cover_key
+            )
+        duration = int(context.get("duration") or 0)
+        source_type = str(context.get("source_type") or "") or self._source_type
+        track_id = ""
+        current = getattr(self._player, "current", None) if self._player else None
+        if current:
+            track_id = str(getattr(current, "id", getattr(current, "track_id", "")) or "")
+
+        if self._history:
+            top = self._history[0]
+            if (
+                top.get("title") == title
+                and top.get("artist") == artist
+                and top.get("album") == album
+            ):
+                enrichment = {
+                    "track_id": track_id or top.get("track_id", ""),
+                    "track_uid": track_uid or top.get("track_uid", ""),
+                    "cover_key": cover_key or top.get("cover_key", ""),
+                    "duration": duration or top.get("duration", 0),
+                    "source_type": source_type or top.get("source_type", ""),
+                }
+                changed = False
+                for field, value in enrichment.items():
+                    if value and top.get(field) != value:
+                        top[field] = value
+                        changed = True
+                if changed:
+                    hid = top.get("history_id", "")
+                    ref = self._history_internal_refs.setdefault(hid, {})
+                    ref["filepath"] = context.get("filepath", "") or self._current_path()
+                    if track_id:
+                        ref["track_id"] = track_id
+                return changed
+
+        self._history_counter += 1
+        hid = f"h{self._history_counter}_{time.time():.0f}"
+        entry = {
+            "history_id": hid,
+            "track_id": track_id,
+            "track_uid": track_uid,
+            "title": title,
+            "artist": artist,
+            "album": album,
+            "cover_key": cover_key or self._cover_key,
+            "duration": duration or self._duration,
+            "source_type": source_type or self._source_type,
+            "played_at": time.time(),
+        }
+        self._history_internal_refs[hid] = {
+            "filepath": context.get("filepath", "") or self._current_path(),
+            "track_id": track_id,
+        }
+        self._history.insert(0, entry)
+        if len(self._history) > self._history_max:
+            removed = self._history.pop()
+            self._history_internal_refs.pop(removed.get("history_id", ""), None)
+        return True
+
     def _on_track_context(self, context: dict):
-        """Handle complete track context from PlayerService."""
+        """Handle the canonical track context from PlayerService (single source)."""
+        if not isinstance(context, dict):
+            return
         self._last_context = context
         self._context_source = context.get("filepath", "") or ""
+
+        title = str(context.get("title", "") or "")
+        artist = str(context.get("artist", "") or "")
+        album = str(context.get("album", "") or "")
+        if title:
+            self._track_title = title
+        if artist:
+            self._track_artist = artist
+        if album:
+            self._track_album = album
+
         self._set_cover_from_context(context)
+        quality_changed = self._apply_quality_from_context(context)
+
+        filepath = self._context_source or self._current_path()
+        new_source_type = str(context.get("source_type") or "") or self._detect_source_type(filepath)
+        source_changed = new_source_type != self._source_type
+        if source_changed:
+            self._source_type = new_source_type
+
+        new_duration = int(context.get("duration") or 0)
+        duration_changed = new_duration != self._duration
+        if duration_changed:
+            self._duration = new_duration
+
+        history_changed = self._add_history_from_context(context)
+
         self._emit_track()
+        if duration_changed:
+            self._emit_duration()
+        if quality_changed or source_changed:
+            self._emit_quality()
+        if source_changed:
+            self._emit_playback()
+        if history_changed:
+            self._emit_history()
 
     def _set_cover_from_current_path(self):
         filepath = self._current_path()
@@ -486,7 +628,12 @@ class NowPlayingBridge(QObject):
         return self._track_album
 
     @Property(str, notify=coverChanged)
+    def coverKey(self):
+        return self._cover_key
+
+    @Property(str, notify=coverChanged)
     def coverPath(self):
+        """Deprecated alias for ``coverKey``; kept for QML compatibility."""
         return self._cover_key
 
     @Property(bool, notify=playbackStateChanged)

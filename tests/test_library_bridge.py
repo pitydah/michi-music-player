@@ -111,3 +111,67 @@ class TestLibraryBridge:
             "ok": False,
             "error": "NO_TRACKS",
         }
+
+    def test_run_artwork_backfill_invalidates_recovered_covers(self):
+        """runArtworkBackfill delegates to the service and invalidates recovered keys."""
+        artwork_svc = MagicMock()
+        artwork_svc.backfill_missing_album_art.return_value = {
+            "reviewed": 2,
+            "recovered": 1,
+            "failed": 0,
+            "skipped": 1,
+            "recovered_keys": ["album-a", "album-b"],
+        }
+        cover_provider = MagicMock()
+        bridge = LibraryBridge(
+            query_service=MagicMock(),
+            track_action_service=MagicMock(),
+            artwork_svc=artwork_svc,
+            cover_provider=cover_provider,
+        )
+
+        result = bridge.runArtworkBackfill()
+
+        artwork_svc.backfill_missing_album_art.assert_called_once_with()
+        cover_provider.invalidateMany.assert_called_once_with(
+            json.dumps(["album:album-a", "album:album-b"])
+        )
+        assert result["ok"] is True
+        assert result["recovered"] == 1
+        assert result["recovered_keys"] == ["album-a", "album-b"]
+
+    def test_run_artwork_backfill_unavailable_without_service(self):
+        """Without an artwork service the slot reports BACKFILL_UNAVAILABLE."""
+        bridge = LibraryBridge(
+            query_service=MagicMock(),
+            track_action_service=MagicMock(),
+            cover_provider=MagicMock(),
+        )
+
+        result = bridge.runArtworkBackfill()
+
+        assert result == {"ok": False, "error": "BACKFILL_UNAVAILABLE"}
+
+    def test_run_artwork_backfill_skips_invalidation_when_no_recoveries(self):
+        """invalidateMany is not called when nothing was recovered."""
+        artwork_svc = MagicMock()
+        artwork_svc.backfill_missing_album_art.return_value = {
+            "reviewed": 1,
+            "recovered": 0,
+            "failed": 0,
+            "skipped": 1,
+            "recovered_keys": [],
+        }
+        cover_provider = MagicMock()
+        bridge = LibraryBridge(
+            query_service=MagicMock(),
+            track_action_service=MagicMock(),
+            artwork_svc=artwork_svc,
+            cover_provider=cover_provider,
+        )
+
+        result = bridge.runArtworkBackfill()
+
+        cover_provider.invalidateMany.assert_not_called()
+        assert result["ok"] is True
+        assert result["recovered"] == 0

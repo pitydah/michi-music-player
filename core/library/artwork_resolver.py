@@ -222,9 +222,21 @@ class CoverArtService:
             logger.exception("Failed to cache cover for %s", album_key)
             return False
 
-    def backfill_missing_album_art(self) -> dict[str, int]:
-        """Recover embedded artwork for albums without a populated cache entry."""
-        counts = {"reviewed": 0, "recovered": 0, "failed": 0, "skipped": 0}
+    def backfill_missing_album_art(self) -> dict[str, Any]:
+        """Recover embedded/sidecar artwork for albums without a cache entry.
+
+        Tries embedded pictures first, then sidecar images, and persists every
+        recovery in a single batched transaction. The returned dict carries the
+        review counts plus ``recovered_keys`` (raw album keys) so callers can
+        invalidate cached cover references.
+        """
+        counts: dict[str, Any] = {
+            "reviewed": 0,
+            "recovered": 0,
+            "failed": 0,
+            "skipped": 0,
+            "recovered_keys": [],
+        }
         if self._db is None:
             return counts
         try:
@@ -242,6 +254,7 @@ class CoverArtService:
             logger.error("Unable to query albums missing artwork: %s", exc)
             return counts
 
+        pending: list[tuple[str, str, bytes]] = []
         for (album_key,) in album_rows:
             key = str(album_key or "").strip()
             if not key:
@@ -259,20 +272,45 @@ class CoverArtService:
                 counts["failed"] += 1
                 continue
 
-            embedded = None
+            recovered = None
             for (filepath,) in track_rows:
-                embedded = self._embedded_cover(str(filepath or ""))
-                if embedded:
+                resolved = str(filepath or "")
+                recovered = self._embedded_cover(resolved)
+                if recovered:
                     break
-            if not embedded:
+                recovered = self._sidecar_cover(resolved)
+                if recovered:
+                    break
+            if not recovered:
                 counts["skipped"] += 1
                 continue
 
-            mime, data = embedded
-            if self.cache_cover(key, data, mime):
-                counts["recovered"] += 1
-            else:
+            mime, data = recovered
+            validated = self._validated_cover(bytes(data), mime, f"backfill:{key}")
+            if not validated:
                 counts["failed"] += 1
+                continue
+            pending.append((key, validated[0], validated[1]))
+
+        for key, detected_mime, validated_data in pending:
+            try:
+                self._db.conn.execute(
+                    "INSERT OR REPLACE INTO album_art_cache "
+                    "(album_hash, mime, data) VALUES (?, ?, ?)",
+                    (key, detected_mime, validated_data),
+                )
+            except Exception as exc:
+                logger.debug("Artwork backfill cache write failed for %s: %s", key, exc)
+                counts["failed"] += 1
+                continue
+            counts["recovered"] += 1
+            counts["recovered_keys"].append(key)
+
+        if pending:
+            try:
+                self._db.conn.commit()
+            except Exception as exc:
+                logger.error("Artwork backfill batch commit failed: %s", exc)
 
         logger.info(
             "Artwork backfill reviewed=%d recovered=%d failed=%d skipped=%d",

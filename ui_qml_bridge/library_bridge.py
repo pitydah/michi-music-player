@@ -38,6 +38,7 @@ class LibraryBridge(QObject):
 
     dataChanged = Signal()
     stateChanged = Signal()
+    formatsChanged = Signal()
 
     def __init__(self, db: Any | None = None, search_engine: Any | None = None,
                  player_service: Any | None = None, query_service: Any | None = None,
@@ -49,7 +50,9 @@ class LibraryBridge(QObject):
                  collection_service: Any | None = None,
                  folder_tree_model: Any | None = None,
                  playlists_bridge: Any | None = None, container: Any | None = None,
-                 queue_service: Any | None = None, parent: QObject | None = None) -> None:
+                 queue_service: Any | None = None,
+                 artwork_svc: Any | None = None, cover_provider: Any | None = None,
+                 parent: QObject | None = None) -> None:
         assert query_service is not None, "LibraryBridge: query_service is REQUIRED"
         super().__init__(parent)
         self._db = db
@@ -69,6 +72,8 @@ class LibraryBridge(QObject):
         self._genres_svc = genres_service
         self._collection_svc = collection_service
         self._folder_tree_model = folder_tree_model
+        self._artwork_svc = artwork_svc
+        self._cover_provider = cover_provider
         self._search_query = ""
         self._sort_key = "title"
         self._sort_asc = True
@@ -90,6 +95,7 @@ class LibraryBridge(QObject):
         self._last_operation = ""
         self._last_op_ok = False
         self._state = LibraryState.INITIALIZING
+        self._formats: list[str] | None = None
         from ui_qml.models.TrackListModel import TrackListModel
         from ui_qml.models.AlbumListModel import AlbumListModel
         from ui_qml.models.ArtistListModel import ArtistListModel
@@ -263,6 +269,27 @@ class LibraryBridge(QObject):
     @Property(str, notify=dataChanged)
     def activeFormatFilter(self):
         return self._filter_format
+
+    @Property("QVariantList", notify=formatsChanged)
+    def availableFormats(self):
+        """Reactive, cached list of distinct audio formats in the library."""
+        if self._formats is None:
+            self._refresh_formats()
+        return self._formats or []
+
+    def _refresh_formats(self) -> None:
+        """Recompute the cached format list and notify QML consumers."""
+        previous = self._formats
+        try:
+            if self._query_svc and hasattr(self._query_svc, "get_formats"):
+                self._formats = list(self._query_svc.get_formats())
+            else:
+                self._formats = []
+        except Exception as error:
+            logger.debug("availableFormats refresh failed: %s", error)
+            self._formats = []
+        if previous != self._formats:
+            self.formatsChanged.emit()
 
     @Property(str, notify=dataChanged)
     def activeGenreFilter(self):
@@ -487,6 +514,7 @@ class LibraryBridge(QObject):
         if self._refresh_coordinator:
             self._refresh_coordinator.refresh_all()
         self._loaded_count = min(self._page_size, self.visibleCount)
+        self._refresh_formats()
         self._sync_state()
         self.dataChanged.emit()
         return {"ok": True, "count": self.visibleCount}
@@ -1321,6 +1349,85 @@ class LibraryBridge(QObject):
                 return {"ok": False, "error": str(e)}
         return {"ok": False, "error": "NO_QUEUE_SERVICE"}
 
+    def _current_query_filters(self) -> dict[str, Any]:
+        """Snapshot of the active QML filter contract for query_service calls."""
+        return {
+            "search": self._search_query,
+            "artist": self._filter_artist,
+            "album": self._filter_album,
+            "fmt": self._filter_format,
+            "folder": self._filter_folder,
+            "genre": self._filter_genre,
+            "composer": self._filter_composer,
+            "year": self._filter_year,
+            "favorites": self._filter_favorites,
+            "unplayed": self._filter_unplayed,
+            "missing": self._filter_missing,
+            "sort": self._sort_key,
+            "asc": self._sort_asc,
+        }
+
+    def _collect_filtered_ids(self) -> list[int]:
+        """Page through the query service to collect every matching track id."""
+        if not self._query_svc:
+            return []
+        filters = self._current_query_filters()
+        page_size = 500
+        offset = 0
+        ids: list[int] = []
+        try:
+            total: int | None = None
+            if hasattr(self._query_svc, "count_tracks"):
+                with contextlib.suppress(Exception):
+                    total = int(self._query_svc.count_tracks(**filters))
+            while True:
+                page = self._query_svc.fetch_tracks(offset=offset, limit=page_size, **filters)
+                if not page:
+                    break
+                for track in page:
+                    track_id = track.get("track_id") or track.get("id")
+                    if track_id and track_id not in ids:
+                        ids.append(int(track_id))
+                offset += page_size
+                if len(page) < page_size:
+                    break
+                if total is not None and offset >= total:
+                    break
+            return ids
+        except Exception as error:
+            logger.debug("selectAllFiltered collect failed: %s", error)
+            return ids
+
+    @Slot(result=dict)
+    def selectAllFiltered(self):
+        """Return a SelectionDescriptor covering every track matching the filters.
+
+        The descriptor carries ``mode="all_filtered"`` plus the active filters so
+        QML can select across all pages without loading every row into the model.
+        """
+        ids = self._collect_filtered_ids()
+        return {
+            "ok": True,
+            "mode": "all_filtered",
+            "ids": ids,
+            "count": len(ids),
+            "filters": {
+                "search": self._search_query,
+                "artist": self._filter_artist,
+                "album": self._filter_album,
+                "format": self._filter_format,
+                "folder": self._filter_folder,
+                "genre": self._filter_genre,
+                "composer": self._filter_composer,
+                "year": self._filter_year,
+                "favorites": self._filter_favorites,
+                "unplayed": self._filter_unplayed,
+                "missing": self._filter_missing,
+                "sort": self._sort_key,
+                "asc": self._sort_asc,
+            },
+        }
+
     @Slot(int, result=dict)
     def rescanSource(self, source_id: int = 0):
         if source_id > 0:
@@ -1355,3 +1462,19 @@ class LibraryBridge(QObject):
         if self._query_svc and hasattr(self._query_svc, "get_formats"):
             return self._query_svc.get_formats()
         return []
+
+    @Slot(result=dict)
+    def runArtworkBackfill(self):
+        """Run backfill for missing album artwork and invalidate recovered covers."""
+        if not self._artwork_svc or not hasattr(self._artwork_svc, "backfill_missing_album_art"):
+            return {"ok": False, "error": "BACKFILL_UNAVAILABLE"}
+        try:
+            result = self._artwork_svc.backfill_missing_album_art()
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+        if not isinstance(result, dict):
+            return {"ok": False, "error": "BACKFILL_INVALID_RESULT"}
+        keys = [f"album:{k}" for k in result.get("recovered_keys", [])]
+        if keys and self._cover_provider and hasattr(self._cover_provider, "invalidateMany"):
+            self._cover_provider.invalidateMany(json.dumps(keys))
+        return {"ok": True, **result}

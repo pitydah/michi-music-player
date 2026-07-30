@@ -309,7 +309,13 @@ class TestCoverArtServiceResolution:
 
         counts = service.backfill_missing_album_art()
 
-        assert counts == {"reviewed": 2, "recovered": 1, "failed": 0, "skipped": 1}
+        assert counts == {
+            "reviewed": 2,
+            "recovered": 1,
+            "failed": 0,
+            "skipped": 1,
+            "recovered_keys": ["album-recovered"],
+        }
         cached = connection.execute(
             "SELECT mime, data FROM album_art_cache WHERE album_hash = ?",
             ("album-recovered",),
@@ -344,7 +350,51 @@ class TestCoverArtServiceResolution:
             db=SimpleNamespace(conn=connection)
         ).backfill_missing_album_art()
 
-        assert counts == {"reviewed": 1, "recovered": 0, "failed": 1, "skipped": 0}
+        assert counts == {
+            "reviewed": 1,
+            "recovered": 0,
+            "failed": 1,
+            "skipped": 0,
+            "recovered_keys": [],
+        }
+
+    def test_backfill_recovers_sidecar_cover_when_no_embedded(self, tmp_path):
+        """Backfill falls back to sidecar images and reports recovered keys."""
+        from core.library.artwork_resolver import CoverArtService
+
+        track = tmp_path / "track.flac"
+        track.write_bytes(b"audio")
+        sidecar = tmp_path / "cover.jpg"
+        sidecar.write_bytes(JPEG_COVER)
+        connection = sqlite3.connect(":memory:")
+        connection.execute(
+            "CREATE TABLE media_items ("
+            "album_key TEXT, filepath TEXT, deleted_at REAL)"
+        )
+        connection.execute(
+            "CREATE TABLE album_art_cache ("
+            "album_hash TEXT PRIMARY KEY, mime TEXT, data BLOB)"
+        )
+        connection.execute(
+            "INSERT INTO media_items (album_key, filepath, deleted_at) VALUES (?, ?, NULL)",
+            ("album-sidecar", str(track)),
+        )
+        service = CoverArtService(db=SimpleNamespace(conn=connection))
+
+        counts = service.backfill_missing_album_art()
+
+        assert counts == {
+            "reviewed": 1,
+            "recovered": 1,
+            "failed": 0,
+            "skipped": 0,
+            "recovered_keys": ["album-sidecar"],
+        }
+        cached = connection.execute(
+            "SELECT mime, data FROM album_art_cache WHERE album_hash = ?",
+            ("album-sidecar",),
+        ).fetchone()
+        assert cached == ("image/jpeg", JPEG_COVER)
 
 
 class TestCoverProviderKeyResolution:
@@ -500,3 +550,109 @@ class TestNowPlayingBridgeContext:
 
         bridge._on_track_context({"track_uid": "track-2"})
         assert bridge.coverPath == "track:track-2"
+
+    @staticmethod
+    def _bridge_with_clean_player():
+        from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
+
+        player = MagicMock()
+        player.current = ""
+        player.current_filepath = ""
+        player.current_path = ""
+        player.state = "stopped"
+        player.duration = 0
+        return NowPlayingBridge(player_service=player, queue_service=MagicMock())
+
+    def test_on_track_context_updates_all_state_from_context(self):
+        """trackContextChanged is the single source for track and quality state."""
+        bridge = self._bridge_with_clean_player()
+        context = {
+            "filepath": "/music/track.flac",
+            "title": "Ctx Title",
+            "artist": "Ctx Artist",
+            "album": "Ctx Album",
+            "album_key": "album-ctx",
+            "track_uid": "uid-ctx",
+            "cover_key": "album:album-ctx",
+            "duration": 241.0,
+            "format": "flac",
+            "sample_rate": 96000,
+            "bit_depth": 24,
+            "bitrate": 2300,
+        }
+        bridge._on_track_context(context)
+
+        assert bridge.trackTitle == "Ctx Title"
+        assert bridge.trackArtist == "Ctx Artist"
+        assert bridge.trackAlbum == "Ctx Album"
+        assert bridge.coverKey == "album:album-ctx"
+        assert bridge.coverPath == "album:album-ctx"
+        assert bridge.duration == 241
+        assert bridge.formatLabel == "flac"
+        assert bridge.sampleRate == "96000"
+        assert bridge.bitDepth == "24"
+        assert bridge.bitrate == "2300"
+        assert bridge.sourceType == "local_file"
+        assert bridge.qualityInfoAvailable is True
+
+    def test_coverKey_is_primary_property_and_coverPath_is_alias(self):
+        """coverKey exposes the namespaced key; coverPath mirrors it."""
+        from PySide6.QtCore import QObject
+
+        meta = QObject.staticMetaObject  # sanity check that bridge is a QObject
+        assert meta is not None
+        bridge = self._bridge_with_clean_player()
+        bridge._on_track_context({"filepath": "/a/b.flac", "cover_key": "album:xyz"})
+        assert bridge.coverKey == "album:xyz"
+        assert bridge.coverPath == bridge.coverKey
+
+    def test_history_is_enriched_from_context_after_track_event(self):
+        """A track_changed entry is enriched with canonical context fields."""
+        bridge = self._bridge_with_clean_player()
+        bridge._on_track("Song", "Artist", "Album")
+        # The 2-string event produces a path-namespaced cover key.
+        assert bridge.history[0]["cover_key"] != "album:canonical"
+
+        bridge._on_track_context({
+            "filepath": "/music/song.flac",
+            "title": "Song",
+            "artist": "Artist",
+            "album": "Album",
+            "album_key": "canonical",
+            "track_uid": "uid-1",
+            "cover_key": "album:canonical",
+            "duration": 200,
+            "source_type": "local_file",
+        })
+
+        entry = bridge.history[0]
+        assert entry["title"] == "Song"
+        assert entry["cover_key"] == "album:canonical"
+        assert entry["track_uid"] == "uid-1"
+        assert entry["duration"] == 200
+        assert entry["source_type"] == "local_file"
+        # No duplicate entry is created when context matches the last track.
+        assert len(bridge.history) == 1
+
+    def test_history_is_inserted_from_context_without_track_event(self):
+        """Context alone seeds a canonical history entry."""
+        bridge = self._bridge_with_clean_player()
+        bridge._on_track_context({
+            "filepath": "/music/ctx.flac",
+            "title": "Ctx Song",
+            "artist": "Ctx Artist",
+            "album": "Ctx Album",
+            "album_key": "ctx-album",
+            "track_uid": "ctx-uid",
+            "cover_key": "album:ctx-album",
+            "duration": 99,
+            "source_type": "local_file",
+        })
+
+        assert len(bridge.history) == 1
+        entry = bridge.history[0]
+        assert entry["title"] == "Ctx Song"
+        assert entry["cover_key"] == "album:ctx-album"
+        assert entry["track_uid"] == "ctx-uid"
+        assert entry["duration"] == 99
+        assert entry["source_type"] == "local_file"
