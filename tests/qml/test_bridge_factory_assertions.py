@@ -44,3 +44,14 @@ class TestSettingsIdentity:
         f = BridgeFactory(c)
         created = f.create_all()
         assert "settings" in created
+
+
+class TestCoverProviderIdentity:
+    def test_create_all_wires_cover_provider_into_nowplaying(self):
+        c = _make_container(artwork_service=MagicMock())
+        c.register("artwork_service", MagicMock())
+        f = BridgeFactory(c)
+
+        created = f.create_all()
+
+        assert created["nowplaying"]._cover_provider is created["cover_provider"]

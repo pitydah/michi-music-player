@@ -19,6 +19,18 @@ from typing import Any
 logger = logging.getLogger("michi.service")
 
 
+def make_album_cover_key(album_key: str) -> str:
+    """Return the canonical cover key for an album."""
+    return f"album:{album_key}" if album_key else ""
+
+
+def make_track_cover_key(track_uid: str, album_key: str = "") -> str:
+    """Return the best canonical cover key for a track."""
+    if album_key:
+        return make_album_cover_key(album_key)
+    return f"track:{track_uid}" if track_uid else ""
+
+
 class PlayerService(QObject):
     """Execute transport commands through the active audio backend."""
 
@@ -34,10 +46,11 @@ class PlayerService(QObject):
     finished = Signal()
     backend_changed = Signal(str, str)
 
-    def __init__(self, engine=None, event_bus=None, parent=None):
+    def __init__(self, engine=None, event_bus=None, parent=None, library_db=None):
         super().__init__(parent)
         self._engine = engine
         self._event_bus = event_bus
+        self._library_db = library_db
         self._volume_before_mute = None
         self._retry_url = None
         self._retry_title = ""
@@ -195,22 +208,56 @@ class PlayerService(QObject):
             with contextlib.suppress(Exception):
                 self._event_bus.publish(event, **data)
 
+    def _library_track_context(self, filepath: str) -> dict[str, Any]:
+        """Return persisted metadata for ``filepath`` when a library is available."""
+        if not filepath or self._library_db is None:
+            return {}
+        try:
+            row = self._library_db.conn.execute(
+                "SELECT COALESCE(title, ''), COALESCE(artist, ''), "
+                "COALESCE(album, ''), COALESCE(album_key, ''), "
+                "COALESCE(track_uid, ''), COALESCE(year, 0), "
+                "COALESCE(genre, ''), COALESCE(duration, 0), "
+                "COALESCE(format, ext, ''), COALESCE(sample_rate, 0), "
+                "COALESCE(bit_depth, 0), COALESCE(bitrate, 0) "
+                "FROM media_items WHERE filepath = ? AND deleted_at IS NULL LIMIT 1",
+                (filepath,),
+            ).fetchone()
+        except Exception as exc:
+            logger.debug("Library metadata lookup failed for %s: %s", filepath, exc)
+            return {}
+        if not row:
+            return {}
+        fields = (
+            "title", "artist", "album", "album_key", "track_uid", "year",
+            "genre", "duration", "format", "sample_rate", "bit_depth", "bitrate",
+        )
+        return dict(zip(fields, row, strict=False))
+
     def _emitTrackContext(self, filepath="", title="", artist="", album=""):
         """Emit trackContextChanged with complete playback context."""
+        resolved_filepath = filepath or self._current_filepath
+        metadata = self._library_track_context(resolved_filepath)
+        album_key = str(metadata.get("album_key") or self._current_album_key)
+        track_uid = str(metadata.get("track_uid") or "")
+        cover_key = make_track_cover_key(track_uid, album_key)
+        self._current_album_key = album_key
+        self._current_cover_key = cover_key
         context = {
-            "filepath": filepath or self._current_filepath,
-            "title": title or self._current_title,
-            "artist": artist or self._current_artist,
-            "album": album or self._current_album,
-            "album_key": "",
-            "cover_key": "",
-            "year": 0,
-            "genre": "",
-            "duration": 0.0,
-            "format": "",
-            "sample_rate": 0,
-            "bit_depth": 0,
-            "bitrate": 0,
+            "filepath": resolved_filepath,
+            "title": title or metadata.get("title") or self._current_title,
+            "artist": artist or metadata.get("artist") or self._current_artist,
+            "album": album or metadata.get("album") or self._current_album,
+            "album_key": album_key,
+            "track_uid": track_uid,
+            "cover_key": cover_key,
+            "year": int(metadata.get("year") or self._current_year),
+            "genre": metadata.get("genre") or self._current_genre,
+            "duration": float(metadata.get("duration") or self._current_duration),
+            "format": metadata.get("format") or self._current_format,
+            "sample_rate": int(metadata.get("sample_rate") or self._current_sample_rate),
+            "bit_depth": int(metadata.get("bit_depth") or self._current_bit_depth),
+            "bitrate": int(metadata.get("bitrate") or self._current_bitrate),
         }
         self.trackContextChanged.emit(context)
 
@@ -234,7 +281,7 @@ class PlayerService(QObject):
             return
         if title:
             self.track_changed.emit(title, artist)
-            self._emitTrackContext(filepath=filepath, title=title, artist=artist, album=album)
+        self._emitTrackContext(filepath=filepath, title=title, artist=artist, album=album)
         self._publish("playback.changed", state="playing", title=title)
 
     def pause(self) -> None:

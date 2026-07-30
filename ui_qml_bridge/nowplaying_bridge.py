@@ -13,7 +13,6 @@ from typing import Any
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from core.worker_manager import WorkerManager
-from ui_qml.models.queue_item import _cover_key_for_path
 
 logger = logging.getLogger("michi.nowplaying")
 
@@ -324,9 +323,15 @@ class NowPlayingBridge(QObject):
         """Set cover key from the track context dict."""
         cover = context.get("cover_key", "") or ""
         if not cover:
-            fp = context.get("filepath", "") or self._current_path()
-            if fp:
-                cover = "file:" + __import__("hashlib").md5(fp.encode()).hexdigest()
+            album_key = str(context.get("album_key", "") or "")
+            track_uid = str(context.get("track_uid", "") or "")
+            if album_key:
+                cover = f"album:{album_key}"
+            elif track_uid:
+                cover = f"track:{track_uid}"
+            else:
+                filepath = context.get("filepath", "") or self._current_path()
+                cover = f"file:{filepath}" if filepath else ""
         if cover != self._cover_key:
             self._cover_key = cover
             self.coverChanged.emit()
@@ -336,15 +341,21 @@ class NowPlayingBridge(QObject):
         self._last_context = context
         self._context_source = context.get("filepath", "") or ""
         self._set_cover_from_context(context)
-        # Update cover provider with current filepath for resolution fallback
-        fp = context.get("filepath", "") or ""
-        if fp and self._cover_provider and hasattr(self._cover_provider, "set_filepath"):
-            self._cover_provider.set_filepath(fp)
         self._emit_track()
 
     def _set_cover_from_current_path(self):
         filepath = self._current_path()
-        new_key = _cover_key_for_path(filepath)
+        context = getattr(self, "_last_context", {})
+        context_filepath = context.get("filepath", "") if isinstance(context, dict) else ""
+        if context_filepath and context_filepath == filepath:
+            cover_key = context.get("cover_key", "") or ""
+            album_key = context.get("album_key", "") or ""
+            track_uid = context.get("track_uid", "") or ""
+            new_key = cover_key or (
+                f"album:{album_key}" if album_key else f"track:{track_uid}" if track_uid else ""
+            )
+        else:
+            new_key = f"file:{filepath}" if filepath else ""
         if new_key != self._cover_key:
             self._cover_key = new_key
             self.coverChanged.emit()
@@ -1193,7 +1204,7 @@ class NowPlayingBridge(QObject):
         return _err(op, UNSUPPORTED)
 
     def set_cover_from_path(self, filepath: str) -> None:
-        self._cover_key = _cover_key_for_path(filepath)
+        self._cover_key = f"file:{filepath}" if filepath else ""
         self.coverChanged.emit()
         self._emit_state()
 

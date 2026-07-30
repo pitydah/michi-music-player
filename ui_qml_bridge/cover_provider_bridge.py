@@ -30,19 +30,6 @@ class CoverProviderBridge(QObject):
         self._cache: OrderedDict[str, str] = OrderedDict()
         self._cache_expiry: dict[str, float] = {}  # key → expiry timestamp
         self._max_cache = _MAX_CACHE
-        self._last_filepath: str = ""
-
-    @Slot(str)
-    def setLastFilepath(self, filepath: str) -> None:
-        """Store last known filepath for cover resolution fallback."""
-        self._last_filepath = filepath or ""
-
-    @Slot(result=str)
-    def lastFilepath(self) -> str:
-        return self._last_filepath
-
-    def set_filepath(self, fp: str) -> None:
-        self._last_filepath = fp or ""
 
     @Property(int, constant=True)
     def maxCacheSize(self):
@@ -91,7 +78,7 @@ class CoverProviderBridge(QObject):
         if service is None:
             return ""
         try:
-            mime, data = service.resolve_cover_with_mime(cover_key, filepath=self._last_filepath)
+            mime, data = service.resolve_cover_with_mime(cover_key)
             if not data:
                 return ""
             mime = str(mime or "image/jpeg").lower()

@@ -576,6 +576,7 @@ class BridgeFactory(QObject):
         self._try_create("playlists", self.create_playlists_bridge)
         self._try_create("library", self.create_library_bridge)
         self._try_create("library_sources", self.create_library_sources_bridge)
+        self._try_create("cover_provider", self.create_cover_provider_bridge)
         self._try_create("nowplaying", self.create_nowplaying_bridge)
         self._try_create("queue", self.create_queue_bridge)
         self._try_create("history", self.create_history_bridge)
@@ -606,7 +607,6 @@ class BridgeFactory(QObject):
 
         self._try_create("runtime_quality", self.create_runtime_quality_bridge)
         self._try_create("physical_audio", self.create_physical_audio_bridge)
-        self._try_create("cover_provider", self.create_cover_provider_bridge)
         self._try_create("app_state", self.create_app_state_bridge)
         self._try_create("selection_context", self.create_selection_context_bridge)
         self._try_create("query_executor", self.create_query_executor)
@@ -672,6 +672,11 @@ class BridgeFactory(QObject):
             and ai._registry is not container.require("action_registry")
         ):
             raise RuntimeError("ai_bridge.action_registry identity mismatch")
+
+        np = factory._bridges.get("nowplaying")
+        cp = factory._bridges.get("cover_provider")
+        if np and cp and hasattr(np, "_cover_provider"):
+            assert np._cover_provider is cp, "NowPlayingBridge.cover_provider wiring mismatch"
 
     def bind_action_handlers(self):
         registry = self._bridges.get("action_registry")
