@@ -36,40 +36,41 @@ Item {
                                        : MichiTheme.spacing.sm
 
         MichiIconButton {
-            controlObjectName: "shuffleButton"
-            visible: root.showShuffle && !root.compact
-            iconSource: "../../icons/nowplaying_clean/warm_shuffle_32.png"
-            symbolic: false
+            controlObjectName: "nowPlayingShuffleButton"
+            visible: !root.compact || root.isBar
+            iconKey: "shuffle"
+            symbolic: true
             iconVisualSize: root.isBar ? 20 : MichiTheme.iconSizeRegular
             btnSize: root.isBar ? 40 : MichiTheme.minimumInteractiveSize
             selected: root.shuffleEnabled
             enabled: !root.commandPending
+            disabledVisualOpacity: 0.55
             accessibleName: qsTr("Aleatorio")
             tooltipText: accessibleName
             onClicked: root.shuffleToggled(!root.shuffleEnabled)
         }
 
         MichiIconButton {
-            controlObjectName: "previousButton"
-            visible: root.showPrevious
-            iconSource: "../../icons/nowplaying_clean/warm_prev_32.png"
-            symbolic: false
+            controlObjectName: "nowPlayingPreviousButton"
+            visible: !root.compact || root.isBar
+            iconKey: "previous"
+            symbolic: true
             iconVisualSize: root.isBar ? 22 : MichiTheme.iconSizeRegular
             btnSize: root.isBar ? 44 : (root.compact ? 40 : MichiTheme.minimumInteractiveSize)
             enabled: !root.commandPending
+            disabledVisualOpacity: 0.55
             accessibleName: qsTr("Anterior")
             tooltipText: accessibleName
             onClicked: root.previousRequested()
         }
 
         MichiIconButton {
-            controlObjectName: "playPauseButton"
-            iconSource: root.isPlaying
-                        ? "../../icons/nowplaying_clean/warm_pause_32.png"
-                        : "../../icons/nowplaying_clean/warm_play_32.png"
-            symbolic: false
+            controlObjectName: "nowPlayingPlayPauseButton"
+            iconKey: root.isPlaying ? "pause" : "play"
+            symbolic: true
             iconVisualSize: root.isBar ? 28 : MichiTheme.iconSizeRegular
             enabled: !root.commandPending
+            disabledVisualOpacity: 0.55
             circular: true
             selected: true
             btnSize: root.isBar ? 54 : (root.compact ? 40 : 52)
@@ -82,26 +83,28 @@ Item {
         }
 
         MichiIconButton {
-            controlObjectName: "nextButton"
-            visible: root.showNext
-            iconSource: "../../icons/nowplaying_clean/warm_next_32.png"
-            symbolic: false
+            controlObjectName: "nowPlayingNextButton"
+            visible: !root.compact || root.isBar
+            iconKey: "next"
+            symbolic: true
             iconVisualSize: root.isBar ? 22 : MichiTheme.iconSizeRegular
             btnSize: root.isBar ? 44 : (root.compact ? 40 : MichiTheme.minimumInteractiveSize)
             enabled: !root.commandPending
+            disabledVisualOpacity: 0.55
             accessibleName: qsTr("Siguiente")
             tooltipText: accessibleName
             onClicked: root.nextRequested()
         }
 
         MichiIconButton {
-            controlObjectName: "repeatButton"
-            visible: root.showRepeat && !root.compact
-            iconSource: "../../icons/nowplaying_clean/warm_repeat_32.png"
-            symbolic: false
+            controlObjectName: "nowPlayingRepeatButton"
+            visible: !root.compact || root.isBar
+            iconKey: root.repeatMode === "one" ? "repeat_one" : "repeat"
+            symbolic: true
             iconVisualSize: root.isBar ? 20 : MichiTheme.iconSizeRegular
             selected: root.repeatMode !== "none"
             enabled: !root.commandPending
+            disabledVisualOpacity: 0.55
             accessibleName: root.repeatMode === "one"
                             ? qsTr("Repetir una")
                             : root.repeatMode === "all"

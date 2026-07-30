@@ -208,10 +208,10 @@ Item {
                     shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
                     repeatMode: root.ps ? root.ps.repeatMode : "none"
                     commandPending: !root._hasTrack || (root.ps ? root.ps.commandPending : true)
-                    showShuffle: root.ps ? root.ps.shuffleSupported : false
-                    showPrevious: root.ps ? root.ps.previousSupported : false
-                    showNext: root.ps ? root.ps.nextSupported : false
-                    showRepeat: root.ps ? root.ps.repeatSupported : false
+                    showShuffle: true
+                    showPrevious: true
+                    showNext: true
+                    showRepeat: true
                     onPlayRequested: if (root.ps) root.ps.togglePlay()
                     onPauseRequested: if (root.ps) root.ps.togglePlay()
                     onPreviousRequested: if (root.ps) root.ps.previous()

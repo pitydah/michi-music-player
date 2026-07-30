@@ -58,11 +58,11 @@ def test_playback_progress_formats_time(
 
 def test_playback_transport_emits_play_and_pause_requests(qml_engine: QQmlEngine) -> None:
     component, transport = _create_component(qml_engine, "PlaybackTransport.qml")
-    button = transport.findChild(QObject, "playPauseButton")
+    button = transport.findChild(QObject, "nowPlayingPlayPauseButton")
     play_spy = QSignalSpy(transport.playRequested)
     pause_spy = QSignalSpy(transport.pauseRequested)
 
-    assert button is not None
+    assert button is not None, f"Could not find nowPlayingPlayPauseButton"
     transport.setProperty("isPlaying", False)
     button.click()
     transport.setProperty("isPlaying", True)
@@ -77,10 +77,10 @@ def test_playback_transport_emits_play_and_pause_requests(qml_engine: QQmlEngine
 
 def test_playback_transport_cycles_repeat_modes(qml_engine: QQmlEngine) -> None:
     component, transport = _create_component(qml_engine, "PlaybackTransport.qml")
-    button = transport.findChild(QObject, "repeatButton")
+    button = transport.findChild(QObject, "nowPlayingRepeatButton")
     repeat_spy = QSignalSpy(transport.repeatCycled)
 
-    assert button is not None
+    assert button is not None, f"Could not find nowPlayingRepeatButton"
     for mode in ("none", "all", "one"):
         transport.setProperty("repeatMode", mode)
         button.click()
