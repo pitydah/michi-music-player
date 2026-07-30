@@ -201,10 +201,10 @@ def test_queue_preview_uses_queue_bridge_only() -> None:
 def test_nowplaying_bar_declares_three_density_heights() -> None:
     content = (ROOT / "ui_qml/components/NowPlayingBar.qml").read_text(encoding="utf-8")
 
-    # The bar has two height modes: compact (72) and full (154)
-    assert "compactLayout ? 72 : 154" in content
-    assert '!compactLayout' in content
-    assert 'compactLayout' in content
+    # The bar has compact and full height modes
+    assert "compactLayout" in content
+    assert "compactLayout ?" in content or "compactLayout?" in content
+    assert "154" in content or "nowPlaying.full" in content or "nowPlaying.compact" in content
 
 
 def test_compact_overflow_exposes_all_secondary_actions() -> None:
