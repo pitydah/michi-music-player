@@ -249,10 +249,9 @@ class TestShellComponents:
 class TestNowPlayingComponents:
     NOWPLAYING_FILES = [
         "components/NowPlayingBar.qml",
-        "components/NowPlayingControls.qml",
-        "components/NowPlayingInfo.qml",
-        "components/NowPlayingCover.qml",
-        "components/NowPlayingSeekBar.qml",
+        "components/PlaybackTransport.qml",
+        "components/PlaybackProgress.qml",
+        "components/OutputProfileMenu.qml",
         "components/NowPlayingVolume.qml",
     ]
 
@@ -262,15 +261,15 @@ class TestNowPlayingComponents:
             assert p.exists(), f"Missing: {p}"
 
     def test_now_playing_controls_exists(self, engine):
-        component = _load_qml(engine, "components/NowPlayingControls.qml")
+        component = _load_qml(engine, "components/PlaybackTransport.qml")
         assert component.isReady()
 
-    def test_now_playing_info_exists(self, engine):
-        component = _load_qml(engine, "components/NowPlayingInfo.qml")
+    def test_output_profile_menu_exists(self, engine):
+        component = _load_qml(engine, "components/OutputProfileMenu.qml")
         assert component.isReady()
 
     def test_now_playing_seek_bar_exists(self, engine):
-        component = _load_qml(engine, "components/NowPlayingSeekBar.qml")
+        component = _load_qml(engine, "components/PlaybackProgress.qml")
         assert component.isReady()
 
     def test_now_playing_volume_exists(self, engine):
@@ -688,14 +687,6 @@ class TestNowPlayingBarMigration:
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
         assert "notificationBridge" in content  # notification integrated
 
-    def test_nowplaying_queue_panel_exists(self):
-        p = QML_DIR / "components" / "NowPlayingQueuePanel.qml"
-        assert p.exists(), "Missing NowPlayingQueuePanel.qml"
-
-    def test_nowplaying_queue_panel_instantiate(self, engine):
-        component = _load_qml(engine, "components/NowPlayingQueuePanel.qml")
-        assert component.isReady()
-
     def test_nowplaying_bar_has_notification_bridge(self):
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
         assert "notificationBridge" in content, "NowPlayingBar missing notificationBridge"
@@ -704,23 +695,19 @@ class TestNowPlayingBarMigration:
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
         assert "backendAvailable" in content, "NowPlayingBar missing backend status"
 
-    def test_nowplaying_info_has_backend_param(self):
-        content = (QML_DIR / "components" / "NowPlayingInfo.qml").read_text()
-        assert "backendAvailable" in content, "NowPlayingInfo missing backendAvailable"
-
     def test_nowplaying_bar_no_placeholder_no(self):
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
         assert '"NO"' not in content, "NowPlayingBar still has NO placeholder"
         assert '"Sin reproducción"' in content, "NowPlayingBar missing empty state text"
 
     def test_nowplaying_controls_has_enabled_support(self):
-        content = (QML_DIR / "components" / "NowPlayingControls.qml").read_text()
-        assert "opacity:" in content, "NowPlayingControls missing opacity for disabled state"
-        assert "enabled" in content, "NowPlayingControls missing enabled usage"
+        content = (QML_DIR / "components" / "PlaybackTransport.qml").read_text()
+        assert "commandPending" in content, "PlaybackTransport missing pending state"
+        assert "enabled" in content, "PlaybackTransport missing enabled usage"
 
     def test_nowplaying_seek_has_enabled_support(self):
-        content = (QML_DIR / "components" / "NowPlayingSeekBar.qml").read_text()
-        assert "root.enabled" in content, "NowPlayingSeekBar missing enabled usage"
+        content = (QML_DIR / "components" / "PlaybackProgress.qml").read_text()
+        assert "root.seekable" in content, "PlaybackProgress missing seekable usage"
 
     def test_nowplaying_volume_has_capabilities(self):
         content = (QML_DIR / "components" / "NowPlayingVolume.qml").read_text()
@@ -739,32 +726,15 @@ class TestNowPlayingBarMigration:
         content = (QML_DIR / "pages" / "home" / "LibraryStatusCard.qml").read_text()
         assert "implicitHeight: 190" in content, "LibraryStatusCard height not updated"
 
-    def test_nowplaying_controls_disabled_opacity(self):
-        content = (QML_DIR / "components" / "NowPlayingControls.qml").read_text()
-        assert "opacity:" in content, "NowPlayingControls missing disabled opacity"
-
-    def test_nowplaying_cover_no_n_placeholder(self):
-        content = (QML_DIR / "components" / "NowPlayingCover.qml").read_text()
-        assert '"NOWPLAYING"' not in content, "NowPlayingCover still has NOWPLAYING fallback"
-        assert "placeholderMode" in content, "NowPlayingCover missing placeholderMode"
-
     def test_cover_image_has_monogram_placeholder(self):
         content = (QML_DIR / "components" / "CoverImage.qml").read_text()
         assert "MM" in content or "getFallbackGlyph" in content, "CoverImage missing monogram placeholder"
 
-    def test_expanded_nowplaying_panel_exists(self):
-        p = QML_DIR / "components" / "ExpandedNowPlayingPanel.qml"
-        assert p.exists(), "Missing ExpandedNowPlayingPanel.qml"
-
-    def test_expanded_nowplaying_panel_instantiate(self, engine):
-        component = _load_qml(engine, "components/ExpandedNowPlayingPanel.qml")
-        assert component.isReady()
-
     def test_nowplaying_bar_has_controls(self):
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
-        assert "NowPlayingTransport" in content or "NowPlayingControls" in content, "NowPlayingBar missing controls"
+        assert "PlaybackTransport" in content, "NowPlayingBar missing controls"
         assert "NowPlayingVolume" in content, "NowPlayingBar missing volume"
-        assert "NowPlayingSeekBar" in content, "NowPlayingBar missing seek bar"
+        assert "PlaybackProgress" in content, "NowPlayingBar missing seek bar"
 
     def test_nowplaying_bar_has_navigation_button(self):
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
@@ -883,7 +853,7 @@ class TestNowPlayingBarMigration:
         assert "implicitWidth" in content, "FilterChip missing implicitWidth"
 
     def test_no_enabled_property_shadowing(self):
-        for name in ("MichiSlider.qml", "NowPlayingControls.qml", "NowPlayingSeekBar.qml", "NowPlayingVolume.qml"):
+        for name in ("MichiSlider.qml", "PlaybackTransport.qml", "PlaybackProgress.qml", "NowPlayingVolume.qml"):
             content = (QML_DIR / "components" / name).read_text()
             assert "property bool enabled" not in content, f"{name} still declares enabled property"
 

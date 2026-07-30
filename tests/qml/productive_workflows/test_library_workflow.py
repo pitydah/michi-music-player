@@ -29,9 +29,10 @@ class TestLibraryWorkflow:
     def test_qtest_playback_controls(self, nav, playback_bridge, root_window):
         from .conftest import find_qml_item, qtest_click_item, wait_for_property
         nav.navigate("playback")
-        assert nav.currentRoute == "playback"
-        controls = find_qml_item(root_window, "nowPlayingControls")
-        assert controls is not None, "nowPlayingControls not found"
+        assert nav.currentRoute == "nowplaying"
+        QTest.qWait(100)
+        controls = find_qml_item(root_window.contentItem(), "playbackTransport")
+        assert controls is not None, "playbackTransport not found"
         state_before = getattr(playback_bridge, 'state', '')
         qtest_click_item(controls, root_window)
         wait_for_property(controls, "visible", True, timeout_ms=500)

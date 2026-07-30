@@ -1048,7 +1048,7 @@ ROUTES: dict[str, dict] = {
         "icon": "home", "order": 0, "sidebar_visible": False,
         "sidebar_group": None, "expandable": False,
         "status": "functional", "capability": None,
-        "aliases": [],
+        "aliases": ["playback"],
         "keywords": [],
         "placeholder_state": None,
         "params": None, "category": "core",
@@ -1056,7 +1056,7 @@ ROUTES: dict[str, dict] = {
     "playback": {
         "route": "playback", "parent": None, "title": "Reproducción",
         "breadcrumb_title": "Reproducción",
-        "source": "../pages/PlaybackPage.qml",
+        "source": "../pages/nowplaying/NowPlayingPage.qml",
         "icon": "home", "order": 0, "sidebar_visible": False,
         "sidebar_group": None, "expandable": False,
         "status": "functional", "capability": None,
@@ -1347,7 +1347,9 @@ def resolve_route(route: str) -> str:
     current = route
     for _ in range(10):
         if current in ROUTES:
-            return current
+            alias_target = ROUTE_ALIASES.get(current)
+            if not alias_target or ROUTES[current]["source"] != ROUTES[alias_target]["source"]:
+                return current
         if current in ROUTE_ALIASES:
             canonical = ROUTE_ALIASES[current]
             if canonical in seen:

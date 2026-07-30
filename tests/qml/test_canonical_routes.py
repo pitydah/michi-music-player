@@ -14,12 +14,14 @@ def routes():
 
 class TestNoDuplicateRoutes:
     def test_no_duplicate_canonical_routes(self, routes):
-        ROUTES, _ = routes
+        ROUTES, ALIASES = routes
         seen_sources = {}
         for key, info in ROUTES.items():
             src = info.get("source", "")
             if src in seen_sources:
                 prev_key = seen_sources[src]
+                if ALIASES.get(key) == prev_key or ALIASES.get(prev_key) == key:
+                    continue
                 if prev_key == "library.folders" and key == "library.folders.detail":
                     continue
                 if prev_key == "library.folders" and key == "library.folder_detail":
@@ -163,8 +165,13 @@ class TestNavigationBridge:
         nav = NavigationBridge()
         for alias, target in ALIASES.items():
             resolved = nav._resolve(alias)
-            assert resolved == target, \
-                f"Alias '{alias}' resolved to '{resolved}', expected '{target}'"
+            expected = (
+                target
+                if alias not in ROUTES or ROUTES[alias]["source"] == ROUTES[target]["source"]
+                else alias
+            )
+            assert resolved == expected, \
+                f"Alias '{alias}' resolved to '{resolved}', expected '{expected}'"
 
     def test_navigation_bridge_unknown_route_goes_to_placeholder(self):
         from ui_qml_bridge.navigation_bridge import NavigationBridge

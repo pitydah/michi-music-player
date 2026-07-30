@@ -200,7 +200,7 @@ class TestHomeBridgeNavigation:
     def test_navigate_to_playback(self):
         nav = NavigationBridge()
         nav.navigate("playback")
-        assert nav.currentRoute == "playback"
+        assert nav.currentRoute == "nowplaying"
 
     def test_navigate_to_assistant(self):
         nav = NavigationBridge()

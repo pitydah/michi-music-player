@@ -8,7 +8,12 @@ from __future__ import annotations
 
 import pytest
 
-from ui_qml_bridge.route_registry import ROUTES, resolve_route, get_sidebar_sections
+from ui_qml_bridge.route_registry import (
+    ROUTES,
+    ROUTE_ALIASES,
+    get_sidebar_sections,
+    resolve_route,
+)
 
 
 class TestRouteRegistryContract:
@@ -42,7 +47,13 @@ class TestRouteRegistryContract:
     def test_resolve_route_returns_canonical(self):
         for route in ROUTES:
             resolved = resolve_route(route)
-            assert resolved == route, f"resolve_route({route}) returned {resolved}"
+            alias_target = ROUTE_ALIASES.get(route)
+            expected = (
+                alias_target
+                if alias_target and ROUTES[route]["source"] == ROUTES[alias_target]["source"]
+                else route
+            )
+            assert resolved == expected, f"resolve_route({route}) returned {resolved}"
 
     def test_sidebar_sections_are_well_formed(self):
         sections, fixed = get_sidebar_sections()
