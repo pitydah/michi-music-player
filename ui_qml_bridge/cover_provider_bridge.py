@@ -16,6 +16,8 @@ logger = logging.getLogger("michi.cover_provider")
 _MAX_CACHE = 128
 _MAX_COVER_BYTES = 10 * 1024 * 1024
 _SUPPORTED_MIME = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+_MISS_TTL_SECONDS = 30  # cache misses expire after 30s
+_HIT_TTL_SECONDS = 3600  # cache hits expire after 1 hour
 
 
 class CoverProviderBridge(QObject):
@@ -26,6 +28,7 @@ class CoverProviderBridge(QObject):
         super().__init__(parent)
         self._artwork_service = artwork_service
         self._cache: OrderedDict[str, str] = OrderedDict()
+        self._cache_expiry: dict[str, float] = {}  # key → expiry timestamp
         self._max_cache = _MAX_CACHE
 
     @Property(int, constant=True)
@@ -54,9 +57,16 @@ class CoverProviderBridge(QObject):
             return ""
 
         if key in self._cache:
-            value = self._cache.pop(key)
-            self._cache[key] = value
-            return value
+            # Check expiry
+            expiry = self._cache_expiry.get(key)
+            if expiry is not None and expiry < __import__("time").time():
+                # Expired — remove and re-fetch
+                self._cache.pop(key, None)
+                self._cache_expiry.pop(key, None)
+            else:
+                value = self._cache.pop(key)
+                self._cache[key] = value
+                return value
 
         data_url = self._request_from_service(key)
         self._insert_cache(key, data_url)
@@ -89,8 +99,13 @@ class CoverProviderBridge(QObject):
         if key in self._cache:
             self._cache.pop(key)
         self._cache[key] = data_url
+        # Set TTL: short for misses, longer for hits
+        ttl = _MISS_TTL_SECONDS if not data_url else _HIT_TTL_SECONDS
+        self._cache_expiry[key] = __import__("time").time() + ttl
         while len(self._cache) > self._max_cache:
-            self._cache.popitem(last=False)
+            oldest = next(iter(self._cache))
+            self._cache.pop(oldest, None)
+            self._cache_expiry.pop(oldest, None)
         self.cacheChanged.emit()
 
     @Slot(str, result=dict)

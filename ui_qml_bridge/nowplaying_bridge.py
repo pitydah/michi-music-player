@@ -159,6 +159,11 @@ class NowPlayingBridge(QObject):
     def _connect_player(self):
         if not self._player:
             return
+        # Connect trackContextChanged if available (new pipeline)
+        ctx_signal = getattr(self._player, "trackContextChanged", None)
+        if ctx_signal is not None:
+            ctx_signal.connect(self._on_track_context)
+
         for signal_name, slot in (
             ("track_changed", self._on_track),
             ("state_changed", self._on_state),
@@ -239,6 +244,24 @@ class NowPlayingBridge(QObject):
 
     def _emit_capabilities(self):
         self.capabilitiesChanged.emit()
+        self.stateChanged.emit()
+
+    def _set_cover_from_context(self, context: dict):
+        """Set cover key from the track context dict."""
+        cover = context.get("cover_key", "") or ""
+        if not cover:
+            fp = context.get("filepath", "") or self._current_path()
+            if fp:
+                cover = "file:" + __import__("hashlib").md5(fp.encode()).hexdigest()
+        if cover != self._cover_key:
+            self._cover_key = cover
+            self.coverChanged.emit()
+
+    def _on_track_context(self, context: dict):
+        """Handle complete track context from PlayerService."""
+        self._last_context = context
+        self._context_source = context.get("filepath", "") or ""
+        self._set_cover_from_context(context)
         self.stateChanged.emit()
 
     def _set_cover_from_current_path(self):

@@ -23,6 +23,7 @@ class PlayerService(QObject):
     """Execute transport commands through the active audio backend."""
 
     track_changed = Signal(str, str)
+    trackContextChanged = Signal(dict)
     state_changed = Signal(str)
     position_changed = Signal(float)
     duration_changed = Signal(float)
@@ -44,6 +45,16 @@ class PlayerService(QObject):
         self._current_title = ""
         self._current_artist = ""
         self._current_album = ""
+        self._current_filepath = ""
+        self._current_album_key = ""
+        self._current_cover_key = ""
+        self._current_year = 0
+        self._current_genre = ""
+        self._current_duration = 0.0
+        self._current_format = ""
+        self._current_sample_rate = 0
+        self._current_bit_depth = 0
+        self._current_bitrate = 0
         self._retry_timer = QTimer(self)
         self._retry_timer.setSingleShot(True)
         self._retry_timer.timeout.connect(self._do_retry)
@@ -101,8 +112,9 @@ class PlayerService(QObject):
         self._retry_url = None
         if url:
             self._engine.play_url(url)
-            if title:
-                self.track_changed.emit(title, artist)
+        if title:
+            self.track_changed.emit(title, artist)
+            self._emitTrackContext(filepath=url, title=title, artist=artist)
             logging.getLogger("michi.service").info("Retrying stream: %s", url)
 
     def _ensure_mpd_service(self):
@@ -183,9 +195,33 @@ class PlayerService(QObject):
             with contextlib.suppress(Exception):
                 self._event_bus.publish(event, **data)
 
+    def _emitTrackContext(self, filepath="", title="", artist="", album=""):
+        """Emit trackContextChanged with complete playback context."""
+        context = {
+            "filepath": filepath or self._current_filepath,
+            "title": title or self._current_title,
+            "artist": artist or self._current_artist,
+            "album": album or self._current_album,
+            "album_key": "",
+            "cover_key": "",
+            "year": 0,
+            "genre": "",
+            "duration": 0.0,
+            "format": "",
+            "sample_rate": 0,
+            "bit_depth": 0,
+            "bitrate": 0,
+        }
+        self.trackContextChanged.emit(context)
+
+    @property
+    def current_filepath(self) -> str:
+        return self._current_filepath
+
     def play(self, filepath: str, title: str = "", artist: str = "",
              album: str = "") -> None:
         self._retry_url = None
+        self._current_filepath = filepath or ""
         self._current_title = title or ""
         self._current_artist = artist or ""
         self._current_album = album or ""
@@ -198,6 +234,7 @@ class PlayerService(QObject):
             return
         if title:
             self.track_changed.emit(title, artist)
+            self._emitTrackContext(filepath=filepath, title=title, artist=artist, album=album)
         self._publish("playback.changed", state="playing", title=title)
 
     def pause(self) -> None:
