@@ -191,15 +191,12 @@ Item {
         NowPlayingBar {
             id: nowPlayingBar
             Layout.fillWidth: true
-            Layout.preferredHeight: {
-                if (root.width >= MichiTheme.breakpoints.medium)
-                    return MichiTheme.nowPlaying.desktop
-                if (root.width >= MichiTheme.breakpoints.compact)
-                    return MichiTheme.nowPlaying.medium
-                return MichiTheme.nowPlaying.compact
-            }
-            Layout.maximumHeight: MichiTheme.nowPlaying.desktop
-            Layout.minimumHeight: MichiTheme.nowPlaying.minHeight
+            densityMode: root.width >= MichiTheme.breakpoints.medium ? "full"
+                         : root.width >= MichiTheme.breakpoints.compact ? "reduced"
+                         : "compact"
+            Layout.preferredHeight: implicitHeight
+            Layout.maximumHeight: 156
+            Layout.minimumHeight: 72
             z: 10
         }
     }

@@ -10,7 +10,6 @@ Item {
     Accessible.name: "Now Playing Queue Preview"
     objectName: "npQueuePreview"
     focus: true
-    property var ps: null
     property var qb: typeof queueBridge !== "undefined" ? queueBridge : null
     property var nav: null
 

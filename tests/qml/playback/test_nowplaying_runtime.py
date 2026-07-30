@@ -78,8 +78,13 @@ class TestNowPlayingPageStateMachine:
     def test_toggle_play_sets_command_pending(self):
         bridge = _make_bridge()
         bridge.togglePlay()
-        # After command completes, pending should be False
+        assert bridge.commandPending
+        assert bridge.commandState == "pending"
+
+        bridge._on_state("playing")
+
         assert not bridge.commandPending
+        assert bridge.commandState == "confirmed"
 
     def test_track_title_updates(self):
         bridge = _make_bridge()
@@ -153,6 +158,13 @@ class TestNowPlayingPageStateMachine:
             ("hasTrack", "trackChanged"),
             ("backendAvailable", "capabilitiesChanged"),
             ("errorMessage", "errorChanged"),
+            ("lastCommand", "commandStateChanged"),
+            ("lastCommandOk", "commandStateChanged"),
+            ("lastCommandError", "commandStateChanged"),
+            ("lastCommandMessage", "commandStateChanged"),
+            ("lastCommandTimestamp", "commandStateChanged"),
+            ("commandPending", "commandStateChanged"),
+            ("commandState", "commandStateChanged"),
         ],
     )
     def test_property_uses_specific_notify_signal(

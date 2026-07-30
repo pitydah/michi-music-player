@@ -12,6 +12,7 @@ from typing import Any
 
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
+from core.worker_manager import WorkerManager
 from ui_qml.models.queue_item import _cover_key_for_path
 
 logger = logging.getLogger("michi.nowplaying")
@@ -27,6 +28,11 @@ PLAYBACK_ERROR = "PLAYBACK_ERROR"
 QUEUE_UNAVAILABLE = "QUEUE_UNAVAILABLE"
 INTERNAL_ERROR = "INTERNAL_ERROR"
 EMPTY_FILEPATH = "EMPTY_FILEPATH"
+
+_CMD_STATE_IDLE = "idle"
+_CMD_STATE_PENDING = "pending"
+_CMD_STATE_CONFIRMED = "confirmed"
+_CMD_STATE_FAILED = "failed"
 
 
 def _field(source, *names: str) -> str:
@@ -109,8 +115,15 @@ class NowPlayingBridge(QObject):
     qualityChanged = Signal()
     capabilitiesChanged = Signal()
 
-    def __init__(self, player_service=None, queue_service=None,
-                 audio_quality_adapter=None, cover_provider=None, parent=None):
+    def __init__(
+        self,
+        player_service=None,
+        queue_service=None,
+        audio_quality_adapter=None,
+        cover_provider=None,
+        worker_manager=None,
+        parent=None,
+    ):
         super().__init__(parent)
         if player_service is None:
             logger.warning("NowPlayingBridge: player_service is None — running in degraded mode")
@@ -118,6 +131,12 @@ class NowPlayingBridge(QObject):
         self._queue_service = queue_service
         self._cover_provider = cover_provider
         self._quality_adapter = audio_quality_adapter
+        adapter_worker_manager = getattr(audio_quality_adapter, "_wm", None)
+        self._worker_manager = worker_manager
+        if self._worker_manager is None and isinstance(adapter_worker_manager, WorkerManager):
+            self._worker_manager = adapter_worker_manager
+        self._quality_probe_handle = None
+        self._quality_probe_generation = 0
         self._track_title = "—"
         self._track_artist = ""
         self._track_album = ""
@@ -149,12 +168,15 @@ class NowPlayingBridge(QObject):
         self._backend_available = self._player is not None
         self._playback_status = "idle" if self._backend_available else "unavailable"
         self._error_message = ""
+        self._emitted_error_keys: set[tuple[str, str]] = set()
         self._last_command = ""
         self._last_command_ok = False
         self._last_command_error = ""
         self._last_command_message = ""
         self._last_command_timestamp = 0.0
         self._command_pending = False
+        self._command_state = _CMD_STATE_IDLE
+        self._requested_confirmation: tuple[str, Any] | None = None
         self._connect_player()
         self.refresh()
 
@@ -182,32 +204,80 @@ class NowPlayingBridge(QObject):
             with contextlib.suppress(TypeError):
                 signal.connect(slot)
 
-    def _begin_command(self, operation: str):
+    def _begin_command(
+        self,
+        operation: str,
+        confirmation: tuple[str, Any] | None = None,
+    ) -> None:
         self._last_command = operation
         self._last_command_ok = False
         self._last_command_error = ""
         self._last_command_message = "En ejecución..."
         self._last_command_timestamp = time.time()
         self._command_pending = True
+        self._command_state = _CMD_STATE_PENDING
+        self._requested_confirmation = confirmation
         self._emit_command()
 
-    def _set_command_success(self, operation: str, data: dict | None = None):
+    def _set_command_success(self, operation: str, data: dict | None = None) -> None:
         self._last_command = operation
         self._last_command_ok = True
         self._last_command_error = ""
         self._last_command_message = ""
         self._last_command_timestamp = time.time()
         self._command_pending = False
+        self._command_state = _CMD_STATE_CONFIRMED
+        self._requested_confirmation = None
         self._emit_command()
 
-    def _set_command_failure(self, operation: str, error_code: str, message: str = ""):
+    def _set_command_failure(self, operation: str, error_code: str, message: str = "") -> None:
         self._last_command = operation
         self._last_command_ok = False
         self._last_command_error = error_code or "INTERNAL_ERROR"
         self._last_command_message = message or _safe_message(error_code)
         self._last_command_timestamp = time.time()
         self._command_pending = False
+        self._command_state = _CMD_STATE_FAILED
+        self._requested_confirmation = None
         self._emit_command()
+        self._handle_error(operation, self._last_command_error, self._last_command_message, False)
+
+    def _confirm_command(self, confirmation_type: str, value: Any) -> None:
+        if self._command_state != _CMD_STATE_PENDING or not self._requested_confirmation:
+            return
+        expected_type, expected_value = self._requested_confirmation
+        if expected_type != confirmation_type:
+            return
+        if expected_value is not None and expected_value != value:
+            return
+        self._set_command_success(self._last_command)
+
+    def _handle_error(
+        self,
+        operation: str,
+        error_code: str,
+        message: str = "",
+        update_command: bool = True,
+    ) -> None:
+        """Publish one error notification for each code/operation pair."""
+        code = error_code or INTERNAL_ERROR
+        op = operation or "playback"
+        safe_message = message or _safe_message(code)
+        if update_command and self._last_command == op:
+            self._last_command_ok = False
+            self._last_command_error = code
+            self._last_command_message = safe_message
+            self._last_command_timestamp = time.time()
+            self._command_pending = False
+            self._command_state = _CMD_STATE_FAILED
+            self._requested_confirmation = None
+            self._emit_command()
+        error_key = (code, op)
+        if error_key in self._emitted_error_keys:
+            return
+        self._emitted_error_keys.add(error_key)
+        self._error_message = safe_message
+        self._emit_error()
 
     def _emit_state(self):
         self.stateChanged.emit()
@@ -355,6 +425,7 @@ class NowPlayingBridge(QObject):
             self._emit_playback()
             self._emit_quality()
         self._probe_quality(fp)
+        self._confirm_command("track", None)
         self._emit_track()
         if history_changed:
             self._emit_history()
@@ -365,12 +436,14 @@ class NowPlayingBridge(QObject):
         self._playback_status = state
         self._error_message = ""
         self._emit_playback()
+        self._confirm_command("playback", state)
         if had_error:
             self._emit_error()
 
     def _on_position(self, pos: float):
         self._position = int(pos)
         self._emit_position()
+        self._confirm_command("position", self._position)
 
     def _on_duration(self, dur: float):
         self._duration = int(dur)
@@ -380,17 +453,12 @@ class NowPlayingBridge(QObject):
         self._volume = vol
         self._muted = vol == 0
         self._emit_volume()
+        self._confirm_command("volume", self._volume)
 
     def _on_error(self, msg: str):
         safe_msg = str(msg) if msg else "Unknown error"
-        self._error_message = _safe_message(safe_msg)
-        if self._last_command:
-            self._last_command_ok = False
-            self._last_command_error = "PLAYBACK_ERROR"
-            self._last_command_message = self._error_message
-            self._command_pending = False
-            self._emit_command()
-        self._emit_error()
+        operation = self._last_command or "playback"
+        self._handle_error(operation, PLAYBACK_ERROR, _safe_message(safe_msg))
 
     # ── Properties ──
 
@@ -475,7 +543,12 @@ class NowPlayingBridge(QObject):
     def seekableSource(self):
         return not self.liveSource and not self.remoteSource
 
-    def _probe_quality(self, filepath: str):
+    def _probe_quality(self, filepath: str) -> None:
+        self._quality_probe_generation += 1
+        generation = self._quality_probe_generation
+        if self._quality_probe_handle is not None:
+            self._quality_probe_handle.cancel()
+            self._quality_probe_handle = None
         if not filepath or not self._quality_adapter:
             changed = self._quality_info_available or self._quality_loading
             self._quality_info_available = False
@@ -483,11 +556,41 @@ class NowPlayingBridge(QObject):
             if changed:
                 self._emit_quality()
             return
-        previous_source_type = self._source_type
         self._quality_loading = True
+        self._quality_error = ""
         self._emit_quality()
+        if self._worker_manager is None:
+            try:
+                result = self._quality_adapter.probe(filepath)
+            except Exception as exc:
+                self._finish_quality_probe_error(generation, str(exc))
+            else:
+                self._finish_quality_probe(generation, filepath, result)
+            return
+
+        task_id = f"nowplaying-quality-probe-{generation}"
+        self._quality_probe_handle = self._worker_manager.run_task(
+            task_id,
+            self._quality_adapter.probe,
+            filepath,
+            owner="nowplaying",
+            cancellable=True,
+            on_done=lambda result: self._finish_quality_probe(generation, filepath, result),
+            on_error=lambda _code, message: self._finish_quality_probe_error(
+                generation, message
+            ),
+            on_cancelled=lambda: self._finish_quality_probe_cancelled(generation),
+        )
+        if getattr(self._quality_probe_handle, "state", "") == "failed":
+            message = getattr(self._quality_probe_handle, "message", "")
+            code = getattr(self._quality_probe_handle, "error_code", "")
+            self._finish_quality_probe_error(generation, message or _safe_message(code))
+
+    def _finish_quality_probe(self, generation: int, filepath: str, result: Any) -> None:
+        if generation != self._quality_probe_generation:
+            return
+        previous_source_type = self._source_type
         try:
-            result = self._quality_adapter.probe(filepath)
             if result and result.get("ok"):
                 self._format_label = result.get("format_label", "")
                 self._sample_rate = result.get("sample_rate", "")
@@ -500,15 +603,32 @@ class NowPlayingBridge(QObject):
                 self._quality_error = ""
             else:
                 self._quality_info_available = False
-                self._quality_error = result.get("error", "")
+                self._quality_error = result.get("error", "") if result else ""
                 self._source_type = self._detect_source_type(filepath)
-        except Exception as e:
-            logger.debug("Quality probe error: %s", e)
+        except (AttributeError, TypeError) as exc:
+            logger.debug("Invalid quality probe result: %s", exc)
             self._quality_info_available = False
-            self._quality_error = str(e)
+            self._quality_error = str(exc)
         self._quality_loading = False
+        self._quality_probe_handle = None
         if self._source_type != previous_source_type:
             self._emit_playback()
+        self._emit_quality()
+
+    def _finish_quality_probe_error(self, generation: int, message: str) -> None:
+        if generation != self._quality_probe_generation:
+            return
+        self._quality_info_available = False
+        self._quality_loading = False
+        self._quality_error = message or _safe_message(INTERNAL_ERROR)
+        self._quality_probe_handle = None
+        self._emit_quality()
+
+    def _finish_quality_probe_cancelled(self, generation: int) -> None:
+        if generation != self._quality_probe_generation:
+            return
+        self._quality_loading = False
+        self._quality_probe_handle = None
         self._emit_quality()
 
     @Property(str, notify=qualityChanged)
@@ -570,29 +690,33 @@ class NowPlayingBridge(QObject):
     def errorMessage(self):
         return self._error_message
 
-    @Property(str, notify=stateChanged)
+    @Property(str, notify=commandStateChanged)
     def lastCommand(self):
         return self._last_command
 
-    @Property(bool, notify=stateChanged)
+    @Property(bool, notify=commandStateChanged)
     def lastCommandOk(self):
         return self._last_command_ok
 
-    @Property(str, notify=stateChanged)
+    @Property(str, notify=commandStateChanged)
     def lastCommandError(self):
         return self._last_command_error
 
-    @Property(str, notify=stateChanged)
+    @Property(str, notify=commandStateChanged)
     def lastCommandMessage(self):
         return self._last_command_message
 
-    @Property(float, notify=stateChanged)
+    @Property(float, notify=commandStateChanged)
     def lastCommandTimestamp(self):
         return self._last_command_timestamp
 
-    @Property(bool, notify=stateChanged)
+    @Property(bool, notify=commandStateChanged)
     def commandPending(self):
         return self._command_pending
+
+    @Property(str, notify=commandStateChanged)
+    def commandState(self):
+        return self._command_state
 
     # ── Capabilities ──
 
@@ -708,26 +832,28 @@ class NowPlayingBridge(QObject):
     @Slot(result=dict)
     def togglePlay(self) -> dict:
         op = "togglePlay"
-        self._begin_command(op)
         if not self._player:
+            self._begin_command(op)
             self._set_command_failure(op, NO_PLAYER_SERVICE)
             return _err(op, NO_PLAYER_SERVICE)
         try:
             if self._is_playing:
                 if hasattr(self._player, 'pause'):
+                    self._begin_command(op, ("playback", "paused"))
                     self._player.pause()
-                    self._set_command_success(op)
                     return _ok(op, {"playing": False, "state_confirmed": False})
+                self._begin_command(op)
                 self._set_command_failure(op, UNSUPPORTED)
                 return _err(op, UNSUPPORTED)
             if hasattr(self._player, 'play_or_resume'):
+                self._begin_command(op, ("playback", "playing"))
                 self._player.play_or_resume()
-                self._set_command_success(op)
                 return _ok(op, {"playing": True, "state_confirmed": False})
             if hasattr(self._player, 'resume'):
+                self._begin_command(op, ("playback", "playing"))
                 self._player.resume()
-                self._set_command_success(op)
                 return _ok(op, {"playing": True, "state_confirmed": False})
+            self._begin_command(op)
             self._set_command_failure(op, UNSUPPORTED)
             return _err(op, UNSUPPORTED)
         except Exception as e:
@@ -738,14 +864,13 @@ class NowPlayingBridge(QObject):
     @Slot(result=dict)
     def next(self) -> dict:
         op = "next"
-        self._begin_command(op)
+        self._begin_command(op, ("track", None))
         if not self._queue_service:
             self._set_command_failure(op, UNSUPPORTED)
             return _err(op, UNSUPPORTED)
         try:
             result = self._queue_service.next()
             if result.get("ok"):
-                self._set_command_success(op)
                 return result
             code = result.get("error", PLAYBACK_ERROR)
             self._set_command_failure(op, code, result.get("message", ""))
@@ -758,14 +883,13 @@ class NowPlayingBridge(QObject):
     @Slot(result=dict)
     def previous(self) -> dict:
         op = "previous"
-        self._begin_command(op)
+        self._begin_command(op, ("track", None))
         if not self._queue_service:
             self._set_command_failure(op, UNSUPPORTED)
             return _err(op, UNSUPPORTED)
         try:
             result = self._queue_service.previous()
             if result.get("ok"):
-                self._set_command_success(op)
                 return result
             code = result.get("error", PLAYBACK_ERROR)
             self._set_command_failure(op, code, result.get("message", ""))
@@ -778,19 +902,20 @@ class NowPlayingBridge(QObject):
     @Slot(int, result=dict)
     def seek(self, position: int) -> dict:
         op = "seek"
-        self._begin_command(op)
         if not self._player:
+            self._begin_command(op)
             self._set_command_failure(op, NO_PLAYER_SERVICE)
             return _err(op, NO_PLAYER_SERVICE)
         if self._duration <= 0:
+            self._begin_command(op)
             self._set_command_failure(op, UNKNOWN_DURATION)
             return _err(op, UNKNOWN_DURATION)
         pos = max(0, min(int(position), self._duration))
+        self._begin_command(op, ("position", pos))
         try:
             if hasattr(self._player, 'seek'):
                 self._player.seek(pos)
                 self._position = pos
-                self._set_command_success(op)
                 self._emit_position()
                 return _ok(op, {"requested_position": pos, "state_confirmed": False})
             self._set_command_failure(op, UNSUPPORTED)
@@ -819,15 +944,14 @@ class NowPlayingBridge(QObject):
             return _ok(op, {"volume": vol, "coalesced": True})
         self._last_volume_request = vol
         self._last_volume_time = now
-        self._begin_command(op)
+        self._begin_command(op, ("volume", vol))
         try:
             if hasattr(self._player, 'set_volume'):
                 self._player.set_volume(vol)
                 self._volume = vol
                 self._muted = vol == 0
-                self._set_command_success(op)
                 self._emit_volume()
-                return _ok(op, {"volume": vol, "muted": self._muted, "state_confirmed": False})
+                return _ok(op, {"volume": vol, "muted": vol == 0, "state_confirmed": False})
             self._set_command_failure(op, UNSUPPORTED)
             return _err(op, UNSUPPORTED)
         except Exception as e:
@@ -838,22 +962,23 @@ class NowPlayingBridge(QObject):
     @Slot(result=dict)
     def toggleMute(self) -> dict:
         op = "toggleMute"
-        self._begin_command(op)
         if not self._player:
+            self._begin_command(op)
             self._set_command_failure(op, NO_PLAYER_SERVICE)
             return _err(op, NO_PLAYER_SERVICE)
         try:
             if not hasattr(self._player, 'set_volume'):
+                self._begin_command(op)
                 self._set_command_failure(op, UNSUPPORTED)
                 return _err(op, UNSUPPORTED)
             target = 0 if self._volume > 0 else (self._previous_volume or 80)
+            self._begin_command(op, ("volume", target))
             self._player.set_volume(target)
             self._previous_volume = self._volume if self._volume > 0 else self._previous_volume
             self._volume = target
             self._muted = target == 0
-            self._set_command_success(op)
             self._emit_volume()
-            return _ok(op, {"volume": target, "muted": self._muted, "state_confirmed": False})
+            return _ok(op, {"volume": target, "muted": target == 0, "state_confirmed": False})
         except Exception as e:
             logger.warning("toggleMute failed: %s", e)
             self._set_command_failure(op, PLAYBACK_ERROR)
@@ -863,7 +988,7 @@ class NowPlayingBridge(QObject):
     def stop(self) -> dict:
         """Stop playback and reset position (transport control)."""
         op = "stop"
-        self._begin_command(op)
+        self._begin_command(op, ("playback", "stopped"))
         if not self._player:
             self._set_command_failure(op, NO_PLAYER_SERVICE)
             return _err(op, NO_PLAYER_SERVICE)
@@ -871,7 +996,6 @@ class NowPlayingBridge(QObject):
             if hasattr(self._player, 'stop'):
                 self._player.stop()
                 self._position = 0
-                self._set_command_success(op)
                 self._emit_position()
                 return _ok(op, {"state_confirmed": False})
             self._set_command_failure(op, UNSUPPORTED)
@@ -1054,7 +1178,7 @@ class NowPlayingBridge(QObject):
     @Slot(int, result=dict)
     def playHistoryItem(self, index: int) -> dict:
         op = "playHistoryItem"
-        self._begin_command(op)
+        self._begin_command(op, ("track", None))
         if index < 0 or index >= len(self._history):
             self._set_command_failure(op, INVALID_INDEX)
             return _err(op, INVALID_INDEX)
@@ -1064,7 +1188,6 @@ class NowPlayingBridge(QObject):
         fp = ref.get("filepath", "")
         if fp and self._player and hasattr(self._player, 'play'):
             self._player.play(fp)
-            self._set_command_success(op)
             return _ok(op, {"history_id": internal_key})
         self._set_command_failure(op, UNSUPPORTED)
         return _err(op, UNSUPPORTED)

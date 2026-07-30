@@ -15,6 +15,7 @@ Item {
     Accessible.description: "Control de reproducción actual: play/pause, siguiente/anterior, volumen, seek y controles de calidad"
 
     property var ps: typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null
+    property var qb: typeof queueBridge !== "undefined" ? queueBridge : null
     property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false
@@ -234,7 +235,7 @@ Item {
                     NowPlayingQueuePreview {
                         Layout.fillWidth: true
                         Layout.preferredHeight: root.wideLayout ? 260 : 220
-                        ps: root.ps
+                        qb: root.qb
                         nav: root.nav
                     }
 
@@ -277,10 +278,7 @@ Item {
             }
         }
         function onCommandStateChanged() {
-            if (root.ps && root.ps.lastCommandError && root.ps.lastCommandMessage) {
-                _errorText = root.ps.lastCommandMessage
-                _showError = true
-            } else if (root.ps && root.ps.lastCommandOk) {
+            if (root.ps && root.ps.commandState === "confirmed") {
                 _showError = false
             }
         }

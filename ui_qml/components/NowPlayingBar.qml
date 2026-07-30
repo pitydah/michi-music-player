@@ -16,13 +16,13 @@ Item {
     property var ps: typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property var outputBridge: typeof outputProfilesBridge !== "undefined" ? outputProfilesBridge : null
+    property string densityMode: "full"
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false
     property bool _backendAvailable: root.ps ? root.ps.backendAvailable : false
     property string _lastShownError: ""
-    readonly property bool compactLayout: width < MichiTheme.breakpoints.compact
-    readonly property bool mediumLayout: width >= MichiTheme.breakpoints.compact
-                                         && width < MichiTheme.breakpoints.medium
-    readonly property string layoutMode: compactLayout ? "compact" : mediumLayout ? "medium" : "desktop"
+    readonly property bool compactLayout: densityMode === "compact"
+    readonly property bool mediumLayout: densityMode === "reduced"
+    readonly property string layoutMode: densityMode
     readonly property int technicalColumnWidth: compactLayout
                                                 ? 0
                                                 : mediumLayout
@@ -65,9 +65,9 @@ Item {
     }
 
     implicitHeight: {
-        if (compactLayout) return MichiTheme.nowPlaying.compact
-        if (mediumLayout) return MichiTheme.nowPlaying.medium
-        return MichiTheme.nowPlaying.desktop
+        if (densityMode === "compact") return 72
+        if (densityMode === "reduced") return 120
+        return 156
     }
     height: implicitHeight
     clip: true
@@ -80,10 +80,6 @@ Item {
                 root._lastShownError = root.ps.errorMessage
                 root.notif.showMessage(root.ps.errorMessage, "error")
             }
-        }
-        function onCommandStateChanged() {
-            if (root.ps && root.ps.lastCommandError && root.ps.lastCommandMessage && root.notif)
-                root.notif.showMessage(root.ps.lastCommandMessage, "warning")
         }
     }
 
@@ -115,7 +111,8 @@ Item {
                     id: metadataCard
                     objectName: "nowPlayingMetadataCard"
                     width: root.metadataCardWidth
-                    height: Math.min(94, parent.height - MichiTheme.spacing.md * 2)
+                    height: Math.min(root.mediumLayout ? 76 : 94,
+                                     parent.height - MichiTheme.spacing.md * 2)
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                     radius: MichiTheme.radius.lg
@@ -170,7 +167,7 @@ Item {
                     RowLayout {
                         anchors.fill: parent
                         anchors.margins: MichiTheme.spacing.sm
-                        spacing: MichiTheme.spacing.md
+                        spacing: root.mediumLayout ? MichiTheme.spacing.sm : MichiTheme.spacing.md
 
                         Item {
                             Layout.preferredWidth: metadataCard.height - MichiTheme.spacing.lg
@@ -423,10 +420,10 @@ Item {
                 Rectangle {
                     id: compactMetadataCard
                     objectName: "nowPlayingCompactMetadataCard"
-                    width: Math.min(root.metadataCardWidth, parent.width * 0.34)
-                    height: 42
+                    width: Math.min(root.metadataCardWidth, parent.width * 0.36)
+                    height: 48
                     anchors.left: parent.left
-                    anchors.top: parent.top
+                    anchors.verticalCenter: parent.verticalCenter
                     radius: MichiTheme.radius.md
                     color: MichiTheme.colors.surfaceCard
                     border.width: 1
@@ -479,24 +476,9 @@ Item {
                     }
                 }
 
-                PlaybackProgress {
-                    id: compactSeekBar
-                    anchors.left: compactMetadataCard.right
-                    anchors.leftMargin: MichiTheme.spacing.sm
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    height: Math.round(parent.height * 0.38)
-                    position: root.ps ? root.ps.position : 0
-                    duration: root.ps ? root.ps.duration : 0
-                    seekable: root._hasTrack && (root.ps ? root.ps.seekSupported : false)
-                    compact: true
-                    onSeekRequested: function(pos) { if (root.ps) root.ps.seek(pos) }
-                }
-
                 PlaybackTransport {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.top: compactSeekBar.bottom
-                    anchors.bottom: parent.bottom
+                    anchors.verticalCenter: parent.verticalCenter
                     compact: true
                     isPlaying: root.ps ? root.ps.isPlaying : false
                     shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
@@ -510,6 +492,17 @@ Item {
                     onPreviousRequested: if (root.ps) root.ps.previous()
                     onNextRequested: if (root.ps) root.ps.next()
                 }
+
+                MichiIconButton {
+                    objectName: "nowPlayingOverflowButton"
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    iconSource: "../../icons/actions/chevron-down.svg"
+                    btnSize: MichiTheme.minimumInteractiveSize
+                    tooltipText: qsTr("Más controles")
+                    accessibleName: qsTr("Abrir más controles de reproducción")
+                    onClicked: overflowMenu.open()
+                }
             }
         }
     }
@@ -519,5 +512,47 @@ Item {
         x: Math.round(parent.width - width - MichiTheme.spacing.md)
         y: Math.round(-height - MichiTheme.spacing.sm)
         outputBridge: root.outputBridge
+    }
+
+    Menu {
+        id: overflowMenu
+        objectName: "nowPlayingOverflowMenu"
+
+        Menu {
+            title: qsTr("Volumen")
+            enabled: root.ps ? root.ps.volumeSupported : false
+
+            MenuItem { text: qsTr("25 %"); onTriggered: if (root.ps) root.ps.setVolume(25) }
+            MenuItem { text: qsTr("50 %"); onTriggered: if (root.ps) root.ps.setVolume(50) }
+            MenuItem { text: qsTr("75 %"); onTriggered: if (root.ps) root.ps.setVolume(75) }
+            MenuItem { text: qsTr("100 %"); onTriggered: if (root.ps) root.ps.setVolume(100) }
+        }
+
+        MenuItem {
+            text: qsTr("Silenciar")
+            enabled: root.ps ? root.ps.muteSupported : false
+            onTriggered: if (root.ps) root.ps.toggleMute()
+        }
+        MenuItem {
+            text: qsTr("Salida")
+            enabled: root._backendAvailable
+            onTriggered: outputPopup.open()
+        }
+        MenuItem {
+            text: qsTr("Cola")
+            enabled: root.bridgeValue("queueSupported", false)
+            onTriggered: if (typeof navigationBridge !== "undefined") navigationBridge.navigate("queue")
+        }
+        MenuItem {
+            text: qsTr("EQ")
+            enabled: typeof capabilityBridge === "undefined" || !capabilityBridge
+                     || capabilityBridge.has("eq")
+            onTriggered: if (typeof navigationBridge !== "undefined") navigationBridge.navigate("equalizer")
+        }
+        MenuItem {
+            text: qsTr("Letra")
+            enabled: root._hasTrack
+            onTriggered: if (typeof navigationBridge !== "undefined") navigationBridge.navigate("lyrics")
+        }
     }
 }

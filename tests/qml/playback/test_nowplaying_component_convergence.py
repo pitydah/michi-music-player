@@ -102,7 +102,7 @@ def test_nowplaying_surfaces_use_canonical_playback_components() -> None:
     )
 
     assert bar.count("PlaybackTransport {") == 2
-    assert bar.count("PlaybackProgress {") == 2
+    assert bar.count("PlaybackProgress {") == 1
     assert "OutputProfileMenu {" in bar
     assert "PlaybackTransport {" in page
     assert "PlaybackProgress {" in page
