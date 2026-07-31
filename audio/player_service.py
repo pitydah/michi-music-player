@@ -8,6 +8,7 @@ from PySide6.QtCore import QObject, Signal, QTimer
 
 from audio.player import PlaybackState
 from audio.backends.mpd_backend import MpdBackend
+from audio.backends.backend_factory import AudioBackendFactory
 from audio.mpd.mpd_service_manager import MpdServiceManager
 from audio.mpd.mpd_config_builder import build_mpd_config
 from audio.mpd.mpd_errors import MpdConnectionError
@@ -73,9 +74,10 @@ class PlayerService(QObject):
         self._retry_timer.timeout.connect(self._do_retry)
 
         self._gst_backend = None
-        self._mpd_backend = None
+        self._mpd_backend: "MpdBackend | None" = None
         self._mpd_service = None
         self._active_backend_id = ""
+        self._backend_factory = AudioBackendFactory()
 
         # Profile application lifecycle state (Corrección 2).
         # Each field is filled at the corresponding phase of apply_profile():
@@ -100,6 +102,7 @@ class PlayerService(QObject):
         else:
             self._engine_adapter = None
             self._hybrid = HybridAudioManager()
+        self._hybrid.set_factory(self._backend_factory)
         self._hybrid.position_changed.connect(self.position_changed)
         self._hybrid.duration_changed.connect(self.duration_changed)
         self._hybrid.state_changed.connect(self._on_hybrid_state)
@@ -150,8 +153,14 @@ class PlayerService(QObject):
         password = get("audio/mpd/password") or ""
         from audio.mpd.mpd_path_mapper import MpdPathMapper
         mapper = MpdPathMapper()
-        self._mpd_backend = MpdBackend(host=host, port=int(port), password=password, path_mapper=mapper)
-        self._hybrid.register(self._mpd_backend)
+        # Delegate construction to AudioBackendFactory — the single authority —
+        # so the MPD backend is always built with the correct signature.
+        self._backend_factory.configure_mpd(
+            host=host, port=int(port), password=password, path_mapper=mapper)
+        backend, result = self._backend_factory.create_backend("mpd")
+        if result.ok and backend is not None:
+            self._mpd_backend = backend
+            self._hybrid.register(self._mpd_backend)
 
     def get_active_backend_id(self) -> str:
         return self._hybrid.active_id

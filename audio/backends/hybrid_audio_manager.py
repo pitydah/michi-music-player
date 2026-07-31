@@ -21,6 +21,7 @@ from audio.backends.types import (
 
 if TYPE_CHECKING:
     from audio.backends.base import AudioBackend
+    from audio.backends.backend_factory import AudioBackendFactory
 
 logger = logging.getLogger("michi.hybrid")
 
@@ -55,6 +56,7 @@ class HybridAudioManager(QObject):
     state_changed = Signal(str)
     duration_changed = Signal(float)
     queue_progressed = Signal(int, str, str, object)
+    backend_changed = Signal(str, str)
 
     def __init__(self, default_backend: "AudioBackend" = None, parent=None):
         super().__init__(parent)
@@ -64,11 +66,21 @@ class HybridAudioManager(QObject):
         self._switch_state = _SwitchState()
         self._connected_signals: list = []
         self._backend_state: str = BACKEND_STATE_UNINITIALIZED
+        self._factory: "AudioBackendFactory | None" = None
 
         if default_backend:
             self.register(default_backend)
             self._active_id = default_backend.backend_id
             self._connect_backend_signals(default_backend)
+
+    def set_factory(self, factory: "AudioBackendFactory") -> None:
+        """Inject the single backend construction authority.
+
+        When set, :meth:`ensure_backend_available` creates backends through the
+        factory instead of ad-hoc construction (which previously produced a
+        ``MpdBackend(service_manager=...)`` TypeError).
+        """
+        self._factory = factory
 
     def register(self, backend: "AudioBackend") -> None:
         self._backends[backend.backend_id] = backend
@@ -129,20 +141,24 @@ class HybridAudioManager(QObject):
         return "gstreamer"
 
     def ensure_backend_available(self, backend_id: str) -> dict:
-        """Ensure a backend is registered and available, initializing if needed."""
+        """Ensure a backend is registered and available, creating it if needed.
+
+        Backend creation is delegated to :class:`AudioBackendFactory` (the single
+        construction authority) when one has been injected via
+        :meth:`set_factory`. Without a factory the request fails with
+        ``NO_FACTORY`` so callers can fall back deterministically instead of
+        silently swallowing a constructor ``TypeError``.
+        """
         if backend_id in self._backends:
             return {"ok": True, "backend": backend_id, "registered": True}
-        if backend_id == "mpd":
-            try:
-                from audio.backends.mpd_backend import MpdBackend
-                from audio.mpd.mpd_service_manager import MpdServiceManager
-                mgr = MpdServiceManager()
-                backend = MpdBackend(service_manager=mgr)
-                self.register(backend)
-                return {"ok": True, "backend": backend_id, "registered": True, "initialized": True}
-            except Exception as exc:
-                return {"ok": False, "backend": backend_id, "error": str(exc)}
-        return {"ok": False, "backend": backend_id, "error": "UNKNOWN_BACKEND"}
+        if not self._factory:
+            return {"ok": False, "backend": backend_id, "error": "NO_FACTORY"}
+        backend, result = self._factory.create_backend(backend_id)
+        if not result.ok or backend is None:
+            return {"ok": False, "backend": backend_id, "error": result.error}
+        self.register(backend)
+        return {"ok": True, "backend": backend_id, "registered": True,
+                "state": result.state}
 
     def switch_to(self, backend_id: str) -> bool:
         if backend_id == self._active_id:
@@ -257,23 +273,57 @@ class HybridAudioManager(QObject):
 
     # ── Delegated methods ──
 
-    def play(self, path_or_uri: str) -> None:
-        b = self.active
-        # Radio/streams always force GStreamer regardless of the active backend
-        # (MPD is for local Hi-Fi files only). The hybrid manager resolves the
-        # backend internally so callers never bypass it for transport commands.
-        if isinstance(path_or_uri, str) and path_or_uri.startswith(
-                ("http://", "https://", "icy://")):
+    def assert_single_playback(self) -> int:
+        """Count playing backends. Invariant: must be <= 1.
+
+        Logs (never raises) when more than one backend reports playing, so the
+        guard is safe to invoke in production before ``play()`` and after
+        ``stop()``.
+        """
+        playing = [bid for bid, b in self._backends.items()
+                   if getattr(b, "is_playing", lambda: False)()]
+        if len(playing) > 1:
+            logger.error("INVARIANT VIOLATION: %d backends playing: %s",
+                         len(playing), playing)
+        return len(playing)
+
+    def play(self, path_or_uri: str) -> str:
+        """Play ``path_or_uri`` on the appropriate backend.
+
+        Stream URLs (``http://``, ``https://``, ``icy://``) always force
+        GStreamer regardless of the active backend (MPD is for local Hi-Fi files
+        only). Any other playing backend is stopped, the active backend switches
+        to GStreamer, and ``backend_changed`` is emitted with the ``streaming``
+        reason so consumers can track the effective backend.
+
+        Returns the effective backend id that handled the call.
+        """
+        self.assert_single_playback()
+
+        is_stream = isinstance(path_or_uri, str) and path_or_uri.startswith(
+            ("http://", "https://", "icy://"))
+        if is_stream:
             gst = self._backends.get("gstreamer")
-            if gst is not None:
-                if b is not None and b is not gst and b.is_playing():
-                    b.stop()
-                b = gst
+            if gst is not None and self._active_id != "gstreamer":
+                # Stop ANY playing backend (e.g. MPD) before switching.
+                old = self.active
+                if old is not None and old is not gst:
+                    import contextlib
+                    with contextlib.suppress(Exception):
+                        old.stop()
+                self._active_id = "gstreamer"
+                self._fallback_active = False
+                self._connect_backend_signals(gst)
+                logger.info("Stream playback forced GStreamer backend (reason=streaming)")
+                self.backend_changed.emit("gstreamer", "streaming")
+
+        b = self.active
         if b is None:
-            return
+            return self._active_id
         if b.is_playing():
             b.stop()
         b.play(path_or_uri)
+        return self._active_id
 
     def pause(self) -> None:
         b = self.active
@@ -294,6 +344,7 @@ class HybridAudioManager(QObject):
         b = self.active
         if b:
             b.stop()
+        self.assert_single_playback()
 
     def seek(self, seconds: float) -> None:
         b = self.active
