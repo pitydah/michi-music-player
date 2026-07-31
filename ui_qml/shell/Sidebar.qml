@@ -177,7 +177,7 @@ Item {
                 height: root.collapsed ? 48 : 44
                 radius: MichiTheme.radius.md
                 color: root.isParentActive(section.sectionRoute) && !root.collapsed
-                       ? MichiTheme.colors.accentSurface
+                       ? MichiTheme.colors.accentSelection
                        : mainAction.pressed ? MichiTheme.colors.surfacePressed
                        : mainAction.containsMouse
                          ? MichiTheme.colors.surfaceHover
@@ -345,7 +345,7 @@ Item {
                             anchors.centerIn: parent
                             radius: MichiTheme.radius.md
                             color: root.canonicalCurrentRoute === child.childRoute
-                                   ? MichiTheme.colors.accentSurface
+                                   ? MichiTheme.colors.accentSelection
                                    : childAction.pressed ? MichiTheme.colors.surfacePressed
                                    : childAction.containsMouse ? MichiTheme.colors.surfaceHover
                                    : "transparent"
