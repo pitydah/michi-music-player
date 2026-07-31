@@ -1,6 +1,16 @@
 """Audio Output Profiles — defines playback modes and their DSP constraints."""
 from dataclasses import dataclass
 
+# ── Profile application lifecycle states (Patch 2 — transactional profiles) ──
+# A profile moves through these states when applied via PlayerService.apply_profile:
+#   requested -> applied -> effective -> persisted
+# Any failure collapses to ``failed`` (with rollback when verification failed).
+PROFILE_REQUESTED = "requested"
+PROFILE_APPLIED = "applied"
+PROFILE_EFFECTIVE = "effective"
+PROFILE_PERSISTED = "persisted"
+PROFILE_FAILED = "failed"
+
 
 @dataclass
 class AudioOutputProfile:

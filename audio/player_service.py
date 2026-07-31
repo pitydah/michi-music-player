@@ -467,19 +467,118 @@ class PlayerService(QObject):
             self.track_changed.emit(title, artist)
 
     def set_audio_profile(self, profile: str) -> None:
-        from core.settings_manager import set_
-        set_("audio/profile", profile)
-        self.switch_backend_for_profile(profile)
+        """Switch the audio backend for ``profile`` transactionally.
+
+        Public convenience wrapper around :meth:`apply_profile` that discards
+        the structured result for callers that only need the side effect.
+        """
+        self.apply_profile(profile)
+
+    def apply_profile(self, profile_key: str) -> dict:
+        """Transactional profile application with verification and rollback.
+
+        Phases: prepare -> apply -> verify -> persist. On verify failure the
+        previously active profile is restored so the service never advertises a
+        profile whose backend did not become effective. Returns a structured
+        result dict; it never fabricates success when the backend switch failed.
+        """
+        from audio.output_profiles import (
+            PROFILE_FAILED, PROFILE_PERSISTED,
+        )
+        previous = self.get_active_profile_id()
+        try:
+            prepared = self._prepare_apply(profile_key, previous)
+            if not prepared.get("ok"):
+                return prepared
+            applied = self._do_apply(profile_key)
+            if not applied.get("ok"):
+                return applied
+            verified = self._verify_apply(profile_key)
+            if not verified.get("ok"):
+                # Rollback to the previously active profile
+                self._safe_rollback(previous)
+                return {"ok": False, "code": "VERIFY_FAILED", "error": "VERIFY_FAILED",
+                        "message": verified.get("message", "Verificación fallida"),
+                        "rollback": True, "active_profile": previous,
+                        "state": PROFILE_FAILED, **verified}
+            from core.settings_manager import set_
+            set_("audio/profile", profile_key)
+            self._active_profile_id = profile_key
+            return {"ok": True, "applied": profile_key, "verified": True,
+                    "persisted": True, "state": PROFILE_PERSISTED,
+                    "active_profile": profile_key,
+                    "active_backend": verified.get("active_backend", ""),
+                    "requested_backend": applied.get("requested_backend", ""),
+                    "fallback": applied.get("fallback", False)}
+        except Exception as exc:
+            logger.error("apply_profile(%s) failed: %s", profile_key, exc)
+            return {"ok": False, "code": "APPLY_ERROR", "error": str(exc),
+                    "message": str(exc), "state": PROFILE_FAILED,
+                    "active_profile": self.get_active_profile_id()}
+
+    def _prepare_apply(self, profile_key: str, previous: str) -> dict:
+        """Validate ``profile_key`` is a known profile before switching."""
+        from audio.output_profiles import PROFILES, PROFILE_FAILED, PROFILE_REQUESTED
+        if not profile_key or profile_key not in PROFILES:
+            return {"ok": False, "code": "UNKNOWN_PROFILE", "error": "UNKNOWN_PROFILE",
+                    "message": "Perfil desconocido", "requested_profile": profile_key,
+                    "active_profile": previous, "state": PROFILE_FAILED}
+        return {"ok": True, "state": PROFILE_REQUESTED,
+                "requested_profile": profile_key, "active_profile": previous}
+
+    def _do_apply(self, profile_key: str) -> dict:
+        """Switch the backend for ``profile_key`` and report the real outcome."""
+        from audio.output_profiles import (
+            get_profile, is_mpd_profile, PROFILE_APPLIED, PROFILE_FAILED,
+        )
+        prof = get_profile(profile_key)
+        requested_backend = prof.preferred_backend
+        switched = self.switch_backend_for_profile(profile_key)
+        active_backend = self.get_active_backend_id()
+        # An MPD profile whose backend did not become MPD has fallen back.
+        fallback = bool(is_mpd_profile(profile_key) and active_backend != "mpd")
+        if not switched:
+            return {"ok": False, "code": "BACKEND_FAILED", "error": "BACKEND_FAILED",
+                    "message": "No se pudo cambiar el backend",
+                    "requested_backend": requested_backend,
+                    "active_backend": active_backend, "fallback": fallback,
+                    "state": PROFILE_FAILED}
+        return {"ok": True, "state": PROFILE_APPLIED,
+                "requested_backend": requested_backend,
+                "active_backend": active_backend, "fallback": fallback}
+
+    def _verify_apply(self, profile_key: str) -> dict:
+        """Verify the active backend is ready and matches the profile's backend."""
+        from audio.output_profiles import is_mpd_profile, PROFILE_EFFECTIVE
+        active_backend = self.get_active_backend_id()
+        expected = "mpd" if is_mpd_profile(profile_key) else "gstreamer"
+        backend = self._hybrid.active
+        ready = bool(backend is not None and backend.is_ready())
+        if not ready:
+            return {"ok": False, "code": "VERIFY_FAILED", "error": "VERIFY_FAILED",
+                    "message": "Backend no listo tras aplicar perfil",
+                    "active_backend": active_backend, "expected_backend": expected}
+        if active_backend != expected:
+            return {"ok": False, "code": "VERIFY_FAILED", "error": "VERIFY_FAILED",
+                    "message": f"Backend activo '{active_backend}' no coincide con '{expected}'",
+                    "active_backend": active_backend, "expected_backend": expected}
+        return {"ok": True, "state": PROFILE_EFFECTIVE,
+                "active_backend": active_backend, "expected_backend": expected}
+
+    def _safe_rollback(self, previous: str) -> None:
+        """Best-effort rollback to the ``previous`` profile's backend."""
+        try:
+            self.switch_backend_for_profile(previous)
+        except Exception as exc:
+            logger.warning("Rollback to profile '%s' failed: %s", previous, exc)
 
     def set_profile(self, profile_id: str) -> dict:
-        from audio.output_profiles import PROFILES
-        if profile_id not in PROFILES:
-            return {"ok": False, "error": "UNKNOWN_PROFILE"}
-        self._active_profile_id = profile_id
-        self.set_audio_profile(profile_id)
-        from core.settings_manager import set_
-        set_("audio/profile", profile_id)
-        return {"ok": True}
+        """Apply a profile transactionally (delegates to :meth:`apply_profile`).
+
+        Returns the real result from the transactional apply — it never
+        fabricates success when the backend switch failed.
+        """
+        return self.apply_profile(profile_id)
 
     def get_active_profile_id(self) -> str:
         if hasattr(self, '_active_profile_id') and self._active_profile_id:

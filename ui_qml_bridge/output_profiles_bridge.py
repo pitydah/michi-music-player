@@ -73,22 +73,44 @@ class OutputProfilesBridge(QObject):
                         "dsp": getattr(v, 'allows_eq', False),
                         "fallback": getattr(v, 'fallback', False),
                     })
-            if hasattr(self._player, 'get_active_profile_id'):
-                self._active_id = self._player.get_active_profile_id() or ""
-            self.dataChanged.emit()
-            return {"ok": True, "count": len(self._profiles)}
         except Exception as e:
             return {"ok": False, "error": str(e)}
+        # The active-profile-id lookup is best-effort: a failure to read it must
+        # not fail the whole refresh (the profile list is still valid).
+        try:
+            if hasattr(self._player, 'get_active_profile_id'):
+                self._active_id = self._player.get_active_profile_id() or ""
+        except Exception:
+            logger.debug("get_active_profile_id failed during refresh", exc_info=True)
+        self.dataChanged.emit()
+        return {"ok": True, "count": len(self._profiles)}
 
     def _resolve_backend(self, profile_id: str) -> str:
+        """Resolve the real backend for ``profile_id`` from the profiles registry.
+
+        Handles both ``AudioOutputProfile`` dataclasses (production) and plain
+        dicts (tests). Never fabricates a backend: falls back to ``gstreamer``
+        only when the profile is unknown or cannot be read.
+        """
         try:
             from audio.output_profiles import PROFILES
             p = PROFILES.get(profile_id)
-            if p:
-                return p.get("preferred_backend", "gstreamer")
+            if p is None:
+                return "gstreamer"
+            if isinstance(p, dict):
+                return p.get("preferred_backend", "gstreamer") or "gstreamer"
+            return getattr(p, "preferred_backend", "gstreamer") or "gstreamer"
+        except Exception:
+            return "gstreamer"
+
+    def _safe_active_profile(self) -> str:
+        """Best-effort read of the active profile id from the service."""
+        try:
+            if self._player and hasattr(self._player, 'get_active_profile_id'):
+                return self._player.get_active_profile_id() or ""
         except Exception:
             pass
-        return "gstreamer"
+        return ""
 
     @Slot(str, result=dict)
     def setActiveProfile(self, profile_id: str):
@@ -96,59 +118,65 @@ class OutputProfilesBridge(QObject):
             return {"ok": False, "error": "UNSUPPORTED", "error_code": "UNSUPPORTED", "message": "Reproductor no disponible"}
         if not hasattr(self._player, 'set_profile'):
             return {"ok": False, "error": "UNSUPPORTED", "error_code": "UNSUPPORTED", "message": "Perfiles no soportados"}
+        requested_backend = self._resolve_backend(profile_id)
         try:
-            backend = self._resolve_backend(profile_id)
-            try:
-                from audio.output_profiles import PROFILES
-                if profile_id not in PROFILES:
-                    return {"ok": False, "error": "UNKNOWN_PROFILE", "error_code": "UNKNOWN_PROFILE",
-                            "message": "Perfil desconocido", "requested_profile": profile_id,
-                            "active_profile": self._active_id, "fallback": False, "requires_restart": False}
-            except Exception:
-                pass
+            from audio.output_profiles import PROFILES
+            if profile_id not in PROFILES:
+                return {"ok": False, "error": "UNKNOWN_PROFILE", "error_code": "UNKNOWN_PROFILE",
+                        "message": "Perfil desconocido", "requested_profile": profile_id,
+                        "active_profile": self._active_id, "fallback": False, "requires_restart": False}
+        except Exception:
+            # If the registry cannot be read, defer validation to the service.
+            pass
+        try:
             self._applied_state = "applying"
             self.appliedStateChanged.emit(self._applied_state)
             player_result = self._player.set_profile(profile_id)
-            if isinstance(player_result, dict):
-                ok = player_result.get("ok", False)
-                fallback = player_result.get("fallback", False)
-                err_msg = player_result.get("message", player_result.get("error", ""))
-                if not ok:
-                    self._applied_state = "rejected"
-                    self.appliedStateChanged.emit(self._applied_state)
-                    self.dataChanged.emit()
-                    return {
-                        "ok": False,
-                        "error": err_msg or "Error al cambiar perfil",
-                        "error_code": player_result.get("error_code", "PROFILE_FAILED"),
-                        "message": err_msg or "Error al cambiar perfil",
-                        "requested_profile": profile_id,
-                        "active_profile": self._active_id,
-                        "requested_backend": self._resolve_backend(profile_id),
-                        "active_backend": self._resolve_backend(self._active_id if self._active_id else "standard"),
-                        "fallback": fallback,
-                        "requires_restart": player_result.get("requires_restart", False),
-                    }
-            self._active_id = profile_id
-            self._applied_state = "applied"
-            self.appliedStateChanged.emit(self._applied_state)
-            self.dataChanged.emit()
-            return {
-                "ok": True,
-                "requested_profile": profile_id,
-                "active_profile": profile_id,
-                "requested_backend": backend,
-                "active_backend": backend,
-                "fallback": False,
-                "requires_restart": False,
-            }
         except Exception as e:
             self._applied_state = "rejected"
             self.appliedStateChanged.emit(self._applied_state)
             return {"ok": False, "error_code": "PROFILE_FAILED", "message": str(e),
-                    "requested_profile": profile_id, "active_profile": self._active_id,
-                    "requested_backend": backend, "active_backend": self._resolve_backend(self._active_id),
+                    "error": str(e), "requested_profile": profile_id,
+                    "active_profile": self._active_id, "requested_backend": requested_backend,
+                    "active_backend": self._resolve_backend(self._active_id or "standard"),
                     "fallback": False, "requires_restart": False}
+        # Require an explicit dict result with ok=True — never fabricate success.
+        if not isinstance(player_result, dict) or not player_result.get("ok"):
+            self._applied_state = "rejected"
+            self.appliedStateChanged.emit(self._applied_state)
+            err = player_result if isinstance(player_result, dict) else {}
+            err_msg = err.get("message", err.get("error", "Error al cambiar perfil"))
+            active_profile = err.get("active_profile", self._active_id or self._safe_active_profile())
+            return {
+                "ok": False,
+                "error": err_msg,
+                "error_code": err.get("error_code", err.get("code", "PROFILE_FAILED")),
+                "message": err_msg,
+                "requested_profile": profile_id,
+                "active_profile": active_profile,
+                "requested_backend": requested_backend,
+                "active_backend": err.get("active_backend",
+                                          self._resolve_backend(active_profile or "standard")),
+                "fallback": err.get("fallback", False),
+                "requires_restart": err.get("requires_restart", False),
+                "rollback": err.get("rollback", False),
+            }
+        # Success — propagate the real fields returned by the service.
+        self._active_id = player_result.get("active_profile", profile_id)
+        self._applied_state = "applied"
+        self.appliedStateChanged.emit(self._applied_state)
+        self.dataChanged.emit()
+        return {
+            "ok": True,
+            "requested_profile": profile_id,
+            "active_profile": self._active_id,
+            "requested_backend": requested_backend,
+            "active_backend": player_result.get("active_backend", requested_backend),
+            "fallback": player_result.get("fallback", False),
+            "requires_restart": player_result.get("requires_restart", False),
+            "verified": player_result.get("verified", False),
+            "state": player_result.get("state", "applied"),
+        }
 
     @Slot(result=dict)
     def duplicateProfile(self, profile_id: str):
