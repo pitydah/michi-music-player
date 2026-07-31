@@ -26,6 +26,13 @@ def build(container: ServiceContainer) -> None:
     container.register("database", db)
     container.register("connection_factory", db)
 
+    # SQLite concurrency — one writer, N readers (Patch 5). Registered under
+    # dedicated keys so existing consumers of ``connection_factory``/``database``
+    # (which rely on LibraryDB's ``.conn``/``.db_path``) are unaffected.
+    from library.connection_factory import ReadConnectionFactory, WriterCoordinator
+    container.register("read_connection_factory", ReadConnectionFactory(_dp()))
+    container.register("writer_coordinator", WriterCoordinator(_dp()))
+
     from core.library.repositories.track_repository import TrackRepository
     from core.library.repositories.album_repository import AlbumRepository
     from core.library.repositories.artist_repository import ArtistRepository

@@ -5,7 +5,7 @@ import logging
 import time
 from typing import Any
 
-from PySide6.QtCore import QObject, Property, QTimer, Signal, Slot
+from PySide6.QtCore import QObject, Property, Signal, Slot
 from PySide6.QtQml import QJSValue
 
 from .route_registry import ROUTES, get_breadcrumb, resolve_route
@@ -23,6 +23,12 @@ class NavigationBridge(QObject):
     breadcrumbChanged = Signal()
     navigationBlocked = Signal(str, str)
     pendingNavigationChanged = Signal()
+    # Terminal navigation results — every navigate() call ends in exactly one
+    # of these (Patch 6). They mirror the signals PageStack.qml already
+    # declares, giving QML a single authoritative load outcome per request.
+    routeLoaded = Signal(str)
+    routeUnavailableRendered = Signal(str, str)
+    routeErrorRendered = Signal(str, str)
 
     def __init__(self, navigation_service: Any = None, parent=None):
         super().__init__(parent)
@@ -34,15 +40,47 @@ class NavigationBridge(QObject):
         self._forward_stack: list[tuple[str, dict]] = []
         self._max_history = 50
         self._capabilities: set[str] | None = None
-        self._poll_timer: QTimer | None = None
         self._leave_guards: dict[str, QObject] = {}
         self._pending_navigation: dict | None = None
         self._resolving_guard = False
         if navigation_service is not None:
-            self._poll_timer = QTimer(self)
-            self._poll_timer.setInterval(100)
-            self._poll_timer.timeout.connect(self._poll_navigation_service)
-            self._poll_timer.start()
+            self._connect_navigation_service(navigation_service)
+
+    def _connect_navigation_service(self, navigation_service: Any) -> None:
+        """Receive navigation requests directly instead of polling.
+
+        Replaces the former 100ms QTimer poll: the service pushes requests to
+        a subscriber callback. Any request queued before this bridge existed
+        (e.g. a deep link produced during boot) is drained once on connection.
+        """
+        subscribe = getattr(navigation_service, "subscribe", None)
+        if callable(subscribe):
+            try:
+                subscribe(self._on_navigation_request)
+            except Exception:
+                logger.debug("Failed to subscribe to navigation service", exc_info=True)
+        pop = getattr(navigation_service, "pop_last_request", None)
+        if callable(pop):
+            try:
+                pending = pop()
+            except Exception:
+                pending = None
+            if isinstance(pending, dict):
+                self._on_navigation_request(pending)
+
+    def _on_navigation_request(self, request: dict | None) -> None:
+        """Handle a navigation request pushed by NavigationService."""
+        if not isinstance(request, dict) or not request:
+            return
+        route = request.get("route", "")
+        params = request.get("params", {}) or {}
+        action = request.get("action", "")
+        if action == "back":
+            self.back()
+        elif action == "forward":
+            self.forward()
+        elif route:
+            self.navigateWithParams(route, params)
 
     def set_capabilities(self, caps: set[str]):
         self._capabilities = caps
@@ -59,22 +97,6 @@ class NavigationBridge(QObject):
             state = "unavailable"
             reason = f"Capability '{cap}' not available"
         return {"route": resolved, "capability": cap, "state": state, "reason": reason}
-
-    def _poll_navigation_service(self):
-        if self._nav_service is None:
-            return
-        req = self._nav_service.pop_last_request()
-        if req is None:
-            return
-        route = req.get("route", "")
-        params = req.get("params", {})
-        action = req.get("action", "")
-        if action == "back":
-            self.back()
-        elif action == "forward":
-            self.forward()
-        elif route:
-            self.navigateWithParams(route, params)
 
     def _resolve(self, route: str) -> str:
         if not route:
@@ -220,12 +242,16 @@ class NavigationBridge(QObject):
     def _navigate_internal(self, route: str, params: dict | None = None):
         params = dict(params or {})
         resolved = self._resolve(route)
+        degraded_reason = ""
         if resolved == "placeholder":
-            self.invalidRouteError.emit(route, f"Route '{route}' not found")
-        param_error = self._validate_params(resolved, params)
-        if param_error:
-            self.invalidRouteError.emit(route, param_error)
-            return
+            degraded_reason = f"Route '{route}' not found"
+            self.invalidRouteError.emit(route, degraded_reason)
+        else:
+            param_error = self._validate_params(resolved, params)
+            if param_error:
+                self.invalidRouteError.emit(route, param_error)
+                self.routeErrorRendered.emit(route, param_error)
+                return
         self._back_stack.append((self._current_route, dict(self._current_params)))
         if len(self._back_stack) > self._max_history:
             self._back_stack.pop(0)
@@ -237,17 +263,23 @@ class NavigationBridge(QObject):
         self.backStackChanged.emit()
         self.forwardStackChanged.emit()
         self.breadcrumbChanged.emit()
+        if degraded_reason:
+            self.routeUnavailableRendered.emit(route, degraded_reason)
+        else:
+            self.routeLoaded.emit(resolved)
 
     def _replace_internal(self, route: str, params: dict | None = None):
         resolved = self._resolve(route)
         if resolved == self._current_route and dict(params or {}) == self._current_params:
             self.routeRefreshRequested.emit(resolved)
+            self.routeLoaded.emit(resolved)
             return
         self._current_route = resolved
         self._current_params = dict(params or {})
         self.routeChanged.emit(resolved)
         self.routeParamsChanged.emit()
         self.breadcrumbChanged.emit()
+        self.routeLoaded.emit(resolved)
 
     def _back_internal(self):
         if not self._back_stack:
@@ -261,6 +293,7 @@ class NavigationBridge(QObject):
         self.backStackChanged.emit()
         self.forwardStackChanged.emit()
         self.breadcrumbChanged.emit()
+        self.routeLoaded.emit(prev_route)
 
     def _forward_internal(self):
         if not self._forward_stack:
@@ -274,6 +307,7 @@ class NavigationBridge(QObject):
         self.backStackChanged.emit()
         self.forwardStackChanged.emit()
         self.breadcrumbChanged.emit()
+        self.routeLoaded.emit(next_route)
 
     @Slot(str, QObject)
     def registerLeaveGuard(self, route_prefix: str, guard: QObject):
@@ -328,6 +362,7 @@ class NavigationBridge(QObject):
     def navigate(self, route: str):
         if route == self._current_route:
             self.routeRefreshRequested.emit(route)
+            self.routeLoaded.emit(route)
             return
         resolved = self._resolve(route)
         if self._request_leave("navigate", resolved):
@@ -342,11 +377,14 @@ class NavigationBridge(QObject):
             param_error = self._validate_params(resolved, params)
             if param_error:
                 self.invalidRouteError.emit(route, param_error)
+                self.routeErrorRendered.emit(route, param_error)
                 return
             if params == self._current_params:
                 self.routeRefreshRequested.emit(resolved)
+                self.routeLoaded.emit(resolved)
                 return
             self.updateCurrentParams(params)
+            self.routeLoaded.emit(resolved)
             return
         if self._request_leave("navigate", resolved, params):
             return

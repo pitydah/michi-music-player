@@ -232,3 +232,66 @@ class TestNavigationSignals:
         assert nav.canGoForward is True
         nav.navigate("mix")
         assert nav.canGoForward is False
+
+
+class TestTerminalResults:
+    """Patch 6 — every navigate() call ends in a terminal result."""
+
+    def test_no_poll_timer(self, nav):
+        # Polling was replaced by push-based subscription.
+        assert getattr(nav, "_poll_timer", None) is None
+
+    def test_route_loaded_on_success(self, nav):
+        loaded = []
+        nav.routeLoaded.connect(lambda r: loaded.append(r))
+        nav.navigate("library")
+        assert loaded == ["library"]
+
+    def test_route_loaded_on_same_route_refresh(self, nav):
+        loaded = []
+        nav.routeLoaded.connect(lambda r: loaded.append(r))
+        nav.navigate("home")
+        assert loaded == ["home"]
+
+    def test_route_unavailable_rendered_on_invalid_route(self, nav):
+        unavailable = []
+        nav.routeUnavailableRendered.connect(lambda r, m: unavailable.append((r, m)))
+        nav.navigate("non_existent_route")
+        assert len(unavailable) == 1
+        assert unavailable[0][0] == "non_existent_route"
+
+    def test_route_error_rendered_on_missing_required_param(self, nav):
+        errors = []
+        nav.routeErrorRendered.connect(lambda r, m: errors.append((r, m)))
+        nav.navigateWithParams("library.album_detail", {})
+        assert len(errors) == 1
+        assert "Missing required" in errors[0][1]
+
+    def test_back_emits_route_loaded(self, nav):
+        loaded = []
+        nav.routeLoaded.connect(lambda r: loaded.append(r))
+        nav.navigate("library")
+        nav.navigate("radio")
+        loaded.clear()
+        nav.back()
+        assert loaded == ["library"]
+
+
+class TestNavigationServicePush:
+    """Patch 6 — NavigationService pushes requests; the bridge no longer polls."""
+
+    def test_service_request_navigates_bridge_without_polling(self):
+        from core.navigation_service import NavigationService
+        svc = NavigationService()
+        nav = NavigationBridge(navigation_service=svc)
+        assert getattr(nav, "_poll_timer", None) is None
+        svc.navigate("library")
+        assert nav.currentRoute == "library"
+
+    def test_subscribe_dedupes_listener(self):
+        from core.navigation_service import NavigationService
+        svc = NavigationService()
+        nav = NavigationBridge(navigation_service=svc)
+        # Re-subscribing the same callable must not duplicate it.
+        svc.subscribe(nav._on_navigation_request)
+        assert len(svc._listeners) == 1
