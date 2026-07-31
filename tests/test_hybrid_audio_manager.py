@@ -28,11 +28,14 @@ class TestChooseBackend:
         mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
         assert mgr.choose_backend_for_profile("standard") == "gstreamer"
 
-    def test_hifi_mpd_profile_without_mpd_falls_back(self):
+    def test_hifi_mpd_profile_targets_mpd_without_preregistering(self):
+        # choose_backend_for_profile no longer pre-falls-back; it returns the
+        # desired backend and lets switch_for_profile ensure availability /
+        # fall back via ensure_backend_available.
         mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
         result = mgr.choose_backend_for_profile("michi_hifi_mpd")
-        assert result == "gstreamer"
-        assert mgr.is_fallback is True
+        assert result == "mpd"
+        assert mgr.is_fallback is False
 
     def test_hifi_mpd_profile_with_mpd_returns_mpd(self):
         mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))

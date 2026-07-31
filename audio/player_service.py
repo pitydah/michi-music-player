@@ -124,7 +124,7 @@ class PlayerService(QObject):
         artist = self._retry_artist
         self._retry_url = None
         if url:
-            self._engine.play_url(url)
+            self._hybrid.play(url)
         if title:
             self.track_changed.emit(title, artist)
             self._emitTrackContext(filepath=url, title=title, artist=artist)
@@ -311,17 +311,17 @@ class PlayerService(QObject):
         self._hybrid.seek(seconds)
 
     def mute(self, muted: bool = True) -> dict:
-        if not self._engine:
-            return {"ok": False, "error": "NO_ENGINE"}
+        if not self._hybrid.active:
+            return {"ok": False, "error": "NO_ACTIVE_BACKEND"}
         try:
             if muted:
                 snap = self._hybrid.get_snapshot()
                 self._volume_before_mute = snap.volume if snap else 50
-                self._engine.set_volume(0.0)
+                self._hybrid.set_volume(0.0)
             else:
                 restore = self._volume_before_mute if self._volume_before_mute is not None else 50
                 self._volume_before_mute = None
-                self._engine.set_volume(restore)
+                self._hybrid.set_volume(restore)
             return {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
@@ -342,10 +342,7 @@ class PlayerService(QObject):
     def enqueue_next(self, paths: list[str]) -> None:
         if not paths:
             return
-        if self._engine and self._hybrid.active_id == "gstreamer":
-            self._engine.enqueue_next(paths)
-        else:
-            self._hybrid.enqueue_next(paths)
+        self._hybrid.enqueue_next(paths)
 
     def enqueue(self, paths: list[str], play_now: bool = True) -> None:
         self._retry_url = None
@@ -353,10 +350,7 @@ class PlayerService(QObject):
         if not clean:
             self.error_occurred.emit("No hay archivos válidos para reproducir")
             return
-        if self._engine and self._hybrid.active_id == "gstreamer":
-            self._engine.enqueue(clean, play_now)
-        else:
-            self._hybrid.enqueue(clean, play_now)
+        self._hybrid.enqueue(clean, play_now)
 
     def play_queue(self, filepaths: list[str], start_index: int = 0,
                    revision: int | None = None) -> None:
@@ -427,14 +421,9 @@ class PlayerService(QObject):
         return {"ok": True, "message": "Rollback not persisted"}
 
     def reorder_queue(self, filepaths: list[str]) -> None:
-        if self._engine and self._hybrid.active_id == "gstreamer":
-            self._engine.reorder_queue(filepaths)
-        else:
-            self._hybrid.active.set_queue(filepaths)
+        self._hybrid.set_queue(filepaths, 0)
 
     def toggle_shuffle(self) -> bool:
-        if self._engine:
-            return self._engine.toggle_shuffle()
         current = bool(getattr(self._hybrid.active, "_shuffle", False))
         return self.set_shuffle(not current)
 
@@ -442,8 +431,6 @@ class PlayerService(QObject):
         return self._hybrid.set_shuffle(enabled)
 
     def toggle_repeat(self) -> str:
-        if self._engine:
-            return self._engine.toggle_repeat()
         current = getattr(self._hybrid.active, "_repeat", "none")
         modes = {"none": "all", "all": "one", "one": "none"}
         return self.set_repeat(modes.get(current, "none"))
@@ -459,10 +446,7 @@ class PlayerService(QObject):
         self._current_title = title or ""
         self._current_artist = artist or ""
         self._current_album = album or ""
-        if self._engine and (self._hybrid.active_id == "gstreamer" or url.startswith(("http://", "https://", "icy://"))):
-            self._engine.play_url(url)
-        else:
-            self._hybrid.play(url)
+        self._hybrid.play(url)
         if title:
             self.track_changed.emit(title, artist)
 

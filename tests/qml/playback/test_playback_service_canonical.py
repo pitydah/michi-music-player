@@ -105,5 +105,7 @@ def test_player_service_enqueue_no_empty(mock_engine):
 def test_player_service_play_url_sets_retry(mock_engine):
     svc = PlayerService(mock_engine)
     svc.play_url("http://stream.example.com/radio", "Radio", "Station")
-    mock_engine.play_url.assert_called_once_with("http://stream.example.com/radio")
+    # play_url routes through HybridAudioManager.play, which forces GStreamer
+    # for streams → EngineBackendAdapter.play → GStreamerEngine.play.
+    mock_engine.play.assert_called_once_with("http://stream.example.com/radio")
     assert svc._retry_url == "http://stream.example.com/radio"

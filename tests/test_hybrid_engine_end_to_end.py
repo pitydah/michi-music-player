@@ -43,10 +43,13 @@ class TestHybridEngineEndToEnd:
         service.play("/tmp/test.flac")
         service._engine.play.assert_called_once()
 
-    def test_mpd_absent_falls_back_to_gstreamer(self, service):
+    def test_mpd_absent_targets_mpd_without_preregistering(self, service):
         service._hybrid._active_id = "gstreamer"
-        fallback = service._hybrid.choose_backend_for_profile("michi_hifi_mpd")
-        assert fallback == "gstreamer"
+        # choose_backend_for_profile no longer pre-falls-back; it returns the
+        # desired backend. switch_for_profile (via ensure_backend_available)
+        # is responsible for availability and GStreamer fallback.
+        target = service._hybrid.choose_backend_for_profile("michi_hifi_mpd")
+        assert target == "mpd"
         service.play("/tmp/test.flac")
         service._engine.play.assert_called_once()
 
@@ -79,7 +82,9 @@ class TestHybridEngineEndToEnd:
     def test_play_url_stream_goes_to_engine(self, service):
         service._hybrid._active_id = "mpd"
         service.play_url("http://stream.example.com/radio", "Station")
-        service._engine.play_url.assert_called_once_with("http://stream.example.com/radio")
+        # Streams force GStreamer via HybridAudioManager.play even when MPD is
+        # the active backend id; routing reaches GStreamerEngine.play.
+        service._engine.play.assert_called_once_with("http://stream.example.com/radio")
 
     def test_duration_from_mpd_when_active(self, service):
         from unittest.mock import MagicMock

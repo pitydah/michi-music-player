@@ -118,14 +118,31 @@ class HybridAudioManager(QObject):
         self._connected_signals = []
 
     def choose_backend_for_profile(self, profile_key: str) -> str:
+        """Return the desired backend id for ``profile_key``.
+
+        Does NOT decide fallback before attempting initialization — that is
+        handled by :meth:`switch_for_profile` via :meth:`ensure_backend_available`.
+        MPD profiles target "mpd"; everything else targets "gstreamer".
+        """
         if profile_key in MPD_PROFILES:
-            if "mpd" in self._backends:
-                return "mpd"
-            logger.warning("MPD backend requested (%s) but not registered — falling back to GStreamer", profile_key)
-            self._fallback_active = True
-            return "gstreamer"
-        self._fallback_active = False
+            return "mpd"
         return "gstreamer"
+
+    def ensure_backend_available(self, backend_id: str) -> dict:
+        """Ensure a backend is registered and available, initializing if needed."""
+        if backend_id in self._backends:
+            return {"ok": True, "backend": backend_id, "registered": True}
+        if backend_id == "mpd":
+            try:
+                from audio.backends.mpd_backend import MpdBackend
+                from audio.mpd.mpd_service_manager import MpdServiceManager
+                mgr = MpdServiceManager()
+                backend = MpdBackend(service_manager=mgr)
+                self.register(backend)
+                return {"ok": True, "backend": backend_id, "registered": True, "initialized": True}
+            except Exception as exc:
+                return {"ok": False, "backend": backend_id, "error": str(exc)}
+        return {"ok": False, "backend": backend_id, "error": "UNKNOWN_BACKEND"}
 
     def switch_to(self, backend_id: str) -> bool:
         if backend_id == self._active_id:
@@ -158,8 +175,9 @@ class HybridAudioManager(QObject):
     def switch_for_profile(self, profile_key: str) -> bool:
         """Switch to the backend required by ``profile_key`` transactionally.
 
-        On failure the previously active backend is restored so the manager
-        never ends up pointing at a half-initialized backend.
+        Ensures the target backend is available before switching. On failure
+        the previously active backend is restored so the manager never ends up
+        pointing at a half-initialized backend.
         """
         old_id = self._active_id
         old_fallback = self._fallback_active
@@ -169,8 +187,23 @@ class HybridAudioManager(QObject):
             if target == self._active_id and not self._fallback_active:
                 self._backend_state = BACKEND_STATE_READY
                 return True
-            if target not in self._backends:
-                logger.error("Target backend %s is not registered", target)
+
+            availability = self.ensure_backend_available(target)
+            if not availability.get("ok"):
+                # Target backend could not be made available. Fall back to
+                # GStreamer when it is registered and differs from the target;
+                # otherwise mark the switch as failed.
+                if target != "gstreamer" and "gstreamer" in self._backends:
+                    logger.warning(
+                        "Backend %s unavailable (%s) — falling back to GStreamer",
+                        target, availability.get("error", ""))
+                    self._fallback_active = True
+                    if not self.switch_to("gstreamer"):
+                        raise RuntimeError("fallback switch_to(gstreamer) failed")
+                    self._backend_state = BACKEND_STATE_DEGRADED
+                    return True
+                logger.error("Target backend %s unavailable: %s",
+                             target, availability.get("error", ""))
                 self._backend_state = BACKEND_STATE_FAILED
                 return False
 
@@ -226,6 +259,16 @@ class HybridAudioManager(QObject):
 
     def play(self, path_or_uri: str) -> None:
         b = self.active
+        # Radio/streams always force GStreamer regardless of the active backend
+        # (MPD is for local Hi-Fi files only). The hybrid manager resolves the
+        # backend internally so callers never bypass it for transport commands.
+        if isinstance(path_or_uri, str) and path_or_uri.startswith(
+                ("http://", "https://", "icy://")):
+            gst = self._backends.get("gstreamer")
+            if gst is not None:
+                if b is not None and b is not gst and b.is_playing():
+                    b.stop()
+                b = gst
         if b is None:
             return
         if b.is_playing():

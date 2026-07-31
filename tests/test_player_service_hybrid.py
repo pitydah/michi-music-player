@@ -120,7 +120,9 @@ class TestPlayerServiceHybrid:
         """When mpd is active, play_url with HTTP must still go to engine."""
         service._hybrid._active_id = "mpd"
         service.play_url("http://stream.example.com/radio", "Station", "Artist")
-        service._engine.play_url.assert_called_once_with("http://stream.example.com/radio")
+        # play_url routes through HybridAudioManager.play, which forces
+        # GStreamer for streams → EngineBackendAdapter.play → engine.play.
+        service._engine.play.assert_called_once_with("http://stream.example.com/radio")
 
     def test_play_url_non_stream_goes_to_hybrid(self, service):
         """When mpd is active, play_url with local path goes to hybrid."""

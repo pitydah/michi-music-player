@@ -73,17 +73,21 @@ def test_playback_service_previous(player, mock_engine):
 
 
 def test_playback_service_shuffle(player, mock_engine):
-    mock_engine.toggle_shuffle.return_value = True
+    # toggle_shuffle now routes through HybridAudioManager.set_shuffle
+    # (→ EngineBackendAdapter.set_shuffle → GStreamerEngine.set_shuffle).
+    mock_engine.set_shuffle.return_value = True
     result = player.toggle_shuffle()
     assert result is True
-    mock_engine.toggle_shuffle.assert_called_once()
+    mock_engine.set_shuffle.assert_called_once()
 
 
 def test_playback_service_repeat(player, mock_engine):
-    mock_engine.toggle_repeat.return_value = "all"
+    # toggle_repeat now routes through HybridAudioManager.set_repeat
+    # (→ EngineBackendAdapter.set_repeat → GStreamerEngine.set_repeat).
+    mock_engine.set_repeat.return_value = "all"
     result = player.toggle_repeat()
     assert result == "all"
-    mock_engine.toggle_repeat.assert_called_once()
+    mock_engine.set_repeat.assert_called_once_with("all")
 
 
 def test_nowplaying_bridge_toggle_play_correct(player):
