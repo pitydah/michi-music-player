@@ -16,6 +16,7 @@ Item {
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
     property bool _loading: false
     property int pageState: root.mx ? stateReady : stateError
+    property var _dismissed: []
 
     readonly property int stateLoading: 0
     readonly property int stateReady: 1
@@ -30,6 +31,16 @@ Item {
         mixGuard.checkCapability(root.mx)
     }
 
+    function visibleCategories() {
+        var all = root.mx ? root.mx.categories : []
+        var out = []
+        for (var i = 0; i < all.length; i++) {
+            if (root._dismissed.indexOf(all[i].id) === -1)
+                out.push(all[i])
+        }
+        return out
+    }
+
     function handleMixSelection(mixId) {
         if (root.mx && typeof root.mx.loadMix !== "undefined") {
             var result = root.mx.loadMix(mixId)
@@ -39,6 +50,20 @@ Item {
                     navigationBridge.navigate("mix_detail", {"mix_id": mixId})
             }
         }
+    }
+
+    function regenerateMix(mixId) {
+        // Re-running the loader always queries fresh library data.
+        root.handleMixSelection(mixId)
+    }
+
+    function discardMix(mixId) {
+        if (mixId === "custom" && root.mx && typeof root.mx.deleteRules !== "undefined")
+            root.mx.deleteRules(mixId)
+        // Reassigning _dismissed re-triggers the mixRepeater model binding.
+        var d = root._dismissed.slice()
+        d.push(mixId)
+        root._dismissed = d
     }
 
     Loader {
@@ -124,16 +149,80 @@ Item {
                     columnSpacing: MichiTheme.spacing.md; rowSpacing: MichiTheme.spacing.md
 
                     Repeater {
-                        model: root.mx ? root.mx.categories : []
+                        id: mixRepeater
+                        model: root.visibleCategories()
 
                         GlassCard {
-                            width: (parent.width - MichiTheme.spacing.md) / 2; height: 100
+                            required property var modelData
+                            width: (parent.width - MichiTheme.spacing.md) / 2; height: 176
                             title: modelData.title || ""; subtitle: modelData.desc || ""
                             variant: "base"
                             activeFocusOnTab: true
+                            Accessible.description: (modelData.reason || "") + ". " + (modelData.updated || "")
                             Keys.onReturnPressed: onClicked()
                             Keys.onSpacePressed: onClicked()
                             onClicked: root.handleMixSelection(modelData.id || "")
+
+                            Column {
+                                width: parent.width
+                                spacing: MichiTheme.spacing.xs
+
+                                Text {
+                                    width: parent.width
+                                    text: modelData.reason || ""
+                                    color: MichiTheme.colors.textSecondary
+                                    font.pixelSize: MichiTheme.typography.metaSize
+                                    wrapMode: Text.WordWrap
+                                    maximumLineCount: 2
+                                    elide: Text.ElideRight
+                                    visible: text !== ""
+                                }
+
+                                Row {
+                                    spacing: MichiTheme.spacing.xs
+                                    StatusBadge {
+                                        text: modelData.origin === "Tú" ? qsTr("Tú") : qsTr("Michi")
+                                        kind: modelData.origin === "Tú" ? "info" : "success"
+                                    }
+                                    Text {
+                                        text: modelData.updated || ""
+                                        color: MichiTheme.colors.textMuted
+                                        font.pixelSize: MichiTheme.typography.metaSize
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        elide: Text.ElideRight
+                                        width: Math.min(implicitWidth, 200)
+                                    }
+                                }
+
+                                Row {
+                                    spacing: MichiTheme.spacing.xs
+
+                                    MichiButton {
+                                        text: modelData.action || qsTr("Abrir")
+                                        variant: "primary"
+                                        activeFocusOnTab: true
+                                        Keys.onReturnPressed: onClicked()
+                                        Keys.onSpacePressed: onClicked()
+                                        onClicked: root.handleMixSelection(modelData.id || "")
+                                    }
+                                    MichiButton {
+                                        text: qsTr("Regenerar")
+                                        variant: "ghost"
+                                        activeFocusOnTab: true
+                                        Keys.onReturnPressed: onClicked()
+                                        Keys.onSpacePressed: onClicked()
+                                        onClicked: root.regenerateMix(modelData.id || "")
+                                    }
+                                    MichiButton {
+                                        text: qsTr("Descartar")
+                                        variant: "ghost"
+                                        activeFocusOnTab: true
+                                        Keys.onReturnPressed: onClicked()
+                                        Keys.onSpacePressed: onClicked()
+                                        onClicked: root.discardMix(modelData.id || "")
+                                    }
+                                }
+                            }
                         }
                     }
                 }

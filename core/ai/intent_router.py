@@ -32,6 +32,7 @@ _INTENT_PATTERNS: list[tuple[str, str, bool]] = [
     ("diagnosis", r"(?i)\b(problema|error|fallo|issue|warn|warning)\b", False),
     ("suggestion", r"(?i)\b(sugiere|recomienda|qu[eé] me recomiendas|sugerencia|recomendaci[oó]n)\b", False),
     ("suggestion", r"(?i)\b(que escucho|que pongo|algo (bueno|nuevo|parecido|similar))\b", False),
+    ("create_playlist", r"(?i)\b(crea|crear|nueva|hazme|[aá]rmame|genera)\b.*\b(playlist|lista)\b", False),
     ("library_info", r"(?i)\b(cuantos?|cu[aá]ntos?|total|tamañ?o|estad[ií]sticas|stats)\b", False),
     ("library_info", r"(?i)\b(biblioteca|librer[ií]a|librar[yí]a|colecci[oó]n)\b.*\b(album|artista|cancion|pista)\b", False),
     ("navigate", r"(?i)\b(ve a|navega|abre|muestra|ir a|vamos a)\b", False),
@@ -53,6 +54,12 @@ _INTENT_ENTITY_EXTRACTORS: dict[str, list[tuple[str, re.Pattern]]] = {
     ],
     "navigate": [
         ("route", re.compile(r"(?i)(?:ve a|navega|abre|muestra|ir a|vamos a)\s+(.+)$")),
+    ],
+    "playback_volume": [
+        ("volume", re.compile(r"(\d{1,3})")),
+    ],
+    "create_playlist": [
+        ("name", re.compile(r"(?i)(?:llamada?|nombre(?:d[ae])?)\s+(.+?)$")),
     ],
 }
 

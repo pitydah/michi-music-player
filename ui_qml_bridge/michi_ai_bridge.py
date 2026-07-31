@@ -67,6 +67,8 @@ class MichiAIBridge(QObject):
         self._last_error = ""
         self._current_task_id = ""
         self._session_id = "default"
+        self._current_plan: dict = {}
+        self._last_trace: dict = {}
 
     @Property(bool, notify=statusChanged)
     def backendAvailable(self) -> bool:
@@ -105,6 +107,43 @@ class MichiAIBridge(QObject):
     def suggestions(self):
         return self._suggestions
 
+    @Property("QVariantList", notify=contextChanged)
+    def capabilities(self) -> list[dict]:
+        """Real capabilities the assistant can use right now."""
+        return self._build_capabilities()
+
+    def _build_capabilities(self) -> list[dict]:
+        caps: list[dict] = []
+        registry = getattr(self._ai_engine, "tool_registry", None)
+        tools = getattr(registry, "_tools", None)
+        if isinstance(tools, dict) and tools:
+            grouped: dict[str, int] = {}
+            for defn in tools.values():
+                for tag in getattr(defn, "tags", ()) or ("general",):
+                    grouped[tag] = grouped.get(tag, 0) + 1
+            for tag in sorted(grouped):
+                caps.append({"area": tag, "tool_count": grouped[tag], "available": True})
+        if self._cap_bridge is not None:
+            try:
+                states = self._cap_bridge.capabilities
+                unavailable = sorted(k for k, v in states.items() if v != "available")
+                if unavailable:
+                    caps.append({"area": "limitado", "tool_count": 0,
+                                 "available": False, "detail": ", ".join(unavailable[:6])})
+            except Exception:
+                logger.debug("capability bridge read failed", exc_info=True)
+        return caps
+
+    @Property("QVariantMap", notify=contextChanged)
+    def currentPlan(self) -> dict:
+        """Plan/intent of the action being planned or awaiting confirmation."""
+        return dict(self._current_plan)
+
+    @Property("QVariantMap", notify=contextChanged)
+    def lastTrace(self) -> dict:
+        """Optional technical trace of the last processed message."""
+        return dict(self._last_trace)
+
     @Slot()
     def refresh(self):
         self._suggestions = self._build_suggestions()
@@ -135,15 +174,17 @@ class MichiAIBridge(QObject):
                     ]
             except Exception:
                 logger.debug("suggestion fetch failed", exc_info=True)
+        # Fallback actions are natural-language phrases the IntentRouter maps
+        # to tools registered in ToolRegistryV2; routes exist in route_registry.
         return [
-            {"title": "Reproducir una cancion", "description": "Reproduce una cancion de tu biblioteca",
-             "action": "reproducir cancion", "route": ""},
-            {"title": "Buscar en biblioteca", "description": "Busca canciones, albumes o artistas",
-             "action": "buscar", "route": ""},
-            {"title": "Crear playlist", "description": "Crea una lista de reproduccion nueva",
-             "action": "crear playlist", "route": ""},
+            {"title": "Reproducir música", "description": "Reanuda la reproducción de tu cola actual",
+             "action": "reproduce", "route": ""},
+            {"title": "Buscar en biblioteca", "description": "Busca canciones, álbumes o artistas",
+             "action": "busca en mi biblioteca", "route": ""},
+            {"title": "Crear playlist", "description": "Crea una lista de reproducción nueva",
+             "action": "crear playlist", "route": "playlists"},
             {"title": "Diagnosticar biblioteca", "description": "Revisa el estado de tu biblioteca",
-             "action": "diagnosticar biblioteca", "route": ""},
+             "action": "diagnostica mi biblioteca", "route": ""},
             {"title": "Abrir ajustes", "description": "Configura Michi Music Player",
              "action": "abrir ajustes", "route": "settings"},
         ]
@@ -220,6 +261,7 @@ class MichiAIBridge(QObject):
                 self._job_svc.cancel_job(self._current_task_id)
             self._current_task_id = ""
         self._pending_action = None
+        self._current_plan = {}
         self._last_error = ""
         self._set_status("CANCELLED")
 
@@ -249,11 +291,19 @@ class MichiAIBridge(QObject):
                 context["capabilities"] = dict(self._cap_bridge.capabilities)
 
             result = self._ai_engine.process_message(text, context=context)
+            self._last_trace = {
+                "intent": result.get("intent", ""),
+                "backend": result.get("backend", ""),
+                "elapsed_ms": result.get("elapsed_ms", 0),
+                "risk_level": result.get("risk_level", ""),
+                "tool_ok": (result.get("tool_result") or {}).get("ok"),
+            }
             self._handle_ai_result(result, text)
         except Exception as e:
             logger.debug("MichiAIEngine failed", exc_info=True)
             self._set_status("FAILED")
             self._last_error = str(e)
+            self._last_trace = {"error": str(e)}
             response = f"Error al procesar: {str(e)}"
             self._chat_history.append({"role": "assistant", "text": response})
             self.responseReceived.emit(response)
@@ -261,13 +311,22 @@ class MichiAIBridge(QObject):
 
     def _handle_ai_result(self, result: dict, original_text: str):
         if result.get("requires_confirmation"):
-            self._pending_action = {"intent": result.get("intent"), "entities": {}, "_original": original_text}
+            intent_info = result.get("intent")
+            self._pending_action = {"intent": intent_info, "entities": {}, "_original": original_text}
+            self._current_plan = {
+                "action": original_text,
+                "intent": intent_info if isinstance(intent_info, str) else (intent_info or {}).get("name", ""),
+                "risk_level": result.get("risk_level", ""),
+                "requires_confirmation": True,
+            }
             self._set_status("CONFIRMATION_REQUIRED")
             msg = "¿Confirmas que quieres realizar esta accion?"
             self._chat_history.append({"role": "assistant", "text": msg})
             self.responseReceived.emit(msg)
+            self.contextChanged.emit()
             return
 
+        self._current_plan = {}
         success = result.get("ok", False)
         if success:
             self._set_status("SUCCEEDED")

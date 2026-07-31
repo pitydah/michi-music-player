@@ -15,7 +15,26 @@ Item {
 
     property var ai: typeof michiAiBridge !== "undefined" ? michiAiBridge : null
     property bool _initialized: false
-    property string _aiStatus: root.ai ? root.ai.status || "idle" : "unavailable"
+    property string _aiStatus: "idle"
+
+    // The bridge emits uppercase V2 states (IDLE, PLANNING, RUNNING,
+    // CONFIRMATION_REQUIRED, SUCCEEDED, ...); map them to the lowercase
+    // UI states this page renders.
+    function _normalizeStatus(raw) {
+        switch ((raw || "").toUpperCase()) {
+        case "IDLE": return "idle"
+        case "PLANNING": return "planning"
+        case "QUEUED": return "queued"
+        case "RUNNING": return "executing"
+        case "CONFIRMATION_REQUIRED": return "awaiting_confirmation"
+        case "CANCELLING": return "cancelling"
+        case "CANCELLED": return "cancelled"
+        case "SUCCEEDED": return "completed"
+        case "PARTIAL_SUCCESS": return "partially_executed"
+        case "FAILED": return "failed"
+        default: return (raw || "idle").toLowerCase()
+        }
+    }
     property string _lastError: root.ai ? root.ai.lastError || "" : "No disponible"
     property var _chatHistory: root.ai ? parseChatHistory(root.ai.getChatHistory()) : []
     property string selectedAiModelId: "calico"
@@ -44,6 +63,11 @@ Item {
             root._executing = false
         }
         if (root._aiStatus === "awaiting_confirmation") {
+            var plan = root.ai && root.ai.currentPlan ? root.ai.currentPlan : {}
+            actionPreview.actionName = plan.action || qsTr("Acción pendiente")
+            actionPreview.actionDescription = (plan.intent ? qsTr("Intención detectada: ") + plan.intent : "")
+                + (plan.risk_level ? " · " + qsTr("Riesgo: ") + plan.risk_level : "")
+            actionPreview.destructive = plan.risk_level === "critical" || plan.risk_level === "destructive"
             actionPreview.visible = true
         } else {
             actionPreview.visible = false
@@ -56,19 +80,34 @@ Item {
     property bool _executing: false
     property string _pendingConfirmAction: ""
 
+    function _traceText() {
+        var t = root.ai && root.ai.lastTrace ? root.ai.lastTrace : {}
+        var parts = []
+        if (t.intent) parts.push(qsTr("Intención: ") + t.intent)
+        if (t.backend) parts.push(qsTr("Backend: ") + t.backend)
+        if (t.risk_level) parts.push(qsTr("Riesgo: ") + t.risk_level)
+        if (t.elapsed_ms !== undefined && t.elapsed_ms !== "") parts.push(qsTr("Tiempo: ") + t.elapsed_ms + " ms")
+        if (t.tool_ok !== undefined && t.tool_ok !== null) parts.push(qsTr("Tool: ") + (t.tool_ok ? "OK" : "error"))
+        if (t.error) parts.push(qsTr("Error: ") + t.error)
+        return parts.join("\n")
+    }
+
     function showResultForStatus() {
+        var trace = root._traceText()
         if (root._aiStatus === "completed") {
             executionResult.status = "success"
             executionResult.summaryText = "Acción ejecutada correctamente."
+            executionResult.detailText = trace
             executionResult.visible = true
         } else if (root._aiStatus === "failed") {
             executionResult.status = "failure"
             executionResult.summaryText = "Error al ejecutar la acción."
-            executionResult.detailText = root._lastError
+            executionResult.detailText = root._lastError + (trace !== "" ? "\n" + trace : "")
             executionResult.visible = true
         } else if (root._aiStatus === "partially_executed") {
             executionResult.status = "partial"
             executionResult.summaryText = "Acción ejecutada parcialmente."
+            executionResult.detailText = trace
             executionResult.visible = true
         }
     }
@@ -182,6 +221,32 @@ Item {
                 onModelSelectionRequested: function(modelId) {
                     root.selectedAiModelId = modelId
                     root.aiModelSelectionRequested(modelId)
+                }
+            }
+
+            SectionHeader {
+                id: capabilitiesHeader
+                text: qsTr("Capacidades disponibles")
+                width: parent.width
+                visible: capabilitiesRepeater.count > 0
+            }
+
+            Flow {
+                id: capabilitiesFlow
+                width: parent.width
+                spacing: MichiTheme.spacing.sm
+                visible: capabilitiesRepeater.count > 0
+
+                Repeater {
+                    id: capabilitiesRepeater
+                    model: root.ai && root.ai.capabilities ? root.ai.capabilities : []
+
+                    StatusBadge {
+                        text: modelData.available
+                              ? modelData.area + " · " + modelData.tool_count
+                              : qsTr("Limitado: ") + (modelData.detail || modelData.area)
+                        kind: modelData.available ? "info" : "warning"
+                    }
                 }
             }
 
@@ -357,12 +422,21 @@ Item {
                 id: aiStatusBadge
                 text: root.ai === null
                     ? "Asistente no disponible"
-                    : root._executing
+                    : root._aiStatus === "executing"
                         ? "Ejecutando acción..."
-                        : root._aiStatus === "cancelled"
-                            ? "Acción cancelada"
-                            : "Interfaz clásica disponible"
-                kind: root.ai === null ? "disconnected" : root._executing ? "active" : "info"
+                        : root._aiStatus === "planning"
+                            ? "Planificando..."
+                            : root._aiStatus === "cancelling"
+                                ? "Cancelando..."
+                                : root._aiStatus === "cancelled"
+                                    ? "Acción cancelada"
+                                    : root._aiStatus === "awaiting_confirmation"
+                                        ? "Esperando tu confirmación"
+                                        : "Interfaz clásica disponible"
+                kind: root.ai === null ? "disconnected"
+                    : root._aiStatus === "executing" || root._aiStatus === "planning" ? "active"
+                    : root._aiStatus === "cancelled" || root._aiStatus === "failed" ? "warning"
+                    : "info"
             }
         }
     }
@@ -393,17 +467,17 @@ Item {
             for (var i = 0; i < items.length; i++) {
                 suggestionsRepeater.model.append(items[i])
             }
-            root._aiStatus = root.ai.status || "idle"
+            root._aiStatus = root._normalizeStatus(root.ai.status)
             root.updateChatHistory()
         }
 
         function onResponseReceived(response) {
-            root._aiStatus = root.ai.status || "idle"
+            root._aiStatus = root._normalizeStatus(root.ai.status)
             root.updateChatHistory()
         }
 
         function onStatusChanged(newStatus) {
-            root._aiStatus = newStatus
+            root._aiStatus = root._normalizeStatus(newStatus)
         }
     }
 }

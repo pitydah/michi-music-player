@@ -128,10 +128,13 @@ class MichiAIEngine:
         self._backend_selector.active.cancel()
 
     def get_suggestions(self, context: dict[str, Any] | None = None) -> list[dict[str, str]]:
+        # Actions are natural-language phrases the IntentRouter recognizes and
+        # that map to tools actually registered in ToolRegistryV2. Routes must
+        # exist in ui_qml_bridge/route_registry.py (aliases allowed).
         return [
-            {"title": "Reproducir algo de jazz", "description": "Busca jazz en tu biblioteca", "action": "play_genre", "route": ""},
-            {"title": "¿Qué está sonando?", "description": "Muestra la canción actual", "action": "now_playing", "route": "playback"},
-            {"title": "Diagnosticar sistema", "description": "Revisa el estado del sistema", "action": "diagnose", "route": ""},
+            {"title": "Reproducir algo de jazz", "description": "Busca jazz en tu biblioteca", "action": "busca jazz", "route": ""},
+            {"title": "¿Qué está sonando?", "description": "Muestra la cola de reproducción actual", "action": "que suena ahora", "route": "nowplaying"},
+            {"title": "Diagnosticar sistema", "description": "Revisa el estado del ecosistema Michi", "action": "diagnostica el sistema", "route": ""},
         ]
 
     def _build_llm_prompt(self, text: str, intent: IntentResult, snapshot: SanitizedSnapshot) -> str:
@@ -164,8 +167,8 @@ class MichiAIEngine:
         if not tool_name:
             return None
         try:
-            arguments = intent.entities if intent.entities else None
-            result = self._tool_registry.execute(tool_name, arguments=arguments)
+            arguments = self._tool_arguments(tool_name, intent)
+            result = self._tool_registry.execute(tool_name, arguments=arguments or None)
             data = result.data if isinstance(result.data, dict) else {}
             return ToolResult(
                 ok=bool(result.ok),
@@ -177,25 +180,45 @@ class MichiAIEngine:
             logger.debug("Tool execution failed for %s: %s", tool_name, exc)
             return ToolResult(ok=False, code="EXECUTION_ERROR", message=str(exc))
 
+    @staticmethod
+    def _tool_arguments(tool_name: str, intent: IntentResult) -> dict[str, Any]:
+        """Normalize intent entities into the argument schema the tool expects."""
+        args: dict[str, Any] = dict(intent.entities) if intent.entities else {}
+        if tool_name == "search_library" and "query" not in args:
+            for key in ("artist", "album", "genre"):
+                if args.get(key):
+                    args["query"] = args[key]
+                    break
+        if tool_name == "create_smart_mix" and "genre" in args:
+            args.setdefault("strategy", "by_genre")
+        if tool_name == "set_volume" and "volume" in args:
+            try:
+                args["volume"] = max(0, min(100, int(args["volume"])))
+            except (TypeError, ValueError):
+                args.pop("volume", None)
+        return args
+
     def _intent_to_tool(self, intent_id: str) -> str | None:
         # Intent -> canonical V2 tool name. Every value MUST be a tool actually
         # registered in ToolRegistryV2 (see register_builtin_tools); mapping to
-        # a non-existent tool silently breaks execution.
+        # a non-existent tool silently breaks execution. Validated by
+        # tests/qml/ai/test_michi_ai_tool_mapping.py.
         mapping: dict[str, str] = {
             "search_library": "search_library",
-            "search_artist": "search_artist",
-            "search_album": "search_album",
-            "search_genre": "search_genre",
-            "playback_play": "playback_play",
+            "search_artist": "search_library",
+            "search_album": "search_library",
+            "search_genre": "search_library",
+            "playback_play": "resume",
             "playback_pause": "pause",
             "playback_next": "next",
             "playback_prev": "previous",
-            "playback_volume": "playback_set_volume",
-            "playback_info": "playback_get_state",
+            "playback_volume": "set_volume",
+            "playback_info": "get_queue",
             "diagnosis": "diagnose_ecosystem",
-            "suggestion": "get_recommendations",
-            "library_info": "library_get_stats",
+            "suggestion": "create_smart_mix",
+            "library_info": "scan_library_health",
             "navigate": "navigate",
+            "create_playlist": "create_playlist",
             "delete_playlist": "delete_playlist",
             "apply_library_repair": "apply_library_repair",
             "restore_setting": "restore_setting",
