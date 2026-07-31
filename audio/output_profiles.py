@@ -11,6 +11,61 @@ PROFILE_EFFECTIVE = "effective"
 PROFILE_PERSISTED = "persisted"
 PROFILE_FAILED = "failed"
 
+# ── Bit-perfect verification states (Corrección 2) ──
+# ``bitperfect_state`` describes whether the *effective* signal path can carry a
+# bit-perfect stream after a profile is applied.
+#   requested:    profile asks for bit-perfect but nothing invalidates it yet
+#   probable:     no DSP invalidator found, but hw_params could not be confirmed
+#   verified:     ALSA hw_params match the source format (clean path)
+#   invalidated:  an active DSP (volume/EQ/ReplayGain/resampling) breaks the path
+#   unsupported:  profile is not bit-perfect (bit-perfect does not apply)
+#   unknown:      could not determine the state
+BITPERFECT_REQUESTED = "requested"
+BITPERFECT_PROBABLE = "probable"
+BITPERFECT_VERIFIED = "verified"
+BITPERFECT_INVALIDATED = "invalidated"
+BITPERFECT_UNSUPPORTED = "unsupported"
+BITPERFECT_UNKNOWN = "unknown"
+BITPERFECT_STATES = (
+    BITPERFECT_REQUESTED,
+    BITPERFECT_PROBABLE,
+    BITPERFECT_VERIFIED,
+    BITPERFECT_INVALIDATED,
+    BITPERFECT_UNSUPPORTED,
+    BITPERFECT_UNKNOWN,
+)
+
+
+@dataclass(frozen=True)
+class ProfileApplyResult:
+    """Typed outcome of a transactional profile application (Corrección 2).
+
+    Captures the full requested -> validated -> applied -> effective ->
+    persisted lifecycle in a single immutable value so callers (bridges, QML,
+    tests) never have to trust a fabricated ``ok=True``. The legacy dict
+    returned by :meth:`PlayerService.apply_profile` is derived from this
+    structure to preserve the existing contract.
+    """
+
+    ok: bool
+    requested_profile_id: str
+    previous_profile_id: str
+    validated_profile_id: str | None = None
+    applied_profile_id: str | None = None
+    effective_profile_id: str | None = None
+    persisted_profile_id: str | None = None
+    requested_backend: str | None = None
+    effective_backend: str | None = None
+    requested_device: str | None = None
+    effective_device: str | None = None
+    verification_level: str = "not_verifiable"
+    rollback_attempted: bool = False
+    rollback_ok: bool | None = None
+    code: str = ""
+    message: str = ""
+    warnings: tuple[str, ...] = ()
+    effective_format: dict | None = None
+
 
 @dataclass
 class AudioOutputProfile:

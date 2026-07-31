@@ -18,6 +18,19 @@ from ui_qml_bridge.context_bindings import (
 
 logger = logging.getLogger("michi.bridge_factory")
 
+# Cross-bridge references that must be non-None after the two-phase wiring
+# (Corrección 3). Each entry maps a bridge key to the instance attribute that
+# holds a dependency created *after* the bridge itself, so the constructor
+# legitimately receives ``None`` and the dependency is injected later by
+# :meth:`BridgeFactory._wire_bridges`.
+_REQUIRED_BRIDGE_REFS: dict[str, tuple[str, ...]] = {
+    "confirmation": ("_action_registry",),
+    "library": ("_cover_provider",),
+    "playlists": ("_notifications",),
+    "history": ("_notifications",),
+    "global_search": ("_notifications",),
+}
+
 
 class BridgeFactory(QObject):
     """Creates each bridge with injected dependencies from ServiceContainer."""
@@ -80,14 +93,30 @@ class BridgeFactory(QObject):
             if not self._container.contains(svc) and svc not in self._bridges
         ]
 
+    def _missing_required_refs(self, bridge: QObject, key: str) -> list[str]:
+        """Return cross-bridge refs for *bridge* that are still None (Corrección 3).
+
+        ``_REQUIRED_BRIDGE_REFS`` lists the instance attributes that hold a
+        dependency injected by :meth:`_wire_bridges`. A None value here means the
+        two-phase wiring did not run or the dependency itself was not created.
+        """
+        refs = _REQUIRED_BRIDGE_REFS.get(key, ())
+        return [
+            f"{key}.{ref}"
+            for ref in refs
+            if getattr(bridge, ref, None) is None
+        ]
+
     def validate_all_bridges(self) -> dict:
         """Validate every bridge against its ContextBinding and return a report.
 
         Each known bridge key is classified as:
 
-        - ``ok``: created and all ``required_services`` present (non-None).
+        - ``ok``: created, all ``required_services`` present (non-None) and all
+          required cross-bridge references wired (non-None).
         - ``missing_required``: created but a required service is None/missing,
-          or expected by a binding but not created at all.
+          a required cross-bridge reference is still None, or expected by a
+          binding but not created at all.
         - ``degraded``: creation skipped (recorded in :attr:`degraded_bridges`).
         - ``created``: created but has no ContextBinding to validate against
           (e.g. internal helpers like ``query_executor``).
@@ -117,17 +146,21 @@ class BridgeFactory(QObject):
                     logger.warning(
                         "BridgeFactory: '%s' not created — missing %s", key, missing
                     )
-                elif binding is None:
-                    entry = {"status": "created"}
-                    created_count += 1
                 else:
-                    missing = self._missing_required_services(binding)
-                    if missing:
-                        entry = {"status": "missing_required", "missing": missing}
+                    missing = self._missing_required_services(binding) if binding else []
+                    # Cross-bridge references injected by _wire_bridges() must
+                    # also be non-None (Corrección 3).
+                    missing_refs = self._missing_required_refs(bridge, key)
+                    if missing or missing_refs:
+                        combined = list(missing) + list(missing_refs)
+                        entry = {"status": "missing_required", "missing": combined}
                         missing_count += 1
                         logger.warning(
-                            "BridgeFactory: '%s' missing required deps %s", key, missing
+                            "BridgeFactory: '%s' missing required deps %s", key, combined
                         )
+                    elif binding is None:
+                        entry = {"status": "created"}
+                        created_count += 1
                     else:
                         entry = {"status": "ok"}
                         ok_count += 1
@@ -704,6 +737,10 @@ class BridgeFactory(QObject):
         self._try_create("selection_context", self.create_selection_context_bridge)
         self._try_create("query_executor", self.create_query_executor)
 
+        # All bridges created — inject cross-bridge dependencies that were None
+        # at construction time (Corrección 3, two-phase wiring).
+        self._wire_bridges()
+
         capability = self._bridges.get("capability")
         if capability and hasattr(capability, 'refresh'):
             capability.refresh()
@@ -714,6 +751,37 @@ class BridgeFactory(QObject):
         self._assert_wiring()
         self.validate_all_bridges()
         return self._bridges
+
+    def _wire_bridges(self) -> None:
+        """Second-phase wiring for cross-bridge dependencies (Corrección 3).
+
+        Bridges reference each other through ``self._bridges.get("x")`` at
+        construction time, but creation order means some of those references are
+        legitimately ``None`` when the bridge is built (e.g. ``action_registry``
+        and ``cover_provider`` are created after the bridges that need them, and
+        ``notification`` is created lazily). This pass runs once *all* bridges
+        exist and injects the real dependency through a public setter, so no
+        bridge advertises a missing required reference at runtime.
+        """
+        # ConfirmationBridge needs ActionRegistry (created after confirmation).
+        conf = self._bridges.get("confirmation")
+        ar = self._bridges.get("action_registry")
+        if conf is not None and ar is not None and hasattr(conf, "set_action_registry"):
+            conf.set_action_registry(ar)
+
+        # LibraryBridge needs CoverProvider (created after library).
+        lib = self._bridges.get("library")
+        cp = self._bridges.get("cover_provider")
+        if lib is not None and cp is not None and hasattr(lib, "set_cover_provider"):
+            lib.set_cover_provider(cp)
+
+        # Playlists/History/GlobalSearch need NotificationBridge (created lazily
+        # by home_audio, i.e. after these three).
+        nb = self._bridges.get("notification")
+        for name in ("playlists", "history", "global_search"):
+            br = self._bridges.get(name)
+            if br is not None and nb is not None and hasattr(br, "set_notification_bridge"):
+                br.set_notification_bridge(nb)
 
     def _validate_bridge_identities(self):
         keys = set(self._bridges.keys())

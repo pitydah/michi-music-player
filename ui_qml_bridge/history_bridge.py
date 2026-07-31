@@ -44,6 +44,15 @@ class HistoryBridge(QObject):
         self._model = HistoryListModel(db=db, history_query_service=self._hqs,
                                        query_executor=query_executor, parent=self)
 
+    def set_notification_bridge(self, notification) -> None:
+        """Second-phase wiring for the NotificationBridge (Corrección 3).
+
+        ``notification`` is created lazily after this bridge in BridgeFactory,
+        so the constructor may receive ``None``. The two-phase
+        ``_wire_bridges`` pass injects the real bridge here.
+        """
+        self._notifications = notification
+
     @Property("QVariant", notify=dataChanged)
     def historyModel(self):
         return self._model

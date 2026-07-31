@@ -118,6 +118,15 @@ class LibraryBridge(QObject):
             model.countChanged.connect(self._on_model_data_changed)
             model.totalCountChanged.connect(self._on_model_data_changed)
 
+    def set_cover_provider(self, provider) -> None:
+        """Second-phase wiring for the CoverProvider (Corrección 3).
+
+        ``cover_provider`` is created after this bridge in BridgeFactory, so
+        the constructor may receive ``None``. The two-phase ``_wire_bridges``
+        pass injects the real provider here.
+        """
+        self._cover_provider = provider
+
     def _set_state(self, state: LibraryState) -> None:
         if state == self._state:
             return

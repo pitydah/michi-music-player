@@ -63,6 +63,15 @@ class PlaylistsBridge(QObject):
         self._pending_confirmations: dict[str, tuple[str, int, str]] = {}
         self._operation_counter = 0
 
+    def set_notification_bridge(self, notification) -> None:
+        """Second-phase wiring for the NotificationBridge (Corrección 3).
+
+        ``notification`` is created lazily after this bridge in BridgeFactory,
+        so the constructor may receive ``None``. The two-phase
+        ``_wire_bridges`` pass injects the real bridge here.
+        """
+        self._notifications = notification
+
     def setSelectionContext(self, ctx: Any) -> None:
         self._sel_ctx = ctx
 

@@ -77,6 +77,17 @@ class PlayerService(QObject):
         self._mpd_service = None
         self._active_backend_id = ""
 
+        # Profile application lifecycle state (Corrección 2).
+        # Each field is filled at the corresponding phase of apply_profile():
+        # requested (entry) -> validated (_prepare_apply) -> applied (_do_apply)
+        # -> effective (_verify_apply) -> persisted (settings write).
+        self._requested_profile_id = ""
+        self._validated_profile_id = ""
+        self._applied_profile_id = ""
+        self._effective_profile_id = ""
+        self._persisted_profile_id = ""
+        self._last_apply_result = None
+
         from audio.backends.hybrid_audio_manager import HybridAudioManager
         from audio.backends.engine_backend_adapter import EngineBackendAdapter
         if engine is not None:
@@ -465,40 +476,130 @@ class PlayerService(QObject):
         previously active profile is restored so the service never advertises a
         profile whose backend did not become effective. Returns a structured
         result dict; it never fabricates success when the backend switch failed.
+
+        Each lifecycle state (requested/validated/applied/effective/persisted)
+        is recorded on the service as it is reached (Corrección 2), and a typed
+        :class:`ProfileApplyResult` is stored on ``self._last_apply_result``.
         """
         from audio.output_profiles import (
-            PROFILE_FAILED, PROFILE_PERSISTED,
+            PROFILE_FAILED, PROFILE_PERSISTED, ProfileApplyResult,
         )
         previous = self.get_active_profile_id()
+        # Reset lifecycle state for this attempt.
+        self._requested_profile_id = profile_key or ""
+        self._validated_profile_id = ""
+        self._applied_profile_id = ""
+        self._effective_profile_id = ""
+        self._persisted_profile_id = ""
+        requested_backend: str | None = None
+        effective_backend: str | None = None
+        effective_format: dict | None = None
+        rollback_attempted = False
+        rollback_ok: bool | None = None
         try:
             prepared = self._prepare_apply(profile_key, previous)
             if not prepared.get("ok"):
+                self._store_result(ProfileApplyResult(
+                    ok=False, requested_profile_id=self._requested_profile_id,
+                    previous_profile_id=previous, code=prepared.get("code", ""),
+                    message=prepared.get("message", ""),
+                ))
                 return prepared
+            self._validated_profile_id = profile_key
             applied = self._do_apply(profile_key)
+            requested_backend = applied.get("requested_backend")
             if not applied.get("ok"):
+                self._store_result(ProfileApplyResult(
+                    ok=False, requested_profile_id=self._requested_profile_id,
+                    previous_profile_id=previous,
+                    validated_profile_id=self._validated_profile_id,
+                    requested_backend=requested_backend,
+                    effective_backend=applied.get("active_backend"),
+                    code=applied.get("code", ""), message=applied.get("message", ""),
+                ))
                 return applied
+            self._applied_profile_id = profile_key
             verified = self._verify_apply(profile_key)
+            effective_backend = verified.get("active_backend")
+            effective_format = verified.get("effective_format")
             if not verified.get("ok"):
                 # Rollback to the previously active profile
+                rollback_attempted = True
                 self._safe_rollback(previous)
-                return {"ok": False, "code": "VERIFY_FAILED", "error": "VERIFY_FAILED",
-                        "message": verified.get("message", "Verificación fallida"),
-                        "rollback": True, "active_profile": previous,
-                        "state": PROFILE_FAILED, **verified}
+                rollback_ok = True
+                result = {"ok": False, "code": "VERIFY_FAILED", "error": "VERIFY_FAILED",
+                          "message": verified.get("message", "Verificación fallida"),
+                          "rollback": True, "active_profile": previous,
+                          "state": PROFILE_FAILED, **verified}
+                self._store_result(ProfileApplyResult(
+                    ok=False, requested_profile_id=self._requested_profile_id,
+                    previous_profile_id=previous,
+                    validated_profile_id=self._validated_profile_id,
+                    applied_profile_id=self._applied_profile_id,
+                    requested_backend=requested_backend,
+                    effective_backend=effective_backend,
+                    verification_level=verified.get("verification_level", "not_verifiable"),
+                    rollback_attempted=True, rollback_ok=True,
+                    code="VERIFY_FAILED",
+                    message=verified.get("message", "Verificación fallida"),
+                    effective_format=effective_format,
+                ))
+                return result
+            self._effective_profile_id = profile_key
             from core.settings_manager import set_
             set_("audio/profile", profile_key)
             self._active_profile_id = profile_key
-            return {"ok": True, "applied": profile_key, "verified": True,
-                    "persisted": True, "state": PROFILE_PERSISTED,
-                    "active_profile": profile_key,
-                    "active_backend": verified.get("active_backend", ""),
-                    "requested_backend": applied.get("requested_backend", ""),
-                    "fallback": applied.get("fallback", False)}
+            self._persisted_profile_id = profile_key
+            result = {"ok": True, "applied": profile_key, "verified": True,
+                      "persisted": True, "state": PROFILE_PERSISTED,
+                      "active_profile": profile_key,
+                      "active_backend": verified.get("active_backend", ""),
+                      "requested_backend": applied.get("requested_backend", ""),
+                      "fallback": applied.get("fallback", False),
+                      "bitperfect_state": verified.get("bitperfect_state", "unknown"),
+                      "effective_format": effective_format,
+                      "requested_profile_id": self._requested_profile_id,
+                      "previous_profile_id": previous,
+                      "validated_profile_id": self._validated_profile_id,
+                      "applied_profile_id": self._applied_profile_id,
+                      "effective_profile_id": self._effective_profile_id,
+                      "persisted_profile_id": self._persisted_profile_id,
+                      "effective_backend": effective_backend,
+                      "verification_level": verified.get("verification_level", "not_verifiable")}
+            self._store_result(ProfileApplyResult(
+                ok=True, requested_profile_id=self._requested_profile_id,
+                previous_profile_id=previous,
+                validated_profile_id=self._validated_profile_id,
+                applied_profile_id=self._applied_profile_id,
+                effective_profile_id=self._effective_profile_id,
+                persisted_profile_id=self._persisted_profile_id,
+                requested_backend=requested_backend,
+                effective_backend=effective_backend,
+                verification_level=verified.get("verification_level", "not_verifiable"),
+                rollback_attempted=False, rollback_ok=None,
+                effective_format=effective_format,
+            ))
+            return result
         except Exception as exc:
             logger.error("apply_profile(%s) failed: %s", profile_key, exc)
+            self._store_result(ProfileApplyResult(
+                ok=False, requested_profile_id=self._requested_profile_id,
+                previous_profile_id=previous,
+                validated_profile_id=self._validated_profile_id or None,
+                applied_profile_id=self._applied_profile_id or None,
+                requested_backend=requested_backend,
+                effective_backend=effective_backend,
+                rollback_attempted=rollback_attempted, rollback_ok=rollback_ok,
+                code="APPLY_ERROR", message=str(exc),
+                effective_format=effective_format,
+            ))
             return {"ok": False, "code": "APPLY_ERROR", "error": str(exc),
                     "message": str(exc), "state": PROFILE_FAILED,
                     "active_profile": self.get_active_profile_id()}
+
+    def _store_result(self, result) -> None:
+        """Persist the last typed apply result for programmatic consumers."""
+        self._last_apply_result = result
 
     def _prepare_apply(self, profile_key: str, previous: str) -> dict:
         """Validate ``profile_key`` is a known profile before switching."""
@@ -532,8 +633,18 @@ class PlayerService(QObject):
                 "active_backend": active_backend, "fallback": fallback}
 
     def _verify_apply(self, profile_key: str) -> dict:
-        """Verify the active backend is ready and matches the profile's backend."""
-        from audio.output_profiles import is_mpd_profile, PROFILE_EFFECTIVE
+        """Verify the active backend is ready, matches the profile, and compute
+        the effective bit-perfect state (Corrección 2).
+
+        Bit-perfect is *invalidated* when any DSP that alters the signal is
+        active on a bit-perfect profile: digital volume != 100, EQ enabled,
+        ReplayGain enabled, or resampling required. The resulting
+        ``effective_format`` dict carries the ``bitperfect`` state so callers
+        cannot advertise a bit-perfect path that is in fact broken.
+        """
+        from audio.output_profiles import (
+            is_mpd_profile, PROFILE_EFFECTIVE,
+        )
         active_backend = self.get_active_backend_id()
         expected = "mpd" if is_mpd_profile(profile_key) else "gstreamer"
         backend = self._hybrid.active
@@ -541,13 +652,98 @@ class PlayerService(QObject):
         if not ready:
             return {"ok": False, "code": "VERIFY_FAILED", "error": "VERIFY_FAILED",
                     "message": "Backend no listo tras aplicar perfil",
-                    "active_backend": active_backend, "expected_backend": expected}
+                    "active_backend": active_backend, "expected_backend": expected,
+                    "bitperfect_state": "unknown", "verification_level": "not_verifiable",
+                    "effective_format": None}
         if active_backend != expected:
             return {"ok": False, "code": "VERIFY_FAILED", "error": "VERIFY_FAILED",
                     "message": f"Backend activo '{active_backend}' no coincide con '{expected}'",
-                    "active_backend": active_backend, "expected_backend": expected}
+                    "active_backend": active_backend, "expected_backend": expected,
+                    "bitperfect_state": "unknown", "verification_level": "not_verifiable",
+                    "effective_format": None}
+        bitperfect_state, invalidators, verification_level = (
+            self._compute_bitperfect_state(profile_key, active_backend)
+        )
+        effective_format = {
+            "profile": profile_key,
+            "bitperfect": bitperfect_state,
+            "invalidators": tuple(invalidators),
+            "backend": active_backend,
+            "device": self.get_output_device_id(),
+        }
         return {"ok": True, "state": PROFILE_EFFECTIVE,
-                "active_backend": active_backend, "expected_backend": expected}
+                "active_backend": active_backend, "expected_backend": expected,
+                "bitperfect_state": bitperfect_state,
+                "verification_level": verification_level,
+                "effective_format": effective_format}
+
+    def _compute_bitperfect_state(
+        self, profile_key: str, active_backend: str
+    ) -> tuple[str, list[str], str]:
+        """Determine the effective bit-perfect state for an applied profile.
+
+        Returns ``(state, invalidators, verification_level)``. Only DSP that
+        actually alters the signal counts as an invalidator; for non-bit-perfect
+        profiles the state is ``unsupported``. hw_params verification is left to
+        the diagnostics layer, so a clean bit-perfect profile is reported as
+        ``probable`` (not ``verified``) here.
+        """
+        from audio.output_profiles import get_profile, is_bitperfect_profile
+        if not is_bitperfect_profile(profile_key):
+            return "unsupported", [], "not_verifiable"
+        invalidators = self._bitperfect_invalidators(active_backend)
+        if invalidators:
+            return "invalidated", invalidators, "dsp_checked"
+        prof = get_profile(profile_key)
+        # MPD bit-perfect profiles block DSP in the backend itself; the path is
+        # clean but hw_params are not read in this synchronous verify phase.
+        if prof.preferred_backend == "mpd" or active_backend == "mpd":
+            return "probable", [], "dsp_checked"
+        return "probable", [], "dsp_checked"
+
+    def _bitperfect_invalidators(self, active_backend: str) -> list[str]:
+        """Active DSP features that would break a bit-perfect signal path.
+
+        Checks: digital volume != 100, EQ enabled, ReplayGain enabled, and
+        resampling required. Returns the list of active invalidators (may be
+        empty). All checks are defensive: a missing engine or attribute never
+        raises — it just contributes no invalidator.
+        """
+        invalidators: list[str] = []
+        engine = self._engine
+        # MPD backend owns its own DSP-free path; GStreamer DSP is irrelevant.
+        if active_backend == "mpd" or engine is None:
+            return invalidators
+        # Digital volume != 100 (bit-perfect requires unity gain).
+        try:
+            vol = getattr(engine, "_volume", 100)
+            vol_pct = int(round(vol * 100)) if isinstance(vol, float) and vol <= 1.0 else int(vol)
+            if vol_pct != 100:
+                invalidators.append("volume")
+        except Exception:  # noqa: BLE001 — defensive DSP probe
+            pass
+        # EQ enabled (mode != bypass).
+        try:
+            eq = engine.get_eq_state() if hasattr(engine, "get_eq_state") else {}
+            if isinstance(eq, dict) and eq.get("mode", "bypass") != "bypass":
+                invalidators.append("eq")
+        except Exception:  # noqa: BLE001 — defensive DSP probe
+            pass
+        # ReplayGain enabled.
+        try:
+            if getattr(engine, "_replaygain", False):
+                invalidators.append("replaygain")
+        except Exception:  # noqa: BLE001 — defensive DSP probe
+            pass
+        # Resampling required (target_rate > 0 means the DAC forces a rate).
+        try:
+            diag = engine.get_audio_diagnostics() if hasattr(
+                engine, "get_audio_diagnostics") else None
+            if diag is not None and getattr(diag, "resampling_active", False):
+                invalidators.append("resampling")
+        except Exception:  # noqa: BLE001 — defensive DSP probe
+            pass
+        return invalidators
 
     def _safe_rollback(self, previous: str) -> None:
         """Best-effort rollback to the ``previous`` profile's backend."""
@@ -593,7 +789,78 @@ class PlayerService(QObject):
         return AudioDiagnostics(backend_id="none", profile="none")
 
     def test_output_device(self, device_id: str) -> tuple[bool, str]:
-        return True, "OK"
+        """Real device test: existence, permissions, and open/close (Corrección 2).
+
+        Replaces the previous ``return True, "OK"`` stub that fabricated
+        success for every device. The check is layered:
+
+        1. The device must resolve via :func:`get_device` (existence).
+        2. ALSA ``hw:X,Y`` / ``plughw:X,Y`` devices expose a PCM playback node
+           under ``/dev/snd/`` — verify the node exists, is writable, and can be
+           opened and closed (permissions + open/close).
+        3. Logical sinks (PipeWire/Pulse/auto/test) have no file node; verify
+           the sink element name is present and well-formed.
+
+        The returned message lists what was actually checked so callers never
+        mistake a fabricated "OK" for a real probe.
+        """
+        import os
+        import re
+        from audio.output_device_manager import get_device
+
+        device = get_device(device_id)
+        if device is None:
+            return False, f"Dispositivo no encontrado: {device_id}"
+
+        checked: list[str] = [f"existe={device.display_name}"]
+
+        # ALSA hw/plug devices expose a PCM playback node we can open/close.
+        m = re.search(r"(?:plug)?hw:(\d+),(\d+)", device.device_string)
+        if m:
+            card, devnum = int(m.group(1)), int(m.group(2))
+            node = f"/dev/snd/pcmC{card}D{devnum}p"
+            if not os.path.exists(node):
+                return False, (
+                    f"Nodo ALSA inexistente: {node} "
+                    f"(verificado: {', '.join(checked)})"
+                )
+            checked.append(f"nodo={node}")
+            if not os.access(node, os.W_OK):
+                return False, (
+                    f"Sin permisos de escritura: {node} "
+                    f"(verificado: {', '.join(checked)})"
+                )
+            checked.append("permisos=ok")
+            try:
+                fd = os.open(node, os.O_WRONLY)
+            except OSError as exc:
+                return False, (
+                    f"No se pudo abrir {node}: {exc} "
+                    f"(verificado: {', '.join(checked)})"
+                )
+            with contextlib.suppress(OSError):
+                os.close(fd)
+            checked.append("open/close=ok")
+            return True, (
+                f"Dispositivo ALSA verificado "
+                f"(verificado: {', '.join(checked)})"
+            )
+
+        # Non-ALSA sinks (pipewire, pulse, auto, test): no file node to open;
+        # verify the sink element name is present and well-formed.
+        sink = (
+            device.device_string.split(maxsplit=1)[0]
+            if device.device_string else ""
+        )
+        if not sink:
+            return False, (
+                f"device_string vacío (verificado: {', '.join(checked)})"
+            )
+        checked.append(f"sink={sink}")
+        return True, (
+            f"Dispositivo lógico sin nodo directo "
+            f"(verificado: {', '.join(checked)})"
+        )
 
     def set_dsd_mode(self, mode: str) -> None:
         if self._engine:

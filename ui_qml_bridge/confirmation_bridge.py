@@ -18,6 +18,15 @@ class ConfirmationBridge(QObject):
         self._action_registry = action_registry
         self._pending: dict[str, dict] = {}
 
+    def set_action_registry(self, registry) -> None:
+        """Second-phase wiring for the ActionRegistry (Corrección 3).
+
+        ``action_registry`` is created after this bridge in BridgeFactory, so
+        the constructor may receive ``None``. The two-phase ``_wire_bridges``
+        pass injects the real registry here.
+        """
+        self._action_registry = registry
+
     @Slot(str, str, "QVariant", result=bool)
     def requestConfirmation(self, confirmation_id: str, title: str, details: dict = None):
         if details is None:

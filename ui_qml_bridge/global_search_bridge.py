@@ -72,6 +72,15 @@ class GlobalSearchBridge(QObject):
         self._request_counter = 0
         self._owner = "global_search"
 
+    def set_notification_bridge(self, notification) -> None:
+        """Second-phase wiring for the NotificationBridge (Corrección 3).
+
+        ``notification`` is created lazily after this bridge in BridgeFactory,
+        so the constructor may receive ``None``. The two-phase
+        ``_wire_bridges`` pass injects the real bridge here.
+        """
+        self._notifications = notification
+
     @Property(str, notify=resultsChanged)
     def query(self):
         return self._query

@@ -156,3 +156,68 @@ class TestCreateAllIntegration:
         degraded_before = f.degraded_bridges
         f.validate_all_bridges()
         assert f.degraded_bridges == degraded_before
+
+
+class TestTwoPhaseWiring:
+    """Cross-bridge dependencies are injected after all bridges exist (Corrección 3)."""
+
+    def test_confirmation_gets_action_registry_via_wiring(self):
+        # action_registry is created AFTER confirmation in create_all, so the
+        # constructor receives None; _wire_bridges must inject the real one.
+        f = BridgeFactory(_full_container())
+        f.create_all()
+        conf = f.get("confirmation")
+        ar = f.get("action_registry")
+        assert conf._action_registry is ar
+
+    def test_library_gets_cover_provider_via_wiring(self):
+        # cover_provider is created AFTER library; _wire_bridges injects it.
+        f = BridgeFactory(_full_container())
+        f.create_all()
+        lib = f.get("library")
+        cp = f.get("cover_provider")
+        assert lib._cover_provider is cp
+
+    def test_notification_injected_into_playlists_history_search(self):
+        f = BridgeFactory(_full_container())
+        f.create_all()
+        nb = f.get("notification")
+        assert nb is not None
+        assert f.get("playlists")._notifications is nb
+        assert f.get("history")._notifications is nb
+        assert f.get("global_search")._notifications is nb
+
+    def test_setters_exist_on_bridges(self):
+        f = BridgeFactory(_full_container())
+        f.create_all()
+        assert hasattr(f.get("confirmation"), "set_action_registry")
+        assert hasattr(f.get("library"), "set_cover_provider")
+        assert hasattr(f.get("playlists"), "set_notification_bridge")
+        assert hasattr(f.get("history"), "set_notification_bridge")
+        assert hasattr(f.get("global_search"), "set_notification_bridge")
+
+    def test_validate_flags_missing_required_ref_when_none(self):
+        f = BridgeFactory(_full_container())
+        f.create_all()  # all wired
+        # Simulate confirmation losing its action_registry after wiring.
+        f.get("confirmation")._action_registry = None
+        report = f.validate_all_bridges()
+        entry = report["bridges"]["confirmation"]
+        assert entry["status"] == "missing_required"
+        assert "confirmation._action_registry" in entry["missing"]
+
+    def test_validate_flags_missing_notification_ref(self):
+        f = BridgeFactory(_full_container())
+        f.create_all()
+        f.get("playlists")._notifications = None
+        report = f.validate_all_bridges()
+        entry = report["bridges"]["playlists"]
+        assert entry["status"] == "missing_required"
+        assert "playlists._notifications" in entry["missing"]
+
+    def test_full_container_wired_refs_keep_missing_required_zero(self):
+        # After two-phase wiring, no required ref is None on a full container.
+        f = BridgeFactory(_full_container())
+        f.create_all()
+        summary = f.validate_all_bridges()["summary"]
+        assert summary["missing_required"] == 0
