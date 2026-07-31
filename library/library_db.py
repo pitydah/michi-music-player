@@ -444,6 +444,37 @@ class LibraryDB:
             (filepath,)).fetchone()
         return (row[0], row[1], row[2]) if row else None
 
+    def fetch_track_context(self, filepath: str) -> dict:
+        """Return persisted playback metadata for ``filepath``.
+
+        Encapsulates the SELECT so production services (e.g. PlayerService) read
+        track context through this authorized infrastructure method instead of
+        reaching into ``db.conn`` directly. Returns an empty dict when the track
+        is absent or the lookup fails.
+        """
+        if not filepath:
+            return {}
+        try:
+            row = self._conn.execute(
+                "SELECT COALESCE(title, ''), COALESCE(artist, ''), "
+                "COALESCE(album, ''), COALESCE(album_key, ''), "
+                "COALESCE(track_uid, ''), COALESCE(year, 0), "
+                "COALESCE(genre, ''), COALESCE(duration, 0), "
+                "COALESCE(format, ext, ''), COALESCE(sample_rate, 0), "
+                "COALESCE(bit_depth, 0), COALESCE(bitrate, 0) "
+                "FROM media_items WHERE filepath = ? AND deleted_at IS NULL LIMIT 1",
+                (filepath,),
+            ).fetchone()
+        except sqlite3.Error:
+            return {}
+        if not row:
+            return {}
+        fields = (
+            "title", "artist", "album", "album_key", "track_uid", "year",
+            "genre", "duration", "format", "sample_rate", "bit_depth", "bitrate",
+        )
+        return dict(zip(fields, row, strict=False))
+
     def ensure_file_hash(self, filepath: str) -> str:
         """Return a full SHA-256 file hash, computed once then cached in DB.
 

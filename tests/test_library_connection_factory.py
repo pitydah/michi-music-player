@@ -109,3 +109,40 @@ class TestWriterCoordinator:
         writer.execute("SELECT 1")
         writer.close()
         assert writer._conn is None
+
+
+class TestTransaction:
+    def test_transaction_commits_on_clean_exit(self, db_path: str):
+        writer = WriterCoordinator(db_path)
+        with writer.transaction() as conn:
+            conn.execute("INSERT INTO media_items (title) VALUES (?)", ("Yes",))
+        reader = ReadConnectionFactory(db_path)
+        titles = [r["title"] for r in reader.connection().execute(
+            "SELECT title FROM media_items").fetchall()]
+        assert "Yes" in titles
+
+    def test_transaction_rolls_back_on_exception(self, db_path: str):
+        writer = WriterCoordinator(db_path)
+        with pytest.raises(RuntimeError):
+            with writer.transaction() as conn:
+                conn.execute(
+                    "INSERT INTO media_items (title) VALUES (?)", ("No",))
+                raise RuntimeError("boom")
+        reader = ReadConnectionFactory(db_path)
+        titles = [r["title"] for r in reader.connection().execute(
+            "SELECT title FROM media_items").fetchall()]
+        assert "No" not in titles
+
+    def test_transaction_creates_connection_lazily(self, db_path: str):
+        writer = WriterCoordinator(db_path)
+        assert writer._conn is None
+        with writer.transaction() as conn:
+            conn.execute("SELECT 1")
+        assert writer._conn is not None
+
+    def test_transaction_reuses_existing_connection(self, db_path: str):
+        writer = WriterCoordinator(db_path)
+        writer.execute("INSERT INTO media_items (title) VALUES ('seed')")
+        existing = writer._conn
+        with writer.transaction() as conn:
+            assert conn is existing

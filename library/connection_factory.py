@@ -78,26 +78,53 @@ class WriterCoordinator:
         self._lock = threading.Lock()
         self._conn: sqlite3.Connection | None = None
 
+    def _ensure_connection(self) -> sqlite3.Connection:
+        """Lazily open and configure the writer connection under the lock.
+
+        Centralizes the lazy-init (busy timeout, foreign keys, WAL verification)
+        so :meth:`execute` and :meth:`transaction` share identical setup.
+        """
+        if self._conn is None:
+            self._conn = sqlite3.connect(
+                self._db_path, check_same_thread=False
+            )
+            self._conn.row_factory = sqlite3.Row
+            self._conn.execute(f"PRAGMA busy_timeout = {_BUSY_TIMEOUT_MS}")
+            self._conn.execute("PRAGMA foreign_keys = ON")
+            # Re-assert WAL as a runtime verification. It is set
+            # persistently by Schema.initialize and inherited by every
+            # connection; this call confirms it and is a no-op once set.
+            mode = self._conn.execute("PRAGMA journal_mode=WAL").fetchone()
+            logger.debug(
+                "WriterCoordinator opened (WAL=%s)",
+                mode[0] if mode else "unknown",
+            )
+        return self._conn
+
     def execute(self, sql: str, params: tuple[Any, ...] = ()) -> sqlite3.Cursor:
         with self._lock:
-            if self._conn is None:
-                self._conn = sqlite3.connect(
-                    self._db_path, check_same_thread=False
-                )
-                self._conn.row_factory = sqlite3.Row
-                self._conn.execute(f"PRAGMA busy_timeout = {_BUSY_TIMEOUT_MS}")
-                self._conn.execute("PRAGMA foreign_keys = ON")
-                # Re-assert WAL as a runtime verification. It is set
-                # persistently by Schema.initialize and inherited by every
-                # connection; this call confirms it and is a no-op once set.
-                mode = self._conn.execute("PRAGMA journal_mode=WAL").fetchone()
-                logger.debug(
-                    "WriterCoordinator opened (WAL=%s)",
-                    mode[0] if mode else "unknown",
-                )
-            cursor = self._conn.execute(sql, params)
-            self._conn.commit()
+            conn = self._ensure_connection()
+            cursor = conn.execute(sql, params)
+            conn.commit()
             return cursor
+
+    @contextlib.contextmanager
+    def transaction(self):
+        """Transactional context with commit/rollback.
+
+        Yields the writer connection so a caller can run several statements
+        atomically; commits on clean exit, rolls back on any exception. The
+        process-wide lock is held for the whole block, serializing the unit of
+        work against other writers — mirroring :meth:`execute` semantics.
+        """
+        with self._lock:
+            conn = self._ensure_connection()
+            try:
+                yield conn
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
 
     @property
     def db_path(self) -> str:

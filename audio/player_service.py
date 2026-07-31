@@ -220,30 +220,22 @@ class PlayerService(QObject):
                 self._event_bus.publish(event, **data)
 
     def _library_track_context(self, filepath: str) -> dict[str, Any]:
-        """Return persisted metadata for ``filepath`` when a library is available."""
+        """Return persisted metadata for ``filepath`` when a library is available.
+
+        Reads through ``LibraryDB.fetch_track_context`` (authorized
+        infrastructure) instead of reaching into ``db.conn`` directly, so the
+        player service never holds a raw SQLite connection.
+        """
         if not filepath or self._library_db is None:
             return {}
+        fetch = getattr(self._library_db, "fetch_track_context", None)
+        if not callable(fetch):
+            return {}
         try:
-            row = self._library_db.conn.execute(
-                "SELECT COALESCE(title, ''), COALESCE(artist, ''), "
-                "COALESCE(album, ''), COALESCE(album_key, ''), "
-                "COALESCE(track_uid, ''), COALESCE(year, 0), "
-                "COALESCE(genre, ''), COALESCE(duration, 0), "
-                "COALESCE(format, ext, ''), COALESCE(sample_rate, 0), "
-                "COALESCE(bit_depth, 0), COALESCE(bitrate, 0) "
-                "FROM media_items WHERE filepath = ? AND deleted_at IS NULL LIMIT 1",
-                (filepath,),
-            ).fetchone()
+            return fetch(filepath) or {}
         except Exception as exc:
             logger.debug("Library metadata lookup failed for %s: %s", filepath, exc)
             return {}
-        if not row:
-            return {}
-        fields = (
-            "title", "artist", "album", "album_key", "track_uid", "year",
-            "genre", "duration", "format", "sample_rate", "bit_depth", "bitrate",
-        )
-        return dict(zip(fields, row, strict=False))
 
     def _emitTrackContext(self, filepath="", title="", artist="", album=""):
         """Emit trackContextChanged with complete playback context."""

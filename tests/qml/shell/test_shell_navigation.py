@@ -295,3 +295,43 @@ class TestNavigationServicePush:
         # Re-subscribing the same callable must not duplicate it.
         svc.subscribe(nav._on_navigation_request)
         assert len(svc._listeners) == 1
+
+    def test_go_back_pushes_request_to_bridge(self):
+        from core.navigation_service import NavigationService
+        svc = NavigationService()
+        nav = NavigationBridge(navigation_service=svc)
+        svc.navigate("library")
+        assert nav.currentRoute == "library"
+        # go_back must push a "back" action the bridge dispatches to its own
+        # history stack (previously it returned a dict without notifying).
+        svc.go_back()
+        assert nav.currentRoute == "home"
+
+    def test_go_forward_pushes_request_to_bridge(self):
+        from core.navigation_service import NavigationService
+        svc = NavigationService()
+        nav = NavigationBridge(navigation_service=svc)
+        svc.navigate("library")
+        svc.go_back()
+        assert nav.currentRoute == "home"
+        svc.go_forward()
+        assert nav.currentRoute == "library"
+
+    def test_unsubscribe_detaches_listener(self):
+        from core.navigation_service import NavigationService
+        svc = NavigationService()
+        nav = NavigationBridge(navigation_service=svc)
+        assert len(svc._listeners) == 1
+        svc.unsubscribe(nav._on_navigation_request)
+        assert svc._listeners == []
+        # After unsubscribe, a navigate must NOT move the bridge.
+        svc.navigate("library")
+        assert nav.currentRoute == "home"
+
+    def test_unsubscribe_unknown_listener_is_noop(self):
+        from core.navigation_service import NavigationService
+        svc = NavigationService()
+        nav = NavigationBridge(navigation_service=svc)
+        # Removing a never-subscribed callable must not raise.
+        svc.unsubscribe(lambda r: None)
+        assert len(svc._listeners) == 1

@@ -185,6 +185,11 @@ Item {
     function _handleLoaderStatus(loader, status) {
         if (loader !== _incomingLoader)
             return
+        // Generation guard: discard status changes from superseded requests so
+        // only the most recent loadRoute can emit a terminal outcome. This is
+        // what makes "last request wins" hold for signals, not just properties.
+        if (loader.requestGeneration !== root._loadGeneration)
+            return
         if (status === Loader.Ready) {
             root.loading = false
             root.lastError = ""
@@ -213,6 +218,16 @@ Item {
                     loader.item.routeEnter(root.currentRoute, root.currentParams())
                 }
             }
+
+            // Terminal outcome #1: the load resolved. A degraded route (unknown
+            // or non-functional status) renders a placeholder/FeatureStatePage,
+            // so it is surfaced as routeUnavailableRendered rather than
+            // routeLoaded. Exactly one terminal signal per completed load.
+            if (root._pendingDegraded) {
+                root.routeUnavailableRendered(root.currentRoute, root._pendingDegradedReason)
+            } else {
+                root.routeLoaded(root.currentRoute)
+            }
         } else if (status === Loader.Error) {
             root.loading = false
             root.lastError = qsTr("No se pudo cargar la ruta '%1' desde %2.")
@@ -220,6 +235,8 @@ Item {
             loader.source = ""
             loader.visible = false
             console.error("[PageStack] Route load error", root.pendingRoute, root.lastRequestedSource)
+            // Terminal outcome #2: the load failed to render.
+            root.routeErrorRendered(root.pendingRoute, root.lastError)
         } else if (status === Loader.Loading) {
             root.loading = true
         }
