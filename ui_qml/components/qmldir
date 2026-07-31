@@ -11,7 +11,6 @@ DiscoveryResultCard 1.0 DiscoveryResultCard.qml
 MichiButton 1.0 MichiButton.qml
 MichiIconButton 1.0 MichiIconButton.qml
 MichiSlider 1.0 MichiSlider.qml
-MichiBadge 1.0 MichiBadge.qml
 MichiProgressBar 1.0 MichiProgressBar.qml
 MichiDoubleSpinBox 1.0 MichiDoubleSpinBox.qml
 MichiTextField 1.0 MichiTextField.qml
@@ -88,8 +87,6 @@ NotificationBanner 1.0 NotificationBanner.qml
 NotificationCenter 1.0 NotificationCenter.qml
 NotificationItem 1.0 NotificationItem.qml
 NotificationProgressItem 1.0 NotificationProgressItem.qml
-ConnectionStatusBadge 1.0 ConnectionStatusBadge.qml
-ServiceHealthBadge 1.0 ServiceHealthBadge.qml
 
 # dialogs
 BaseDialog 1.0 dialogs/BaseDialog.qml

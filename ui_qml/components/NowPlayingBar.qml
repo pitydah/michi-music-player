@@ -253,7 +253,7 @@ Item {
                     iconKey: "eq"
                     iconVisualSize: 20
                     btnSize: 40
-                    symbolicColor: "#FFFFFF"
+                    symbolicColor: MichiTheme.colors.textPrimary
                     enabled: typeof capabilityBridge === "undefined" || !capabilityBridge || capabilityBridge.has("eq")
                     Accessible.name: qsTr("Ecualizador"); tooltipText: qsTr("Ecualizador")
                     onClicked: if (typeof navigationBridge !== "undefined") navigationBridge.navigate("equalizer")
@@ -264,7 +264,7 @@ Item {
                     iconKey: "streaming"
                     iconVisualSize: 20
                     btnSize: 40
-                    symbolicColor: "#FFFFFF"
+                    symbolicColor: MichiTheme.colors.textPrimary
                     enabled: root._hasTrack
                     Accessible.name: qsTr("Transmitir"); tooltipText: qsTr("Transmitir")
                     onClicked: if (typeof navigationBridge !== "undefined") navigationBridge.navigate("home_audio")
@@ -289,7 +289,7 @@ Item {
                         iconKey: "outputs"
                         iconVisualSize: 20
                         btnSize: 40
-                        symbolicColor: "#FFFFFF"
+                        symbolicColor: MichiTheme.colors.textPrimary
                         enabled: root._backendAvailable
                         Accessible.name: qsTr("Elegir salida de audio"); tooltipText: qsTr("Elegir salida de audio")
                         onClicked: {
@@ -305,7 +305,7 @@ Item {
                         iconKey: "settings"
                         iconVisualSize: 20
                         btnSize: 40
-                        symbolicColor: "#FFFFFF"
+                        symbolicColor: MichiTheme.colors.textPrimary
                         enabled: root.outputProfilesBridgeRef !== null
                         Accessible.name: qsTr("Elegir perfil de salida"); tooltipText: qsTr("Elegir perfil de salida")
                         onClicked: profilePopup.open()

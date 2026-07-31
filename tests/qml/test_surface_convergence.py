@@ -75,17 +75,13 @@ def test_status_badge_aliases_resolve_to_semantic_kinds() -> None:
     assert "colors.experimental" not in source
 
 
-def test_all_status_badge_components_use_semantic_palette() -> None:
-    michi_badge = _source("components/MichiBadge.qml")
-    connection_badge = _source("components/ConnectionStatusBadge.qml")
-    service_badge = _source("components/ServiceHealthBadge.qml")
+def test_status_badge_is_the_single_canonical_badge() -> None:
+    components = QML_ROOT / "components"
 
-    assert "semanticVariant" in michi_badge
-    assert "badgeMutedBg" not in michi_badge
-    assert "colors.disconnected" not in connection_badge
-    assert "badgeMutedBg" not in connection_badge
-    assert "colors.disconnected" not in service_badge
-    assert "badgeMutedBg" not in service_badge
+    assert (components / "StatusBadge.qml").exists()
+    assert not (components / "MichiBadge.qml").exists()
+    assert not (components / "ConnectionStatusBadge.qml").exists()
+    assert not (components / "ServiceHealthBadge.qml").exists()
 
 
 def test_card_runtime_uses_level_two_and_elevates_to_level_three(qapp) -> None:

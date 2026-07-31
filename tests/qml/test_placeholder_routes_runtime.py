@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QPoint, Qt, QUrl, qInstallMessageHandler
+from PySide6.QtCore import QUrl, qInstallMessageHandler
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickItem, QQuickWindow
@@ -224,45 +224,41 @@ def test_registry_aliases_return_canonical_metadata(alias: str, canonical: str) 
 
 
 @pytest.mark.parametrize(
-    ("initial_route", "target_route", "expected_object_name"),
+    ("initial_route", "hidden_route"),
     (
-        ("streaming.radio", "streaming.podcasts", "podcastsPlaceholderPage"),
-        ("connections.micro_server", "connections.big_server", "bigServerPlaceholderPage"),
-        ("connections.micro_server", "connections.navidrome", "navidromePlaceholderPage"),
-        ("connections.micro_server", "connections.jellyfin", "jellyfinPlaceholderPage"),
-        (
-            "connections.micro_server",
-            "connections.home_assistant",
-            "homeAssistantPlaceholderPage",
-        ),
+        ("streaming.radio", "streaming.podcasts"),
+        ("connections.micro_server", "connections.big_server"),
+        ("connections.micro_server", "connections.navidrome"),
+        ("connections.micro_server", "connections.jellyfin"),
+        ("connections.micro_server", "connections.home_assistant"),
+        ("home_audio.stream", "home_audio.chain_planner"),
+        ("sync.mobile", "sync.portable_players"),
+        ("sync.mobile", "sync.plans"),
+        ("sync.mobile", "sync.history"),
     ),
 )
-def test_sidebar_child_click_navigates_and_loads_placeholder(
+def test_planned_routes_are_not_rendered_as_sidebar_children(
     gui_app: QGuiApplication,
     qml_messages: list[str],
     initial_route: str,
-    target_route: str,
-    expected_object_name: str,
+    hidden_route: str,
 ) -> None:
+    # C-P2: planned/removed routes stay in the registry for programmatic
+    # navigation (covered by the PageStack tests above) but must NOT render
+    # as sidebar children. Visible siblings still render when their group
+    # is expanded via currentRoute.
     engine = QQmlEngine()
     registry = RouteRegistryBridge()
     navigation = NavigationBridge()
     engine.rootContext().setContextProperty("routeRegistryBridge", registry)
     engine.rootContext().setContextProperty("navigationBridge", navigation)
 
-    stack_component = _component(engine, "shell/PageStack.qml")
     sidebar_component = _component(engine, "shell/Sidebar.qml")
-    assert stack_component.isReady(), stack_component.errorString()
     assert sidebar_component.isReady(), sidebar_component.errorString()
-    stack = stack_component.createWithInitialProperties({"width": 900, "height": 700})
     sidebar = sidebar_component.createWithInitialProperties(
         {"width": 232, "height": 700, "currentRoute": initial_route}
     )
-    assert stack is not None, stack_component.errorString()
     assert sidebar is not None, sidebar_component.errorString()
-
-    navigation.routeChanged.connect(stack.loadRoute)
-    sidebar.routeRequested.connect(navigation.navigate)
     window = QQuickWindow()
     window.resize(232, 700)
     sidebar.setParentItem(window.contentItem())
@@ -271,41 +267,17 @@ def test_sidebar_child_click_navigates_and_loads_placeholder(
     _wait_until(
         gui_app,
         lambda: _find_visual_item(
-            window.contentItem(), f"sidebarChildAction_{target_route}"
-        ) is not None,
-    )
-    action = _find_visual_item(
-        window.contentItem(), f"sidebarChildAction_{target_route}"
-    )
-    assert action is not None
-    flickable = _find_visual_item(
-        window.contentItem(), "sidebarNavigationFlickable"
-    )
-    assert flickable is not None
-    action_scene_y = action.mapToScene(QPoint(0, 0)).y()
-    viewport_scene_y = flickable.mapToScene(QPoint(0, 0)).y()
-    viewport_bottom = viewport_scene_y + flickable.height()
-    if (action_scene_y < viewport_scene_y
-            or action_scene_y + action.height() > viewport_bottom):
-        scroll_delta = action_scene_y + action.height() - viewport_bottom + 8
-        flickable.setProperty(
-            "contentY", max(0.0, float(flickable.property("contentY")) + scroll_delta)
+            window.contentItem(), f"sidebarChildAction_{initial_route}"
         )
-        gui_app.processEvents()
-    scene_point = action.mapToScene(
-        QPoint(int(action.width() / 2), int(action.height() / 2))
-    ).toPoint()
-    QTest.mouseClick(window, Qt.LeftButton, Qt.NoModifier, scene_point)
-    _wait_until(gui_app, lambda: stack.property("lastLoadedRoute") == target_route)
-
-    assert navigation.currentRoute == target_route
-    assert stack.property("currentRoute") == target_route
-    assert stack.property("loadedObjectName") == expected_object_name
-    assert stack.property("lastError") == ""
+        is not None,
+    )
+    assert (
+        _find_visual_item(window.contentItem(), f"sidebarChildAction_{hidden_route}")
+        is None
+    )
     _assert_no_critical_messages(qml_messages)
     window.close()
     sidebar.deleteLater()
-    stack.deleteLater()
     engine.deleteLater()
 
 

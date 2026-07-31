@@ -5,7 +5,7 @@ import "../theme"
  *
  * A single backdrop instance shared by the entire shell.
  * Combines:
- *   - Solid base canvas (#070A10)
+ *   - Solid base canvas (bgApp)
  *   - Primary radial glow (accent top-center)
  *   - Secondary radial glow (accent bottom-right, subtle)
  *   - Vignette (dark edges)
@@ -33,8 +33,8 @@ Item {
             radius: width * 0.5
             gradient: Gradient {
                 GradientStop { position: 0.0; color: MichiTheme.colors.accentGlow }
-                GradientStop { position: 0.5; color: Qt.rgba(0.561, 0.718, 1.0, 0.03) }
-                GradientStop { position: 1.0; color: Qt.rgba(0.561, 0.718, 1.0, 0.0) }
+                GradientStop { position: 0.5; color: Qt.alpha(MichiTheme.colors.accentPrimary, 0.03) }
+                GradientStop { position: 1.0; color: Qt.alpha(MichiTheme.colors.accentPrimary, 0.0) }
             }
         }
 
@@ -48,8 +48,8 @@ Item {
             anchors.bottomMargin: -height * 0.2
             radius: width * 0.5
             gradient: Gradient {
-                GradientStop { position: 0.0; color: Qt.rgba(0.561, 0.718, 1.0, 0.04) }
-                GradientStop { position: 1.0; color: Qt.rgba(0.561, 0.718, 1.0, 0.0) }
+                GradientStop { position: 0.0; color: Qt.alpha(MichiTheme.colors.accentPrimary, 0.04) }
+                GradientStop { position: 1.0; color: Qt.alpha(MichiTheme.colors.accentPrimary, 0.0) }
             }
         }
 
@@ -60,8 +60,8 @@ Item {
             anchors.bottom: parent.bottom
             height: parent.height * 0.5
             gradient: Gradient {
-                GradientStop { position: 0.0; color: Qt.rgba(0.0, 0.0, 0.0, 0.0) }
-                GradientStop { position: 1.0; color: Qt.rgba(0.0, 0.0, 0.0, 0.45) }
+                GradientStop { position: 0.0; color: "transparent" }
+                GradientStop { position: 1.0; color: Qt.alpha(MichiTheme.colors.overlayDark, 0.45) }
             }
         }
     }

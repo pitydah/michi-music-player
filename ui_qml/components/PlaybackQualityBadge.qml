@@ -25,8 +25,8 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 16
-        color: "#1C1814"
-        border { width: 1; color: "#3D3028" }
+        color: MichiTheme.colors.nowPlayingQualityBg
+        border { width: 1; color: MichiTheme.colors.nowPlayingQualityBorder }
 
         Row {
             anchors.centerIn: parent
@@ -35,14 +35,14 @@ Item {
             Rectangle {
                 width: 6; height: 6; radius: 3
                 anchors.verticalCenter: parent.verticalCenter
-                color: root.active ? "#FF7A00" : MichiTheme.colors.textMuted
+                color: root.active ? MichiTheme.colors.nowPlayingGradientMiddle : MichiTheme.colors.textMuted
             }
 
             Text {
                 text: root.active && root.label !== ""
                       ? root.label
                       : qsTr("SIN REPRODUCCIÓN")
-                color: "#F4F6FA"
+                color: MichiTheme.colors.textPrimary
                 font { pixelSize: 11; weight: Font.Medium; letterSpacing: 0.5 }
                 elide: Text.ElideRight
                 width: Math.max(0, root.maximumWidth - 24)

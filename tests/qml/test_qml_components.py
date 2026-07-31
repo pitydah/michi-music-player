@@ -95,16 +95,6 @@ class TestMichiSlider:
         assert "signal moved()" in source or "signal moved" in source
 
 
-class TestMichiBadge:
-    def test_instantiate(self, engine):
-        component = _load_qml(engine, "components/MichiBadge.qml")
-        assert component.isReady()
-
-    def test_success_variant(self, engine):
-        component = _load_qml(engine, "components/MichiBadge.qml")
-        assert component.isReady()
-
-
 class TestMichiProgressBar:
     def test_instantiate(self, engine):
         component = _load_qml(engine, "components/MichiProgressBar.qml")

@@ -31,7 +31,7 @@ Item {
             Rectangle {
                 anchors.fill: parent
                 radius: width / 2
-                color: volMa.containsMouse ? Qt.rgba(1, 1, 1, 0.06) : "transparent"
+                color: volMa.containsMouse ? MichiTheme.colors.nowPlayingTransportHover : "transparent"
 
                 Image {
                     anchors.centerIn: parent

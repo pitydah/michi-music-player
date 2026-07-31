@@ -455,41 +455,6 @@ class TestMichiProgressBar:
         assert "property real to" in qml
 
 
-# ── MichiBadge ─────────────────────────────────────────────────────────────────
-
-
-class TestMichiBadge:
-    QML = "MichiBadge.qml"
-
-    def test_file_exists(self):
-        assert (COMPONENTS_DIR / self.QML).exists()
-
-    def test_object_name_uses_control_object_name(self):
-        qml = _read_qml(self.QML)
-        assert "objectName: controlObjectName" in qml or "objectName" in qml
-
-    def test_no_active_focus_on_tab(self):
-        qml = _read_qml(self.QML)
-        assert "activeFocusOnTab" not in qml
-
-    def test_accessible_role_status_bar(self):
-        qml = _read_qml(self.QML)
-        assert "Accessible.role: Accessible.StatusBar" in qml
-
-    @pytest.mark.parametrize("variant", ["info", "success", "warning", "error", "danger", "neutral"])
-    def test_variant_handled(self, variant):
-        qml = _read_qml(self.QML)
-        assert variant in qml
-
-    def test_badge_text_property(self):
-        qml = _read_qml(self.QML)
-        assert "property string badgeText" in qml
-
-    def test_variant_property_declared(self):
-        qml = _read_qml(self.QML)
-        assert "property string variant" in qml
-
-
 # ── MichiTabBar ────────────────────────────────────────────────────────────────
 
 

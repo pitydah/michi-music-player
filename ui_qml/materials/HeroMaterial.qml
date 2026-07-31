@@ -36,7 +36,7 @@ Item {
                 visible: root.showGlow
                 gradient: Gradient {
                     GradientStop { position: 0.0; color: MichiTheme.colors.surfaceHeroGlow }
-                    GradientStop { position: 0.6; color: Qt.rgba(0.561, 0.718, 1.0, 0.0) }
+                    GradientStop { position: 0.6; color: Qt.alpha(MichiTheme.colors.accentPrimary, 0.0) }
                 }
             }
 

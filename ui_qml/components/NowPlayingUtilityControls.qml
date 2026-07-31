@@ -105,17 +105,17 @@ Item {
             radius: parent.width / 2
             color: {
                 if (!enabled) return "transparent"
-                if (btn.active && btnMa.containsMouse) return Qt.rgba(52/255, 199/255, 89/255, 0.18)
+                if (btn.active && btnMa.containsMouse) return MichiTheme.colors.nowPlayingTransmitActive
                 if (btn.active) return btn.activeColor
-                if (btnMa.containsMouse) return Qt.rgba(1, 1, 1, 0.06)
+                if (btnMa.containsMouse) return MichiTheme.colors.nowPlayingTransportHover
                 return "transparent"
             }
             border.width: 1
             border.color: {
                 if (!enabled) return "transparent"
-                if (btn.active && btnMa.containsMouse) return Qt.rgba(52/255, 199/255, 89/255, 0.34)
+                if (btn.active && btnMa.containsMouse) return MichiTheme.colors.nowPlayingTransmitActiveBorder
                 if (btn.active) return btn.activeBorderColor
-                if (btnMa.containsMouse) return Qt.rgba(1, 1, 1, 0.10)
+                if (btnMa.containsMouse) return MichiTheme.colors.nowPlayingTransportHoverBorder
                 return "transparent"
             }
             opacity: enabled ? 1.0 : 0.35

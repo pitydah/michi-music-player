@@ -4,10 +4,10 @@ import "../theme"
 /* Michi Music Player — Base Surface
  *
  * Canonical surface component for the visual hierarchy:
- *   level1:  #0E141E  — background surfaces (sidebar, panels)
- *   level2:  #121A26  — elevated surfaces (cards, popups)
- *   level3:  #172131  — interactive surfaces (buttons, inputs)
- *   level4:  #1C283A  — highest elevation (modals, tooltips)
+ *   level1:  surfaceElevation1  — background surfaces (sidebar, panels)
+ *   level2:  surfaceElevation2  — elevated surfaces (cards, popups)
+ *   level3:  surfaceElevation3  — interactive surfaces (buttons, inputs)
+ *   level4:  surfaceElevation4  — highest elevation (modals, tooltips)
  *
  * Properties:
  *   level       — surface elevation (1-4)
@@ -58,7 +58,7 @@ Item {
             visible: root.glow
             gradient: Gradient {
                 GradientStop { position: 0.0; color: MichiTheme.colors.accentGlow }
-                GradientStop { position: 1.0; color: Qt.rgba(0.561, 0.718, 1.0, 0.0) }
+                GradientStop { position: 1.0; color: Qt.alpha(MichiTheme.colors.accentPrimary, 0.0) }
             }
         }
 

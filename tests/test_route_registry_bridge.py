@@ -33,14 +33,8 @@ class TestRouteRegistryBridge:
                 "library.artists",
                 "library.folders",
             ],
-            "streaming": ["streaming.radio", "streaming.podcasts"],
-            "connections": [
-                "connections.micro_server",
-                "connections.big_server",
-                "connections.navidrome",
-                "connections.jellyfin",
-                "connections.home_assistant",
-            ],
+            "streaming": ["streaming.radio"],
+            "connections": ["connections.micro_server"],
             "audio_lab": [
                 "audio_lab.analysis",
                 "audio_lab.processing",
@@ -53,12 +47,7 @@ class TestRouteRegistryBridge:
                 "home_audio.rooms",
                 "home_audio.distribution",
             ],
-            "sync": [
-                "sync.mobile",
-                "sync.portable_players",
-                "sync.plans",
-                "sync.history",
-            ],
+            "sync": ["sync.mobile"],
         }
 
     def test_removed_chain_planner_is_not_visible_in_sidebar(self):
@@ -68,3 +57,23 @@ class TestRouteRegistryBridge:
 
         assert route["sidebar_visible"] is False
         assert route["status"] == "removed"
+
+    def test_planned_routes_are_hidden_from_sidebar(self):
+        """Planned/configuration_required routes have no real functionality
+        and must not clutter the sidebar."""
+        from ui_qml_bridge.route_registry import ROUTES
+
+        hidden = [
+            "streaming.podcasts",
+            "connections.big_server",
+            "connections.navidrome",
+            "connections.jellyfin",
+            "connections.home_assistant",
+            "sync.portable_players",
+            "sync.plans",
+            "sync.history",
+        ]
+        for route_key in hidden:
+            assert ROUTES[route_key]["sidebar_visible"] is False, (
+                f"{route_key} should be hidden from the sidebar"
+            )
