@@ -56,6 +56,30 @@ Item {
         return parts.join(" · ")
     }
 
+    /* Effective playback/backend state color for the metadata card dot.
+     * Shares the same bridge inputs (playbackStatus, backendState) as the
+     * NowPlayingPage PlaybackStatusIndicator so both surfaces agree. */
+    readonly property color playbackStateColor: {
+        if (!root.ps || !root._hasTrack)
+            return MichiTheme.colors.textMuted
+        var bstate = root.ps.backendState
+        if (bstate === "failed" || bstate === "unavailable")
+            return MichiTheme.colors.error
+        if (bstate === "degraded")
+            return MichiTheme.colors.warning
+        var status = root.ps.playbackStatus
+        if (status === "failed" || status === "error")
+            return MichiTheme.colors.error
+        if (status === "reconnecting" || status === "buffering"
+                || status === "loading" || bstate === "initializing")
+            return MichiTheme.colors.warning
+        if (status === "playing")
+            return MichiTheme.colors.nowPlayingGradientMiddle
+        if (status === "paused")
+            return MichiTheme.colors.accentBlue
+        return MichiTheme.colors.textMuted
+    }
+
     function bridgeValue(name, fallbackValue) {
         if (!root.ps) return fallbackValue
         var value = root.ps[name]
@@ -127,8 +151,9 @@ Item {
                     x: parent.width - 10; y: parent.height - 10; width: 10; height: 10; radius: 5
                     color: MichiTheme.colors.nowPlayingTransportBg
                     border { width: 1; color: MichiTheme.colors.nowPlayingTransportHoverBorder }
-                    Rectangle { width: 5; height: 5; radius: 3; anchors.centerIn: parent
-                        color: root.ps && root.ps.isPlaying ? MichiTheme.colors.nowPlayingGradientMiddle : MichiTheme.colors.textMuted }
+                    Rectangle { objectName: "nowPlayingStateDot"
+                        width: 5; height: 5; radius: 3; anchors.centerIn: parent
+                        color: root.playbackStateColor }
                 }
             }
             Text {
@@ -208,10 +233,12 @@ Item {
                     shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
                     repeatMode: root.ps ? root.ps.repeatMode : "none"
                     commandPending: !root._hasTrack || (root.ps ? root.ps.commandPending : true)
-                    showShuffle: true
-                    showPrevious: true
-                    showNext: true
-                    showRepeat: true
+                    /* Real capability flags; always visible when no track
+                     * (cf202b8a: buttons stay visible, just disabled). */
+                    showShuffle: !root._hasTrack || (root.ps ? root.ps.shuffleSupported : true)
+                    showPrevious: !root._hasTrack || (root.ps ? root.ps.previousSupported : true)
+                    showNext: !root._hasTrack || (root.ps ? root.ps.nextSupported : true)
+                    showRepeat: !root._hasTrack || (root.ps ? root.ps.repeatSupported : true)
                     onPlayRequested: if (root.ps) root.ps.togglePlay()
                     onPauseRequested: if (root.ps) root.ps.togglePlay()
                     onPreviousRequested: if (root.ps) root.ps.previous()
@@ -360,8 +387,8 @@ Item {
             shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
             repeatMode: root.ps ? root.ps.repeatMode : "none"
             commandPending: !root._hasTrack || (root.ps ? root.ps.commandPending : true)
-            showPrevious: root._hasTrack && (root.ps ? root.ps.previousSupported : false)
-            showNext: root._hasTrack && (root.ps ? root.ps.nextSupported : false)
+            showPrevious: !root._hasTrack || (root.ps ? root.ps.previousSupported : true)
+            showNext: !root._hasTrack || (root.ps ? root.ps.nextSupported : true)
             onPlayRequested: if (root.ps) root.ps.togglePlay()
             onPauseRequested: if (root.ps) root.ps.togglePlay()
             onPreviousRequested: if (root.ps) root.ps.previous()

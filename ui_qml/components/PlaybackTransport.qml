@@ -37,7 +37,7 @@ Item {
 
         MichiIconButton {
             controlObjectName: "nowPlayingShuffleButton"
-            visible: !root.compact || root.isBar
+            visible: root.showShuffle && (!root.compact || root.isBar)
             iconKey: "shuffle"
             symbolic: true
             iconVisualSize: root.isBar ? 20 : MichiTheme.iconSizeRegular
@@ -52,7 +52,7 @@ Item {
 
         MichiIconButton {
             controlObjectName: "nowPlayingPreviousButton"
-            visible: !root.compact || root.isBar
+            visible: root.showPrevious && (!root.compact || root.isBar)
             iconKey: "previous"
             symbolic: true
             iconVisualSize: root.isBar ? 22 : MichiTheme.iconSizeRegular
@@ -84,7 +84,7 @@ Item {
 
         MichiIconButton {
             controlObjectName: "nowPlayingNextButton"
-            visible: !root.compact || root.isBar
+            visible: root.showNext && (!root.compact || root.isBar)
             iconKey: "next"
             symbolic: true
             iconVisualSize: root.isBar ? 22 : MichiTheme.iconSizeRegular
@@ -98,7 +98,7 @@ Item {
 
         MichiIconButton {
             controlObjectName: "nowPlayingRepeatButton"
-            visible: !root.compact || root.isBar
+            visible: root.showRepeat && (!root.compact || root.isBar)
             iconKey: root.repeatMode === "one" ? "repeat_one" : "repeat"
             symbolic: true
             iconVisualSize: root.isBar ? 20 : MichiTheme.iconSizeRegular

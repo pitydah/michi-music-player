@@ -152,12 +152,13 @@ Item {
                         StatusBadge { text: root.ps ? root.ps.bitrate : ""; kind: qsTr("info"); visible: text !== "" }
                     }
 
-                    StatusBadge {
+                    PlaybackStatusIndicator {
                         Layout.alignment: Qt.AlignHCenter
-                        text: !root.ps || !root._hasTrack ? "Sin reproducción"
-                            : root.ps.isPlaying ? "Reproduciendo" : "Pausado"
-                        kind: !root.ps || !root._hasTrack ? "disconnected"
-                            : root.ps.isPlaying ? "success" : "info"
+                        playbackStatus: root.ps ? root.ps.playbackStatus : "unavailable"
+                        backendState: root.ps ? root.ps.backendState : "unavailable"
+                        backendId: root.ps ? root.ps.backendId : ""
+                        live: root.ps ? root.ps.liveSource : false
+                        hasTrack: root._hasTrack
                     }
 
                     PlaybackProgress {

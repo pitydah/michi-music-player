@@ -101,6 +101,7 @@ Breadcrumbs 1.0 Breadcrumbs.qml
 
 # nowplaying
 NowPlayingBar 1.0 NowPlayingBar.qml
+PlaybackStatusIndicator 1.0 PlaybackStatusIndicator.qml
 NowPlayingVolume 1.0 NowPlayingVolume.qml
 NowPlayingUtilityControls 1.0 NowPlayingUtilityControls.qml
 MichiWarmSlider 1.0 MichiWarmSlider.qml

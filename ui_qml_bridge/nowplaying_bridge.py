@@ -113,6 +113,7 @@ class NowPlayingBridge(QObject):
     commandStateChanged = Signal()
     qualityChanged = Signal()
     capabilitiesChanged = Signal()
+    backendInfoChanged = Signal()
 
     def __init__(
         self,
@@ -166,6 +167,8 @@ class NowPlayingBridge(QObject):
         self._history_counter = 0
         self._backend_available = self._player is not None
         self._playback_status = "idle" if self._backend_available else "unavailable"
+        self._backend_id = ""
+        self._backend_state = "ready" if self._backend_available else "unavailable"
         self._error_message = ""
         self._emitted_error_keys: set[tuple[str, str]] = set()
         self._last_command = ""
@@ -188,6 +191,11 @@ class NowPlayingBridge(QObject):
         ctx_signal = getattr(self._player, "trackContextChanged", None)
         if ctx_signal is not None:
             ctx_signal.connect(self._on_track_context)
+
+        backend_signal = getattr(self._player, "backend_changed", None)
+        if backend_signal is not None:
+            with contextlib.suppress(TypeError):
+                backend_signal.connect(self._on_backend_changed)
 
         for signal_name, slot in (
             ("track_changed", self._on_track),
@@ -593,6 +601,46 @@ class NowPlayingBridge(QObject):
         if had_error:
             self._emit_error()
 
+    def _on_backend_changed(self, old_id: str, new_id: str):
+        """Re-sync effective backend info after a backend switch."""
+        if self._sync_backend_info():
+            self._emit_playback()
+            self._emit_capabilities()
+
+    def _sync_backend_info(self) -> bool:
+        """Read the effective backend id/state from the player service.
+
+        Returns True when the exposed values changed. A fallback backend maps
+        to the ``degraded`` state so QML can flag degraded output honestly.
+        """
+        backend_id = ""
+        backend_state = "ready" if self._backend_available else "unavailable"
+        if self._player:
+            info = None
+            getter = getattr(self._player, "get_backend_state", None)
+            if callable(getter):
+                with contextlib.suppress(Exception):
+                    candidate = getter()
+                if isinstance(candidate, dict):
+                    info = candidate
+            if info is not None:
+                backend_id = str(info.get("id", "") or "")
+                state = str(info.get("state", "") or "")
+                backend_state = "degraded" if info.get("fallback") else (state or "ready")
+            else:
+                id_getter = getattr(self._player, "get_active_backend_id", None)
+                if callable(id_getter):
+                    with contextlib.suppress(Exception):
+                        candidate = id_getter()
+                    if isinstance(candidate, str):
+                        backend_id = candidate
+        changed = backend_id != self._backend_id or backend_state != self._backend_state
+        if changed:
+            self._backend_id = backend_id
+            self._backend_state = backend_state
+            self.backendInfoChanged.emit()
+        return changed
+
     def _on_position(self, pos: float):
         self._position = int(pos)
         self._emit_position()
@@ -639,6 +687,12 @@ class NowPlayingBridge(QObject):
     @Property(bool, notify=playbackStateChanged)
     def isPlaying(self):
         return self._is_playing
+
+    @Property(str, notify=playbackStateChanged)
+    def playbackStatus(self):
+        """Raw playback status: idle/playing/paused/stopped/buffering/
+        reconnecting/unavailable or any state string a backend emits."""
+        return self._playback_status
 
     @Property(int, notify=positionChanged)
     def position(self):
@@ -844,6 +898,25 @@ class NowPlayingBridge(QObject):
     def backendAvailable(self):
         return self._backend_available
 
+    @Property(str, notify=backendInfoChanged)
+    def backendId(self):
+        """Effective backend id (e.g. ``gstreamer``, ``mpd``)."""
+        return self._backend_id
+
+    @Property(str, notify=backendInfoChanged)
+    def backendState(self):
+        """Effective backend lifecycle state: ready/initializing/degraded/
+        failed/uninitialized/unavailable."""
+        return self._backend_state
+
+    @Property(bool, notify=backendInfoChanged)
+    def backendSwitching(self):
+        return self._backend_state == "initializing"
+
+    @Property(bool, notify=backendInfoChanged)
+    def degradedOutput(self):
+        return self._backend_state == "degraded"
+
     @Property(str, notify=errorChanged)
     def errorMessage(self):
         return self._error_message
@@ -979,6 +1052,7 @@ class NowPlayingBridge(QObject):
                 self._emit_playback()
             if previous_duration != self._duration:
                 self._emit_duration()
+            self._sync_backend_info()
             self._emit_state()
             return _ok("refresh")
         except Exception as e:

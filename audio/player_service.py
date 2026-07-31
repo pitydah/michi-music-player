@@ -124,10 +124,12 @@ class PlayerService(QObject):
 
     def _on_error(self, msg):
         if self._retry_url:
+            self.state_changed.emit("reconnecting")
             self._retry_timer.start(2000)
             return
         is_stream_recoverable = msg and "STREAM_NETWORK_ERROR" in str(msg)
         if is_stream_recoverable and self._retry_url:
+            self.state_changed.emit("reconnecting")
             self._retry_timer.start(2000)
             return
         self.error_occurred.emit(msg)
@@ -164,6 +166,19 @@ class PlayerService(QObject):
 
     def get_active_backend_id(self) -> str:
         return self._hybrid.active_id
+
+    def get_backend_state(self) -> dict:
+        """Return the effective backend lifecycle state for UI consumers.
+
+        Returns a dict with the active backend ``id``, the hybrid manager
+        lifecycle ``state`` (uninitialized/initializing/ready/degraded/failed)
+        and whether a ``fallback`` backend is currently in use.
+        """
+        return {
+            "id": self._hybrid.active_id,
+            "state": self._hybrid.backend_state,
+            "fallback": self._hybrid.is_fallback,
+        }
 
     def get_backend_capabilities(self) -> Any:
         return self._hybrid.get_capabilities()
