@@ -7,7 +7,7 @@ API: BridgeFactory(container).create_all() -> BridgeRegistry.
 from __future__ import annotations
 
 import logging
-from PySide6.QtCore import QObject
+from PySide6.QtCore import Property, QObject, Signal
 
 from core.service_container import ServiceContainer
 from ui_qml_bridge.context_bindings import (
@@ -22,6 +22,8 @@ logger = logging.getLogger("michi.bridge_factory")
 class BridgeFactory(QObject):
     """Creates each bridge with injected dependencies from ServiceContainer."""
 
+    bridgeReportChanged = Signal()
+
     def __init__(
         self, container: ServiceContainer, parent: QObject | None = None
     ) -> None:
@@ -31,6 +33,7 @@ class BridgeFactory(QObject):
         self._capabilities: dict[str, bool] = {}
         self._degraded: list[tuple[str, str]] = []
         self._binding_by_key: dict[str, ContextBinding] = {}
+        self._bridge_report: dict = {}
         for _binding in CONTEXT_BINDINGS:
             _bridge_key = QML_CONTEXT_BINDINGS.get(_binding.context_name)
             if _bridge_key is not None:
@@ -68,6 +71,94 @@ class BridgeFactory(QObject):
             if not self._container.contains(svc) and svc not in self._bridges:
                 return False, f"Missing {svc} for {binding.context_name}"
         return True, None
+
+    def _missing_required_services(self, binding: ContextBinding) -> list[str]:
+        """Return required_services for *binding* that are absent (None or unregistered)."""
+        return [
+            svc
+            for svc in binding.required_services
+            if not self._container.contains(svc) and svc not in self._bridges
+        ]
+
+    def validate_all_bridges(self) -> dict:
+        """Validate every bridge against its ContextBinding and return a report.
+
+        Each known bridge key is classified as:
+
+        - ``ok``: created and all ``required_services`` present (non-None).
+        - ``missing_required``: created but a required service is None/missing,
+          or expected by a binding but not created at all.
+        - ``degraded``: creation skipped (recorded in :attr:`degraded_bridges`).
+        - ``created``: created but has no ContextBinding to validate against
+          (e.g. internal helpers like ``query_executor``).
+
+        The report is stored on the factory (see :attr:`bridgeReport`) and
+        emitted via :attr:`bridgeReportChanged` for QML diagnostics.
+        """
+        per_bridge: dict[str, dict] = {}
+        degraded_map = dict(self._degraded)
+        all_keys = set(self._bridges) | set(degraded_map) | set(self._binding_by_key)
+        ok_count = missing_count = degraded_count = created_count = 0
+        for key in sorted(all_keys):
+            if key in degraded_map:
+                entry = {"status": "degraded", "reason": degraded_map[key]}
+                degraded_count += 1
+            else:
+                bridge = self._bridges.get(key)
+                binding = self._binding_by_key.get(key)
+                if bridge is None:
+                    missing = self._missing_required_services(binding) if binding else []
+                    entry = {
+                        "status": "missing_required",
+                        "missing": missing,
+                        "reason": "not created",
+                    }
+                    missing_count += 1
+                    logger.warning(
+                        "BridgeFactory: '%s' not created — missing %s", key, missing
+                    )
+                elif binding is None:
+                    entry = {"status": "created"}
+                    created_count += 1
+                else:
+                    missing = self._missing_required_services(binding)
+                    if missing:
+                        entry = {"status": "missing_required", "missing": missing}
+                        missing_count += 1
+                        logger.warning(
+                            "BridgeFactory: '%s' missing required deps %s", key, missing
+                        )
+                    else:
+                        entry = {"status": "ok"}
+                        ok_count += 1
+            logger.debug("BridgeFactory: %s -> %s", key, entry["status"])
+            per_bridge[key] = entry
+        report = {
+            "bridges": per_bridge,
+            "summary": {
+                "total": len(per_bridge),
+                "ok": ok_count,
+                "missing_required": missing_count,
+                "degraded": degraded_count,
+                "created": created_count,
+            },
+        }
+        self._bridge_report = report
+        self.bridgeReportChanged.emit()
+        logger.info(
+            "BridgeFactory: bridge graph validated — %d ok, %d missing_required, "
+            "%d degraded, %d created",
+            ok_count,
+            missing_count,
+            degraded_count,
+            created_count,
+        )
+        return report
+
+    @Property("QVariantMap", notify=bridgeReportChanged)
+    def bridgeReport(self) -> dict:
+        """Last bridge-graph validation report, exposed to QML for diagnostics."""
+        return self._bridge_report
 
     def _try_create(self, bridge_key: str, create_fn) -> None:
         """Validate the binding for *bridge_key*, then create or skip.
@@ -621,6 +712,7 @@ class BridgeFactory(QObject):
 
         self._validate_bridge_identities()
         self._assert_wiring()
+        self.validate_all_bridges()
         return self._bridges
 
     def _validate_bridge_identities(self):

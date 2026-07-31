@@ -26,6 +26,26 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("michi.bootstrap")
 
+# Bootstrap lifecycle states — explicit state machine for startup diagnostics.
+# created -> initializing -> ready | degraded | failed -> shutting_down -> stopped
+BOOT_CREATED = "created"
+BOOT_INITIALIZING = "initializing"
+BOOT_READY = "ready"
+BOOT_DEGRADED = "degraded"
+BOOT_FAILED = "failed"
+BOOT_SHUTTING_DOWN = "shutting_down"
+BOOT_STOPPED = "stopped"
+
+BOOT_STATES: frozenset[str] = frozenset({
+    BOOT_CREATED,
+    BOOT_INITIALIZING,
+    BOOT_READY,
+    BOOT_DEGRADED,
+    BOOT_FAILED,
+    BOOT_SHUTTING_DOWN,
+    BOOT_STOPPED,
+})
+
 
 class ApplicationBootstrap:
     """Compose and manage the lifecycle of the QML application services."""
@@ -36,6 +56,10 @@ class ApplicationBootstrap:
         self._has_built = False
         self._has_started = False
         self._session_restore_attempted = False
+        # Explicit bootstrap state machine.
+        self._boot_state: str = BOOT_CREATED
+        self._failed_services: dict[str, str] = {}
+        self._degraded_services: dict[str, str] = {}
 
     def _validate_required(self) -> list[str]:
         return self.container.validate_required_present()
@@ -44,6 +68,7 @@ class ApplicationBootstrap:
         """Build and register each service once in dependency order."""
         if self._has_built:
             return self
+        self._boot_state = BOOT_INITIALIZING
         logger.info("Bootstrap: building services")
         infra_builder.build(self.container)
         playback_builder.build(self.container)
@@ -65,17 +90,41 @@ class ApplicationBootstrap:
         return self
 
     def start(self) -> Self:
-        """Build missing services and start the service container."""
+        """Build missing services, start the container, and derive boot state.
+
+        State derivation:
+          - container READY and no required failures -> BOOT_READY
+          - container DEGRADED or optional failure   -> BOOT_DEGRADED (still runnable)
+          - container FAILED or required failure     -> BOOT_FAILED (QML must NOT load)
+        """
         if not self._has_built:
             self.build()
+        self._boot_state = BOOT_INITIALIZING
         logger.info("Bootstrap: starting services")
         self.container.start()
-        if self.container.state.value in ("ready", "degraded"):
+        self._classify_service_failures()
+        container_state = self.container.state.value
+        if container_state == "failed" or self._failed_services:
+            self._boot_state = BOOT_FAILED
+            logger.error(
+                "Bootstrap: FAILED (container=%s) — failed required services: %s",
+                container_state,
+                self._failed_services,
+            )
+        elif container_state == "degraded" or self._degraded_services:
+            self._boot_state = BOOT_DEGRADED
             self._has_started = True
             self._restore_session_once()
-            logger.info("Bootstrap: READY (state=%s)", self.container.state.value)
+            logger.warning(
+                "Bootstrap: DEGRADED (container=%s) — degraded services: %s",
+                container_state,
+                self._degraded_services,
+            )
         else:
-            logger.error("Bootstrap: FAILED (state=%s)", self.container.state.value)
+            self._boot_state = BOOT_READY
+            self._has_started = True
+            self._restore_session_once()
+            logger.info("Bootstrap: READY (state=%s)", container_state)
         return self
 
     def create_bridges(self) -> dict[str, QObject]:
@@ -103,7 +152,18 @@ class ApplicationBootstrap:
         return registrar
 
     def load_qml(self, engine: QQmlApplicationEngine, qml_path: str | None = None) -> bool:
-        """Load the requested QML entry point and report whether it created a root object."""
+        """Load the requested QML entry point and report whether it created a root object.
+
+        Refuses to load QML when the bootstrap is in the FAILED state: a failed
+        required service means the application cannot function correctly, so
+        loading the UI would only present a broken surface to the user.
+        """
+        if self._boot_state == BOOT_FAILED:
+            logger.error(
+                "Bootstrap: refusing to load QML — state is FAILED (%s)",
+                self._failed_services,
+            )
+            return False
         if qml_path is None:
             qml_path = str(Path(__file__).resolve().parent.parent / "ui_qml" / "Main.qml")
         engine.addImportPath(str(Path(qml_path).parent.parent))
@@ -118,12 +178,23 @@ class ApplicationBootstrap:
         return True
 
     def shutdown(self) -> None:
-        """Shut down all services and reset bootstrap lifecycle flags."""
+        """Shut down all services and reset bootstrap lifecycle flags.
+
+        Idempotent: once SHUTTING_DOWN or STOPPED, subsequent calls are no-ops.
+        Transition: SHUTTING_DOWN -> (container.shutdown) -> STOPPED.
+        """
+        if self._boot_state in (BOOT_SHUTTING_DOWN, BOOT_STOPPED):
+            logger.debug("Bootstrap: shutdown already %s — skipping", self._boot_state)
+            return
+        self._boot_state = BOOT_SHUTTING_DOWN
         logger.info("Bootstrap: shutting down")
-        self.container.shutdown()
-        self._has_built = False
-        self._has_started = False
-        self._session_restore_attempted = False
+        try:
+            self.container.shutdown()
+        finally:
+            self._has_built = False
+            self._has_started = False
+            self._session_restore_attempted = False
+            self._boot_state = BOOT_STOPPED
 
     def run(
         self,
@@ -137,6 +208,57 @@ class ApplicationBootstrap:
         if engine is not None:
             self.register_context(engine)
             self.load_qml(engine, qml_path)
+
+    @property
+    def boot_state(self) -> str:
+        """Current bootstrap lifecycle state (see BOOT_* constants)."""
+        return self._boot_state
+
+    @property
+    def failed_services(self) -> dict[str, str]:
+        """Required services that failed during start (service -> reason)."""
+        return dict(self._failed_services)
+
+    @property
+    def degraded_services(self) -> dict[str, str]:
+        """Optional services that failed during start (service -> reason)."""
+        return dict(self._degraded_services)
+
+    def boot_report(self) -> dict[str, Any]:
+        """Return a snapshot of the bootstrap state for diagnostics/QML exposure."""
+        return {
+            "state": self._boot_state,
+            "container_state": self.container.state.value,
+            "has_built": self._has_built,
+            "has_started": self._has_started,
+            "failed_services": dict(self._failed_services),
+            "degraded_services": dict(self._degraded_services),
+        }
+
+    def _classify_service_failures(self) -> None:
+        """Populate ``_failed_services`` / ``_degraded_services`` from container state.
+
+        Reads the container's per-service diagnostics and partitions failures by
+        priority: required failures are fatal (-> FAILED), optional failures are
+        survivable (-> DEGRADED) and disable the corresponding capability.
+        """
+        self._failed_services.clear()
+        self._degraded_services.clear()
+        for name, info in self.container.list_services().items():
+            if not info.get("failed"):
+                continue
+            reason = info.get("error") or "failed"
+            priority = info.get("priority")
+            if priority == "required":
+                self._failed_services[name] = reason
+                logger.error(
+                    "Bootstrap: required service '%s' failed — %s", name, reason
+                )
+            else:
+                self._degraded_services[name] = reason
+                logger.warning(
+                    "Bootstrap: optional service '%s' degraded — %s", name, reason
+                )
 
     def restore_settings(self) -> None:
         """Apply persisted appearance & accessibility settings to runtime bridges.
