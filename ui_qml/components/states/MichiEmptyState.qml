@@ -12,6 +12,7 @@ Item {
     property url iconSource: ""
     property color iconColor: MichiTheme.colors.accentPrimary
     property string primaryActionText: ""
+    property string primaryActionObjectName: ""
     property string secondaryActionText: ""
     property bool busy: false
     property string details: ""
@@ -100,6 +101,7 @@ Item {
 
             MichiButton {
                 text: root.primaryActionText
+                objectName: root.primaryActionObjectName
                 visible: text !== ""
                 onClicked: root.primaryActionRequested()
             }
