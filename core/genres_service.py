@@ -40,6 +40,21 @@ class GenresService:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    def get_genre_tracks(self, genre: str) -> list[dict]:
+        if not self._db:
+            return []
+        try:
+            rows = self._db.conn.execute(
+                "SELECT filepath, title, artist FROM media_items "
+                "WHERE deleted_at IS NULL AND genre=? ORDER BY title LIMIT 500",
+                (genre,)).fetchall()
+            return [
+                {"filepath": r[0], "title": r[1], "artist": r[2]}
+                for r in rows if r[0]
+            ]
+        except Exception:
+            return []
+
     def normalize_genre(self, old_name: str, new_name: str) -> dict:
         if not self._db:
             return {"ok": False, "error": "NO_DB"}

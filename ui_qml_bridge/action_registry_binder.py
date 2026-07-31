@@ -45,6 +45,7 @@ class ActionRegistryBinder(QObject):
         self._bind_tracks()
         self._bind_albums()
         self._bind_artists()
+        self._bind_genres()
         self._bind_folders()
         self._bind_sources()
         self._bind_radio()
@@ -121,6 +122,19 @@ class ActionRegistryBinder(QObject):
 
     def _sel_source_path(self) -> str:
         return self._sel_field("path", "source_path", "sourcePath")
+
+    def _sel_genre(self) -> str:
+        return self._sel_field("genre", "genre_name", "genreName", "name")
+
+    def _sel_playlist_id(self) -> int:
+        v = self._sel_field("playlist_id", "playlistId", "pid", "id")
+        try:
+            return int(v) if v != "" else 0
+        except (ValueError, TypeError):
+            return 0
+
+    def _sel_playlist_name(self) -> str:
+        return self._sel_field("name", "title", "playlist_name", "playlistName")
 
     # ── generic handler factories ───────────────────────────────────────
     def _navigate_handler(self, route: str):
@@ -312,6 +326,24 @@ class ActionRegistryBinder(QObject):
             action.handler = self._no_arg_handler("library_sources", "scanAllSources")
 
     # ── playlist actions ────────────────────────────────────────────────
+    def _playlist_rename_handler(self):
+        def handler():
+            pl = self._playlists()
+            if not pl or not hasattr(pl, "renamePlaylist"):
+                return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+            pid = self._sel_playlist_id()
+            if pid == 0:
+                return {"ok": False, "error": "NO_SELECTION"}
+            name = self._sel_playlist_name()
+            if not name:
+                return {"ok": False, "error": "NO_SELECTION"}
+            try:
+                result = pl.renamePlaylist(pid, name)
+                return result if isinstance(result, dict) else {"ok": True}
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        return handler
+
     def _bind_playlist(self):
         action = self._registry.get("playlist_create")
         if action:
@@ -325,6 +357,28 @@ class ActionRegistryBinder(QObject):
                 except Exception as e:
                     return {"ok": False, "error": str(e)}
             action.handler = handler
+        play = self._sel_arg_handler("playlists", "playPlaylist",
+                                     self._sel_playlist_id,
+                                     empty=lambda v: v == 0)
+        action = self._registry.get("playlist_play")
+        if action:
+            action.handler = play
+        action = self._registry.get("playlist_shuffle")
+        if action:
+            action.handler = self._play_with_shuffle_handler(play)
+        action = self._registry.get("playlist_queue")
+        if action:
+            action.handler = self._sel_arg_handler("playlists", "enqueuePlaylist",
+                                                   self._sel_playlist_id,
+                                                   empty=lambda v: v == 0)
+        action = self._registry.get("playlist_rename")
+        if action:
+            action.handler = self._playlist_rename_handler()
+        action = self._registry.get("playlist_delete")
+        if action:
+            action.handler = self._sel_arg_handler("playlists", "deletePlaylist",
+                                                   self._sel_playlist_id,
+                                                   empty=lambda v: v == 0)
 
     # ── metadata actions ────────────────────────────────────────────────
     def _bind_metadata(self):
@@ -636,6 +690,23 @@ class ActionRegistryBinder(QObject):
         action = reg.get("artist_radio")
         if action:
             action.handler = self._navigate_handler("streaming.radio")
+
+    # ── genre actions ───────────────────────────────────────────────────
+    def _bind_genres(self):
+        reg = self._registry
+        play = self._sel_arg_handler("library", "playGenre", self._sel_genre,
+                                     empty=lambda v: not v)
+        action = reg.get("genre_play")
+        if action:
+            action.handler = play
+        action = reg.get("genre_shuffle")
+        if action:
+            action.handler = self._play_with_shuffle_handler(play)
+        action = reg.get("genre_queue")
+        if action:
+            action.handler = self._sel_arg_handler("library", "enqueueGenre",
+                                                   self._sel_genre,
+                                                   empty=lambda v: not v)
 
     # ── folder actions ──────────────────────────────────────────────────
     def _folder_queue_handler(self):

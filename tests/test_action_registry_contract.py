@@ -28,7 +28,8 @@ class TestActionRegistryContract:
     def test_categories_are_valid(self):
         reg = ActionRegistry()
         valid = {"navigation", "playback", "library", "playlist", "metadata",
-                 "radio", "system", "track", "album", "artist", "folder", "source"}
+                 "radio", "system", "track", "album", "artist", "folder", "source",
+                 "genre"}
         for aid, action in reg._actions.items():
             assert action.category in valid, f"Action {aid} has invalid category: {action.category}"
 

@@ -153,6 +153,98 @@ class TestActionRegistryReal:
         lib.playAlbumNext.assert_called_once_with("album123")
         lib.enqueueAlbum.assert_not_called()
 
+    def test_genre_play_uses_play_genre(self):
+        """genre_play delegates to library.playGenre with the selected genre."""
+        ar = ActionRegistry()
+        bridges = _make_bridges()
+        lib = bridges["library"]
+        selection = bridges["selection_context"]
+        selection.selectedData = {"genre": "Rock"}
+
+        binder = ActionRegistryBinder(ar, bridges)
+        binder.bind_all()
+
+        result = ar.execute("genre_play")
+        assert result.get("ok") is True
+        lib.playGenre.assert_called_once_with("Rock")
+
+    def test_genre_queue_uses_enqueue_genre(self):
+        """genre_queue delegates to library.enqueueGenre (append, not play)."""
+        ar = ActionRegistry()
+        bridges = _make_bridges()
+        lib = bridges["library"]
+        selection = bridges["selection_context"]
+        selection.selectedData = {"genre": "Jazz"}
+
+        binder = ActionRegistryBinder(ar, bridges)
+        binder.bind_all()
+
+        result = ar.execute("genre_queue")
+        assert result.get("ok") is True
+        lib.enqueueGenre.assert_called_once_with("Jazz")
+        lib.playGenre.assert_not_called()
+
+    def test_playlist_play_uses_play_playlist(self):
+        """playlist_play delegates to playlists.playPlaylist with the selected id."""
+        ar = ActionRegistry()
+        bridges = _make_bridges()
+        playlists = bridges["playlists"]
+        selection = bridges["selection_context"]
+        selection.selectedData = {"playlist_id": 7}
+
+        binder = ActionRegistryBinder(ar, bridges)
+        binder.bind_all()
+
+        result = ar.execute("playlist_play")
+        assert result.get("ok") is True
+        playlists.playPlaylist.assert_called_once_with(7)
+
+    def test_playlist_queue_uses_enqueue_playlist(self):
+        """playlist_queue delegates to playlists.enqueuePlaylist (append)."""
+        ar = ActionRegistry()
+        bridges = _make_bridges()
+        playlists = bridges["playlists"]
+        selection = bridges["selection_context"]
+        selection.selectedData = {"playlist_id": 7}
+
+        binder = ActionRegistryBinder(ar, bridges)
+        binder.bind_all()
+
+        result = ar.execute("playlist_queue")
+        assert result.get("ok") is True
+        playlists.enqueuePlaylist.assert_called_once_with(7)
+        playlists.playPlaylist.assert_not_called()
+
+    def test_playlist_rename_uses_rename_playlist(self):
+        """playlist_rename passes selected id + name to playlists.renamePlaylist."""
+        ar = ActionRegistry()
+        bridges = _make_bridges()
+        playlists = bridges["playlists"]
+        selection = bridges["selection_context"]
+        selection.selectedData = {"playlist_id": 3, "name": "Favoritas"}
+
+        binder = ActionRegistryBinder(ar, bridges)
+        binder.bind_all()
+
+        result = ar.execute("playlist_rename")
+        assert result.get("ok") is True
+        playlists.renamePlaylist.assert_called_once_with(3, "Favoritas")
+
+    def test_playlist_delete_uses_delete_playlist(self):
+        """playlist_delete delegates to playlists.deletePlaylist with the selected id."""
+        ar = ActionRegistry()
+        bridges = _make_bridges()
+        playlists = bridges["playlists"]
+        selection = bridges["selection_context"]
+        selection.selectedData = {"playlist_id": 9}
+
+        binder = ActionRegistryBinder(ar, bridges)
+        binder.bind_all()
+
+        result = ar.execute("playlist_delete")
+        assert result.get("ok") is True
+        playlists.deletePlaylist.assert_called_once_with(9)
+
     def test_no_second_vocabulary_actions(self):
         """Bootstrap's second vocabulary IDs must not be registered."""
         ar = ActionRegistry()

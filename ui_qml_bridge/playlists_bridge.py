@@ -491,6 +491,21 @@ class PlaylistsBridge(QObject):
             return {"ok": False, "error": "NO_QUEUE_SERVICE"}
         return self._queue_service.replace_and_play(tracks, 0)
 
+    @Slot(int, result=dict)
+    def enqueuePlaylist(self, pid: int) -> dict:
+        """Append every track of a playlist to the queue without replacing it."""
+        if not self._can():
+            return {"ok": False, "error": "NO_DB"}
+        items = self._get_items_internal(pid)
+        if not items:
+            return {"ok": False, "error": "NO_TRACKS"}
+        tracks = [item for item in items if item.get("filepath")]
+        if len(tracks) != len(items):
+            return {"ok": False, "error": "NO_TRACKS"}
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
+        return self._queue_service.enqueue(tracks, play_now=False)
+
     @Slot(int, str, result=dict)
     def setCover(self, pid: int, cover_path: str) -> dict:
         if not self._can():

@@ -1158,6 +1158,24 @@ class LibraryBridge(QObject):
             return svc.play_genre(genre)
         return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
 
+    @Slot(str, result=dict)
+    def enqueueGenre(self, genre: str):
+        """Append every track of a genre to the queue without starting playback."""
+        if not genre:
+            return {"ok": False, "error": "EMPTY_GENRE"}
+        svc = getattr(self, '_genres_svc', None)
+        if not svc or not hasattr(svc, 'get_genre_tracks'):
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        if not self._queue_service:
+            return {"ok": False, "error": "NO_QUEUE_SERVICE"}
+        try:
+            tracks = svc.get_genre_tracks(genre)
+            if not tracks:
+                return {"ok": False, "error": "NO_TRACKS"}
+            return self._queue_service.enqueue(tracks, play_now=False)
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     @Slot(str, str, result=dict)
     def normalizeGenre(self, old_name: str, new_name: str):
         svc = getattr(self, '_genres_svc', None)

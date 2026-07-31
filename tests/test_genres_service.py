@@ -65,6 +65,29 @@ class TestGenresService:
         result = svc.play_genre("Nonexistent")
         assert result["ok"] is False
 
+    def test_get_genre_tracks(self, db):
+        svc = GenresService(db=db)
+        tracks = svc.get_genre_tracks("Rock")
+        assert len(tracks) == 2
+        filepaths = [t["filepath"] for t in tracks]
+        assert "/music/r1.flac" in filepaths
+        assert "/music/r2.flac" in filepaths
+        assert all(t.get("title") for t in tracks)
+
+    def test_get_genre_tracks_excludes_other_genres(self, db):
+        svc = GenresService(db=db)
+        tracks = svc.get_genre_tracks("Jazz")
+        assert len(tracks) == 2
+        assert all("j" in t["filepath"] for t in tracks)
+
+    def test_get_genre_tracks_unknown_genre(self, db):
+        svc = GenresService(db=db)
+        assert svc.get_genre_tracks("Nonexistent") == []
+
+    def test_get_genre_tracks_no_db(self):
+        svc = GenresService(db=None)
+        assert svc.get_genre_tracks("Rock") == []
+
     def test_normalize_genre(self, db):
         svc = GenresService(db=db)
         result = svc.normalize_genre("Rock", "Hard Rock")
