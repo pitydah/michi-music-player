@@ -115,11 +115,13 @@ def test_nowplaying_surfaces_use_canonical_playback_components() -> None:
 
 def test_playback_route_converges_on_nowplaying() -> None:
     nowplaying = ROUTES["nowplaying"]
-    playback = ROUTES["playback"]
 
-    assert playback["source"] == nowplaying["source"]
+    # "playback" is no longer a standalone route; it is a legacy alias of the
+    # canonical "nowplaying" route and must resolve to the same source page.
+    assert "playback" not in ROUTES
     assert ROUTE_ALIASES["playback"] == "nowplaying"
     assert resolve_route("playback") == "nowplaying"
+    assert ROUTES[resolve_route("playback")]["source"] == nowplaying["source"]
 
 
 def test_obsolete_nowplaying_components_are_removed() -> None:

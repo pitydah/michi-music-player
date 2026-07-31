@@ -220,22 +220,21 @@ Item {
                 }
             }
 
-            LoadingState {
+            MichiLoadingState {
                 width: parent.width
                 visible: root._state === "LOADING"
                 title: qsTr("Cargando playlists")
                 message: qsTr("Obteniendo listas de reproducción...")
             }
 
-            EmptyState {
+            MichiEmptyState {
                 width: parent.width
                 visible: root._state === "EMPTY"
-                iconText: ""
+                iconName: ""
                 title: qsTr("Sin playlists")
-                subtitle: qsTr("Crea tu primera lista de reproducción para empezar a organizar tu música.")
-                actionText: "Crear playlist"
-                showAction: true
-                onActionClicked: root.openEditor()
+                message: qsTr("Crea tu primera lista de reproducción para empezar a organizar tu música.")
+                primaryActionText: "Crear playlist"
+                onPrimaryActionRequested: root.openEditor()
             }
 
             ErrorState {

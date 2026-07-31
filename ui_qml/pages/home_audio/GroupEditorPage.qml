@@ -108,7 +108,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root._loading
-        sourceComponent: LoadingState { title: qsTr("Cargando grupo") }
+        sourceComponent: MichiLoadingState { title: qsTr("Cargando grupo") }
     }
 
     ColumnLayout {

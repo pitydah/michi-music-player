@@ -44,14 +44,14 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: qsTr("Cargando Mix") }
+        sourceComponent: MichiLoadingState { title: qsTr("Cargando Mix") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
         sourceComponent: Component {
-            UnavailableState {
+            MichiUnavailableState {
                 width: Math.min(520, root.width * 0.86)
                 title: qsTr("Mix no disponible")
                 message: qsTr("El motor de mixes no está activo. Cuando esté configurado, combinará tu biblioteca por género, estado de ánimo y preferencias.")

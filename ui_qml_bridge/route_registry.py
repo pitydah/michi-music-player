@@ -1068,18 +1068,6 @@ ROUTES: dict[str, dict] = {
         "placeholder_state": None,
         "params": None, "category": "core",
     },
-    "playback": {
-        "route": "playback", "parent": None, "title": "Reproducción",
-        "breadcrumb_title": "Reproducción",
-        "source": "../pages/nowplaying/NowPlayingPage.qml",
-        "icon": "home", "order": 0, "sidebar_visible": False,
-        "sidebar_group": None, "expandable": False,
-        "status": "functional", "capability": None,
-        "aliases": [],
-        "keywords": [],
-        "placeholder_state": None,
-        "params": None, "category": "core",
-    },
     "lyrics": {
         "route": "lyrics", "parent": None, "title": "Letra",
         "breadcrumb_title": "Letra",

@@ -210,7 +210,7 @@ Item {
         }
     }
 
-    LoadingState {
+    MichiLoadingState {
         anchors.centerIn: parent
         visible: root._loading
         title: qsTr("Cargando mix...")

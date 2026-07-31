@@ -299,7 +299,7 @@ Item {
         }
     }
 
-    LoadingState {
+    MichiLoadingState {
         id: loadingState
         anchors.centerIn: parent
         title: qsTr("Cargando dispositivo")
@@ -308,7 +308,7 @@ Item {
         visible: root.state === "LOADING" || root.state === "INITIALIZING"
     }
 
-    UnavailableState {
+    MichiUnavailableState {
         id: unavailableState
         anchors.centerIn: parent
         title: qsTr("Servicio no disponible")

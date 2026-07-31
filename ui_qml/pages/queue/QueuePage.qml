@@ -43,7 +43,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: qsTr("Cargando cola") }
+        sourceComponent: MichiLoadingState { title: qsTr("Cargando cola") }
     }
 
     Loader {

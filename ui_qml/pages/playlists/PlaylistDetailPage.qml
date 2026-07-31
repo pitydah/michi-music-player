@@ -249,20 +249,19 @@ Item {
                 }
             }
 
-            LoadingState {
+            MichiLoadingState {
                 width: parent.width
                 visible: root._state === "LOADING"
                 title: qsTr("Cargando playlist")
             }
 
-            EmptyState {
+            MichiEmptyState {
                 width: parent.width
                 visible: root._state === "EMPTY"
                 title: qsTr("Playlist vacía")
-                subtitle: qsTr("Agrega canciones desde la biblioteca.")
-                actionText: "Agregar canciones"
-                showAction: true
-                onActionClicked: root.addTracks()
+                message: qsTr("Agrega canciones desde la biblioteca.")
+                primaryActionText: "Agregar canciones"
+                onPrimaryActionRequested: root.addTracks()
             }
 
             ErrorState {

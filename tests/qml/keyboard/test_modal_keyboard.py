@@ -59,7 +59,7 @@ class TestModalKeyboard:
         assert "Accessible.Button" in btn_content or "focusPolicy" in btn_content
 
     def test_escape_on_input_clears(self, engine):
-        sf_path = QML_DIR / "components/SearchField.qml"
+        sf_path = QML_DIR / "components/MichiSearchField.qml"
         if sf_path.exists():
             content = sf_path.read_text()
             has_escape = "Keys.onEscapePressed" in content or "Escape" in content

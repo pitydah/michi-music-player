@@ -141,7 +141,7 @@ class TestAccessibleComponents:
         self._check_qml_file("components/settings/SettingsRow.qml")
 
     def test_search_field_accessible(self):
-        self._check_qml_file("components/SearchField.qml")
+        self._check_qml_file("components/MichiSearchField.qml")
 
     def test_settings_page_accessible(self):
         self._check_qml_file("pages/SettingsPage.qml")

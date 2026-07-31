@@ -139,7 +139,7 @@ class TestFontScaling:
                     continue
 
     def test_search_field_uses_theme_font(self):
-        content = (QML_DIR / "components/SearchField.qml").read_text()
+        content = (QML_DIR / "components/MichiSearchField.qml").read_text()
         assert "MichiTheme" in content or "fontSize" in content
 
     def test_slider_uses_theme_font(self):

@@ -34,7 +34,7 @@ class TestAccessibleRoles:
         assert "Accessible.Button" in content
 
     def test_search_field_has_text_role(self):
-        content = (QML_DIR / "components/SearchField.qml").read_text()
+        content = (QML_DIR / "components/MichiSearchField.qml").read_text()
         assert "Accessible." in content
 
     def test_settings_list_has_list_role(self):

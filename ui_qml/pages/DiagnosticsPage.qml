@@ -27,7 +27,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: qsTr("Cargando diagnóstico") }
+        sourceComponent: MichiLoadingState { title: qsTr("Cargando diagnóstico") }
     }
 
     Loader {
@@ -39,7 +39,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: qsTr("Sin datos de diagnóstico") }
+        sourceComponent: MichiEmptyState { title: qsTr("Sin datos de diagnóstico") }
     }
 
     Flickable {

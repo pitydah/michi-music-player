@@ -70,7 +70,7 @@ Item {
             anchors.centerIn: parent
             active: root.checking
             sourceComponent: Component {
-                LoadingState {
+                MichiLoadingState {
                     title: qsTr("Verificando disponibilidad")
                     message: qsTr("Comprobando %1...").arg(root.capabilityName)
                 }
@@ -83,7 +83,7 @@ Item {
         anchors.fill: parent
         visible: !root.available && !root.degraded && !root.checking
 
-        UnavailableState {
+        MichiUnavailableState {
             anchors.centerIn: parent
             width: Math.min(implicitWidth + MichiTheme.spacing.xl * 2, parent.width * 0.85)
             title: root.capabilityName + " no disponible"

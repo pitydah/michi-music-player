@@ -30,7 +30,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: qsTr("Cargando Library Doctor") }
+        sourceComponent: MichiLoadingState { title: qsTr("Cargando Library Doctor") }
     }
 
     Loader {
@@ -42,7 +42,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: qsTr("Sin datos de biblioteca") }
+        sourceComponent: MichiEmptyState { title: qsTr("Sin datos de biblioteca") }
     }
 
     Flickable {

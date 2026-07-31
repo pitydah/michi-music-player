@@ -83,7 +83,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: qsTr("Cargando asistente") }
+        sourceComponent: MichiLoadingState { title: qsTr("Cargando asistente") }
     }
 
     Loader {
@@ -99,7 +99,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: qsTr("Asistente sin datos"); subtitle: "Configura el asistente en Ajustes" }
+        sourceComponent: MichiEmptyState { title: qsTr("Asistente sin datos"); message: "Configura el asistente en Ajustes" }
     }
 
     Flickable {

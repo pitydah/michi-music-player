@@ -110,14 +110,14 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: qsTr("Cargando emisoras") }
+        sourceComponent: MichiLoadingState { title: qsTr("Cargando emisoras") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
         sourceComponent: Component {
-            UnavailableState {
+            MichiUnavailableState {
                 width: Math.min(520, root.width * 0.86)
                 title: qsTr("Radio no disponible")
                 message: qsTr("El servicio de radio no está activo en esta instalación. Configura el backend para explorar y guardar emisoras.")
@@ -133,7 +133,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: qsTr("Sin emisoras"); subtitle: "Agrega emisoras para empezar a escuchar" }
+        sourceComponent: MichiEmptyState { title: qsTr("Sin emisoras"); message: "Agrega emisoras para empezar a escuchar" }
     }
 
     RadioEditDialog {

@@ -123,7 +123,7 @@ Drawer {
                 }
             }
 
-            LoadingState {
+            MichiLoadingState {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: parent.width
                 visible: root._state === "LOADING"

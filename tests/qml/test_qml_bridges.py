@@ -47,7 +47,7 @@ def test_materials_files():
 
 def test_components_files():
     for name in ("GlassPanel", "GlassCard", "HeroPanel", "MichiButton", "StatusBadge",
-                 "EmptyState", "SearchField", "SidebarItem", "SectionHeader", "IconSlot",
+                 "MichiSearchField", "SidebarItem", "SectionHeader", "IconSlot",
                  "InspectorPanel", "DiscoveryResultCard"):
         assert (QML_DIR / "components" / f"{name}.qml").exists(), f"Missing component: {name}.qml"
 
@@ -164,10 +164,14 @@ def test_sidebar_uses_michi_ai_label():
     assert info["title"] == "Michi AI", "Michi AI title mismatch"
 
 
-def test_sidebar_contains_reproduccion_label():
-    from ui_qml_bridge.route_registry import ROUTES
-    info = ROUTES["playback"]
-    assert info["title"] == "Reproducción", "Reproducción title mismatch"
+def test_playback_alias_resolves_to_nowplaying():
+    from ui_qml_bridge.route_registry import ROUTES, resolve_route
+
+    # "playback" is a legacy alias of the canonical "nowplaying" route; the
+    # standalone duplicate was removed. Navigation to "playback" must resolve
+    # to "nowplaying" (the player page).
+    assert resolve_route("playback") == "nowplaying"
+    assert ROUTES["nowplaying"]["title"] == "Reproduciendo"
 
 
 def test_sidebar_has_no_ajustes():

@@ -85,7 +85,7 @@ Item {
 
             Component {
                 id: loadingComp
-                LoadingState {
+                MichiLoadingState {
                     title: root.title || "Cargando"
                     message: root.message || "Espera mientras se prepara el contenido."
                     reducedMotion: root.reducedMotion
@@ -110,19 +110,18 @@ Item {
 
             Component {
                 id: emptyComp
-                EmptyState {
+                MichiEmptyState {
                     title: root.title || "Sin contenido"
-                    subtitle: root.message || "No hay elementos para mostrar."
-                    iconText: root.iconName
-                    showAction: root.primaryActionText !== ""
-                    actionText: root.primaryActionText
-                    onActionClicked: root.primaryActionRequested()
+                    message: root.message || "No hay elementos para mostrar."
+                    iconName: root.iconName
+                    primaryActionText: root.primaryActionText
+                    onPrimaryActionRequested: root.primaryActionRequested()
                 }
             }
 
             Component {
                 id: unavailableComp
-                UnavailableState {
+                MichiUnavailableState {
                     title: root.title
                     message: root.message || "Esta función no está disponible."
                     details: root.details

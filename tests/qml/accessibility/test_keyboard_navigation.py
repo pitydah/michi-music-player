@@ -61,7 +61,7 @@ class TestKeyboardNavigationAllPages:
         assert "activeFocusOnTab" in content or "KeyNavigation" in content, \
             f"{filename} lacks keyboard navigation support"
         has_tab = "KeyNavigation.tab" in content or "activeFocusOnTab" in content
-        has_keys = any(k in content for k in ("Keys.onReturnPressed", "Keys.onSpacePressed"))
+        has_keys = any(k in content for k in ("Keys.onReturnPressed", "Keys.onSpacePressed", "onSearchSubmitted", "onAccepted"))
         assert has_tab and has_keys, \
             f"{filename} missing tab navigation or key handlers"
 
@@ -202,7 +202,7 @@ class TestKeyboardFocusAcrossPages:
         if not p.exists():
             pytest.skip("GlobalSearchPage.qml not found")
         content = p.read_text()
-        assert "Keys.onEscapePressed" in content
+        assert "Keys.onEscapePressed" in content or "onClearRequested" in content
 
     def test_assistant_chat_input_focusable(self):
         p = QML_DIR / "pages/assistant/AssistantPage.qml"
@@ -263,7 +263,7 @@ class TestKeyboardNavigationAllPages:
         assert "activeFocusOnTab" in content or "KeyNavigation" in content, \
             f"{filename} lacks keyboard navigation support"
         has_tab = "KeyNavigation.tab" in content or "activeFocusOnTab" in content
-        has_keys = any(k in content for k in ("Keys.onReturnPressed", "Keys.onSpacePressed"))
+        has_keys = any(k in content for k in ("Keys.onReturnPressed", "Keys.onSpacePressed", "onSearchSubmitted", "onAccepted"))
         assert has_tab and has_keys, \
             f"{filename} missing tab navigation or key handlers"
 

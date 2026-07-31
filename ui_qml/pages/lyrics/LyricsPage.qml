@@ -39,18 +39,18 @@ Item {
             return 4
         }
 
-        UnavailableState {
+        MichiUnavailableState {
             title: qsTr("Servicio de letras no disponible")
             message: qsTr("Conecta un reproductor para buscar letras.")
         }
 
-        LoadingState {
+        MichiLoadingState {
             title: qsTr("Buscando letra...")
         }
 
-        EmptyState {
+        MichiEmptyState {
             title: qsTr("Letra no encontrada")
-            subtitle: qsTr("Prueba con una búsqueda manual.")
+            message: qsTr("Prueba con una búsqueda manual.")
         }
 
         ErrorState {

@@ -632,7 +632,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: qsTr("Cargando ajustes") }
+        sourceComponent: MichiLoadingState { title: qsTr("Cargando ajustes") }
     }
 
     Loader {
@@ -644,7 +644,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: qsTr("Sin opciones de configuración") }
+        sourceComponent: MichiEmptyState { title: qsTr("Sin opciones de configuración") }
     }
 
     ConfirmActionDialog {

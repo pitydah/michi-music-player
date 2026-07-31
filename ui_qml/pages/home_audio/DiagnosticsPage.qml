@@ -162,7 +162,7 @@ Rectangle {
     Loader {
         anchors.centerIn: parent
         active: root._loading
-        sourceComponent: LoadingState { title: qsTr("Cargando diagnóstico") }
+        sourceComponent: MichiLoadingState { title: qsTr("Cargando diagnóstico") }
     }
 
     ScrollView {

@@ -62,11 +62,11 @@ Item {
         function onServiceAvailableChanged() { root.refresh() }
     }
 
-    LoadingState {
+    MichiLoadingState {
         anchors.centerIn: parent
         visible: root.pageState === root.stateLoading
         title: "Cargando Audio Lab"
-        subtitle: "Comprobando herramientas, dependencias y dispositivos disponibles."
+        message: "Comprobando herramientas, dependencias y dispositivos disponibles."
     }
 
     ErrorState {

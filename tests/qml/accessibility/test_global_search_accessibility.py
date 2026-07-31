@@ -35,7 +35,7 @@ def test_global_search_page_keyboard_activation():
     filepath = "ui_qml/pages/search/GlobalSearchPage.qml"
     with open(filepath) as f:
         content = f.read()
-    assert "Keys.onReturnPressed" in content or "Keys.onEscapePressed" in content
+    assert "Keys.onReturnPressed" in content or "Keys.onEscapePressed" in content or "onSearchSubmitted" in content or "onClearRequested" in content
 
 
 def test_global_search_page_searching_accessible():

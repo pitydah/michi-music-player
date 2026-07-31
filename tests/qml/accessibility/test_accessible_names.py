@@ -25,7 +25,7 @@ COMPONENT_PATHS = [
     "components/MichiIconButton.qml",
     "components/GlassCard.qml",
     "components/StatusBadge.qml",
-    "components/SearchField.qml",
+    "components/MichiSearchField.qml",
     "components/settings/SettingsRow.qml",
     "materials/HeroMaterial.qml",
 ]
@@ -65,7 +65,7 @@ class TestAccessibleNames:
         assert "Accessible.name" in content
 
     def test_search_field_has_accessible_name(self):
-        content = (QML_DIR / "components/SearchField.qml").read_text()
+        content = (QML_DIR / "components/MichiSearchField.qml").read_text()
         assert "Accessible.name" in content or "accessibleName" in content
 
     def test_glass_card_interactive_accessible(self):

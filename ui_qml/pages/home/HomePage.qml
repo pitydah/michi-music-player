@@ -211,7 +211,7 @@ Item {
                 hasPlayback: root.hb ? root.hb.hasPlayback : false
                 visible: root.homeState === HomePage.READY && hasPlayback
                 activeFocusOnTab: visible
-                onActivate: root.goToRoute("playback")
+                onActivate: root.goToRoute("nowplaying")
             }
 
             LibraryStatusCard {

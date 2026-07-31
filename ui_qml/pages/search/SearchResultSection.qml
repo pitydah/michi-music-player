@@ -94,7 +94,7 @@ Item {
 
         Component {
             id: loadingComp
-            LoadingState {
+            MichiLoadingState {
                 title: qsTr("Buscando...")
                 message: ""
                 width: parent.width
@@ -103,9 +103,9 @@ Item {
 
         Component {
             id: emptyComp
-            EmptyState {
+            MichiEmptyState {
                 title: ""
-                subtitle: qsTr("Sin resultados")
+                message: qsTr("Sin resultados")
                 width: parent.width
             }
         }

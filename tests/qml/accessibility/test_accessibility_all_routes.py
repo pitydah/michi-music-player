@@ -105,7 +105,7 @@ class TestAccessibilityCommonComponents:
         self._check_qml_file("pages/SettingsPage.qml")
 
     def test_search_field_accessible(self):
-        self._check_qml_file("components/SearchField.qml")
+        self._check_qml_file("components/MichiSearchField.qml")
 
     def test_glass_card_accessible(self):
         self._check_qml_file("components/GlassCard.qml", require_accessible=False)

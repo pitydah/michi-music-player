@@ -39,7 +39,7 @@ class TestSearchKeyboard:
         assert "onSearchTextChanged" in content
 
     def test_search_escape_clears(self, engine):
-        qml_path = QML_DIR / "components/SearchField.qml"
+        qml_path = QML_DIR / "components/MichiSearchField.qml"
         if qml_path.exists():
             content = qml_path.read_text()
             assert "Escape" in content or "onActiveFocusChanged" in content or "Keys.onEscapePressed" in content

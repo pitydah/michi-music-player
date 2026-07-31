@@ -41,7 +41,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: qsTr("Cargando dispositivos") }
+        sourceComponent: MichiLoadingState { title: qsTr("Cargando dispositivos") }
     }
 
     Loader {
@@ -53,7 +53,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: qsTr("Sin dispositivos"); subtitle: "Configura dispositivos desde Conexiones" }
+        sourceComponent: MichiEmptyState { title: qsTr("Sin dispositivos"); message: "Configura dispositivos desde Conexiones" }
     }
 
     CapabilityGuard {

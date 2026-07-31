@@ -38,7 +38,7 @@ Item {
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
 
-        LoadingState {
+        MichiLoadingState {
             anchors.fill: parent
             title: qsTr("Cargando Disc Lab...")
             visible: root.pageState === DiscLabPage.LOADING
@@ -53,17 +53,17 @@ Item {
             visible: root.pageState === DiscLabPage.ERROR
         }
 
-        UnavailableState {
+        MichiUnavailableState {
             anchors.fill: parent
             title: qsTr("Disc Lab no disponible")
             message: qsTr("No se detectó unidad de disco o el servicio no está activo.")
             visible: root.pageState === DiscLabPage.UNAVAILABLE
         }
 
-        EmptyState {
+        MichiEmptyState {
             anchors.fill: parent
             title: qsTr("Sin disco")
-            subtitle: qsTr("Inserta un disco o conecta una unidad externa.")
+            message: qsTr("Inserta un disco o conecta una unidad externa.")
             visible: root.pageState === DiscLabPage.EMPTY
         }
 

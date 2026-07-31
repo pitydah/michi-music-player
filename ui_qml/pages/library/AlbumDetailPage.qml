@@ -311,7 +311,7 @@ Item {
         }
     }
 
-    LoadingState {
+    MichiLoadingState {
         anchors.centerIn: parent
         visible: root.loading
         title: qsTr("Cargando álbum")

@@ -86,7 +86,7 @@ Item {
     Loader {
         anchors.fill: parent
         active: root.loading
-        sourceComponent: LoadingState { title: qsTr("Conectando con Home Assistant...") }
+        sourceComponent: MichiLoadingState { title: qsTr("Conectando con Home Assistant...") }
     }
 
     // Error state

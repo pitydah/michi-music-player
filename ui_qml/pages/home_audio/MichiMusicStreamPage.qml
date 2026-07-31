@@ -71,7 +71,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: qsTr("Cargando Michi Music Stream") }
+        sourceComponent: MichiLoadingState { title: qsTr("Cargando Michi Music Stream") }
     }
 
     Loader {
@@ -86,7 +86,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateUnavailable
-        sourceComponent: UnavailableState {
+        sourceComponent: MichiUnavailableState {
             title: qsTr("Michi Music Stream no disponible")
             message: qsTr("Home Audio no está configurado. Configúralo desde Conexiones.")
         }
@@ -95,11 +95,11 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState {
+        sourceComponent: MichiEmptyState {
             title: qsTr("Sin transmisión activa")
-            subtitle: qsTr("Configura servidores Snapcast y receptores para comenzar a transmitir.")
-            actionText: qsTr("Configurar distribución")
-            onActionClicked: {
+            message: qsTr("Configura servidores Snapcast y receptores para comenzar a transmitir.")
+            primaryActionText: qsTr("Configurar distribución")
+            onPrimaryActionRequested: {
                 if (typeof navigationBridge !== "undefined" && navigationBridge)
                     navigationBridge.navigate("home_audio.distribution")
             }

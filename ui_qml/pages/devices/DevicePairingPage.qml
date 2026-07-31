@@ -371,7 +371,7 @@ Item {
         }
     }
 
-    LoadingState {
+    MichiLoadingState {
         id: loadingState
         anchors.centerIn: parent
         title: qsTr("Buscando dispositivos")
@@ -380,7 +380,7 @@ Item {
         visible: root.pairingState === "loading"
     }
 
-    UnavailableState {
+    MichiUnavailableState {
         anchors.centerIn: parent
         title: qsTr("Servicio no disponible")
         message: qsTr("El servicio de dispositivos no está disponible.")

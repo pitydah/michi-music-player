@@ -289,23 +289,22 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            LoadingState {
+            MichiLoadingState {
                 anchors.centerIn: parent
                 visible: root._state === "LOADING"
                 title: qsTr("Cargando historial")
                 message: qsTr("Obteniendo registros de reproducción...")
             }
 
-            EmptyState {
+            MichiEmptyState {
                 anchors.centerIn: parent
                 visible: root._state === "EMPTY"
-                iconText: ""
+                iconName: ""
                 title: qsTr("Sin historial")
-                subtitle: root._filtered ? "No hay registros que coincidan con los filtros actuales."
+                message: root._filtered ? "No hay registros que coincidan con los filtros actuales."
                                           : "Aún no hay registros de reproducción. Reproduce música para empezar."
-                actionText: root._filtered ? "Limpiar filtros" : ""
-                showAction: root._filtered
-                onActionClicked: filterBar.reset()
+                primaryActionText: root._filtered ? "Limpiar filtros" : ""
+                onPrimaryActionRequested: filterBar.reset()
             }
 
             ErrorState {

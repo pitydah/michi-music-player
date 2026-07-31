@@ -15,8 +15,6 @@ COMPONENTS = [
     "components/ConfirmationDialog.qml",
     "components/DestructiveActionDialog.qml",
     "components/ErrorState.qml",
-    "components/EmptyState.qml",
-    "components/UnavailableState.qml",
     "components/DegradedState.qml",
     "components/SelectionActionBar.qml",
     "components/CapabilityGuard.qml",

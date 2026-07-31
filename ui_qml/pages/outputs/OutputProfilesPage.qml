@@ -61,18 +61,18 @@ Item {
             return 4
         }
 
-        UnavailableState {
+        MichiUnavailableState {
             title: qsTr("Perfiles de salida no disponibles")
             message: qsTr("El bridge de perfiles de salida no está disponible.")
         }
 
-        LoadingState {
+        MichiLoadingState {
             title: qsTr("Cargando perfiles...")
         }
 
-        EmptyState {
+        MichiEmptyState {
             title: qsTr("Sin perfiles")
-            subtitle: qsTr("No hay perfiles de salida configurados. Agrega uno para comenzar.")
+            message: qsTr("No hay perfiles de salida configurados. Agrega uno para comenzar.")
         }
 
         ErrorState {

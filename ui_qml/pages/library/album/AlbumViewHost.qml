@@ -265,7 +265,7 @@ Item {
                 }
             }
 
-            LoadingState {
+            MichiLoadingState {
                 anchors.centerIn: parent
                 z: 30
                 visible: root.initialLoading || viewLoader.status === Loader.Loading

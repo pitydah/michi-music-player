@@ -271,7 +271,7 @@ Item {
                         }
                     }
 
-                    SearchField {
+                    MichiSearchField {
                         id: globalSearchInput
                         width: parent.width * 0.7
                         placeholderText: qsTr("Canciones, álbumes, artistas, playlists...")
@@ -282,15 +282,14 @@ Item {
                                 root.updateRouteQuery(text)
                             }
                         }
-                        activeFocusOnTab: true
-                        KeyNavigation.tab: resultsFlickable
-                        KeyNavigation.backtab: root
-                        Keys.onReturnPressed: root.search(text)
-                        Keys.onEscapePressed: {
-                            text = ""
+                        onSearchSubmitted: root.search(text)
+                        onClearRequested: {
                             root.clearQuery()
                             root.updateRouteQuery("")
                         }
+                        activeFocusOnTab: true
+                        KeyNavigation.tab: resultsFlickable
+                        KeyNavigation.backtab: root
                     }
                 }
             }

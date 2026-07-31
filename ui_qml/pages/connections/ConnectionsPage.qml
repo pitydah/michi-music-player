@@ -33,14 +33,14 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: qsTr("Cargando conexiones") }
+        sourceComponent: MichiLoadingState { title: qsTr("Cargando conexiones") }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
         sourceComponent: Component {
-            UnavailableState {
+            MichiUnavailableState {
                 width: Math.min(540, root.width * 0.86)
                 title: qsTr("Conexiones no disponibles")
                 message: qsTr("El servicio de conexiones no está activo. Configúralo para enlazar servidores Subsonic, Navidrome, Jellyfin y dispositivos compatibles.")

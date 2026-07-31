@@ -37,7 +37,7 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateLoading
-        sourceComponent: LoadingState { title: qsTr("Cargando reproducción") }
+        sourceComponent: MichiLoadingState { title: qsTr("Cargando reproducción") }
     }
 
     Loader {
@@ -51,10 +51,10 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState {
+        sourceComponent: MichiEmptyState {
             title: qsTr("Sin reproducción activa")
-            actionText: qsTr("Explorar biblioteca")
-            onActionClicked: if (root.nav) root.nav.navigate("library")
+            primaryActionText: qsTr("Explorar biblioteca")
+            onPrimaryActionRequested: if (root.nav) root.nav.navigate("library")
         }
     }
 

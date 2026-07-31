@@ -129,7 +129,7 @@ class TestGlassCard:
 
 class TestSearchField:
     def test_instantiate(self, engine):
-        component = _load_qml(engine, "components/SearchField.qml")
+        component = _load_qml(engine, "components/MichiSearchField.qml")
         assert component.isReady()
 
 
@@ -153,7 +153,7 @@ class TestStatusBadge:
 
 class TestEmptyState:
     def test_instantiate(self, engine):
-        component = _load_qml(engine, "components/EmptyState.qml")
+        component = _load_qml(engine, "components/states/MichiEmptyState.qml")
         assert component.isReady()
 
 
