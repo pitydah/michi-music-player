@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
@@ -53,7 +53,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
@@ -78,7 +78,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
@@ -114,7 +114,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
@@ -153,7 +153,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
@@ -199,7 +199,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
@@ -243,7 +243,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
@@ -283,7 +283,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
