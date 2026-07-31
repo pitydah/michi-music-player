@@ -76,20 +76,20 @@ class TestPlayerServicePipeline:
         from audio.player_service import PlayerService
 
         db = MagicMock()
-        db.conn.execute.return_value.fetchone.return_value = (
-            "Library title",
-            "Library artist",
-            "Library album",
-            "album-123",
-            "track-456",
-            2024,
-            "Jazz",
-            241.5,
-            "flac",
-            96000,
-            24,
-            2300,
-        )
+        db.fetch_track_context.return_value = {
+            "title": "Library title",
+            "artist": "Library artist",
+            "album": "Library album",
+            "album_key": "album-123",
+            "track_uid": "track-456",
+            "year": 2024,
+            "genre": "Jazz",
+            "duration": 241.5,
+            "format": "flac",
+            "sample_rate": 96000,
+            "bit_depth": 24,
+            "bitrate": 2300,
+        }
         service = PlayerService(library_db=db)
         received = []
         service.trackContextChanged.connect(received.append)
@@ -120,20 +120,20 @@ class TestPlayerServicePipeline:
         from audio.player_service import PlayerService
 
         db = MagicMock()
-        db.conn.execute.return_value.fetchone.return_value = (
-            "Single",
-            "Artist",
-            "",
-            "",
-            "track-789",
-            0,
-            "",
-            180.0,
-            "mp3",
-            44100,
-            16,
-            320,
-        )
+        db.fetch_track_context.return_value = {
+            "title": "Single",
+            "artist": "Artist",
+            "album": "",
+            "album_key": "",
+            "track_uid": "track-789",
+            "year": 0,
+            "genre": "",
+            "duration": 180.0,
+            "format": "mp3",
+            "sample_rate": 44100,
+            "bit_depth": 16,
+            "bitrate": 320,
+        }
         service = PlayerService(library_db=db)
         received = []
         service.trackContextChanged.connect(received.append)
