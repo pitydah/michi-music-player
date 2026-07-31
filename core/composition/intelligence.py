@@ -59,15 +59,16 @@ def build(container: ServiceContainer) -> None:
         container.register("michi_ai_service", comp.core_service)
 
         from michi_ai.recommender import set_library_provider
-        db = container.get("database")
-        if db:
+        lqs = container.get("library_query_service")
+        if lqs:
             def _provider():
                 try:
-                    rows = db.execute(
-                        "SELECT artist, album, title, genre FROM media WHERE kind='audio' LIMIT 1000"
-                    ).fetchall()
-                    return [{"artist": r[0] or "", "album": r[1] or "",
-                             "title": r[2] or "", "genre": r[3] or ""} for r in rows]
+                    tracks = lqs.fetch_tracks(limit=1000)
+                    return [
+                        {"artist": t.get("artist", ""), "album": t.get("album", ""),
+                         "title": t.get("title", ""), "genre": t.get("genre", "")}
+                        for t in tracks
+                    ]
                 except Exception:
                     return []
             set_library_provider(_provider)

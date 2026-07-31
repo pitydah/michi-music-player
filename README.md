@@ -4,7 +4,7 @@
 ![Python](https://img.shields.io/badge/python-3.11+-blue)
 ![License](https://img.shields.io/badge/license-GPL--3.0-orange)
 
-Reproductor audiófilo premium para Linux · PySide6/Qt6 · GStreamer · pytest suite · pre-beta técnica
+Reproductor audiófilo premium para Linux · PySide6/Qt6 · UI QML (Qt Quick) · GStreamer · pytest suite · pre-beta técnica
 
 [![Ruff](https://img.shields.io/badge/ruff-passing-brightgreen)]()
 [![Python](https://img.shields.io/badge/python-3.11+-blue)]()
@@ -48,6 +48,7 @@ Reproductor audiófilo premium para Linux · PySide6/Qt6 · GStreamer · pytest 
 - 📜 **Historial persistente** — DetectionHistoryRepository con SQLite, dedup 24h, filtro por fuente (radio/stream/manual)
 
 ### UI & Sistema
+- 🎛️ **UI QML primaria** — Interfaz 100% QML (Qt Quick), sin QtWidgets. Puentes Python↔QML en `ui_qml_bridge/`, shell y páginas en `ui_qml/`. Ejecutar con `python main.py`.
 - 🪟 **Glassmorphism oscuro unificado** — 14+ vistas con gradiente glass `rgba(20,22,28,0.94)→rgba(8,10,16,0.94)`, style_tokens.py + qss.py centralizados
 - 🎨 **Sidebar premium** — Gradiente dark con glow azul, branding mini-card, buscador, headers UPPERCASE con chevrons, scrollbar 3px
 - 🎯 **Sistema de iconos** — 38+ iconos SVG nativos, IconSpec dataclass con `render_mode` (native_color/symbolic_tint), render 2x scale-down
@@ -107,7 +108,7 @@ python3 scripts/check_runtime.py
 | Funcionalidad | Dependencia | Crítica |
 |--------------|-------------|---------|
 | Reproducción | GStreamer + plugins base/good/bad/ugly | ✅ |
-| UI | PySide6 / Qt6 | ✅ |
+| UI | PySide6 / Qt6 — QML (Qt Quick), sin QtWidgets | ✅ |
 | Metadatos | mutagen, numpy | ✅ |
 | MPRIS / KDE | dbus-python | Opcional |
 | Identificación | shazamio, pyaudio, fpcalc | Opcional |
@@ -338,7 +339,7 @@ michi-music-player/
 ## Tecnologías
 
 - **Python 3.11+**
-- **PySide6** (Qt 6 — bindings oficiales)
+- **PySide6** (Qt 6 — bindings oficiales) — la interfaz de usuario es **QML (Qt Quick)**, la UI primaria y única; no se usa QtWidgets. Los puentes Python↔QML viven en `ui_qml_bridge/`.
 - **GStreamer 1.0** (motor de audio — playbin, decodebin, audioiirfilter, equalizer-nbands, rgvolume, spectrum)
 - **SQLite 3** + **FTS5** (full-text search, WAL mode, content= sync)
 - **mutagen** (extracción de metadatos: ID3, Vorbis, MP4, MusicBrainz, ReplayGain, BPM, cover art)

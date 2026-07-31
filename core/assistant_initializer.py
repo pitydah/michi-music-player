@@ -150,7 +150,7 @@ def create_assistant_composition(
     model_manager = ModelManager()
     backend_selector = BackendSelector(model_manager=model_manager)
     engine = MichiAIEngine(
-        tool_registry=None,
+        tool_registry=tool_registry,
         backend_selector=backend_selector,
     )
 

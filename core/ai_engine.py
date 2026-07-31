@@ -5,7 +5,8 @@ import time
 from typing import Any
 
 from michi_ai.v2.core.models import ProviderRequest
-from michi_ai.tools.tool_registry import ToolRegistry, ToolResult
+from michi_ai.tools.tool_result import ToolResult
+from michi_ai.v2.tools.tool_registry_v2 import ToolRegistryV2
 
 from core.ai.backends.base import LocalModelBackend
 from core.ai.backends.calico import CalicoBackend
@@ -20,7 +21,7 @@ logger = logging.getLogger("michi.ai_engine")
 class MichiAIEngine:
     def __init__(
         self,
-        tool_registry: ToolRegistry | None = None,
+        tool_registry: ToolRegistryV2 | None = None,
         intent_router: IntentRouter | None = None,
         risk_policy: RiskPolicy | None = None,
         privacy_guard: PrivacyGuard | None = None,
@@ -28,7 +29,10 @@ class MichiAIEngine:
     ) -> None:
         self._lite_backend = CalicoBackend()
         self._backend_selector = backend_selector or BackendSelector()
-        self._tool_registry = tool_registry or ToolRegistry()
+        # The engine must execute through the canonical V2 tool registry. When
+        # none is injected it falls back to an empty V2 registry (no legacy
+        # ToolRegistry) so the V2 architecture is what actually runs.
+        self._tool_registry = tool_registry or ToolRegistryV2()
         self._intent_router = intent_router or IntentRouter()
         self._risk_policy = risk_policy or RiskPolicy()
         self._privacy_guard = privacy_guard or PrivacyGuard()
@@ -46,7 +50,7 @@ class MichiAIEngine:
         return self._backend_selector
 
     @property
-    def tool_registry(self) -> ToolRegistry:
+    def tool_registry(self) -> ToolRegistryV2:
         return self._tool_registry
 
     def process_message(self, text: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -160,7 +164,15 @@ class MichiAIEngine:
         if not tool_name:
             return None
         try:
-            return self._tool_registry.execute(tool_name, params=intent.entities if intent.entities else None)
+            arguments = intent.entities if intent.entities else None
+            result = self._tool_registry.execute(tool_name, arguments=arguments)
+            data = result.data if isinstance(result.data, dict) else {}
+            return ToolResult(
+                ok=bool(result.ok),
+                code=str(result.code.value),
+                message=result.error or "",
+                data=data,
+            )
         except Exception as exc:
             logger.debug("Tool execution failed for %s: %s", tool_name, exc)
             return ToolResult(ok=False, code="EXECUTION_ERROR", message=str(exc))

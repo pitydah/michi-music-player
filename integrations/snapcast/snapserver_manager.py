@@ -25,6 +25,19 @@ _RECONNECT_EXECUTOR = ThreadPoolExecutor(
     thread_name_prefix="michi-snapserver-reconnect",
 )
 
+# Canonical Snapserver lifecycle states.
+# The lifecycle distinguishes three idle/terminal conditions so consumers can
+# tell them apart instead of conflating them:
+#   - STATE_OFFLINE      ("stopped")      not running by choice; can be started
+#   - STATE_UNAVAILABLE  ("unavailable")  snapserver binary missing; cannot run
+#   - STATE_FAILED       ("error")        run attempted but failed; reconnect scheduled
+# STATE_STARTING/STATE_RUNNING are the transient/healthy active states.
+STATE_OFFLINE = "stopped"
+STATE_UNAVAILABLE = "unavailable"
+STATE_FAILED = "error"
+STATE_STARTING = "starting"
+STATE_RUNNING = "running"
+
 DEFAULT_CONFIG = """\
 [server]
 tcp_port = {tcp}
@@ -60,7 +73,7 @@ class SnapServerManager(QObject):
         self._readiness_probe = readiness_probe or self._probe_control
         self._startup_timeout = max(0.1, float(startup_timeout))
         self._process: subprocess.Popen | None = None
-        self._state = "stopped" if self._binary else "unavailable"
+        self._state = STATE_OFFLINE if self._binary else STATE_UNAVAILABLE
         self._tcp_port = 1704
         self._control_port = 1705
         self._http_port = 1780
@@ -87,7 +100,7 @@ class SnapServerManager(QObject):
     @property
     def is_running(self) -> bool:
         self._reconcile_process()
-        return self._state == "running" and self._process is not None
+        return self._state == STATE_RUNNING and self._process is not None
 
     @property
     def pid(self) -> int:
@@ -131,12 +144,12 @@ class SnapServerManager(QObject):
 
     def _reconcile_process(self) -> None:
         process = self._process
-        if process is None or self._state not in {"starting", "running"}:
+        if process is None or self._state not in {STATE_STARTING, STATE_RUNNING}:
             return
         exit_code = process.poll()
         if exit_code is not None:
             self._process = None
-            self._set_state("error", f"SNAPSERVER_EXITED: {exit_code}")
+            self._set_state(STATE_FAILED, f"SNAPSERVER_EXITED: {exit_code}")
             self._schedule_reconnect()
 
     def _monitor_process(self) -> None:
@@ -214,12 +227,12 @@ class SnapServerManager(QObject):
         with self._lock:
             if self.is_running:
                 self._should_run = True
-                return {"ok": True, "state": "running", "pid": self.pid, "already_running": True}
+                return {"ok": True, "state": STATE_RUNNING, "pid": self.pid, "already_running": True}
             if not self.is_binary_available():
-                self._set_state("unavailable", "SNAPSERVER_BINARY_UNAVAILABLE")
+                self._set_state(STATE_UNAVAILABLE, "SNAPSERVER_BINARY_UNAVAILABLE")
                 return {"ok": False, "error": "SNAPSERVER_BINARY_UNAVAILABLE", "state": self._state}
             if self._port_in_use("127.0.0.1", self._control_port):
-                self._set_state("error", "SNAPSERVER_PORT_IN_USE")
+                self._set_state(STATE_FAILED, "SNAPSERVER_PORT_IN_USE")
                 return {"ok": False, "error": "SNAPSERVER_PORT_IN_USE", "state": self._state}
             try:
                 config_path = self._write_config()
@@ -232,9 +245,9 @@ class SnapServerManager(QObject):
                 )
             except (OSError, ValueError) as exc:
                 self._process = None
-                self._set_state("error", f"SNAPSERVER_START_FAILED: {exc}")
+                self._set_state(STATE_FAILED, f"SNAPSERVER_START_FAILED: {exc}")
                 return {"ok": False, "error": "SNAPSERVER_START_FAILED", "message": str(exc)}
-            self._set_state("starting")
+            self._set_state(STATE_STARTING)
 
         deadline = time.monotonic() + self._startup_timeout
         while time.monotonic() < deadline:
@@ -244,19 +257,19 @@ class SnapServerManager(QObject):
             exit_code = process.poll()
             if exit_code is not None:
                 self._process = None
-                self._set_state("error", f"SNAPSERVER_EXITED: {exit_code}")
+                self._set_state(STATE_FAILED, f"SNAPSERVER_EXITED: {exit_code}")
                 return {"ok": False, "error": "SNAPSERVER_EXITED", "exit_code": exit_code}
             if self._readiness_probe("127.0.0.1", self._control_port, 0.25):
-                self._set_state("running")
+                self._set_state(STATE_RUNNING)
                 self._should_run = True
                 self._next_reconnect_ms = 1_000
                 self.started.emit()
                 self.server_ready.emit(self._tcp_port, self._control_port)
-                return {"ok": True, "state": "running", "pid": self.pid}
+                return {"ok": True, "state": STATE_RUNNING, "pid": self.pid}
             threading.Event().wait(0.1)
 
         self._terminate_owned()
-        self._set_state("error", "SNAPSERVER_START_TIMEOUT")
+        self._set_state(STATE_FAILED, "SNAPSERVER_START_TIMEOUT")
         return {"ok": False, "error": "SNAPSERVER_START_TIMEOUT", "state": self._state}
 
     def _terminate_owned(self, timeout: float = 2.0) -> None:
@@ -280,13 +293,19 @@ class SnapServerManager(QObject):
             if self._process is None:
                 if self._readiness_probe("127.0.0.1", self._control_port, 0.2):
                     return {"ok": False, "error": "FOREIGN_SNAPSERVER_NOT_OWNED", "state": self._state}
-                self._set_state("stopped")
-                return {"ok": True, "state": "stopped", "already_stopped": True}
+                # Distinguish offline from unavailable: a binary-less manager
+                # cannot run, so it must stay unavailable instead of being
+                # downgraded to offline ("stopped").
+                if not self.is_binary_available():
+                    self._set_state(STATE_UNAVAILABLE, "SNAPSERVER_BINARY_UNAVAILABLE")
+                else:
+                    self._set_state(STATE_OFFLINE)
+                return {"ok": True, "state": self._state, "already_stopped": True}
             try:
                 self._terminate_owned()
             except (OSError, subprocess.SubprocessError) as exc:
-                self._set_state("error", f"SNAPSERVER_STOP_FAILED: {exc}")
+                self._set_state(STATE_FAILED, f"SNAPSERVER_STOP_FAILED: {exc}")
                 return {"ok": False, "error": "SNAPSERVER_STOP_FAILED", "message": str(exc)}
-            self._set_state("stopped")
+            self._set_state(STATE_OFFLINE)
             self.stopped.emit()
-            return {"ok": True, "state": "stopped"}
+            return {"ok": True, "state": STATE_OFFLINE}

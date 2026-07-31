@@ -5,7 +5,7 @@ Implements org.mpris.MediaPlayer2 and Player interfaces using dbus-python.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import dbus
 import dbus.service
@@ -32,16 +32,31 @@ class MPRISObject(dbus.service.Object):
         self._queue_service: QueueServiceProtocol | None = None
         self._metadata: dict[str, Any] = {}
         self._volume = 0.7
+        # Optional handlers that make Quit()/Raise() actually work. CanQuit and
+        # CanRaise are only True when a real handler is wired, so the desktop is
+        # never promised a no-op.
+        self._quit_handler: Callable[[], None] | None = None
+        self._raise_handler: Callable[[], None] | None = None
 
     # ── org.mpris.MediaPlayer2 interface ──
 
+    def set_quit_handler(self, handler: Callable[[], None] | None) -> None:
+        """Wire a real Quit implementation. None disables CanQuit."""
+        self._quit_handler = handler
+
+    def set_raise_handler(self, handler: Callable[[], None] | None) -> None:
+        """Wire a real Raise implementation. None disables CanRaise."""
+        self._raise_handler = handler
+
     @dbus.service.method(dbus_interface="org.mpris.MediaPlayer2")
     def Raise(self) -> None:
-        return None
+        if self._raise_handler is not None:
+            self._raise_handler()
 
     @dbus.service.method(dbus_interface="org.mpris.MediaPlayer2")
     def Quit(self) -> None:
-        return None
+        if self._quit_handler is not None:
+            self._quit_handler()
 
     # ── org.mpris.MediaPlayer2.Player interface ──
 
@@ -204,8 +219,8 @@ class MPRISObject(dbus.service.Object):
     def GetAll(self, interface: Any) -> dict[str, Any]:
         if interface == "org.mpris.MediaPlayer2":
             return {
-                "CanQuit": True,
-                "CanRaise": True,
+                "CanQuit": self._quit_handler is not None,
+                "CanRaise": self._raise_handler is not None,
                 "HasTrackList": False,
                 "Identity": "Michi Music Player",
                 "DesktopEntry": "michi-music-player",
@@ -308,6 +323,14 @@ class MPRISAdapter(QObject):
             self._object.set_player_service(player_service)
         if queue_service is not None:
             self._object.set_queue_service(queue_service)
+
+    def set_quit_handler(self, handler: Callable[[], None] | None) -> None:
+        """Wire a real Quit implementation onto the MPRIS object."""
+        self._object.set_quit_handler(handler)
+
+    def set_raise_handler(self, handler: Callable[[], None] | None) -> None:
+        """Wire a real Raise implementation onto the MPRIS object."""
+        self._object.set_raise_handler(handler)
 
     @property
     def player(self) -> MPRISObject:

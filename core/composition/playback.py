@@ -36,10 +36,19 @@ def build(container: ServiceContainer) -> None:
 
     try:
         from adapters.mpris import MPRISAdapter
-        container.register(
-            "mpris_adapter",
-            MPRISAdapter(player_service=ps, queue_service=qs),
-        )
+        adapter = MPRISAdapter(player_service=ps, queue_service=qs)
+        # CanQuit is only True when Quit() actually works. Wire the app quit
+        # handler when a QGuiApplication is already running; otherwise CanQuit
+        # stays False (honest no-op). Raise is left unwired (CanRaise=False)
+        # because the QML window is not available at composition time.
+        try:
+            from PySide6.QtGui import QGuiApplication
+            app = QGuiApplication.instance()
+            if app is not None and hasattr(app, "quit"):
+                adapter.set_quit_handler(app.quit)
+        except Exception:
+            logger.debug("MPRIS quit handler not wired", exc_info=True)
+        container.register("mpris_adapter", adapter)
     except Exception:
         logger.error("Failed to create MPRISAdapter", exc_info=True)
         container.register("mpris_adapter", None)

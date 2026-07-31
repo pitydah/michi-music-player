@@ -41,6 +41,111 @@ jobs:
       - name: Patch artifact gate
         run: python scripts/check_patch_artifacts.py
 
+  composition-smoke:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Cache pip
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gir1.2-gst-plugins-base-1.0 python3-gi
+          pip install -e ".[dev]"
+      - name: Composition root smoke test
+        run: |
+          QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python scripts/smoke_composition.py
+
+  unit-tests:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Cache pip
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gir1.2-gst-plugins-base-1.0 python3-gi
+          pip install -e ".[dev]"
+      - name: Unit tests
+        run: |
+          QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest tests/ -q --timeout=300 \
+            --ignore=tests/qml --ignore=tests/test_large_library.py \
+            --ignore=tests/perf -k "not qt_widget and not QtWidget" \
+            --deselect tests/test_context_semantic_audit.py::TestContextSemanticAudit::test_no_appevent_import_outside_context \
+            --junitxml=results-unit.xml
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: unit-results-${{ github.sha }}
+          path: results-unit.xml
+          retention-days: 7
+
+  qml-runtime:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Cache pip
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gir1.2-gst-plugins-base-1.0 python3-gi
+          pip install -e ".[dev]" build
+      - name: Runtime route matrix
+        run: |
+          QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest tests/qml/runtime/test_runtime_route_matrix.py -q --timeout=120 --junitxml=results-runtime.xml
+      - name: Route reintegration gate
+        run: |
+          QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest \
+            tests/qml/runtime/test_page_stack_last_request_wins.py \
+            tests/qml/runtime/test_capability_does_not_block_route.py \
+            tests/qml/runtime/test_disc_lab_route.py \
+            tests/qml/runtime/test_e2e_navigation_sequence.py \
+            tests/qml/runtime/test_runtime_productive_gate.py \
+            tests/qml/library/test_album_view_productive_layout.py \
+            -q --timeout=300 --junitxml=results-reintegration.xml
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: qml-runtime-results-${{ github.sha }}
+          path: |
+            results-runtime.xml
+            results-reintegration.xml
+          retention-days: 7
+
   functional-tests:
     needs: [lint]
     runs-on: ubuntu-latest
@@ -65,31 +170,11 @@ jobs:
       - name: Functional tests
         run: |
           QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest tests/qml/functional/ -q --timeout=120 --junitxml=results-functional.xml
-      - name: Core tests
-        run: |
-          QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest tests/ -q --timeout=300 \
-            --ignore=tests/qml --ignore=tests/test_large_library.py \
-            --ignore=tests/perf -k "not qt_widget and not QtWidget" \
-            --deselect tests/test_context_semantic_audit.py::TestContextSemanticAudit::test_no_appevent_import_outside_context \
-            --junitxml=results-core.xml
       - name: Vertical contract tests
         run: |
           QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest \
             tests/qml/tagging/ tests/qml/disc_lab/ tests/qml/settings/ tests/qml/queue/ tests/qml/nowplaying/ \
             -q --timeout=300 --junitxml=results-vertical.xml
-      - name: Runtime route matrix
-        run: |
-          QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest tests/qml/runtime/test_runtime_route_matrix.py -q --timeout=120 --junitxml=results-runtime.xml
-      - name: Route reintegration gate
-        run: |
-          QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest \
-            tests/qml/runtime/test_page_stack_last_request_wins.py \
-            tests/qml/runtime/test_capability_does_not_block_route.py \
-            tests/qml/runtime/test_disc_lab_route.py \
-            tests/qml/runtime/test_e2e_navigation_sequence.py \
-            tests/qml/runtime/test_runtime_productive_gate.py \
-            tests/qml/library/test_album_view_productive_layout.py \
-            -q --timeout=300 --junitxml=results-reintegration.xml
       - name: Build wheel
         run: python -m build --wheel
       - name: Upload results
@@ -101,9 +186,8 @@ jobs:
           retention-days: 7
 
   inventory:
-    needs: [functional-tests]
+    needs: [composition-smoke, unit-tests, qml-runtime, functional-tests]
     if: always()
-    continue-on-error: true
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -113,6 +197,11 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      - name: Cache pip
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
       - name: Install deps
         run: |
           sudo apt-get update

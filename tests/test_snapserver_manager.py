@@ -32,6 +32,17 @@ def test_missing_binary_is_unavailable():
     assert manager.start()["error"] == "SNAPSERVER_BINARY_UNAVAILABLE"
 
 
+def test_stop_preserves_unavailable_when_binary_missing():
+    """stop() must not conflate unavailable (binary missing) with offline."""
+    manager = SnapServerManager(binary="", readiness_probe=lambda *_args: False)
+    assert manager.state == "unavailable"
+    stopped = manager.stop()
+    assert stopped["ok"] is True
+    # A binary-less manager cannot run, so it stays unavailable instead of
+    # being downgraded to offline ("stopped").
+    assert manager.state == "unavailable"
+
+
 def test_start_requires_control_readback_and_stop_owns_process(tmp_path, monkeypatch):
     probes = iter([False, True, False])
     process = FakeProcess()
