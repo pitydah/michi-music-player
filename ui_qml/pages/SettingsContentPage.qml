@@ -242,7 +242,7 @@ Item {
                     text: qsTr("Restaurar todo")
                     variant: "danger"
                     visible: root.bridge !== null
-                    onClicked: confirmResetDialog.open()
+                    onClicked: confirmResetDialog.open = true
                 }
             }
         }
@@ -647,9 +647,10 @@ Item {
         sourceComponent: MichiEmptyState { title: qsTr("Sin opciones de configuración") }
     }
 
-    ConfirmActionDialog {
+    ConfirmDialog {
         id: confirmResetDialog
-        title: qsTr("Restaurar todos los ajustes")
+        anchors.fill: parent
+        titleText: qsTr("Restaurar todos los ajustes")
         message: qsTr("¿Estás seguro de que deseas restaurar todos los ajustes a sus valores por defecto? Esta acción no puede deshacerse.")
         onConfirmed: root.resetAll()
     }

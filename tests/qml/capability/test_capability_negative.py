@@ -127,30 +127,3 @@ def test_page_guard_integration_global_search():
         content = f.read()
     assert "CapabilityGuard" in content
     assert "searchGuard" in content
-
-
-def test_legacy_confirm_dialog_backwards_compatible():
-    """ConfirmActionDialog should still work via ConfirmDialog."""
-    filepath = "ui_qml/components/ConfirmActionDialog.qml"
-    with open(filepath) as f:
-        content = f.read()
-    assert "ConfirmDialog" in content
-    assert "dialogs" in content
-
-
-def test_legacy_confirmation_dialog_backwards_compatible():
-    """ConfirmationDialog should still work via ConfirmDialog."""
-    filepath = "ui_qml/components/ConfirmationDialog.qml"
-    with open(filepath) as f:
-        content = f.read()
-    assert "ConfirmDialog" in content
-    assert "dialogs" in content
-
-
-def test_legacy_destructive_action_dialog_backwards_compatible():
-    """DestructiveActionDialog should still work via DestructiveDialog."""
-    filepath = "ui_qml/components/DestructiveActionDialog.qml"
-    with open(filepath) as f:
-        content = f.read()
-    assert "DestructiveDialog" in content
-    assert "dialogs" in content

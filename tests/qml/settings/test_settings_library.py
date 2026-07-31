@@ -129,7 +129,7 @@ class TestSettingsLibraryPage:
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(QObject, "confirmActionDialog") is not None
+            assert obj.findChild(QObject, "ConfirmDialog") is not None
 
     def test_page_header_present(self, engine, bridge):
         comp = self._load_page(engine, bridge)

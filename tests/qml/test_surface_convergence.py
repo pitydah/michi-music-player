@@ -43,7 +43,6 @@ def test_popup_and_input_materials_use_canonical_elevation() -> None:
 
 
 def test_dialog_primitives_reuse_popup_material() -> None:
-    assert "PopupMaterial {" in _source("components/MichiDialog.qml")
     assert "PopupMaterial {" in _source("components/dialogs/BaseDialog.qml")
 
 

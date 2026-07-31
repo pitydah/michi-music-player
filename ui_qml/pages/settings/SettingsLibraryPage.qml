@@ -362,7 +362,7 @@ Item {
                             text: qsTr("Limpiar y reescanear biblioteca")
                             variant: "danger"
                             Layout.fillWidth: true
-                            onClicked: confirmRescan.open()
+                            onClicked: confirmRescan.open = true
                         }
                     }
                 }
@@ -380,10 +380,12 @@ Item {
         }
     }
 
-    ConfirmActionDialog {
-        title: qsTr("Limpiar y reescanear biblioteca")
+    ConfirmDialog {
+        id: confirmRescan
+        anchors.fill: parent
+        titleText: qsTr("Limpiar y reescanear biblioteca")
         message: qsTr("¿Estás seguro? Esta acción eliminará la base de datos actual y reescaneará todas las carpetas desde cero. Esta operación no puede deshacerse.")
-        danger: true
+        iconType: "error"
         onConfirmed: root._clearAndRescan()
     }
 

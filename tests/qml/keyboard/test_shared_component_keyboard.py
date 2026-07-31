@@ -12,8 +12,6 @@ import pytest
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 COMPONENTS = [
-    "components/ConfirmationDialog.qml",
-    "components/DestructiveActionDialog.qml",
     "components/ErrorState.qml",
     "components/DegradedState.qml",
     "components/SelectionActionBar.qml",
@@ -67,8 +65,7 @@ class TestSharedComponentKeyboard:
             name = component_path.stem
             if name not in ("ErrorState", "EmptyState", "UnavailableState",
                             "CapabilityGuard", "ResponsivePageLayout",
-                            "ResponsiveToolbar", "SelectionActionBar",
-                            "ConfirmationDialog", "DestructiveActionDialog"):
+                            "ResponsiveToolbar", "SelectionActionBar"):
                 pytest.fail(f"{component_path.name} lacks Keys handlers")
 
     def test_no_hardcoded_colors(self, component_path):
@@ -85,8 +82,8 @@ class TestSharedComponentKeyboard:
         content = component_path.read_text()
         if "MichiTheme.colors." not in content and "MichiTheme." not in content:
             name = component_path.stem
-            # Dialogs and state components may use hardcoded values in current iteration
-            if name not in ("ConfirmationDialog", "DestructiveActionDialog", "EmptyState"):
+            # State components may use hardcoded values in current iteration
+            if name not in ("EmptyState",):
                 pytest.fail(f"{component_path.name} does not use MichiTheme tokens")
 
     def test_uses_theme_typography(self, component_path):
@@ -95,8 +92,7 @@ class TestSharedComponentKeyboard:
         content = component_path.read_text()
         if "MichiTheme.typography." not in content:
             name = component_path.stem
-            if name not in ("ConfirmationDialog", "DestructiveActionDialog", "EmptyState",
-                            "CapabilityGuard", "ResponsivePageLayout"):
+            if name not in ("EmptyState", "CapabilityGuard", "ResponsivePageLayout"):
                 pytest.fail(f"{component_path.name} does not use theme typography")
 
     def test_uses_theme_radius(self, component_path):

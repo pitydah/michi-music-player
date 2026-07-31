@@ -351,7 +351,7 @@ Item {
                                 text: qsTr("Limpiar caché")
                                 variant: "danger"
                                 enabled: root.cacheSize > 0 && !root.loadingCache
-                                onClicked: confirmClearCache.open()
+                                onClicked: confirmClearCache.open = true
                             }
                         }
                     }
@@ -362,10 +362,12 @@ Item {
         }
     }
 
-    ConfirmActionDialog {
-        title: qsTr("Limpiar caché")
+    ConfirmDialog {
+        id: confirmClearCache
+        anchors.fill: parent
+        titleText: qsTr("Limpiar caché")
         message: qsTr("¿Estás seguro de que deseas limpiar la caché? Los datos se volverán a descargar según sea necesario.")
-        danger: true
+        iconType: "error"
         onConfirmed: root._clearCache()
     }
 

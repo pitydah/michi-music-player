@@ -822,10 +822,6 @@ class TestNowPlayingBarMigration:
         p = QML_DIR / "pages" / "DiagnosticsPage.qml"
         assert p.exists(), "Missing DiagnosticsPage.qml"
 
-    def test_confirm_action_dialog_exists(self):
-        p = QML_DIR / "components" / "ConfirmActionDialog.qml"
-        assert p.exists(), "Missing ConfirmActionDialog.qml"
-
     def test_command_palette_exists(self):
         p = QML_DIR / "components" / "CommandPalette.qml"
         assert p.exists(), "Missing CommandPalette.qml"
