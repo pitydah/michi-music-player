@@ -16,12 +16,12 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
-        uses: actions/cache@v6
+        uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
@@ -41,19 +41,19 @@ jobs:
       - name: Patch artifact gate
         run: python scripts/check_patch_artifacts.py
 
-  composition-smoke:
+  composition-productive:
     needs: [lint]
     runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Cache pip
-        uses: actions/cache@v6
+        uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
@@ -62,23 +62,23 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gir1.2-gst-plugins-base-1.0 python3-gi
           pip install -e ".[dev]"
-      - name: Composition root smoke test
+      - name: Composition root productive smoke test
         run: |
           QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python scripts/smoke_composition.py
 
-  unit-tests:
+  unit:
     needs: [lint]
     runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Cache pip
-        uses: actions/cache@v6
+        uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
@@ -96,10 +96,95 @@ jobs:
             --junitxml=results-unit.xml
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: unit-results-${{ github.sha }}
           path: results-unit.xml
+          retention-days: 7
+
+  audio-integration:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gir1.2-gst-plugins-base-1.0 python3-gi
+          pip install -e ".[dev]"
+      - name: Audio integration tests
+        run: |
+          QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest \
+            tests/test_audio_backend_base.py \
+            tests/test_hybrid_audio_manager.py \
+            tests/test_audio_contract.py \
+            tests/test_audio_profile_backend_selection.py \
+            tests/test_audio_settings_schema.py \
+            tests/test_audio_settings_migrator.py \
+            -q --timeout=120 --junitxml=results-audio.xml
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audio-integration-results-${{ github.sha }}
+          path: results-audio.xml
+          retention-days: 7
+
+  ai-v2:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gir1.2-gst-plugins-base-1.0 python3-gi
+          pip install -e ".[dev]"
+      - name: Michi AI V2 tests
+        run: |
+          QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest \
+            tests/test_michi_ai.py \
+            tests/test_michi_ai_lite.py \
+            tests/test_michi_ai_engine_unified.py \
+            tests/test_michi_ai_advanced.py \
+            tests/test_michi_ai_action_registry.py \
+            tests/test_michi_ai_backend_selector.py \
+            tests/test_michi_ai_model_manager.py \
+            tests/test_michi_ai_privacy.py \
+            tests/test_michi_ai_risk_policy.py \
+            tests/test_michi_ai_security.py \
+            tests/test_michi_ai_bridge.py \
+            tests/test_ai_queue_tools.py \
+            tests/test_ai_assistant_context_hints.py \
+            -q --timeout=120 --junitxml=results-ai-v2.xml
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-v2-results-${{ github.sha }}
+          path: results-ai-v2.xml
           retention-days: 7
 
   qml-runtime:
@@ -109,12 +194,12 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Cache pip
-        uses: actions/cache@v6
+        uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
@@ -138,7 +223,7 @@ jobs:
             -q --timeout=300 --junitxml=results-reintegration.xml
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: qml-runtime-results-${{ github.sha }}
           path: |
@@ -153,12 +238,12 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Cache pip
-        uses: actions/cache@v6
+        uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
@@ -179,26 +264,26 @@ jobs:
         run: python -m build --wheel
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ github.sha }}
           path: "*.xml"
           retention-days: 7
 
-  inventory:
-    needs: [composition-smoke, unit-tests, qml-runtime, functional-tests]
+  full-inventory:
+    needs: [composition-productive, unit, audio-integration, ai-v2, qml-runtime, functional-tests]
     if: always()
     runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Cache pip
-        uses: actions/cache@v6
+        uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
@@ -212,7 +297,7 @@ jobs:
           QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest tests/ -q --timeout=300 --junitxml=results-inventory.xml
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: inventory-results-${{ github.sha }}
           path: results-inventory.xml

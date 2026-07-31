@@ -155,6 +155,28 @@ class TestLoadQmlGuard:
         engine.load.assert_called_once()
 
 
+class TestCreateBridgesGuard:
+    def test_create_bridges_refused_when_failed(self):
+        bootstrap = ApplicationBootstrap()
+        bootstrap._boot_state = BOOT_FAILED
+        bootstrap._failed_services["playback_service"] = "missing"
+        bridges = bootstrap.create_bridges()
+        assert bridges == {}
+
+    def test_create_bridges_aborts_before_factory_when_failed(self, monkeypatch):
+        bootstrap = ApplicationBootstrap()
+        bootstrap._boot_state = BOOT_FAILED
+        bootstrap._failed_services["playback_service"] = "missing"
+
+        def _fail(*_args, **_kwargs):
+            raise AssertionError("bridge factory must not run when BOOT_FAILED")
+
+        monkeypatch.setattr(
+            "ui_qml_bridge.bridge_factory.create_all_bridges", _fail
+        )
+        assert bootstrap.create_bridges() == {}
+
+
 class TestShutdown:
     def test_shutdown_transitions_through_shutting_down_to_stopped(self, stub_builders):
         bootstrap = ApplicationBootstrap()

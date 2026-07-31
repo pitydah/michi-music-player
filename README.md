@@ -15,8 +15,8 @@ Reproductor audiófilo premium para Linux · PySide6/Qt6 · UI QML (Qt Quick) ·
 ## Características
 
 ### Audio
-- 🎵 **9 perfiles de audio** — Standard, Hi-Fi PCM, Bit-Perfect PCM, DSD→PCM, DoP (experimental), Streaming, Pure Audio, Studio Monitor, Multiroom/Snapcast
-- 🔊 **Motor GStreamer/PipeWire/ALSA** — PipelineFactory con AudioRoutePlan + DspState, DAC-aware con 25+ marcas detectadas
+- 🎵 **13 perfiles de audio (9 GStreamer + 4 MPD)** — Standard, Hi-Fi PCM, Bit-Perfect PCM, DSD→PCM, DoP (experimental), Streaming, Pure Audio, Studio Monitor, Multiroom/Snapcast + 4 perfiles MPD (Hi-Fi, Bit-Perfect, DSD/DoP, Server/Renderer)
+- 🔊 **Motor híbrido GStreamer + MPD** — GStreamer (default, DSP/visual) vía PipelineFactory con AudioRoutePlan + DspState, DAC-aware con 25+ marcas detectadas; MPD (Hi-Fi/bit-perfect, DSD/DoP) como backend alternativo con fallback automático a GStreamer
 - 🎛️ **EQ gráfico 31-bandas + paramétrico real** — Biquads vía `audioiirfilter`, coeficientes calculados en tiempo real, preamp, presets AutoEQ
 - 📊 **ReplayGain avanzado** — Modos track/album/auto, preamp, headroom, anti-clipping, ganancia segura computada
 - 🏷️ **Quality badge** — 6 categorías (lossy/lossless/hi-res/DSD), tooltip con ruta de audio completa, diálogo de diagnóstico
@@ -108,6 +108,7 @@ python3 scripts/check_runtime.py
 | Funcionalidad | Dependencia | Crítica |
 |--------------|-------------|---------|
 | Reproducción | GStreamer + plugins base/good/bad/ugly | ✅ |
+| Backend Hi-Fi MPD (bit-perfect, DSD/DoP) | mpd (demonio externo) | 🧪 Experimental |
 | UI | PySide6 / Qt6 — QML (Qt Quick), sin QtWidgets | ✅ |
 | Metadatos | mutagen, numpy | ✅ |
 | MPRIS / KDE | dbus-python | Opcional |
@@ -340,7 +341,8 @@ michi-music-player/
 
 - **Python 3.11+**
 - **PySide6** (Qt 6 — bindings oficiales) — la interfaz de usuario es **QML (Qt Quick)**, la UI primaria y única; no se usa QtWidgets. Los puentes Python↔QML viven en `ui_qml_bridge/`.
-- **GStreamer 1.0** (motor de audio — playbin, decodebin, audioiirfilter, equalizer-nbands, rgvolume, spectrum)
+- **GStreamer 1.0** (motor de audio por defecto — playbin, decodebin, audioiirfilter, equalizer-nbands, rgvolume, spectrum)
+- **MPD** (backend Hi-Fi opcional — bit-perfect/DSD/DoP vía `HybridAudioManager`, requiere demonio MPD; fallback automático a GStreamer si no está disponible)
 - **SQLite 3** + **FTS5** (full-text search, WAL mode, content= sync)
 - **mutagen** (extracción de metadatos: ID3, Vorbis, MP4, MusicBrainz, ReplayGain, BPM, cover art)
 - **shazamio** (reconocimiento de música — Shazam API)
@@ -356,7 +358,8 @@ michi-music-player/
 | Funcionalidad | Estado |
 |--------------|--------|
 | Reproducción local (MP3, FLAC, OGG, Opus, WAV, DSD, AIFF, APE, WV) | ✅ Implementado |
-| 9 perfiles de audio (Standard → Multiroom) | ✅ Implementado |
+| 13 perfiles de audio (9 GStreamer + 4 MPD) | ✅ Implementado |
+| Motor híbrido GStreamer + MPD (bit-perfect, DSD/DoP) | 🧪 Experimental |
 | PipelineFactory + AudioRoutePlan + DSP | ✅ Implementado |
 | EQ gráfico + paramétrico básico | ✅ Implementado |
 | ReplayGain (track/album + preamp) | ✅ Implementado |

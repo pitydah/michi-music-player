@@ -60,6 +60,9 @@ class AssistantComposition:
     core_service: Any  # AssistantCoreService or MichiAIEngine
     tool_registry: ToolRegistryV2
     capability_resolver: CapabilityResolver
+    planner: PlanBuilderV2
+    validator: PlanValidator
+    executor: PlanExecutorV2
     context_assembler: ContextAssembler
     conversation_service: ConversationService
     confirmation_policy: ConfirmationPolicyV2
@@ -111,13 +114,19 @@ def create_assistant_composition(
     from core.ai.model_manager import ModelManager
 
     tool_registry = ToolRegistryV2()
+    # ONE CapabilityResolver instance is shared across the registry (via
+    # register_builtin_tools), the planner, and the validator. The executor
+    # shares the same tool_registry. Storing these components (instead of
+    # discarding them) keeps the productive V2 pipeline reachable for
+    # diagnostics and extension.
     capability_resolver = CapabilityResolver()
     context_assembler = ContextAssembler()
     conversation_service = ConversationService()
     confirmation_policy = ConfirmationPolicyV2()
-    PlanExecutorV2(tool_registry)
-    PlanValidator(tool_registry, capability_resolver)
-    PlanBuilderV2(tool_registry, capability_resolver)
+    executor = PlanExecutorV2(tool_registry)
+    validator = PlanValidator(tool_registry, capability_resolver)
+    planner = PlanBuilderV2(tool_registry, capability_resolver)
+    trace_recorder = TraceRecorder()
 
     gateways = AssistantGateways(
         playback=ProductionPlaybackGateway(
@@ -170,9 +179,12 @@ def create_assistant_composition(
         core_service=engine,
         tool_registry=tool_registry,
         capability_resolver=capability_resolver,
+        planner=planner,
+        validator=validator,
+        executor=executor,
         context_assembler=context_assembler,
         conversation_service=conversation_service,
         confirmation_policy=confirmation_policy,
-        trace_recorder=TraceRecorder(),
+        trace_recorder=trace_recorder,
         gateways=gateways,
     )

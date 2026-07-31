@@ -128,7 +128,19 @@ class ApplicationBootstrap:
         return self
 
     def create_bridges(self) -> dict[str, QObject]:
-        """Create QML bridges backed by the composed service container."""
+        """Create QML bridges backed by the composed service container.
+
+        Refuses to create bridges when the bootstrap is in the FAILED state: a
+        failed required service means the bridges would be backed by missing
+        services and present a broken surface to QML. Returns an empty mapping
+        so callers can detect the abort without raising.
+        """
+        if self._boot_state == BOOT_FAILED:
+            logger.error(
+                "Bootstrap: refusing to create bridges — state is FAILED (%s)",
+                self._failed_services,
+            )
+            return {}
         from ui_qml_bridge.bridge_factory import create_all_bridges
         self._bridges = create_all_bridges(self.container)
         return self._bridges

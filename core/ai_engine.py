@@ -178,20 +178,26 @@ class MichiAIEngine:
             return ToolResult(ok=False, code="EXECUTION_ERROR", message=str(exc))
 
     def _intent_to_tool(self, intent_id: str) -> str | None:
+        # Intent -> canonical V2 tool name. Every value MUST be a tool actually
+        # registered in ToolRegistryV2 (see register_builtin_tools); mapping to
+        # a non-existent tool silently breaks execution.
         mapping: dict[str, str] = {
             "search_library": "search_library",
             "search_artist": "search_artist",
             "search_album": "search_album",
             "search_genre": "search_genre",
             "playback_play": "playback_play",
-            "playback_pause": "playback_pause",
-            "playback_next": "playback_next",
-            "playback_prev": "playback_prev",
+            "playback_pause": "pause",
+            "playback_next": "next",
+            "playback_prev": "previous",
             "playback_volume": "playback_set_volume",
             "playback_info": "playback_get_state",
-            "diagnosis": "diagnostics_check",
+            "diagnosis": "diagnose_ecosystem",
             "suggestion": "get_recommendations",
             "library_info": "library_get_stats",
-            "navigate": "navigate_to",
+            "navigate": "navigate",
+            "delete_playlist": "delete_playlist",
+            "apply_library_repair": "apply_library_repair",
+            "restore_setting": "restore_setting",
         }
         return mapping.get(intent_id)
