@@ -10,7 +10,8 @@ Rectangle {
     objectName: "jobStatusBanner"
     id: root
     property var jobs: typeof jobBridge !== "undefined" ? jobBridge : null
-    property int _activeCount: 0
+    // Bound directly to the bridge property (notify=jobsChanged) — no polling.
+    property int _activeCount: root.jobs ? (root.jobs.activeCount || 0) : 0
 
     height: _activeCount > 0 ? MichiTheme.minimumInteractiveSize : 0
     color: MichiTheme.colors.surfaceCard
@@ -28,13 +29,6 @@ Rectangle {
     Accessible.onPressAction: root.openJobs()
     Keys.onReturnPressed: root.openJobs()
     Keys.onSpacePressed: root.openJobs()
-
-    Timer {
-        interval: 1000; running: root.jobs !== null; repeat: true
-        onTriggered: {
-            if (root.jobs) root._activeCount = root.jobs.activeCount || 0
-        }
-    }
 
     Row {
         anchors.centerIn: parent

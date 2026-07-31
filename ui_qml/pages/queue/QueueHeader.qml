@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Queue Header"
+    Accessible.name: qsTr("Cabecera de la cola")
     objectName: "queueHeader"
     focus: true
     property var qb: null

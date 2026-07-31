@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Connection Card"
+    Accessible.name: qsTr("Tarjeta de conexión")
     objectName: "connectionCard"
     focus: true
     id: root

@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Centro de trabajos"
+    Accessible.name: qsTr("Centro de trabajos")
     objectName: "jobsPage"
     focus: true
     id: root
@@ -54,7 +54,7 @@ Item {
         // Job list
         ListView {
             Accessible.role: Accessible.List
-            Accessible.name: "Lista de trabajos"
+            Accessible.name: qsTr("Lista de trabajos")
             activeFocusOnTab: true
             focusPolicy: Qt.StrongFocus
             id: jobList; Layout.fillWidth: true; Layout.fillHeight: true
@@ -127,7 +127,7 @@ Item {
                                 root.bridge.cancelJob(jid)
                             }
                         }
-                        Accessible.name: "Cancelar trabajo"
+                        Accessible.name: qsTr("Cancelar trabajo")
                     }
 
                     // Retry button
@@ -140,7 +140,7 @@ Item {
                                 root.bridge.retryJob(jid)
                             }
                         }
-                        Accessible.name: "Reintentar trabajo"
+                        Accessible.name: qsTr("Reintentar trabajo")
                     }
                 }
             }

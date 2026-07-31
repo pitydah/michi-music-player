@@ -7,7 +7,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Continue Card"
+    Accessible.name: qsTr("Tarjeta de continuar")
     objectName: "continueCard"
     focus: true
     id: root

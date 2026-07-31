@@ -5,7 +5,7 @@ MichiErrorState {
     id: root
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Library Error State"
+    Accessible.name: qsTr("Library Error State")
     objectName: "libraryErrorState"
     focus: true
 

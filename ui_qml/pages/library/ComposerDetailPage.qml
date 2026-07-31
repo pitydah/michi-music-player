@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Composer Detail"
+    Accessible.name: qsTr("Detalle del compositor")
     objectName: "composerDetailPage"
     focus: true
     id: root
@@ -45,7 +45,7 @@ Item {
         ListView {
             Accessible.role: Accessible.List
 
-                Accessible.name: "Canciones del compositor"
+                Accessible.name: qsTr("Canciones del compositor")
 
             activeFocusOnTab: true
 

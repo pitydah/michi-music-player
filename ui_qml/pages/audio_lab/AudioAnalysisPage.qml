@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Audio Analysis"
+    Accessible.name: qsTr("Análisis de audio")
     objectName: "audioAnalysisPage"
     focus: true
     id: root
@@ -122,7 +122,7 @@ Item {
 
             AudioSelectionSummary { width: parent.width }
 
-            SectionHeader { text: qsTr("Acciones"); width: parent.width; objectName: "analysisActionsHeader"; Accessible.name: "Acciones" }
+            SectionHeader { text: qsTr("Acciones"); width: parent.width; objectName: "analysisActionsHeader"; Accessible.name: qsTr("Acciones") }
 
             Row {
                 spacing: MichiTheme.spacing.sm
@@ -170,7 +170,7 @@ Item {
                 }
             }
 
-            SectionHeader { text: qsTr("Resultado del análisis"); width: parent.width; objectName: "analysisResultsHeader"; Accessible.name: "Resultados" }
+            SectionHeader { text: qsTr("Resultado del análisis"); width: parent.width; objectName: "analysisResultsHeader"; Accessible.name: qsTr("Resultados") }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md; variant: root._state === root.stateCompleted ? "accent" : root._state === root.stateFailed ? "danger" : "base"

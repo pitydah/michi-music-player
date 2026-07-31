@@ -11,7 +11,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Historial"
+    Accessible.name: qsTr("Historial")
 
     property var bridge: typeof historyBridge !== "undefined" ? historyBridge : null
     property string _viewMode: "timeline"

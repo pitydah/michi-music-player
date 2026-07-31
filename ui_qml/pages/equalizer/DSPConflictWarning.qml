@@ -5,7 +5,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "DSPConflict Warning"
+    Accessible.name: qsTr("DSPConflict Warning")
     objectName: "dSPConflictWarning"
     focus: true
     id: root
@@ -29,8 +29,8 @@ Item {
                 font.pixelSize: MichiTheme.typography.bodySize
                 anchors.verticalCenter: parent.verticalCenter
                 Accessible.role: Accessible.Graphic
-                Accessible.name: "Advertencia"
-                Accessible.description: "Conflicto de DSP detectado"
+                Accessible.name: qsTr("Advertencia")
+                Accessible.description: qsTr("Conflicto de DSP detectado")
             }
 
             Text {

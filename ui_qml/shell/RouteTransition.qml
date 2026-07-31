@@ -3,7 +3,7 @@ import "../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Route Transition"
+    Accessible.name: qsTr("Transición de ruta")
     objectName: "routeTransition"
     focus: true
     id: root

@@ -3,7 +3,7 @@ import "../../theme"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Track Quality Badge"
+    Accessible.name: qsTr("Insignia de calidad de pista")
     objectName: "trackQualityBadge"
     focus: false
     id: root

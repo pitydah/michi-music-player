@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Ecosystem Card"
+    Accessible.name: qsTr("Ecosystem Card")
     objectName: "ecosystemCard"
     focus: true
     id: root

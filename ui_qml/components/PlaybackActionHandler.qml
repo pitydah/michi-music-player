@@ -3,7 +3,7 @@ import "../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Playback Action Handler"
+    Accessible.name: qsTr("Control de acciones de reproducción")
     objectName: "playbackActionHandler"
     id: root
 

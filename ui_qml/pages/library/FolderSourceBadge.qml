@@ -3,7 +3,7 @@ import "../../theme"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Folder Source Badge"
+    Accessible.name: qsTr("Folder Source Badge")
     objectName: "folderSourceBadge"
     focus: false
     id: root

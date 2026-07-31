@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Replay Gain"
+    Accessible.name: qsTr("ReplayGain")
     objectName: "replayGainPage"
     focus: true
     id: root
@@ -120,7 +120,7 @@ Item {
             AudioInputSelection { id: inputSelection }
             AudioSelectionSummary { width: parent.width }
 
-            SectionHeader { text: qsTr("Modo de análisis"); width: parent.width; objectName: "rgModeHeader"; Accessible.name: "Modo de análisis" }
+            SectionHeader { text: qsTr("Modo de análisis"); width: parent.width; objectName: "rgModeHeader"; Accessible.name: qsTr("Modo de análisis") }
 
             Row {
                 spacing: MichiTheme.spacing.md
@@ -146,7 +146,7 @@ Item {
                 }
             }
 
-            SectionHeader { text: qsTr("Ajustes"); width: parent.width; objectName: "rgSettingsHeader"; Accessible.name: "Ajustes" }
+            SectionHeader { text: qsTr("Ajustes"); width: parent.width; objectName: "rgSettingsHeader"; Accessible.name: qsTr("Ajustes") }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md; variant: "base"
@@ -179,7 +179,7 @@ Item {
                 }
             }
 
-            SectionHeader { text: qsTr("Acciones"); width: parent.width; objectName: "rgActionsHeader"; Accessible.name: "Acciones" }
+            SectionHeader { text: qsTr("Acciones"); width: parent.width; objectName: "rgActionsHeader"; Accessible.name: qsTr("Acciones") }
 
             Row {
                     Accessible.role: Accessible.Button
@@ -218,7 +218,7 @@ Item {
                 }
             }
 
-            SectionHeader { text: qsTr("Resultados"); width: parent.width; objectName: "rgResultsHeader"; Accessible.name: "Resultados" }
+            SectionHeader { text: qsTr("Resultados"); width: parent.width; objectName: "rgResultsHeader"; Accessible.name: qsTr("Resultados") }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md; variant: root._results ? "accent" : root._state === root.stateFailed ? "danger" : "status"

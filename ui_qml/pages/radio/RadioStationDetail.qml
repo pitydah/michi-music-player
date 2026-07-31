@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Radio Station Detail"
+    Accessible.name: qsTr("Detalle de emisora")
     objectName: "radioStationDetail"
     focus: true
     id: root
@@ -60,7 +60,7 @@ Item {
                 implicitWidth: 32; implicitHeight: 32
                 tooltipText: "Editar"
                 visible: true
-                Accessible.name: "Editar emisora"
+                Accessible.name: qsTr("Editar emisora")
                 activeFocusOnTab: true
                 onClicked: root.editRequested()
             }
@@ -70,7 +70,7 @@ Item {
                 variant: "danger"
                 implicitWidth: 32; implicitHeight: 32
                 tooltipText: "Eliminar"
-                Accessible.name: "Eliminar emisora"
+                Accessible.name: qsTr("Eliminar emisora")
                 activeFocusOnTab: true
                 onClicked: root.deleteRequested()
             }

@@ -5,7 +5,7 @@ import "../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Synced Lyrics View"
+    Accessible.name: qsTr("Letras sincronizadas")
     objectName: "syncedLyricsView"
     focus: true
     id: root
@@ -33,7 +33,7 @@ Item {
     ListView {
         Accessible.role: Accessible.List
 
-        Accessible.name: "ListView"
+        Accessible.name: qsTr("Lista")
 
         activeFocusOnTab: true
 
@@ -59,17 +59,8 @@ Item {
             }
         }
 
-        Timer {
-            interval: 250
-            running: root.autoScroll && root.lyricsBridge && root.lyricsBridge.hasSyncedLyrics
-            repeat: true
-            onTriggered: {
-                var active = root._activeLine()
-                if (active >= 0) {
-                    listView.positionViewAtIndex(active, ListView.Contain)
-                }
-            }
-        }
+        // Auto-scroll is driven by the currentPositionMsChanged signal below —
+        // no polling timer needed.
 
         onContentYChanged: {
             if (root.autoScroll) {
@@ -110,8 +101,8 @@ Item {
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.captionSize
                 Accessible.role: Accessible.Graphic
-                Accessible.name: root.autoScroll ? "Desplazamiento automático activado" : "Desplazamiento manual activado"
-                Accessible.description: "Haz clic para cambiar modo de desplazamiento"
+                Accessible.name: root.autoScroll ? qsTr("Desplazamiento automático activado") : qsTr("Desplazamiento manual activado")
+                Accessible.description: qsTr("Haz clic para cambiar modo de desplazamiento")
             }
             Text {
                 text: root.autoScroll ? "Auto" : qsTr("Manual")

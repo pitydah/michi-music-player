@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "AI Settings"
+    Accessible.name: qsTr("Ajustes de IA")
     objectName: "aiSettingsPage"
     focus: true
     id: root

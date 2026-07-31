@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Assistant Confirmation"
+    Accessible.name: qsTr("Confirmación del asistente")
     objectName: "assistantConfirmationDialog"
     focus: true
     id: root

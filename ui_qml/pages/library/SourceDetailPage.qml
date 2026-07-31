@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Source Detail"
+    Accessible.name: qsTr("Detalle de fuente")
     objectName: "sourceDetailPage"
     focus: true
     id: root

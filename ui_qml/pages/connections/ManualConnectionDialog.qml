@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Manual Connection"
+    Accessible.name: qsTr("Manual Connection")
     objectName: "manualConnectionDialog"
     id: root
     focus: true
@@ -23,7 +23,7 @@ Item {
     signal cancelRequested()
 
 
-    Accessible.description: "Configurar conexión manual a un servidor"
+    Accessible.description: qsTr("Configurar conexión manual a un servidor")
 
     visible: open
     enabled: visible
@@ -73,7 +73,7 @@ Item {
                 }
 
                 QQC2.TextField {
-                    Accessible.name: "Host o dirección IP"
+                    Accessible.name: qsTr("Host o dirección IP")
                     id: hostField
                     activeFocusOnTab: true
                     width: parent.width
@@ -87,7 +87,7 @@ Item {
                         root.dialogHost = text
                         root.validationError = ""
                     }
-                    Accessible.description: "Dirección IP o nombre de host del servidor"
+                    Accessible.description: qsTr("Dirección IP o nombre de host del servidor")
 
                     background: Rectangle {
                         radius: MichiTheme.radius.sm
@@ -109,7 +109,7 @@ Item {
                     inputMethodHints: Qt.ImhDigitsOnly
                     text: String(root.dialogPort)
                     onTextChanged: root.dialogPort = parseInt(text) || 53318
-                    Accessible.description: "Número de puerto"
+                    Accessible.description: qsTr("Número de puerto")
 
                     background: Rectangle {
                         radius: MichiTheme.radius.sm
@@ -130,7 +130,7 @@ Item {
                     font.pixelSize: MichiTheme.typography.bodySize
                     text: root.dialogAlias
                     onTextChanged: root.dialogAlias = text
-                    Accessible.description: "Nombre opcional para el servidor"
+                    Accessible.description: qsTr("Nombre opcional para el servidor")
 
                     background: Rectangle {
                         radius: MichiTheme.radius.sm
@@ -151,7 +151,7 @@ Item {
                     font.pixelSize: MichiTheme.typography.bodySize
                     text: root.dialogUser
                     onTextChanged: root.dialogUser = text
-                    Accessible.description: "Nombre de usuario para autenticación"
+                    Accessible.description: qsTr("Nombre de usuario para autenticación")
 
                     background: Rectangle {
                         radius: MichiTheme.radius.sm
@@ -173,7 +173,7 @@ Item {
                     echoMode: TextInput.Password
                     text: root.dialogPassword
                     onTextChanged: root.dialogPassword = text
-                    Accessible.description: "Contraseña para autenticación"
+                    Accessible.description: qsTr("Contraseña para autenticación")
 
                     background: Rectangle {
                         radius: MichiTheme.radius.sm

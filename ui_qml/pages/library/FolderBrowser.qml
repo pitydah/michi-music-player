@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Folder Browser"
+    Accessible.name: qsTr("Folder Browser")
     objectName: "folderBrowser"
     focus: true
     id: root

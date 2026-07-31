@@ -4,7 +4,7 @@ import "foundations"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Responsive Layout"
+    Accessible.name: qsTr("Diseño adaptable")
     objectName: "responsivePageLayout"
     focus: true
     id: root

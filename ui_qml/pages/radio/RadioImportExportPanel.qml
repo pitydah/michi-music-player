@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Radio Import Export"
+    Accessible.name: qsTr("Importar y exportar emisoras")
     objectName: "radioImportExportPanel"
     focus: true
     id: root

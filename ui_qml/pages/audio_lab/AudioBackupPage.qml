@@ -11,7 +11,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Respaldar audio"
+    Accessible.name: qsTr("Respaldar audio")
 
     property var bridge: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
     property var cdDrives: []
@@ -191,7 +191,7 @@ Item {
                         id: cdOutputDir
                         Layout.fillWidth: true
                         placeholderText: "Carpeta de destino, por ejemplo /home/usuario/Música/Rips"
-                        Accessible.name: "Carpeta de destino del CD"
+                        Accessible.name: qsTr("Carpeta de destino del CD")
                     }
 
                     RowLayout {
@@ -199,7 +199,7 @@ Item {
                         ComboBox {
                             id: cdFormat
                             model: ["flac", "wav", "mp3", "opus", "aac"]
-                            Accessible.name: "Formato de extracción"
+                            Accessible.name: qsTr("Formato de extracción")
                         }
                         MichiButton {
                             text: "Leer TOC"
@@ -307,7 +307,7 @@ Item {
                         id: recordingOutput
                         Layout.fillWidth: true
                         placeholderText: "Archivo de destino, por ejemplo /home/usuario/Música/captura.flac"
-                        Accessible.name: "Archivo de grabación"
+                        Accessible.name: qsTr("Archivo de grabación")
                     }
 
                     RowLayout {

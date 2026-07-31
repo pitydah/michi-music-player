@@ -10,7 +10,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Búsqueda global"
+    Accessible.name: qsTr("Búsqueda global")
 
     property var bridge: typeof globalSearchBridge !== "undefined" ? globalSearchBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
@@ -253,7 +253,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             iconSource: "../../../icons/view/filter.svg"
                             onClicked: filterDrawer.open()
-                            Accessible.description: "Abrir panel de filtros de búsqueda"
+                            Accessible.description: qsTr("Abrir panel de filtros de búsqueda")
                         }
 
                         MichiButton {
@@ -275,7 +275,7 @@ Item {
                         id: globalSearchInput
                         width: parent.width * 0.7
                         placeholderText: qsTr("Canciones, álbumes, artistas, playlists...")
-                        Accessible.description: "Escribe para buscar en toda la biblioteca"
+                        Accessible.description: qsTr("Escribe para buscar en toda la biblioteca")
                         onSearchTextChanged: {
                             if (!root._syncingRouteParams) {
                                 root.search(text)

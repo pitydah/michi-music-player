@@ -28,7 +28,7 @@ Dialog {
     width: 400
     objectName: "playlistExportDialog"
     Accessible.role: Accessible.Dialog
-    Accessible.name: "Exportar playlist"
+    Accessible.name: qsTr("Exportar playlist")
     closePolicy: Popup.CloseOnEscape
 
     Column {
@@ -58,7 +58,7 @@ Dialog {
             visible: !root._exporting
 
             TextField {
-                Accessible.name: "Nombre del archivo"
+                Accessible.name: qsTr("Nombre del archivo")
                 activeFocusOnTab: true
                 focusPolicy: Qt.StrongFocus
                 id: pathInput

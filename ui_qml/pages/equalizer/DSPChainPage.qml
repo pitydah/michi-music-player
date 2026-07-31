@@ -8,7 +8,7 @@ import "."
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "DSPChain"
+    Accessible.name: qsTr("DSPChain")
     objectName: "dSPChainPage"
     focus: true
     id: root

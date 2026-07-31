@@ -4,7 +4,7 @@ import "../../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Assistant Conversation"
+    Accessible.name: qsTr("Conversación del asistente")
     objectName: "assistantConversation"
     focus: true
     id: root

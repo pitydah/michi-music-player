@@ -4,7 +4,7 @@ import "../theme"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Inline Validation"
+    Accessible.name: qsTr("Inline Validation")
     objectName: "inlineValidation"
     focus: true
     id: root
@@ -96,8 +96,8 @@ Rectangle {
             font.pixelSize: MichiTheme.typography.captionSize
             visible: root.dismissible
             Accessible.role: Accessible.Graphic
-            Accessible.name: "Descartar"
-            Accessible.description: "Cerrar este mensaje de validación"
+            Accessible.name: qsTr("Descartar")
+            Accessible.description: qsTr("Cerrar este mensaje de validación")
             MouseArea {
                 anchors.fill: parent
                 onClicked: {

@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "History Filter Bar"
+    Accessible.name: qsTr("History Filter Bar")
     objectName: "historyFilterBar"
     focus: true
     id: root
@@ -73,7 +73,7 @@ Item {
 
             TextField {
                 focusPolicy: Qt.StrongFocus
-                Accessible.name: "Filtrar por álbum"
+                Accessible.name: qsTr("Filtrar por álbum")
                 id: albumField
                 activeFocusOnTab: true
                 width: 140
@@ -83,7 +83,7 @@ Item {
             }
             TextField {
                 focusPolicy: Qt.StrongFocus
-                Accessible.name: "Filtrar por dispositivo"
+                Accessible.name: qsTr("Filtrar por dispositivo")
                 id: deviceField
                 width: 120
                 placeholderText: qsTr("Dispositivo")
@@ -120,7 +120,7 @@ Item {
             }
             TextField {
                 focusPolicy: Qt.StrongFocus
-                Accessible.name: "Fecha desde"
+                Accessible.name: qsTr("Fecha desde")
                 id: fromDateField
                 activeFocusOnTab: true
                 width: 140

@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "History Timeline"
+    Accessible.name: qsTr("History Timeline")
     objectName: "historyTimeline"
     focus: true
     id: root
@@ -22,7 +22,7 @@ Item {
     ListView {
         Accessible.role: Accessible.List
 
-        Accessible.name: "ListView"
+        Accessible.name: qsTr("Lista")
 
         activeFocusOnTab: true
 
@@ -95,8 +95,8 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     width: 24
                     Accessible.role: Accessible.Button
-                    Accessible.name: "Reproducir"
-                    Accessible.description: "Reproducir esta canción"
+                    Accessible.name: qsTr("Reproducir")
+                    Accessible.description: qsTr("Reproducir esta canción")
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
@@ -112,8 +112,8 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     width: 24
                     Accessible.role: Accessible.Button
-                    Accessible.name: "Menú contextual"
-                    Accessible.description: "Abrir menú de acciones para esta canción"
+                    Accessible.name: qsTr("Menú contextual")
+                    Accessible.description: qsTr("Abrir menú de acciones para esta canción")
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor

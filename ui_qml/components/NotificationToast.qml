@@ -4,7 +4,7 @@ import "../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Notification Toast"
+    Accessible.name: qsTr("Notification Toast")
     objectName: "notificationToast"
     focus: true
     id: root

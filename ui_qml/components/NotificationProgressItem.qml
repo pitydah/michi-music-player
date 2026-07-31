@@ -4,7 +4,7 @@ import "../theme"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Notification Progress Item"
+    Accessible.name: qsTr("Notification Progress Item")
     objectName: "notificationProgressItem"
     focus: true
     id: root
@@ -170,7 +170,7 @@ Rectangle {
                     root.actionTriggered("cancelJob")
                 }
 
-                Accessible.description: "Detener este proceso"
+                Accessible.description: qsTr("Detener este proceso")
             }
         }
     }

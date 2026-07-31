@@ -4,7 +4,7 @@ import "../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Header"
+    Accessible.name: qsTr("Header")
     objectName: "pageHeader"
     focus: true
     id: root

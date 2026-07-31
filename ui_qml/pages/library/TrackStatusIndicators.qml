@@ -4,7 +4,7 @@ import "../../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Track Status Indicators"
+    Accessible.name: qsTr("Indicadores de estado de pista")
     objectName: "trackStatusIndicators"
     focus: false
     id: root

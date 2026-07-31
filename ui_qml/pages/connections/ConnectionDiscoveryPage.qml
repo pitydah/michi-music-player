@@ -11,7 +11,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Descubrimiento de servidores"
+    Accessible.name: qsTr("Descubrimiento de servidores")
 
     property var conn: typeof connectionsBridge !== "undefined" ? connectionsBridge : null
     property bool _scanning: false
@@ -22,7 +22,7 @@ Item {
     signal serverSelected(string host, int port, string alias)
     signal pairRequested(int index)
 
-    Accessible.description: "Descubre servidores Michi en tu red local"
+    Accessible.description: qsTr("Descubre servidores Michi en tu red local")
 
     AsyncStateView {
         id: asyncView

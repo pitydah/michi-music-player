@@ -2,7 +2,7 @@ import QtQuick
 
 MichiBaseSurface {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Input Material"
+    Accessible.name: qsTr("Input Material")
     objectName: "inputMaterial"
     focus: true
     id: root

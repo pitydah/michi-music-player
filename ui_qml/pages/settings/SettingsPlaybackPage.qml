@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Settings Playback"
+    Accessible.name: qsTr("Reproducción")
     focus: true
     id: root
     objectName: "settingsPlaybackPage_control"
@@ -98,7 +98,7 @@ Item {
 
                             ComboBox {
                                 Accessible.role: Accessible.ComboBox
-                                Accessible.name: "Dispositivo de salida"
+                                Accessible.name: qsTr("Dispositivo de salida")
                                 activeFocusOnTab: true
                                 focusPolicy: Qt.StrongFocus
                                 model: root.audioDevices.length > 0 ? root.audioDevices : ["Predeterminado"]
@@ -135,7 +135,7 @@ Item {
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
-                                Accessible.name: "Perfil de audio"
+                                Accessible.name: qsTr("Perfil de audio")
                                 model: ["standard", "hifi_pcm", "bitperfect_pcm", "dsd_to_pcm", "pure_audio", "studio_monitor"]
                                 currentIndex: {
                                     var p = root._loadValue("audio/profile", "standard")
@@ -191,7 +191,7 @@ Item {
                                 onPressedChanged: {
                                     if (!pressed) root._saveValue("playback/default_volume", value)
                                 }
-                                Accessible.description: "Nivel de volumen al iniciar la aplicación"
+                                Accessible.description: qsTr("Nivel de volumen al iniciar la aplicación")
                             }
                         }
 

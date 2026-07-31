@@ -22,7 +22,7 @@ RowLayout {
         ]
         Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Library View Selector"
+    Accessible.name: qsTr("Library View Selector")
     objectName: "libraryViewSelector"
     focus: true
             width: 28; height: 28; radius: MichiTheme.radius.xs

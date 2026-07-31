@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Output Test Result"
+    Accessible.name: qsTr("Resultado de prueba de salida")
     objectName: "outputTestResult"
     focus: true
     id: root

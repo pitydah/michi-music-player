@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Settings Accessibility"
+    Accessible.name: qsTr("Accesibilidad")
     focus: true
     id: root
     objectName: "settingsAccessibilityPage"
@@ -87,11 +87,11 @@ Item {
                                 Accessible.role: Accessible.CheckBox
 
                                 id: monoMode
-                                Accessible.name: "Mono"
+                                Accessible.name: qsTr("Mono")
 
                                 checked: root._loadValue("accessibility/mono", false)
                                 onClicked: root._saveValue("accessibility/mono", checked)
-                                Accessible.description: "Mezclar canales estéreo a mono"
+                                Accessible.description: qsTr("Mezclar canales estéreo a mono")
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -128,7 +128,7 @@ Item {
                                 onPressedChanged: {
                                     if (!pressed) root._saveValue("accessibility/balance", value)
                                 }
-                                Accessible.description: "Balance entre canal izquierdo y derecho"
+                                Accessible.description: qsTr("Balance entre canal izquierdo y derecho")
                             }
                         }
                     }
@@ -175,7 +175,7 @@ Item {
                                 onPressedChanged: {
                                     if (!pressed) root._saveValue("accessibility/font_size", value)
                                 }
-                                Accessible.description: "Ajustar tamaño de fuente"
+                                Accessible.description: qsTr("Ajustar tamaño de fuente")
                             }
                         }
 
@@ -193,7 +193,7 @@ Item {
                                 id: highContrast
                                 checked: root._loadValue("accessibility/high_contrast", false)
                                 onClicked: root._saveValue("accessibility/high_contrast", checked)
-                                Accessible.description: "Aumentar el contraste visual de la interfaz"
+                                Accessible.description: qsTr("Aumentar el contraste visual de la interfaz")
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -213,7 +213,7 @@ Item {
                                 id: reducedMotion
                                 checked: root._loadValue("accessibility/reduced_motion", false)
                                 onClicked: root._saveValue("accessibility/reduced_motion", checked)
-                                Accessible.description: "Minimizar animaciones y movimientos"
+                                Accessible.description: qsTr("Minimizar animaciones y movimientos")
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -243,7 +243,7 @@ Item {
                                 id: screenReader
                                 checked: root._loadValue("accessibility/screen_reader", false)
                                 onClicked: root._saveValue("accessibility/screen_reader", checked)
-                                Accessible.description: "Optimizar la interfaz para software de lectura de pantalla"
+                                Accessible.description: qsTr("Optimizar la interfaz para software de lectura de pantalla")
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -275,7 +275,7 @@ Item {
                                 id: notificationAnnouncements
                                 checked: root._loadValue("accessibility/announce_notifications", true)
                                 onClicked: root._saveValue("accessibility/announce_notifications", checked)
-                                Accessible.description: "Anunciar notificaciones mediante el lector de pantalla"
+                                Accessible.description: qsTr("Anunciar notificaciones mediante el lector de pantalla")
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -294,7 +294,7 @@ Item {
                                 id: errorAnnouncements
                                 checked: root._loadValue("accessibility/announce_errors", true)
                                 onClicked: root._saveValue("accessibility/announce_errors", checked)
-                                Accessible.description: "Anunciar mensajes de error"
+                                Accessible.description: qsTr("Anunciar mensajes de error")
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -314,7 +314,7 @@ Item {
                                 id: playbackAnnouncements
                                 checked: root._loadValue("accessibility/announce_playback", true)
                                 onClicked: root._saveValue("accessibility/announce_playback", checked)
-                                Accessible.description: "Anunciar cambios de canción y estado"
+                                Accessible.description: qsTr("Anunciar cambios de canción y estado")
                                 focusPolicy: Qt.StrongFocus
                             }
                         }

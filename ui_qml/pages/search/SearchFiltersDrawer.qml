@@ -37,8 +37,8 @@ Drawer {
 
     objectName: "searchFiltersDrawer"
     Accessible.role: Accessible.Dialog
-    Accessible.name: "Filtros de búsqueda"
-    Accessible.description: "Filtrar resultados por tipo, año y calidad"
+    Accessible.name: qsTr("Filtros de búsqueda")
+    Accessible.description: qsTr("Filtrar resultados por tipo, año y calidad")
 
     background: Rectangle {
         color: MichiTheme.colors.surfacePopup
@@ -116,7 +116,7 @@ Drawer {
                     spacing: MichiTheme.spacing.sm
                         Accessible.role: Accessible.CheckBox
 
-                        Accessible.name: "CheckBox"
+                        Accessible.name: qsTr("Casilla de verificación")
 
                         Accessible.checked: root.checked
 

@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Search Result Group"
+    Accessible.name: qsTr("Grupo de resultados de búsqueda")
     objectName: "searchResultGroup"
     focus: true
     id: root
@@ -49,8 +49,8 @@ Item {
                         font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter
                         visible: modelData.type === "track"
                         Accessible.role: Accessible.Button
-                        Accessible.name: "Reproducir"
-                        Accessible.description: "Reproducir esta canción"
+                        Accessible.name: qsTr("Reproducir")
+                        Accessible.description: qsTr("Reproducir esta canción")
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                             onClicked: root.itemClicked(modelData.type || "", modelData.id || "", modelData.title || "")

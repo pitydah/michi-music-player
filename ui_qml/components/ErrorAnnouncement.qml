@@ -4,7 +4,7 @@ import "."
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Error Announcement"
+    Accessible.name: qsTr("Error Announcement")
     objectName: "errorAnnouncement"
     focus: true
     id: root

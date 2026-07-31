@@ -12,7 +12,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Letra"
+    Accessible.name: qsTr("Letra")
 
     property var lb: typeof lyricsBridge !== "undefined" ? lyricsBridge : null
     property var np: typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null

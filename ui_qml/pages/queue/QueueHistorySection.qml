@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Queue History Section"
+    Accessible.name: qsTr("Historial de la cola")
     objectName: "queueHistorySection_control"
     focus: true
     property var ps: null

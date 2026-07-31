@@ -5,7 +5,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Chat Bubble"
+    Accessible.name: qsTr("Burbuja de chat")
     objectName: "chatBubble"
     focus: true
     id: root

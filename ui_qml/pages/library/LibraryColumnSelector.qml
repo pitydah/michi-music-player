@@ -39,7 +39,7 @@ Popup {
 
         Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Library Column Selector"
+    Accessible.name: qsTr("Library Column Selector")
     objectName: "libraryColumnSelector"
     focus: true
             width: parent.width; height: 32

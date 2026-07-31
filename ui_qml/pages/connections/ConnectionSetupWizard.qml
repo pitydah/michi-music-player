@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Connection Setup Wizard"
+    Accessible.name: qsTr("Asistente de configuración de conexión")
     objectName: "connectionSetupWizard"
     id: root
     focus: true
@@ -111,7 +111,7 @@ Item {
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         onTextChanged: root.serverAlias = text
-                        Accessible.description: "Nombre opcional para identificar el servidor"
+                        Accessible.description: qsTr("Nombre opcional para identificar el servidor")
 
                         background: Rectangle {
                             radius: MichiTheme.radius.sm
@@ -181,7 +181,7 @@ Item {
                         id: hostField
                         width: parent.width
                         height: MichiTheme.rowHeightComfortable
-                        Accessible.name: "Host o dirección IP"
+                        Accessible.name: qsTr("Host o dirección IP")
                         placeholderText: qsTr("Host o dirección IP")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
@@ -189,7 +189,7 @@ Item {
                             root.manualHost = text
                             root.validationError = ""
                         }
-                        Accessible.description: "Dirección IP o nombre de host"
+                        Accessible.description: qsTr("Dirección IP o nombre de host")
 
                         background: Rectangle {
                             radius: MichiTheme.radius.sm
@@ -204,7 +204,7 @@ Item {
                     QQC2.TextField {
                         id: portField
                         width: parent.width
-                        Accessible.name: "Puerto"
+                        Accessible.name: qsTr("Puerto")
                         height: MichiTheme.rowHeightComfortable
                         placeholderText: qsTr("Puerto")
                         color: MichiTheme.colors.textPrimary
@@ -215,7 +215,7 @@ Item {
                             root.manualPort = parseInt(text) || 53318
                             root.validationError = ""
                         }
-                        Accessible.description: "Número de puerto para la conexión"
+                        Accessible.description: qsTr("Número de puerto para la conexión")
 
                         background: Rectangle {
                             radius: MichiTheme.radius.sm
@@ -229,14 +229,14 @@ Item {
 
                     QQC2.TextField {
                         id: aliasField2
-                        Accessible.name: "Alias (opcional)"
+                        Accessible.name: qsTr("Alias (opcional)")
                         width: parent.width
                         height: MichiTheme.rowHeightComfortable
                         placeholderText: qsTr("Alias (opcional)")
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         onTextChanged: root.serverAlias = text
-                        Accessible.description: "Nombre opcional para identificar el servidor"
+                        Accessible.description: qsTr("Nombre opcional para identificar el servidor")
 
                         background: Rectangle {
                             radius: MichiTheme.radius.sm
@@ -263,7 +263,7 @@ Item {
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         onTextChanged: root.authUser = text
-                        Accessible.description: "Nombre de usuario para autenticación"
+                        Accessible.description: qsTr("Nombre de usuario para autenticación")
 
                         background: Rectangle {
                             radius: MichiTheme.radius.sm
@@ -284,7 +284,7 @@ Item {
                         font.pixelSize: MichiTheme.typography.bodySize
                         echoMode: TextInput.Password
                         onTextChanged: root.authPassword = text
-                        Accessible.description: "Contraseña para autenticación"
+                        Accessible.description: qsTr("Contraseña para autenticación")
 
                         background: Rectangle {
                             radius: MichiTheme.radius.sm

@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Audio Integrity"
+    Accessible.name: qsTr("Integridad de audio")
     objectName: "audioIntegrityPage"
     focus: true
     id: root
@@ -86,7 +86,7 @@ Item {
             AudioInputSelection { id: inputSelection }
             AudioSelectionSummary { width: parent.width }
 
-            SectionHeader { text: qsTr("Tipos de verificación"); width: parent.width; objectName: "integrityTypesHeader"; Accessible.name: "Tipos de verificación" }
+            SectionHeader { text: qsTr("Tipos de verificación"); width: parent.width; objectName: "integrityTypesHeader"; Accessible.name: qsTr("Tipos de verificación") }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md; variant: "base"
@@ -97,7 +97,7 @@ Item {
                         CheckBox {
                             Accessible.role: Accessible.CheckBox
 
-                            Accessible.name: "CheckBox"
+                            Accessible.name: qsTr("Casilla de verificación")
 
                             Accessible.checked: root.checked
 
@@ -110,7 +110,7 @@ Item {
                     }
                             Accessible.role: Accessible.CheckBox
 
-                            Accessible.name: "CheckBox"
+                            Accessible.name: qsTr("Casilla de verificación")
 
                             Accessible.checked: root.checked
 
@@ -123,7 +123,7 @@ Item {
                             Keys.onSpacePressed: toggle()
                             Accessible.role: Accessible.CheckBox
 
-                            Accessible.name: "CheckBox"
+                            Accessible.name: qsTr("Casilla de verificación")
 
                             Accessible.checked: root.checked
 
@@ -143,7 +143,7 @@ Item {
                 }
             }
 
-            SectionHeader { text: qsTr("Acciones"); width: parent.width; objectName: "integrityActionsHeader"; Accessible.name: "Acciones" }
+            SectionHeader { text: qsTr("Acciones"); width: parent.width; objectName: "integrityActionsHeader"; Accessible.name: qsTr("Acciones") }
 
             Row {
                 spacing: MichiTheme.spacing.sm
@@ -175,7 +175,7 @@ Item {
                 }
             }
 
-            SectionHeader { text: qsTr("Resultados"); width: parent.width; objectName: "integrityResultsHeader"; Accessible.name: "Resultados" }
+            SectionHeader { text: qsTr("Resultados"); width: parent.width; objectName: "integrityResultsHeader"; Accessible.name: qsTr("Resultados") }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md; variant: root._results.length > 0 ? "accent" : root._state === root.stateFailed ? "danger" : "status"

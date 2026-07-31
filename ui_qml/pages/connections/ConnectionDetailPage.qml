@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Connection Detail"
+    Accessible.name: qsTr("Detalle de conexión")
     objectName: "connectionDetailPage"
     id: root
     focus: true
@@ -209,7 +209,7 @@ Item {
                                 deleteConfirmDialog.open()
                             }
                         }
-                        Accessible.description: "Elimina la configuración del servidor"
+                        Accessible.description: qsTr("Elimina la configuración del servidor")
                         KeyNavigation.backtab: editBtn
                     }
 

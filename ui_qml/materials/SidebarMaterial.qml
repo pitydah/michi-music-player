@@ -3,7 +3,7 @@ import "../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Sidebar Material"
+    Accessible.name: qsTr("Material de barra lateral")
     objectName: "sidebarMaterial"
     id: root
 

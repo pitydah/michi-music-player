@@ -5,7 +5,7 @@ import "../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Song Context Menu"
+    Accessible.name: qsTr("Menú contextual de canción")
     objectName: "songContextMenu"
     focus: true
     id: root

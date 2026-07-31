@@ -28,7 +28,7 @@ Dialog {
     width: 400
     objectName: "historyExportDialog"
     Accessible.role: Accessible.Dialog
-    Accessible.name: "Exportar historial"
+    Accessible.name: qsTr("Exportar historial")
     closePolicy: Popup.NoAutoClose
 
     function _estimateSize() {
@@ -69,7 +69,7 @@ Dialog {
             }
             ComboBox {
                 Accessible.role: Accessible.ComboBox
-                Accessible.name: "Formato de exportación"
+                Accessible.name: qsTr("Formato de exportación")
                 activeFocusOnTab: true
                 focusPolicy: Qt.StrongFocus
                 id: formatCombo
@@ -96,7 +96,7 @@ Dialog {
 
             TextField {
                 focusPolicy: Qt.StrongFocus
-                Accessible.name: "Ruta de destino"
+                Accessible.name: qsTr("Ruta de destino")
                 id: pathInput
 
                 width: parent.width - 80

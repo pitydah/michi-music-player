@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Search Recent Queries"
+    Accessible.name: qsTr("Búsquedas recientes")
     objectName: "searchRecentQueries"
     focus: true
     id: root

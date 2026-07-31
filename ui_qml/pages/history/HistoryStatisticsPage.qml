@@ -29,7 +29,7 @@ Drawer {
     closePolicy: Popup.CloseOnEscape
     objectName: "historyStatisticsPage"
     Accessible.role: Accessible.Dialog
-    Accessible.name: "Estadísticas del historial"
+    Accessible.name: qsTr("Estadísticas del historial")
 
     function refresh() {
         root._state = "LOADING"
@@ -276,7 +276,7 @@ Drawer {
                             variant: "ghost"
                             anchors.verticalCenter: parent.verticalCenter
                             visible: mouseArea.containsMouse
-                            Accessible.name: "Reproducir elemento del historial"
+                            Accessible.name: qsTr("Reproducir elemento del historial")
                             onClicked: {
                                 if (modelData.track_id)
                                     root.playTrackRequested(modelData.track_id)

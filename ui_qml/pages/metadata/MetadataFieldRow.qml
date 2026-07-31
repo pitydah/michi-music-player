@@ -4,7 +4,7 @@ import "../../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Metadata Field Row"
+    Accessible.name: qsTr("Metadata Field Row")
     objectName: "metadataFieldRow"
     focus: true
     id: root
@@ -56,7 +56,7 @@ Item {
         TextField {
             Accessible.role: Accessible.EditableText
 
-            Accessible.name: "Campo de texto"
+            Accessible.name: qsTr("Campo de texto")
 
             activeFocusOnTab: true
 

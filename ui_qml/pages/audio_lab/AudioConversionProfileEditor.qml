@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Audio Conversion Profile Editor"
+    Accessible.name: qsTr("Editor de perfiles de conversión de audio")
     objectName: "audioConversionProfileEditor"
     focus: true
     id: root
@@ -108,7 +108,7 @@ Item {
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
             }
 
-            SectionHeader { text: qsTr("Perfiles predefinidos"); width: parent.width; objectName: "presetsHeader"; Accessible.name: "Perfiles predefinidos" }
+            SectionHeader { text: qsTr("Perfiles predefinidos"); width: parent.width; objectName: "presetsHeader"; Accessible.name: qsTr("Perfiles predefinidos") }
 
             Repeater {
                 model: root._presetProfiles
@@ -122,12 +122,12 @@ Item {
                         Text { width: parent.width * 0.12; text: modelData.bitrate > 0 ? modelData.bitrate + "k" : qsTr("—"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
                         Text { width: parent.width * 0.15; text: modelData.sr + " Hz"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
                         Text { width: parent.width * 0.10; text: modelData.depth + " bit"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
-                        MichiButton { width: 60; height: 28; text: qsTr("Usar"); variant: "primary"; anchors.verticalCenter: parent.verticalCenter; objectName: "usePresetBtn_" + index; Accessible.name: "Usar " + modelData.name; activeFocusOnTab: true; Keys.onReturnPressed: onClicked(); Keys.onSpacePressed: onClicked(); onClicked: root._loadProfile(modelData) }
+                        MichiButton { width: 60; height: 28; text: qsTr("Usar"); variant: "primary"; anchors.verticalCenter: parent.verticalCenter; objectName: "usePresetBtn_" + index; Accessible.name: qsTr("Usar ") + modelData.name; activeFocusOnTab: true; Keys.onReturnPressed: onClicked(); Keys.onSpacePressed: onClicked(); onClicked: root._loadProfile(modelData) }
                     }
                 }
             }
 
-            SectionHeader { text: qsTr("Editor de perfil personalizado"); width: parent.width; objectName: "editorHeader"; Accessible.name: "Editor de perfil" }
+            SectionHeader { text: qsTr("Editor de perfil personalizado"); width: parent.width; objectName: "editorHeader"; Accessible.name: qsTr("Editor de perfil") }
 
             InlineError {
                 message: root._validationError
@@ -147,7 +147,7 @@ Item {
                         TextField {
                             Accessible.role: Accessible.EditableText
 
-                            Accessible.name: "Campo de texto"
+                            Accessible.name: qsTr("Campo de texto")
 
                             activeFocusOnTab: true
 
@@ -164,7 +164,7 @@ Item {
                     Row {
                             Accessible.role: Accessible.ComboBox
 
-                            Accessible.name: "ComboBox"
+                            Accessible.name: qsTr("Cuadro combinado")
 
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: qsTr("Formato:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
@@ -182,7 +182,7 @@ Item {
                     }
                             Accessible.role: Accessible.ComboBox
 
-                            Accessible.name: "ComboBox"
+                            Accessible.name: qsTr("Cuadro combinado")
 
                             activeFocusOnTab: true
 
@@ -197,7 +197,7 @@ Item {
                             activeFocusOnTab: true
                             Accessible.role: Accessible.ComboBox
 
-                            Accessible.name: "ComboBox"
+                            Accessible.name: qsTr("Cuadro combinado")
 
                             onCurrentIndexChanged: root._profileBitrate = root._bitrateOptions[currentIndex]
                         }
@@ -211,7 +211,7 @@ Item {
                             model: root._sampleRateOptions
                             Accessible.role: Accessible.ComboBox
 
-                            Accessible.name: "ComboBox"
+                            Accessible.name: qsTr("Cuadro combinado")
 
                             width: parent.width - 100
                             activeFocusOnTab: true
@@ -225,7 +225,7 @@ Item {
                         ComboBox {
                             Accessible.role: Accessible.ComboBox
 
-                            Accessible.name: "ComboBox"
+                            Accessible.name: qsTr("Cuadro combinado")
 
                             focusPolicy: Qt.StrongFocus
                             model: root._bitDepthOptions

@@ -25,19 +25,19 @@ Item {
 
     objectName: "ComparisonPanel"
     Accessible.role: Accessible.Pane
-    Accessible.name: "Panel de comparación"
+    Accessible.name: qsTr("Panel de comparación")
 
     Column {
         width: parent.width
         spacing: MichiTheme.spacing.md
 
-        SectionHeader { text: qsTr("Archivo de referencia"); width: parent.width; objectName: "compareRefHeader"; Accessible.name: "Archivo de referencia" }
+        SectionHeader { text: qsTr("Archivo de referencia"); width: parent.width; objectName: "compareRefHeader"; Accessible.name: qsTr("Archivo de referencia") }
 
         AudioInputSelection {
             id: refInput
         }
 
-        SectionHeader { text: qsTr("Archivo a comparar"); width: parent.width; objectName: "compareTargetHeader"; Accessible.name: "Archivo a comparar" }
+        SectionHeader { text: qsTr("Archivo a comparar"); width: parent.width; objectName: "compareTargetHeader"; Accessible.name: qsTr("Archivo a comparar") }
 
         AudioInputSelection {
             id: targetInput

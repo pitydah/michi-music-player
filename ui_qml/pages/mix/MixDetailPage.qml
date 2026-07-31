@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Mix Detail"
+    Accessible.name: qsTr("Mix Detail")
     objectName: "mixDetailPage"
     focus: true
     id: root
@@ -220,7 +220,7 @@ Item {
 
                 Accessible.role: Accessible.List
 
-                Accessible.name: "ListView"
+                Accessible.name: qsTr("Lista")
 
             Text {
                 text: root._songs.length + " canciones"; color: MichiTheme.colors.textSecondary
@@ -329,7 +329,7 @@ Item {
                 width: parent.width; visible: root._songs.length > 0
                 Accessible.role: Accessible.EditableText
 
-                Accessible.name: "Campo de texto"
+                Accessible.name: qsTr("Campo de texto")
 
                 activeFocusOnTab: true
 

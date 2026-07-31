@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Sync Status"
+    Accessible.name: qsTr("Estado de sincronización")
     objectName: "syncStatusPanel"
     focus: true
     id: root

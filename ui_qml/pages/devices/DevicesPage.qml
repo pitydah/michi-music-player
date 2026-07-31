@@ -12,7 +12,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Dispositivos y sincronización"
+    Accessible.name: qsTr("Dispositivos y sincronización")
 
     property var dv: typeof devicesBridge !== "undefined" ? devicesBridge : null
     property var deviceSyncService: root.dv

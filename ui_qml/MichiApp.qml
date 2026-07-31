@@ -7,7 +7,7 @@ import "materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Michi App"
+    Accessible.name: qsTr("Aplicación Michi")
     objectName: "michiApp"
     focus: true
     id: appRoot

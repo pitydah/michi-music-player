@@ -4,7 +4,7 @@ import "../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Glass Material"
+    Accessible.name: qsTr("Glass Material")
     objectName: "glassMaterial"
     id: root
 

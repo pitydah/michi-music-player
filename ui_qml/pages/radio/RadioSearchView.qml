@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Radio Search View"
+    Accessible.name: qsTr("Búsqueda de emisoras")
     objectName: "radioSearchView"
     focus: true
     id: root

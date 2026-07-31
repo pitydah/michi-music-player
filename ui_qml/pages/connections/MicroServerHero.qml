@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Micro Server Hero"
+    Accessible.name: qsTr("Micro Server Hero")
     objectName: "microServerHero"
     focus: true
     id: root

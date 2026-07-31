@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Smart Playlist Editor"
+    Accessible.name: qsTr("Editor de listas inteligentes")
     objectName: "smartPlaylistEditorPage"
     focus: true
     id: root
@@ -134,7 +134,7 @@ Item {
             }
             TextField {
                 focusPolicy: Qt.StrongFocus
-                Accessible.name: "Nombre de la lista inteligente"
+                Accessible.name: qsTr("Nombre de la lista inteligente")
                 id: nameInput
                 width: parent.width * 0.5
                 text: root.playlistName

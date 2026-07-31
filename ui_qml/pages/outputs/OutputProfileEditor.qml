@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Output Profile Editor"
+    Accessible.name: qsTr("Editor de perfiles de salida")
     objectName: "outputProfileEditor"
     focus: true
     id: root
@@ -68,7 +68,7 @@ Item {
                     currentIndex: root._isNew ? 0 : Math.max(0, find(root.profileData.backend || root.profileData.preferred_backend || "auto"))
                     Accessible.role: Accessible.ComboBox
 
-                    Accessible.name: "ComboBox"
+                    Accessible.name: qsTr("Cuadro combinado")
 
                     activeFocusOnTab: true
 
@@ -82,7 +82,7 @@ Item {
                     focusPolicy: Qt.StrongFocus
                     Accessible.role: Accessible.ComboBox
 
-                    Accessible.name: "ComboBox"
+                    Accessible.name: qsTr("Cuadro combinado")
 
                     id: sampleRateCombo
                     activeFocusOnTab: true

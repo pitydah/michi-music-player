@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Device Pairing"
+    Accessible.name: qsTr("Device Pairing")
     objectName: "devicePairingPage"
     id: root
     focus: true

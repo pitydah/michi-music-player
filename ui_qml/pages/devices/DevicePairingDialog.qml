@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Device Pairing"
+    Accessible.name: qsTr("Device Pairing")
     objectName: "devicePairingDialog"
     focus: true
     id: root
@@ -53,7 +53,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 Text { text: qsTr("Nombre:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "pairingDialogNameLabel" }
                 TextField {
-                    Accessible.name: "Nombre del dispositivo"
+                    Accessible.name: qsTr("Nombre del dispositivo")
                     activeFocusOnTab: true
                     focusPolicy: Qt.StrongFocus
                     id: pairingNameField

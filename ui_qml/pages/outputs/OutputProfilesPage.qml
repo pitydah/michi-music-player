@@ -12,13 +12,15 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Perfiles de salida"
+    Accessible.name: qsTr("Perfiles de salida")
 
     property var stg: typeof settingsBridge !== "undefined" ? settingsBridge : null
     property var op: typeof outputProfilesBridge !== "undefined" ? outputProfilesBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property bool _showEditor: false
     property var _editProfile: null
+    property var _testResult: null
+    property bool _testing: false
 
     enum State { LOADING, READY, EMPTY, ERROR, UNAVAILABLE }
     property int pageState: OutputProfilesPage.READY
@@ -37,15 +39,50 @@ Item {
         if (root.op && typeof root.op.setActiveProfile === "function") {
             var r = root.op.setActiveProfile(profileId)
             if (r.ok) {
-                if (root.notif) root.notif.showMessage("Perfil activado", "success")
+                if (root.notif) {
+                    var okMsg = r.verified ? "Perfil activado y verificado" : "Perfil activado"
+                    if (r.fallback) okMsg += " (fallback)"
+                    root.notif.showMessage(okMsg, r.fallback ? "warning" : "success")
+                }
             } else {
                 if (root.notif) {
                     var msg = r.message || r.error || "Error al cambiar perfil"
                     if (r.fallback) msg += " (fallback)"
+                    if (r.rollback) msg += " — revertido al perfil anterior"
                     root.notif.showMessage(msg, "error")
                 }
             }
         }
+    }
+
+    function _activeProfileData() {
+        if (!root.op || !root.op.profiles) return null
+        var id = root.op.activeProfileId
+        for (var i = 0; i < root.op.profiles.length; i++) {
+            if (root.op.profiles[i].id === id) return root.op.profiles[i]
+        }
+        return null
+    }
+
+    function testActiveProfile() {
+        if (!root.op || typeof root.op.testProfile !== "function") return
+        var id = root.op.effectiveProfileId || root.op.activeProfileId
+        if (!id) return
+        root._testing = true
+        root._testResult = null
+        var r = root.op.testProfile(id)
+        root._testing = false
+        root._testResult = r
+    }
+
+    function rollbackProfile() {
+        if (!root.op || typeof root.op.rollbackProfile !== "function") return
+        var r = root.op.rollbackProfile()
+        if (root.notif) {
+            if (r && r.ok !== false) root.notif.showMessage("Perfil revertido", "info")
+            else root.notif.showMessage((r && (r.message || r.error)) || "Error al revertir", "error")
+        }
+        root.refresh()
     }
 
     Component.onCompleted: root.refresh()
@@ -110,6 +147,156 @@ Item {
                             root._showEditor = true
                         }
                     }
+                }
+
+                // ── Estado real del pipeline de salida ──
+                GlassCard {
+                    width: parent.width
+                    title: qsTr("Estado actual")
+                    subtitle: qsTr("Estado efectivo reportado por el motor de audio")
+                    interactive: false
+                    implicitHeight: stateColumn.height + MichiTheme.spacing.lg * 2
+
+                    Column {
+                        id: stateColumn
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: MichiTheme.spacing.lg
+                        spacing: MichiTheme.spacing.xs
+
+                        Row {
+                            spacing: MichiTheme.spacing.sm
+                            Text { text: qsTr("Perfil solicitado:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                            Text { text: root.op && root.op.requestedProfileId ? root.op.requestedProfileId : qsTr("—"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+                        }
+
+                        Row {
+                            spacing: MichiTheme.spacing.sm
+                            Text { text: qsTr("Perfil efectivo:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                            Text { text: root.op ? (root.op.effectiveProfileId || root.op.activeProfileId || qsTr("—")) : qsTr("—"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightSemiBold }
+                        }
+
+                        Row {
+                            spacing: MichiTheme.spacing.sm
+                            Text { text: qsTr("Backend:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                            Text { text: root.op && root.op.activeBackend ? root.op.activeBackend : qsTr("—"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+                        }
+
+                        Row {
+                            spacing: MichiTheme.spacing.sm
+                            Text { text: qsTr("API de salida:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                            Text { text: root.op && root.op.outputApi ? root.op.outputApi : qsTr("—"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+                        }
+
+                        Row {
+                            spacing: MichiTheme.spacing.sm
+                            Text { text: qsTr("Dispositivo:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                            Text { text: root.op && root.op.outputDevice ? root.op.outputDevice : qsTr("—"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+                        }
+
+                        Row {
+                            spacing: MichiTheme.spacing.sm
+                            Text { text: qsTr("Aplicación:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+                            StatusBadge {
+                                text: root.op ? root.op.appliedState : qsTr("desconocido")
+                                kind: !root.op ? "neutral"
+                                    : root.op.appliedState === "applied" ? "success"
+                                    : root.op.appliedState === "applying" ? "warning"
+                                    : root.op.appliedState === "rejected" ? "error"
+                                    : "neutral"
+                            }
+                            StatusBadge {
+                                text: qsTr("Fallback activo")
+                                kind: "warning"
+                                visible: root.op && root.op.fallbackActive
+                            }
+                            StatusBadge {
+                                text: qsTr("Requiere reinicio")
+                                kind: "warning"
+                                visible: root.op && root.op.requiresRestart
+                            }
+                        }
+
+                        Row {
+                            spacing: MichiTheme.spacing.sm
+                            Text { text: qsTr("Verificación:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                            Text { text: root.op && root.op.verificationLevel ? root.op.verificationLevel : qsTr("no verificado"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+                        }
+
+                        Row {
+                            spacing: MichiTheme.spacing.sm
+                            Text { text: qsTr("Bit-perfect efectivo:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                            Text { text: root.op && root.op.bitperfectState ? root.op.bitperfectState : qsTr("desconocido"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+                        }
+
+                        Row {
+                            spacing: MichiTheme.spacing.sm
+                            visible: root.op && root.op.invalidators && root.op.invalidators.length > 0
+                            Text { text: qsTr("Invalidadores:"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                            Text { text: root.op && root.op.invalidators ? root.op.invalidators.join(", ") : ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+                        }
+
+                        Text {
+                            visible: root.op && root.op.lastMessage !== ""
+                            text: root.op ? root.op.lastMessage : ""
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.metaSize
+                            wrapMode: Text.WordWrap
+                            width: parent.width
+                        }
+
+                        Row {
+                            spacing: MichiTheme.spacing.sm
+                            topPadding: MichiTheme.spacing.sm
+                            MichiButton {
+                                objectName: "testProfileButton"
+                                text: qsTr("Probar salida")
+                                variant: "ghost"
+                                enabled: root.op && (root.op.effectiveProfileId || root.op.activeProfileId)
+                                onClicked: root.testActiveProfile()
+                            }
+                            MichiButton {
+                                objectName: "rollbackProfileButton"
+                                text: qsTr("Revertir perfil")
+                                variant: "danger"
+                                visible: root.op && root.op.appliedState === "applied"
+                                onClicked: root.rollbackProfile()
+                            }
+                        }
+
+                        OutputTestResult {
+                            width: parent.width
+                            testing: root._testing
+                            testResult: root._testResult
+                        }
+                    }
+                }
+
+                // ── Detalles técnicos del perfil activo ──
+                SectionHeader {
+                    text: qsTr("Detalles técnicos")
+                    width: parent.width
+                    visible: root._activeProfileData() !== null
+                }
+
+                OutputProfileDetail {
+                    width: parent.width
+                    profileData: root._activeProfileData()
+                    opBridge: root.op
+                    visible: root._activeProfileData() !== null
+                }
+
+                OutputCapabilityView {
+                    width: parent.width
+                    profileData: root._activeProfileData()
+                    opBridge: root.op
+                    visible: root._activeProfileData() !== null
+                }
+
+                SectionHeader {
+                    text: qsTr("Perfiles disponibles")
+                    width: parent.width
                 }
 
                 Repeater {

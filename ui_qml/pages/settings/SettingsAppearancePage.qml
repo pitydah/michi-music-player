@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Settings Appearance"
+    Accessible.name: qsTr("Apariencia")
     focus: true
     id: root
     objectName: "settingsAppearancePage"
@@ -193,7 +193,7 @@ Item {
                                     root._saveValue("appearance/theme", theme)
                                     MichiTheme.setDarkMode(checked)
                                 }
-                                Accessible.description: "Alternar modo oscuro/claro"
+                                Accessible.description: qsTr("Alternar modo oscuro/claro")
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -248,7 +248,7 @@ Item {
                                 onPressedChanged: {
                                     if (!pressed) root._saveValue("accessibility/font_size", value)
                                 }
-                                Accessible.description: "Ajusta el tamaño de la fuente: " + Math.round(value * 100) + "%"
+                                Accessible.description: qsTr("Ajusta el tamaño de la fuente: ") + Math.round(value * 100) + "%"
                             }
                         }
                     }
@@ -278,7 +278,7 @@ Item {
                                 id: reducedMotion
                                 checked: root._loadValue("appearance/reduced_motion", false)
                                 onClicked: root._saveValue("appearance/reduced_motion", checked)
-                                Accessible.description: "Reducir animaciones y transiciones"
+                                Accessible.description: qsTr("Reducir animaciones y transiciones")
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -298,7 +298,7 @@ Item {
                                 id: reducedTransparency
                                 checked: root._loadValue("appearance/reduced_transparency", false)
                                 onClicked: root._saveValue("appearance/reduced_transparency", checked)
-                                Accessible.description: "Reducir efectos de transparencia y desenfoque"
+                                Accessible.description: qsTr("Reducir efectos de transparencia y desenfoque")
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -318,7 +318,7 @@ Item {
                                 id: compactMode
                                 checked: root._loadValue("appearance/compact_mode", false)
                                 onClicked: root._saveValue("appearance/compact_mode", checked)
-                                Accessible.description: "Reducir espacios y márgenes"
+                                Accessible.description: qsTr("Reducir espacios y márgenes")
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -338,7 +338,7 @@ Item {
                                 id: coverAsBackdrop
                                 checked: root._loadValue("appearance/cover_as_backdrop", false)
                                 onClicked: root._saveValue("appearance/cover_as_backdrop", checked)
-                                Accessible.description: "Usar la carátula del álbum actual como fondo"
+                                Accessible.description: qsTr("Usar la carátula del álbum actual como fondo")
                                 focusPolicy: Qt.StrongFocus
                             }
                         }

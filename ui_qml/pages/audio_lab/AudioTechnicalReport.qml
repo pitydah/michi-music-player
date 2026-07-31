@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Audio Technical Report"
+    Accessible.name: qsTr("Informe técnico de audio")
     objectName: "audioTechnicalReport"
     focus: true
     id: root

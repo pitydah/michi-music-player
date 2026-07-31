@@ -10,7 +10,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Captura de audio"
+    Accessible.name: qsTr("Captura de audio")
 
     Flickable {
         id: flickable

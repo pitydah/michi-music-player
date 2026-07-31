@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Audio Comparison"
+    Accessible.name: qsTr("Comparación de audio")
     objectName: "audioComparisonPage"
     focus: true
     id: root
@@ -79,19 +79,19 @@ Item {
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
             }
 
-            SectionHeader { text: qsTr("Archivo A"); width: parent.width; objectName: "fileAHeader"; Accessible.name: "Archivo A" }
+            SectionHeader { text: qsTr("Archivo A"); width: parent.width; objectName: "fileAHeader"; Accessible.name: qsTr("Archivo A") }
 
             AudioInputSelection {
                 onFilesSelected: { root._fileA = filepaths && filepaths.length > 0 ? filepaths[0] : null; root._comparisonResult = null; root._state = root.stateIdle }
             }
 
-            SectionHeader { text: qsTr("Archivo B"); width: parent.width; objectName: "fileBHeader"; Accessible.name: "Archivo B" }
+            SectionHeader { text: qsTr("Archivo B"); width: parent.width; objectName: "fileBHeader"; Accessible.name: qsTr("Archivo B") }
 
             AudioInputSelection {
                 onFilesSelected: { root._fileB = filepaths && filepaths.length > 0 ? filepaths[0] : null; root._comparisonResult = null; root._state = root.stateIdle }
             }
 
-            SectionHeader { text: qsTr("Dimensiones de comparación"); width: parent.width; objectName: "comparisonDimsHeader"; Accessible.name: "Dimensiones" }
+            SectionHeader { text: qsTr("Dimensiones de comparación"); width: parent.width; objectName: "comparisonDimsHeader"; Accessible.name: qsTr("Dimensiones") }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radius.md; variant: root._comparisonResult ? "accent" : "base"

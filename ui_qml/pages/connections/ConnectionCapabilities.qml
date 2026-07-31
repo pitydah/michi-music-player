@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Connection Capabilities"
+    Accessible.name: qsTr("Capacidades de conexión")
     objectName: "connectionCapabilities"
     focus: true
     id: root

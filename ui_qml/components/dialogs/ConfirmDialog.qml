@@ -46,7 +46,7 @@ BaseDialog {
             Accessible.checked: root.checked
 
             id: dontAskCheck
-            Accessible.name: "CheckBox"
+            Accessible.name: qsTr("Casilla de verificación")
 
             activeFocusOnTab: true
 
@@ -98,7 +98,7 @@ BaseDialog {
             text: root.cancelText
             variant: "ghost"
             Layout.minimumWidth: 80
-            Accessible.description: "Cancelar acción"
+            Accessible.description: qsTr("Cancelar acción")
             onClicked: {
                 root.open = false
                 root.cancelled()

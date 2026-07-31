@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "DSPModule Card"
+    Accessible.name: qsTr("DSPModule Card")
     objectName: "dSPModuleCard"
     focus: true
     id: root

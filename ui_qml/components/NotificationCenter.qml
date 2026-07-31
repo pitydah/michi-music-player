@@ -21,7 +21,7 @@ Item {
     signal notificationActivated(string notificationId)
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Centro de notificaciones"
+    Accessible.name: qsTr("Centro de notificaciones")
     Accessible.description: count === 1 ? "1 notificación activa" : count + " notificaciones activas"
 
     implicitWidth: 360

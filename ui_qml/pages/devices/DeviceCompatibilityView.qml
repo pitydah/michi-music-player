@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Device Compatibility View"
+    Accessible.name: qsTr("Device Compatibility View")
     objectName: "deviceCompatibilityView"
     focus: true
     id: root

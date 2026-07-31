@@ -12,7 +12,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Inicio"
+    Accessible.name: qsTr("Inicio")
 
     property var hb: typeof homeBridge !== "undefined" ? homeBridge : null
     property var nb: typeof navigationBridge !== "undefined" ? navigationBridge : null

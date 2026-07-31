@@ -6,7 +6,7 @@ import "../../components"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Source Scan Progress"
+    Accessible.name: qsTr("Progreso de escaneo de fuente")
     objectName: "sourceScanProgress"
     focus: true
     id: root
@@ -49,7 +49,7 @@ Rectangle {
             ProgressBar {
                 Accessible.role: Accessible.ProgressBar
 
-                Accessible.name: "Progreso de escaneo"
+                Accessible.name: qsTr("Progreso de escaneo")
 
                 Layout.fillWidth: true; height: 4
                 from: 0; to: root.total > 0 ? root.total : 1

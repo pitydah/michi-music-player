@@ -11,8 +11,8 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Reproducción"
-    Accessible.description: "Control de reproducción actual: play/pause, siguiente/anterior, volumen, seek y controles de calidad"
+    Accessible.name: qsTr("Reproducción")
+    Accessible.description: qsTr("Control de reproducción actual: play/pause, siguiente/anterior, volumen, seek y controles de calidad")
 
     property var ps: typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null
     property var qb: typeof queueBridge !== "undefined" ? queueBridge : null

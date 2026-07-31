@@ -5,7 +5,7 @@ import "../../theme"
 TextField {
     Accessible.role: Accessible.EditableText
 
-    Accessible.name: "Buscar en biblioteca"
+    Accessible.name: qsTr("Buscar en biblioteca")
 
     activeFocusOnTab: true
 

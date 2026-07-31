@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Assistant Action Preview"
+    Accessible.name: qsTr("Vista previa de acción del asistente")
     objectName: "assistantActionPreview"
     focus: true
     id: root

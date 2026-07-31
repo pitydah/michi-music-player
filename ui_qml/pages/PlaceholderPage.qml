@@ -5,7 +5,7 @@ import "../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Placeholder"
+    Accessible.name: qsTr("Sección en migración")
     objectName: "placeholderPage"
     focus: true
     id: root

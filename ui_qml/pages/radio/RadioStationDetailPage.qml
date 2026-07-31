@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Radio Station Detail"
+    Accessible.name: qsTr("Detalle de emisora")
     objectName: "radioStationDetailPage"
     focus: true
     id: root
@@ -34,7 +34,7 @@ Item {
     implicitHeight: detailColumn.height + MichiTheme.spacing.xl * 2
 
 
-    Accessible.description: "Estado: " + root._state
+    Accessible.description: qsTr("Estado: ") + root._state
 
     function play() {
         if (root.stationData) {
@@ -87,7 +87,7 @@ Item {
                         color: MichiTheme.colors.accent
                         font.pixelSize: 28
                         Accessible.role: Accessible.Graphic
-                        Accessible.name: "Icono de emisora de radio"
+                        Accessible.name: qsTr("Icono de emisora de radio")
                     }
 
                 }
@@ -323,7 +323,7 @@ Item {
                 variant: "ghost"
                 activeFocusOnTab: true
                 visible: true
-                Accessible.name: "Editar emisora"
+                Accessible.name: qsTr("Editar emisora")
                 onClicked: root.editRequested(root.stationData)
                 Keys.onReturnPressed: onClicked()
                 iconSource: "../../../icons/actions/edit.svg"
@@ -334,7 +334,7 @@ Item {
                 iconSource: "../../../icons/actions/trash.svg"
                 variant: "danger"
                 activeFocusOnTab: true
-                Accessible.name: "Eliminar emisora"
+                Accessible.name: qsTr("Eliminar emisora")
                 onClicked: {
                     if (root.stationData) root.deleteRequested(root.stationData.url)
                 }

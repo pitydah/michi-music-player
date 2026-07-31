@@ -5,7 +5,7 @@ import "states"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Capability Guard"
+    Accessible.name: qsTr("Guardia de capacidad")
     objectName: "capabilityGuard"
     id: root
 

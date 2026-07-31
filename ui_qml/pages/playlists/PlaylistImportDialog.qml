@@ -71,7 +71,7 @@ Dialog {
             visible: !root._importing
 
             TextField {
-                Accessible.name: "Archivo de importación"
+                Accessible.name: qsTr("Archivo de importación")
                 activeFocusOnTab: true
                 focusPolicy: Qt.StrongFocus
                 id: pathInput

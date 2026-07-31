@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Song Row"
+    Accessible.name: qsTr("Fila de canción")
     objectName: "songRow"
     focus: false
     id: root

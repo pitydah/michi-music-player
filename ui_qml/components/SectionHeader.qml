@@ -3,7 +3,7 @@ import "../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Section Header"
+    Accessible.name: qsTr("Encabezado de sección")
     objectName: "sectionHeader"
     focus: true
     id: root

@@ -5,7 +5,7 @@ MichiEmptyState {
     id: root
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Library Empty State"
+    Accessible.name: qsTr("Library Empty State")
     objectName: "libraryEmptyState"
     focus: true
 

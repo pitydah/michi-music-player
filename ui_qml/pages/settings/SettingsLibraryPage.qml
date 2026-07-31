@@ -7,7 +7,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Settings Library"
+    Accessible.name: qsTr("Biblioteca")
     focus: true
     id: root
     objectName: "settingsLibraryPage"
@@ -115,7 +115,7 @@ Item {
                         ListView {
                             Accessible.role: Accessible.List
 
-                            Accessible.name: "Lista de carpetas de música"
+                            Accessible.name: qsTr("Lista de carpetas de música")
 
                             activeFocusOnTab: true
 
@@ -332,7 +332,7 @@ Item {
                             Switch {
                                 checked: root._loadValue("artist_enrichment/enabled", false)
                                 onClicked: root._saveValue("artist_enrichment/enabled", checked)
-                                Accessible.description: "Obtener metadatos de MusicBrainz y otras fuentes"
+                                Accessible.description: qsTr("Obtener metadatos de MusicBrainz y otras fuentes")
                                 focusPolicy: Qt.StrongFocus
                             }
                         }

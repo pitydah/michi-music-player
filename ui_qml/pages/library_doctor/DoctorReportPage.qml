@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Doctor Report"
+    Accessible.name: qsTr("Doctor Report")
     objectName: "doctorReportPage"
     focus: true
     id: root

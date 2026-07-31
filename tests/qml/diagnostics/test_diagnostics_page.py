@@ -105,7 +105,7 @@ class TestDiagnosticsPageLoads:
     def test_qml_accessible_name(self):
         with open(QML_PATH) as f:
             content = f.read()
-        assert 'Accessible.name: "Diagnóstico"' in content
+        assert 'Accessible.name: qsTr("Diagnóstico")' in content
 
     def test_page_initializes_with_bridge(self):
         from ui_qml_bridge.diagnostics_bridge import DiagnosticsBridge

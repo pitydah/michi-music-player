@@ -30,7 +30,7 @@ FocusScope {
 
     Accessible.role: Accessible.ListItem
     Accessible.name: title + (artist !== "" ? ", " + artist : "")
-    Accessible.description: current ? "Pista actual" : album
+    Accessible.description: current ? qsTr("Pista actual") : album
     Accessible.selected: selected
 
     Keys.onReturnPressed: root.primaryActionRequested()

@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Audio Job Detail"
+    Accessible.name: qsTr("Detalle de trabajo de audio")
     focus: true
     id: root
 
@@ -99,7 +99,7 @@ Item {
                         visible: text !== ""
                     }
 
-                    SectionHeader { text: qsTr("Archivos"); width: parent.width; objectName: "jobFilesHeader"; Accessible.name: "Archivos" }
+                    SectionHeader { text: qsTr("Archivos"); width: parent.width; objectName: "jobFilesHeader"; Accessible.name: qsTr("Archivos") }
 
                     Repeater {
                         model: root.jobData && root.jobData.files ? root.jobData.files : []

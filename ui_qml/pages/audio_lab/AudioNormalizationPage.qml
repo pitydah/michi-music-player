@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Audio Normalization"
+    Accessible.name: qsTr("Normalización de audio")
     objectName: "audioNormalizationPage"
     focus: true
     id: root

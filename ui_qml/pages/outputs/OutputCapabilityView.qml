@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Output Capability View"
+    Accessible.name: qsTr("Output Capability View")
     objectName: "outputCapabilityView"
     focus: true
     id: root

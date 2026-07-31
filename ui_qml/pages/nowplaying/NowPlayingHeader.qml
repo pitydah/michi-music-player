@@ -5,7 +5,7 @@ import "../../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Now Playing Header"
+    Accessible.name: qsTr("Now Playing Header")
     objectName: "npHeader"
     focus: true
     property var ps: null

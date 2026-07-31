@@ -4,7 +4,7 @@ import "../theme"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Cancellation Banner"
+    Accessible.name: qsTr("Aviso de cancelación")
     objectName: "cancellationBanner"
     focus: true
     id: root
@@ -15,7 +15,7 @@ Rectangle {
     property bool reducedMotion: false
 
 
-    Accessible.description: message || "Una operación está siendo cancelada"
+    Accessible.description: message || qsTr("Una operación está siendo cancelada")
 
     height: active ? 40 : 0
     width: parent ? parent.width : implicitWidth

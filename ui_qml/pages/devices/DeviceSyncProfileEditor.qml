@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Device Sync Profile Editor"
+    Accessible.name: qsTr("Device Sync Profile Editor")
     objectName: "deviceSyncProfileEditor"
     focus: true
     id: root
@@ -59,7 +59,7 @@ Item {
             }
 
             TextField {
-                Accessible.name: "Nombre del perfil"
+                Accessible.name: qsTr("Nombre del perfil")
                 activeFocusOnTab: true
                 focusPolicy: Qt.StrongFocus
                 id: profileNameField
@@ -71,7 +71,7 @@ Item {
             Text { text: qsTr("Política de transcodificación"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "transcodePolicyLabel" }
             ComboBox {
                 focusPolicy: Qt.StrongFocus
-                Accessible.name: "Política de transcodificación"
+                Accessible.name: qsTr("Política de transcodificación")
                 id: transcodeCombo
                 width: parent.width
                 model: ["transcode_auto", "transcode_always", "transcode_never", "transcode_keep_original"]
@@ -81,7 +81,7 @@ Item {
 
             Text { text: qsTr("Política de colisión"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "collisionPolicyLabel" }
             ComboBox {
-                Accessible.name: "Política de colisión"
+                Accessible.name: qsTr("Política de colisión")
                 focusPolicy: Qt.StrongFocus
                 id: collisionCombo
                 width: parent.width
@@ -101,25 +101,25 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                CheckBox { id: syncPlaylistsCb; checked: root.syncPlaylists; onCheckedChanged: root.syncPlaylists = checked; objectName: "syncPlaylistsCheckBox"; Accessible.name: "Sincronizar listas de reproducción" }
+                CheckBox { id: syncPlaylistsCb; checked: root.syncPlaylists; onCheckedChanged: root.syncPlaylists = checked; objectName: "syncPlaylistsCheckBox"; Accessible.name: qsTr("Sincronizar listas de reproducción") }
                 Text { text: qsTr("Sincronizar listas de reproducción"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
             }
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                CheckBox { id: syncSelectionCb; checked: root.syncSelection; onCheckedChanged: root.syncSelection = checked; objectName: "syncSelectionCheckBox"; Accessible.name: "Sincronizar selección actual" }
+                CheckBox { id: syncSelectionCb; checked: root.syncSelection; onCheckedChanged: root.syncSelection = checked; objectName: "syncSelectionCheckBox"; Accessible.name: qsTr("Sincronizar selección actual") }
                 Text { text: qsTr("Sincronizar selección actual"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
             }
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                CheckBox { id: fullSyncCb; checked: root.fullSync; onCheckedChanged: root.fullSync = checked; enabled: !incrementalSyncCb.checked; objectName: "fullSyncCheckBox"; Accessible.name: "Sincronización completa" }
+                CheckBox { id: fullSyncCb; checked: root.fullSync; onCheckedChanged: root.fullSync = checked; enabled: !incrementalSyncCb.checked; objectName: "fullSyncCheckBox"; Accessible.name: qsTr("Sincronización completa") }
                 Text { text: qsTr("Sincronización completa"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
             }
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                CheckBox { id: incrementalSyncCb; checked: root.incrementalSync; onCheckedChanged: root.incrementalSync = checked; enabled: !fullSyncCb.checked; objectName: "incrementalSyncCheckBox"; Accessible.name: "Sincronización incremental" }
+                CheckBox { id: incrementalSyncCb; checked: root.incrementalSync; onCheckedChanged: root.incrementalSync = checked; enabled: !fullSyncCb.checked; objectName: "incrementalSyncCheckBox"; Accessible.name: qsTr("Sincronización incremental") }
                 Text { text: qsTr("Sincronización incremental"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
             }
 

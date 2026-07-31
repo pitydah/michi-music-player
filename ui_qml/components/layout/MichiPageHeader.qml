@@ -6,7 +6,7 @@ import ".."
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Michi Header"
+    Accessible.name: qsTr("Michi Header")
     objectName: "michiPageHeader"
     focus: true
     id: root

@@ -31,7 +31,7 @@ Popup {
             model: root.model
             Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Library Sort Menu"
+    Accessible.name: qsTr("Library Sort Menu")
     objectName: "librarySortMenu"
     focus: true
                 width: parent.width; height: 32; color: "transparent"

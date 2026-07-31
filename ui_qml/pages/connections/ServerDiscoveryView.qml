@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Server Discovery View"
+    Accessible.name: qsTr("Descubrimiento de servidores")
     objectName: "serverDiscoveryView"
     focus: true
     id: root

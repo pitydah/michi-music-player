@@ -21,7 +21,7 @@ Dialog {
     Column {
             Accessible.role: Accessible.EditableText
 
-            Accessible.name: "Campo de texto"
+            Accessible.name: qsTr("Campo de texto")
 
             activeFocusOnTab: true
 
@@ -41,7 +41,7 @@ Dialog {
             }
                 Accessible.role: Accessible.Button
 
-                Accessible.name: "Button"
+                Accessible.name: qsTr("Botón")
 
                 activeFocusOnTab: true
 
@@ -50,7 +50,7 @@ Dialog {
         Row {
                 Accessible.role: Accessible.Button
 
-                Accessible.name: "Button"
+                Accessible.name: qsTr("Botón")
 
                 activeFocusOnTab: true
 

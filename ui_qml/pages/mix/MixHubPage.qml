@@ -11,7 +11,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Mix"
+    Accessible.name: qsTr("Mix")
 
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
     property bool _loading: false

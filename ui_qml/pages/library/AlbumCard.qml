@@ -7,7 +7,7 @@ import "../../materials"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Album Card"
+    Accessible.name: qsTr("Tarjeta de álbum")
     objectName: "albumCard"
     focus: true
     id: root

@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Mix Feedback Controls"
+    Accessible.name: qsTr("Mix Feedback Controls")
     objectName: "mixFeedbackControls"
     focus: true
     id: root

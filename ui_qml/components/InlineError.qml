@@ -4,7 +4,7 @@ import "../theme"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Inline Error"
+    Accessible.name: qsTr("Inline Error")
     objectName: "inlineError"
     focus: true
     id: root
@@ -60,8 +60,8 @@ Rectangle {
             color: MichiTheme.colors.error
             font.pixelSize: MichiTheme.typography.bodySize
             Accessible.role: Accessible.Graphic
-            Accessible.name: "Advertencia"
-            Accessible.description: "Indicador de error"
+            Accessible.name: qsTr("Advertencia")
+            Accessible.description: qsTr("Indicador de error")
         }
 
         Text {

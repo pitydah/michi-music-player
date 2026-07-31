@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Mix Rule Editor"
+    Accessible.name: qsTr("Mix Rule Editor")
     objectName: "mixRuleEditorPage"
     focus: true
     id: root
@@ -117,7 +117,7 @@ Item {
 
                     Accessible.role: Accessible.ComboBox
 
-                    Accessible.name: "ComboBox"
+                    Accessible.name: qsTr("Cuadro combinado")
 
                 ComboBox {
                     focusPolicy: Qt.StrongFocus
@@ -149,7 +149,7 @@ Item {
                     onClicked: root.addRule()
                 Accessible.role: Accessible.List
 
-                Accessible.name: "ListView"
+                Accessible.name: qsTr("Lista")
 
                 }
             }
@@ -190,7 +190,7 @@ Item {
                                     model: ["genre", "artist", "album", "decade", "year", "folder", "quality", "playcount", "rating", "added"]
                                     Accessible.role: Accessible.ComboBox
 
-                                    Accessible.name: "ComboBox"
+                                    Accessible.name: qsTr("Cuadro combinado")
 
                                     currentIndex: {
                                         var idx = model.indexOf(modelData.field)
@@ -204,7 +204,7 @@ Item {
                                     focusPolicy: Qt.StrongFocus
                                     Accessible.role: Accessible.EditableText
 
-                                    Accessible.name: "Campo de texto"
+                                    Accessible.name: qsTr("Campo de texto")
 
                                     activeFocusOnTab: true
 

@@ -6,7 +6,7 @@ import "../../components"
 
 Dialog {
     Accessible.role: Accessible.Dialog
-    Accessible.name: "Editor de lista inteligente"
+    Accessible.name: qsTr("Editor de lista inteligente")
     id: root
     closePolicy: Popup.CloseOnEscape
 
@@ -91,7 +91,7 @@ Dialog {
                         focusPolicy: Qt.StrongFocus
                         id: fieldCombo; width: 100
                         model: ["genre", "artist", "album", "year", "rating", "playcount", "lastplayed"]
-                        Accessible.name: "Campo de regla"
+                        Accessible.name: qsTr("Campo de regla")
                         activeFocusOnTab: true
 
                         currentIndex: {

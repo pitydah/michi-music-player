@@ -4,7 +4,7 @@ import "../theme"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Keyboard Shortcut Hint"
+    Accessible.name: qsTr("Keyboard Shortcut Hint")
     objectName: "keyboardShortcutHint"
     focus: true
     id: root
@@ -16,7 +16,7 @@ Rectangle {
     property int shortcutSize: MichiTheme.typography.badgeSize
 
 
-    Accessible.description: description || label + " atajo de teclado " + shortcut
+    Accessible.description: description || label + qsTr(" atajo de teclado ") + shortcut
 
     implicitHeight: row.implicitHeight + MichiTheme.spacing.xs * 2
     implicitWidth: row.implicitWidth + MichiTheme.spacing.sm * 2

@@ -11,7 +11,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Conversión de audio"
+    Accessible.name: qsTr("Conversión de audio")
 
     readonly property int stateIdle: 0
     readonly property int statePreviewing: 1
@@ -177,7 +177,7 @@ Item {
                             { label: "ALAC", value: "alac" }
                         ]
                         textRole: "label"
-                        Accessible.name: "Formato de destino"
+                        Accessible.name: qsTr("Formato de destino")
                         onCurrentIndexChanged: {
                             if (currentIndex >= 0 && model[currentIndex])
                                 root.selectedFormat = model[currentIndex].value

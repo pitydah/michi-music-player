@@ -11,7 +11,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Michi Sync Suite"
+    Accessible.name: qsTr("Michi Sync")
 
     property var cap: typeof capabilityBridge !== "undefined" ? capabilityBridge : null
 

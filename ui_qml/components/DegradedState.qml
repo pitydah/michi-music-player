@@ -4,7 +4,7 @@ import "../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Degraded State"
+    Accessible.name: qsTr("Degraded State")
     focus: true
     id: root
 
@@ -50,7 +50,7 @@ Item {
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     color: MichiTheme.colors.warning
                     Accessible.role: Accessible.Graphic
-                    Accessible.name: "Rendimiento degradado"
+                    Accessible.name: qsTr("Rendimiento degradado")
                 }
 
                 Text {

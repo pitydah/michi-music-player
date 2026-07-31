@@ -5,7 +5,7 @@ import "../../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Queue Empty State"
+    Accessible.name: qsTr("Cola vacía")
     objectName: "queueEmptyState_control"
     focus: true
     implicitHeight: 120

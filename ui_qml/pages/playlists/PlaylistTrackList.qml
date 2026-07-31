@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Playlist Track List"
+    Accessible.name: qsTr("Pistas de la lista de reproducción")
     objectName: "playlistTrackList"
     focus: true
     id: root
@@ -71,7 +71,7 @@ Item {
         ListView {
             Accessible.role: Accessible.List
 
-            Accessible.name: "Lista de canciones de la playlist"
+            Accessible.name: qsTr("Lista de canciones de la playlist")
 
             activeFocusOnTab: true
 
@@ -146,8 +146,8 @@ Item {
                         font.pixelSize: MichiTheme.typography.bodySize
                         anchors.verticalCenter: parent.verticalCenter
                         Accessible.role: Accessible.Button
-                        Accessible.name: "Reproducir"
-                        Accessible.description: "Reproducir esta canción"
+                        Accessible.name: qsTr("Reproducir")
+                        Accessible.description: qsTr("Reproducir esta canción")
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor

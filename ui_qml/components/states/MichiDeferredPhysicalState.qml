@@ -3,7 +3,7 @@ import "../../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Michi Deferred Physical State"
+    Accessible.name: qsTr("Michi Deferred Physical State")
     objectName: "michiDeferredPhysicalState"
     focus: true
     id: root
@@ -31,8 +31,8 @@ Item {
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.heroTitleSize
             Accessible.role: Accessible.Graphic
-            Accessible.name: "Icono de configuración"
-            Accessible.description: "Estado que requiere hardware físico"
+            Accessible.name: qsTr("Icono de configuración")
+            Accessible.description: qsTr("Estado que requiere hardware físico")
         }
 
         Text {

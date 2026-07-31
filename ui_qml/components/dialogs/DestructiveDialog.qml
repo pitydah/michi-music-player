@@ -85,8 +85,8 @@ BaseDialog {
                     color: MichiTheme.colors.error
                     font.pixelSize: MichiTheme.typography.cardTitleSize
                     Accessible.role: Accessible.Graphic
-                    Accessible.name: "Advertencia"
-                    Accessible.description: "Esta acción no se puede deshacer"
+                    Accessible.name: qsTr("Advertencia")
+                    Accessible.description: qsTr("Esta acción no se puede deshacer")
                 }
 
                 Text {
@@ -119,7 +119,7 @@ BaseDialog {
         QQC2.TextField {
             Accessible.role: Accessible.EditableText
 
-            Accessible.name: "Campo de texto"
+            Accessible.name: qsTr("Campo de texto")
 
             id: keywordInput
             activeFocusOnTab: true
@@ -132,7 +132,7 @@ BaseDialog {
             focus: true
             selectByMouse: true
 
-            Accessible.description: "Escribe " + root.keyword + " para habilitar la confirmación"
+            Accessible.description: qsTr("Escribe ") + root.keyword + " para habilitar la confirmación"
 
             background: Rectangle {
                 radius: MichiTheme.radius.sm
@@ -170,7 +170,7 @@ BaseDialog {
             text: root.cancelText
             variant: "ghost"
             Layout.minimumWidth: 80
-            Accessible.description: "Cancelar acción destructiva"
+            Accessible.description: qsTr("Cancelar acción destructiva")
             onClicked: {
                 root.open = false
                 root.cancelled()

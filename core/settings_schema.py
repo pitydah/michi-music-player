@@ -417,12 +417,66 @@ DIAGNOSTICS_SETTINGS = SettingsCategory("diagnostics_settings", "Diagnóstico", 
     SettingsSection("tools", "Herramientas", entries=[]),
 ])
 
+PROFILES = SettingsCategory("profiles", "Perfiles", "speaker", sections=[
+    SettingsSection("backend", "Backend de audio", entries=[
+        SettingsEntry("audio/device_backend", "Backend preferido", ENTRY_SELECT, "auto",
+                       options=[{"value": "auto", "label": "Automático"},
+                                {"value": "gstreamer", "label": "GStreamer"},
+                                {"value": "mpd", "label": "MPD (Hi-Fi)"}],
+                       hint="Motor de audio usado por los perfiles de salida"),
+        SettingsEntry("audio/allow_fallback", "Permitir fallback", ENTRY_BOOL, True,
+                       hint="Si el backend preferido no está disponible, usar GStreamer"),
+    ]),
+])
+
+INTEGRATIONS = SettingsCategory("integrations", "Integraciones", "connections", sections=[
+    SettingsSection("identification", "Identificación musical", entries=[
+        SettingsEntry("identifier/provider", "Proveedor", ENTRY_SELECT, "none",
+                       options=[{"value": "none", "label": "Ninguno"},
+                                {"value": "shazam", "label": "Shazam"},
+                                {"value": "audd", "label": "AudD"},
+                                {"value": "acoustid", "label": "AcoustID"}]),
+        SettingsEntry("identifier/auto_enabled", "Identificación automática", ENTRY_BOOL, False),
+        SettingsEntry("identifier/interval_seconds", "Intervalo de escucha (s)", ENTRY_INT, 45,
+                       min_value=15, max_value=120),
+        SettingsEntry("identifier/api_key_audd", "API key AudD", ENTRY_SECRET, ""),
+        SettingsEntry("identifier/api_key_acoustid", "API key AcoustID", ENTRY_SECRET, ""),
+    ]),
+    SettingsSection("enrichment", "Enriquecimiento de artistas", entries=[
+        SettingsEntry("artist_enrichment/enabled", "Enriquecimiento activado", ENTRY_BOOL, False),
+        SettingsEntry("artist_enrichment/provider", "Proveedor", ENTRY_SELECT, "musicbrainz",
+                       options=[{"value": "musicbrainz", "label": "MusicBrainz"},
+                                {"value": "theaudiodb", "label": "TheAudioDB"}]),
+        SettingsEntry("artist_enrichment/api_key", "API key", ENTRY_SECRET, ""),
+        SettingsEntry("artist_enrichment/online_enabled", "Permitir acceso en línea", ENTRY_BOOL, True),
+    ]),
+])
+
+ASSISTANT = SettingsCategory("assistant", "Michi AI", "assistant", sections=[
+    SettingsSection("assistant_general", "General", entries=[
+        SettingsEntry("ai_assistant/enabled", "Asistente activado", ENTRY_BOOL, False),
+        SettingsEntry("ai_assistant/model", "Modelo", ENTRY_TEXT, "llama3.1:8b",
+                       placeholder="llama3.1:8b"),
+        SettingsEntry("ai_assistant/base_url", "URL de Ollama", ENTRY_TEXT, "http://127.0.0.1:11434",
+                       placeholder="http://127.0.0.1:11434"),
+        SettingsEntry("ai_assistant/ollama_timeout", "Timeout (s)", ENTRY_INT, 30,
+                       min_value=5, max_value=120),
+    ]),
+    SettingsSection("assistant_safety", "Seguridad", entries=[
+        SettingsEntry("ai_assistant/offline_strict", "Modo estrictamente local", ENTRY_BOOL, True),
+        SettingsEntry("ai_assistant/require_confirmation", "Requerir confirmación", ENTRY_BOOL, True),
+        SettingsEntry("ai_assistant/allow_write_actions", "Permitir acciones de escritura", ENTRY_BOOL, False),
+        SettingsEntry("ai_assistant/save_history", "Guardar historial de chat", ENTRY_BOOL, False),
+    ]),
+])
+
 # ── All categories lookup ──
 
 ALL_CATEGORIES: list[SettingsCategory] = [
     GENERAL, LIBRARY, PLAYBACK, AUDIO, MPD, GSTREAMER,
-    BUFFER, GAPLESS, REPLAYGAIN, EQ_DSP, BITPERFECT, CACHE, NETWORK,
+    BUFFER, GAPLESS, REPLAYGAIN, EQ_DSP, BITPERFECT, CACHE, PROFILES, NETWORK,
     RADIO, LYRICS_SETTINGS, DEVICES, CONNECTIONS, HOME_AUDIO,
+    INTEGRATIONS, ASSISTANT,
     PRIVACY, APPEARANCE, ACCESSIBILITY, ADVANCED, DIAGNOSTICS_SETTINGS,
 ]
 

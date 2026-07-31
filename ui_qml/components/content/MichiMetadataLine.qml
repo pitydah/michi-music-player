@@ -4,7 +4,7 @@ import "../../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Michi Metadata Line"
+    Accessible.name: qsTr("Michi Metadata Line")
     objectName: "michiMetadataLine"
     focus: true
     id: root

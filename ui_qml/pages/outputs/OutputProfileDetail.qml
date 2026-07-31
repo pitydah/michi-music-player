@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Output Profile Detail"
+    Accessible.name: qsTr("Detalle de perfil de salida")
     objectName: "outputProfileDetail"
     focus: true
     id: root

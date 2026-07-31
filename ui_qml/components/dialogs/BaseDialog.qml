@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Base"
+    Accessible.name: qsTr("Base")
     objectName: "baseDialog"
     focus: true
     id: root
@@ -23,7 +23,7 @@ Item {
     signal rejected()
 
 
-    Accessible.description: "Diálogo"
+    Accessible.description: qsTr("Diálogo")
 
     readonly property int closeOnEscape: 1
     readonly property int closeOnClickOutside: 2
@@ -149,7 +149,7 @@ Item {
                         font.pixelSize: MichiTheme.typography.cardTitleSize
                         visible: root.iconText !== ""
                         Accessible.role: Accessible.Graphic
-                        Accessible.name: root.titleText + " icono"
+                        Accessible.name: root.titleText + qsTr(" icono")
                     }
 
                     Text {

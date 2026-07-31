@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Search Result Delegate"
+    Accessible.name: qsTr("Resultado de búsqueda")
     objectName: "searchResultDelegate"
     focus: true
     id: root
@@ -25,7 +25,7 @@ Item {
     implicitHeight: Math.max(44, rowItem.implicitHeight)
 
 
-    Accessible.description: "Tipo: " + delegateType + ". Presiona Enter para abrir"
+    Accessible.description: qsTr("Tipo: ") + delegateType + ". Presiona Enter para abrir"
 
     SearchResultRow {
         id: rowItem

@@ -3,7 +3,7 @@ import "../../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Michi Focus Ring"
+    Accessible.name: qsTr("Michi Focus Ring")
     objectName: "michiFocusRing"
     id: root
 

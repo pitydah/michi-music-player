@@ -7,7 +7,7 @@ import "../"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Settings Row"
+    Accessible.name: qsTr("Fila de ajuste")
     objectName: "settingsRow"
     focus: true
     id: root
@@ -160,7 +160,7 @@ Rectangle {
         TextField {
             Accessible.role: Accessible.EditableText
 
-            Accessible.name: "Campo de texto"
+            Accessible.name: qsTr("Campo de texto")
 
             activeFocusOnTab: true
 
@@ -199,7 +199,7 @@ Rectangle {
         Switch {
             checked: root.originalValue === true || root.originalValue === "true"
             onClicked: root.doSave(checked)
-            Accessible.role: Accessible.Button; Accessible.name: root.entry.label || root.entry.key; Accessible.description: "Activar o desactivar"
+            Accessible.role: Accessible.Button; Accessible.name: root.entry.label || root.entry.key; Accessible.description: qsTr("Activar o desactivar")
         }
     }
 
@@ -256,7 +256,7 @@ Rectangle {
                     border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
                 }
                 Accessible.role: Accessible.EditableText
-                Accessible.name: "Valor numérico"
+                Accessible.name: qsTr("Valor numérico")
                 activeFocusOnTab: true
                 validator: DoubleValidator {
                     bottom: slider.from
@@ -282,13 +282,13 @@ Rectangle {
                 text: root.originalValue || ""
                 readOnly: true
                 Layout.fillWidth: true
-                Accessible.role: Accessible.EditableText; Accessible.name: "Ruta de archivo"
+                Accessible.role: Accessible.EditableText; Accessible.name: qsTr("Ruta de archivo")
             }
             MichiButton {
                 text: qsTr("...")
                 implicitWidth: 32
                 onClicked: fileDialog.open()
-                Accessible.name: "Seleccionar archivo"
+                Accessible.name: qsTr("Seleccionar archivo")
             }
             FileDialog {
                 id: fileDialog
@@ -304,13 +304,13 @@ Rectangle {
                 text: root.originalValue || ""
                 readOnly: true
                 Layout.fillWidth: true
-                Accessible.role: Accessible.EditableText; Accessible.name: "Ruta de carpeta"
+                Accessible.role: Accessible.EditableText; Accessible.name: qsTr("Ruta de carpeta")
             }
             MichiButton {
                 text: qsTr("...")
                 implicitWidth: 32
                 onClicked: folderDialog.open()
-                Accessible.name: "Seleccionar carpeta"
+                Accessible.name: qsTr("Seleccionar carpeta")
             }
             FolderDialog {
                 id: folderDialog
@@ -326,7 +326,7 @@ Rectangle {
             placeholderText: root.entry.placeholder || "Contraseña"
             echoMode: revealButton.checked ? TextInput.Normal : TextInput.Password
             onTextEdited: root.scheduleSave(text)
-            Accessible.role: Accessible.EditableText; Accessible.name: root.entry.label || "Contraseña"
+            Accessible.role: Accessible.EditableText; Accessible.name: root.entry.label || qsTr("Contraseña")
             RowLayout {
                 anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                 anchors.rightMargin: MichiTheme.spacing.xs
@@ -334,7 +334,7 @@ Rectangle {
                     id: revealButton
                     activeFocusOnTab: true
                     text: ""
-                    Accessible.role: Accessible.Button; Accessible.name: "Revelar contraseña"
+                    Accessible.role: Accessible.Button; Accessible.name: qsTr("Revelar contraseña")
                 }
             }
         }
@@ -366,7 +366,7 @@ Rectangle {
                 Layout.fillWidth: true
                 font.pixelSize: MichiTheme.typography.captionSize
                 onTextEdited: root.scheduleSave(text)
-                Accessible.role: Accessible.EditableText; Accessible.name: "Color"; Accessible.description: "Código hexadecimal de color"
+                Accessible.role: Accessible.EditableText; Accessible.name: qsTr("Color"); Accessible.description: qsTr("Código hexadecimal de color")
             }
         }
     }
@@ -380,7 +380,7 @@ Rectangle {
                 text: root.originalValue ? String(root.originalValue) : ""
                 readOnly: true
                 Layout.fillWidth: true
-                Accessible.role: Accessible.EditableText; Accessible.name: root.entry.label || "Valor"
+                Accessible.role: Accessible.EditableText; Accessible.name: root.entry.label || qsTr("Valor")
             }
         }
     }

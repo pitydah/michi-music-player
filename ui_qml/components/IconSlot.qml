@@ -3,7 +3,7 @@ import "../theme"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Icon Slot"
+    Accessible.name: qsTr("Icon Slot")
     objectName: "iconSlot"
     focus: true
     id: root

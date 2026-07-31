@@ -4,7 +4,7 @@ import "../../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Now Playing Metadata"
+    Accessible.name: qsTr("Now Playing Metadata")
     objectName: "npMetadata"
     focus: true
     property var ps: null

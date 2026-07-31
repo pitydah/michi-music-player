@@ -9,7 +9,7 @@ import "../materials"
 Item {
     id: root
     Accessible.role: Accessible.Pane
-    Accessible.name: "Header Bar"
+    Accessible.name: qsTr("Barra de cabecera")
     objectName: "headerBar"
     focus: true
 

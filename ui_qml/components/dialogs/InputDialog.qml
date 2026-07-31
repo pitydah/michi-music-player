@@ -45,7 +45,7 @@ BaseDialog {
 
         QQC2.TextField {
             id: inputField
-            Accessible.name: "Campo de texto"
+            Accessible.name: qsTr("Campo de texto")
 
             activeFocusOnTab: true
 

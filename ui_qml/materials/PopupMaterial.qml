@@ -2,7 +2,7 @@ import QtQuick
 
 MichiBaseSurface {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Popup Material"
+    Accessible.name: qsTr("Material emergente")
     objectName: "popupMaterial"
     id: root
 

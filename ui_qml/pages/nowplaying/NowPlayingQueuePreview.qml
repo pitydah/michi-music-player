@@ -7,7 +7,7 @@ import "../../components"
 Item {
     id: root
     Accessible.role: Accessible.Pane
-    Accessible.name: "Now Playing Queue Preview"
+    Accessible.name: qsTr("Now Playing Queue Preview")
     objectName: "npQueuePreview"
     focus: true
     property var qb: typeof queueBridge !== "undefined" ? queueBridge : null

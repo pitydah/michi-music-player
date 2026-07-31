@@ -3,7 +3,7 @@ import QtQuick.Controls
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Cover Bridge Proxy"
+    Accessible.name: qsTr("Cover Bridge Proxy")
     objectName: "coverBridgeProxy"
     focus: true
     id: root

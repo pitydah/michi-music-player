@@ -6,7 +6,7 @@ import "."
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Mono Toggle"
+    Accessible.name: qsTr("Mono Toggle")
     objectName: "monoToggle"
     focus: true
     id: root
@@ -34,7 +34,7 @@ Item {
         Switch {
             Accessible.role: Accessible.CheckBox
 
-            Accessible.name: "Switch"
+            Accessible.name: qsTr("Interruptor")
 
             Accessible.checked: root.checked
 

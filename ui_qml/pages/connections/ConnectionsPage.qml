@@ -12,7 +12,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Servidores y conexiones"
+    Accessible.name: qsTr("Servidores y conexiones")
 
     property var conn: typeof connectionsBridge !== "undefined" ? connectionsBridge : null
     property int pageState: root.conn ? stateReady : stateError
@@ -85,6 +85,21 @@ Item {
                     font.weight: MichiTheme.typography.weightSemiBold
                 }
 
+                // ── Servidor: Michi actuando como servidor del ecosistema ──
+                SectionHeader {
+                    id: serverHeader
+                    text: qsTr("Servidor central")
+                    width: parent.width
+                }
+
+                Text {
+                    text: qsTr("Un servidor comparte tu biblioteca con el resto del ecosistema Michi.")
+                    color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.metaSize
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                }
+
                 MicroServerHero {
                     id: microHero
                     width: parent.width
@@ -102,10 +117,19 @@ Item {
                     Keys.onSpacePressed: onScanClicked()
                 }
 
+                // ── Conexión remota: Michi conectándose a servidores externos ──
                 SectionHeader {
                     id: externalHeader
-                    text: qsTr("Servidores externos")
+                    text: qsTr("Conexiones remotas")
                     width: parent.width
+                }
+
+                Text {
+                    text: qsTr("Servidores externos a los que Michi se conecta de forma remota (Subsonic, Navidrome, Jellyfin).")
+                    color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.metaSize
+                    width: parent.width
+                    wrapMode: Text.WordWrap
                 }
 
                 Flow {
@@ -152,10 +176,26 @@ Item {
                     Keys.onSpacePressed: onServerSelected(0)
                 }
 
+                // ── Zonas y multiroom: renderers agrupados en zonas ──
+                SectionHeader {
+                    id: zonesHeader
+                    text: qsTr("Zonas y multiroom")
+                    width: parent.width
+                }
+
+                Text {
+                    text: qsTr("Una zona agrupa renderers (altavoces, receptores Snapcast) que reproducen en sincronía. El multiroom reproduce la misma música en varias zonas a la vez.")
+                    color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.metaSize
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                }
+
                 HomeAudioAccess {
                     id: homeAudioAccess
                     width: parent.width
                     activeFocusOnTab: true
+                    KeyNavigation.tab: syncCard
                     KeyNavigation.backtab: discoveryPanel
                     Keys.onReturnPressed: onOpenHomeAudio()
                     Keys.onSpacePressed: onOpenHomeAudio()
@@ -165,6 +205,39 @@ Item {
                     }
                 }
 
+                // ── Dispositivos físicos: sincronización con móviles y tablets ──
+                SectionHeader {
+                    id: devicesHeader
+                    text: qsTr("Dispositivos físicos")
+                    width: parent.width
+                }
+
+                Text {
+                    text: qsTr("Teléfonos y tablets emparejados. La sincronización copia tu biblioteca al dispositivo; a diferencia del multiroom, el dispositivo reproduce de forma independiente.")
+                    color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.metaSize
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                }
+
+                GlassCard {
+                    id: syncCard
+                    width: parent.width
+                    height: 80
+                    title: qsTr("Michi Sync Suite")
+                    subtitle: qsTr("Emparejar y sincronizar dispositivos físicos.")
+                    variant: "base"
+                    activeFocusOnTab: true
+                    KeyNavigation.backtab: homeAudioAccess
+                    Keys.onReturnPressed: clicked()
+                    Keys.onSpacePressed: clicked()
+                    onClicked: {
+                        if (typeof navigationBridge !== "undefined" && navigationBridge)
+                            navigationBridge.navigate("sync")
+                    }
+                }
+
+                // ── Integraciones adicionales ──
                 SectionHeader {
                     text: qsTr("Servicios compatibles")
                     width: parent.width

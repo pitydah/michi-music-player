@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Metadata Batch Editor"
+    Accessible.name: qsTr("Metadata Batch Editor")
     objectName: "metadataBatchEditor"
     focus: true
     id: root

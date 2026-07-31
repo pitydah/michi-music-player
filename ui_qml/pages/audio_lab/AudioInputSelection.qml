@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Audio Input Selection"
+    Accessible.name: qsTr("Selección de entrada de audio")
     objectName: "audioInputSelection"
     focus: true
     id: root

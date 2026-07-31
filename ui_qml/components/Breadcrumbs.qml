@@ -4,7 +4,7 @@ import "../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Breadcrumbs"
+    Accessible.name: qsTr("Ruta de navegación")
     objectName: "breadcrumbs"
     focus: true
     id: root

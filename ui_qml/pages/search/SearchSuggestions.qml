@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Search Suggestions"
+    Accessible.name: qsTr("Sugerencias de búsqueda")
     objectName: "searchSuggestions"
     focus: true
     id: root

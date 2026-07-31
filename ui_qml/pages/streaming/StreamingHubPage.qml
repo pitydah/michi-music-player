@@ -11,7 +11,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Streaming"
+    Accessible.name: qsTr("Streaming")
 
     signal cardSelected(string route)
 

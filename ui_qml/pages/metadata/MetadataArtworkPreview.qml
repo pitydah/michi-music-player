@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Metadata Artwork Preview"
+    Accessible.name: qsTr("Metadata Artwork Preview")
     objectName: "metadataArtworkPreview"
     focus: true
     id: root

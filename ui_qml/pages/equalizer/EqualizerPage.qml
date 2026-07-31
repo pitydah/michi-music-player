@@ -12,7 +12,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Ecualizador"
+    Accessible.name: qsTr("Ecualizador")
 
     property var eq: typeof eqBridge !== "undefined" ? eqBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
@@ -191,7 +191,7 @@ Item {
                             }
                             enabled: root._cap("backendAvailable") && !(root.eq && root.eq.bitperfectConflict)
                             Accessible.role: Accessible.ComboBox
-                            Accessible.name: "Tipo de filtro banda " + (index + 1)
+                            Accessible.name: qsTr("Tipo de filtro banda ") + (index + 1)
                             onActivated: function(idx) {
                                 if (root.eq) {
                                     var d = modelData || {}
@@ -235,7 +235,7 @@ Item {
                         CheckBox {
                             checked: modelData ? modelData.enabled : false
                             enabled: root._cap("backendAvailable") && !(root.eq && root.eq.bitperfectConflict)
-                            Accessible.name: "Habilitar banda " + (index + 1)
+                            Accessible.name: qsTr("Habilitar banda ") + (index + 1)
                             onCheckedChanged: {
                                 if (root.eq) {
                                     var d = modelData || {}

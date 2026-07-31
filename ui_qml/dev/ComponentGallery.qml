@@ -10,7 +10,7 @@ import "../components/content"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Component Gallery"
+    Accessible.name: qsTr("Galería de componentes")
     objectName: "componentGallery"
     focus: true
     id: root

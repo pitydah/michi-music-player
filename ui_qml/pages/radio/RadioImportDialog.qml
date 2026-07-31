@@ -32,8 +32,8 @@ Dialog {
 
     objectName: "radioImportDialog"
     Accessible.role: Accessible.Dialog
-    Accessible.name: "Importar emisoras"
-    Accessible.description: "Selecciona un archivo M3U, PLS o XSPF para importar emisoras"
+    Accessible.name: qsTr("Importar emisoras")
+    Accessible.description: qsTr("Selecciona un archivo M3U, PLS o XSPF para importar emisoras")
 
     background: Rectangle {
         color: MichiTheme.colors.surfacePopup
@@ -145,7 +145,7 @@ Dialog {
 
             Accessible.role: Accessible.List
 
-            Accessible.name: "ListView"
+            Accessible.name: qsTr("Lista")
 
             activeFocusOnTab: true
 
@@ -164,7 +164,7 @@ Dialog {
                 Row {
                         Accessible.role: Accessible.CheckBox
 
-                        Accessible.name: "CheckBox"
+                        Accessible.name: qsTr("Casilla de verificación")
 
                         Accessible.checked: root.checked
 

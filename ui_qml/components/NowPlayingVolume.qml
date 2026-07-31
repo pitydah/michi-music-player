@@ -17,8 +17,8 @@ Item {
     implicitHeight: 38
     implicitWidth: 140
 
-    Accessible.name: "Volumen"
-    Accessible.description: "Control de volumen de reproducción"
+    Accessible.name: qsTr("Volumen")
+    Accessible.description: qsTr("Control de volumen de reproducción")
 
     RowLayout {
         anchors.fill: parent

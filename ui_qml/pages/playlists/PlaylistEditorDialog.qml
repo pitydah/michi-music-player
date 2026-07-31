@@ -47,7 +47,7 @@ Dialog {
             font.pixelSize: MichiTheme.typography.bodySize
         }
         TextField {
-            Accessible.name: "Nombre de la lista"
+            Accessible.name: qsTr("Nombre de la lista")
             focusPolicy: Qt.StrongFocus
             id: nameInput
             width: parent.width
@@ -63,7 +63,7 @@ Dialog {
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.bodySize
             Accessible.role: Accessible.EditableText
-            Accessible.name: "Descripción de la lista"
+            Accessible.name: qsTr("Descripción de la lista")
         }
         TextArea {
             focusPolicy: Qt.StrongFocus

@@ -51,7 +51,7 @@ Item {
                 color: MichiTheme.colors.error
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 Accessible.role: Accessible.Graphic
-                Accessible.name: "Error"
+                Accessible.name: qsTr("Error")
                 Accessible.description: root.errorMessage
             }
             Text {

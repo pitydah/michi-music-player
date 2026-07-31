@@ -5,7 +5,7 @@ import "."
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Notification Announcement"
+    Accessible.name: qsTr("Notification Announcement")
     objectName: "notificationAnnouncement"
     focus: true
     id: root
@@ -17,7 +17,7 @@ Item {
     signal announcementFinished()
 
 
-    Accessible.description: "Notificación: " + root.message
+    Accessible.description: qsTr("Notificación: ") + root.message
 
     visible: false
 

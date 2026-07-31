@@ -14,11 +14,11 @@ Item {
 
     signal announcementFinished()
 
-    Accessible.name: root.playbackState === "playing" ? "Reproduciendo: " + root.trackTitle + " - " + root.trackArtist :
-                     root.playbackState === "paused" ? "Pausado: " + root.trackTitle :
-                     root.playbackState === "stopped" ? "Reproducción detenida" :
-                     "Estado de reproducción desconocido"
-    Accessible.description: "Estado del reproductor"
+    Accessible.name: root.playbackState === "playing" ? qsTr("Reproduciendo: ") + root.trackTitle + " - " + root.trackArtist :
+                     root.playbackState === "paused" ? qsTr("Pausado: ") + root.trackTitle :
+                     root.playbackState === "stopped" ? qsTr("Reproducción detenida") :
+                     qsTr("Estado de reproducción desconocido")
+    Accessible.description: qsTr("Estado del reproductor")
 
     visible: false
 

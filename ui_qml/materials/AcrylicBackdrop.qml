@@ -3,7 +3,7 @@ import "../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Acrylic Backdrop"
+    Accessible.name: qsTr("Fondo acrílico")
     objectName: "acrylicBackdrop"
     id: root
 

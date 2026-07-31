@@ -10,7 +10,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Diagnóstico"
+    Accessible.name: qsTr("Diagnóstico")
 
     property var diag: typeof diagnosticsBridge !== "undefined" ? diagnosticsBridge : null
     property int pageState: root.diag ? stateReady : stateError

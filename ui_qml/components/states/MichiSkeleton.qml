@@ -3,7 +3,7 @@ import "../../theme"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Michi Skeleton"
+    Accessible.name: qsTr("Michi Skeleton")
     objectName: "michiSkeleton"
     focus: true
     id: root

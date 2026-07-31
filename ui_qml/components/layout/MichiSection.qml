@@ -14,7 +14,7 @@ Column {
 
     Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Michi Section"
+    Accessible.name: qsTr("Michi Section")
     objectName: "michiSection"
     focus: true
         width: parent.width

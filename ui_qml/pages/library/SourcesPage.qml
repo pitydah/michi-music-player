@@ -9,7 +9,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Sources"
+    Accessible.name: qsTr("Fuentes")
     objectName: "sourcesPage"
     focus: true
     id: root
@@ -56,7 +56,7 @@ Item {
         ListView {
             Accessible.role: Accessible.List
 
-            Accessible.name: "Lista de fuentes"
+            Accessible.name: qsTr("Lista de fuentes")
 
             activeFocusOnTab: true
 
@@ -113,7 +113,7 @@ Item {
         bridge: root.lib
         Accessible.role: Accessible.Dialog
 
-        Accessible.name: "Editar fuente"
+        Accessible.name: qsTr("Editar fuente")
         closePolicy: Popup.CloseOnEscape
     }
 

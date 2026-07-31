@@ -19,7 +19,7 @@ Item {
     visible: open
 
     Accessible.role: Accessible.Dialog
-    Accessible.name: "Paleta de comandos"
+    Accessible.name: qsTr("Paleta de comandos")
 
     Shortcut {
         id: paletteShortcut
@@ -145,7 +145,7 @@ Item {
                 TextInput {
                     Accessible.role: Accessible.EditableText
 
-                    Accessible.name: "Campo de texto"
+                    Accessible.name: qsTr("Campo de texto")
 
                     id: searchField
                     anchors.fill: parent
@@ -187,7 +187,7 @@ Item {
             }
                 Accessible.role: Accessible.List
 
-                Accessible.name: "ListView"
+                Accessible.name: qsTr("Lista")
 
 
             ListView {
@@ -207,7 +207,7 @@ Item {
                     height: 36
                     color: index === listView.currentIndex ? MichiTheme.colors.accentSelection : "transparent"
                     radius: MichiTheme.radius.xs
-                    Accessible.description: modelData._unavailable ? "Acción no disponible en el estado actual" : ""
+                    Accessible.description: modelData._unavailable ? qsTr("Acción no disponible en el estado actual") : ""
 
                     Rectangle {
                         visible: root._filterText === "" && root._recentActions.length > 0 && index < root._recentActions.length

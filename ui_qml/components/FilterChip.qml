@@ -3,7 +3,7 @@ import "../theme"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Filter Chip"
+    Accessible.name: qsTr("Filter Chip")
     objectName: root.objectName || "filterChip"
     focus: true
     id: root

@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Device Sync History"
+    Accessible.name: qsTr("Device Sync History")
     objectName: "deviceSyncHistory"
     focus: true
     id: root

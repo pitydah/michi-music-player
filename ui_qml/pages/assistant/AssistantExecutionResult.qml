@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Assistant Execution Result"
+    Accessible.name: qsTr("Resultado de ejecución del asistente")
     objectName: "assistantExecutionResult"
     focus: true
     id: root

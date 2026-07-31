@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Mix Rule Editor"
+    Accessible.name: qsTr("Mix Rule Editor")
     objectName: "mixRuleEditor"
     focus: true
     id: root
@@ -42,7 +42,7 @@ Item {
                 ComboBox {
                     Accessible.role: Accessible.ComboBox
 
-                    Accessible.name: "ComboBox"
+                    Accessible.name: qsTr("Cuadro combinado")
 
                     activeFocusOnTab: true
 
@@ -55,7 +55,7 @@ Item {
             }
                     Accessible.role: Accessible.EditableText
 
-                    Accessible.name: "Campo de texto"
+                    Accessible.name: qsTr("Campo de texto")
 
                     activeFocusOnTab: true
 
@@ -71,7 +71,7 @@ Item {
         }
                     Accessible.role: Accessible.ComboBox
 
-                    Accessible.name: "ComboBox"
+                    Accessible.name: qsTr("Cuadro combinado")
 
                     activeFocusOnTab: true
 

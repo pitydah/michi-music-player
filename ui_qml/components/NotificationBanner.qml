@@ -4,7 +4,7 @@ import "../theme"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Notification Banner"
+    Accessible.name: qsTr("Notification Banner")
     objectName: "notificationBanner"
     focus: true
     id: root

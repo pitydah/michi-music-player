@@ -4,7 +4,7 @@ import "../foundations"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Michi Split View"
+    Accessible.name: qsTr("Michi Split View")
     objectName: "michiSplitView"
     focus: true
     id: root

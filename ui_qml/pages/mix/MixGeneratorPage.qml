@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Mix Generator"
+    Accessible.name: qsTr("Mix Generator")
     objectName: "mixGeneratorPage"
     focus: true
     id: root
@@ -175,7 +175,7 @@ Item {
 
                             Accessible.role: Accessible.ComboBox
 
-                            Accessible.name: "ComboBox"
+                            Accessible.name: qsTr("Cuadro combinado")
 
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
@@ -209,7 +209,7 @@ Item {
                     Column { spacing: MichiTheme.spacing.sm; width: parent.width
                             Accessible.role: Accessible.EditableText
 
-                            Accessible.name: "Campo de texto"
+                            Accessible.name: qsTr("Campo de texto")
 
                         Text { text: qsTr("Seed (opcional)"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium }
 
@@ -259,7 +259,7 @@ Item {
                         }
                                 Accessible.role: Accessible.EditableText
 
-                                Accessible.name: "SpinBox"
+                                Accessible.name: qsTr("Selector numérico")
 
                                 activeFocusOnTab: true
 
@@ -276,7 +276,7 @@ Item {
                             SpinBox {
                                 Accessible.role: Accessible.EditableText
 
-                                Accessible.name: "SpinBox"
+                                Accessible.name: qsTr("Selector numérico")
 
                                 focusPolicy: Qt.StrongFocus
                                 id: durationSpin; width: parent.width; from: 5; to: 480; stepSize: 5; value: root._durationMinutes
@@ -295,7 +295,7 @@ Item {
                                 focusPolicy: Qt.StrongFocus
                                     Accessible.role: Accessible.Slider
 
-                                    Accessible.name: "Slider"
+                                    Accessible.name: qsTr("Deslizador")
 
                                 id: trackLimitSpin; width: parent.width; from: 5; to: 200; value: root._trackLimit
                                 onValueChanged: root._trackLimit = value
@@ -314,7 +314,7 @@ Item {
                             Row { spacing: MichiTheme.spacing.sm
                                     Accessible.role: Accessible.Slider
 
-                                    Accessible.name: "Slider"
+                                    Accessible.name: qsTr("Deslizador")
 
                                 Slider {
                                     focusPolicy: Qt.StrongFocus
@@ -334,7 +334,7 @@ Item {
 
                                 Accessible.role: Accessible.ComboBox
 
-                                Accessible.name: "ComboBox"
+                                Accessible.name: qsTr("Cuadro combinado")
 
                             Row { spacing: MichiTheme.spacing.sm
                                 Slider {
@@ -358,7 +358,7 @@ Item {
                             ComboBox {
                                 Accessible.role: Accessible.ComboBox
 
-                                Accessible.name: "ComboBox"
+                                Accessible.name: qsTr("Cuadro combinado")
 
                                 focusPolicy: Qt.StrongFocus
                                 id: qualityCombo; width: parent.width
@@ -405,7 +405,7 @@ Item {
                                 onCurrentValueChanged: root._genreFilter = currentValue
                                 Accessible.role: Accessible.EditableText
 
-                                Accessible.name: "SpinBox"
+                                Accessible.name: qsTr("Selector numérico")
 
                                 activeFocusOnTab: true
                                 KeyNavigation.tab: yearFromSpin
@@ -419,7 +419,7 @@ Item {
                         Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
                         Accessible.role: Accessible.CheckBox
 
-                        Accessible.name: "CheckBox"
+                        Accessible.name: qsTr("Casilla de verificación")
 
                         Accessible.checked: root.checked
 
@@ -568,7 +568,7 @@ Item {
                         }
                     Accessible.role: Accessible.List
 
-                    Accessible.name: "ListView"
+                    Accessible.name: qsTr("Lista")
 
                     }
                 }

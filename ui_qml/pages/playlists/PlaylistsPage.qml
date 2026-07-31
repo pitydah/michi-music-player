@@ -12,7 +12,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Playlists"
+    Accessible.name: qsTr("Listas de reproducción")
 
     property var pl: typeof playlistsBridge !== "undefined" ? playlistsBridge : null
     property var sel: typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null

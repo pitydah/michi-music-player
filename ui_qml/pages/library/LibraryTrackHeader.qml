@@ -7,7 +7,7 @@ import "../../components/foundations"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Library Track Header"
+    Accessible.name: qsTr("Library Track Header")
     objectName: "libraryTrackHeader"
     focus: true
     id: root

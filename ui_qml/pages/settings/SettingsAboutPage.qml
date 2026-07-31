@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Settings About"
+    Accessible.name: qsTr("Acerca de")
     focus: true
     id: root
     objectName: "settingsAboutPage"

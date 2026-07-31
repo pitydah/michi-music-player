@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Settings General"
+    Accessible.name: qsTr("Ajustes generales")
     focus: true
     id: root
     objectName: "settingsGeneralPage_control"
@@ -120,7 +120,7 @@ Item {
 
                             ComboBox {
                                 Accessible.role: Accessible.ComboBox
-                                Accessible.name: "Idioma de la interfaz"
+                                Accessible.name: qsTr("Idioma de la interfaz")
                                 activeFocusOnTab: true
                                 focusPolicy: Qt.StrongFocus
                                 model: ListModel {
@@ -140,7 +140,7 @@ Item {
                                     return 0
                                 }
                                 onActivated: root._saveValue("general/language", currentValue)
-                                Accessible.description: "Selecciona el idioma de la interfaz"
+                                Accessible.description: qsTr("Selecciona el idioma de la interfaz")
                             }
                         }
                     }
@@ -177,7 +177,7 @@ Item {
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
-                                Accessible.name: "Modo de tema"
+                                Accessible.name: qsTr("Modo de tema")
                                 model: ListModel {
                                     ListElement { text: qsTr("Sistema"); value: "system" }
                                     ListElement { text: qsTr("Claro"); value: "light" }
@@ -253,7 +253,7 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Switch {
-                                Accessible.name: "Recordar sesión"
+                                Accessible.name: qsTr("Recordar sesión")
                                 checked: root._loadValue("general/remember_session", true)
                                 onClicked: root._saveValue("general/remember_session", checked)
                                 focusPolicy: Qt.StrongFocus

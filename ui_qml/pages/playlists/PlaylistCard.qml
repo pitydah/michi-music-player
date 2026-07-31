@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Playlist Card"
+    Accessible.name: qsTr("Tarjeta de lista de reproducción")
     objectName: "playlistCard_control"
     focus: true
     id: root
@@ -88,7 +88,7 @@ Item {
     Menu {
         id: contextMenu
         Accessible.role: Accessible.Menu
-        Accessible.name: "Opciones de lista"
+        Accessible.name: qsTr("Opciones de lista")
 
         MenuItem {
             text: qsTr("Reproducir")

@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Audio Batch Jobs"
+    Accessible.name: qsTr("Trabajos por lotes de audio")
     id: root
 
     property var jobBr: typeof jobBridge !== "undefined" ? jobBridge : null
@@ -70,7 +70,7 @@ Item {
                 }
             }
 
-            SectionHeader { text: qsTr("Trabajos activos"); width: parent.width; objectName: "jobsActiveHeader"; Accessible.name: "Trabajos activos" }
+            SectionHeader { text: qsTr("Trabajos activos"); width: parent.width; objectName: "jobsActiveHeader"; Accessible.name: qsTr("Trabajos activos") }
 
             Repeater {
                 model: root.jobBr ? root.jobBr.jobs.filter(function(j) { return j.state === "queued" || j.state === "running" || j.state === "cancel_requested" }) : []
@@ -82,13 +82,13 @@ Item {
                         Text { width: parent.width * 0.30; text: modelData.title || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight }
                         Text { width: parent.width * 0.15; text: modelData.state || ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
                         Text { width: parent.width * 0.10; text: modelData.progress ? Math.round(modelData.progress * 100) + "%" : ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
-                        MichiButton { width: 50; height: 24; text: qsTr("Cancelar"); variant: "danger"; anchors.verticalCenter: parent.verticalCenter; visible: modelData.state === "running" || modelData.state === "queued"; objectName: "cancelJobBtn_" + index; Accessible.name: "Cancelar trabajo"; activeFocusOnTab: true; Keys.onReturnPressed: onClicked(); Keys.onSpacePressed: onClicked(); onClicked: root._cancelJob(modelData.job_id) }
-                        MichiButton { width: 40; height: 24; text: qsTr("Ver"); variant: "ghost"; anchors.verticalCenter: parent.verticalCenter; objectName: "viewJobBtn_" + index; Accessible.name: "Ver detalle"; activeFocusOnTab: true; Keys.onReturnPressed: onClicked(); Keys.onSpacePressed: onClicked(); onClicked: root._viewJob(modelData) }
+                        MichiButton { width: 50; height: 24; text: qsTr("Cancelar"); variant: "danger"; anchors.verticalCenter: parent.verticalCenter; visible: modelData.state === "running" || modelData.state === "queued"; objectName: "cancelJobBtn_" + index; Accessible.name: qsTr("Cancelar trabajo"); activeFocusOnTab: true; Keys.onReturnPressed: onClicked(); Keys.onSpacePressed: onClicked(); onClicked: root._cancelJob(modelData.job_id) }
+                        MichiButton { width: 40; height: 24; text: qsTr("Ver"); variant: "ghost"; anchors.verticalCenter: parent.verticalCenter; objectName: "viewJobBtn_" + index; Accessible.name: qsTr("Ver detalle"); activeFocusOnTab: true; Keys.onReturnPressed: onClicked(); Keys.onSpacePressed: onClicked(); onClicked: root._viewJob(modelData) }
                     }
                 }
             }
 
-            SectionHeader { text: qsTr("Completados"); width: parent.width; objectName: "jobsCompletedHeader"; Accessible.name: "Trabajos completados" }
+            SectionHeader { text: qsTr("Completados"); width: parent.width; objectName: "jobsCompletedHeader"; Accessible.name: qsTr("Trabajos completados") }
 
             Repeater {
                 model: root.jobBr ? root.jobBr.jobs.filter(function(j) { return j.state === "completed" || j.state === "completed_with_errors" }) : []
@@ -104,7 +104,7 @@ Item {
                 }
             }
 
-            SectionHeader { text: qsTr("Fallidos"); width: parent.width; objectName: "jobsFailedHeader"; Accessible.name: "Trabajos fallidos" }
+            SectionHeader { text: qsTr("Fallidos"); width: parent.width; objectName: "jobsFailedHeader"; Accessible.name: qsTr("Trabajos fallidos") }
 
             Repeater {
                 model: root.jobBr ? root.jobBr.jobs.filter(function(j) { return j.state === "failed" }) : []
@@ -115,12 +115,12 @@ Item {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                         Text { width: parent.width * 0.30; text: modelData.title || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
                         Text { width: parent.width * 0.15; text: modelData.error_code || "ERROR"; color: MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
-                        MichiButton { width: 55; height: 24; text: qsTr("Reintentar"); variant: "secondary"; anchors.verticalCenter: parent.verticalCenter; objectName: "retryJobBtn_" + index; Accessible.name: "Reintentar trabajo"; activeFocusOnTab: true; Keys.onReturnPressed: onClicked(); Keys.onSpacePressed: onClicked(); onClicked: root._retryJob(modelData.job_id) }
+                        MichiButton { width: 55; height: 24; text: qsTr("Reintentar"); variant: "secondary"; anchors.verticalCenter: parent.verticalCenter; objectName: "retryJobBtn_" + index; Accessible.name: qsTr("Reintentar trabajo"); activeFocusOnTab: true; Keys.onReturnPressed: onClicked(); Keys.onSpacePressed: onClicked(); onClicked: root._retryJob(modelData.job_id) }
                     }
                 }
             }
 
-            SectionHeader { text: qsTr("Cancelados"); width: parent.width; objectName: "jobsCancelledHeader"; Accessible.name: "Trabajos cancelados" }
+            SectionHeader { text: qsTr("Cancelados"); width: parent.width; objectName: "jobsCancelledHeader"; Accessible.name: qsTr("Trabajos cancelados") }
 
             Repeater {
                 model: root.jobBr ? root.jobBr.jobs.filter(function(j) { return j.state === "cancelled" }) : []

@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Equalizer Graph"
+    Accessible.name: qsTr("Equalizer Graph")
     objectName: "equalizerGraph"
     focus: true
     id: root

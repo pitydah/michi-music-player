@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Pairing"
+    Accessible.name: qsTr("Emparejamiento")
     objectName: "pairingDialog"
     id: root
     focus: true
@@ -21,7 +21,7 @@ Item {
     signal retryRequested()
 
 
-    Accessible.description: "Código de vinculación para conectar el servidor"
+    Accessible.description: qsTr("Código de vinculación para conectar el servidor")
 
     visible: open
     enabled: visible

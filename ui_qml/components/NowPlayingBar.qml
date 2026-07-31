@@ -14,7 +14,7 @@ import "../components/foundations"
 Item {
     id: root
     Accessible.role: Accessible.Pane
-    Accessible.name: "Now Playing Bar"
+    Accessible.name: qsTr("Now Playing Bar")
     Accessible.description: qsTr("Barra de reproducción con controles de play/pause, siguiente, anterior, volumen y seek")
     objectName: "nowPlayingBar"
     focus: true

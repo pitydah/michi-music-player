@@ -7,7 +7,7 @@ import "../../materials"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Source Card"
+    Accessible.name: qsTr("Tarjeta de fuente")
     objectName: "sourceCard"
     focus: true
     id: root

@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Home Audio Access"
+    Accessible.name: qsTr("Home Audio Access")
     objectName: "homeAudioAccess"
     focus: true
     id: root

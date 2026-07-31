@@ -5,7 +5,7 @@ import "../components"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Job Progress Card"
+    Accessible.name: qsTr("Job Progress Card")
     objectName: "jobProgressCard"
     focus: true
     id: root

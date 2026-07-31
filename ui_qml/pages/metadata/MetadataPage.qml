@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Metadata"
+    Accessible.name: qsTr("Metadata")
     objectName: "metadataPage"
     focus: true
     id: root
@@ -19,7 +19,7 @@ Item {
     property var _selectedFiles: []
     property string pageState: "LOADING"
 
-    Accessible.description: "Gestiona los metadatos de tus archivos de audio"
+    Accessible.description: qsTr("Gestiona los metadatos de tus archivos de audio")
 
     Component.onCompleted: {
         if (root.mb && root.sel && root.sel.hasSelection && root.sel.selectedFilepath) {

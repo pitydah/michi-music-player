@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Mix Result"
+    Accessible.name: qsTr("Mix Result")
     objectName: "mixResultPage"
     focus: true
     id: root
@@ -30,7 +30,7 @@ Item {
     ListView {
         Accessible.role: Accessible.List
 
-        Accessible.name: "ListView"
+        Accessible.name: qsTr("Lista")
 
         focusPolicy: Qt.StrongFocus
         id: trackList

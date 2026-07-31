@@ -141,7 +141,7 @@ class TestOutputProfilesPageLoads:
     def test_page_accessible_name(self):
         with open(QML_PATH) as f:
             content = f.read()
-        assert 'Accessible.name: "Perfiles de salida"' in content
+        assert 'Accessible.name: qsTr("Perfiles de salida")' in content
 
     def test_page_refresh_handles_no_bridge(self):
         bridge = OutputProfilesBridge()

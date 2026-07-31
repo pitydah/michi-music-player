@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Search Result Row"
+    Accessible.name: qsTr("Fila de resultado de búsqueda")
     objectName: "searchResultRow"
     focus: true
     id: root
@@ -22,7 +22,7 @@ Item {
     implicitHeight: 44
 
 
-    Accessible.description: "Tipo: " + rowType + ". Presiona Enter para abrir"
+    Accessible.description: qsTr("Tipo: ") + rowType + ". Presiona Enter para abrir"
 
     function getThumbnailText() {
         switch (root.rowType) {
@@ -129,8 +129,8 @@ Item {
                 width: 20
                 visible: root.rowType === "track"
                 Accessible.role: Accessible.Button
-                Accessible.name: "Reproducir"
-                Accessible.description: "Reproducir esta canción"
+                Accessible.name: qsTr("Reproducir")
+                Accessible.description: qsTr("Reproducir esta canción")
 
                 MouseArea {
                     anchors.fill: parent

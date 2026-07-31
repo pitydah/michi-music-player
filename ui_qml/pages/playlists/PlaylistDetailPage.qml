@@ -12,7 +12,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Detalle de playlist"
+    Accessible.name: qsTr("Detalle de playlist")
 
     property string playlistTitle: ""
     property int playlistId: -1
@@ -442,7 +442,7 @@ Item {
             }
             TextField {
                 focusPolicy: Qt.StrongFocus
-                Accessible.name: "Nombre de la lista"
+                Accessible.name: qsTr("Nombre de la lista")
                 id: renameInput
                 text: root.playlistTitle
                 width: parent.width

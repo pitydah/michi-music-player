@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Settings Audio"
+    Accessible.name: qsTr("Audio")
     focus: true
     id: root
     objectName: "settingsAudioPage"
@@ -106,7 +106,7 @@ Item {
 
                             ComboBox {
                                 Accessible.role: Accessible.ComboBox
-                                Accessible.name: "Dispositivo de salida"
+                                Accessible.name: qsTr("Dispositivo de salida")
                                 activeFocusOnTab: true
                                 focusPolicy: Qt.StrongFocus
                                 model: root.audioDevices.length > 0 ? root.audioDevices : ["Auto"]
@@ -153,7 +153,7 @@ Item {
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
-                                Accessible.name: "Frecuencia de muestreo"
+                                Accessible.name: qsTr("Frecuencia de muestreo")
                                 model: ["0 (auto)", "44100", "48000", "88200", "96000", "176400", "192000"]
                                 currentIndex: {
                                     var sr = String(root._loadValue("audio/sample_rate", 0))
@@ -186,7 +186,7 @@ Item {
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
-                                Accessible.name: "Profundidad de bits"
+                                Accessible.name: qsTr("Profundidad de bits")
                                 model: ["Auto", "16", "24", "32"]
                                 currentIndex: {
                                     var bd = String(root._loadValue("audio/bit_depth", "auto"))
@@ -229,7 +229,7 @@ Item {
                                 onPressedChanged: {
                                     if (!pressed) root._saveValue("audio/buffer_ms", value)
                                 }
-                                Accessible.description: "Tamaño del buffer de audio"
+                                Accessible.description: qsTr("Tamaño del buffer de audio")
                             }
                         }
 

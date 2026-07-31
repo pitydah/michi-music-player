@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "External Server Card"
+    Accessible.name: qsTr("External Server Card")
     objectName: "externalServerCard"
     focus: true
     id: root

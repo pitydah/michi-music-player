@@ -8,7 +8,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Album Grid View"
+    Accessible.name: qsTr("Vista de cuadrícula de álbumes")
     objectName: "albumGridView"
     focus: true
     id: root
@@ -23,7 +23,7 @@ Item {
     GridView {
         Accessible.role: Accessible.List
 
-        Accessible.name: "Cuadrícula de álbumes"
+        Accessible.name: qsTr("Cuadrícula de álbumes")
 
         id: gridView
         activeFocusOnTab: true

@@ -7,7 +7,7 @@ import "."
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Queue List View"
+    Accessible.name: qsTr("Vista de lista de la cola")
     objectName: "queueListView_control"
     focus: true
     property var qb: null

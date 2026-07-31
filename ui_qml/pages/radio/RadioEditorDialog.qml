@@ -31,7 +31,7 @@ Dialog {
     objectName: "radioEditorDialog"
     Accessible.role: Accessible.Dialog
     Accessible.name: root.title
-    Accessible.description: "Completa los campos y presiona Guardar"
+    Accessible.description: qsTr("Completa los campos y presiona Guardar")
 
     enter: Transition {
         NumberAnimation { property: "opacity"; from: 0; to: 1; duration: MichiTheme.motion.durationFast }
@@ -118,7 +118,7 @@ Dialog {
                 id: urlField
                 width: parent.width
                 placeholderText: "https://stream.example.com/radio"
-                Accessible.description: "Debe ser una URL válida comenzando con http:// o https://"
+                Accessible.description: qsTr("Debe ser una URL válida comenzando con http:// o https://")
                 activeFocusOnTab: true
                 Keys.onEscapePressed: root.close()
 

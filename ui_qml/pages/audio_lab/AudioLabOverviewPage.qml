@@ -10,7 +10,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Audio Lab"
+    Accessible.name: qsTr("Audio Lab")
 
     readonly property int stateLoading: 0
     readonly property int stateReady: 1

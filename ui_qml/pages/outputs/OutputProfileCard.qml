@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Output Profile Card"
+    Accessible.name: qsTr("Tarjeta de perfil de salida")
     objectName: "outputProfileCard"
     focus: true
     id: root
@@ -84,10 +84,6 @@ Item {
                     variant: "ghost"
                     onClicked: root.editRequested()
                 }
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
 
                 MichiButton {
                     text: qsTr("Duplicar")

@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Artist List"
+    Accessible.name: qsTr("Lista de artistas")
     objectName: "artistList"
     focus: true
     id: root
@@ -18,7 +18,7 @@ Item {
     GridView {
         Accessible.role: Accessible.List
 
-        Accessible.name: "Cuadrícula de artistas"
+        Accessible.name: qsTr("Cuadrícula de artistas")
 
         activeFocusOnTab: true
 

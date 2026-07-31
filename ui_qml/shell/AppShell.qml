@@ -9,7 +9,7 @@ import "."
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "App Shell"
+    Accessible.name: qsTr("Estructura de la aplicación")
     objectName: "appShell"
     focus: true
     id: root
@@ -314,7 +314,7 @@ Item {
         }
 
         Accessible.role: Accessible.AlertMessage
-        Accessible.name: "Cargando contenido"
+        Accessible.name: qsTr("Cargando contenido")
     }
 
     ErrorState {
@@ -472,6 +472,6 @@ Item {
         }
 
         Accessible.role: Accessible.Pane
-        Accessible.name: "Área de soltar archivos"
+        Accessible.name: qsTr("Área de soltar archivos")
     }
 }

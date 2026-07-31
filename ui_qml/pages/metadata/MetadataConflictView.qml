@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Metadata Conflict View"
+    Accessible.name: qsTr("Metadata Conflict View")
     objectName: "metadataConflictView"
     focus: true
     id: root

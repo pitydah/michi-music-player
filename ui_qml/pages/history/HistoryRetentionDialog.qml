@@ -27,7 +27,7 @@ Dialog {
     width: 380
     objectName: "historyRetentionDialog"
     Accessible.role: Accessible.Dialog
-    Accessible.name: "Política de retención"
+    Accessible.name: qsTr("Política de retención")
     closePolicy: Popup.CloseOnEscape
 
     function loadSettings() {
@@ -63,7 +63,7 @@ Dialog {
             }
             ComboBox {
                 Accessible.role: Accessible.ComboBox
-                Accessible.name: "Período de retención"
+                Accessible.name: qsTr("Período de retención")
                 activeFocusOnTab: true
                 focusPolicy: Qt.StrongFocus
                 id: daysCombo

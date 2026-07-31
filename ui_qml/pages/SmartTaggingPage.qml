@@ -11,7 +11,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Etiquetado inteligente"
+    Accessible.name: qsTr("Etiquetado inteligente")
 
     property var stb: typeof smartTaggingBridge !== "undefined" ? smartTaggingBridge : null
     property var sel: typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null

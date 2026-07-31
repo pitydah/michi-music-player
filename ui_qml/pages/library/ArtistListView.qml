@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Artist List View"
+    Accessible.name: qsTr("Vista de lista de artistas")
     objectName: "artistListView"
     focus: true
     id: root
@@ -20,7 +20,7 @@ Item {
     ListView {
         Accessible.role: Accessible.List
 
-        Accessible.name: "Lista de artistas"
+        Accessible.name: qsTr("Lista de artistas")
 
         activeFocusOnTab: true
 

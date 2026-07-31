@@ -37,7 +37,7 @@ Dialog {
             focusPolicy: Qt.StrongFocus
                 Accessible.role: Accessible.EditableText
 
-                Accessible.name: "Campo de texto"
+                Accessible.name: qsTr("Campo de texto")
 
                 activeFocusOnTab: true
 

@@ -5,7 +5,7 @@ import "../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Shortcut Layer"
+    Accessible.name: qsTr("Capa de atajos de teclado")
     objectName: "shortcutLayer"
     focus: true
     id: root
@@ -115,5 +115,5 @@ Item {
         return s.indexOf("TextInput") >= 0 || s.indexOf("TextField") >= 0 || s.indexOf("TextArea") >= 0
     }
 
-    Accessible.description: "Atajos de teclado: Ctrl+K búsqueda, Ctrl+L biblioteca, Espacio reproducción"
+    Accessible.description: qsTr("Atajos de teclado: Ctrl+K búsqueda, Ctrl+L biblioteca, Espacio reproducción")
 }

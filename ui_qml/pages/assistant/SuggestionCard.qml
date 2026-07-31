@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Suggestion Card"
+    Accessible.name: qsTr("Tarjeta de sugerencia")
     objectName: "suggestionCard"
     focus: true
     id: root

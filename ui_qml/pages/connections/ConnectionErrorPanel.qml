@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Connection Error"
+    Accessible.name: qsTr("Error de conexión")
     objectName: "connectionErrorPanel"
     focus: true
     id: root

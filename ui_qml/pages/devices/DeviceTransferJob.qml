@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Device Transfer Job"
+    Accessible.name: qsTr("Device Transfer Job")
     objectName: "deviceTransferJob"
     focus: true
     id: root

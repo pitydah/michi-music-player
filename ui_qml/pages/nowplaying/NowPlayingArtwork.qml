@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Now Playing Artwork"
+    Accessible.name: qsTr("Now Playing Artwork")
     objectName: "npArtwork"
     focus: true
     property string coverKey: ""

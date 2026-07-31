@@ -9,7 +9,7 @@ import "."
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Library Doctor"
+    Accessible.name: qsTr("Library Doctor")
     objectName: "libraryDoctorPage"
     focus: true
     id: root

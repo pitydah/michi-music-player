@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Network Discovery"
+    Accessible.name: qsTr("Network Discovery")
     objectName: "networkDiscoveryPanel"
     focus: true
     id: root

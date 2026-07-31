@@ -6,7 +6,7 @@ import "."
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Balance Slider"
+    Accessible.name: qsTr("Deslizador de balance")
     objectName: "balanceSlider"
     focus: true
     id: root
@@ -17,7 +17,7 @@ Item {
     signal balanceSliderChanged(real value)
 
 
-    Accessible.description: "Ajusta el balance entre canal izquierdo y derecho"
+    Accessible.description: qsTr("Ajusta el balance entre canal izquierdo y derecho")
 
     implicitWidth: 200
     implicitHeight: row.implicitHeight
@@ -36,7 +36,7 @@ Item {
         Slider {
             Accessible.role: Accessible.Slider
 
-            Accessible.name: "Slider"
+            Accessible.name: qsTr("Deslizador")
 
             activeFocusOnTab: true
 
@@ -47,7 +47,7 @@ Item {
             to: 1.0
             value: root.balance
             stepSize: 0.05
-            Accessible.description: "Valor: " + value.toFixed(2)
+            Accessible.description: qsTr("Valor: ") + value.toFixed(2)
 
             onMoved: {
                 root.balance = value

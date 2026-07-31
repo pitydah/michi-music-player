@@ -7,7 +7,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Equalizer Preset Browser"
+    Accessible.name: qsTr("Equalizer Preset Browser")
     objectName: "equalizerPresetBrowser"
     focus: true
     id: root

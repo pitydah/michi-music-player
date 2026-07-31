@@ -5,7 +5,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Configured Server Card"
+    Accessible.name: qsTr("Tarjeta de servidor configurado")
     objectName: "configuredServerCard"
     focus: true
     id: root

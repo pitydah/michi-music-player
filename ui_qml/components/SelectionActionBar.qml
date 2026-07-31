@@ -4,7 +4,7 @@ import "../theme"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Selection Action Bar"
+    Accessible.name: qsTr("Barra de acciones de selección")
     focus: true
     id: root
 
@@ -14,7 +14,7 @@ Rectangle {
 
     objectName: "SelectionActionBar"
 
-    Accessible.description: "Acciones disponibles para elementos seleccionados"
+    Accessible.description: qsTr("Acciones disponibles para elementos seleccionados")
 
     height: root.visible_b ? 56 : 0
     radius: MichiTheme.radius.md

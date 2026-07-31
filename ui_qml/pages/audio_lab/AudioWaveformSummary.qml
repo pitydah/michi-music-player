@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Audio Waveform Summary"
+    Accessible.name: qsTr("Resumen de forma de onda de audio")
     objectName: "audioWaveformSummary"
     focus: true
     id: root

@@ -6,7 +6,7 @@ import "../../components"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Device Storage"
+    Accessible.name: qsTr("Device Storage")
     objectName: "deviceStoragePanel"
     focus: true
     id: root

@@ -11,7 +11,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Michi AI"
+    Accessible.name: qsTr("Michi AI")
 
     property var ai: typeof michiAiBridge !== "undefined" ? michiAiBridge : null
     property bool _initialized: false
@@ -355,7 +355,7 @@ Item {
                     TextInput {
                         Accessible.role: Accessible.EditableText
 
-                        Accessible.name: "Campo de texto"
+                        Accessible.name: qsTr("Campo de texto")
 
                         id: chatInput
                         anchors.fill: parent

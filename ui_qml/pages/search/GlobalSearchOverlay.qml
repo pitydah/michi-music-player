@@ -6,7 +6,7 @@ import "../../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Global Search Overlay"
+    Accessible.name: qsTr("Búsqueda global")
     objectName: "globalSearchOverlay"
     focus: true
     id: root
@@ -23,7 +23,7 @@ Item {
     signal openFullSearch()
 
 
-    Accessible.description: "Presiona Escape para cerrar"
+    Accessible.description: qsTr("Presiona Escape para cerrar")
 
     function search(text) {
         root._requestGen++
@@ -121,7 +121,7 @@ Item {
                     id: searchField
                     width: parent.width - 80
                     placeholderText: qsTr("Búsqueda rápida (Ctrl+F)...")
-                    Accessible.description: "Escribe para buscar, muestra máximo 3 resultados por sección"
+                    Accessible.description: qsTr("Escribe para buscar, muestra máximo 3 resultados por sección")
                     onSearchTextChanged: root.search(text)
                     activeFocusOnTab: true
                     Keys.onEscapePressed: root.closeRequested()

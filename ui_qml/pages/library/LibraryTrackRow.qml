@@ -7,7 +7,7 @@ import "../../components/foundations"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Library Track Row"
+    Accessible.name: qsTr("Library Track Row")
     objectName: "libraryTrackRow"
     focus: true
     id: root

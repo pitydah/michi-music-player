@@ -3,7 +3,7 @@ import "../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Progress State"
+    Accessible.name: qsTr("Estado de progreso")
     objectName: "progressState"
     focus: true
     id: root

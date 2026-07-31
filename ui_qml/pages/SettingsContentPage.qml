@@ -10,7 +10,7 @@ Item {
     focus: true
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Ajustes"
+    Accessible.name: qsTr("Ajustes")
 
     property var bridge: typeof settingsBridge !== "undefined" ? settingsBridge : null
     property int pageState: root.bridge ? stateReady : stateError
@@ -189,7 +189,7 @@ Item {
                 }
                     Accessible.role: Accessible.List
 
-                    Accessible.name: "ListView"
+                    Accessible.name: qsTr("Lista")
 
 
                 ListView {
@@ -308,7 +308,7 @@ Item {
 
                 RowLayout {
                     Layout.fillWidth: true; visible: root.selectedCategory !== null
-                    MichiButton { text: qsTr("< Volver"); variant: "ghost"; onClicked: root.back(); Accessible.name: "Volver" }
+                    MichiButton { text: qsTr("< Volver"); variant: "ghost"; onClicked: root.back(); Accessible.name: qsTr("Volver") }
                     Label {
                         text: root.selectedEntry ? root.selectedEntry.label :
                               root.selectedSection ? root.selectedSection.title :
@@ -405,7 +405,7 @@ Item {
 
                 RowLayout {
                     Layout.fillWidth: true; visible: root.selectedCategory !== null
-                    MichiButton { text: qsTr("< Volver"); variant: "ghost"; onClicked: root.back(); Accessible.name: "Volver" }
+                    MichiButton { text: qsTr("< Volver"); variant: "ghost"; onClicked: root.back(); Accessible.name: qsTr("Volver") }
                     Label {
                         text: root.selectedEntry ? root.selectedEntry.label :
                               root.selectedSection ? root.selectedSection.title :
@@ -507,7 +507,7 @@ Item {
                 horizontalAlignment: Text.AlignHCenter
             Accessible.role: Accessible.List
 
-            Accessible.name: "ListView"
+            Accessible.name: qsTr("Lista")
 
             activeFocusOnTab: true
 
@@ -576,7 +576,7 @@ Item {
             spacing: MichiTheme.spacing.sm
             Accessible.role: Accessible.List
 
-            Accessible.name: "ListView"
+            Accessible.name: qsTr("Lista")
 
             activeFocusOnTab: true
 

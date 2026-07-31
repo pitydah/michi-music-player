@@ -7,7 +7,7 @@ import "../../components"
 
 Dialog {
     Accessible.role: Accessible.Dialog
-    Accessible.name: "Exclusiones de fuente"
+    Accessible.name: qsTr("Exclusiones de fuente")
     id: root
     closePolicy: Popup.CloseOnEscape
 

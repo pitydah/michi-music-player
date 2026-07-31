@@ -3,7 +3,7 @@ import "../theme"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Toast Host"
+    Accessible.name: qsTr("Contenedor de notificaciones")
     objectName: "toastHost"
     focus: true
     id: root
