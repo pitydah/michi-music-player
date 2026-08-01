@@ -27,20 +27,20 @@ CRITICAL_QML_MESSAGES = (
 )
 
 PLACEHOLDERS = (
-    ("streaming.podcasts", "pages/streaming/PodcastsPlaceholderPage.qml", "planned", "podcastsPlaceholderPage"),
-    ("connections.big_server", "pages/connections/BigServerPlaceholderPage.qml", "planned", "bigServerPlaceholderPage"),
-    ("connections.navidrome", "pages/connections/NavidromePlaceholderPage.qml", "planned", "navidromePlaceholderPage"),
-    ("connections.jellyfin", "pages/connections/JellyfinPlaceholderPage.qml", "planned", "jellyfinPlaceholderPage"),
+    ("streaming.podcasts", "pages/streaming/PodcastsPage.qml", "planned", "podcastsPage"),
+    ("connections.big_server", "pages/connections/BigServerPage.qml", "planned", "bigServerPage"),
+    ("connections.navidrome", "pages/connections/NavidromePage.qml", "planned", "navidromePage"),
+    ("connections.jellyfin", "pages/connections/JellyfinPage.qml", "planned", "jellyfinPage"),
     (
         "connections.home_assistant",
-        "pages/connections/HomeAssistantPlaceholderPage.qml",
+        "pages/connections/HomeAssistantPage.qml",
         "configuration_required",
-        "homeAssistantPlaceholderPage",
+        "homeAssistantPage",
     ),
     ("home_audio.chain_planner", "pages/home_audio/ChainPlannerPlaceholderPage.qml", "planned", "chainPlannerPlaceholderPage"),
-    ("sync.portable_players", "pages/sync/PortablePlayersPlaceholderPage.qml", "planned", "portablePlayersPlaceholderPage"),
-    ("sync.plans", "pages/sync/SyncPlansPlaceholderPage.qml", "planned", "syncPlansPlaceholderPage"),
-    ("sync.history", "pages/sync/SyncHistoryPlaceholderPage.qml", "planned", "syncHistoryPlaceholderPage"),
+    ("sync.portable_players", "pages/sync/PortablePlayersPage.qml", "planned", "portablePlayersPage"),
+    ("sync.plans", "pages/sync/SyncPlansPage.qml", "planned", "syncPlansPage"),
+    ("sync.history", "pages/sync/SyncHistoryPage.qml", "planned", "syncHistoryPage"),
 )
 
 # C7: planned placeholder pages must ALWAYS be reachable regardless of

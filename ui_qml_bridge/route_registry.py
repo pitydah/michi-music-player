@@ -423,7 +423,7 @@ ROUTES: dict[str, dict] = {
     "streaming.podcasts": {
         "route": "streaming.podcasts", "parent": "streaming", "title": "Podcasts",
         "breadcrumb_title": "Podcasts",
-        "source": "../pages/streaming/PodcastsPlaceholderPage.qml",
+        "source": "../pages/streaming/PodcastsPage.qml",
         "icon": "podcasts", "order": 20, "sidebar_visible": False,
         "sidebar_group": "streaming", "expandable": False,
         "status": "planned",
@@ -505,7 +505,7 @@ ROUTES: dict[str, dict] = {
     "connections.big_server": {
         "route": "connections.big_server", "parent": "connections",
         "title": "Michi Big Server", "breadcrumb_title": "Big Server",
-        "source": "../pages/connections/BigServerPlaceholderPage.qml",
+        "source": "../pages/connections/BigServerPage.qml",
         "icon": "big_server", "order": 20, "sidebar_visible": False,
         "sidebar_group": "connections", "expandable": False,
         "status": "planned",
@@ -518,7 +518,7 @@ ROUTES: dict[str, dict] = {
     "connections.navidrome": {
         "route": "connections.navidrome", "parent": "connections",
         "title": "Navidrome", "breadcrumb_title": "Navidrome",
-        "source": "../pages/connections/NavidromePlaceholderPage.qml",
+        "source": "../pages/connections/NavidromePage.qml",
         "icon": "navidrome", "order": 30, "sidebar_visible": False,
         "sidebar_group": "connections", "expandable": False,
         "status": "planned",
@@ -531,7 +531,7 @@ ROUTES: dict[str, dict] = {
     "connections.jellyfin": {
         "route": "connections.jellyfin", "parent": "connections",
         "title": "Jellyfin", "breadcrumb_title": "Jellyfin",
-        "source": "../pages/connections/JellyfinPlaceholderPage.qml",
+        "source": "../pages/connections/JellyfinPage.qml",
         "icon": "jellyfin", "order": 40, "sidebar_visible": False,
         "sidebar_group": "connections", "expandable": False,
         "status": "planned",
@@ -544,7 +544,7 @@ ROUTES: dict[str, dict] = {
     "connections.home_assistant": {
         "route": "connections.home_assistant", "parent": "connections",
         "title": "Home Assistant", "breadcrumb_title": "Home Assistant",
-        "source": "../pages/connections/HomeAssistantPlaceholderPage.qml",
+        "source": "../pages/connections/HomeAssistantPage.qml",
         "icon": "home_assistant", "order": 50, "sidebar_visible": False,
         "sidebar_group": "connections", "expandable": False,
         "status": "configuration_required",
@@ -968,7 +968,7 @@ ROUTES: dict[str, dict] = {
     "sync.portable_players": {
         "route": "sync.portable_players", "parent": "sync",
         "title": "Reproductores portátiles", "breadcrumb_title": "Portátiles",
-        "source": "../pages/sync/PortablePlayersPlaceholderPage.qml",
+        "source": "../pages/sync/PortablePlayersPage.qml",
         "icon": "portable_player", "order": 20, "sidebar_visible": False,
         "sidebar_group": "sync", "expandable": False,
         "status": "planned",
@@ -981,7 +981,7 @@ ROUTES: dict[str, dict] = {
     "sync.plans": {
         "route": "sync.plans", "parent": "sync",
         "title": "Planes de sincronización", "breadcrumb_title": "Planes",
-        "source": "../pages/sync/SyncPlansPlaceholderPage.qml",
+        "source": "../pages/sync/SyncPlansPage.qml",
         "icon": "sync_plans", "order": 30, "sidebar_visible": False,
         "sidebar_group": "sync", "expandable": False,
         "status": "planned",
@@ -994,7 +994,7 @@ ROUTES: dict[str, dict] = {
     "sync.history": {
         "route": "sync.history", "parent": "sync",
         "title": "Historial", "breadcrumb_title": "Historial",
-        "source": "../pages/sync/SyncHistoryPlaceholderPage.qml",
+        "source": "../pages/sync/SyncHistoryPage.qml",
         "icon": "sync_history", "order": 40, "sidebar_visible": False,
         "sidebar_group": "sync", "expandable": False,
         "status": "planned",

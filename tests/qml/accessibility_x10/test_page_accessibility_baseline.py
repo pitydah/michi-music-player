@@ -53,10 +53,6 @@ def _load_known_debt() -> tuple[set[str], set[str]]:
     role_missing.add("pages/audio_lab/hubs/IdentifierHubPage.qml")
     role_missing.add("pages/audio_lab/hubs/LocalIntelligenceHubPage.qml")
     role_missing.add("pages/audio_lab/hubs/OutputProfilesHubPage.qml")
-    role_missing.add("pages/connections/BigServerPlaceholderPage.qml")
-    role_missing.add("pages/connections/HomeAssistantPlaceholderPage.qml")
-    role_missing.add("pages/connections/JellyfinPlaceholderPage.qml")
-    role_missing.add("pages/connections/NavidromePlaceholderPage.qml")
     role_missing.add("pages/home_audio/ChainPlannerPlaceholderPage.qml")
     role_missing.add("pages/library/CollectionsPage.qml")
     role_missing.add("pages/library/FavoritesPage.qml")
@@ -75,10 +71,6 @@ def _load_known_debt() -> tuple[set[str], set[str]]:
     role_missing.add("pages/library/album/delegates/AlbumRowDelegate.qml")
     role_missing.add("pages/library/album/delegates/AlbumSectionHeader.qml")
     role_missing.add("pages/library/album/delegates/AlbumVinylDelegate.qml")
-    role_missing.add("pages/streaming/PodcastsPlaceholderPage.qml")
-    role_missing.add("pages/sync/PortablePlayersPlaceholderPage.qml")
-    role_missing.add("pages/sync/SyncHistoryPlaceholderPage.qml")
-    role_missing.add("pages/sync/SyncPlansPlaceholderPage.qml")
     role_missing.add("shell/PageStackContainer.qml")
     return role_missing, name_missing
 

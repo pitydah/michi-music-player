@@ -64,7 +64,7 @@ MAIN_QML = QML_ROOT / "Main.qml"
 #   sync.mobile            → capability "sync"        (status: functional)
 #   settings.appearance    → no capability            (status: functional)
 CAPABILITY_ROUTES: list[tuple[str, str]] = [
-    ("connections.navidrome", "navidromePlaceholderPage"),
+    ("connections.navidrome", "navidromePage"),
     ("audio_lab.processing", "audioProcessingHubPage"),
     ("home_audio.rooms", "roomsHubPage"),
     ("sync.mobile", "mobilePairingPage"),
