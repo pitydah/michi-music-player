@@ -37,8 +37,8 @@ class TestSidebarRoutes:
             all_routes.extend(c["route"] for c in s.get("children", []))
         all_routes.extend(f["route"] for f in fixed)
         expected = [
-            "home", "library", "mix", "streaming", "playlists",
-            "connections", "audio_lab", "home_audio", "michi_ai", "sync",
+            "home", "library", "mix", "streaming", "ecosystem",
+            "audio_lab", "michi_ai", "playlists",
             "settings",
         ]
         for route in expected:
@@ -56,7 +56,7 @@ class TestSidebarRoutes:
         sections, _fixed = get_sidebar_sections()
         titles = [s["title"] for s in sections]
         for expected_title in ("Inicio", "Biblioteca", "Streaming", "Audio Lab",
-                               "Home Audio", "Conexiones", "Michi Sync Suite"):
+                               "Ecosistema", "Michi AI"):
             assert expected_title in titles, \
                 f"Section '{expected_title}' not found in sidebar registry"
 

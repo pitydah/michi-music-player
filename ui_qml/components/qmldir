@@ -21,6 +21,10 @@ MichiCheckBox 1.0 MichiCheckBox.qml
 MichiRadioButton 1.0 MichiRadioButton.qml
 MichiCard 1.0 MichiCard.qml
 MichiPanel 1.0 MichiPanel.qml
+MichiAmbientBackground 1.0 MichiAmbientBackground.qml
+MichiHeroSurface 1.0 MichiHeroSurface.qml
+MichiArtworkGlow 1.0 MichiArtworkGlow.qml
+MichiSectionSurface 1.0 MichiSectionSurface.qml
 MichiMenu 1.0 MichiMenu.qml
 MichiMenuItem 1.0 MichiMenuItem.qml
 MichiTabBar 1.0 MichiTabBar.qml

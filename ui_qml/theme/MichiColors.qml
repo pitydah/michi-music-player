@@ -100,6 +100,12 @@ QtObject {
     readonly property color accentSurface: accentSoft
     readonly property color experimental: accentExperimental
 
+    // Warm accents for musical content (hero surfaces, artwork glow).
+    // Scoped to musical contexts only — never navigation or chrome.
+    readonly property color accentWarmCoral: "#FF8A65"
+    readonly property color accentWarmRose: "#FF6FAE"
+    readonly property color accentWarmViolet: "#A78BFA"
+
     readonly property color success: "#4ADE80"
     readonly property color warning: "#FBBF24"
     readonly property color error: "#F87171"

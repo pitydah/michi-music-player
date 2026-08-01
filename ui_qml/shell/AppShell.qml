@@ -52,8 +52,8 @@ Item {
         root._navErrorReason = ""
     }
 
-    // Single global backdrop — shared by all pages
-    MichiBackdrop {
+    // Single global ambient background — shared by all pages
+    MichiAmbientBackground {
         anchors.fill: parent
         z: -1
     }

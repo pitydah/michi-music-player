@@ -435,14 +435,30 @@ ROUTES: dict[str, dict] = {
     },
 
     # ═══════════════════════════════════════════════════════════════════
-    # 5. PLAYLISTS
+    # 5. ECOSYSTEM
+    # ═══════════════════════════════════════════════════════════════════
+    "ecosystem": {
+        "route": "ecosystem", "parent": None, "title": "Ecosistema",
+        "breadcrumb_title": "Ecosistema",
+        "source": "../pages/ecosystem/EcosystemHubPage.qml",
+        "icon": "connections", "order": 90, "sidebar_visible": True,
+        "sidebar_group": None, "expandable": False,
+        "status": "functional", "capability": None,
+        "aliases": [],
+        "keywords": ["ecosistema", "ecosystem", "conexiones", "home audio", "sync"],
+        "placeholder_state": None,
+        "params": None, "category": "core",
+    },
+
+    # ═══════════════════════════════════════════════════════════════════
+    # 6. PLAYLISTS (child of library)
     # ═══════════════════════════════════════════════════════════════════
     "playlists": {
-        "route": "playlists", "parent": None, "title": "Playlists",
+        "route": "playlists", "parent": "library", "title": "Playlists",
         "breadcrumb_title": "Playlists",
         "source": "../pages/playlists/PlaylistsPage.qml",
         "icon": "playlists", "order": 50, "sidebar_visible": True,
-        "sidebar_group": None, "expandable": False,
+        "sidebar_group": "library", "expandable": False,
         "status": "functional", "capability": None,
         "aliases": [],
         "keywords": ["playlists", "listas", "reproducción"],
@@ -479,11 +495,11 @@ ROUTES: dict[str, dict] = {
     # 6. CONNECTIONS
     # ═══════════════════════════════════════════════════════════════════
     "connections": {
-        "route": "connections", "parent": None, "title": "Conexiones",
+        "route": "connections", "parent": "ecosystem", "title": "Conexiones",
         "breadcrumb_title": "Conexiones",
         "source": "../pages/connections/ConnectionsPage.qml",
-        "icon": "connections", "order": 60, "sidebar_visible": True,
-        "sidebar_group": None, "expandable": True,
+        "icon": "connections", "order": 60, "sidebar_visible": False,
+        "sidebar_group": None, "expandable": False,
         "status": "functional", "capability": None,
         "aliases": [],
         "keywords": ["conexiones", "connections", "servidores"],
@@ -795,11 +811,11 @@ ROUTES: dict[str, dict] = {
     # 8. HOME AUDIO
     # ═══════════════════════════════════════════════════════════════════
     "home_audio": {
-        "route": "home_audio", "parent": None, "title": "Home Audio",
+        "route": "home_audio", "parent": "ecosystem", "title": "Home Audio",
         "breadcrumb_title": "Home Audio",
         "source": "../pages/home_audio/HomeAudioHubPage.qml",
-        "icon": "home_audio", "order": 80, "sidebar_visible": True,
-        "sidebar_group": None, "expandable": True,
+        "icon": "home_audio", "order": 80, "sidebar_visible": False,
+        "sidebar_group": None, "expandable": False,
         "status": "functional", "capability": None,
         "aliases": [],
         "keywords": ["home audio", "hogar", "multiroom", "stream", "cadena"],
@@ -942,11 +958,11 @@ ROUTES: dict[str, dict] = {
     # 10. MICHI SYNC SUITE
     # ═══════════════════════════════════════════════════════════════════
     "sync": {
-        "route": "sync", "parent": None, "title": "Michi Sync Suite",
+        "route": "sync", "parent": "ecosystem", "title": "Michi Sync Suite",
         "breadcrumb_title": "Sync Suite",
         "source": "../pages/sync/SyncHubPage.qml",
-        "icon": "sync", "order": 100, "sidebar_visible": True,
-        "sidebar_group": None, "expandable": True,
+        "icon": "sync", "order": 100, "sidebar_visible": False,
+        "sidebar_group": None, "expandable": False,
         "status": "partial", "capability": None,
         "aliases": ["devices", "devices.list"],
         "keywords": ["sync", "sincronización", "dispositivos", "sync suite"],
@@ -1218,18 +1234,6 @@ ROUTES: dict[str, dict] = {
     },
 
     # Legacy compat routes
-    "ecosystem": {
-        "route": "ecosystem", "parent": None, "title": "Ecosistema Michi",
-        "breadcrumb_title": "Ecosistema",
-        "source": "../pages/home/EcosystemCard.qml",
-        "icon": "connections", "order": 0, "sidebar_visible": False,
-        "sidebar_group": None, "expandable": False,
-        "status": "functional", "capability": None,
-        "aliases": [],
-        "keywords": [],
-        "placeholder_state": None,
-        "params": None, "category": "core",
-    },
     "devices.detail": {
         "route": "devices.detail", "parent": "sync",
         "title": "Dispositivo", "breadcrumb_title": "Dispositivo",
@@ -1369,15 +1373,12 @@ def resolve_route(route: str) -> str:
 # ═══════════════════════════════════════════════════════════════════
 SIDEBAR_ORDER: list[str] = [
     "home",        # 1. Inicio
-    "library",     # 2. Biblioteca (expandable: songs, albums, artists, folders)
+    "library",     # 2. Biblioteca (expandable: songs, albums, artists, folders, playlists)
     "mix",         # 3. Mix
     "streaming",   # 4. Streaming (expandable: radio, podcasts)
-    "playlists",   # 5. Playlists
-    "connections", # 6. Conexiones (expandable: micro, big, navidrome, jellyfin, ha)
-    "audio_lab",   # 7. Audio Lab (expandable: analysis, processing, metadata, capture, health)
-    "home_audio",  # 8. Home Audio (expandable: stream, rooms, distribution, chain planner)
-    "michi_ai",    # 9. Michi AI
-    "sync",        # 10. Michi Sync Suite (expandable: mobile, portable, plans, history)
+    "ecosystem",   # 5. Ecosistema (hub: Home Audio, Conexiones, Sync Suite)
+    "audio_lab",   # 6. Audio Lab (expandable: analysis, processing, metadata, capture, health)
+    "michi_ai",    # 7. Michi AI
 ]
 
 SIDEBAR_FIXED_BOTTOM: list[str] = [

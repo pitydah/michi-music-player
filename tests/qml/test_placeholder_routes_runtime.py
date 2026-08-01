@@ -226,15 +226,13 @@ def test_registry_aliases_return_canonical_metadata(alias: str, canonical: str) 
 @pytest.mark.parametrize(
     ("initial_route", "hidden_route"),
     (
+        # Streaming is the only sidebar section mixing a visible child with
+        # planned siblings. Ecosystem domains (connections, home_audio, sync)
+        # are reachable via hub cards, not sidebar children, so the
+        # sidebar-children contract does not apply to them; their planned
+        # routes stay hidden at registry level (see
+        # test_route_registry_bridge.py::test_planned_routes_are_hidden_from_sidebar).
         ("streaming.radio", "streaming.podcasts"),
-        ("connections.micro_server", "connections.big_server"),
-        ("connections.micro_server", "connections.navidrome"),
-        ("connections.micro_server", "connections.jellyfin"),
-        ("connections.micro_server", "connections.home_assistant"),
-        ("home_audio.stream", "home_audio.chain_planner"),
-        ("sync.mobile", "sync.portable_players"),
-        ("sync.mobile", "sync.plans"),
-        ("sync.mobile", "sync.history"),
     ),
 )
 def test_planned_routes_are_not_rendered_as_sidebar_children(
