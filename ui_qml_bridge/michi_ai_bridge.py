@@ -255,6 +255,11 @@ class MichiAIBridge(QObject):
     def cancel(self):
         if self._ai_engine and hasattr(self._ai_engine, 'cancel'):
             self._ai_engine.cancel()
+        pending_plan_id = (self._pending_action or {}).get("plan_id", "")
+        if pending_plan_id and self._ai_engine and hasattr(self._ai_engine, "cancel_plan"):
+            import contextlib
+            with contextlib.suppress(Exception):
+                self._ai_engine.cancel_plan(pending_plan_id)
         if self._current_task_id and self._job_svc:
             import contextlib
             with contextlib.suppress(Exception):
@@ -265,12 +270,103 @@ class MichiAIBridge(QObject):
         self._last_error = ""
         self._set_status("CANCELLED")
 
+    # ── Pre-execution confirmation (P0) ────────────────────────────────
+    # Destructive / confirmation-required tools are planned by the engine
+    # but NEVER executed until the user explicitly accepts via confirmPlan.
+
+    @Slot(str, result=dict)
+    def confirmPlan(self, plan_id: str) -> dict:
+        """Execute a pending plan after explicit user confirmation."""
+        engine = self._ai_engine
+        if engine is None or not hasattr(engine, "confirm_plan"):
+            return {"ok": False, "error": "NO_AI_SERVICE", "plan_id": plan_id}
+        self._set_status("RUNNING")
+        try:
+            result = engine.confirm_plan(plan_id)
+        except Exception as exc:
+            logger.debug("confirm_plan failed", exc_info=True)
+            self._set_status("FAILED")
+            self._last_error = str(exc)
+            self.contextChanged.emit()
+            return {"ok": False, "error": str(exc), "plan_id": plan_id}
+
+        if result.get("ok"):
+            self._set_status("SUCCEEDED")
+            response = result.get("response") or "Acción ejecutada."
+        else:
+            self._set_status("FAILED")
+            self._last_error = result.get("error") or result.get("response") or "EXECUTION_FAILED"
+            response = result.get("response") or f"No se pudo ejecutar la acción: {self._last_error}"
+
+        if (self._pending_action or {}).get("plan_id") == plan_id:
+            self._pending_action = None
+        if self._current_plan.get("plan_id") == plan_id:
+            self._current_plan = {}
+        self._chat_history.append({"role": "assistant", "text": response})
+        self.responseReceived.emit(response)
+        self.contextChanged.emit()
+        return result
+
+    @Slot(str, result=dict)
+    def rejectPlan(self, plan_id: str) -> dict:
+        """Reject a pending plan; the action is never executed."""
+        engine = self._ai_engine
+        if engine is None or not hasattr(engine, "reject_plan"):
+            return {"ok": False, "error": "NO_AI_SERVICE", "plan_id": plan_id}
+        try:
+            result = engine.reject_plan(plan_id)
+        except Exception as exc:
+            logger.debug("reject_plan failed", exc_info=True)
+            return {"ok": False, "error": str(exc), "plan_id": plan_id}
+
+        if (self._pending_action or {}).get("plan_id") == plan_id:
+            self._pending_action = None
+        if self._current_plan.get("plan_id") == plan_id:
+            self._current_plan = {}
+        self._set_status("IDLE")
+        response = result.get("response") or "Acción rechazada."
+        self._chat_history.append({"role": "assistant", "text": response})
+        self.responseReceived.emit(response)
+        self.contextChanged.emit()
+        return result
+
+    @Slot(str, result=dict)
+    def cancelPlan(self, plan_id: str) -> dict:
+        """Cancel a pending plan (e.g. timeout or explicit cancel)."""
+        engine = self._ai_engine
+        if engine is None or not hasattr(engine, "cancel_plan"):
+            return {"ok": False, "error": "NO_AI_SERVICE", "plan_id": plan_id}
+        try:
+            result = engine.cancel_plan(plan_id)
+        except Exception as exc:
+            logger.debug("cancel_plan failed", exc_info=True)
+            return {"ok": False, "error": str(exc), "plan_id": plan_id}
+
+        if (self._pending_action or {}).get("plan_id") == plan_id:
+            self._pending_action = None
+        if self._current_plan.get("plan_id") == plan_id:
+            self._current_plan = {}
+        self._set_status("CANCELLED")
+        response = result.get("response") or "Confirmación cancelada."
+        self._chat_history.append({"role": "assistant", "text": response})
+        self.responseReceived.emit(response)
+        self.contextChanged.emit()
+        return result
+
     @Slot(str)
     def sendMessage(self, text: str):
         self._chat_history.append({"role": "user", "text": text})
         normalized = text.strip().lower()
         if normalized in ("cancel", "detener", "parar"):
             self.cancel()
+            return
+        # Textual confirmation: only when a real engine plan is pending.
+        pending_plan_id = (self._pending_action or {}).get("plan_id", "")
+        if pending_plan_id and normalized in ("sí", "si", "yes", "confirmar", "confirmo", "adelante"):
+            self.confirmPlan(pending_plan_id)
+            return
+        if pending_plan_id and normalized in ("no", "rechazar", "rechazo", "negativo"):
+            self.rejectPlan(pending_plan_id)
             return
         self._set_status("PLANNING")
 
@@ -312,15 +408,23 @@ class MichiAIBridge(QObject):
     def _handle_ai_result(self, result: dict, original_text: str):
         if result.get("requires_confirmation"):
             intent_info = result.get("intent")
-            self._pending_action = {"intent": intent_info, "entities": {}, "_original": original_text}
+            plan_id = result.get("plan_id", "") or ""
+            plan_info = result.get("plan") if isinstance(result.get("plan"), dict) else {}
+            self._pending_action = {
+                "intent": intent_info, "entities": {}, "_original": original_text,
+                "plan_id": plan_id,
+            }
             self._current_plan = {
-                "action": original_text,
+                "action": plan_info.get("action") or original_text,
                 "intent": intent_info if isinstance(intent_info, str) else (intent_info or {}).get("name", ""),
+                "tool": plan_info.get("tool", ""),
+                "plan_id": plan_id,
                 "risk_level": result.get("risk_level", ""),
+                "destructive": plan_info.get("destructive", False),
                 "requires_confirmation": True,
             }
             self._set_status("CONFIRMATION_REQUIRED")
-            msg = "¿Confirmas que quieres realizar esta accion?"
+            msg = result.get("response") or "¿Confirmas que quieres realizar esta accion?"
             self._chat_history.append({"role": "assistant", "text": msg})
             self.responseReceived.emit(msg)
             self.contextChanged.emit()

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
+import uuid
 from typing import Any
 
 from michi_ai.v2.core.models import ProviderRequest
@@ -37,6 +38,11 @@ class MichiAIEngine:
         self._risk_policy = risk_policy or RiskPolicy()
         self._privacy_guard = privacy_guard or PrivacyGuard()
         self._cancelled = False
+        # Plans awaiting explicit user confirmation. A destructive or
+        # confirmation-required tool NEVER runs before confirm_plan() is
+        # called with the matching plan_id.
+        self._pending_plans: dict[str, dict[str, Any]] = {}
+        self._plan_history: list[dict[str, Any]] = []
 
     @property
     def active_backend(self) -> LocalModelBackend:
@@ -54,6 +60,14 @@ class MichiAIEngine:
         return self._tool_registry
 
     def process_message(self, text: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Canonical flow: detect intent → resolve tool → validate args →
+        evaluate risk → build plan → request confirmation → execute after
+        accept → record result.
+
+        A tool whose definition requires confirmation (or whose risk level is
+        MODERATE/CRITICAL) is NEVER executed inside this method. It returns a
+        pending plan instead; execution only happens via confirm_plan().
+        """
         self._cancelled = False
         start = time.monotonic()
 
@@ -61,37 +75,60 @@ class MichiAIEngine:
             sanitized = self._privacy_guard.sanitize_input(text)
             intent: IntentResult = self._intent_router.detect(sanitized, context)
 
-            llm_response: str | None = None
-            active = self._backend_selector.auto_fallback()
-            if intent.needs_llm and type(active).__name__ != "CalicoBackend":
-                snapshot = self._privacy_guard.build_snapshot(context)
-                provider_req = ProviderRequest(
-                    messages=[{"role": "user", "content": self._build_llm_prompt(sanitized, intent, snapshot)}],
-                )
-                try:
-                    provider_resp = active.generate(provider_req)
-                    if provider_resp.text:
-                        validated = self._privacy_guard.validate_output(provider_resp.text)
-                        llm_response = validated
-                except Exception as exc:
-                    logger.warning("Backend generation failed, using Calico fallback: %s", exc)
-                    llm_response = None
+            # Resolve tool + normalize args before any execution decision.
+            tool_name = self._intent_to_tool(intent.intent_id)
+            args: dict[str, Any] = {}
+            defn = None
+            if tool_name:
+                args = self._tool_arguments(tool_name, intent)
+                defn = self._tool_registry.get(tool_name)
+                if defn is not None:
+                    validation_error = self._tool_registry._validate_args(defn, args)
+                    if validation_error:
+                        elapsed = time.monotonic() - start
+                        return {
+                            "ok": False,
+                            "response": f"Argumentos inválidos: {validation_error}",
+                            "intent": intent.intent_id,
+                            "confidence": intent.confidence,
+                            "needs_llm": intent.needs_llm,
+                            "risk_level": RiskLevel.SAFE.value,
+                            "requires_confirmation": False,
+                            "tool_result": {"ok": False, "code": "INVALID_ARGUMENTS", "message": validation_error, "data": {}},
+                            "elapsed_ms": round(elapsed * 1000),
+                            "backend": type(self._backend_selector.active).__name__,
+                        }
 
-            if not llm_response:
-                lite_req = ProviderRequest(
-                    messages=[{"role": "user", "content": sanitized}],
-                )
-                lite_resp = self._lite_backend.generate(lite_req)
-                llm_response = lite_resp.text
+            # Evaluate risk BEFORE execution.
+            risk_level = self._risk_policy.get_risk(intent.intent_id)
+            needs_confirmation = bool(tool_name) and (
+                self._risk_policy.require_confirmation(risk_level)
+                or (defn is not None and (defn.requires_confirmation or defn.destructive))
+            )
 
-            tool_result = self._execute_tool(intent, context)
+            if tool_name and needs_confirmation:
+                plan = self._build_plan(plan_id=self._new_plan_id(), intent=intent,
+                                        tool_name=tool_name, args=args, defn=defn,
+                                        risk_level=risk_level, original_text=sanitized)
+                self._pending_plans[plan["plan_id"]] = plan
+                elapsed = time.monotonic() - start
+                return {
+                    "ok": True,
+                    "response": self._confirmation_request_text(plan),
+                    "intent": intent.intent_id,
+                    "confidence": intent.confidence,
+                    "needs_llm": intent.needs_llm,
+                    "risk_level": risk_level.value,
+                    "requires_confirmation": True,
+                    "plan_id": plan["plan_id"],
+                    "plan": self._public_plan(plan),
+                    "tool_result": None,
+                    "elapsed_ms": round(elapsed * 1000),
+                    "backend": type(self._backend_selector.active).__name__,
+                }
 
-            risk_level = RiskLevel.SAFE
-            if tool_result and tool_result.ok:
-                risk_level = self._risk_policy.assess(
-                    intent.intent_id,
-                    resources=tool_result.data if isinstance(tool_result.data, list) else None,
-                )
+            llm_response = self._generate_response(sanitized, intent, context)
+            tool_result = self._run_tool(tool_name, args) if tool_name else None
 
             elapsed = time.monotonic() - start
             return {
@@ -101,7 +138,7 @@ class MichiAIEngine:
                 "confidence": intent.confidence,
                 "needs_llm": intent.needs_llm,
                 "risk_level": risk_level.value,
-                "requires_confirmation": self._risk_policy.require_confirmation(risk_level),
+                "requires_confirmation": False,
                 "tool_result": {"ok": tool_result.ok, "code": tool_result.code, "message": tool_result.message, "data": tool_result.data} if tool_result else None,
                 "elapsed_ms": round(elapsed * 1000),
                 "backend": type(self._backend_selector.active).__name__,
@@ -122,6 +159,153 @@ class MichiAIEngine:
                 "elapsed_ms": round(elapsed * 1000),
                 "backend": type(self._backend_selector.active).__name__,
             }
+
+    # ── Plan lifecycle ─────────────────────────────────────────────────
+
+    @staticmethod
+    def _new_plan_id() -> str:
+        return f"plan-{uuid.uuid4().hex[:12]}"
+
+    @staticmethod
+    def _build_plan(*, plan_id: str, intent: IntentResult, tool_name: str,
+                    args: dict[str, Any], defn: Any, risk_level: RiskLevel,
+                    original_text: str) -> dict[str, Any]:
+        return {
+            "plan_id": plan_id,
+            "intent": intent.intent_id,
+            "tool": tool_name,
+            "args": dict(args),
+            "risk_level": risk_level.value,
+            "requires_confirmation": True,
+            "destructive": bool(getattr(defn, "destructive", False)),
+            "original_text": original_text,
+            "status": "pending",
+            "created_at": time.time(),
+        }
+
+    @staticmethod
+    def _public_plan(plan: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "plan_id": plan["plan_id"],
+            "action": plan["original_text"],
+            "intent": plan["intent"],
+            "tool": plan["tool"],
+            "args": dict(plan["args"]),
+            "risk_level": plan["risk_level"],
+            "destructive": plan["destructive"],
+            "requires_confirmation": True,
+            "status": plan["status"],
+        }
+
+    @staticmethod
+    def _confirmation_request_text(plan: dict[str, Any]) -> str:
+        risk = plan["risk_level"]
+        note = " Esta acción es destructiva y no se puede deshacer." if plan["destructive"] else ""
+        return (
+            f"La acción '{plan['tool']}' requiere tu confirmación (riesgo {risk})."
+            f"{note} ¿Deseas continuar?"
+        )
+
+    def get_pending_plan(self, plan_id: str) -> dict[str, Any] | None:
+        plan = self._pending_plans.get(plan_id)
+        return self._public_plan(plan) if plan else None
+
+    @property
+    def pending_plans(self) -> list[dict[str, Any]]:
+        return [self._public_plan(p) for p in self._pending_plans.values()]
+
+    @property
+    def plan_history(self) -> list[dict[str, Any]]:
+        return list(self._plan_history)
+
+    def _record_plan(self, plan: dict[str, Any], result: dict[str, Any] | None = None) -> None:
+        entry = self._public_plan(plan)
+        entry["finished_at"] = time.time()
+        if result is not None:
+            entry["result"] = result
+        self._plan_history.append(entry)
+
+    def confirm_plan(self, plan_id: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Execute a previously planned action after explicit user acceptance."""
+        plan = self._pending_plans.pop(plan_id, None)
+        if plan is None:
+            return {"ok": False, "error": "PLAN_NOT_FOUND", "plan_id": plan_id,
+                    "response": "No hay ninguna acción pendiente con ese identificador."}
+        if self._cancelled:
+            plan["status"] = "cancelled"
+            self._record_plan(plan)
+            return {"ok": False, "error": "CANCELLED", "plan_id": plan_id,
+                    "response": "La acción fue cancelada."}
+
+        start = time.monotonic()
+        tool_result = self._run_tool(plan["tool"], plan["args"])
+        elapsed = time.monotonic() - start
+
+        plan["status"] = "executed" if tool_result.ok else "failed"
+        result_payload = {"ok": tool_result.ok, "code": tool_result.code,
+                          "message": tool_result.message, "data": tool_result.data}
+        self._record_plan(plan, result_payload)
+
+        if tool_result.ok:
+            response = f"Acción '{plan['tool']}' ejecutada correctamente."
+        else:
+            response = f"No se pudo ejecutar '{plan['tool']}': {tool_result.message or tool_result.code}"
+        return {
+            "ok": tool_result.ok,
+            "plan_id": plan_id,
+            "tool": plan["tool"],
+            "response": response,
+            "tool_result": result_payload,
+            "elapsed_ms": round(elapsed * 1000),
+        }
+
+    def reject_plan(self, plan_id: str) -> dict[str, Any]:
+        """Discard a planned action because the user declined it."""
+        plan = self._pending_plans.pop(plan_id, None)
+        if plan is None:
+            return {"ok": False, "error": "PLAN_NOT_FOUND", "plan_id": plan_id,
+                    "response": "No hay ninguna acción pendiente con ese identificador."}
+        plan["status"] = "rejected"
+        self._record_plan(plan)
+        return {"ok": True, "status": "rejected", "plan_id": plan_id,
+                "response": "Acción rechazada. No se realizó ningún cambio."}
+
+    def cancel_plan(self, plan_id: str) -> dict[str, Any]:
+        """Cancel a planned action (e.g. the user asked to cancel while pending)."""
+        plan = self._pending_plans.pop(plan_id, None)
+        if plan is None:
+            return {"ok": False, "error": "PLAN_NOT_FOUND", "plan_id": plan_id,
+                    "response": "No hay ninguna acción pendiente con ese identificador."}
+        plan["status"] = "cancelled"
+        self._record_plan(plan)
+        return {"ok": True, "status": "cancelled", "plan_id": plan_id,
+                "response": "Confirmación cancelada. No se ejecutó la acción."}
+
+    def _generate_response(self, sanitized: str, intent: IntentResult,
+                           context: dict[str, Any] | None) -> str:
+        llm_response: str | None = None
+        active = self._backend_selector.auto_fallback()
+        if intent.needs_llm and type(active).__name__ != "CalicoBackend":
+            snapshot = self._privacy_guard.build_snapshot(context)
+            provider_req = ProviderRequest(
+                messages=[{"role": "user", "content": self._build_llm_prompt(sanitized, intent, snapshot)}],
+            )
+            try:
+                provider_resp = active.generate(provider_req)
+                if provider_resp.text:
+                    validated = self._privacy_guard.validate_output(provider_resp.text)
+                    llm_response = validated
+            except Exception as exc:
+                logger.warning("Backend generation failed, using Calico fallback: %s", exc)
+                llm_response = None
+
+        if not llm_response:
+            lite_req = ProviderRequest(
+                messages=[{"role": "user", "content": sanitized}],
+            )
+            lite_resp = self._lite_backend.generate(lite_req)
+            llm_response = lite_resp.text
+        return llm_response
 
     def cancel(self) -> None:
         self._cancelled = True
@@ -166,9 +350,12 @@ class MichiAIEngine:
         tool_name = self._intent_to_tool(intent.intent_id)
         if not tool_name:
             return None
+        arguments = self._tool_arguments(tool_name, intent)
+        return self._run_tool(tool_name, arguments)
+
+    def _run_tool(self, tool_name: str, args: dict[str, Any] | None = None) -> ToolResult:
         try:
-            arguments = self._tool_arguments(tool_name, intent)
-            result = self._tool_registry.execute(tool_name, arguments=arguments or None)
+            result = self._tool_registry.execute(tool_name, arguments=args or None)
             data = result.data if isinstance(result.data, dict) else {}
             return ToolResult(
                 ok=bool(result.ok),

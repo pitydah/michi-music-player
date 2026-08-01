@@ -30,15 +30,20 @@ BaseDialog {
     }
 
     iconText: "\u26A0"
-    titleText: "! " + root.titleText || "! Acción destructiva"
+    // Default title resolved by BaseDialog (titleText !== "" ? titleText : defaultTitle)
+    defaultTitle: qsTr("Acción destructiva")
 
-    closePolicy: root.CloseOnEscape
+    closePolicy: BaseDialog.CloseOnEscape
+
+    // FocusTrap: ordered tab chain while the dialog is open
+    focusTrapItems: [keywordInput, cancelBtn, confirmBtn]
 
     onKeywordChanged: root._updateKeywordMatch()
     on_KeywordMatchedChanged: root._updateConfirmEnabled()
 
     function _updateConfirmEnabled() {
-        buttonsItem.confirmEnabled = root._keywordMatched
+        if (root.buttonsItem && root.buttonsItem.confirmEnabled !== undefined)
+            root.buttonsItem.confirmEnabled = root._keywordMatched
     }
 
     contentItem: ColumnLayout {

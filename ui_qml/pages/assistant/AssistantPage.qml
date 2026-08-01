@@ -291,15 +291,23 @@ Item {
                 visible: false
 
                 onConfirm: {
-                    if (root.ai && typeof root.ai.sendMessage !== "undefined") {
-                        root.ai.sendMessage("sí")
+                    if (root.ai) {
+                        var plan = root.ai.currentPlan || {}
+                        if (plan.plan_id && typeof root.ai.confirmPlan !== "undefined")
+                            root.ai.confirmPlan(plan.plan_id)
+                        else if (typeof root.ai.sendMessage !== "undefined")
+                            root.ai.sendMessage("sí")
                     }
                     actionPreview.visible = false
                 }
 
                 onReject: {
-                    if (root.ai && typeof root.ai.sendMessage !== "undefined") {
-                        root.ai.sendMessage("no")
+                    if (root.ai) {
+                        var plan = root.ai.currentPlan || {}
+                        if (plan.plan_id && typeof root.ai.rejectPlan !== "undefined")
+                            root.ai.rejectPlan(plan.plan_id)
+                        else if (typeof root.ai.sendMessage !== "undefined")
+                            root.ai.sendMessage("no")
                     }
                     actionPreview.visible = false
                 }

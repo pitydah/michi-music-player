@@ -13,6 +13,79 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: qsTr("Audio Lab")
 
+    // Canonical Audio Lab areas. Routes must exist in
+    // ui_qml_bridge/route_registry.py (sidebar_visible: false — hub-only).
+    readonly property var areas: [
+        {
+            "key": "diagnostics",
+            "title": qsTr("Diagnóstico"),
+            "description": qsTr("Analiza la cadena de audio, formatos y salida bit-perfect."),
+            "iconKey": "analysis",
+            "route": "audio_lab.diagnostics",
+            "capability": "audio_lab",
+            "status": "functional",
+            "statusText": qsTr("Disponible"),
+            "metadataText": qsTr("GStreamer · MPD · DAC")
+        },
+        {
+            "key": "identifier",
+            "title": qsTr("Identificador de Audios"),
+            "description": qsTr("Reconoce pistas y completa sus metadatos automáticamente."),
+            "iconKey": "search",
+            "route": "audio_lab.identifier",
+            "capability": "metadata",
+            "status": "functional",
+            "statusText": qsTr("Disponible"),
+            "metadataText": qsTr("Shazam · AudD · AcoustID")
+        },
+        {
+            "key": "backup",
+            "title": qsTr("Respaldar"),
+            "description": qsTr("Crea copias de seguridad de tu biblioteca y configuración."),
+            "iconKey": "folders",
+            "route": "audio_lab.backup",
+            "capability": "audio_lab",
+            "status": "functional",
+            "statusText": qsTr("Disponible"),
+            "metadataText": qsTr("Biblioteca + ajustes")
+        },
+        {
+            "key": "output_profiles",
+            "title": qsTr("Perfiles de Salida"),
+            "description": qsTr("Configura perfiles de salida de audio para cada dispositivo."),
+            "iconKey": "outputs",
+            "route": "audio_lab.output_profiles",
+            "capability": "output_profiles",
+            "status": "functional",
+            "statusText": qsTr("Disponible"),
+            "metadataText": qsTr("GStreamer · MPD")
+        },
+        {
+            "key": "local_intelligence",
+            "title": qsTr("Inteligencia local"),
+            "description": qsTr("Mixes inteligentes y recomendaciones generadas en tu equipo."),
+            "iconKey": "ai",
+            "route": "audio_lab.local_intelligence",
+            "capability": "mix",
+            "status": "functional",
+            "statusText": qsTr("Disponible"),
+            "metadataText": qsTr("100% local · privado")
+        }
+    ]
+
+    function capabilityAvailable(cap) {
+        if (typeof capabilityBridge === "undefined" || !capabilityBridge)
+            return true
+        if (typeof capabilityBridge.has === "function")
+            return capabilityBridge.has(cap)
+        return true
+    }
+
+    function openArea(route) {
+        if (typeof navigationBridge !== "undefined" && navigationBridge)
+            navigationBridge.navigate(route)
+    }
+
     Flickable {
         id: flickable
         anchors.fill: parent
@@ -46,7 +119,7 @@ Item {
                     }
 
                     Text {
-                        text: qsTr("Herramientas profesionales para analizar, procesar y preservar tu audio.")
+                        text: qsTr("Herramientas profesionales para diagnosticar, identificar, respaldar y configurar tu audio.")
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize
                         width: parent.width * 0.70
@@ -60,92 +133,67 @@ Item {
                 width: parent.width
             }
 
+            // Superior grid: 3 cards
             Grid {
+                id: topGrid
                 width: parent.width
-                columns: parent.width > 900 ? 3 : 2
+                columns: 3
                 columnSpacing: MichiTheme.spacing.md
                 rowSpacing: MichiTheme.spacing.md
 
-                GlassCard {
-                    width: parent.width / parent.columns - MichiTheme.spacing.md * (parent.columns - 1) / parent.columns
-                    height: 100
-                    title: qsTr("Analisis")
-                    subtitle: qsTr("Analisis tecnico, integridad y comparacion A/B.")
-                    variant: "base"
-                    activeFocusOnTab: true
-                    Keys.onReturnPressed: clicked()
-                    Keys.onSpacePressed: clicked()
-                    onClicked: {
-                        if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.navigate("audio_lab.analysis")
+                Repeater {
+                    model: root.areas.slice(0, 3)
+
+                    MichiFeatureCard {
+                        required property var modelData
+                        width: (topGrid.width - 2 * MichiTheme.spacing.md) / 3
+                        title: modelData.title
+                        description: modelData.description
+                        iconKey: modelData.iconKey
+                        route: modelData.route
+                        capability: modelData.capability
+                        capabilityAvailable: root.capabilityAvailable(modelData.capability)
+                        status: modelData.status
+                        statusText: modelData.statusText
+                        metadataText: modelData.metadataText
+                        primaryActionText: qsTr("Abrir")
+                        featureAccessibleName: modelData.title
+                        activeFocusOnTab: true
+                        onClicked: root.openArea(modelData.route)
                     }
                 }
+            }
 
-                GlassCard {
-                    width: parent.width / parent.columns - MichiTheme.spacing.md * (parent.columns - 1) / parent.columns
-                    height: 100
-                    title: qsTr("Procesamiento")
-                    subtitle: qsTr("EQ, DSP, normalizacion, conversion y ReplayGain.")
-                    variant: "base"
-                    activeFocusOnTab: true
-                    Keys.onReturnPressed: clicked()
-                    Keys.onSpacePressed: clicked()
-                    onClicked: {
-                        if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.navigate("audio_lab.processing")
-                    }
-                }
+            // Inferior grid: 2 cards centered
+            Item {
+                width: parent.width
+                height: bottomRow.height
 
-                GlassCard {
-                    width: parent.width / parent.columns - MichiTheme.spacing.md * (parent.columns - 1) / parent.columns
-                    height: 100
-                    title: qsTr("Metadatos")
-                    subtitle: qsTr("Editor, fingerprint y caratulas.")
-                    variant: "base"
-                    activeFocusOnTab: true
-                    Keys.onReturnPressed: clicked()
-                    Keys.onSpacePressed: clicked()
-                    onClicked: {
-                        if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.navigate("audio_lab.metadata")
-                    }
-                }
+                Row {
+                    id: bottomRow
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: MichiTheme.spacing.md
 
-                GlassCard {
-                    width: parent.width / parent.columns - MichiTheme.spacing.md * (parent.columns - 1) / parent.columns
-                    height: 100
-                    title: qsTr("Captura")
-                    subtitle: qsTr("CD Ripping y grabacion ADC.")
-                    variant: "base"
-                    activeFocusOnTab: true
-                    Keys.onReturnPressed: clicked()
-                    Keys.onSpacePressed: clicked()
-                    onClicked: {
-                        if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.navigate("audio_lab.capture")
-                    }
+                    Repeater {
+                        model: root.areas.slice(3, 5)
 
-                    StatusBadge {
-                        anchors.right: parent.right
-                        anchors.top: parent.top
-                        anchors.margins: MichiTheme.spacing.sm
-                        text: qsTr("Experimental")
-                        kind: "experimental"
-                    }
-                }
-
-                GlassCard {
-                    width: parent.width / parent.columns - MichiTheme.spacing.md * (parent.columns - 1) / parent.columns
-                    height: 100
-                    title: qsTr("Salud de biblioteca")
-                    subtitle: qsTr("Verifica la integridad general de la coleccion.")
-                    variant: "base"
-                    activeFocusOnTab: true
-                    Keys.onReturnPressed: clicked()
-                    Keys.onSpacePressed: clicked()
-                    onClicked: {
-                        if (typeof navigationBridge !== "undefined" && navigationBridge)
-                            navigationBridge.navigate("audio_lab.library_health")
+                        MichiFeatureCard {
+                            required property var modelData
+                            width: (topGrid.width - 2 * MichiTheme.spacing.md) / 3
+                            title: modelData.title
+                            description: modelData.description
+                            iconKey: modelData.iconKey
+                            route: modelData.route
+                            capability: modelData.capability
+                            capabilityAvailable: root.capabilityAvailable(modelData.capability)
+                            status: modelData.status
+                            statusText: modelData.statusText
+                            metadataText: modelData.metadataText
+                            primaryActionText: qsTr("Abrir")
+                            featureAccessibleName: modelData.title
+                            activeFocusOnTab: true
+                            onClicked: root.openArea(modelData.route)
+                        }
                     }
                 }
             }

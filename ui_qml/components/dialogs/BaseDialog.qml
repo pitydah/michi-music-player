@@ -5,45 +5,66 @@ import "../../theme"
 import "../../materials"
 
 Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: qsTr("Base")
+    id: root
     objectName: "baseDialog"
     focus: true
-    id: root
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: titleText !== "" ? titleText : defaultTitle
+    Accessible.description: qsTr("Diálogo")
 
     property string titleText: ""
+    property string defaultTitle: qsTr("Diálogo")
     property string iconText: ""
     property bool open: false
-    property int closePolicy: 1
+    property int closePolicy: BaseDialog.CloseOnEscape
 
     property Item contentItem: null
     property Item buttonsItem: null
 
+    // Ordered tab chain used by the FocusTrap while the dialog is open.
+    // Subclasses set this to their interactive controls in tab order.
+    property list<Item> focusTrapItems: []
+
     signal accepted()
     signal rejected()
 
+    // Close policy constants (QQC2 Dialog-style). Inherited by subclasses
+    // through the component type scope; lowercase aliases kept for compat.
+    enum ClosePolicy {
+        CloseOnEscape = 1,
+        CloseOnClickOutside = 2,
+        CloseOnEscapeOrClickOutside = 3
+    }
+    readonly property int closeOnEscape: BaseDialog.CloseOnEscape
+    readonly property int closeOnClickOutside: BaseDialog.CloseOnClickOutside
+    readonly property int closeOnEscapeOrClickOutside: BaseDialog.CloseOnEscapeOrClickOutside
 
-    Accessible.description: qsTr("Diálogo")
-
-    readonly property int closeOnEscape: 1
-    readonly property int closeOnClickOutside: 2
-    readonly property int closeOnEscapeOrClickOutside: 3
-
+    // Window overlay: the dialog covers its parent and stacks above content.
+    anchors.fill: parent
+    z: 9990
     visible: open
     enabled: visible
 
     Keys.onEscapePressed: {
-        if (root.closePolicy & root.closeOnEscape) {
-            root.open = false
-            root.rejected()
-        }
+        if (root.closePolicy & BaseDialog.CloseOnEscape)
+            root.doReject()
     }
-    Keys.onReturnPressed: {
-        if (root.buttonsItem && root.buttonsItem.confirmEnabled !== false)
-            root.doAccept()
+    Keys.onReturnPressed: root._acceptIfEnabled()
+    Keys.onEnterPressed: root._acceptIfEnabled()
+    Keys.onTabPressed: focusTrap.cycleForward()
+    Keys.onBacktabPressed: focusTrap.cycleBackward()
+
+    function _confirmEnabled() {
+        if (!root.buttonsItem)
+            return true
+        if (root.buttonsItem.confirmEnabled === undefined)
+            return true
+        return root.buttonsItem.confirmEnabled !== false
     }
-    Keys.onEnterPressed: {
-        if (root.buttonsItem && root.buttonsItem.confirmEnabled !== false)
+
+    function _acceptIfEnabled() {
+        if (root._confirmEnabled())
             root.doAccept()
     }
 
@@ -59,6 +80,7 @@ Item {
 
     onOpenChanged: {
         if (root.open) {
+            root._saveFocus()
             root.forceActiveFocus()
             root._focusFirstInteractive()
         } else {
@@ -67,30 +89,54 @@ Item {
     }
 
     property Item _savedFocus: null
-    property bool _opening: false
+
+    function _windowFocusItem() {
+        var win = root.Window.window
+        return win ? win.activeFocusItem : null
+    }
+
+    function _saveFocus() {
+        root._savedFocus = root._windowFocusItem()
+    }
 
     function _focusFirstInteractive() {
-        root._savedFocus = root.activeFocusItem || null
         var item = (root.contentItem && root.contentItem.focus) ? root.contentItem :
                    (root.buttonsItem && root.buttonsItem.focus) ? root.buttonsItem : null
-        if (item) item.forceActiveFocus()
+        if (item)
+            item.forceActiveFocus()
+        else
+            focusTrap.focusFirst()
     }
 
     function _restoreFocus() {
-        if (root._savedFocus) {
-            root._savedFocus.forceActiveFocus()
-            root._savedFocus = null
-        }
+        var target = root._savedFocus
+        root._savedFocus = null
+        if (target && target.Window.window)
+            target.forceActiveFocus()
+    }
+
+    // Reparent assigned content/buttons into the dialog frame so they are
+    // actually rendered (an Item assigned to a property has no visual parent).
+    onContentItemChanged: {
+        if (root.contentItem)
+            root.contentItem.parent = contentArea
+    }
+    onButtonsItemChanged: {
+        if (root.buttonsItem)
+            root.buttonsItem.parent = buttonsArea
+    }
+
+    FocusTrap {
+        id: focusTrap
+        container: dialogFrame
+        items: root.focusTrapItems
+        active: root.open
     }
 
     NumberAnimation on opacity {
         from: 0; to: 1; duration: MichiTheme.motion.normal
         easing.type: Easing.OutCubic
         running: root.open
-    }
-
-    Behavior on scale {
-        NumberAnimation { duration: MichiTheme.motion.fast; easing.type: Easing.OutBack }
     }
 
     Rectangle {
@@ -106,10 +152,8 @@ Item {
         MouseArea {
             anchors.fill: parent
             onClicked: {
-                if (root.closePolicy & root.closeOnClickOutside) {
-                    root.open = false
-                    root.rejected()
-                }
+                if (root.closePolicy & BaseDialog.CloseOnClickOutside)
+                    root.doReject()
             }
         }
     }
@@ -120,7 +164,6 @@ Item {
         width: Math.min(420, parent.width * 0.9)
         height: Math.min(contentLayout.implicitHeight + MichiTheme.spacing.xl * 2, parent.height * 0.8)
         z: 9991
-        focus: root.visible
         scale: root.open ? 1 : 0.92
 
         Behavior on scale {
@@ -149,12 +192,12 @@ Item {
                         font.pixelSize: MichiTheme.typography.cardTitleSize
                         visible: root.iconText !== ""
                         Accessible.role: Accessible.Graphic
-                        Accessible.name: root.titleText + qsTr(" icono")
+                        Accessible.name: root.Accessible.name + qsTr(" icono")
                     }
 
                     Text {
                         Layout.fillWidth: true
-                        text: root.titleText
+                        text: root.titleText !== "" ? root.titleText : root.defaultTitle
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.cardTitleSize
                         font.weight: MichiTheme.typography.weightSemiBold
@@ -168,32 +211,13 @@ Item {
                     Layout.fillHeight: true
                     implicitHeight: root.contentItem ? root.contentItem.implicitHeight || 40 : 0
                     clip: true
-
-                    onChildrenChanged: {
-                        if (contentArea.children.length > 0)
-                            root.contentItem = contentArea.children[0]
-                    }
                 }
 
                 Item {
                     id: buttonsArea
                     Layout.fillWidth: true
                     implicitHeight: root.buttonsItem ? root.buttonsItem.implicitHeight || 40 : 0
-
-                    onChildrenChanged: {
-                        if (buttonsArea.children.length > 0)
-                            root.buttonsItem = buttonsArea.children[0]
-                    }
                 }
-            }
-        }
-
-        FocusScope {
-            activeFocusOnTab: root.visible
-            function getFocusItem() {
-                var candidate = (root.contentItem && root.contentItem.focus) ? root.contentItem :
-                               (root.buttonsItem && root.buttonsItem.focus) ? root.buttonsItem : null
-                return candidate || root
             }
         }
     }

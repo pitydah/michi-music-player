@@ -28,7 +28,11 @@ BaseDialog {
 
     Accessible.description: label + (validationError ? ". Error: " + validationError : "")
 
-    titleText: root.titleText || "Entrada de datos"
+    // Default title resolved by BaseDialog (titleText !== "" ? titleText : defaultTitle)
+    defaultTitle: qsTr("Entrada de datos")
+
+    // FocusTrap: ordered tab chain while the dialog is open
+    focusTrapItems: [inputField, cancelBtn, confirmBtn]
 
     contentItem: ColumnLayout {
         spacing: MichiTheme.spacing.md
@@ -97,6 +101,8 @@ BaseDialog {
             font.pixelSize: MichiTheme.typography.captionSize
             wrapMode: Text.WordWrap
             visible: root.validationError !== ""
+            Accessible.role: Accessible.AlertMessage
+            Accessible.name: root.validationError
             Accessible.description: root.validationError
         }
     }

@@ -23,12 +23,16 @@ BaseDialog {
     Accessible.description: message
 
     iconText: {
-        if (root.iconType === "warning") return "\u26A0"
-        if (root.iconType === "error") return "\u26A0"
-        return "\u2139"
+        if (root.iconType === "warning") return "⚠"
+        if (root.iconType === "error") return "⚠"
+        return "ℹ"
     }
 
-    titleText: root.titleText || "Confirmar acción"
+    // Default title resolved by BaseDialog (titleText !== "" ? titleText : defaultTitle)
+    defaultTitle: qsTr("Confirmar acción")
+
+    // FocusTrap: ordered tab chain while the dialog is open
+    focusTrapItems: [dontAskCheck, cancelBtn, confirmBtn]
 
     contentItem: ColumnLayout {
         spacing: MichiTheme.spacing.md
@@ -43,9 +47,8 @@ BaseDialog {
         }
 
         QQC2.CheckBox {
-            Accessible.checked: root.checked
-
             id: dontAskCheck
+            Accessible.checked: dontAskCheck.checked
             Accessible.name: qsTr("Casilla de verificación")
 
             activeFocusOnTab: true
