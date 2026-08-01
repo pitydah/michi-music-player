@@ -298,8 +298,8 @@ Item {
                                 } else {
                                     if (typeof navigationBridge !== "undefined" && navigationBridge)
                                         navigationBridge.navigateWithParams("playlist_detail", {
-                                            playlistId: modelData.id,
-                                            playlistTitle: modelData.title
+                                            playlist_id: modelData.id,
+                                            playlist_title: modelData.title
                                         })
                                 }
                             }
