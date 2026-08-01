@@ -26,5 +26,9 @@ if "--diagnostics" in sys.argv:
 
 from michi.app_launcher import launch
 
+# Presentation preview harness — demo fixtures only load when this flag is
+# passed explicitly. Never active in normal runtime.
+PRESENTATION_PREVIEW = "--presentation-preview" in sys.argv
+
 if __name__ == "__main__":
     sys.exit(launch())

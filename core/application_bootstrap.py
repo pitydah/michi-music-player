@@ -5,6 +5,7 @@ API: build()->start()->create_bridges()->register_context(engine)->load_qml(engi
 from __future__ import annotations
 
 import logging
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Self
 
@@ -25,6 +26,10 @@ if TYPE_CHECKING:
     from ui_qml_bridge.context_registrar import ContextRegistrar
 
 logger = logging.getLogger("michi.bootstrap")
+
+# Presentation preview harness — demo fixtures only load when the app is
+# launched with --presentation-preview. Never active in normal runtime.
+PRESENTATION_PREVIEW = "--presentation-preview" in sys.argv
 
 # Bootstrap lifecycle states — explicit state machine for startup diagnostics.
 # created -> initializing -> ready | degraded | failed -> shutting_down -> stopped
@@ -60,6 +65,8 @@ class ApplicationBootstrap:
         self._boot_state: str = BOOT_CREATED
         self._failed_services: dict[str, str] = {}
         self._degraded_services: dict[str, str] = {}
+        # Demo fixtures loaded only under --presentation-preview (empty otherwise).
+        self._presentation_fixtures: dict[str, Any] = {}
 
     def _validate_required(self) -> list[str]:
         return self.container.validate_required_present()
@@ -125,6 +132,8 @@ class ApplicationBootstrap:
             self._has_started = True
             self._restore_session_once()
             logger.info("Bootstrap: READY (state=%s)", container_state)
+        if PRESENTATION_PREVIEW:
+            self._enable_presentation_preview()
         return self
 
     def create_bridges(self) -> dict[str, QObject]:
@@ -289,6 +298,36 @@ class ApplicationBootstrap:
             accessibility._apply_balance_to_playback()
             accessibility.dataChanged.emit()
         logger.info("Bootstrap: bridge settings restored")
+
+    def _enable_presentation_preview(self) -> bool:
+        """Load presentation fixtures into the bootstrap when the flag is set.
+
+        Gated by ``--presentation-preview``: production runtime never imports
+        nor activates the fixtures package, and the fixtures never substitute
+        real services — they are stored as a read-only snapshot for the
+        preview harness only.
+        """
+        if not PRESENTATION_PREVIEW:
+            return False
+        # presentation-preview: lazy import keeps fixtures out of normal runtime.
+        from tools.presentation_preview.fixtures import (
+            DEMO_ALBUMS,
+            DEMO_ARTISTS,
+            DEMO_PLAYLISTS,
+            DEMO_TRACKS,
+        )
+        self._presentation_fixtures = {
+            "albums": list(DEMO_ALBUMS),
+            "artists": list(DEMO_ARTISTS),
+            "playlists": list(DEMO_PLAYLISTS),
+            "tracks": list(DEMO_TRACKS),
+        }
+        logger.info(
+            "Bootstrap: presentation preview active — demo fixtures loaded "
+            "(%d albums, %d artists, %d playlists, %d tracks)",
+            len(DEMO_ALBUMS), len(DEMO_ARTISTS), len(DEMO_PLAYLISTS), len(DEMO_TRACKS),
+        )
+        return True
 
     def _restore_session_once(self) -> None:
         """Restore the canonical queue once when session memory is enabled."""
