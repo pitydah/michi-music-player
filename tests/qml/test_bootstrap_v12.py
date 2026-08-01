@@ -56,49 +56,66 @@ SYS_MODULE_PATCHES = {
     "audio": MagicMock(),
 }
 
-for mod_name, mock in SYS_MODULE_PATCHES.items():
-    if mod_name not in sys.modules:
-        sys.modules[mod_name] = mock
-
 
 @pytest.fixture(autouse=True)
 def _apply_patches():
-    patches = []
-    for mod_name, mock in SYS_MODULE_PATCHES.items():
-        patches.append(patch.dict("sys.modules", {mod_name: mock}))
-    for p in patches:
-        p.start()
-    yield
-    for p in patches:
-        p.stop()
+    """Patch imports only while an individual bootstrap test is running.
+
+    Mutating ``sys.modules`` at module import time polluted pytest collection and
+    replaced the real ``core.audio_lab`` package with a ``MagicMock``. Later
+    Audio Lab contract tests therefore failed with ``is not a package`` even
+    though the implementation files were present.
+    """
+    with patch.dict("sys.modules", SYS_MODULE_PATCHES, clear=False):
+        yield
 
 
 def _make_bootstrap():
     from core.application_bootstrap import ApplicationBootstrap
+
     return ApplicationBootstrap()
 
 
 REQUIRED_28 = {
-    "database", "connection_factory", "worker_manager",
-    "query_executor", "job_service", "event_bus",
-    "settings_coordinator", "settings_service",
-    "library_query_service", "library_sources_service",
-    "library_mutation_service", "playlist_service",
-    "history_query_service", "global_search_service",
-    "mix_query_service", "mix_service",
-    "track_action_service", "playback_service",
-    "queue_service", "metadata_service",
-    "process_controller", "runtime_persistence",
-    "theme_service", "accessibility_service",
-    "action_registry", "confirmation_service",
-    "notification_service", "diagnostics_service",
+    "database",
+    "connection_factory",
+    "worker_manager",
+    "query_executor",
+    "job_service",
+    "event_bus",
+    "settings_coordinator",
+    "settings_service",
+    "library_query_service",
+    "library_sources_service",
+    "library_mutation_service",
+    "playlist_service",
+    "history_query_service",
+    "global_search_service",
+    "mix_query_service",
+    "mix_service",
+    "track_action_service",
+    "playback_service",
+    "queue_service",
+    "metadata_service",
+    "process_controller",
+    "runtime_persistence",
+    "theme_service",
+    "accessibility_service",
+    "action_registry",
+    "confirmation_service",
+    "notification_service",
+    "diagnostics_service",
 }
 
 OPTIONAL_8 = {
-    "audio_lab_service", "smart_tagging_service",
-    "library_doctor_service", "device_sync_service",
-    "connection_service", "home_audio_service",
-    "radio_service", "lyrics_service",
+    "audio_lab_service",
+    "smart_tagging_service",
+    "library_doctor_service",
+    "device_sync_service",
+    "connection_service",
+    "home_audio_service",
+    "radio_service",
+    "lyrics_service",
 }
 
 CAPABILITY_GATED = {"michi_ai_service"}
@@ -116,7 +133,9 @@ class TestBootstrapV12Build:
         b = _make_bootstrap()
         with patch.object(b, "_validate_required"):
             b.build()
-        assert b.container.contains("database") or b.container.contains("connection_factory")
+        assert b.container.contains("database") or b.container.contains(
+            "connection_factory"
+        )
 
     def test_build_creates_worker_manager(self):
         b = _make_bootstrap()
@@ -154,11 +173,16 @@ class TestBootstrapV12Build:
         with patch.object(b, "_validate_required"):
             b.build()
         domain_required = {
-            "library_query_service", "library_sources_service",
-            "library_mutation_service", "playlist_service",
-            "history_query_service", "global_search_service",
-            "mix_query_service", "queue_service",
-            "track_action_service", "playback_service",
+            "library_query_service",
+            "library_sources_service",
+            "library_mutation_service",
+            "playlist_service",
+            "history_query_service",
+            "global_search_service",
+            "mix_query_service",
+            "queue_service",
+            "track_action_service",
+            "playback_service",
             "metadata_service",
         }
         for name in domain_required:
@@ -243,14 +267,22 @@ class TestBootstrapV12Start:
 
     def test_start_no_failures_when_all_built(self):
         from core.service_container import ContainerState
+
         b = _make_bootstrap()
         with patch.object(b, "_validate_required"):
             b.build()
         b.container._failures.clear()
-        with patch.object(b.container, "validate_required_present", return_value=[]):
-            with patch.object(b.container, "validate_no_none_required", return_value=[]):
+        with patch.object(
+            b.container, "validate_required_present", return_value=[]
+        ):
+            with patch.object(
+                b.container, "validate_no_none_required", return_value=[]
+            ):
                 b.start()
-        assert b.container.state in (ContainerState.READY, ContainerState.DEGRADED)
+        assert b.container.state in (
+            ContainerState.READY,
+            ContainerState.DEGRADED,
+        )
 
     def test_shutdown_resets(self):
         b = _make_bootstrap()
@@ -273,7 +305,10 @@ class TestBootstrapV12Lifecycle:
         b = _make_bootstrap()
         with patch.object(b, "_validate_required"):
             b.build()
-        with patch("ui_qml_bridge.bridge_factory.create_all_bridges", return_value={}):
+        with patch(
+            "ui_qml_bridge.bridge_factory.create_all_bridges",
+            return_value={},
+        ):
             bridges = b.create_bridges()
         assert isinstance(bridges, dict)
 
