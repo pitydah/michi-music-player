@@ -1,18 +1,18 @@
 """Verify album view renders with productive layout — geometry, model, delegates."""
 import pytest
 from PySide6.QtCore import QUrl
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
-from PySide6.QtWidgets import QApplication
 
 pytestmark = pytest.mark.skipif(
-    not QApplication.instance(),
-    reason="Requires QApplication"
+    not QGuiApplication.instance(),
+    reason="Requires QGuiApplication",
 )
 
 
 @pytest.fixture
 def engine():
-    app = QApplication.instance() or QApplication([])
+    app = QGuiApplication.instance() or QGuiApplication([])
     e = QQmlEngine()
     e.addImportPath("ui_qml")
     return e
