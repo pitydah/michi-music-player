@@ -1,0 +1,41 @@
+# Matriz de páginas para presentación
+pages:
+  home:
+    id: home
+    status: FUNCTIONAL
+    actions: [continuar, recientes, favoritos, mixes]
+  streaming.podcasts:
+    id: streaming.podcasts
+    status: PLANNED
+    actions: [volver_streaming]
+    honest: true
+  connections.big_server:
+    id: connections.big_server
+    status: PLANNED
+    actions: [concepto_producto]
+    honest: true
+  connections.navidrome:
+    id: connections.navidrome
+    status: PLANNED
+    actions: [revisar_requisitos]
+  connections.jellyfin:
+    id: connections.jellyfin
+    status: PLANNED
+    actions: [revisar_requisitos]
+  connections.home_assistant:
+    id: connections.home_assistant
+    status: CONFIGURATION_REQUIRED
+    actions: [configurar]
+  sync.portable_players:
+    id: sync.portable_players
+    status: PLANNED
+  sync.plans:
+    id: sync.plans
+    status: PLANNED
+  sync.history:
+    id: sync.history
+    status: PLANNED
+  audio_lab:
+    id: audio_lab
+    status: FUNCTIONAL
+    actions: [diagnostico, identificador, respaldar, perfiles, inteligencia]

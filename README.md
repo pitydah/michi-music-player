@@ -418,6 +418,16 @@ michi-music-player/
 | Iconos registrados | **38+** |
 | Commits recientes | **9** (consolidación completa) |
 
+## Modo de presentación
+
+Para ver la interfaz con datos de demostración aislados:
+
+```bash
+python main.py --presentation-preview
+```
+
+Los fixtures solo se cargan con este flag. El runtime normal siempre usa datos reales o estados vacíos.
+
 ## Licencia
 
 GPL-3.0-or-later
