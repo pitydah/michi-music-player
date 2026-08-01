@@ -16,6 +16,10 @@ Item {
 
     signal backRequested()
 
+    function routeEnter(route, params) {
+        if (params && params.genre) root.loadGenre(params.genre)
+    }
+
     function loadGenre(name) {
         genre = name
         if (root.lib && root.lib.setGenreFilter) {

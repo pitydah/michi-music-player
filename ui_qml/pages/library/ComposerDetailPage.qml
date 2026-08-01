@@ -16,6 +16,10 @@ Item {
 
     signal backRequested()
 
+    function routeEnter(route, params) {
+        if (params && params.composer) root.loadComposer(params.composer)
+    }
+
     function loadComposer(name) {
         composer = name
         if (root.lib && root.lib.setComposerFilter) {

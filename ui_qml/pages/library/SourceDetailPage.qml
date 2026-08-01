@@ -14,10 +14,15 @@ Item {
 
     property int sourceId: 0
     property string sourceName: ""
-    property var bridge: null
+    property var bridge: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property var _detail: ({})
 
     signal backRequested()
+
+    function routeEnter(route, params) {
+        if (params && params.source_id !== undefined)
+            root.loadDetail(Number(params.source_id))
+    }
 
     function loadDetail(id) {
         sourceId = id

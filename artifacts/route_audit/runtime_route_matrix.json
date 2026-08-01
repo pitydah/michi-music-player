@@ -1,0 +1,709 @@
+[
+  {
+    "route": "ai.settings",
+    "source": "../pages/assistant/AISettingsPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab",
+    "source": "../pages/audio_lab/AudioLabHubPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.adc_recorder",
+    "source": "../pages/audio_lab/AdcRecorderPlaceholder.qml",
+    "status_declared": "experimental",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.analysis",
+    "source": "../pages/audio_lab/AudioAnalysisPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.backup",
+    "source": "../pages/audio_lab/AudioBackupPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.capture",
+    "source": "../pages/audio_lab/AudioCaptureHubPage.qml",
+    "status_declared": "experimental",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.cd_ripper",
+    "source": "../pages/disc_lab/DiscLabPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.comparison",
+    "source": "../pages/audio_lab/AudioComparisonPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.conversion",
+    "source": "../pages/audio_lab/AudioConversionPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.diagnostics",
+    "source": "../pages/audio_lab/AudioAnalysisPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.identifier",
+    "source": "../pages/metadata/MetadataInspectorPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.integrity",
+    "source": "../pages/audio_lab/AudioIntegrityPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.jobs",
+    "source": "../pages/audio_lab/AudioBatchJobsPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.library_health",
+    "source": "../pages/library_doctor/LibraryDoctorPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.local_intelligence",
+    "source": "../pages/mix/MixHubPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.metadata",
+    "source": "../pages/metadata/MetadataInspectorPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.normalization",
+    "source": "../pages/audio_lab/AudioNormalizationPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.output_profiles",
+    "source": "../pages/outputs/OutputProfilesPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.processing",
+    "source": "../pages/audio_lab/AudioProcessingHubPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.profiles",
+    "source": "../pages/audio_lab/AudioConversionProfileEditor.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab.replaygain",
+    "source": "../pages/audio_lab/ReplayGainPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "audio_lab_job_detail",
+    "source": "../pages/audio_lab/AudioJobDetail.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "connections",
+    "source": "../pages/connections/ConnectionsPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "connections.big_server",
+    "source": "../pages/connections/BigServerPage.qml",
+    "status_declared": "planned",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "connections.detail",
+    "source": "../pages/connections/ConnectionDetailPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "connections.home_assistant",
+    "source": "../pages/connections/HomeAssistantPage.qml",
+    "status_declared": "configuration_required",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "connections.jellyfin",
+    "source": "../pages/connections/JellyfinPage.qml",
+    "status_declared": "planned",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "connections.micro_server",
+    "source": "../pages/connections/ConnectionDiscoveryPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "connections.navidrome",
+    "source": "../pages/connections/NavidromePage.qml",
+    "status_declared": "planned",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "devices.detail",
+    "source": "../pages/devices/DeviceDetailPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "diagnostics",
+    "source": "../pages/DiagnosticsPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "ecosystem",
+    "source": "../pages/ecosystem/EcosystemHubPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "eq",
+    "source": "../pages/equalizer/EqualizerPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "group_editor",
+    "source": "../pages/home_audio/GroupEditorPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "history",
+    "source": "../pages/history/HistoryPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "home",
+    "source": "../pages/home/HomePage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "home_audio",
+    "source": "../pages/home_audio/HomeAudioHubPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "home_audio.chain_planner",
+    "source": "../pages/home_audio/ChainPlannerPlaceholderPage.qml",
+    "status_declared": "removed",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "home_audio.diagnostics",
+    "source": "../pages/home_audio/DiagnosticsPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "home_audio.distribution",
+    "source": "../pages/home_audio/DistributionHubPage.qml",
+    "status_declared": "partial",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "home_audio.rooms",
+    "source": "../pages/home_audio/RoomsHubPage.qml",
+    "status_declared": "partial",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "home_audio.setup",
+    "source": "../pages/home_audio/SetupWizardPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "home_audio.stream",
+    "source": "../pages/home_audio/MichiMusicStreamPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "jobs",
+    "source": "../pages/jobs/JobsPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library",
+    "source": "../pages/library/LibraryPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.album_detail",
+    "source": "../pages/library/AlbumDetailPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.albums",
+    "source": "../pages/library/AlbumGridPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.artist_detail",
+    "source": "../pages/library/ArtistDetailPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.artists",
+    "source": "../pages/library/ArtistGridPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.collection_detail",
+    "source": "../pages/library/CollectionDetailPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.collections",
+    "source": "../pages/library/CollectionsPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.composer_detail",
+    "source": "../pages/library/ComposerDetailPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.composers",
+    "source": "../pages/library/ComposersPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.favorites",
+    "source": "../pages/library/FavoritesPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.folder_detail",
+    "source": "../pages/library/FolderBrowserPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.folders",
+    "source": "../pages/library/FolderBrowserPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.genre_detail",
+    "source": "../pages/library/GenreDetailPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.genres",
+    "source": "../pages/library/GenresPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.missing",
+    "source": "../pages/library/MissingPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.most_played",
+    "source": "../pages/library/MostPlayedPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.recent",
+    "source": "../pages/library/RecentPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.songs",
+    "source": "../pages/library/tracks/TracksPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.source_detail",
+    "source": "../pages/library/SourceDetailPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.sources",
+    "source": "../pages/library/SourcesPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.track_detail",
+    "source": "../pages/library/tracks/TracksPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.unplayed",
+    "source": "../pages/library/UnplayedPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "library.years",
+    "source": "../pages/library/YearsPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "lyrics",
+    "source": "../pages/lyrics/LyricsPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "metadata.batch",
+    "source": "../pages/metadata/MetadataBatchEditor.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "metadata.single",
+    "source": "../pages/metadata/MetadataSingleEditor.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "michi_ai",
+    "source": "../pages/assistant/AssistantPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "mix",
+    "source": "../pages/mix/MixHubPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "mix.detail",
+    "source": "../pages/mix/MixDetailPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "mix.generator",
+    "source": "../pages/mix/MixGeneratorPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "mix.result",
+    "source": "../pages/mix/MixResultPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "mix.rules",
+    "source": "../pages/mix/MixRuleEditorPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "nowplaying",
+    "source": "../pages/nowplaying/NowPlayingPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "placeholder",
+    "source": "../pages/PlaceholderPage.qml",
+    "status_declared": "deprecated",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "playlist_detail",
+    "source": "../pages/playlists/PlaylistDetailPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "playlists",
+    "source": "../pages/playlists/PlaylistsPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "queue",
+    "source": "../pages/queue/QueuePage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "search",
+    "source": "../pages/search/GlobalSearchPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "settings",
+    "source": "../pages/SettingsPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "settings.about",
+    "source": "../pages/settings/SettingsAboutPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "settings.accessibility",
+    "source": "../pages/settings/SettingsAccessibilityPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "settings.appearance",
+    "source": "../pages/settings/SettingsAppearancePage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "settings.audio",
+    "source": "../pages/settings/SettingsAudioPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "settings.general",
+    "source": "../pages/settings/SettingsGeneralPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "settings.library",
+    "source": "../pages/settings/SettingsLibraryPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "settings.playback",
+    "source": "../pages/settings/SettingsPlaybackPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "smart_playlist_editor",
+    "source": "../pages/playlists/SmartPlaylistEditorPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "streaming",
+    "source": "../pages/streaming/StreamingHubPage.qml",
+    "status_declared": "partial",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "streaming.podcasts",
+    "source": "../pages/streaming/PodcastsPage.qml",
+    "status_declared": "planned",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "streaming.radio",
+    "source": "../pages/radio/RadioPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "sync",
+    "source": "../pages/sync/SyncHubPage.qml",
+    "status_declared": "partial",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "sync.history",
+    "source": "../pages/sync/SyncHistoryPage.qml",
+    "status_declared": "planned",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "sync.mobile",
+    "source": "../pages/devices/MobilePairingPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "sync.plans",
+    "source": "../pages/sync/SyncPlansPage.qml",
+    "status_declared": "planned",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "sync.portable_players",
+    "source": "../pages/sync/PortablePlayersPage.qml",
+    "status_declared": "planned",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "tagging",
+    "source": "../pages/SmartTaggingPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  },
+  {
+    "route": "zone_detail",
+    "source": "../pages/home_audio/ZoneDetailPage.qml",
+    "status_declared": "functional",
+    "source_exists": true,
+    "result": "COMPILE_OK"
+  }
+]

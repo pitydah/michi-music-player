@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import "../../theme"
 import "../../components"
@@ -28,6 +27,39 @@ Item {
 
     signal backClicked()
 
+    function routeEnter(route, params) {
+        if (params && params.connection_id)
+            root.loadConnection(params.connection_id)
+    }
+
+    function loadConnection(id) {
+        root.connectionId = id
+        if (!root.conn)
+            return
+        var found = null
+        var list = root.conn.discoveredServers || []
+        for (var i = 0; i < list.length; i++) {
+            var s = list[i]
+            var sid = s.id || s.name || s.host || ""
+            if (sid === id) { found = s; break }
+        }
+        if (found) {
+            root.serverName = found.name || found.alias || id
+            root.serverHost = found.host || ""
+            root.serverPort = Number(found.port || 0)
+        } else {
+            root.serverName = root.conn.microServerAlias || id
+        }
+        root.state = root.conn.microServerState || "disconnected"
+        root.lastError = root.conn.lastError || ""
+        root.latencyMs = root.conn.latencyMs || 0
+        root.serverVersion = root.conn.serverVersion || ""
+        root.contract = root.conn.microServerContract || ""
+        root.lastContact = root.conn.lastContact || 0
+        root.protocol = root.conn.protocol || "michi-link"
+        root.compatible = root.conn.compatible || false
+        root.caps = root.conn.capabilities || []
+    }
 
 
     AsyncStateView {
@@ -58,6 +90,7 @@ Item {
                 spacing: MichiTheme.spacing.lg
 
                 MichiButton {
+                    id: backButton
                     Accessible.role: Accessible.Button
                     text: qsTr("< Volver")
                     variant: "ghost"
@@ -206,33 +239,27 @@ Item {
                         variant: "danger"
                         onClicked: {
                             if (root.conn && root.connectionId) {
-                                deleteConfirmDialog.open()
+                                deleteConfirmDialog.open = true
                             }
                         }
                         Accessible.description: qsTr("Elimina la configuración del servidor")
                         KeyNavigation.backtab: editBtn
                     }
-
-                    QQC2.Dialog {
-                        id: deleteConfirmDialog
-                        title: qsTr("Eliminar servidor")
-                        standardButtons: QQC2.Dialog.Yes | QQC2.Dialog.No
-                        modal: true
-                        x: Math.round((root.width - width) / 2)
-                        y: Math.round((root.height - height) / 3)
-                        parent: root
-                        Text {
-                            text: qsTr("¿Eliminar ") + root.serverName + "?"
-                            color: MichiTheme.colors.textPrimary
-                            font.pixelSize: MichiTheme.typography.bodySize
-                        }
-                        onAccepted: {
-                            if (root.conn && root.connectionId)
-                                root.conn.deleteServer(root.connectionId)
-                        }
-                    }
                 }
             }
+        }
+    }
+
+    ConfirmDialog {
+        id: deleteConfirmDialog
+        anchors.fill: parent
+        titleText: qsTr("Eliminar servidor")
+        message: qsTr("¿Eliminar ") + root.serverName + "?"
+        iconType: "error"
+        confirmText: qsTr("Eliminar")
+        onConfirmed: {
+            if (root.conn && root.connectionId)
+                root.conn.deleteServer(root.connectionId)
         }
     }
 }

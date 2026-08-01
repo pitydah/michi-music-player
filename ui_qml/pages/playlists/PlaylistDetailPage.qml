@@ -16,7 +16,7 @@ Item {
 
     property string playlistTitle: ""
     property int playlistId: -1
-    property var bridge: null
+    property var bridge: typeof playlistsBridge !== "undefined" ? playlistsBridge : null
     property var tracks: []
     property int trackCount: 0
     property string _duration: ""
@@ -28,6 +28,15 @@ Item {
     property bool _selectionMode: false
 
     signal backRequested()
+
+    function routeEnter(route, params) {
+        if (!params) return
+        var pid = -1
+        if (params.playlist_id !== undefined) pid = Number(params.playlist_id)
+        else if (params.playlistId !== undefined) pid = Number(params.playlistId)
+        var title = params.playlist_title || params.playlistTitle || ""
+        if (pid >= 0) root.loadPlaylist(pid, title)
+    }
 
     function loadPlaylist(pid, title) {
         root.playlistId = pid
