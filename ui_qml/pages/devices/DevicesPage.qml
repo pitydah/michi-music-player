@@ -15,6 +15,7 @@ Item {
     Accessible.name: qsTr("Dispositivos y sincronización")
 
     property var dv: typeof devicesBridge !== "undefined" ? devicesBridge : null
+    property var cap: typeof capabilityBridge !== "undefined" ? capabilityBridge : null
     property var deviceSyncService: root.dv
     property int pageState: root.dv ? stateReady : stateError
 
@@ -35,7 +36,7 @@ Item {
     Component.onCompleted: {
         if (root.dv && typeof root.dv.refresh !== "undefined")
             root.dv.refresh()
-        deviceGuard.checkCapability(root.dv)
+        deviceGuard.checkCapability(root.cap)
     }
 
     Loader {

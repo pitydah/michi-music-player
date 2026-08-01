@@ -13,8 +13,10 @@ class TestRouteRegistryBridge:
             "home",
             "library",
             "mix",
+            "playlists",
             "streaming",
             "ecosystem",
+            "sync",
             "audio_lab",
             "michi_ai",
         ]
@@ -29,9 +31,14 @@ class TestRouteRegistryBridge:
                 "library.albums",
                 "library.artists",
                 "library.folders",
-                "playlists",
             ],
             "streaming": ["streaming.radio"],
+            "sync": [
+                "sync.mobile",
+                "sync.portable_players",
+                "sync.plans",
+                "sync.history",
+            ],
             "audio_lab": [
                 "audio_lab.analysis",
                 "audio_lab.processing",
@@ -59,19 +66,33 @@ class TestRouteRegistryBridge:
         assert hub["source"].endswith("EcosystemHubPage.qml")
         assert hub["sidebar_visible"] is True
 
-        for route_key in ("connections", "home_audio", "sync"):
+        for route_key in ("connections", "home_audio"):
             assert ROUTES[route_key]["parent"] == "ecosystem"
             assert ROUTES[route_key]["sidebar_visible"] is False, (
                 f"{route_key} should be reachable via the ecosystem hub, "
                 "not as a sidebar section"
             )
 
-    def test_playlists_is_child_of_library(self):
+    def test_sync_suite_is_top_level_expandable(self):
+        from ui_qml_bridge.route_registry import ROUTES
+
+        route = ROUTES["sync"]
+        assert route["parent"] is None
+        assert route["sidebar_visible"] is True
+        assert route["expandable"] is True
+        for child_key in ("sync.mobile", "sync.portable_players",
+                          "sync.plans", "sync.history"):
+            child = ROUTES[child_key]
+            assert child["parent"] == "sync"
+            assert child["sidebar_visible"] is True
+            assert child["sidebar_group"] == "sync"
+
+    def test_playlists_is_top_level(self):
         from ui_qml_bridge.route_registry import ROUTES
 
         route = ROUTES["playlists"]
-        assert route["parent"] == "library"
-        assert route["sidebar_group"] == "library"
+        assert route["parent"] is None
+        assert route["sidebar_group"] is None
         assert route["sidebar_visible"] is True
 
     def test_nowplaying_queue_history_stay_out_of_sidebar(self):
@@ -83,7 +104,8 @@ class TestRouteRegistryBridge:
 
     def test_planned_routes_are_hidden_from_sidebar(self):
         """Planned/configuration_required routes have no real functionality
-        and must not clutter the sidebar."""
+        and must not clutter the sidebar. Sync children are the exception:
+        they render under the expandable Sync Suite parent."""
         from ui_qml_bridge.route_registry import ROUTES
 
         hidden = [
@@ -92,9 +114,6 @@ class TestRouteRegistryBridge:
             "connections.navidrome",
             "connections.jellyfin",
             "connections.home_assistant",
-            "sync.portable_players",
-            "sync.plans",
-            "sync.history",
         ]
         for route_key in hidden:
             assert ROUTES[route_key]["sidebar_visible"] is False, (

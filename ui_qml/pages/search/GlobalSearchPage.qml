@@ -14,6 +14,7 @@ Item {
 
     property var bridge: typeof globalSearchBridge !== "undefined" ? globalSearchBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
+    property var cap: typeof capabilityBridge !== "undefined" ? capabilityBridge : null
 
     property string _query: ""
     property var _groupedResults: []
@@ -203,7 +204,7 @@ Item {
     Component.onCompleted: {
         if (root.bridge && typeof root.bridge.refresh !== "undefined")
             root.bridge.refresh()
-        searchGuard.checkCapability(root.bridge)
+        searchGuard.checkCapability(root.cap)
         root.syncRouteQuery()
     }
 

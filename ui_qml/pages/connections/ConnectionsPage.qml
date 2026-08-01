@@ -15,6 +15,7 @@ Item {
     Accessible.name: qsTr("Servidores y conexiones")
 
     property var conn: typeof connectionsBridge !== "undefined" ? connectionsBridge : null
+    property var cap: typeof capabilityBridge !== "undefined" ? capabilityBridge : null
     property int pageState: root.conn ? stateReady : stateError
 
     readonly property int stateLoading: 0
@@ -27,7 +28,7 @@ Item {
     Component.onCompleted: {
         if (root.conn && typeof root.conn.refresh !== "undefined")
             root.conn.refresh()
-        connectionGuard.checkCapability(root.conn)
+        connectionGuard.checkCapability(root.cap)
     }
 
     Loader {

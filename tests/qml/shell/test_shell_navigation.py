@@ -203,7 +203,7 @@ class TestRouteRegistry:
             assert "status" in info, f"Route {route} missing status"
 
     def test_detail_routes_have_params(self):
-        detail_no_params = {"group_editor", "mix_generator"}
+        detail_no_params = {"group_editor", "mix.generator", "mix.result", "mix.rules"}
         for route, info in ROUTES.items():
             if info.get("category") == "detail" and route not in detail_no_params:
                 assert "params" in info, f"Detail route {route} missing params"

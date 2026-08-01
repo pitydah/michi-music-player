@@ -16,6 +16,7 @@ Item {
 
     property var rd: typeof radioBridge !== "undefined" ? radioBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
+    property var cap: typeof capabilityBridge !== "undefined" ? capabilityBridge : null
     property string _filterText: ""
     property bool _showAddStation: false
     property string _newName: ""
@@ -104,7 +105,7 @@ Item {
     Component.onCompleted: {
         if (root.rd && typeof root.rd.refresh !== "undefined")
             root.rd.refresh()
-        radioGuard.checkCapability(root.rd)
+        radioGuard.checkCapability(root.cap)
     }
 
     Loader {

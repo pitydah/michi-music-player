@@ -343,51 +343,51 @@ ROUTES: dict[str, dict] = {
         "placeholder_state": None,
         "params": None, "category": "core",
     },
-    "mix_detail": {
-        "route": "mix_detail", "parent": "mix",
+    "mix.detail": {
+        "route": "mix.detail", "parent": "mix",
         "title": "Mix", "breadcrumb_title": "Mix",
         "source": "../pages/mix/MixDetailPage.qml",
         "icon": "mix", "order": 0, "sidebar_visible": False,
         "sidebar_group": None, "expandable": False,
         "status": "functional", "capability": None,
-        "aliases": [],
+        "aliases": ["mix_detail"],
         "keywords": [],
         "placeholder_state": None,
         "params": {"mix_id": {"required": True, "type": "string"}},
         "category": "detail",
     },
-    "mix_generator": {
-        "route": "mix_generator", "parent": "mix",
+    "mix.generator": {
+        "route": "mix.generator", "parent": "mix",
         "title": "Generar Mix", "breadcrumb_title": "Generar Mix",
         "source": "../pages/mix/MixGeneratorPage.qml",
         "icon": "mix", "order": 0, "sidebar_visible": False,
         "sidebar_group": None, "expandable": False,
         "status": "functional", "capability": None,
-        "aliases": [],
+        "aliases": ["mix_generator"],
         "keywords": [],
         "placeholder_state": None,
         "params": None, "category": "detail",
     },
-    "mix_result": {
-        "route": "mix_result", "parent": "mix",
+    "mix.result": {
+        "route": "mix.result", "parent": "mix",
         "title": "Resultado Mix", "breadcrumb_title": "Mix",
         "source": "../pages/mix/MixResultPage.qml",
         "icon": "mix", "order": 0, "sidebar_visible": False,
         "sidebar_group": None, "expandable": False,
         "status": "functional", "capability": None,
-        "aliases": [],
+        "aliases": ["mix_result"],
         "keywords": [],
         "placeholder_state": None,
         "params": None, "category": "detail",
     },
-    "mix_rule_editor": {
-        "route": "mix_rule_editor", "parent": "mix",
+    "mix.rules": {
+        "route": "mix.rules", "parent": "mix",
         "title": "Editor de Reglas", "breadcrumb_title": "Reglas",
         "source": "../pages/mix/MixRuleEditorPage.qml",
         "icon": "mix", "order": 0, "sidebar_visible": False,
         "sidebar_group": None, "expandable": False,
         "status": "functional", "capability": None,
-        "aliases": [],
+        "aliases": ["mix_rule_editor"],
         "keywords": [],
         "placeholder_state": None,
         "params": None, "category": "detail",
@@ -451,14 +451,14 @@ ROUTES: dict[str, dict] = {
     },
 
     # ═══════════════════════════════════════════════════════════════════
-    # 6. PLAYLISTS (child of library)
+    # 6. PLAYLISTS (top-level section)
     # ═══════════════════════════════════════════════════════════════════
     "playlists": {
-        "route": "playlists", "parent": "library", "title": "Playlists",
+        "route": "playlists", "parent": None, "title": "Playlists",
         "breadcrumb_title": "Playlists",
         "source": "../pages/playlists/PlaylistsPage.qml",
         "icon": "playlists", "order": 50, "sidebar_visible": True,
-        "sidebar_group": "library", "expandable": False,
+        "sidebar_group": None, "expandable": False,
         "status": "functional", "capability": None,
         "aliases": [],
         "keywords": ["playlists", "listas", "reproducción"],
@@ -958,11 +958,11 @@ ROUTES: dict[str, dict] = {
     # 10. MICHI SYNC SUITE
     # ═══════════════════════════════════════════════════════════════════
     "sync": {
-        "route": "sync", "parent": "ecosystem", "title": "Michi Sync Suite",
+        "route": "sync", "parent": None, "title": "Michi Sync Suite",
         "breadcrumb_title": "Sync Suite",
         "source": "../pages/sync/SyncHubPage.qml",
-        "icon": "sync", "order": 100, "sidebar_visible": False,
-        "sidebar_group": None, "expandable": False,
+        "icon": "sync", "order": 100, "sidebar_visible": True,
+        "sidebar_group": None, "expandable": True,
         "status": "partial", "capability": None,
         "aliases": ["devices", "devices.list"],
         "keywords": ["sync", "sincronización", "dispositivos", "sync suite"],
@@ -985,7 +985,7 @@ ROUTES: dict[str, dict] = {
         "route": "sync.portable_players", "parent": "sync",
         "title": "Reproductores portátiles", "breadcrumb_title": "Portátiles",
         "source": "../pages/sync/PortablePlayersPage.qml",
-        "icon": "portable_player", "order": 20, "sidebar_visible": False,
+        "icon": "portable_player", "order": 20, "sidebar_visible": True,
         "sidebar_group": "sync", "expandable": False,
         "status": "planned",
         "capability": "sync",
@@ -998,7 +998,7 @@ ROUTES: dict[str, dict] = {
         "route": "sync.plans", "parent": "sync",
         "title": "Planes de sincronización", "breadcrumb_title": "Planes",
         "source": "../pages/sync/SyncPlansPage.qml",
-        "icon": "sync_plans", "order": 30, "sidebar_visible": False,
+        "icon": "sync_plans", "order": 30, "sidebar_visible": True,
         "sidebar_group": "sync", "expandable": False,
         "status": "planned",
         "capability": "sync",
@@ -1011,7 +1011,7 @@ ROUTES: dict[str, dict] = {
         "route": "sync.history", "parent": "sync",
         "title": "Historial", "breadcrumb_title": "Historial",
         "source": "../pages/sync/SyncHistoryPage.qml",
-        "icon": "sync_history", "order": 40, "sidebar_visible": False,
+        "icon": "sync_history", "order": 40, "sidebar_visible": True,
         "sidebar_group": "sync", "expandable": False,
         "status": "planned",
         "capability": "sync",
@@ -1373,12 +1373,14 @@ def resolve_route(route: str) -> str:
 # ═══════════════════════════════════════════════════════════════════
 SIDEBAR_ORDER: list[str] = [
     "home",        # 1. Inicio
-    "library",     # 2. Biblioteca (expandable: songs, albums, artists, folders, playlists)
+    "library",     # 2. Biblioteca (expandable: songs, albums, artists, folders)
     "mix",         # 3. Mix
-    "streaming",   # 4. Streaming (expandable: radio, podcasts)
-    "ecosystem",   # 5. Ecosistema (hub: Home Audio, Conexiones, Sync Suite)
-    "audio_lab",   # 6. Audio Lab (expandable: analysis, processing, metadata, capture, health)
-    "michi_ai",    # 7. Michi AI
+    "playlists",   # 4. Playlists
+    "streaming",   # 5. Streaming (expandable: radio, podcasts)
+    "ecosystem",   # 6. Ecosistema (hub: Home Audio, Conexiones)
+    "sync",        # 7. Michi Sync Suite (expandable: mobile, portable, plans, history)
+    "audio_lab",   # 8. Audio Lab (expandable: analysis, processing, metadata, capture, health)
+    "michi_ai",    # 9. Michi AI
 ]
 
 SIDEBAR_FIXED_BOTTOM: list[str] = [

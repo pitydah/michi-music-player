@@ -355,7 +355,7 @@ class TestRouteRegistryIntegrity:
     def test_detail_routes_exist(self):
         details = ["library.album_detail", "library.artist_detail",
                    "library.folder_detail", "playlist_detail",
-                   "mix_detail", "mix_generator", "connections.detail",
+                   "mix.detail", "mix.generator", "connections.detail",
                    "devices.detail", "devices.pairing"]
         for route in details:
             assert route in ROUTES, f"Missing detail route: {route}"

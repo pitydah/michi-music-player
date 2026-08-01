@@ -14,6 +14,7 @@ Item {
     Accessible.name: qsTr("Mix")
 
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
+    property var cap: typeof capabilityBridge !== "undefined" ? capabilityBridge : null
     property bool _loading: false
     property int pageState: root.mx ? stateReady : stateError
     property var _dismissed: []
@@ -28,7 +29,7 @@ Item {
     Component.onCompleted: {
         if (root.mx && typeof root.mx.refresh !== "undefined")
             root.mx.refresh()
-        mixGuard.checkCapability(root.mx)
+        mixGuard.checkCapability(root.cap)
     }
 
     function visibleCategories() {
@@ -47,7 +48,7 @@ Item {
             if (result && result.ok) {
                 root.mixSelected.emit(mixId)
                 if (typeof navigationBridge !== "undefined" && navigationBridge)
-                    navigationBridge.navigate("mix_detail", {"mix_id": mixId})
+                    navigationBridge.navigateWithParams("mix.detail", {"mix_id": mixId})
             }
         }
     }
@@ -286,7 +287,7 @@ Item {
                         Keys.onSpacePressed: onClicked()
                         onClicked: {
                             if (typeof navigationBridge !== "undefined" && navigationBridge)
-                                navigationBridge.navigate("mix_rule_editor")
+                                navigationBridge.navigate("mix.rules")
                         }
                     }
                 }

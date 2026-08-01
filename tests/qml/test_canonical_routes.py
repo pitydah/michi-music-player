@@ -135,8 +135,8 @@ class TestRouteParamsValidation:
     def test_detail_routes_have_required_params(self, routes):
         ROUTES, _ = routes
         allowed_no_params = {"playlist_detail", "library/folders/:folderId",
-                             "library/sources", "mix_detail", "mix_generator",
-                             "mix_result", "mix_rule_editor", "smart_playlist_editor",
+                             "library/sources", "mix.detail", "mix.generator",
+                             "mix.result", "mix.rules", "smart_playlist_editor",
                              "group_editor"}
         for key, info in ROUTES.items():
             if info.get("category") == "detail" and not info.get("params"):

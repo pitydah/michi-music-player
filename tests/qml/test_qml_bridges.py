@@ -846,14 +846,14 @@ class TestMixComponents:
 
     def test_mix_detail_route_in_navigation(self):
         from ui_qml_bridge.route_registry import ROUTES
-        assert "mix_detail" in ROUTES, "mix_detail not in route registry"
-        info = ROUTES["mix_detail"]
-        assert info["route"] == "mix_detail"
+        assert "mix.detail" in ROUTES, "mix.detail not in route registry"
+        info = ROUTES["mix.detail"]
+        assert info["route"] == "mix.detail"
         assert info["status"] == "functional"
 
     def test_mix_detail_route_in_pagestack(self):
         from ui_qml_bridge.route_registry import ROUTES
-        assert "mix_detail" in ROUTES, "Route registry missing mix_detail"
+        assert "mix.detail" in ROUTES, "Route registry missing mix.detail"
 
     def test_qml_main_registers_mix_bridge(self):
         bindings = (QML_DIR.parent / "ui_qml_bridge" / "context_bindings.py").read_text()

@@ -194,7 +194,7 @@ class TestShellNavigation:
             assert "status" in info, f"Route {route} missing status"
 
     def test_detail_routes_have_params(self):
-        exempt = {"group_editor", "mix_generator", "mix_result", "mix_rule_editor",
+        exempt = {"group_editor", "mix.generator", "mix.result", "mix.rules",
                    "audio_lab.profiles", "audio_lab.integrity", "audio_lab.comparison",
                    "audio_lab.normalization", "audio_lab.replaygain",
                    "audio_lab_job_detail", "library.folder_detail",
@@ -224,7 +224,7 @@ class TestShellNavigation:
             "audio_lab.cd_ripper": {"tab": "test"},
             "audio_lab.adc_recorder": {"tab": "test"},
             "playlist_detail": {"playlist_id": 1},
-            "mix_detail": {"mix_id": "test"},
+            "mix.detail": {"mix_id": "test"},
             "connections.detail": {"connection_id": "test"},
             "devices.detail": {"device_id": "test"},
             "devices.pairing": {},
