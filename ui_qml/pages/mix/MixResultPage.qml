@@ -19,18 +19,53 @@ Item {
     property string _errorMessage: ""
 
     signal backRequested()
-    signal playAllRequested()
-    signal enqueueAllRequested()
-    signal saveAsPlaylistRequested()
-    signal regenerateRequested()
-    signal playTrackAtIndex(int index)
 
+    function routeEnter(route, params) {
+        root.refresh()
+    }
 
+    function refresh() {
+        if (!root.mx) {
+            root._songs = []
+            return
+        }
+        root._songs = root.mx.currentSongs || []
+        root._errorMessage = root.mx.errorMessage || ""
+    }
+
+    function playAll() {
+        if (root.mx && typeof root.mx.playMix === "function")
+            root.mx.playMix()
+    }
+
+    function enqueueAll() {
+        if (root.mx && typeof root.mx.enqueueMix === "function")
+            root.mx.enqueueMix()
+    }
+
+    function regenerate() {
+        if (!root.mx || typeof root.mx.regenerate !== "function")
+            return
+        root._loading = true
+        root._errorMessage = ""
+        var result = root.mx.regenerate()
+        root._loading = false
+        if (result && result.ok) {
+            root.refresh()
+        } else {
+            root._errorMessage = (result && result.error) || qsTr("Error al regenerar el mix")
+        }
+    }
+
+    function playTrack(index) {
+        if (root.mx && typeof root.mx.playFromIndex === "function")
+            root.mx.playFromIndex(index)
+    }
 
     ListView {
         Accessible.role: Accessible.List
 
-        Accessible.name: qsTr("Lista")
+        Accessible.name: qsTr("Canciones del mix")
 
         focusPolicy: Qt.StrongFocus
         id: trackList
@@ -52,26 +87,26 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm; width: parent.width
-                    Accessible.role: Accessible.Button
-
 
                 MichiButton {
                     text: qsTr("Volver"); variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.tab: playAllBtn
-                    onClicked: root.backRequested()
+                    onClicked: {
+                        root.backRequested()
+                        if (typeof navigationBridge !== "undefined" && navigationBridge)
+                            navigationBridge.back()
+                    }
                 }
 
                 Text {
-                    text: qsTr("Mix — ") + root._songs.length + " canciones"; color: MichiTheme.colors.textPrimary
+                    text: qsTr("Mix — %1 canciones").arg(root._songs.length); color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
 
             Row {
-                    Accessible.role: Accessible.Button
-
                 spacing: MichiTheme.spacing.sm; width: parent.width
 
                 MichiButton {
@@ -79,11 +114,8 @@ Item {
                     text: qsTr("Reproducir todo"); variant: "primary"
                     activeFocusOnTab: true
                     KeyNavigation.tab: enqueueAllBtn
-                    KeyNavigation.backtab: resultBackBtn
                     enabled: root._songs.length > 0
-                    Accessible.role: Accessible.Button
-
-                    onClicked: root.playAllRequested()
+                    onClicked: root.playAll()
                 }
 
                 MichiButton {
@@ -92,10 +124,8 @@ Item {
                     activeFocusOnTab: true
                     KeyNavigation.tab: saveAsPlaylistBtn
                     KeyNavigation.backtab: playAllBtn
-                    Accessible.role: Accessible.Button
-
                     enabled: root._songs.length > 0
-                    onClicked: root.enqueueAllRequested()
+                    onClicked: root.enqueueAll()
                 }
 
                 MichiButton {
@@ -105,7 +135,7 @@ Item {
                     KeyNavigation.tab: regenerateBtn
                     KeyNavigation.backtab: enqueueAllBtn
                     enabled: root._songs.length > 0
-                    onClicked: root.saveAsPlaylistRequested()
+                    onClicked: saveDialog.open()
                 }
 
                 MichiButton {
@@ -115,7 +145,7 @@ Item {
                     KeyNavigation.tab: trackList
                     KeyNavigation.backtab: saveAsPlaylistBtn
                     enabled: !root._loading
-                    onClicked: root.regenerateRequested()
+                    onClicked: root.regenerate()
                 }
             }
 
@@ -127,7 +157,7 @@ Item {
 
         delegate: Rectangle {
             width: trackList.width; height: 48
-            color: modelData._hovered ? MichiTheme.colors.surfaceHover : "transparent"
+            color: rowHover.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
             radius: MichiTheme.radius.sm
             activeFocusOnTab: true
             KeyNavigation.tab: index < root._songs.length - 1
@@ -137,12 +167,8 @@ Item {
                 ? trackList.itemAtIndex(index - 1)
                 : regenerateBtn
 
-            Keys.onReturnPressed: onPlay()
-            Keys.onSpacePressed: onPlay()
-
-            property bool _hovered: false
-
-            signal onPlay()
+            Keys.onReturnPressed: root.playTrack(index)
+            Keys.onSpacePressed: root.playTrack(index)
 
             Row {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm
@@ -171,18 +197,24 @@ Item {
                     elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
                 }
 
-                Text {
-                    width: 24; text: qsTr("P"); color: MichiTheme.colors.accentBlue
-                    font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter
+                MichiIcon {
+                    width: 24; height: 24
+                    source: "../../../icons/sidebar/play.svg"
+                    color: MichiTheme.colors.accentBlue
+                    anchors.verticalCenter: parent.verticalCenter
+                    accessibleName: qsTr("Reproducir")
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: root.playTrackAtIndex(index)
+                        onClicked: root.playTrack(index)
                     }
                 }
 
-                Text {
-                    width: 24; text: qsTr("+"); color: MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.cardTitleSize; anchors.verticalCenter: parent.verticalCenter
+                MichiIcon {
+                    width: 24; height: 24
+                    source: "../../../icons/actions/plus.svg"
+                    color: MichiTheme.colors.textMuted
+                    anchors.verticalCenter: parent.verticalCenter
+                    accessibleName: qsTr("Agregar a cola")
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                         onClicked: {
@@ -194,12 +226,9 @@ Item {
             }
 
             MouseArea {
+                id: rowHover
                 anchors.fill: parent; hoverEnabled: true
-                onEntered: modelData._hovered = true
-                onExited: modelData._hovered = false
-                onClicked: {
-                    if (modelData._onClick) modelData._onClick()
-                }
+                acceptedButtons: Qt.NoButton
             }
         }
 
@@ -222,7 +251,7 @@ Item {
         title: qsTr("Error")
         message: root._errorMessage
         showRetry: true
-        onRetryRequested: root.regenerateRequested()
+        onRetryRequested: root.regenerate()
     }
 
     StatusBadge {
@@ -232,4 +261,34 @@ Item {
         text: qsTr("Bridge no disponible")
         kind: "disconnected"
     }
+
+    Dialog {
+        id: saveDialog
+        title: qsTr("Guardar mix como playlist")
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        modal: true
+        x: (parent.width - width) / 2; y: (parent.height - height) / 3
+
+        Column {
+            spacing: MichiTheme.spacing.md
+            Text {
+                text: qsTr("Nombre de la playlist:")
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.bodySize
+            }
+            TextField {
+                focusPolicy: Qt.StrongFocus
+                id: saveName; width: 280
+                placeholderText: qsTr("Nombre de la playlist")
+            }
+        }
+
+        onAccepted: {
+            var name = saveName.text.trim()
+            if (name && root.mx && typeof root.mx.saveMixAsPlaylist === "function")
+                root.mx.saveMixAsPlaylist(name)
+        }
+    }
+
+    Component.onCompleted: root.refresh()
 }

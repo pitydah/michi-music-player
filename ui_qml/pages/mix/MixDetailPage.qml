@@ -21,7 +21,23 @@ Item {
 
     signal backRequested()
 
-
+    function routeEnter(route, params) {
+        if (params) {
+            var mixId = params.mix_id !== undefined ? String(params.mix_id) : ""
+            if (mixId !== "" && root.mx && typeof root.mx.loadMix === "function") {
+                var current = root.mx.currentMixId || ""
+                if (current !== mixId) {
+                    var res = root.mx.loadMix(mixId)
+                    if (res && !res.ok) {
+                        root._errorMsg = res.error || qsTr("No se pudo cargar el mix")
+                        root._state = "failed"
+                        return
+                    }
+                }
+            }
+        }
+        root.refresh()
+    }
 
     function refresh() {
         if (root.mx) {
@@ -34,7 +50,7 @@ Item {
 
     function generateMix() {
         if (!root.mx) {
-            root._errorMsg = "Servicio de mix no disponible"
+            root._errorMsg = qsTr("Servicio de mix no disponible")
             root._state = "failed"
             return
         }
@@ -62,7 +78,7 @@ Item {
             root._generating = false
             root._cancelling = false
             root._state = "cancelled"
-            root._errorMsg = "Generación cancelada"
+            root._errorMsg = qsTr("Generación cancelada")
         }
     }
 
@@ -70,8 +86,8 @@ Item {
         if (!root.mx || typeof root.mx.explainCurrentMix !== "function") return
         var explanation = root.mx.explainCurrentMix()
         root._errorMsg = explanation && explanation.ok
-            ? "Mix basado en: " + (explanation.reasons || []).join(", ")
-            : "No disponible"
+            ? qsTr("Mix basado en: ") + (explanation.reasons || []).join(", ")
+            : qsTr("No disponible")
     }
 
     Flickable {
@@ -89,14 +105,18 @@ Item {
                 spacing: MichiTheme.spacing.sm; width: parent.width
 
                 MichiButton {
-                    Accessible.role: Accessible.Button
+                    id: detailBackBtn
 
                     text: qsTr("Volver"); variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.tab: detailPlayBtn
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
-                    onClicked: root.backRequested()
+                    onClicked: {
+                        root.backRequested()
+                        if (typeof navigationBridge !== "undefined" && navigationBridge)
+                            navigationBridge.back()
+                    }
                 }
 
                 Text {
@@ -116,8 +136,6 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm; width: parent.width
-
-                    Accessible.role: Accessible.Button
 
                 MichiButton {
                     id: detailPlayBtn
@@ -147,16 +165,14 @@ Item {
                         if (root.mx && typeof root.mx.enqueueMix !== "undefined")
                             root.mx.enqueueMix()
                     }
-                    Accessible.role: Accessible.Button
-
                 }
 
                 MichiButton {
                     id: detailRegenerateBtn
                     text: {
-                        if (root._state === "generating") return "Generando..."
-                        if (root._state === "cancelling") return "Cancelando..."
-                        return "Regenerar"
+                        if (root._state === "generating") return qsTr("Generando...")
+                        if (root._state === "cancelling") return qsTr("Cancelando...")
+                        return qsTr("Regenerar")
                     }
                     variant: "ghost"
                     activeFocusOnTab: true
@@ -165,7 +181,6 @@ Item {
                     KeyNavigation.backtab: detailEnqueueBtn
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
-                    Accessible.role: Accessible.Button
 
                     onClicked: root.generateMix()
                 }
@@ -178,8 +193,6 @@ Item {
                     KeyNavigation.tab: detailExplainBtn
                     KeyNavigation.backtab: detailRegenerateBtn
                     Keys.onReturnPressed: onClicked()
-                    Accessible.role: Accessible.Button
-
                     Keys.onSpacePressed: onClicked()
                     onClicked: saveDialog.open()
                 }
@@ -191,8 +204,6 @@ Item {
                     enabled: root._songs.length > 0
                     KeyNavigation.tab: detailCancelBtn
                     KeyNavigation.backtab: detailSaveBtn
-                    Accessible.role: Accessible.Button
-
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
                     onClicked: root.explainMix()
@@ -207,29 +218,27 @@ Item {
                     KeyNavigation.backtab: detailExplainBtn
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
-                    onClicked: root.cancelGeneration()
+                    onClicked: confirmCancelDialog.open()
                 }
             }
 
             MixGenerationProgress {
                 visible: root._generating || root._cancelling
-                statusText: root._cancelling ? "Cancelando..." : "Generando mix..."
+                statusText: root._cancelling ? qsTr("Cancelando...") : qsTr("Generando mix...")
                 cancellable: root._generating
-                onCancelRequested: root.cancelGeneration()
+                onCancelRequested: confirmCancelDialog.open()
             }
 
-                Accessible.role: Accessible.List
-
-                Accessible.name: qsTr("Lista")
-
             Text {
-                text: root._songs.length + " canciones"; color: MichiTheme.colors.textSecondary
+                text: qsTr("%1 canciones").arg(root._songs.length); color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.metaSize
                 visible: root._songs.length > 0
             }
 
             ListView {
                 focusPolicy: Qt.StrongFocus
+                Accessible.role: Accessible.List
+                Accessible.name: qsTr("Canciones del mix")
                 id: trackListView
                 width: parent.width; height: root._songs.length > 0
                     ? Math.min(root._songs.length * 44, flick.height - 220)
@@ -285,9 +294,12 @@ Item {
                             elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
                         }
 
-                        Text {
-                            width: 24; text: qsTr("P"); color: MichiTheme.colors.accentBlue
-                            font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter
+                        MichiIcon {
+                            width: 24; height: 24
+                            source: "../../../icons/sidebar/play.svg"
+                            color: MichiTheme.colors.accentBlue
+                            anchors.verticalCenter: parent.verticalCenter
+                            accessibleName: qsTr("Reproducir")
                             MouseArea {
                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                 onClicked: {
@@ -297,9 +309,12 @@ Item {
                             }
                         }
 
-                        Text {
-                            width: 24; text: qsTr("+"); color: MichiTheme.colors.textMuted
-                            font.pixelSize: MichiTheme.typography.cardTitleSize; anchors.verticalCenter: parent.verticalCenter
+                        MichiIcon {
+                            width: 24; height: 24
+                            source: "../../../icons/actions/plus.svg"
+                            color: MichiTheme.colors.textMuted
+                            anchors.verticalCenter: parent.verticalCenter
+                            accessibleName: qsTr("Agregar a cola")
                             MouseArea {
                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                 onClicked: {
@@ -319,22 +334,34 @@ Item {
                 Text {
                     anchors.centerIn: parent; visible: parent.count === 0
                     text: root._state === "cancelled"
-                        ? "Generación cancelada"
-                        : "Mix vacío. Selecciona un tipo de mix para generar contenido."
+                        ? qsTr("Generación cancelada")
+                        : qsTr("Mix vacío. Selecciona un tipo de mix para generar contenido.")
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 }
             }
 
             MixFeedbackControls {
                 width: parent.width; visible: root._songs.length > 0
-                Accessible.role: Accessible.EditableText
-
-                Accessible.name: qsTr("Campo de texto")
-
                 activeFocusOnTab: true
-
             }
         }
+    }
+
+    Dialog {
+        id: confirmCancelDialog
+        title: qsTr("Cancelar generación")
+        standardButtons: Dialog.Yes | Dialog.No
+        modal: true
+        x: (parent.width - width) / 2; y: (parent.height - height) / 3
+
+        Text {
+            text: qsTr("¿Cancelar la generación del mix? Se perderá el progreso actual.")
+            color: MichiTheme.colors.textPrimary
+            font.pixelSize: MichiTheme.typography.bodySize
+            wrapMode: Text.WordWrap; width: 320
+        }
+
+        onAccepted: root.cancelGeneration()
     }
 
     Dialog {

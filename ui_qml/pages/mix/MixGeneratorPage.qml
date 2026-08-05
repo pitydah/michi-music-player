@@ -37,7 +37,7 @@ Item {
     signal backRequested()
     signal showResults(var songs, string mixType)
 
-
+    MichiResponsive { id: responsive; availableWidth: root.width }
 
     function reset() {
         root._state = "IDLE"
@@ -51,17 +51,17 @@ Item {
     function validate() {
         root._state = "VALIDATING"
         root._errorMessage = ""
-        root._statusMessage = "Validando configuración..."
+        root._statusMessage = qsTr("Validando configuración...")
 
         if (!root.mx) {
             root._state = "FAILED"
-            root._errorMessage = "Servicio de mix no disponible"
+            root._errorMessage = qsTr("Servicio de mix no disponible")
             return false
         }
 
         if (root._mixType === "custom" && root._seedValue === "" && root._seedArtist === "") {
             root._state = "FAILED"
-            root._errorMessage = "Selecciona un artista o introduce parámetros para el mix personalizado"
+            root._errorMessage = qsTr("Selecciona un artista o introduce parámetros para el mix personalizado")
             return false
         }
 
@@ -71,7 +71,7 @@ Item {
     function generate() {
         if (!validate()) return
         root._state = "GENERATING"
-        root._statusMessage = "Generando mix..."
+        root._statusMessage = qsTr("Generando mix...")
         root._resultSongs = []
 
         if (root.mx && typeof root.mx.loadMix === "function") {
@@ -94,37 +94,45 @@ Item {
                 if (root.mx.currentSongs && root.mx.currentSongs.length > 0) {
                     root._resultSongs = root.mx.currentSongs
                     root._state = "READY"
-                    root._statusMessage = "Mix generado: " + root._resultSongs.length + " canciones"
+                    root._statusMessage = qsTr("Mix generado: %1 canciones").arg(root._resultSongs.length)
                 } else {
                     root._state = "NO_CANDIDATES"
                     root._statusMessage = ""
                 }
             } else {
                 root._state = "FAILED"
-                root._errorMessage = (result && result.error) || "Error al generar el mix"
+                root._errorMessage = (result && result.error) || qsTr("Error al generar el mix")
             }
         } else {
             root._state = "FAILED"
-            root._errorMessage = "Bridge no disponible"
+            root._errorMessage = qsTr("Bridge no disponible")
         }
     }
 
     function cancelGeneration() {
         if (root._state !== "GENERATING") return
         root._state = "CANCELLING"
-        root._statusMessage = "Cancelando generación..."
+        root._statusMessage = qsTr("Cancelando generación...")
 
         if (root.mx && typeof root.mx.cancelGeneration === "function") {
             root.mx.cancelGeneration()
         }
         root._state = "CANCELLED"
-        root._statusMessage = "Generación cancelada"
+        root._statusMessage = qsTr("Generación cancelada")
         root._resultSongs = []
     }
 
     function retry() {
         root.reset()
         root.generate()
+    }
+
+    function _yearFromText() {
+        return root._yearFrom > 0 ? String(root._yearFrom) : ""
+    }
+
+    function _yearToText() {
+        return root._yearTo > 0 ? String(root._yearTo) : ""
     }
 
     Flickable {
@@ -140,11 +148,14 @@ Item {
                 spacing: MichiTheme.spacing.sm; width: parent.width
 
                 MichiButton {
-                    Accessible.role: Accessible.Button
-
+                    id: generatorBackBtn
                     text: qsTr("Volver"); variant: "ghost"
                     activeFocusOnTab: true
-                    onClicked: root.backRequested()
+                    onClicked: {
+                        root.backRequested()
+                        if (typeof navigationBridge !== "undefined" && navigationBridge)
+                            navigationBridge.back()
+                    }
                     KeyNavigation.tab: mixTypeCombo
                 }
 
@@ -164,22 +175,21 @@ Item {
                 visible: root._state === "FAILED" || root._state === "NO_CANDIDATES"
             }
 
-            Row {
-                spacing: MichiTheme.spacing.lg; width: parent.width
+            Flow {
+                width: parent.width
+                spacing: MichiTheme.spacing.lg
 
                 Column {
-                    spacing: MichiTheme.spacing.md; width: parent.width * 0.48
+                    spacing: MichiTheme.spacing.md
+                    width: responsive.compact ? parent.width : (parent.width - MichiTheme.spacing.lg) / 2
 
                     Column { spacing: MichiTheme.spacing.sm; width: parent.width
                         Text { text: qsTr("Tipo de Mix"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium }
 
-                            Accessible.role: Accessible.ComboBox
-
-                            Accessible.name: qsTr("Cuadro combinado")
-
-                        ComboBox {
-                            focusPolicy: Qt.StrongFocus
+                        MichiComboBox {
                             id: mixTypeCombo; width: parent.width
+                            textRole: "text"
+                            accessibleName: qsTr("Tipo de Mix")
                             model: [
                                 { text: qsTr("Mix diario"), value: "daily_mix" },
                                 { text: qsTr("Favoritos"), value: "favorites" },
@@ -195,93 +205,63 @@ Item {
                                 { text: qsTr("Redescubrimiento"), value: "rediscovery" },
                                 { text: qsTr("Personalizado"), value: "custom" }
                             ]
-                            textRole: "text"
-                            valueRole: "value"
                             currentIndex: 0
-                            onCurrentValueChanged: root._mixType = currentValue
-                            activeFocusOnTab: true
+                            onActivated: function(index) { root._mixType = model[index].value }
                             KeyNavigation.tab: seedField
-                            KeyNavigation.backtab: generatorBackButton
+                            KeyNavigation.backtab: generatorBackBtn
                             enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
                         }
                     }
 
-                    Column { spacing: MichiTheme.spacing.sm; width: parent.width
-                            Accessible.role: Accessible.EditableText
-
-                            Accessible.name: qsTr("Campo de texto")
-
-                        Text { text: qsTr("Seed (opcional)"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium }
-
-                        TextField {
-                            focusPolicy: Qt.StrongFocus
-                            id: seedField; width: parent.width
-                            placeholderText: qsTr('Parámetros en JSON (ej: {"artist":"Genesis"})')
-                            text: root._seedValue
-                            onTextChanged: root._seedValue = text
-                            activeFocusOnTab: true
-                            KeyNavigation.tab: seedArtistField
-                            KeyNavigation.backtab: mixTypeCombo
-                            enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
-                        }
+                    MichiTextField {
+                        id: seedField; width: parent.width
+                        label: qsTr("Seed (opcional)")
+                        placeholderText: qsTr('Parámetros en JSON (ej: {"artist":"Genesis"})')
+                        text: root._seedValue
+                        onTextEdited: function(newText) { root._seedValue = newText }
+                        KeyNavigation.tab: seedArtistField
+                        KeyNavigation.backtab: mixTypeCombo
+                        enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
                     }
 
-                    Column { spacing: MichiTheme.spacing.sm; width: parent.width
-                        Text { text: qsTr("Artista semilla"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium }
-
-                        TextField {
-                            focusPolicy: Qt.StrongFocus
-                            id: seedArtistField; width: parent.width
-                            placeholderText: qsTr("Nombre del artista")
-                            text: root._seedArtist
-                            onTextChanged: root._seedArtist = text
-                            activeFocusOnTab: true
-                            KeyNavigation.tab: exclusionsField
-                            KeyNavigation.backtab: seedField
-                            enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
-                        }
+                    MichiTextField {
+                        id: seedArtistField; width: parent.width
+                        label: qsTr("Artista semilla")
+                        placeholderText: qsTr("Nombre del artista")
+                        text: root._seedArtist
+                        onTextEdited: function(newText) { root._seedArtist = newText }
+                        KeyNavigation.tab: exclusionsField
+                        KeyNavigation.backtab: seedField
+                        enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
                     }
 
-                    Column { spacing: MichiTheme.spacing.sm; width: parent.width
-                        Text { text: qsTr("Exclusiones (separadas por coma)"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium }
-
-                        TextField {
-                            focusPolicy: Qt.StrongFocus
-                            id: exclusionsField; width: parent.width
-                            placeholderText: qsTr("artista1, artista2, género1")
-                            onTextChanged: {
-                                root._exclusions = text.split(",").map(function(x) { return x.trim() }).filter(function(x) { return x !== "" })
-                            }
-                            activeFocusOnTab: true
-                            KeyNavigation.tab: qualityCombo
-                            KeyNavigation.backtab: seedArtistField
-                            enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
+                    MichiTextField {
+                        id: exclusionsField; width: parent.width
+                        label: qsTr("Exclusiones (separadas por coma)")
+                        placeholderText: qsTr("artista1, artista2, género1")
+                        onTextEdited: function(newText) {
+                            root._exclusions = newText.split(",").map(function(x) { return x.trim() }).filter(function(x) { return x !== "" })
                         }
-                                Accessible.role: Accessible.EditableText
-
-                                Accessible.name: qsTr("Selector numérico")
-
-                                activeFocusOnTab: true
-
+                        KeyNavigation.tab: durationSpin
+                        KeyNavigation.backtab: seedArtistField
+                        enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
                     }
                 }
 
                 Column {
-                    spacing: MichiTheme.spacing.md; width: parent.width * 0.48
+                    spacing: MichiTheme.spacing.md
+                    width: responsive.compact ? parent.width : (parent.width - MichiTheme.spacing.lg) / 2
 
                     Row { spacing: MichiTheme.spacing.md; width: parent.width
                         Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
                             Text { text: qsTr("Duración (min)"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
 
-                            SpinBox {
-                                Accessible.role: Accessible.EditableText
-
-                                Accessible.name: qsTr("Selector numérico")
-
-                                focusPolicy: Qt.StrongFocus
-                                id: durationSpin; width: parent.width; from: 5; to: 480; stepSize: 5; value: root._durationMinutes
-                                onValueChanged: root._durationMinutes = value
-                                activeFocusOnTab: true
+                            MichiDoubleSpinBox {
+                                id: durationSpin; width: parent.width
+                                from: 5; to: 480; stepSize: 5; decimals: 0
+                                value: root._durationMinutes
+                                accessibleName: qsTr("Duración en minutos")
+                                onValueModified: root._durationMinutes = Math.round(value)
                                 KeyNavigation.tab: trackLimitSpin
                                 KeyNavigation.backtab: exclusionsField
                                 enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
@@ -291,16 +271,13 @@ Item {
                         Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
                             Text { text: qsTr("Límite pistas"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
 
-                            SpinBox {
-                                focusPolicy: Qt.StrongFocus
-                                    Accessible.role: Accessible.Slider
-
-                                    Accessible.name: qsTr("Deslizador")
-
-                                id: trackLimitSpin; width: parent.width; from: 5; to: 200; value: root._trackLimit
-                                onValueChanged: root._trackLimit = value
-                                activeFocusOnTab: true
-                                KeyNavigation.tab: qualityCombo
+                            MichiDoubleSpinBox {
+                                id: trackLimitSpin; width: parent.width
+                                from: 5; to: 200; stepSize: 1; decimals: 0
+                                value: root._trackLimit
+                                accessibleName: qsTr("Límite de pistas")
+                                onValueModified: root._trackLimit = Math.round(value)
+                                KeyNavigation.tab: varietySlider
                                 KeyNavigation.backtab: durationSpin
                                 enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
                             }
@@ -312,15 +289,12 @@ Item {
                             Text { text: qsTr("Variedad"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
 
                             Row { spacing: MichiTheme.spacing.sm
-                                    Accessible.role: Accessible.Slider
-
-                                    Accessible.name: qsTr("Deslizador")
-
-                                Slider {
-                                    focusPolicy: Qt.StrongFocus
-                                    id: varietySlider; width: 120; from: 0; to: 100; value: root._variety
-                                    onValueChanged: root._variety = value
-                                    activeFocusOnTab: true
+                                MichiSlider {
+                                    id: varietySlider; width: 120
+                                    from: 0; to: 100; stepSize: 1
+                                    value: root._variety
+                                    accessibleName: qsTr("Variedad")
+                                    onMoved: function(value) { root._variety = Math.round(value) }
                                     KeyNavigation.tab: familiaritySlider
                                     KeyNavigation.backtab: trackLimitSpin
                                     enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
@@ -332,17 +306,14 @@ Item {
                         Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
                             Text { text: qsTr("Familiaridad"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
 
-                                Accessible.role: Accessible.ComboBox
-
-                                Accessible.name: qsTr("Cuadro combinado")
-
                             Row { spacing: MichiTheme.spacing.sm
-                                Slider {
-                                    focusPolicy: Qt.StrongFocus
-                                    id: familiaritySlider; width: 120; from: 0; to: 100; value: root._familiarity
-                                    onValueChanged: root._familiarity = value
-                                    activeFocusOnTab: true
-                                    KeyNavigation.tab: avoidRecentCheck
+                                MichiSlider {
+                                    id: familiaritySlider; width: 120
+                                    from: 0; to: 100; stepSize: 1
+                                    value: root._familiarity
+                                    accessibleName: qsTr("Familiaridad")
+                                    onMoved: function(value) { root._familiarity = Math.round(value) }
+                                    KeyNavigation.tab: qualityCombo
                                     KeyNavigation.backtab: varietySlider
                                     enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
                                 }
@@ -355,23 +326,18 @@ Item {
                         Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
                             Text { text: qsTr("Calidad mínima"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
 
-                            ComboBox {
-                                Accessible.role: Accessible.ComboBox
-
-                                Accessible.name: qsTr("Cuadro combinado")
-
-                                focusPolicy: Qt.StrongFocus
+                            MichiComboBox {
                                 id: qualityCombo; width: parent.width
+                                textRole: "text"
+                                accessibleName: qsTr("Calidad mínima")
                                 model: [
                                     { text: qsTr("Cualquiera"), value: "" },
                                     { text: qsTr(">= 192 kbps"), value: "192" },
                                     { text: qsTr(">= 320 kbps"), value: "320" },
                                     { text: qsTr("Lossless (FLAC)"), value: "lossless" }
                                 ]
-                                textRole: "text"; valueRole: "value"
                                 currentIndex: 0
-                                onCurrentValueChanged: root._qualityFilter = currentValue
-                                activeFocusOnTab: true
+                                onActivated: function(index) { root._qualityFilter = model[index].value }
                                 KeyNavigation.tab: genreCombo
                                 KeyNavigation.backtab: familiaritySlider
                                 enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
@@ -381,9 +347,10 @@ Item {
                         Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
                             Text { text: qsTr("Género"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
 
-                            ComboBox {
-                                focusPolicy: Qt.StrongFocus
+                            MichiComboBox {
                                 id: genreCombo; width: parent.width
+                                textRole: "text"
+                                accessibleName: qsTr("Género")
                                 model: [
                                     { text: qsTr("Cualquiera"), value: "" },
                                     { text: qsTr("Rock"), value: "rock" },
@@ -400,15 +367,9 @@ Item {
                                     { text: qsTr("Latina"), value: "latin" },
                                     { text: qsTr("Reggae"), value: "reggae" }
                                 ]
-                                textRole: "text"; valueRole: "value"
                                 currentIndex: 0
-                                onCurrentValueChanged: root._genreFilter = currentValue
-                                Accessible.role: Accessible.EditableText
-
-                                Accessible.name: qsTr("Selector numérico")
-
-                                activeFocusOnTab: true
-                                KeyNavigation.tab: yearFromSpin
+                                onActivated: function(index) { root._genreFilter = model[index].value }
+                                KeyNavigation.tab: yearFromField
                                 KeyNavigation.backtab: qualityCombo
                                 enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
                             }
@@ -417,56 +378,47 @@ Item {
 
                     Row { spacing: MichiTheme.spacing.md; width: parent.width
                         Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
-                        Accessible.role: Accessible.CheckBox
-
-                        Accessible.name: qsTr("Casilla de verificación")
-
-                        Accessible.checked: root.checked
-
-                            Text { text: qsTr("Año desde"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
-
-                            SpinBox {
-                                focusPolicy: Qt.StrongFocus
-                                id: yearFromSpin; width: parent.width; from: 1900; to: 2030; value: root._yearFrom
-                                onValueChanged: root._yearFrom = value
-                                activeFocusOnTab: true
-                                KeyNavigation.tab: yearToSpin
+                            MichiTextField {
+                                id: yearFromField; width: parent.width
+                                label: qsTr("Año desde")
+                                placeholderText: qsTr("1970")
+                                text: root._yearFromText()
+                                onTextEdited: function(newText) {
+                                    var v = parseInt(newText)
+                                    root._yearFrom = isNaN(v) ? 0 : Math.max(0, Math.min(2030, v))
+                                }
+                                KeyNavigation.tab: yearToField
                                 KeyNavigation.backtab: genreCombo
                                 enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
                             }
                         }
 
-                    Accessible.role: Accessible.Button
-
                         Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
-                            Text { text: qsTr("Año hasta"); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
-
-                            SpinBox {
-                                focusPolicy: Qt.StrongFocus
-                                id: yearToSpin; width: parent.width; from: 1900; to: 2030; value: root._yearTo
-                                onValueChanged: root._yearTo = value
-                                activeFocusOnTab: true
+                            MichiTextField {
+                                id: yearToField; width: parent.width
+                                label: qsTr("Año hasta")
+                                placeholderText: qsTr("2026")
+                                text: root._yearToText()
+                                onTextEdited: function(newText) {
+                                    var v = parseInt(newText)
+                                    root._yearTo = isNaN(v) ? 0 : Math.max(0, Math.min(2030, v))
+                                }
                                 KeyNavigation.tab: avoidRecentCheck
-                                KeyNavigation.backtab: yearFromSpin
+                                KeyNavigation.backtab: yearFromField
                                 enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
                             }
                         }
                     }
 
-                    CheckBox {
+                    MichiCheckBox {
                         id: avoidRecentCheck
                         text: qsTr("Evitar escuchadas recientemente")
                         checked: root._avoidRecent
-                        onCheckedChanged: root._avoidRecent = checked
-                        activeFocusOnTab: true
+                        onToggled: function(checked) { root._avoidRecent = checked }
                         KeyNavigation.tab: generateBtn
-                        KeyNavigation.backtab: yearToSpin
+                        KeyNavigation.backtab: yearToField
                         enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
                     }
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
                 }
             }
 
@@ -476,13 +428,13 @@ Item {
                 MichiButton {
                     id: generateBtn
                     text: {
-                        if (root._state === "VALIDATING") return "Validando..."
-                        if (root._state === "GENERATING") return "Generando..."
-                        if (root._state === "CANCELLING") return "Cancelando..."
-                        if (root._state === "CANCELLED") return "Regenerar"
-                        if (root._state === "NO_CANDIDATES") return "Reintentar"
-                        if (root._state === "FAILED") return "Reintentar"
-                        return "Generar Mix"
+                        if (root._state === "VALIDATING") return qsTr("Validando...")
+                        if (root._state === "GENERATING") return qsTr("Generando...")
+                        if (root._state === "CANCELLING") return qsTr("Cancelando...")
+                        if (root._state === "CANCELLED") return qsTr("Regenerar")
+                        if (root._state === "NO_CANDIDATES") return qsTr("Reintentar")
+                        if (root._state === "FAILED") return qsTr("Reintentar")
+                        return qsTr("Generar Mix")
                     }
                     variant: root._state === "FAILED" ? "danger" : "primary"
                     activeFocusOnTab: true
@@ -532,13 +484,13 @@ Item {
                             from: 0; to: root._progressTotal > 0 ? root._progressTotal : 100
                             value: root._progressCurrent
                             indeterminate: root._state === "GENERATING" && root._progressTotal === 0
-                            accessibleName: "Progreso de generación"
+                            accessibleName: qsTr("Progreso de generación")
                         }
 
                         Text {
                             text: root._progressTotal > 0
-                                ? root._progressCurrent + " / " + root._progressTotal + " canciones"
-                                : "Buscando canciones..."
+                                ? qsTr("%1 / %2 canciones").arg(root._progressCurrent).arg(root._progressTotal)
+                                : qsTr("Buscando canciones...")
                             color: MichiTheme.colors.textSecondary
                             font.pixelSize: MichiTheme.typography.metaSize
                         }
@@ -566,10 +518,6 @@ Item {
                             color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize
                             wrapMode: Text.WordWrap; width: parent.width
                         }
-                    Accessible.role: Accessible.List
-
-                    Accessible.name: qsTr("Lista")
-
                     }
                 }
             }
@@ -602,12 +550,14 @@ Item {
                 visible: root._state === "READY"
 
                 SectionHeader {
-                    text: qsTr("Mix generado — ") + root._resultSongs.length + " canciones"
+                    text: qsTr("Mix generado — %1 canciones").arg(root._resultSongs.length)
                     width: parent.width
                 }
 
                 ListView {
                     focusPolicy: Qt.StrongFocus
+                    Accessible.role: Accessible.List
+                    Accessible.name: qsTr("Canciones generadas")
                     id: resultList
                     width: parent.width; height: Math.min(360, root._resultSongs.length * 48)
                     model: root._resultSongs; clip: true; spacing: 2
@@ -615,7 +565,7 @@ Item {
 
                     delegate: Rectangle {
                         width: parent.width; height: 44
-                        color: modelData._hovered ? MichiTheme.colors.surfaceHover : "transparent"
+                        color: resultRowHover.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
                         radius: MichiTheme.radius.sm
                         activeFocusOnTab: true
                         KeyNavigation.tab: index < root._resultSongs.length - 1
@@ -625,12 +575,14 @@ Item {
                             ? resultList.itemAtIndex(index - 1)
                             : cancelBtn
 
-                        Keys.onReturnPressed: onClick()
-                        Keys.onSpacePressed: onClick()
-
-                        property bool _hovered: false
-
-                        signal onClick()
+                        Keys.onReturnPressed: {
+                            if (root.mx && typeof root.mx.playFromIndex === "function")
+                                root.mx.playFromIndex(index)
+                        }
+                        Keys.onSpacePressed: {
+                            if (root.mx && typeof root.mx.playFromIndex === "function")
+                                root.mx.playFromIndex(index)
+                        }
 
                         Row {
                             anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm
@@ -653,15 +605,14 @@ Item {
                                 elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
                             }
 
-                            Text {
-                                width: 24; text: qsTr("P"); color: MichiTheme.colors.accentBlue
-                                font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter
+                            MichiIcon {
+                                width: 24; height: 24
+                                source: "../../../icons/sidebar/play.svg"
+                                color: MichiTheme.colors.accentBlue
+                                anchors.verticalCenter: parent.verticalCenter
+                                accessibleName: qsTr("Reproducir")
                                 MouseArea {
                                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
                                     onClicked: {
                                         if (root.mx && typeof root.mx.playFromIndex === "function")
                                             root.mx.playFromIndex(index)
@@ -669,13 +620,12 @@ Item {
                                 }
                             }
 
-                        Accessible.role: Accessible.Button
-
-                        activeFocusOnTab: true
-
-                            Text {
-                                width: 24; text: qsTr("+"); color: MichiTheme.colors.textMuted
-                                font.pixelSize: MichiTheme.typography.cardTitleSize; anchors.verticalCenter: parent.verticalCenter
+                            MichiIcon {
+                                width: 24; height: 24
+                                source: "../../../icons/actions/plus.svg"
+                                color: MichiTheme.colors.textMuted
+                                anchors.verticalCenter: parent.verticalCenter
+                                accessibleName: qsTr("Agregar a cola")
                                 MouseArea {
                                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: {
@@ -687,9 +637,9 @@ Item {
                         }
 
                         MouseArea {
+                            id: resultRowHover
                             anchors.fill: parent; hoverEnabled: true
-                            onEntered: modelData._hovered = true
-                            onExited: modelData._hovered = false
+                            acceptedButtons: Qt.NoButton
                         }
                     }
 
@@ -710,7 +660,11 @@ Item {
                         activeFocusOnTab: true
                         KeyNavigation.tab: regenerateFromResultBtn
                         KeyNavigation.backtab: resultList
-                        onClicked: root.showResults(root._resultSongs, root._mixType)
+                        onClicked: {
+                            root.showResults(root._resultSongs, root._mixType)
+                            if (typeof navigationBridge !== "undefined" && navigationBridge)
+                                navigationBridge.navigate("mix.result")
+                        }
                     }
 
                     MichiButton {

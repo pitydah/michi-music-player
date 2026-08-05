@@ -67,6 +67,8 @@ class ApplicationBootstrap:
         self._degraded_services: dict[str, str] = {}
         # Demo fixtures loaded only under --presentation-preview (empty otherwise).
         self._presentation_fixtures: dict[str, Any] = {}
+        # Read-only demo data adapter — instantiated only under the preview flag.
+        self._presentation_provider: Any | None = None
 
     def _validate_required(self) -> list[str]:
         return self.container.validate_required_present()
@@ -316,12 +318,14 @@ class ApplicationBootstrap:
             DEMO_PLAYLISTS,
             DEMO_TRACKS,
         )
+        from tools.presentation_preview.provider import PresentationPreviewProvider
         self._presentation_fixtures = {
             "albums": list(DEMO_ALBUMS),
             "artists": list(DEMO_ARTISTS),
             "playlists": list(DEMO_PLAYLISTS),
             "tracks": list(DEMO_TRACKS),
         }
+        self._presentation_provider = PresentationPreviewProvider(self._presentation_fixtures)
         logger.info(
             "Bootstrap: presentation preview active — demo fixtures loaded "
             "(%d albums, %d artists, %d playlists, %d tracks)",
