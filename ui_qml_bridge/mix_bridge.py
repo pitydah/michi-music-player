@@ -1,7 +1,6 @@
 """MixBridge adapts generated mixes to canonical queue operations."""
 from __future__ import annotations
 
-import contextlib
 import json
 import logging
 from enum import Enum
@@ -307,9 +306,8 @@ class MixBridge(QObject):
     def cancelGeneration(self) -> dict[str, Any]:
         if self._state == MixState.GENERATING:
             self._set_state(MixState.CANCELLING)
-        if self._job_svc and hasattr(self._job_svc, 'cancel_all'):
-            with contextlib.suppress(Exception):
-                self._job_svc.cancel_all(owner="mix_bridge")
+        if self._job_svc is not None:
+            self._job_svc.cancel_all()
         gen = self._generation
         self._generation += 1
         self._current_songs = []

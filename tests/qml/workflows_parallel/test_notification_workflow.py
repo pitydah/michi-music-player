@@ -26,7 +26,11 @@ def worker_manager():
 
 @pytest.fixture
 def job_bridge(worker_manager):
-    return JobBridge(worker_manager=worker_manager)
+    from core.jobs.job_service import DurableJobService
+
+    svc = DurableJobService(db_path=":memory:")
+    svc.register_handler("library_scan", lambda job, ctx: {"ok": True})
+    return JobBridge(job_service=svc)
 
 
 @pytest.fixture
@@ -76,8 +80,9 @@ class TestNotificationWorkflow:
 
     def test_cancel_job_transitions_state(self, bridge, job_bridge):
         bridge.showProgress("Trabajo largo", "long_1", 50)
-        job_bridge._add_job("library_scan", "Trabajo largo")
-        result = bridge.cancelJobById("1")
+        job = job_bridge._add_job("library_scan", "Trabajo largo")
+        assert job.get("ok") is True
+        result = bridge.cancelJobById(job["job_id"])
         assert result["ok"] is True
 
     def test_dismiss_progress_notification(self, bridge):
@@ -96,8 +101,8 @@ class TestNotificationWorkflow:
         bridge.updateProgress("sync_1", 1.0, "100%")
         assert bridge.currentNotification["progress"] >= 1
 
-        job_bridge._add_job("library_scan", "Sincronizando")
-        cancel_result = bridge.cancelJobById("1")
+        job = job_bridge._add_job("library_scan", "Sincronizando")
+        cancel_result = bridge.cancelJobById(job["job_id"])
         assert cancel_result["ok"] is True
 
         bridge.dismiss()
@@ -131,7 +136,7 @@ class TestNotificationWorkflow:
         assert bridge.currentNotification["persistent"] is True
 
     def test_cancel_job_uses_job_bridge(self, bridge, job_bridge):
-        job_bridge._add_job("library_scan", "Progreso")
-        bridge.showProgress("Progreso", "1", 50)
-        result = bridge.cancelJobById("1")
+        job = job_bridge._add_job("library_scan", "Progreso")
+        bridge.showProgress("Progreso", job["job_id"], 50)
+        result = bridge.cancelJobById(job["job_id"])
         assert result["ok"] is True

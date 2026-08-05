@@ -146,17 +146,14 @@ class HistoryBridge(QObject):
                       device: str = "", search: str = ""):
         if not self._hqs:
             return {"ok": False, "error": "NO_SERVICE"}
-        if self._job_bridge and hasattr(self._job_bridge, '_add_job'):
-            def _export():
-                result = self._hqs.export_history(
-                    filepath, fmt, artist=artist, album=album,
-                    device=device, search=search,
-                )
-                if not result.get("ok"):
-                    raise RuntimeError(result.get("message", "Export failed"))
-                return result
-            self._job_bridge._add_job("history_export", f"Exportando historial a {fmt}", _export)
-            return {"ok": True, "async": True}
+        if self._job_bridge and hasattr(self._job_bridge, 'exportHistoryAsync'):
+            return self._job_bridge.exportHistoryAsync(
+                filepath, fmt,
+                filters={
+                    "artist": artist, "album": album,
+                    "device": device, "search": search,
+                },
+            )
         return self._hqs.export_history(filepath, fmt, artist=artist, album=album,
                                         device=device, search=search)
 

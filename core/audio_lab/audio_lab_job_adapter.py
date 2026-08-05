@@ -1,5 +1,10 @@
-"""Adapt Audio Lab operations to canonical WorkerManager jobs."""
+"""Adapt Audio Lab operations to durable jobs (DurableJobService).
 
+When a ``job_service`` is injected (production path), every ``submit_*``
+creates a durable job on it and the adapter keeps no execution state of its
+own. The in-memory WorkerManager path is kept only as backward compatibility
+for tests and callers constructed without a durable service.
+"""
 from __future__ import annotations
 
 import logging
@@ -18,6 +23,14 @@ from core.worker_manager import TaskContext, TaskHandle, WorkerManager
 
 logger = logging.getLogger("michi.audio_lab.job_adapter")
 
+_DURABLE_TITLES = {
+    AudioLabOperation.PROBE.value: "Probe de audio",
+    AudioLabOperation.ANALYSIS.value: "Análisis técnico",
+    AudioLabOperation.REPLAYGAIN.value: "ReplayGain",
+    AudioLabOperation.INTEGRITY.value: "Verificación de integridad",
+    AudioLabOperation.COMPARISON.value: "Comparación A/B",
+}
+
 
 class AudioLabJobAdapter(QObject):
     jobCreated = Signal(str, str)
@@ -27,12 +40,14 @@ class AudioLabJobAdapter(QObject):
     jobCancelled = Signal(str)
 
     def __init__(self, db=None, wm: WorkerManager | None = None,
+                 job_service=None,
                  probe=None, analysis=None, conversion=None,
                  normalization=None, replaygain=None,
                  integrity=None, comparison=None, parent=None):
         super().__init__(parent)
         self._db = db
         self._wm = wm
+        self._job_svc = job_service
         self._probe = probe
         self._analysis = analysis
         self._conversion = conversion
@@ -117,6 +132,8 @@ class AudioLabJobAdapter(QObject):
         )
 
     def cancel(self, job_id: str) -> bool:
+        if self._job_svc is not None:
+            return self._job_svc.cancel_job(job_id)
         job = self._jobs.get(job_id)
         if not job or not self._wm:
             return False
@@ -126,12 +143,21 @@ class AudioLabJobAdapter(QObject):
         return self._wm.cancel_task(handle.task_id)
 
     def list(self, filter_status: str = "") -> list[dict[str, Any]]:
-        jobs = [self._to_public(job) for job in self._jobs.values()]
+        if self._job_svc is not None:
+            jobs = [
+                self._durable_to_public(d)
+                for d in self._job_svc.list_jobs(owner="audio_lab", limit=200)
+            ]
+        else:
+            jobs = [self._to_public(job) for job in self._jobs.values()]
         if filter_status:
             return [job for job in jobs if job["status"] == filter_status]
         return jobs
 
     def get(self, job_id: str) -> dict[str, Any] | None:
+        if self._job_svc is not None:
+            job = self._job_svc.get_job(job_id)
+            return self._durable_to_public(job) if job else None
         job = self._jobs.get(job_id)
         return self._to_public(job) if job else None
 
@@ -144,6 +170,17 @@ class AudioLabJobAdapter(QObject):
         service: Any,
         operation_fn: Callable[[], Any],
     ) -> str:
+        if self._job_svc is not None:
+            job_id = self._job_svc.create_job(
+                operation.value,
+                owner="audio_lab",
+                payload={"request": dict(request), "title": title},
+                cancellable=True,
+                pausable=False,
+                retryable=False,
+            )
+            self._job_svc.start_job(job_id)
+            return job_id
         job_id = self._next_id(prefix)
         task_id = f"alab_{job_id}"
         job = {
@@ -270,3 +307,48 @@ class AudioLabJobAdapter(QObject):
             "error": job["error"],
             "error_code": job["error_code"],
         }
+
+    @classmethod
+    def _durable_to_public(cls, job) -> dict[str, Any]:
+        def _g(key: str, default=None):
+            if isinstance(job, dict):
+                return job.get(key, default)
+            return getattr(job, key, default)
+
+        payload = _g("payload") or {}
+        request = payload.get("request") or {}
+        title = payload.get("title") or _DURABLE_TITLES.get(
+            _g("type", ""), _g("type", "Audio Lab")
+        )
+        started_at = _g("startedAt") or ""
+        finished_at = _g("finishedAt") or ""
+        started_ts = cls._ts_to_epoch(started_at)
+        finished_ts = cls._ts_to_epoch(finished_at) if finished_at else 0.0
+        job_id = _g("id", "")
+        errors = _g("errors") or []
+        return {
+            "id": job_id,
+            "type": _g("type", ""),
+            "title": title,
+            "status": str(_g("state", "")).lower(),
+            "progress": _g("progress", 0.0),
+            "message": _g("message", ""),
+            "request": dict(request),
+            "created_at": started_ts,
+            "started_at": started_ts,
+            "finished_at": finished_ts,
+            "task_id": f"job_{job_id}",
+            "result": dict(_g("result") or {}),
+            "error": errors[0] if errors else "",
+            "error_code": errors[0] if errors else "",
+        }
+
+    @staticmethod
+    def _ts_to_epoch(value: str) -> float:
+        if not value:
+            return 0.0
+        try:
+            import time as _time
+            return _time.mktime(_time.strptime(value, "%Y-%m-%dT%H:%M:%S"))
+        except (ValueError, TypeError, OSError):
+            return 0.0

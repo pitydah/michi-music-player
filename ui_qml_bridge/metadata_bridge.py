@@ -442,16 +442,27 @@ class MetadataBridge(QObject):
         self._set_status("QUEUED")
 
         if self._js:
-            job = self._js.create(kind="metadata_batch", meta={
-                "count": len(filepaths), "field": key,
-            })
-            job_id = job.job_id if job else None
-        else:
-            job_id = None
+            job_id = self._js.create_job(
+                "metadata_batch",
+                owner="metadata_bridge",
+                payload={"filepaths": list(filepaths), "field": key,
+                         "value": str(value)},
+                total=len(filepaths),
+                cancellable=True,
+                pausable=False,
+                retryable=True,
+            )
+            if self._js.start_job(job_id):
+                self._set_status("RUNNING")
+                self.dataChanged.emit()
+                return {"ok": True, "async": True, "job_id": job_id,
+                        "count": len(filepaths), "applied": 0, "errors": 0,
+                        "details": [], "cancelled": False}
+            return {"ok": False, "error": "JOB_START_FAILED", "job_id": job_id}
 
         self._set_status("APPLYING")
         results = {"ok": True, "applied": 0, "errors": 0, "details": [],
-                    "cancelled": False, "job_id": job_id}
+                    "cancelled": False, "job_id": None}
 
         from metadata.tag_reader import read_tags as rt
         from ui_qml_bridge.metadata_tag_adapter import (
@@ -481,16 +492,6 @@ class MetadataBridge(QObject):
                 results["errors"] += 1
                 results["details"].append({"filepath": fp, "error": str(e)})
 
-        if self._js and job_id:
-            job = self._js.get(job_id)
-            if job:
-                if results["errors"] == 0:
-                    self._js.update(job_id, status="completed", progress=1.0)
-                elif results["applied"] > 0:
-                    self._js.update(job_id, status="failed", progress=float(results["applied"]) / len(filepaths))
-                else:
-                    self._js.update(job_id, status="failed", progress=0)
-
         self._set_status("SUCCEEDED" if results["errors"] == 0 else "PARTIAL" if results["applied"] > 0 else "FAILED")
         self.batchProgress.emit(results["applied"], len(filepaths))
         self.dataChanged.emit()
@@ -499,8 +500,9 @@ class MetadataBridge(QObject):
     @Slot(result=dict)
     def cancelBatch(self):
         self._set_status("CANCELLED")
-        if self._js and hasattr(self._js, 'cancel_all'):
-            self._js.cancel_all(owner="metadata_bridge")
+        if self._js:
+            for d in self._js.list_jobs(job_type="metadata_batch", limit=100):
+                self._js.cancel_job(d["id"])
         return {"ok": True}
 
     @Slot(result=dict)

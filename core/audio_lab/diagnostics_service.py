@@ -731,16 +731,9 @@ def analyse_directory_job(folder_path: str, job_manager=None,
                           include_spectral: bool = False) -> str:
     """Analyse a directory using JobManager for persistence.
 
-    Creates a job for each file in the directory and processes them
-    through the JobManager queue.
-
-    Args:
-        folder_path: Directory to analyse.
-        job_manager: A JobManager instance. If None, runs synchronously.
-        include_spectral: If True, run spectral analysis on WAV/FLAC files.
-
-    Returns:
-        The main job ID if job_manager was provided, or empty string.
+    NOTE: JobManager is LEGACY (ADR-004 — migrate to DurableJobService).
+    This route has no production callers; kept for compatibility. New
+    analysis jobs must go through the durable job service.
     """
     if not os.path.isdir(folder_path):
         return ""

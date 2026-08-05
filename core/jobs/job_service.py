@@ -7,7 +7,16 @@ Contract: id, type, owner, state, createdAt, startedAt, finishedAt,
 States: QUEUED, RUNNING, PAUSING, PAUSED, CANCELLING, CANCELLED,
         SUCCEEDED, PARTIAL_SUCCESS, FAILED, INTERRUPTED.
 
-On restart, RUNNING -> INTERRUPTED.
+Execution: when a WorkerManager is injected the handler runs on its
+thread pool (real async execution, cooperative cancellation via the
+TaskContext passed to the handler); without one the handler runs
+inline on the caller thread (backward-compatible synchronous path).
+
+Handler contract: ``handler(job, ctx)`` where ``ctx`` exposes
+``raise_if_cancelled()``, ``report_progress(percent, message)`` and
+``progress_cb(current, total, message)`` (legacy alias).
+
+On restart, RUNNING -> INTERRUPTED and QUEUED jobs are re-enqueued.
 """
 from __future__ import annotations
 
@@ -21,6 +30,8 @@ from enum import Enum
 from typing import Any, Callable
 
 from PySide6.QtCore import QObject, Signal
+
+from core.worker_manager import CancellationToken, TaskContext
 
 logger = logging.getLogger("michi.jobs.durable")
 
@@ -67,6 +78,31 @@ class DurableJob:
     processId: str = ""
 
 
+class _SyncContext:
+    """TaskContext-compatible object for the synchronous (no-WM) path.
+
+    Exposes the same cooperative-cancellation and progress surface that
+    handlers receive in the asynchronous path, backed by a thread-local
+    CancellationToken requested by ``cancel_job``.
+    """
+
+    def __init__(self, service: "DurableJobService", job_id: str):
+        self.job_id = job_id
+        self.task_id = f"job_{job_id}"
+        self.owner = "jobs"
+        self.token = CancellationToken()
+        self._service = service
+
+    def raise_if_cancelled(self):
+        self.token.raise_if_cancelled()
+
+    def report_progress(self, percent: float, message: str = ""):
+        self._service._apply_progress(self.job_id, percent, message or "")
+
+    def progress_cb(self, current: int, total: int, message: str = ""):
+        self._service.update_progress(self.job_id, current, total, message or "")
+
+
 class DurableJobService(QObject):
     jobCreated = Signal(str)
     jobStarted = Signal(str)
@@ -78,13 +114,16 @@ class DurableJobService(QObject):
     jobFailed = Signal(str, str)
     queueChanged = Signal(int)
 
-    def __init__(self, db_path: str | None = None, parent=None):
+    def __init__(self, db_path: str | None = None, worker_manager=None,
+                 parent=None):
         super().__init__(parent)
         self._jobs: dict[str, DurableJob] = {}
         self._handlers: dict[str, Callable] = {}
         self._max_concurrent = 4
         self._active: set[str] = set()
+        self._tokens: dict[str, CancellationToken] = {}
         self._db_path = db_path or self._default_db_path()
+        self._wm = worker_manager
         self._restore_running_jobs()
 
     def _default_db_path(self) -> str:
@@ -105,6 +144,10 @@ class DurableJobService(QObject):
             job.message = "Interrumpido por reinicio"
             self._save_job(job)
             logger.info("Job %s marked INTERRUPTED on restart", job.id)
+        queued = self._load_by_state(JobState.QUEUED)
+        for job in queued:
+            self._jobs[job.id] = job
+            logger.info("Job %s re-enqueued on restart", job.id)
 
     def register_handler(self, job_type: str, handler: Callable):
         self._handlers[job_type] = handler
@@ -149,45 +192,97 @@ class DurableJobService(QObject):
         self._save_job(job)
         self.jobStarted.emit(job_id)
         self.queueChanged.emit(self._queue_count())
-        self._execute_handler(job, handler)
+        if self._wm is not None:
+            self._submit_async(job, handler)
+        else:
+            self._execute_handler(job, handler)
         return True
 
-    def _execute_handler(self, job: DurableJob, handler: Callable):
-        def progress_cb(current: int, total: int, message: str = ""):
-            job.current = current
-            job.progress = current / total if total > 0 else 0.0
-            job.message = message
-            self._save_job(job)
-            self.jobProgress.emit(job.id, job.progress)
+    # ── Async execution (WorkerManager) ──
 
+    def _submit_async(self, job: DurableJob, handler: Callable):
+        task_id = f"job_{job.id}"
+
+        def run(ctx: TaskContext):
+            ctx.job_id = job.id
+            ctx.token.raise_if_cancelled()
+            return handler(job, ctx)
+
+        def on_done(result):
+            if self._jobs.get(job.id) is not job:
+                return
+            self._active.discard(job.id)
+            self._finalize_handler_result(job, result)
+            self.queueChanged.emit(self._queue_count())
+
+        def on_error(code: str, message: str):
+            if self._jobs.get(job.id) is not job:
+                return
+            self._active.discard(job.id)
+            self._fail_job(job.id, message or code)
+
+        def on_cancelled():
+            if self._jobs.get(job.id) is not job:
+                return
+            self._active.discard(job.id)
+            current = self._jobs.get(job.id)
+            if current and current.state == JobState.CANCELLING:
+                current.state = JobState.CANCELLED
+                current.finishedAt = self._now()
+                current.message = "Cancelado por el usuario"
+                self._save_job(current)
+                self.jobCancelled.emit(current.id)
+            self.queueChanged.emit(self._queue_count())
+
+        def on_progress(percent: float, message: str):
+            self._apply_progress(job.id, float(percent), message or "")
+
+        self._wm.run_task(
+            task_id, run,
+            owner=job.owner or "jobs",
+            cancellable=job.cancellable,
+            pass_context=True,
+            on_done=on_done,
+            on_error=on_error,
+            on_cancelled=on_cancelled,
+            on_progress=on_progress,
+        )
+
+    def _execute_handler(self, job: DurableJob, handler: Callable):
+        ctx = _SyncContext(self, job.id)
+        self._tokens[job.id] = ctx.token
         try:
-            result = handler(job, progress_cb)
-            if job.state == JobState.CANCELLING:
-                job.state = JobState.CANCELLED
-                job.finishedAt = self._now()
-                job.message = "Cancelado por el usuario"
-                self._save_job(job)
-                self.jobCancelled.emit(job.id)
-            elif isinstance(result, dict) and result.get("partial"):
-                job.state = JobState.PARTIAL_SUCCESS
-                job.result = result
-                job.finishedAt = self._now()
-                self._save_job(job)
-                self.jobCompleted.emit(job.id, result)
-            else:
-                job.state = JobState.SUCCEEDED
-                job.progress = 1.0
-                job.current = job.total
-                job.result = result if isinstance(result, dict) else {}
-                job.finishedAt = self._now()
-                self._save_job(job)
-                self.jobCompleted.emit(job.id, job.result)
+            result = handler(job, ctx)
+            self._finalize_handler_result(job, result)
         except Exception as e:
             logger.exception("Job %s handler failed", job.id)
             self._fail_job(job.id, str(e))
         finally:
+            self._tokens.pop(job.id, None)
             self._active.discard(job.id)
             self.queueChanged.emit(self._queue_count())
+
+    def _finalize_handler_result(self, job: DurableJob, result):
+        if job.state == JobState.CANCELLING:
+            job.state = JobState.CANCELLED
+            job.finishedAt = self._now()
+            job.message = "Cancelado por el usuario"
+            self._save_job(job)
+            self.jobCancelled.emit(job.id)
+        elif isinstance(result, dict) and result.get("partial"):
+            job.state = JobState.PARTIAL_SUCCESS
+            job.result = result
+            job.finishedAt = self._now()
+            self._save_job(job)
+            self.jobCompleted.emit(job.id, result)
+        else:
+            job.state = JobState.SUCCEEDED
+            job.progress = 1.0
+            job.current = job.total
+            job.result = result if isinstance(result, dict) else {}
+            job.finishedAt = self._now()
+            self._save_job(job)
+            self.jobCompleted.emit(job.id, job.result)
 
     def pause_job(self, job_id: str) -> bool:
         job = self._jobs.get(job_id)
@@ -216,10 +311,16 @@ class DurableJobService(QObject):
         job = self._jobs.get(job_id)
         if not job or job.state in TERMINAL_STATES:
             return False
-        if job.state in (JobState.RUNNING,):
+        if job.state == JobState.RUNNING:
             job.state = JobState.CANCELLING
             self._save_job(job)
             self.jobCancelled.emit(job_id)
+            if self._wm is not None and job.cancellable:
+                self._wm.cancel_task(f"job_{job_id}")
+            elif self._wm is None:
+                token = self._tokens.get(job_id)
+                if token is not None:
+                    token.request_cancel()
         else:
             job.state = JobState.CANCELLED
             job.finishedAt = self._now()
@@ -232,7 +333,9 @@ class DurableJobService(QObject):
 
     def retry_job(self, job_id: str) -> bool:
         job = self._jobs.get(job_id)
-        if not job or not job.retryable or job.state not in (JobState.FAILED, JobState.INTERRUPTED):
+        if not job or not job.retryable or job.state not in (
+            JobState.FAILED, JobState.INTERRUPTED, JobState.CANCELLED
+        ):
             return False
         job.state = JobState.QUEUED
         job.progress = 0.0
@@ -255,6 +358,19 @@ class DurableJobService(QObject):
         job.message = message
         self._save_job(job)
         self.jobProgress.emit(job_id, job.progress)
+
+    def _apply_progress(self, job_id: str, fraction: float, message: str = ""):
+        job = self._jobs.get(job_id)
+        if not job:
+            return
+        fraction = max(0.0, min(1.0, float(fraction)))
+        if job.total > 0:
+            self.update_progress(job_id, int(fraction * job.total), job.total, message)
+        else:
+            job.progress = max(job.progress, fraction)
+            job.message = message
+            self._save_job(job)
+            self.jobProgress.emit(job_id, job.progress)
 
     def add_warning(self, job_id: str, warning: str):
         job = self._jobs.get(job_id)
@@ -303,6 +419,16 @@ class DurableJobService(QObject):
         for job_id in list(self._jobs.keys()):
             self.cancel_job(job_id)
 
+    def delete_job(self, job_id: str) -> bool:
+        """Remove a terminal job from memory and from the durable store."""
+        job = self._jobs.get(job_id)
+        if not job or job.state not in TERMINAL_STATES:
+            return False
+        del self._jobs[job_id]
+        self._delete_persisted_job(job_id)
+        self.queueChanged.emit(self._queue_count())
+        return True
+
     def _fail_job(self, job_id: str, error: str):
         job = self._jobs.get(job_id)
         if not job:
@@ -320,11 +446,22 @@ class DurableJobService(QObject):
         self._jobs[job.id] = job
         self._persist_job(job)
 
-    def _persist_job(self, job: DurableJob):
+    def _connect(self):
         import sqlite3
-        os.makedirs(os.path.dirname(self._db_path), exist_ok=True)
+        conn = sqlite3.connect(self._db_path)
+        conn.execute("PRAGMA journal_mode=WAL")
+        return conn
+
+    @staticmethod
+    def _ensure_dir(db_path: str):
+        directory = os.path.dirname(db_path)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
+
+    def _persist_job(self, job: DurableJob):
         try:
-            conn = sqlite3.connect(self._db_path)
+            self._ensure_dir(self._db_path)
+            conn = self._connect()
             conn.execute(
                 """CREATE TABLE IF NOT EXISTS durable_jobs (
                     id TEXT PRIMARY KEY, type TEXT, owner TEXT, state TEXT,
@@ -355,12 +492,21 @@ class DurableJobService(QObject):
         except Exception as e:
             logger.error("Failed to persist job %s: %s", job.id, e)
 
+    def _delete_persisted_job(self, job_id: str):
+        try:
+            self._ensure_dir(self._db_path)
+            conn = self._connect()
+            conn.execute("DELETE FROM durable_jobs WHERE id=?", (job_id,))
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            logger.error("Failed to delete job %s: %s", job_id, e)
+
     def _load_by_state(self, state: JobState) -> list[DurableJob]:
-        import sqlite3
         jobs = []
         try:
-            os.makedirs(os.path.dirname(self._db_path), exist_ok=True)
-            conn = sqlite3.connect(self._db_path)
+            self._ensure_dir(self._db_path)
+            conn = self._connect()
             conn.execute(
                 """CREATE TABLE IF NOT EXISTS durable_jobs (
                     id TEXT PRIMARY KEY, type TEXT, owner TEXT, state TEXT,
@@ -425,6 +571,6 @@ class DurableJobService(QObject):
                 try:
                     ft = time.mktime(time.strptime(job.finishedAt, "%Y-%m-%dT%H:%M:%S"))
                     if ft < cutoff:
-                        del self._jobs[job_id]
+                        self.delete_job(job_id)
                 except (ValueError, OSError):
                     pass

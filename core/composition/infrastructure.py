@@ -52,7 +52,10 @@ def build(container: ServiceContainer) -> None:
     container.register("worker_manager", wm)
     container.register("query_executor", qe)
 
-    container.register("job_service", JobService())
+    job_service = JobService(worker_manager=wm)
+    container.register("job_service", job_service)
+    from core.jobs.handlers import register_production_job_handlers
+    register_production_job_handlers(job_service, container)
     container.register("confirmation_service", ConfirmationService())
 
     migrate_all()

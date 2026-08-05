@@ -244,6 +244,7 @@ class BridgeFactory(QObject):
         if "job_bridge" not in self._bridges:
             from ui_qml_bridge.job_bridge import JobBridge
             self._bridges["job_bridge"] = JobBridge(
+                job_service=self._get("job_service"),
                 worker_manager=self._get("worker_manager"),
                 db=self._get("database"),
             )
@@ -782,6 +783,13 @@ class BridgeFactory(QObject):
             br = self._bridges.get(name)
             if br is not None and nb is not None and hasattr(br, "set_notification_bridge"):
                 br.set_notification_bridge(nb)
+
+        # JobBridge needs LibraryBridge (created after job_bridge) to refresh
+        # the library view when a scan job completes.
+        jb = self._bridges.get("job_bridge")
+        lib = self._bridges.get("library")
+        if jb is not None and lib is not None and hasattr(jb, "set_library_bridge"):
+            jb.set_library_bridge(lib)
 
     def _validate_bridge_identities(self):
         keys = set(self._bridges.keys())

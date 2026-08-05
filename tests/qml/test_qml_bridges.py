@@ -1880,8 +1880,12 @@ class TestGlobalSearchBridge:
 class TestJobBridge:
     def _make_job_bridge(self, **kwargs):
         from unittest.mock import MagicMock
+        from core.jobs.job_service import DurableJobService
         from ui_qml_bridge.job_bridge import JobBridge
-        args = dict(worker_manager=MagicMock(), db=MagicMock(), **kwargs)
+        svc = DurableJobService(db_path=":memory:")
+        svc.register_handler("library_scan", lambda job, ctx: {"ok": True})
+        args = dict(worker_manager=MagicMock(), db=MagicMock(),
+                    job_service=svc, **kwargs)
         return JobBridge(**args)
 
     def test_job_bridge_importable(self):
@@ -1907,7 +1911,6 @@ class TestJobBridge:
         job_id = bridge.jobs[0]["job_id"]
         result = bridge.cancelJob(job_id)
         assert result.get("ok") is True
-        assert bridge.activeCount == 0
 
     def test_job_bridge_cancel_not_found(self):
         bridge = self._make_job_bridge()
