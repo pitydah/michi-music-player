@@ -260,6 +260,21 @@ MIGRATIONS = [
         ALTER TABLE favorites DROP COLUMN entity_id;
         ALTER TABLE favorites DROP COLUMN entity_type;
     """),
+    (8, "Persistent mobile sync pairing devices", """
+        CREATE TABLE IF NOT EXISTS mobile_sync_devices (
+            device_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL DEFAULT '',
+            public_key TEXT NOT NULL DEFAULT '',
+            fingerprint TEXT NOT NULL DEFAULT '',
+            trusted INTEGER NOT NULL DEFAULT 0,
+            revoked INTEGER NOT NULL DEFAULT 0,
+            paired_at REAL NOT NULL DEFAULT 0,
+            last_seen REAL NOT NULL DEFAULT 0,
+            protocol_version TEXT NOT NULL DEFAULT '1.0'
+        );
+    """, """
+        DROP TABLE IF EXISTS mobile_sync_devices;
+    """),
 ]
 
 _ADD_COLUMN = re.compile(

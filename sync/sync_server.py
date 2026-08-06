@@ -62,6 +62,10 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         return self.rfile.read(length).decode("utf-8") if length else ""
 
+    def _read_body_bytes(self) -> bytes:
+        length = int(self.headers.get("Content-Length", 0))
+        return self.rfile.read(length) if length else b""
+
     # ── Rate limiting (simple IP-based) ──
 
     _failed_attempts: dict[str, list[float]] = {}  # IP → [timestamps]
@@ -471,8 +475,11 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             default_perms = [
                 "sync.read_manifest", "sync.download_tracks",
                 "sync.download_covers", "sync.download_playlists",
-                "sync.upload_state",
+                "sync.upload_state", "import.read", "import.write",
+                "artwork.write",
             ]
+            if registry:
+                registry.update_permissions(client_id, default_perms)
             resp = PairConfirmResponse(
                 success=True,
                 device_id=client_id,

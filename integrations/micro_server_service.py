@@ -1,4 +1,11 @@
-"""Micro Server service - communicates with the Rust Michi Micro Server."""
+# LEGACY: deprecated variant — see ADR-002 single domain authority
+"""LEGACY: Micro Server service - communicates with the Rust Michi Micro Server.
+
+Deprecated by ADR-002 (single domain authority): the canonical
+``integrations/michi_link/services/micro_server_service.py`` (advanced stack,
+Result-based) is the productive implementation. This module is kept only for
+tests/test_optional_services.py and is never registered in the composition.
+"""
 import logging
 import requests
 
@@ -17,7 +24,11 @@ class MicroServerError(Exception):
 
 
 class MicroServerService:
-    """Client for Michi Micro Server (Rust)."""
+    """LEGACY MicroServerService (deprecated) — use
+    ``integrations.michi_link.services.MicroServerService`` instead.
+
+    Deprecated since Slice 7 (ADR-002 single domain authority).
+    """
 
     def __init__(self, host: str = "localhost", port: int = 53318, token: str = ""):
         self._host = host

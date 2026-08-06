@@ -1,4 +1,11 @@
-"""MicroServerService — import tracks/albums/artists to Michi Micro Server."""
+# LEGACY: deprecated variant — see ADR-002 single domain authority
+"""LEGACY: MicroServerService — import tracks/albums/artists to Michi Micro Server.
+
+Deprecated by ADR-002 (single domain authority): the canonical
+``integrations/michi_link/services/micro_server_service.py`` (advanced stack,
+Result-based) is the productive implementation. This module is kept only for
+tests and is never registered in the composition.
+"""
 from __future__ import annotations
 
 import json
@@ -13,6 +20,12 @@ _DEFAULT_TIMEOUT = 10
 
 
 class MicroServerService:
+    """LEGACY MicroServerService (deprecated) — use
+    ``integrations.michi_link.services.MicroServerService`` instead.
+
+    Deprecated since Slice 7 (ADR-002 single domain authority).
+    """
+
     def __init__(self, db=None):
         self._db = db
 

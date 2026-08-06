@@ -134,6 +134,88 @@ def build(container: ServiceContainer) -> None:
         logger.error("Failed to create mobile_sync_service: %s", exc)
         container.register("mobile_sync_service", None)
 
+    try:
+        # ── Michi Link advanced services (ADR-002 single domain authority) ──
+        # Canonical stack: integrations/michi_link/services/. The legacy
+        # variants (core/micro_server_service.py, integrations/
+        # micro_server_service.py, integrations/michi_link/*stubs) are marked
+        # LEGACY and are never registered here.
+        from integrations.michi_link.client import MichiLinkClient
+        from integrations.michi_link.services.micro_server_service import (
+            MicroServerService,
+        )
+        from integrations.michi_link.services.import_to_server_service import (
+            ImportToServerService,
+        )
+        from integrations.michi_link.services.continue_on_server_service import (
+            ContinueOnServerService,
+        )
+        from integrations.michi_link.services.remote_library_service import (
+            RemoteLibraryService,
+        )
+        from integrations.michi_link.services.track_identity_service import (
+            TrackIdentityService,
+        )
+        from integrations.michi_link.services.diagnostics_service import (
+            DiagnosticsService,
+        )
+
+        michi_link_client = MichiLinkClient()
+        container.register("michi_link_client", michi_link_client)
+
+        track_identity_svc = TrackIdentityService()
+        import_svc = ImportToServerService(identity_service=track_identity_svc)
+        server_svc = MicroServerService(client=michi_link_client)
+        container.register("michi_link_server_service", server_svc)
+        container.register("michi_link_import_service", import_svc)
+        container.register("michi_link_track_identity_service", track_identity_svc)
+
+        queue_service = container.get("queue_service")
+        playback_service = container.get("playback_service")
+
+        def _queue_provider():
+            if queue_service is None:
+                return [], -1, 0.0
+            try:
+                state = queue_service.get_state()
+                items = state.get("items") or []
+                ids = [
+                    i.get("track_id") or i.get("filepath") or ""
+                    for i in items
+                ]
+                return ids, int(state.get("current_index", -1) or -1), \
+                    float(state.get("position_ms", 0.0) or 0.0)
+            except Exception:
+                return [], -1, 0.0
+
+        def _pause_local():
+            if playback_service is not None:
+                try:
+                    playback_service.pause()
+                except Exception as exc:
+                    logger.warning("Failed to pause local playback: %s", exc)
+
+        continue_svc = ContinueOnServerService(
+            queue_provider=_queue_provider,
+            pause_local=_pause_local,
+            identity_service=track_identity_svc,
+            import_service=import_svc,
+        )
+        container.register("michi_link_continue_service", continue_svc)
+        container.register(
+            "michi_link_remote_library_service",
+            RemoteLibraryService(micro=server_svc),
+        )
+        container.register("michi_link_diagnostics_service", DiagnosticsService())
+    except Exception as exc:
+        logger.error("Failed to create michi_link services: %s", exc)
+        for key in ("michi_link_client", "michi_link_server_service",
+                    "michi_link_import_service", "michi_link_continue_service",
+                    "michi_link_remote_library_service",
+                    "michi_link_track_identity_service",
+                    "michi_link_diagnostics_service"):
+            container.register(key, None)
+
     from core.radio.radio_service import RadioService
 
     container.register("radio_service", RadioService(event_bus=event_bus))

@@ -217,19 +217,23 @@ class ContinueOnServerService:
                 "Queue transferred, but remote play did not start automatically",
             )
 
-        # Confirm remote is playing
+        # Confirm remote is playing BEFORE touching local playback.
+        remote_confirmed = False
         if require_playing:
-            playing = self._confirm_remote_playing(server)
-            if not playing:
+            remote_confirmed = self._confirm_remote_playing(server)
+            if not remote_confirmed:
                 logger.warning("Queue transferred, play started, but state != PLAYING")
                 return Result.success(
                     {"queue_transferred": True, "playback_started": True,
                      "confirmed_playing": False},
                     "Queue transferred and play started, but state not confirmed",
                 )
+        else:
+            # Caller explicitly waived poll confirmation; play already started.
+            remote_confirmed = True
 
-        # PAUSE LOCAL ONLY AFTER remote confirmed PLAYING
-        if self._pause_local:
+        # PAUSE LOCAL ONLY AFTER remote confirmed PLAYING (or explicit waiver).
+        if remote_confirmed and self._pause_local:
             try:
                 self._pause_local()
                 logger.info("Local playback paused after remote PLAYING confirmed")

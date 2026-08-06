@@ -6,6 +6,28 @@ import os
 import tempfile
 from unittest.mock import MagicMock, patch
 
+_SESSION_CREATE = {
+    "session_id": "sess_01", "expires_at": 9999999999.0, "state": "pending",
+}
+
+
+def _session_urlopen(*, preflight=None):
+    """urlopen side effect answering session/create (+ optional preflight)."""
+    url_map = {"import/session/create": _SESSION_CREATE}
+    if preflight is not None:
+        url_map["import/preflight"] = preflight
+
+    def side(req, **kw):
+        url = req.get_full_url() if hasattr(req, "get_full_url") else str(req)
+        for key, payload in url_map.items():
+            if key in url:
+                m = MagicMock()
+                m.status = 200
+                m.read.return_value = json.dumps(payload).encode()
+                return MagicMock(__enter__=lambda x, _m=m: _m)
+        raise AssertionError(f"Unexpected URL in session mock: {url}")
+    return side
+
 
 class TestTrackIdentityHash:
     def test_compute_with_real_file(self):
@@ -236,7 +258,8 @@ class TestImportMapping:
         with patch.object(svc, "_call_preflight", return_value={
             "results": [{"local_track_id": "t1", "exists": True,
                          "remote_track_id": "rt1"}],
-        }):
+        }), patch("urllib.request.urlopen",
+                  side_effect=_session_urlopen()):
             result = svc.create_session(server, ["t1"], identities=ids)
             assert result.ok
             assert result.data["existing"] == 1
@@ -250,10 +273,12 @@ class TestImportMapping:
         svc = ImportToServerService()
         server = RemoteServerInfo(host="10.0.0.1", port=53318, device_token="tok")
 
-        result = svc.create_session(server, ["t1", "t2"])
-        assert result.ok
-        assert result.data["total_tracks"] == 2
-        assert result.data["needs_upload"] == 2
+        with patch("urllib.request.urlopen",
+                   side_effect=_session_urlopen()):
+            result = svc.create_session(server, ["t1", "t2"])
+            assert result.ok
+            assert result.data["total_tracks"] == 2
+            assert result.data["needs_upload"] == 2
 
 
 class TestContinueOnServer:
@@ -319,7 +344,7 @@ class TestContinueOnServer:
                     m.read.return_value.decode.return_value = json.dumps({"state": "playing"})
                 else:
                     m.read.return_value.decode.return_value = json.dumps({"ok": True})
-                return MagicMock(__enter__=lambda x: m)
+                return MagicMock(__enter__=lambda x, _m=m: _m)
             mock_urlopen.side_effect = side
             result = svc.transfer_queue(server)
 
@@ -357,7 +382,7 @@ class TestContinueOnServer:
                     m.read.return_value.decode.return_value = json.dumps({"state": "playing"})
                 else:
                     m.read.return_value.decode.return_value = json.dumps({"ok": True})
-                return MagicMock(__enter__=lambda x: m)
+                return MagicMock(__enter__=lambda x, _m=m: _m)
             mock_urlopen.side_effect = side
             result = svc.transfer_queue(server, auto_import=True, require_playing=False)
 
@@ -409,7 +434,9 @@ class TestUploadMapping:
         from integrations.michi_link.client import RemoteServerInfo
         svc = ImportToServerService()
         server = RemoteServerInfo(host="10.0.0.1", port=53318, device_token="tok")
-        r1 = svc.create_session(server, ["t1"])
+        with patch("urllib.request.urlopen",
+                   side_effect=_session_urlopen()):
+            r1 = svc.create_session(server, ["t1"])
         sid = r1.data["session_id"]
 
         with patch("urllib.request.urlopen") as mock_urlopen:
@@ -430,7 +457,9 @@ class TestUploadMapping:
         from integrations.michi_link.client import RemoteServerInfo
         svc = ImportToServerService()
         server = RemoteServerInfo(host="10.0.0.1", port=53318, device_token="tok")
-        r1 = svc.create_session(server, ["t1"])
+        with patch("urllib.request.urlopen",
+                   side_effect=_session_urlopen()):
+            r1 = svc.create_session(server, ["t1"])
         sid = r1.data["session_id"]
 
         with patch("urllib.request.urlopen") as mock_urlopen:
@@ -448,7 +477,9 @@ class TestUploadMapping:
         from integrations.michi_link.client import RemoteServerInfo
         svc = ImportToServerService()
         server = RemoteServerInfo(host="10.0.0.1", port=53318, device_token="tok")
-        r1 = svc.create_session(server, ["t1"])
+        with patch("urllib.request.urlopen",
+                   side_effect=_session_urlopen()):
+            r1 = svc.create_session(server, ["t1"])
         sid = r1.data["session_id"]
 
         with patch("urllib.request.urlopen") as mock_urlopen:

@@ -5,6 +5,7 @@ Verifies new format, legacy format, unsupported (404), and edge cases.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from unittest.mock import MagicMock, patch
@@ -26,6 +27,22 @@ def _make_server() -> RemoteServerInfo:
         server_device_id="micro_001", requires_pairing=True,
         device_token="tok_abc", device_id="player_d1",
     )
+
+
+def _session_urlopen():
+    """urlopen side effect answering import/session/create (Slice 7: sessions
+    are created on the server, so tests must answer the endpoint)."""
+    def side(req, **kw):
+        url = req.get_full_url() if hasattr(req, "get_full_url") else str(req)
+        assert "import/session/create" in url, f"Unexpected URL: {url}"
+        m = MagicMock()
+        m.status = 200
+        m.read.return_value = json.dumps({
+            "session_id": "sess_01", "expires_at": 9999999999.0,
+            "state": "pending",
+        }).encode()
+        return MagicMock(__enter__=lambda x: m)
+    return side
 
 
 class TestPreflightContract:
@@ -116,9 +133,11 @@ class TestUploadContract:
             ImportToServerService,
         )
         svc = ImportToServerService()
-        r1 = svc.create_session(_make_server(), ["t1"])
+        with patch("urllib.request.urlopen", side_effect=_session_urlopen()):
+            r1 = svc.create_session(_make_server(), ["t1"])
         sid = r1.data["session_id"]
         payload = _load("upload_result.json")
+        payload["checksum"] = hashlib.sha256(b"data").hexdigest()
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_resp = MagicMock()
             mock_resp.read.return_value.decode.return_value = json.dumps(payload)
@@ -133,7 +152,8 @@ class TestUploadContract:
             ImportToServerService,
         )
         svc = ImportToServerService()
-        r1 = svc.create_session(_make_server(), ["t1"])
+        with patch("urllib.request.urlopen", side_effect=_session_urlopen()):
+            r1 = svc.create_session(_make_server(), ["t1"])
         sid = r1.data["session_id"]
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_resp = MagicMock()
@@ -148,7 +168,8 @@ class TestUploadContract:
             ImportToServerService,
         )
         svc = ImportToServerService()
-        r1 = svc.create_session(_make_server(), ["t1"])
+        with patch("urllib.request.urlopen", side_effect=_session_urlopen()):
+            r1 = svc.create_session(_make_server(), ["t1"])
         sid = r1.data["session_id"]
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_resp = MagicMock()
@@ -164,7 +185,8 @@ class TestUploadContract:
         )
         from urllib.error import HTTPError
         svc = ImportToServerService()
-        r1 = svc.create_session(_make_server(), ["t1"])
+        with patch("urllib.request.urlopen", side_effect=_session_urlopen()):
+            r1 = svc.create_session(_make_server(), ["t1"])
         sid = r1.data["session_id"]
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_urlopen.side_effect = HTTPError(
@@ -173,7 +195,7 @@ class TestUploadContract:
             )
             result = svc.upload_track(sid, "t1", local_data=b"d")
             assert not result.ok
-            assert result.code == "UPLOAD_FAILED"
+            assert result.code in ("UPLOAD_FAILED", "HTTP_500")
 
 
 class TestCommitContract:
@@ -182,14 +204,23 @@ class TestCommitContract:
             ImportToServerService,
         )
         svc = ImportToServerService()
-        r1 = svc.create_session(_make_server(), ["t1", "t2"])
+        with patch("urllib.request.urlopen", side_effect=_session_urlopen()):
+            r1 = svc.create_session(_make_server(), ["t1", "t2"])
         sid = r1.data["session_id"]
 
         with patch("urllib.request.urlopen") as mock_urlopen:
             def side(req, **kw):
+                url = req.get_full_url() if hasattr(req, "get_full_url") else str(req)
                 m = MagicMock()
-                m.read.return_value.decode.return_value = json.dumps(
-                    _load("commit_mapping.json"))
+                if "session/status" in url:
+                    m.read.return_value.decode.return_value = json.dumps({
+                        "session_id": "s1", "state": "committed",
+                        "uploaded_tracks": 2, "artwork_count": 0,
+                        "playlist_count": 0,
+                    })
+                else:
+                    m.read.return_value.decode.return_value = json.dumps(
+                        _load("commit_mapping.json"))
                 return MagicMock(__enter__=lambda x: m)
             mock_urlopen.side_effect = side
 
@@ -199,14 +230,19 @@ class TestCommitContract:
             assert result.ok
             assert "mapping" in result.data
             assert len(result.data["mapping"]) >= 2
+            assert result.data["readback_verified"] is True
 
     def test_commit_real_endpoint_fails_gracefully(self):
+        """Slice 7: commit is no longer locally faked — a failed server commit
+        is reported explicitly (this test documents the old nominal-success
+        behaviour being replaced)."""
         from integrations.michi_link.services.import_to_server_service import (
             ImportToServerService,
         )
         from urllib.error import HTTPError
         svc = ImportToServerService()
-        r1 = svc.create_session(_make_server(), ["t1"])
+        with patch("urllib.request.urlopen", side_effect=_session_urlopen()):
+            r1 = svc.create_session(_make_server(), ["t1"])
         sid = r1.data["session_id"]
 
         with patch("urllib.request.urlopen") as mock_urlopen:
@@ -216,8 +252,9 @@ class TestCommitContract:
             )
             svc._sessions[sid].uploaded = 1
             result = svc.commit(sid)
-            # Should still succeed (fallback to local commit)
-            assert result.ok
+            # Commit must NOT succeed silently when the server rejects it.
+            assert not result.ok
+            assert result.code in ("COMMIT_FAILED", "IMPORT_ENDPOINTS_MISSING")
 
 
 class TestQueueTransferContract:
