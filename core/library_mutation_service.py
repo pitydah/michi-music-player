@@ -50,9 +50,10 @@ class LibraryMutationService:
 
     def set_track_favorites_bulk(self, track_ids: list[int],
                                  favorite: bool,
-                                 source: str = "ui") -> OperationResult:
+                                 source: str = "ui",
+                                 atomic: bool = False) -> OperationResult:
         return self._favorite_service().set_track_favorites_bulk(
-            track_ids, favorite, source)
+            track_ids, favorite, source, atomic)
 
     # ── metadata edits (legacy dict surface, kept for editor consumers) ──
 

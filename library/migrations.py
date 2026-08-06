@@ -248,7 +248,7 @@ MIGRATIONS = [
         ALTER TABLE favorites ADD COLUMN entity_type TEXT DEFAULT 'track';
         ALTER TABLE favorites ADD COLUMN entity_id TEXT DEFAULT '';
         ALTER TABLE favorites ADD COLUMN public_ref TEXT DEFAULT '';
-        ALTER TABLE favorites ADD COLUMN created_at REAL DEFAULT (strftime('%s','now'));
+        ALTER TABLE favorites ADD COLUMN created_at REAL DEFAULT 0;
         ALTER TABLE favorites ADD COLUMN source TEXT DEFAULT 'ui';
         UPDATE favorites SET source = 'legacy' WHERE entity_id = '' AND source = 'ui';
         CREATE INDEX IF NOT EXISTS idx_favorites_entity ON favorites(entity_type, entity_id);
@@ -274,6 +274,18 @@ MIGRATIONS = [
         );
     """, """
         DROP TABLE IF EXISTS mobile_sync_devices;
+    """),
+    (9, "Favorite provenance and inheritance columns", """
+        ALTER TABLE favorites ADD COLUMN origin TEXT NOT NULL DEFAULT 'direct';
+        ALTER TABLE favorites ADD COLUMN parent_entity TEXT;
+        UPDATE favorites SET origin = 'migrated_legacy'
+            WHERE origin = 'direct' AND (entity_id = '' OR source = 'legacy');
+        CREATE INDEX IF NOT EXISTS idx_favorites_origin
+            ON favorites(origin, parent_entity);
+    """, """
+        DROP INDEX IF EXISTS idx_favorites_origin;
+        ALTER TABLE favorites DROP COLUMN parent_entity;
+        ALTER TABLE favorites DROP COLUMN origin;
     """),
 ]
 

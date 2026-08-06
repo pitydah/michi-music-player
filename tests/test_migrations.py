@@ -3,7 +3,7 @@ import sqlite3
 
 from library.migrations import ensure_migrations_table, get_current_version, migrate
 
-LATEST_VERSION = 8
+LATEST_VERSION = 9
 
 
 def test_empty_db():
@@ -151,4 +151,32 @@ def test_backfills_normalized_metadata_for_existing_rows():
     assert row[1] == "arbol azul"
     assert len(row[2]) == 64
     assert row[3] > 0
+    conn.close()
+
+
+def test_migration9_adds_favorite_origin_columns():
+    conn = sqlite3.connect(":memory:")
+    migrate(conn)
+    columns = {r[1] for r in conn.execute("PRAGMA table_info(favorites)")}
+    assert {"origin", "parent_entity"}.issubset(columns)
+    conn.close()
+
+
+def test_migration9_backfills_legacy_rows_with_migrated_legacy_origin():
+    """Pre-migration rows (filepath-only identity) get provenance backfilled."""
+    conn = sqlite3.connect(":memory:")
+    migrate(conn)
+    conn.execute("INSERT INTO favorites (track_id) VALUES ('/legacy/a.flac')")
+    conn.execute("INSERT INTO favorites "
+                 "(track_id, entity_type, entity_id, public_ref, source) "
+                 "VALUES ('/legacy/b.flac', 'track', 'uid-b', 'track_9', 'ui')")
+    conn.commit()
+    conn.execute("DELETE FROM _migrations WHERE version=9")
+    conn.commit()
+
+    migrate(conn)
+    rows = dict(conn.execute(
+        "SELECT track_id, origin FROM favorites").fetchall())
+    assert rows["/legacy/a.flac"] == "migrated_legacy"
+    assert rows["/legacy/b.flac"] == "direct"
     conn.close()

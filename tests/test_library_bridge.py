@@ -22,11 +22,15 @@ class TestLibraryBridge:
         Schema.initialize(connection)
         connection.executemany(
             "INSERT INTO media_items "
-            "(filepath, filename, directory, ext, kind, title) VALUES (?, ?, ?, ?, ?, ?)",
+            "(filepath, filename, directory, ext, kind, title, track_uid) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
             [
-                ("/music/one.flac", "one.flac", "/music", ".flac", "audio", "One"),
-                ("/music/two.flac", "two.flac", "/music", ".flac", "audio", "Two"),
-                ("/music/three.flac", "three.flac", "/music", ".flac", "audio", "Three"),
+                ("/music/one.flac", "one.flac", "/music", ".flac", "audio", "One",
+                 "uid-1"),
+                ("/music/two.flac", "two.flac", "/music", ".flac", "audio", "Two",
+                 "uid-2"),
+                ("/music/three.flac", "three.flac", "/music", ".flac", "audio",
+                 "Three", "uid-3"),
             ],
         )
         bridge = LibraryBridge(
