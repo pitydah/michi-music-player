@@ -24,6 +24,10 @@ RUNTIME_COMPONENTS: dict[str, str] = {
     "HybridAudioManager": "hybrid_audio_manager",
     "KnowledgeBroker": "knowledge_broker",
     "PageStateStore": "page_state_store",
+    "PlaybackSnapshotService": "playback_snapshot_service",
+    "PlayerBarService": "player_bar_service",
+    "OutputProfileService": "output_profile_service",
+    "EqualizerService": "equalizer_service",
 }
 
 

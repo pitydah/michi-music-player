@@ -1,36 +1,59 @@
-"""PlayerBarService — playback state, position, volume, quality."""
+"""PlayerBarService — thin honest facade over PlaybackSnapshotService.
+
+PlayerBarService never invents playback values. All readback derives from the
+canonical :class:`core.playback_snapshot_service.PlaybackSnapshotService`;
+when the player is unavailable the explicit contract is
+``available=False`` / ``status=SERVICE_UNAVAILABLE`` (ADR-005, criterion 49).
+"""
 from __future__ import annotations
 
 import logging
+
+from core.playback_snapshot_service import PlaybackSnapshotService
 
 logger = logging.getLogger("michi.player_bar")
 
 
 class PlayerBarService:
-    def __init__(self, player_service=None):
-        self._player = player_service
+    """Player bar playback state — honest readback only, no fabricated defaults."""
+
+    def __init__(self, player_service=None, snapshot_service=None):
+        if snapshot_service is not None:
+            self._snapshot = snapshot_service
+        else:
+            self._snapshot = PlaybackSnapshotService(player_service=player_service)
+
+    @property
+    def available(self) -> bool:
+        return self._snapshot.available
 
     def get_state(self) -> str:
-        return getattr(self._player, 'state', 'stopped') if self._player else 'stopped'
+        """Playback state; ``unavailable`` (never ``stopped``) without a player."""
+        return self._snapshot.get_state()
 
-    def get_position(self) -> float:
-        if self._player and hasattr(self._player, 'position'):
-            try:
-                return self._player.position()
-            except Exception:
-                pass
-        return 0.0
+    def get_position(self):
+        """Position in seconds, or None when the player is missing."""
+        return self._snapshot.get_position()
 
-    def get_volume(self) -> int:
-        if self._player and hasattr(self._player, 'volume'):
-            try:
-                return self._player.volume()
-            except Exception:
-                pass
-        return 75
+    def get_volume(self):
+        """Volume, or None when the player is missing."""
+        return self._snapshot.get_volume()
+
+    def get_snapshot(self) -> dict:
+        """Full canonical snapshot (see PlaybackSnapshotService.snapshot)."""
+        return self._snapshot.snapshot()
 
     def health(self) -> dict:
-        return {"available": self._player is not None}
+        """Honest health: available + status + reasons."""
+        snap = self._snapshot.snapshot()
+        return {
+            "available": snap["available"],
+            "status": snap["status"],
+            "reasons": [] if snap["available"] else ["player_missing"],
+        }
+
+    def start(self):
+        pass
 
     def shutdown(self):
         pass

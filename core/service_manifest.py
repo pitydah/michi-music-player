@@ -244,6 +244,37 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         optional=True,
         description="MPRIS D-Bus adapter; may be None when D-Bus is absent.",
     ),
+    "playback_snapshot_service": _d(
+        "playback_snapshot_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("playback_service", "queue_service"),
+        capabilities=("playback", "nowplaying"),
+        consumers=("player_bar_service", "context_service"),
+        description="Canonical honest playback readback (S9, ADR-005).",
+    ),
+    "player_bar_service": _d(
+        "player_bar_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("playback_snapshot_service",),
+        consumers=("playback_bridge",),
+        description="Player bar facade; honest SERVICE_UNAVAILABLE without player.",
+    ),
+    "output_profile_service": _d(
+        "output_profile_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("playback_service", "event_bus"),
+        capabilities=("output_profiles",),
+        consumers=("output_profiles_bridge",),
+        description="Output profiles with apply -> readback verification.",
+    ),
+    "equalizer_service": _d(
+        "equalizer_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("playback_service", "event_bus"),
+        capabilities=("eq",),
+        consumers=("eq_bridge",),
+        description="EQ facade: validate -> apply -> readback -> persist.",
+    ),
     # ── Library (20 registered keys) ─────────────────────────────────────
     "library_sources_service": _d(
         "library_sources_service", ServiceClass.MANAGED_SERVICE,
@@ -792,7 +823,9 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
     "mpd_service_manager": _d(
         "mpd_service_manager", ServiceClass.PROCESS_MANAGER,
         LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
-        description="MPD daemon management owned by MpdBackend.",
+        dependencies=("process_controller",),
+        description="MPD daemon management owned by MpdBackend; "
+                    "daemon spawned through ProcessController.",
     ),
 }
 

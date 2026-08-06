@@ -144,6 +144,45 @@ def build_playback_snapshot(playback=None, recent_events: list | None = None) ->
     return result
 
 
+def build_playback_snapshot_from_snapshot(snap: dict) -> dict:
+    """Context-shaped playback snapshot from the canonical snapshot service.
+
+    The canonical ``PlaybackSnapshotService.snapshot()`` dict is the single
+    readback authority (ADR-002); this adapter only reshapes it — it never
+    invents values when ``available`` is False.
+    """
+    result = {
+        "now_playing": None,
+        "queue_length": 0,
+        "queue": {
+            "active": False,
+            "count": 0,
+        },
+        "recently_played_count": 0,
+        "favorites_count": 0,
+        "current_source": "local",
+    }
+    if not snap.get("available"):
+        return result
+    track = snap.get("track")
+    if track:
+        result["now_playing"] = {
+            "title": track.get("title"),
+            "artist": track.get("artist"),
+            "album": track.get("album"),
+        }
+    queue = snap.get("queue") or {}
+    result["queue_length"] = queue.get("count", 0)
+    result["queue"] = {
+        "active": bool(queue.get("count", 0)),
+        "count": queue.get("count", 0),
+    }
+    source = snap.get("source")
+    if source:
+        result["current_source"] = source
+    return result
+
+
 def _suggested_actions(health: dict, playback: dict) -> list[dict]:
     _VALID_TARGETS = frozenset({
         "metadata_editor", "audio_lab", "library", "favs",

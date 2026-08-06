@@ -17,6 +17,7 @@ from core.context.context_snapshot import (
     build_library_health_snapshot,
     build_mix_snapshot,
     build_playback_snapshot,
+    build_playback_snapshot_from_snapshot,
     sanitize_snapshot,
 )
 
@@ -26,11 +27,13 @@ _SNAPSHOT_TTL = 120
 
 
 class ContextService:
-    def __init__(self, db=None, playback=None, sync=None, section_registry=None):
+    def __init__(self, db=None, playback=None, sync=None, section_registry=None,
+                 snapshot_service=None):
         self._db = db
         self._playback = playback
         self._sync = sync
         self._section_registry = section_registry
+        self._snapshot_service = snapshot_service
         self._current_section = ""
         self._current_tab = ""
 
@@ -523,6 +526,9 @@ class ContextService:
 
     def get_playback_context(self) -> dict:
         def _build():
+            if self._snapshot_service is not None:
+                snap = self._snapshot_service.snapshot()
+                return build_playback_snapshot_from_snapshot(snap)
             return build_playback_snapshot(self._playback, recent_events=repo.recent_events(limit=20))
         return self._rebuild_if_dirty(
             "playback_context", _build, ttl=60)
