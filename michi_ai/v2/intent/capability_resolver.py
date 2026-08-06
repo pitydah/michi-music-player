@@ -10,6 +10,13 @@ class CapabilityResolver:
         self._capabilities: dict[str, Capability] = {}
 
     def register(self, name: str, available: bool = True, degraded: bool = False, reason: str = "", requires_confirmation: bool = False, permission: PermissionLevel = PermissionLevel.READ_ONLY) -> None:
+        existing = self._capabilities.get(name)
+        if existing is not None:
+            # Re-registration (e.g. capability evidence after tool
+            # registration) must not clobber the permission/confirmation
+            # contract declared by the tool definitions.
+            requires_confirmation = existing.requires_confirmation or requires_confirmation
+            permission = existing.permission
         self._capabilities[name] = Capability(
             name=name, available=available, degraded=degraded,
             reason=reason, requires_confirmation=requires_confirmation,
@@ -53,25 +60,38 @@ class CapabilityResolver:
             )
 
     def register_from_gateways(self, gateways: dict[str, Any]) -> None:
-        capability_map: dict[str, str] = {
-            "playback": "playback.control",
-            "queue": "queue.read",
-            "library": "library.search",
-            "playlist": "playlist.read",
-            "audio_lab": "audio_lab.analyze",
-            "device": "devices.read",
-            "settings": "settings.read",
-            "diagnostics": "diagnostics.read",
-            "navigation": "navigation.request",
-            "mix": "mix.generate",
-            "job": "diagnostics.read",
-        }
-        for gateway_key, capability_name in capability_map.items():
-            gateway = gateways.get(gateway_key)
-            if gateway is not None:
-                self.register(capability_name, available=True)
-            else:
-                self.register(capability_name, available=False, reason=f"No gateway: {gateway_key}")
+        """Register capabilities from GATEWAY EVIDENCE, not object existence.
+
+        A capability is available only when a gateway reports it operational
+        through ``operational_capabilities()`` (which derives from backing
+        service presence). Every capability declared by the builtin tool
+        definitions is (re)registered here, so a tool whose gateway is missing
+        or unbacked is blocked at execution time.
+        """
+        all_caps: set[str] = set()
+        evidence: dict[str, bool] = {}
+        for _gateway_key, gateway in gateways.items():
+            if gateway is None:
+                continue
+            ops: dict[str, bool] = {}
+            if hasattr(gateway, "operational_capabilities"):
+                try:
+                    ops = dict(gateway.operational_capabilities() or {})
+                except Exception:
+                    ops = {}
+            for cap, available in ops.items():
+                all_caps.add(cap)
+                evidence[cap] = evidence.get(cap, True) and bool(available)
+
+        from michi_ai.v2.tools.tool_definitions import BUILTIN_TOOL_DEFINITIONS
+        for defn in BUILTIN_TOOL_DEFINITIONS:
+            for cap in defn.capabilities:
+                all_caps.add(cap)
+
+        for cap in all_caps:
+            available = evidence.get(cap, False)
+            self.register(cap, available=available,
+                          reason="" if available else f"No gateway provides '{cap}'")
 
     def resolve(self, needed: str | list[str]) -> dict[str, Capability]:
         needed_list = [needed] if isinstance(needed, str) else needed

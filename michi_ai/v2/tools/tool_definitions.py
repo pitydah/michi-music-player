@@ -237,10 +237,16 @@ BUILTIN_TOOL_DEFINITIONS: list[ToolDefinition] = [
     ),
     ToolDefinition(
         name="draft_playlist", version="2.0.0",
-        description="Draft a playlist from a description without saving",
-        input_schema=_schema(required=["description"], properties={"description": {"type": "string"}, "limit": {"type": "integer", "default": 30}}),
-        permission=PermissionLevel.READ_ONLY, capabilities=("playlist.read",),
-        idempotent=True, timeout_seconds=20,
+        description="Create a playlist from a description (persisted immediately)",
+        input_schema=_schema(
+            required=["name"],
+            properties={"name": {"type": "string", "maxLength": 200},
+                        "description": {"type": "string"},
+                        "track_ids": {"type": "array", "maxItems": 500},
+                        "limit": {"type": "integer", "default": 30}},
+        ),
+        permission=PermissionLevel.LIBRARY_MUTATION, capabilities=("playlist.modify",),
+        requires_confirmation=False, destructive=False, idempotent=False, timeout_seconds=15,
     ),
     ToolDefinition(
         name="create_playlist", version="2.0.0",

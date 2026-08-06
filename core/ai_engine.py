@@ -129,17 +129,27 @@ class MichiAIEngine:
 
             llm_response = self._generate_response(sanitized, intent, context)
             tool_result = self._run_tool(tool_name, args) if tool_name else None
+            # ADR-006: a failed tool is NEVER reported as ok. The outer "ok"
+            # mirrors the tool outcome so the UI can distinguish real failure
+            # from nominal success.
+            tool_ok = bool(tool_result.ok) if tool_result is not None else True
+            if tool_ok:
+                response_text = llm_response or ""
+            else:
+                response_text = (tool_result.message
+                                 or f"La operación falló ({tool_result.code}).")
 
             elapsed = time.monotonic() - start
             return {
-                "ok": True,
-                "response": llm_response or "",
+                "ok": tool_ok,
+                "response": response_text,
                 "intent": intent.intent_id,
                 "confidence": intent.confidence,
                 "needs_llm": intent.needs_llm,
                 "risk_level": risk_level.value,
                 "requires_confirmation": False,
                 "tool_result": {"ok": tool_result.ok, "code": tool_result.code, "message": tool_result.message, "data": tool_result.data} if tool_result else None,
+                "error": tool_result.message if tool_result and not tool_ok else "",
                 "elapsed_ms": round(elapsed * 1000),
                 "backend": type(self._backend_selector.active).__name__,
             }

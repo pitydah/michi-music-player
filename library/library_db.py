@@ -1104,6 +1104,43 @@ class LibraryDB:
             (pid,)).fetchall()
         return [r[0] for r in rows if r[0] is not None]
 
+    # ── PlaylistService contract aliases (canonical DB boundary) ──
+
+    def add_track_to_playlist(self, pid: int, track_id: int = 0, filepath: str = ""):
+        """Alias for :meth:`add_to_playlist` used by PlaylistService."""
+        self.add_to_playlist(pid, filepath=filepath, track_id=track_id or None)
+
+    def remove_track_from_playlist(self, pid: int, track_id: int):
+        """Remove a track membership from a playlist (PlaylistService)."""
+        self._conn.execute(
+            "DELETE FROM playlist_items WHERE playlist_id=? AND track_id=?",
+            (pid, track_id))
+        self._conn.commit()
+
+    def reorder_playlist_track(self, pid: int, from_index: int, to_index: int):
+        """Move the item at *from_index* to *to_index* (PlaylistService)."""
+        rows = self._conn.execute(
+            "SELECT rowid FROM playlist_items WHERE playlist_id=? ORDER BY position, rowid",
+            (pid,)).fetchall()
+        rowids = [r[0] for r in rows]
+        if not rowids or from_index < 0 or from_index >= len(rowids):
+            return
+        to_index = max(0, min(to_index, len(rowids) - 1))
+        item = rowids.pop(from_index)
+        rowids.insert(to_index, item)
+        for position, rowid in enumerate(rowids):
+            self._conn.execute(
+                "UPDATE playlist_items SET position=? WHERE rowid=?",
+                (position, rowid))
+        self._conn.commit()
+
+    def clear_playlist(self, pid: int):
+        """Remove every track membership from a playlist (PlaylistService)."""
+        self._conn.execute(
+            "DELETE FROM playlist_items WHERE playlist_id=?", (pid,))
+        self._conn.commit()
+
+
     # Extracted to library/history_store.py — favorites, play history, detected tracks
     def save_queue(self, filepaths: list[str], current_index: int):
         self._conn.execute("DELETE FROM queue_state")

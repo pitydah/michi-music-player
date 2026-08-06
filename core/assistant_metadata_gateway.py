@@ -130,10 +130,20 @@ class ProductionMetadataGateway:
             return {"ok": False, "error": str(e), "code": "ROLLBACK_FAILED"}
 
     def check_consistency(self, track_ids: list[str]) -> dict[str, Any]:
-        return {"ok": True, "status": "COMPLETED", "checked": len(track_ids), "issues": [], "healthy": True}
+        if self._ms is None or not hasattr(self._ms, "check_consistency"):
+            return _unavailable("consistency check (route not wired)")
+        try:
+            return self._ms.check_consistency(track_ids)
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     def scan_duplicates(self, track_ids: list[str]) -> dict[str, Any]:
-        return {"ok": True, "status": "COMPLETED", "scanned": len(track_ids), "duplicates": []}
+        if self._ms is None or not hasattr(self._ms, "scan_duplicates"):
+            return _unavailable("duplicate scan (route not wired)")
+        try:
+            return self._ms.scan_duplicates(track_ids)
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     def get_operation_status(self, operation_id: str) -> dict[str, Any]:
         if self._js:

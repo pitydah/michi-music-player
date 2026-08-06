@@ -57,6 +57,7 @@ def build(container: ServiceContainer) -> None:
             library_doctor_service=container.get("library_doctor_service"),
             track_action_service=container.get("track_action_service"),
             library_query_service=container.get("library_query_service"),
+            device_registry=container.get("device_registry"),
         )
         container.register("michi_ai_service", comp.core_service)
 

@@ -45,7 +45,7 @@ class MixService:
         tracks = []
         for t in getattr(mix, "tracks", []) or []:
             tracks.append({
-                "id": getattr(t, "id", 0),
+                "id": getattr(t, "track_id", 0) or getattr(t, "id", 0),
                 "title": getattr(t, "title", ""),
                 "artist": getattr(t, "artist", ""),
                 "album": getattr(t, "album", ""),
