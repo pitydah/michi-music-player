@@ -64,6 +64,10 @@ def test_optional_none_does_not_block_start() -> None:
     container.register("confirmation_service", object())
     container.register("notification_service", object())
     container.register("diagnostics_service", object())
+    # REQUIRED descriptors declare these dependencies in the manifest; a
+    # REQUIRED descriptor with a missing dependency blocks bootstrap.
+    container.register("favorite_service", object())
+    container.register("search_provider_registry", object())
     container.register("radio_service", None)
     container.start()
     assert container.state in (ContainerState.READY, ContainerState.DEGRADED)

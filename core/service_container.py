@@ -3,12 +3,20 @@
 States: CREATED -> BUILDING -> BUILT -> STARTING -> READY -> DEGRADED -> FAILED -> STOPPING -> STOPPED.
 API: register, get, require, contains, build_order, validate, start, health, cancel_all, shutdown.
 
-Lifecycle is derived from the declarative manifest (``core.service_manifest``,
-ADR-001): ``start()`` starts every MANAGED descriptor in dependency order and
-``shutdown()`` shuts MANAGED descriptors down in reverse order, then EXTERNAL
-descriptors, then the remaining registered keys. The static name lists below
-are retained as a frozen compatibility surface (tests assert their exact
-values); the manifest is the source of truth for lifecycle decisions.
+Lifecycle is derived EXCLUSIVELY from the declarative manifest
+(``core.service_manifest``, ADR-001, FASE 1 P0 stabilization): SERVICE_MANIFEST
+is the single source of truth for priority, lifecycle kind, dependencies,
+start/stop methods, required/optional, health, start order and shutdown order.
+There is no second inventory and no second dependency graph.
+
+Aliases (descriptors with ``alias_of``) share the registered instance and
+lifecycle of their target: alias instances are never started or shut down
+separately (exactly-once per instance, tracked by object identity).
+
+The ``_required_names``/``_optional_names``/``_capability_gated_names``/
+``_deferred_physical_names``/``_deferred_names``/``_all_names`` helpers below
+are DEPRECATED compatibility views computed FROM the manifest. They exist only
+for legacy test assertions; no execution path calls them.
 """
 from __future__ import annotations
 
@@ -42,57 +50,11 @@ class ContainerState(Enum):
     STOPPED = "stopped"
 
 
-# NOTE: superseded by SERVICE_MANIFEST descriptor dependencies — retained only
-# for build_order()/validate() compatibility (many callers reference it).
-BUILTIN_DEPENDENCIES: dict[str, set[str]] = {
-    "playlist_service": {"library_query_service", "connection_factory"},
-    "history_query_service": {"connection_factory"},
-    "global_search_service": {"connection_factory", "library_query_service"},
-    "playback_service": {"worker_manager"},
-    "queue_service": {"playback_service"},
-    "track_action_service": {
-        "queue_service", "library_query_service", "playlist_service"
-    },
-    "audio_lab_service": {"worker_manager", "library_query_service", "metadata_service"},
-    "metadata_service": {"worker_manager", "library_mutation_service"},
-    "library_doctor_service": {"library_query_service", "library_mutation_service", "worker_manager"},
-    "device_sync_service": {"worker_manager", "library_query_service"},
-    "connection_service": {"worker_manager"},
-    "home_audio_service": {"worker_manager", "playback_service"},
-    "diagnostics_service": {"worker_manager", "library_query_service", "settings_service"},
-    "michi_ai_service": {
-        "global_search_service", "playback_service", "queue_service",
-        "playlist_service",
-        "diagnostics_service", "settings_service", "action_registry",
-    },
-    "notification_service": {"action_registry", "job_service"},
-    "confirmation_service": {"action_registry"},
-    "settings_coordinator": {"settings_service"},
-}
+class ManifestCycleError(ValueError):
+    """Raised when the manifest dependency graph contains a cycle.
 
-SERVICE_ORDER_INDEX: dict[str, int] = {
-    name: i for i, name in enumerate([
-        "paths", "settings_manager",
-        "database", "connection_factory",
-        "track_repository", "album_repository", "artist_repository",
-        "event_bus", "runtime_persistence", "process_controller",
-        "worker_manager", "query_executor", "job_service",
-        "confirmation_service",
-        "settings_coordinator", "settings_service",
-        "playback_service", "queue_service", "track_action_service",
-        "library_query_service", "library_sources_service", "library_mutation_service",
-        "playlist_service", "history_query_service", "global_search_service",
-        "mix_query_service", "mix_service",
-        "metadata_service", "smart_tagging_service",
-        "library_doctor_service", "audio_lab_service",
-        "device_sync_service", "connection_service",
-        "home_audio_service", "radio_service", "lyrics_service",
-        "diagnostics_service", "notification_service",
-        "action_registry",
-        "michi_ai_service",
-        "theme_service", "accessibility_service",
-    ])
-}
+    Carries the detected cycle path so bootstrap can report it explicitly.
+    """
 
 
 class ServiceContainer:
@@ -101,76 +63,153 @@ class ServiceContainer:
     def __init__(self):
         self._services: dict[str, Any] = {}
         self._priorities: dict[str, ServicePriority] = {}
-        self._dependencies: dict[str, set[str]] = {}
         self._failures: dict[str, str] = {}
         self._state = ContainerState.CREATED
         self._started_order: list[str] = []
+        self._started_ids: set[int] = set()
         self._define_priorities()
 
     def _define_priorities(self):
-        # Frozen tracked set (tests assert exact membership).
-        for name in self._required_names():
-            self._priorities[name] = ServicePriority.REQUIRED
-        for name in self._optional_names():
-            self._priorities[name] = ServicePriority.OPTIONAL
-        for name in self._capability_gated_names():
-            self._priorities[name] = ServicePriority.CAPABILITY_GATED
-        for name in self._deferred_physical_names():
-            self._priorities[name] = ServicePriority.DEFERRED_PHYSICAL
-        for name in self._deferred_names():
-            self._priorities[name] = ServicePriority.DEFERRED
-        # Manifest-driven priorities for the remaining (untracked) keys.
+        # Manifest-driven: every manifest descriptor declares its own priority.
         for name, desc in SERVICE_MANIFEST.items():
-            if name not in self._priorities:
-                self._priorities[name] = desc.priority
+            self._priorities[name] = desc.priority
 
+    # ── DEPRECATED compatibility views (manifest-derived; never used in
+    # ── execution paths — kept for legacy test assertions). ───────────────
     @staticmethod
     def _required_names() -> set[str]:
+        """DEPRECATED — manifest-derived view: keys with REQUIRED priority."""
         return {
-            "database", "connection_factory", "worker_manager",
-            "query_executor", "job_service", "event_bus",
-            "settings_coordinator", "settings_service",
-            "library_query_service", "library_sources_service",
-            "library_mutation_service", "playlist_service",
-            "history_query_service", "global_search_service",
-            "mix_query_service", "mix_service",
-            "track_action_service", "playback_service",
-            "queue_service", "metadata_service",
-            "process_controller", "runtime_persistence",
-            "theme_service", "accessibility_service",
-            "action_registry", "confirmation_service",
-            "notification_service", "diagnostics_service",
+            name for name, desc in SERVICE_MANIFEST.items()
+            if desc.priority == ServicePriority.REQUIRED
         }
 
     @staticmethod
     def _optional_names() -> set[str]:
+        """DEPRECATED — manifest-derived view: keys with OPTIONAL priority."""
         return {
-            "audio_lab_service", "smart_tagging_service",
-            "library_doctor_service", "device_sync_service",
-            "connection_service", "home_audio_service",
-            "radio_service", "lyrics_service",
+            name for name, desc in SERVICE_MANIFEST.items()
+            if desc.priority == ServicePriority.OPTIONAL
         }
 
     @staticmethod
     def _capability_gated_names() -> set[str]:
-        return {"michi_ai_service"}
+        """DEPRECATED — manifest-derived view: keys with CAPABILITY_GATED priority."""
+        return {
+            name for name, desc in SERVICE_MANIFEST.items()
+            if desc.priority == ServicePriority.CAPABILITY_GATED
+        }
 
     @staticmethod
     def _deferred_physical_names() -> set[str]:
-        return set()
+        """DEPRECATED — manifest-derived view: keys with DEFERRED_PHYSICAL priority."""
+        return {
+            name for name, desc in SERVICE_MANIFEST.items()
+            if desc.priority == ServicePriority.DEFERRED_PHYSICAL
+        }
 
     @staticmethod
     def _deferred_names() -> set[str]:
-        return set()
+        """DEPRECATED — manifest-derived view: keys with DEFERRED priority."""
+        return {
+            name for name, desc in SERVICE_MANIFEST.items()
+            if desc.priority == ServicePriority.DEFERRED
+        }
 
     def _all_names(self) -> list[str]:
-        return list(
-            self._required_names()
-            | self._optional_names()
-            | self._capability_gated_names()
-            | self._deferred_physical_names()
-            | self._deferred_names()
-        )
+        """DEPRECATED — manifest-derived view: every manifest key."""
+        return list(SERVICE_MANIFEST)
+
+    # ── Manifest graph (single source of truth) ───────────────────────────
+
+    def _alias_target(self, name: str) -> str | None:
+        """Return the canonical key *name* resolves to (None when not an alias)."""
+        desc = SERVICE_MANIFEST.get(name)
+        if desc is None or desc.alias_of is None:
+            return None
+        return desc.alias_of
+
+    def _resolved_dependencies(self, name: str) -> set[str]:
+        """Return the declared dependencies of *name* with aliases resolved."""
+        desc = SERVICE_MANIFEST.get(name)
+        if desc is None:
+            return set()
+        resolved = set()
+        for dep in desc.dependencies:
+            resolved.add(self._alias_target(dep) or dep)
+        return resolved
+
+    def _manifest_graph(self) -> dict[str, set[str]]:
+        """Dependency graph derived ONLY from manifest descriptors.
+
+        Alias descriptors are not graph nodes (they are not lifecycle owners);
+        dependencies pointing at aliases resolve to the alias target.
+        """
+        graph: dict[str, set[str]] = {}
+        for name, desc in SERVICE_MANIFEST.items():
+            if desc.alias_of is not None:
+                continue
+            graph[name] = set()
+            for dep in desc.dependencies:
+                graph[name].add(self._alias_target(dep) or dep)
+        return graph
+
+    @staticmethod
+    def _topological_sort(graph: dict[str, set[str]]) -> list[str]:
+        """Deterministic Kahn topological sort over *graph* (insertion order).
+
+        Raises ManifestCycleError with the detected cycle path when the graph
+        contains a cycle — there is no silent fallback.
+        """
+        nodes = list(graph)
+        emitted: set[str] = set()
+        order: list[str] = []
+
+        def _ready(name: str) -> bool:
+            return name not in emitted and all(
+                dep in emitted or dep not in graph for dep in graph[name]
+            )
+
+        while True:
+            progress = False
+            for name in nodes:
+                if _ready(name):
+                    emitted.add(name)
+                    order.append(name)
+                    progress = True
+            if not progress:
+                break
+
+        remaining = [n for n in nodes if n not in emitted]
+        if remaining:
+            cycle = ServiceContainer._find_cycle(graph, remaining[0])
+            raise ManifestCycleError(" -> ".join(cycle))
+        return order
+
+    @staticmethod
+    def _find_cycle(graph: dict[str, set[str]], start: str) -> list[str]:
+        """Return a cycle path in *graph* reachable from *start*."""
+        path: list[str] = []
+        seen: dict[str, int] = {}
+
+        def visit(name: str) -> list[str] | None:
+            if name in seen:
+                return path[seen[name]:] + [name]
+            if name not in graph:
+                return None
+            seen[name] = len(path)
+            path.append(name)
+            for dep in graph[name]:
+                result = visit(dep)
+                if result is not None:
+                    return result
+            path.pop()
+            del seen[name]
+            return None
+
+        return visit(start) or [start]
+
+    # ── Public API ────────────────────────────────────────────────────────
 
     def register(self, name: str, service: Any, priority: ServicePriority | None = None, dependencies: tuple[str, ...] = ()) -> None:
         self._services[name] = service
@@ -179,8 +218,6 @@ class ServiceContainer:
         elif name not in self._priorities:
             desc = SERVICE_MANIFEST.get(name)
             self._priorities[name] = desc.priority if desc else ServicePriority.OPTIONAL
-        if dependencies:
-            self._dependencies[name] = set(dependencies)
 
     def get(self, name: str) -> Any:
         return self._services.get(name)
@@ -210,69 +247,74 @@ class ServiceContainer:
         return desc.lifecycle.value if desc else "unknown"
 
     def build_order(self) -> list[str]:
-        """Return service names in dependency-safe startup order."""
+        """Return manifest names in dependency-safe startup order.
 
-        deps = {}
-        for name in self._all_names():
-            deps[name] = set(self._dependencies.get(name, BUILTIN_DEPENDENCIES.get(name, set())))
-        for _name, dep_set in deps.items():
-            dep_set.intersection_update(self._all_names())
-        ordered = []
-        seen = set()
-        def visit(n: str, path: set[str]) -> None:
-            if n in seen:
-                return
-            if n in path:
-                raise ValueError(f"Circular dependency: {' -> '.join(path | {n})}")
-            for d in deps.get(n, set()):
-                visit(d, path | {n})
-            seen.add(n)
-            ordered.append(n)
-        all_sorted = sorted(self._all_names(), key=lambda x: (
-            0 if self.priority(x) == ServicePriority.REQUIRED else 1,
-            SERVICE_ORDER_INDEX.get(x, 999),
-        ))
-        for svc in all_sorted:
-            visit(svc, set())
-        remaining = [s for s in all_sorted if s not in ordered]
-        ordered.extend(remaining)
-        return ordered
+        Manifest-only: aliases are excluded (not lifecycle owners) and
+        registered keys without a manifest descriptor are appended. Raises
+        ManifestCycleError when the manifest graph contains a cycle.
+        """
+        order = self._topological_sort(self._manifest_graph())
+        for name in self._services:
+            if name not in SERVICE_MANIFEST:
+                order.append(name)
+        return order
+
+    def build_start_order(self) -> list[str]:
+        return self.build_order()
+
+    def validate_acyclic_graph(self) -> list[str]:
+        """Return the manifest dependency order; raise on cycles."""
+        return self.build_order()
 
     def validate_required_present(self) -> list[str]:
-        """Return list of required service names that are missing or None."""
-        missing = []
-        for name in self._required_names():
-            svc = self._services.get(name)
-            if svc is None:
-                missing.append(name)
-        return missing
+        """Return list of REQUIRED manifest names that are missing or None."""
+        return [
+            name for name, desc in SERVICE_MANIFEST.items()
+            if desc.priority == ServicePriority.REQUIRED
+            and (name not in self._services or self._services[name] is None)
+        ]
 
     def validate_no_none_required(self) -> list[str]:
-        """Return list of required services whose value is None or missing."""
-        none_list = []
-        for name in self._required_names():
-            if name not in self._services or self._services[name] is None:
-                none_list.append(name)
-        return none_list
+        """Return list of REQUIRED manifest names whose value is None or missing."""
+        return self.validate_required_present()
 
-    def validate(self) -> list[str]:
-        """Return registration, dependency, and required-service failures."""
-
+    def validate_dependencies_present(self) -> list[str]:
+        """Return manifest dependency violations (missing or None targets)."""
         errors = []
-        for name in self._required_names():
-            svc = self._services.get(name)
-            if svc is None:
-                errors.append(f"REQUIRED '{name}' is None or missing")
-        deps = {}
-        for name in self._all_names():
-            deps[name] = set(self._dependencies.get(name, BUILTIN_DEPENDENCIES.get(name, set())))
-            deps[name].intersection_update(self._all_names())
-        for name, dep_set in deps.items():
-            if self.priority(name) != ServicePriority.REQUIRED:
+        for name, desc in SERVICE_MANIFEST.items():
+            if desc.alias_of is not None:
                 continue
-            for dep in dep_set:
+            for dep in self._resolved_dependencies(name):
                 if dep not in self._services or self._services[dep] is None:
                     errors.append(f"'{name}' depends on '{dep}' which is missing")
+        return errors
+
+    def validate(self) -> list[str]:
+        """Return registration, dependency, and required-service failures.
+
+        REQUIRED descriptors with missing dependencies, REQUIRED aliases whose
+        target is missing, and manifest cycles are all fatal errors.
+        """
+
+        errors = []
+        for name in self.validate_required_present():
+            errors.append(f"REQUIRED '{name}' is None or missing")
+        for name, desc in SERVICE_MANIFEST.items():
+            if desc.priority != ServicePriority.REQUIRED:
+                continue
+            if desc.alias_of is not None:
+                if self._services.get(desc.alias_of) is None:
+                    errors.append(
+                        f"REQUIRED alias '{name}' -> '{desc.alias_of}' is None or missing"
+                    )
+                continue
+            for dep in self._resolved_dependencies(name):
+                if dep not in self._services or self._services[dep] is None:
+                    errors.append(f"'{name}' depends on '{dep}' which is missing")
+        try:
+            self._topological_sort(self._manifest_graph())
+        except ManifestCycleError as exc:
+            errors.append(f"Circular dependency: {exc}")
         for fname in self._failures:
             prio = self.priority(fname)
             if prio == ServicePriority.REQUIRED:
@@ -286,8 +328,8 @@ class ServiceContainer:
 
         Warnings cover: registered keys without a manifest descriptor,
         MANAGED manifest descriptors that were never registered, declared
-        manifest dependencies that were never injected, and tracked-name
-        priority drift between the frozen lists and the manifest.
+        manifest dependencies that were never injected, and aliases that
+        point at unknown keys.
         """
         warnings = []
         registered_without = sorted(
@@ -299,33 +341,32 @@ class ServiceContainer:
             )
         manifest_unregistered = sorted(
             name for name, desc in SERVICE_MANIFEST.items()
-            if desc.lifecycle == LifecycleKind.MANAGED and name not in self._services
+            if desc.lifecycle == LifecycleKind.MANAGED
+            and desc.alias_of is None
+            and name not in self._services
         )
         if manifest_unregistered:
             warnings.append(
                 f"MANAGED manifest descriptors without registration: {manifest_unregistered}"
             )
         for name, desc in SERVICE_MANIFEST.items():
-            missing = [dep for dep in desc.dependencies if dep not in self._services]
+            if desc.alias_of is not None:
+                continue
+            missing = [
+                dep for dep in self._resolved_dependencies(name)
+                if dep not in self._services
+            ]
             if missing:
                 warnings.append(
                     f"'{name}' declares dependencies never registered: {missing}"
                 )
-        tracked = set(self._all_names())
-        for name in sorted(tracked):
-            desc = SERVICE_MANIFEST.get(name)
-            if desc is None:
-                continue
-            expected = {
-                ServicePriority.REQUIRED: name in self._required_names(),
-                ServicePriority.OPTIONAL: name in self._optional_names(),
-                ServicePriority.CAPABILITY_GATED: name in self._capability_gated_names(),
-            }
-            if desc.priority not in expected or not expected[desc.priority]:
-                warnings.append(
-                    f"tracked name '{name}' priority {desc.priority.value} "
-                    "does not match frozen static list"
-                )
+        broken_aliases = sorted(
+            f"{name} -> {desc.alias_of}"
+            for name, desc in SERVICE_MANIFEST.items()
+            if desc.alias_of is not None and desc.alias_of not in SERVICE_MANIFEST
+        )
+        if broken_aliases:
+            warnings.append(f"aliases without target descriptor: {broken_aliases}")
         return warnings
 
     @property
@@ -502,47 +543,33 @@ class ServiceContainer:
     def _lifecycle_start_order(self) -> list[str]:
         """Return MANAGED manifest names in dependency-safe start order.
 
-        The frozen tracked set keeps its historical build order; MANAGED
-        descriptors outside it (recognition_service, snapserver_manager, ...)
-        are appended in topological order of their declared dependencies.
+        Aliases are excluded (they are not lifecycle owners); the order is
+        the manifest topological order, so every declared dependency is
+        started before its dependents.
         """
-        ordered = []
-        seen = set()
-        for name in self.build_order():
-            desc = SERVICE_MANIFEST.get(name)
-            if desc is None or desc.lifecycle == LifecycleKind.MANAGED:
-                ordered.append(name)
-                seen.add(name)
-        remaining = [
-            name for name, desc in SERVICE_MANIFEST.items()
-            if name not in seen and desc.lifecycle == LifecycleKind.MANAGED
+        order = self._topological_sort(self._manifest_graph())
+        return [
+            name for name in order
+            if name in SERVICE_MANIFEST
+            and SERVICE_MANIFEST[name].lifecycle == LifecycleKind.MANAGED
         ]
-        pending = list(remaining)
-        while pending:
-            progress = False
-            for name in list(pending):
-                desc = SERVICE_MANIFEST[name]
-                if all(
-                    dep in seen or dep not in self._services
-                    for dep in desc.dependencies
-                ):
-                    ordered.append(name)
-                    seen.add(name)
-                    pending.remove(name)
-                    progress = True
-            if not progress:
-                ordered.extend(pending)
-                break
-        return ordered
+
+    def _record_start_failure(self, name: str, err: str) -> None:
+        self._failures[name] = err
+        prio = self.priority(name)
+        if prio == ServicePriority.REQUIRED:
+            logger.error("REQUIRED '%s' start failed: %s", name, err)
+        else:
+            logger.warning("OPTIONAL '%s' start degraded: %s", name, err)
 
     def start(self) -> ServiceContainer | None:
-        """Validate and start registered services in dependency order.
+        """Validate and start registered services in manifest dependency order.
 
-        Only MANAGED manifest descriptors are started; the declared start
-        method is invoked when the instance has it. Missing/None services and
-        missing start methods are skipped; start failures are recorded per
-        service and drive the container state (REQUIRED -> FAILED,
-        OPTIONAL/CAPABILITY_GATED -> DEGRADED).
+        Only MANAGED manifest descriptors are started (aliases never start
+        separately; each instance starts exactly once). OPTIONAL descriptors
+        whose declared dependencies are missing degrade honestly through
+        report_failure instead of being silently skipped. Cycles and missing
+        REQUIRED dependencies drive the container to FAILED.
         """
 
         errors = self.validate()
@@ -556,6 +583,25 @@ class ServiceContainer:
             self._state = ContainerState.BUILDING
         self._state = ContainerState.STARTING
         self._started_order = []
+        self._started_ids = set()
+
+        degraded_by_deps: set[str] = set()
+        for name, desc in SERVICE_MANIFEST.items():
+            if desc.priority != ServicePriority.OPTIONAL or desc.alias_of is not None:
+                continue
+            svc = self._services.get(name)
+            if svc is None:
+                continue
+            missing = [
+                dep for dep in self._resolved_dependencies(name)
+                if dep not in self._services or self._services[dep] is None
+            ]
+            if missing:
+                degraded_by_deps.add(name)
+                self.report_failure(
+                    name, f"missing dependency: {', '.join(sorted(missing))}"
+                )
+
         order = self._lifecycle_start_order()
         for name in order:
             if name not in self._services or self._services[name] is None:
@@ -564,6 +610,10 @@ class ServiceContainer:
                     self._failures[name] = "missing"
                 continue
             svc = self._services[name]
+            if name in degraded_by_deps:
+                continue
+            if id(svc) in self._started_ids:
+                continue
             if (hasattr(self, '_service_states')
                     and self._service_states.get(name) in ('ready', 'starting')):
                 continue
@@ -574,35 +624,31 @@ class ServiceContainer:
                 self._service_states[name] = "starting"
                 self.service_state_changed.emit(name, "starting")
             self._started_order.append(name)
+            self._started_ids.add(id(svc))
             try:
                 result = start_method()
                 if isinstance(result, dict) and result.get("ok") is False:
                     err = str(result.get("error") or "start returned ok=False")
-                    self._failures[name] = err
+                    self._record_start_failure(name, err)
                     if hasattr(self, '_service_states'):
                         self._service_states[name] = "failed"
                         self.service_state_changed.emit(name, "failed")
-                    prio = self.priority(name)
-                    if prio == ServicePriority.REQUIRED:
-                        logger.error("REQUIRED '%s' start failed: %s", name, err)
-                    else:
-                        logger.warning("OPTIONAL '%s' start degraded: %s", name, err)
                     continue
                 if hasattr(self, '_service_states'):
                     self._service_states[name] = "ready"
                     self.service_state_changed.emit(name, "ready")
             except Exception as e:
-                err = str(e)
-                self._failures[name] = err
+                self._record_start_failure(name, str(e))
                 if hasattr(self, '_service_states'):
                     self._service_states[name] = "failed"
                     self.service_state_changed.emit(name, "failed")
-                prio = self.priority(name)
-                if prio == ServicePriority.REQUIRED:
-                    logger.error("REQUIRED '%s' start failed: %s", name, err)
+        required_names = {
+            name for name, desc in SERVICE_MANIFEST.items()
+            if desc.priority == ServicePriority.REQUIRED
+        }
         has_missing_required = any(
             name not in self._services or self._services[name] is None
-            for name in self._required_names()
+            for name in required_names
         )
         has_required_failure = any(
             self.priority(n) == ServicePriority.REQUIRED
@@ -625,14 +671,35 @@ class ServiceContainer:
             1 for desc in SERVICE_MANIFEST.values()
             if desc.lifecycle == LifecycleKind.MANAGED
         )
+        required = sum(
+            1 for desc in SERVICE_MANIFEST.values()
+            if desc.priority == ServicePriority.REQUIRED
+        )
+        optional = sum(
+            1 for desc in SERVICE_MANIFEST.values()
+            if desc.priority == ServicePriority.OPTIONAL
+        )
+        capability_gated = sum(
+            1 for desc in SERVICE_MANIFEST.values()
+            if desc.priority == ServicePriority.CAPABILITY_GATED
+        )
+        deferred_physical = sum(
+            1 for desc in SERVICE_MANIFEST.values()
+            if desc.priority == ServicePriority.DEFERRED_PHYSICAL
+        )
+        deferred = sum(
+            1 for desc in SERVICE_MANIFEST.values()
+            if desc.priority == ServicePriority.DEFERRED
+        )
         return {
             "state": self._state.value,
             "services": len(self._services),
             "failures": dict(self._failures),
-            "required": len(self._required_names()),
-            "optional": len(self._optional_names()),
-            "capability_gated": len(self._capability_gated_names()),
-            "deferred_physical": len(self._deferred_physical_names()),
+            "required": required,
+            "optional": optional,
+            "capability_gated": capability_gated,
+            "deferred_physical": deferred_physical,
+            "deferred": deferred,
             "manifest_entries": len(SERVICE_MANIFEST),
             "manifest_managed": managed,
             "started": len(self._started_order),
@@ -648,35 +715,39 @@ class ServiceContainer:
                     logger.debug("cancel %s: %s", name, e)
 
     def shutdown(self) -> None:
-        """Stop registered services in reverse dependency order.
+        """Stop registered services in reverse manifest dependency order.
 
         Order: MANAGED descriptors in reverse start order, then EXTERNAL
-        descriptors, then any remaining registered key (current behaviour for
-        keys without descriptors). Each registered key is processed once.
+        descriptors, then any remaining registered key. Each instance is
+        processed exactly once (aliases and duplicate keys share the
+        instance identity and are deduplicated).
         """
 
         self._state = ContainerState.STOPPING
-        all_ordered: list[str] = []
-        seen: set[str] = set()
+        shutdown_order: list[str] = []
+        processed: set[str] = set()
+        seen_ids: set[int] = set()
 
         def _append(name: str) -> None:
-            if name in self._services and name not in seen:
-                all_ordered.append(name)
-                seen.add(name)
+            if name not in self._services or name in processed:
+                return
+            svc = self._services[name]
+            if id(svc) in seen_ids:
+                return
+            processed.add(name)
+            seen_ids.add(id(svc))
+            shutdown_order.append(name)
 
-        for name in reversed(self._started_order):
+        start_order = self._lifecycle_start_order()
+        for name in reversed(start_order):
             _append(name)
-        for name in reversed(self.build_order()):
-            desc = SERVICE_MANIFEST.get(name)
-            if desc is None or desc.lifecycle == LifecycleKind.MANAGED:
-                _append(name)
         for name, desc in SERVICE_MANIFEST.items():
             if desc.lifecycle == LifecycleKind.EXTERNAL:
                 _append(name)
         for name in self._services:
             _append(name)
 
-        for name in all_ordered:
+        for name in shutdown_order:
             svc = self._services[name]
             if hasattr(svc, 'shutdown') and callable(svc.shutdown):
                 try:
@@ -691,22 +762,6 @@ class ServiceContainer:
         self.cancel_all()
         self._failures.clear()
         self._state = ContainerState.STOPPED
-
-    def build_start_order(self) -> list[str]:
-        return self.build_order()
-
-    def validate_acyclic_graph(self) -> list[str]:
-        return self.build_order()
-
-    def validate_dependencies_present(self) -> list[str]:
-        errors = []
-        for name in self._all_names():
-            deps = set(self._dependencies.get(name, BUILTIN_DEPENDENCIES.get(name, set())))
-            deps.intersection_update(self._all_names())
-            for dep in deps:
-                if dep not in self._services or self._services[dep] is None:
-                    errors.append(f"'{name}' depends on '{dep}' which is missing")
-        return errors
 
     def report_failure(self, name: str, error: str) -> None:
         self._failures[name] = error
@@ -725,13 +780,13 @@ class ServiceContainer:
         return prio != ServicePriority.DEFERRED_PHYSICAL
 
     def list_services(self) -> dict[str, dict]:
-        """List every registered key plus every tracked name.
+        """List every registered key plus every manifest name.
 
         Each entry reports availability, priority, failure state and
         capability. Manifest lifecycle state is exposed via ``lifecycle_of``.
         """
         result = {}
-        for name in sorted(set(self._services.keys()) | set(self._all_names())):
+        for name in sorted(set(self._services.keys()) | set(SERVICE_MANIFEST)):
             svc = self._services.get(name)
             result[name] = {
                 "available": svc is not None,

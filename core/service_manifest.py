@@ -67,6 +67,10 @@ class ServiceDescriptor:
             to invoke; missing methods are skipped, not errors.
         optional: True when registration may be None or absent.
         description: Why this component exists / how it is used.
+        alias_of: Canonical key this descriptor is an alias of. The alias
+            shares the registered instance and lifecycle with the target:
+            aliases are never started/shutdown separately and they are not
+            graph nodes for dependency ordering.
     """
 
     name: str
@@ -82,6 +86,7 @@ class ServiceDescriptor:
     cancel_method: str = "cancel"
     optional: bool = False
     description: str = ""
+    alias_of: str | None = None
 
 
 def _d(name, service_class, lifecycle, priority, **kwargs) -> ServiceDescriptor:
@@ -117,8 +122,9 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
     "connection_factory": _d(
         "connection_factory", ServiceClass.MANAGED_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.REQUIRED,
-        dependencies=("database",),
-        description="Alias of database object for legacy consumers.",
+        alias_of="database",
+        description="Alias of database object for legacy consumers (same "
+                    "LibraryDB instance; never started/shutdown separately).",
     ),
     "read_connection_factory": _d(
         "read_connection_factory", ServiceClass.PASSIVE_REPOSITORY,
@@ -198,10 +204,12 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
     "settings_coordinator": _d(
         "settings_coordinator", ServiceClass.DOMAIN_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.REQUIRED,
-        dependencies=("settings_service",),
         capabilities=("settings",),
         consumers=("settings_service", "settings_bridge"),
-        description="SettingsRuntimeCoordinator — applies runtime settings.",
+        description="SettingsRuntimeCoordinator — applies runtime settings. "
+                    "Does NOT depend on settings_service (wiring direction: "
+                    "settings_service -> coordinator); playback/queue/worker "
+                    "are late-wired by composition, not manifest deps.",
     ),
     "settings_service": _d(
         "settings_service", ServiceClass.MANAGED_SERVICE,
@@ -296,8 +304,9 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
     "library_filtered_query_service": _d(
         "library_filtered_query_service", ServiceClass.DOMAIN_SERVICE,
         LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
-        dependencies=("library_query_service",),
-        description="Alias of library_query_service (same object).",
+        alias_of="library_query_service",
+        description="Alias of library_query_service (same object; not a "
+                    "lifecycle owner — never started/shutdown separately).",
     ),
     "collection_service": _d(
         "collection_service", ServiceClass.DOMAIN_SERVICE,
@@ -708,6 +717,7 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         LifecycleKind.MANAGED, ServicePriority.REQUIRED,
         optional=True,
         capabilities=("theme",),
+        consumers=("theme_bridge",),
         description="Canonical theme authority (mode, accent, artwork background).",
     ),
     "accessibility_service": _d(
@@ -715,6 +725,7 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         LifecycleKind.MANAGED, ServicePriority.REQUIRED,
         optional=True,
         capabilities=(),
+        consumers=("accessibility_bridge",),
         description="Accessibility runtime settings (canonical owner).",
     ),
     "context_service": _d(

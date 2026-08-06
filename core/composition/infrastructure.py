@@ -72,6 +72,11 @@ def build(container: ServiceContainer) -> None:
     )
 
     migrate_all()
+    # Settings wiring direction (manifest cycle fix, P0 FASE 1):
+    # settings_coordinator is constructed FIRST without any settings_service
+    # dependency; settings_service consumes the coordinator. The coordinator
+    # never depends on settings_service — playback/queue/worker are late-wired
+    # in composition/settings.py as explicit wiring, not manifest deps.
     coordinator = SettingsRuntimeCoordinator()
     svc = SettingsService(coordinator=coordinator, event_bus=eb)
     container.register("settings_coordinator", coordinator)
