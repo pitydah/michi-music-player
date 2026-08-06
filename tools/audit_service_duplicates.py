@@ -45,6 +45,7 @@ COMPOSITION_FILES = (
     HERE / "core" / "composition" / "ecosystem.py",
     HERE / "core" / "composition" / "settings.py",
     HERE / "core" / "composition" / "intelligence.py",
+    HERE / "core" / "composition" / "jobs.py",
     HERE / "core" / "application_bootstrap.py",
 )
 

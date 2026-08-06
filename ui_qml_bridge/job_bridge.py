@@ -218,18 +218,26 @@ class JobBridge(QObject):
             return {"ok": False, "error": "NOT_FOUND"}
         if self._js.cancel_job(jid):
             return {"ok": True}
-        return {"ok": True, "already": True}
+        return {"ok": False, "error": "NOT_CANCELLABLE", "job_id": jid}
 
     @Slot("QVariant", result=dict)
     def retryJob(self, job_id):
+        """Re-queue and start a terminal job through job_service.retry_job.
+
+        Unified semantics with NotificationActionService.retry: preserves
+        the original payload, starts immediately when capacity allows and
+        returns the REAL read-back state (never a blind success).
+        """
         jid = str(job_id)
         if self._js is None:
             return {"ok": False, "error": INFRASTRUCTURE_UNAVAILABLE}
         if self._js.get_job(jid) is None:
             return {"ok": False, "error": "NOT_FOUND"}
-        if self._js.retry_job(jid):
-            return {"ok": True}
-        return {"ok": False, "error": "NOT_RETRYABLE"}
+        if not self._js.retry_job(jid):
+            return {"ok": False, "error": "NOT_RETRYABLE", "job_id": jid}
+        job = self._js.get_job(jid)
+        state = job.state.value if job else JobState.QUEUED.value
+        return {"ok": True, "job_id": jid, "state": state}
 
     @Slot(result=dict)
     def clearCompleted(self):

@@ -47,7 +47,7 @@ def container(db_with_history):
 
 @pytest.fixture
 def job_service(tmp_path, container):
-    from core.jobs.handlers import register_production_job_handlers
+    from core.composition.jobs import register_production_job_handlers
     from core.jobs.job_service import DurableJobService
     from core.worker_manager import WorkerManager
 

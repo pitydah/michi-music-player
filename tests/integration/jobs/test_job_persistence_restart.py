@@ -88,9 +88,24 @@ def test_restart_recovery_interrupts_running_and_reloads_queued(tmp_path):
     assert queued_id in listed, "reloaded QUEUED job must be in list_jobs"
     assert running_id in listed
 
-    # The recovered jobs are retryable/startable again.
+    # Recovered jobs are retryable: retry re-queues with the ORIGINAL payload
+    # and starts immediately (Fase Jobs: unified retry semantics). The
+    # handler runs inline (no WorkerManager in this test) and completes.
+    def ok_handler(job, ctx):
+        return {"ok": True, "recovered": True}
+
+    svc2.register_handler("wait_type", ok_handler)
+
     assert svc2.retry_job(running_id) is True
-    assert svc2.get_job(running_id).state == JobState.QUEUED
+    retried = svc2.get_job(running_id)
+    assert retried.state == JobState.SUCCEEDED, (
+        f"retry must start the job, got {retried.state}"
+    )
+    assert retried.payload.get("folder") == "/x", (
+        "retry must preserve the original payload"
+    )
+    assert retried.result.get("recovered") is True
+
     assert svc2.retry_job(queued_id) is False, (
         "a job already QUEUED has nothing to retry"
     )

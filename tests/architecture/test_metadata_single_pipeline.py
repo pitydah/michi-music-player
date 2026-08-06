@@ -68,8 +68,23 @@ def test_apply_batch_returns_real_counters() -> None:
 
 
 def test_batch_adapter_is_not_the_editing_authority() -> None:
-    """The job handler routes metadata_batch through the editor service."""
-    source = (PROJECT_ROOT / "core" / "jobs" / "handlers.py").read_text(
+    """The metadata_batch job handler routes through the editor service.
+
+    Fase Jobs: handlers are pure factories over injected ports — the wiring
+    to metadata_editor_service lives in composition, not inside handlers.py.
+    """
+    handlers = (PROJECT_ROOT / "core" / "jobs" / "handlers.py").read_text(
         encoding="utf-8")
-    assert "metadata_editor_service" in source
-    assert 'source": "ui"' in source
+    assert "make_metadata_batch_handler" in handlers
+    assert 'source": "ui"' in handlers, (
+        "the batch handler must route through the editor's apply_batch"
+    )
+
+    composition = (PROJECT_ROOT / "core" / "composition" / "jobs.py").read_text(
+        encoding="utf-8")
+    assert 'container.get("metadata_editor_service")' in composition, (
+        "composition must wire the metadata port to metadata_editor_service"
+    )
+    assert 'register_handler("metadata_batch"' in composition, (
+        "composition must register the metadata_batch handler"
+    )

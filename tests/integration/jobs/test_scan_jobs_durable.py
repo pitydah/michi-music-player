@@ -55,7 +55,7 @@ def test_scan_job_runs_async_and_persists_payload(app, real_db, tmp_path):
     svc = DurableJobService(db_path=str(tmp_path / "jobs.db"),
                             worker_manager=wm)
     try:
-        from core.jobs.handlers import register_production_job_handlers
+        from core.composition.jobs import register_production_job_handlers
         register_production_job_handlers(svc, container)
 
         job_id = svc.create_job(
@@ -94,7 +94,7 @@ def test_metadata_and_doctor_scan_complete_with_real_db(app, real_db, tmp_path):
     svc = DurableJobService(db_path=str(tmp_path / "jobs.db"),
                             worker_manager=wm)
     try:
-        from core.jobs.handlers import register_production_job_handlers
+        from core.composition.jobs import register_production_job_handlers
         register_production_job_handlers(svc, container)
 
         for job_type in ("metadata_scan", "doctor_scan"):

@@ -142,6 +142,9 @@ class MixBridge(QObject):
         self._error_message = ""
         self._generation = 0
         self._validation_errors: list[str] = []
+        # The only durable job this bridge may cancel: its own current
+        # generation job (never other domains' jobs — no cancel_all).
+        self._job_id = ""
 
     @property
     def state(self) -> MixState:
@@ -306,8 +309,12 @@ class MixBridge(QObject):
     def cancelGeneration(self) -> dict[str, Any]:
         if self._state == MixState.GENERATING:
             self._set_state(MixState.CANCELLING)
-        if self._job_svc is not None:
-            self._job_svc.cancel_all()
+        # Scope: cancel ONLY this bridge's current job id — never jobs of
+        # other domains (P0 Fase Jobs: cancel_all was collateral damage).
+        if self._job_svc is not None and self._job_id:
+            if self._job_svc.get_job(self._job_id) is not None:
+                self._job_svc.cancel_job(self._job_id)
+            self._job_id = ""
         gen = self._generation
         self._generation += 1
         self._current_songs = []

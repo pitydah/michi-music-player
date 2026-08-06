@@ -1,9 +1,10 @@
-"""Production job handlers registered on the DurableJobService.
+"""Production job handler factories for the DurableJobService.
 
-Every job kind the UI can submit through JobBridge has an explicit handler
-here: library_scan, library_scan_all, metadata_scan, doctor_scan,
-metadata_batch and history_export. Audio Lab operations are migrated in a
-later slice; the registry mechanism already supports them.
+Every factory closes over the port instance passed from composition
+(see ``core/composition/jobs.py`` for the composition-side assembly).
+Handlers NEVER resolve services: no ``ServiceClass(...)``, no
+``container.get(...)``, no fallback instantiation — the port IS the
+dependency (ADR-004, Fase Jobs).
 
 Handler contract (DurableJobService): ``handler(job, ctx)`` where ``ctx``
 exposes ``raise_if_cancelled()`` and ``report_progress(percent, message)``.
@@ -26,58 +27,31 @@ JOB_TITLES = {
 }
 
 
-def register_production_job_handlers(job_service, container) -> None:
-    """Register every production job handler on *job_service*.
+def make_library_scan_handler(port) -> callable:
+    """Close over a LibraryScanPort; scan the folder from the job payload."""
 
-    Services are resolved lazily from *container* at execution time, so this
-    may be called from the infrastructure builder before other composition
-    modules run.
-    """
-    job_service.register_handler("library_scan", _make_library_scan_handler(container))
-    job_service.register_handler("library_scan_all", _make_library_scan_all_handler(container))
-    job_service.register_handler("metadata_scan", _make_metadata_scan_handler(container))
-    job_service.register_handler("doctor_scan", _make_doctor_scan_handler(container))
-    job_service.register_handler("metadata_batch", _make_metadata_batch_handler(container))
-    job_service.register_handler("doctor_repair", _make_doctor_repair_handler(container))
-    job_service.register_handler("history_export", _make_history_export_handler(container))
-
-
-def _run_library_scan(ctx, container, folder_path: str) -> dict:
-    from core.scanner_job_adapter import ScannerJobAdapter
-
-    db = container.get("database")
-    adapter = ScannerJobAdapter(db, library_bridge=None)
-    result = adapter.scan(ctx, folder_path)
-    if result.get("error_code") == "CANCELLED":
-        ctx.token.raise_if_cancelled()
-    if result.get("error_code"):
-        raise RuntimeError(result["error_code"])
-    if result.get("errors", 0) > 0:
-        result["partial"] = True
-    return result
-
-
-def _make_library_scan_handler(container):
     def handler(job, ctx):
         folder = (job.payload or {}).get("folder_path", "")
         ctx.report_progress(0.05, "Iniciando escaneo")
         ctx.token.raise_if_cancelled()
-        result = _run_library_scan(ctx, container, folder)
+        result = port.scan(ctx, folder)
+        if result.get("error_code") == "CANCELLED":
+            ctx.token.raise_if_cancelled()
+        if result.get("error_code"):
+            raise RuntimeError(result["error_code"])
+        if result.get("errors", 0) > 0:
+            result["partial"] = True
         ctx.report_progress(1.0, "Escaneo finalizado")
         return result
 
     return handler
 
 
-def _make_library_scan_all_handler(container):
-    def handler(job, ctx):
-        from core.library_sources_service import LibrarySourcesService
+def make_library_scan_all_handler(port) -> callable:
+    """Close over a LibraryScanPort; scan every enabled source sequentially."""
 
-        db = container.get("database")
-        src_svc = container.get("library_sources_service")
-        if src_svc is None:
-            src_svc = LibrarySourcesService(db=db)
-        sources = [s for s in src_svc.list()
+    def handler(job, ctx):
+        sources = [s for s in port.list_sources()
                    if s.get("enabled") and s.get("available")]
         total = max(len(sources), 1)
         combined: dict = {
@@ -88,7 +62,7 @@ def _make_library_scan_all_handler(container):
         for idx, source in enumerate(sources):
             ctx.token.raise_if_cancelled()
             ctx.report_progress(idx / total, f"Escaneando {source['path']}")
-            result = _run_library_scan(ctx, container, source["path"])
+            result = port.scan(ctx, source["path"])
             for key in combined:
                 if key != "sources" and key in result:
                     combined[key] += result[key] or 0
@@ -100,15 +74,13 @@ def _make_library_scan_all_handler(container):
     return handler
 
 
-def _make_metadata_scan_handler(container):
-    def handler(job, ctx):
-        from core.metadata_batch_adapter import MetadataBatchAdapter
+def make_metadata_scan_handler(port) -> callable:
+    """Close over a MetadataBatchPort; detect tracks with missing metadata."""
 
-        db = container.get("database")
+    def handler(job, ctx):
         ctx.report_progress(0.1, "Analizando metadatos")
         ctx.token.raise_if_cancelled()
-        adapter = MetadataBatchAdapter(db=db)
-        result = adapter.scan_missing(ctx)
+        result = port.scan_missing(ctx)
         ctx.token.raise_if_cancelled()
         if result.get("error"):
             raise RuntimeError(result["error"])
@@ -118,14 +90,15 @@ def _make_metadata_scan_handler(container):
     return handler
 
 
-def _make_doctor_scan_handler(container):
+def make_doctor_scan_handler(port) -> callable:
+    """Close over a DoctorRepairPort; run a library health scan."""
+
     def handler(job, ctx):
-        doctor = container.get("library_doctor_service")
-        if doctor is None:
+        if port is None:
             raise RuntimeError("LibraryDoctorService unavailable")
         ctx.report_progress(0.1, "Revisando biblioteca")
         ctx.token.raise_if_cancelled()
-        result = doctor.scan(ctx)
+        result = port.scan(ctx)
         ctx.token.raise_if_cancelled()
         if result.get("code") == "CANCELLED":
             ctx.token.raise_if_cancelled()
@@ -137,16 +110,17 @@ def _make_doctor_scan_handler(container):
     return handler
 
 
-def _make_doctor_repair_handler(container):
+def make_doctor_repair_handler(port) -> callable:
+    """Close over a DoctorRepairPort; repair the issue from the job payload."""
+
     def handler(job, ctx):
-        doctor = container.get("library_doctor_service")
-        if doctor is None:
+        if port is None:
             raise RuntimeError("LibraryDoctorService unavailable")
         payload = job.payload or {}
         issue = payload.get("issue") or {}
         ctx.report_progress(0.1, "Reparando")
         ctx.token.raise_if_cancelled()
-        result = doctor.repair(
+        result = port.repair(
             issue,
             confirmation_token=str(payload.get("confirmation_token", "") or ""),
             confirmed_source=str(payload.get("confirmed_source", "") or ""),
@@ -164,22 +138,21 @@ def _make_doctor_repair_handler(container):
     return handler
 
 
-def _make_metadata_batch_handler(container):
+def make_metadata_batch_handler(port) -> callable:
+    """Close over a MetadataBatchPort; apply a batch metadata edit."""
+
     def handler(job, ctx):
-        editor = container.get("metadata_editor_service")
-        if editor is None:
-            raise RuntimeError("MetadataEditorService unavailable")
         payload = job.payload or {}
         filepaths = list(payload.get("filepaths") or [])
         key = payload.get("field", "")
         value = str(payload.get("value", ""))
-        proposal = editor.build_proposal(
+        proposal = port.build_proposal(
             [{"filepath": fp} for fp in filepaths],
             {key: value},
         )
         if not proposal.get("ok"):
             raise RuntimeError(proposal.get("code", "PROPOSAL_FAILED"))
-        result = editor.apply_batch(
+        result = port.apply_batch(
             [{"proposal_id": proposal["proposal_id"],
               "confirmed": True, "source": "ui"}],
             ctx=ctx,
@@ -197,19 +170,19 @@ def _make_metadata_batch_handler(container):
     return handler
 
 
-def _make_history_export_handler(container):
-    def handler(job, ctx):
-        from core.history_export_service import HistoryExportService
+def make_history_export_handler(port) -> callable:
+    """Close over a HistoryExportPort; export history to the job payload path."""
 
-        db = container.get("database")
+    def handler(job, ctx):
+        if port is None:
+            raise RuntimeError("HistoryExportService unavailable")
         payload = job.payload or {}
         filepath = payload.get("filepath", "")
         fmt = payload.get("fmt", "json")
         filters = payload.get("filters") or {}
         ctx.report_progress(0.1, "Leyendo historial")
         ctx.token.raise_if_cancelled()
-        svc = HistoryExportService(db=db)
-        result = svc.export_history(filepath, fmt, filters=filters, ctx=ctx)
+        result = port.export_history(filepath, fmt, filters=filters, ctx=ctx)
         ctx.token.raise_if_cancelled()
         if not result.get("ok"):
             raise RuntimeError(result.get("error", "Export failed"))

@@ -585,8 +585,8 @@ class MetadataBridge(QObject):
     def cancelBatch(self):
         self._set_status("CANCELLED")
         if self._js:
-            for d in self._js.list_jobs(job_type="metadata_batch", limit=100):
-                self._js.cancel_job(d["id"])
+            # Owner-scoped: never touches jobs of other domains.
+            self._js.cancel_scope("metadata_bridge", "metadata_batch")
         return {"ok": True}
 
     @Slot(result=dict)
