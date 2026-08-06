@@ -170,6 +170,7 @@ class CapabilityBridge(QObject):
         probes = {
             "has_fts5": self._check_fts5(container),
             "has_radio": self._check_radio(container),
+            "has_global_search": self._check_global_search(container),
             "has_sync": self._container_probe(
                 container, "has_sync", "device_sync_service"),
             "has_home_audio": self._container_probe(
@@ -267,6 +268,36 @@ class CapabilityBridge(QObject):
         except Exception as exc:  # noqa: BLE001 — FTS5 not compiled in
             return _status(key, STATE_UNAVAILABLE, reason="FTS5_NOT_COMPILED",
                            last_error=str(exc))
+
+    def _check_global_search(self, container) -> CapabilityStatus:
+        """Probe the global search chain truthfully (Slice 6).
+
+        Available only when the service exists AND ``search_available()``
+        reports the whole chain operative (query executor + worker manager
+        active, database readable, at least one provider registered). The
+        reasons surface in the status metadata.
+        """
+        key = "has_global_search"
+        if not container or not container.contains("global_search_service"):
+            return _status(key, STATE_UNAVAILABLE, reason="NO_SERVICE")
+        try:
+            service = container.get("global_search_service")
+        except Exception as exc:  # noqa: BLE001 — probe must stay alive
+            return _status(key, STATE_UNAVAILABLE, reason="SERVICE_ERROR",
+                           last_error=str(exc))
+        checker = getattr(service, "search_available", None)
+        if not callable(checker):
+            return _status(key, STATE_AVAILABLE)
+        try:
+            info = checker()
+        except Exception as exc:  # noqa: BLE001 — probe must stay alive
+            return _status(key, STATE_UNAVAILABLE, reason="PROBE_FAILED",
+                           last_error=str(exc))
+        if isinstance(info, dict) and info.get("ok"):
+            return _status(key, STATE_AVAILABLE)
+        reasons = info.get("reasons", []) if isinstance(info, dict) else []
+        return _status(key, STATE_UNAVAILABLE, reason="CHAIN_UNAVAILABLE",
+                       last_error="; ".join(reasons))
 
     def _check_snapcast(self, container) -> CapabilityStatus:
         """Probe Snapserver lifecycle via the owned SnapServerManager.

@@ -36,6 +36,15 @@ def build(container: ServiceContainer) -> None:
             event_bus=event_bus,
         )
         container.register("connection_service", connection_service)
+        search_registry = container.get("search_provider_registry")
+        if search_registry is not None:
+            from core.search.models import SearchDomain
+            from core.search.providers import ConnectionSearchProvider
+
+            search_registry.register(
+                SearchDomain.CONNECTION,
+                ConnectionSearchProvider(connection_service),
+            )
     except Exception as exc:
         logger.error("Failed to create connection_service: %s", exc)
         container.register("connection_service", None)
@@ -99,7 +108,16 @@ def build(container: ServiceContainer) -> None:
         from core.sync.device_registry import DeviceRegistry
 
         container.register("device_sync_service", DeviceSyncService())
-        container.register("device_registry", DeviceRegistry())
+        device_registry = DeviceRegistry()
+        container.register("device_registry", device_registry)
+        search_registry = container.get("search_provider_registry")
+        if search_registry is not None:
+            from core.search.models import SearchDomain
+            from core.search.providers import DeviceSearchProvider
+
+            search_registry.register(
+                SearchDomain.DEVICE, DeviceSearchProvider(device_registry)
+            )
     except Exception as exc:
         logger.error("Failed to create device_sync_service: %s", exc)
         container.register("device_sync_service", None)

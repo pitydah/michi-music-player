@@ -119,11 +119,11 @@ class TestDomainSearch:
 
     def test_domain_albums(self, async_bridge):
         async_bridge.searchDomain("albums", "dark")
-        assert async_bridge.query == "album:dark"
+        assert async_bridge.query == "dark"
 
     def test_domain_unknown(self, async_bridge):
         async_bridge.searchDomain("xyz", "test")
-        assert async_bridge.query == "xyz:test"
+        assert async_bridge.query == "test"
 
     def test_all_domains_covered(self, async_bridge):
         for d in ("tracks", "albums", "artists", "playlists"):

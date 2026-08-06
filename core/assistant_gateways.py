@@ -279,17 +279,38 @@ class ProductionLibraryGateway(LibraryGateway, ProductionCapabilityMixin):
     library DB remains the fallback for search and favorites.
     """
 
-    def __init__(self, db: Any, query_service: Any = None) -> None:
+    def __init__(self, db: Any, query_service: Any = None,
+                 search_service: Any = None) -> None:
         self._db = db
         self._query = query_service
+        self._search_service = search_service
+
+    def _search_capability(self) -> tuple[bool, str]:
+        """Consult the canonical global search capability when injected."""
+        if self._search_service is not None:
+            checker = getattr(self._search_service, "search_available", None)
+            if callable(checker):
+                try:
+                    info = checker()
+                except Exception as exc:
+                    return False, str(exc)
+                if isinstance(info, dict) and info.get("ok"):
+                    return True, ""
+                reasons = info.get("reasons", []) if isinstance(info, dict) else []
+                return False, "; ".join(reasons) or "search unavailable"
+            return True, ""
+        if self._db is None:
+            return False, "LibraryDB"
+        return True, ""
 
     def operational_capabilities(self) -> dict[str, bool]:
-        ok = self._db is not None or self._query is not None
+        search_ok, _ = self._search_capability()
+        read_ok = self._db is not None or self._query is not None
         return {
-            "library.search": ok,
-            "library.read": ok,
-            "history.read": ok,
-            "metadata.read": ok,
+            "library.search": search_ok,
+            "library.read": read_ok,
+            "history.read": read_ok,
+            "metadata.read": read_ok,
         }
 
     def _public_track(self, track: dict[str, Any]) -> dict[str, Any]:
@@ -297,6 +318,8 @@ class ProductionLibraryGateway(LibraryGateway, ProductionCapabilityMixin):
         return {k: v for k, v in track.items() if k not in ("filepath", "filename")}
 
     def search(self, query: str, **filters: Any) -> dict[str, Any]:
+        if self._search_service is not None:
+            return self._search_via_service(query, filters)
         if self._db is None:
             return _unavailable_response("LibraryDB")
         try:
@@ -311,6 +334,40 @@ class ProductionLibraryGateway(LibraryGateway, ProductionCapabilityMixin):
                         "format": getattr(r, "format", "")}
                 safe.append(item)
             return {"ok": True, "results": safe, "total": len(safe)}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def _search_via_service(self, query: str, filters: dict[str, Any]) -> dict[str, Any]:
+        ok, reason = self._search_capability()
+        if not ok:
+            return {"ok": False, "error": reason or "search unavailable",
+                    "code": "CAPABILITY_UNAVAILABLE"}
+        try:
+            from core.search.models import SearchDomain, SearchRequest
+            limit = int(filters.get("limit", 200) or 200)
+            request = SearchRequest(
+                query=query,
+                domains=frozenset({SearchDomain.TRACK, SearchDomain.ALBUM,
+                                   SearchDomain.ARTIST}),
+                limit_per_domain=limit,
+                total_limit=limit,
+                owner="michi_ai",
+                request_id="michi_ai",
+            )
+            response = self._search_service.search(request)
+            results = []
+            for item in response.items:
+                extra = item.extra or {}
+                results.append({
+                    "id": item.result_id,
+                    "title": item.title,
+                    "artist": extra.get("artist", ""),
+                    "album": extra.get("album", ""),
+                    "duration": extra.get("duration", 0),
+                    "format": extra.get("format", ""),
+                })
+            return {"ok": True, "results": results, "total": len(results),
+                    "domains_failed": [d.name for d in response.domains_failed]}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 

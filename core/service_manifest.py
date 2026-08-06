@@ -347,10 +347,19 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
     "global_search_service": _d(
         "global_search_service", ServiceClass.MANAGED_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.REQUIRED,
-        dependencies=("connection_factory", "library_query_service"),
+        dependencies=("connection_factory", "library_query_service",
+                      "search_provider_registry", "query_executor",
+                      "worker_manager"),
         capabilities=("global_search",),
         consumers=("global_search_bridge",),
         description="Global FTS5 search.",
+    ),
+    "search_provider_registry": _d(
+        "search_provider_registry", ServiceClass.PASSIVE_REPOSITORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("connection_factory",),
+        consumers=("global_search_service",),
+        description="SearchDomain -> provider registry for global search.",
     ),
     "metadata_service": _d(
         "metadata_service", ServiceClass.MANAGED_SERVICE,

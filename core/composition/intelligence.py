@@ -12,6 +12,12 @@ def build(container: ServiceContainer) -> None:
     from ui_qml_bridge.action_registry import ActionRegistry
     ar = ActionRegistry(container=container)
     container.register("action_registry", ar)
+    search_registry = container.get("search_provider_registry")
+    if search_registry is not None:
+        from core.search.models import SearchDomain
+        from core.search.providers import ActionSearchProvider
+
+        search_registry.register(SearchDomain.ACTION, ActionSearchProvider(ar))
     try:
         from recommendation.smart_mix_service import SmartMixService
         from recommendation.recommendation_service import RecommendationService
@@ -58,6 +64,7 @@ def build(container: ServiceContainer) -> None:
             track_action_service=container.get("track_action_service"),
             library_query_service=container.get("library_query_service"),
             device_registry=container.get("device_registry"),
+            global_search_service=container.get("global_search_service"),
         )
         container.register("michi_ai_service", comp.core_service)
 

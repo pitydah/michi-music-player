@@ -361,6 +361,11 @@ class WorkerManager(QObject):
     def pending(self) -> int:
         return self._pool.activeThreadCount()
 
+    @property
+    def is_shutdown(self) -> bool:
+        """True once shutdown() has been requested (public capability probe)."""
+        return self._shutdown
+
     # ── Private bus handlers (main thread via QueuedConnection) ──
 
     @Slot(str, int, object)

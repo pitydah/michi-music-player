@@ -222,6 +222,25 @@ class QueryExecutor(QObject):
                 return True
             return r.generation != self._generations.get(owner, 0)
 
+    def operative(self) -> bool:
+        """True when submissions actually run on a live worker pool.
+
+        A QueryExecutor without a WorkerManager falls back to synchronous
+        execution (legacy behavior kept for jobs); consumers that MUST never
+        run synchronously (global search) consult this before submitting.
+        """
+        if self._shutdown:
+            return False
+        wm = self._wm
+        if wm is None:
+            return False
+        try:
+            if getattr(wm, "is_shutdown", False):
+                return False
+        except Exception:
+            return False
+        return True
+
     def request_state(self, request_id: int) -> str:
         with self._lock:
             r = self._requests.get(request_id)

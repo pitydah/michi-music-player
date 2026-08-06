@@ -61,7 +61,42 @@ def build(container: ServiceContainer) -> None:
         ),
     )
     container.register("history_query_service", HistoryQueryService(cf))
-    container.register("global_search_service", GlobalSearchService(cf.db_path))
+    from core.search.models import SearchDomain
+    from core.search.providers import (
+        AlbumSearchRepository,
+        ArtistSearchRepository,
+        FolderSearchRepository,
+        GenreSearchRepository,
+        PlaylistSearchRepository,
+        RadioSearchRepository,
+        SearchProviderRegistry,
+        SettingsSearchProvider,
+        TrackSearchRepository,
+    )
+
+    search_registry = SearchProviderRegistry()
+    search_registry.register(SearchDomain.TRACK, TrackSearchRepository(cf))
+    search_registry.register(SearchDomain.ALBUM, AlbumSearchRepository(cf))
+    search_registry.register(SearchDomain.ARTIST, ArtistSearchRepository(cf))
+    search_registry.register(SearchDomain.PLAYLIST, PlaylistSearchRepository(cf))
+    search_registry.register(SearchDomain.RADIO, RadioSearchRepository(cf))
+    search_registry.register(SearchDomain.GENRE, GenreSearchRepository(cf))
+    search_registry.register(SearchDomain.FOLDER, FolderSearchRepository(cf))
+    settings_service = container.get("settings_service")
+    if settings_service is not None:
+        search_registry.register(
+            SearchDomain.SETTINGS, SettingsSearchProvider(settings_service)
+        )
+    container.register("search_provider_registry", search_registry)
+    container.register(
+        "global_search_service",
+        GlobalSearchService(
+            connection_factory=cf,
+            provider_registry=search_registry,
+            query_executor=container.get("query_executor"),
+            worker_manager=wm,
+        ),
+    )
     container.register("metadata_service", MetadataService())
 
     try:

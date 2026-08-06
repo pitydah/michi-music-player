@@ -30,9 +30,33 @@ def mock_service():
     return svc
 
 
+class _ImmediateQueryExecutor:
+    """Test double for the QueryExecutor contract: runs the submitted
+    callable immediately and forwards the result through on_success (the
+    bridge itself never executes inline — this fake models a prompt async
+    completion)."""
+
+    def __init__(self):
+        self.submits = []
+
+    def submit(self, owner, callable_fn, on_success=None, on_error=None,
+               on_cancelled=None, request_context=None, supersede=True,
+               cancellable=True):
+        self.submits.append(owner)
+        result = callable_fn()
+        if on_success:
+            on_success(result)
+        return 42
+
+    def cancel_owner(self, owner):
+        pass
+
+
 @pytest.fixture
 def bridge(mock_service):
-    return GlobalSearchBridge(search_service=mock_service)
+    return GlobalSearchBridge(
+        search_service=mock_service, query_executor=_ImmediateQueryExecutor(),
+    )
 
 
 class TestSearchWorkflow:
@@ -97,7 +121,6 @@ class TestFullSearchWorkflow:
     def test_type_query_returns_results(self, bridge):
         result = bridge.search("Genesis")
         assert result["ok"]
-        assert result["count"] == 4
         assert len(bridge.results) == 4
 
     def test_debounce_generation_tracking(self, bridge):

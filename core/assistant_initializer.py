@@ -92,6 +92,7 @@ def create_assistant_composition(
     track_action_service: Any = None,
     library_query_service: Any = None,
     device_registry: Any = None,
+    global_search_service: Any = None,
 ) -> AssistantComposition:
     """Compose the assistant engine, gateways, tools, and context providers.
 
@@ -140,8 +141,10 @@ def create_assistant_composition(
                 or playlist_service or library_query_service) else None),
         queue=(ProductionQueueGateway(queue_service, library_query_service)
                if (queue_service or library_query_service) else None),
-        library=(ProductionLibraryGateway(library_db, library_query_service)
-                 if (library_db or library_query_service) else None),
+        library=(ProductionLibraryGateway(library_db, library_query_service,
+                                          global_search_service)
+                 if (library_db or library_query_service
+                     or global_search_service) else None),
         playlists=(ProductionPlaylistGateway(library_db, playlist_service)
                    if (library_db or playlist_service) else None),
         settings=ProductionSettingsGateway(settings_service) if settings_service else None,
