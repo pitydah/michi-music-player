@@ -535,6 +535,7 @@ class BridgeFactory(QObject):
             self._bridges["metadata"] = MetadataBridge(
                 metadata_service=self._get("metadata_service"),
                 job_service=self._get("job_service"),
+                metadata_editor_service=self._get("metadata_editor_service"),
             )
 
     def create_smart_tagging_bridge(self):
@@ -611,6 +612,8 @@ class BridgeFactory(QObject):
                 notification_service=self._get("notification_service"),
                 navigation_bridge=self._bridges.get("navigation"),
                 diagnostics_service=self._get("diagnostics_service"),
+                notification_action_service=self._get("notification_action_service"),
+                job_service=self._get("job_service"),
             )
 
     def create_command_palette_bridge(self):

@@ -41,11 +41,25 @@ def build(container: ServiceContainer) -> None:
     container.register("folder_tree_model", FolderTreeModel(sources_svc.root_paths()))
     favorite_service = FavoriteService(db=db, event_bus=eb)
     container.register("favorite_service", favorite_service)
-    container.register(
-        "library_mutation_service",
-        LibraryMutationService(db=db, event_bus=eb, favorite_service=favorite_service),
+    mutation_service = LibraryMutationService(
+        db=db, event_bus=eb, favorite_service=favorite_service,
     )
-    container.register("metadata_editor_service", MetadataEditorService(db=db))
+    container.register("library_mutation_service", mutation_service)
+    # MetadataEditorService is THE metadata editing authority (Slice 8):
+    # proposal -> preview -> confirm -> apply_batch -> readback -> undo, with
+    # real DB (via LibraryMutationService), physical tag writer, EventBus,
+    # ConfirmationService and UndoService injected.
+    container.register(
+        "metadata_editor_service",
+        MetadataEditorService(
+            db=db,
+            mutation_service=mutation_service,
+            event_bus=eb,
+            confirmation_service=container.get("confirmation_service"),
+            undo_service=container.get("undo_service"),
+            worker_manager=wm,
+        ),
+    )
     container.register("library_service", LibraryService(db=db, worker_manager=wm, library_query_service=lqs))
     playlist_service = PlaylistService(cf)
     container.register("playlist_service", playlist_service)
@@ -97,23 +111,48 @@ def build(container: ServiceContainer) -> None:
             worker_manager=wm,
         ),
     )
-    container.register("metadata_service", MetadataService())
+    container.register("metadata_service", MetadataService(db=db))
 
     try:
-        from core.library_doctor_service import LibraryDoctorService
-        container.register("library_doctor_service", LibraryDoctorService(db))
+        from library.genre_repository import GenreRepository
+        from core.genre.genre_cleanup_service import GenreCleanupService
+        genre_cleanup = GenreCleanupService(db=db, genre_repo=GenreRepository(db.conn))
+        container.register("genre_cleanup_service", genre_cleanup)
     except Exception:
-        logger.error("Failed to create library_doctor_service", exc_info=True)
-        container.register("library_doctor_service", None)
+        logger.error("Failed to create genre_cleanup_service", exc_info=True)
+        container.register("genre_cleanup_service", None)
 
     try:
         from core.library_doctor.repositories.scan_repository import (
             LibraryDoctorScanRepository,
         )
-        container.register("library_doctor_scan_repository", LibraryDoctorScanRepository(db))
+        scan_repo = LibraryDoctorScanRepository(db)
+        container.register("library_doctor_scan_repository", scan_repo)
     except Exception:
         logger.error("Failed to create library_doctor_scan_repository", exc_info=True)
+        scan_repo = None
         container.register("library_doctor_scan_repository", None)
+
+    try:
+        from core.library_doctor_service import LibraryDoctorService
+        container.register(
+            "library_doctor_service",
+            LibraryDoctorService(
+                db=db,
+                scan_repository=scan_repo,
+                worker_manager=wm,
+                job_service=container.get("job_service"),
+                mutation_service=container.get("library_mutation_service"),
+                confirmation_service=container.get("confirmation_service"),
+                undo_service=container.get("undo_service"),
+                metadata_editor=container.get("metadata_editor_service"),
+                genre_cleanup=container.get("genre_cleanup_service"),
+                event_bus=eb,
+            ),
+        )
+    except Exception:
+        logger.error("Failed to create library_doctor_service", exc_info=True)
+        container.register("library_doctor_service", None)
 
     try:
         from core.recognition_service import RecognitionService

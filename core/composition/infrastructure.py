@@ -58,6 +58,19 @@ def build(container: ServiceContainer) -> None:
     register_production_job_handlers(job_service, container)
     container.register("confirmation_service", ConfirmationService())
 
+    from core.undo_service import UndoService
+    container.register("undo_service", UndoService(event_bus=eb))
+
+    from core.notification_action_service import NotificationActionService
+    container.register(
+        "notification_action_service",
+        NotificationActionService(
+            job_service=job_service,
+            undo_service=container.get("undo_service"),
+            service_locator=container.get,
+        ),
+    )
+
     migrate_all()
     coordinator = SettingsRuntimeCoordinator()
     svc = SettingsService(coordinator=coordinator)

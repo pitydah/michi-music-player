@@ -93,6 +93,7 @@ def create_assistant_composition(
     library_query_service: Any = None,
     device_registry: Any = None,
     global_search_service: Any = None,
+    metadata_editor_service: Any = None,
 ) -> AssistantComposition:
     """Compose the assistant engine, gateways, tools, and context providers.
 
@@ -163,7 +164,8 @@ def create_assistant_composition(
             metadata_service=metadata_service,
             confirmation_service=confirmation_service,
             job_service=job_service,
-        ) if metadata_service else None,
+            metadata_editor=metadata_editor_service,
+        ) if (metadata_service or metadata_editor_service) else None,
         lyrics=_make_gateway("LyricsGateway", lyrics_service),
         library_doctor=(ProductionLibraryDoctorGateway(
             library_doctor_service, job_service, library_db)

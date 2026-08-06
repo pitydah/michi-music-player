@@ -308,11 +308,14 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
     "metadata_editor_service": _d(
         "metadata_editor_service", ServiceClass.DOMAIN_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
-        dependencies=("database",),
+        dependencies=("database", "library_mutation_service", "event_bus",
+                      "confirmation_service", "undo_service", "worker_manager"),
         capabilities=("metadata",),
-        consumers=("metadata_service", "metadata_bridge"),
-        description="MetadataEditorService — field-level metadata editing with "
-                    "preview/rollback (legacy library_mutation_service binding).",
+        consumers=("metadata_service", "metadata_bridge",
+                   "assistant_metadata_gateway", "library_doctor_service"),
+        description="MetadataEditorService — canonical metadata editing "
+                    "authority (proposal/preview/confirm/apply/readback/undo) "
+                    "with DB + tag writer + EventBus + UndoService injected.",
     ),
     "library_service": _d(
         "library_service", ServiceClass.APPLICATION_SERVICE,
@@ -364,28 +367,67 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
     "metadata_service": _d(
         "metadata_service", ServiceClass.MANAGED_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.REQUIRED,
-        dependencies=("worker_manager", "library_mutation_service"),
+        dependencies=("database",),
         capabilities=("metadata",),
-        consumers=("metadata_bridge", "audio_lab_service"),
-        description="Metadata read/edit operations.",
+        consumers=("metadata_bridge", "audio_lab_service",
+                   "assistant_metadata_gateway"),
+        description="Metadata read authority: physical tag reads, validation "
+                    "and single-file editor (legacy editing surface kept for "
+                    "backward compatibility; batch editing goes through "
+                    "metadata_editor_service).",
     ),
     "library_doctor_service": _d(
         "library_doctor_service", ServiceClass.MANAGED_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
-        dependencies=("database", "library_mutation_service", "worker_manager"),
+        dependencies=("database", "library_mutation_service", "worker_manager",
+                      "library_doctor_scan_repository", "job_service",
+                      "confirmation_service", "undo_service",
+                      "metadata_editor_service", "genre_cleanup_service",
+                      "event_bus"),
         optional=True,
         capabilities=("library_doctor",),
-        consumers=("library_doctor_bridge",),
-        description="Library health diagnosis; may be None.",
+        consumers=("library_doctor_bridge", "assistant_gateway"),
+        description="Library health diagnosis with a real repair registry "
+                    "(IssueType -> RepairHandler: preview/execute/readback/"
+                    "undo); repairs require confirmation and register real "
+                    "compensations in UndoService.",
     ),
     "library_doctor_scan_repository": _d(
         "library_doctor_scan_repository", ServiceClass.PASSIVE_REPOSITORY,
         LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
         dependencies=("database",),
         optional=True,
-        consumers=("library_doctor_bridge",),
+        consumers=("library_doctor_bridge", "library_doctor_service"),
         description="Scan/repair repository for the library doctor; injected "
                     "into LibraryDoctorBridge (no bridge construction).",
+    ),
+    "genre_cleanup_service": _d(
+        "genre_cleanup_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("database",),
+        capabilities=("genres",),
+        consumers=("library_doctor_service",),
+        description="GenreCleanupService — detect fragmented/duplicate genres "
+                    "and merge them; used by the library doctor genre repair.",
+    ),
+    "undo_service": _d(
+        "undo_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("event_bus",),
+        consumers=("metadata_editor_service", "library_doctor_service",
+                   "notification_action_service"),
+        description="UndoService — operation log mapping operation_id to real "
+                    "compensation callbacks (ADR-005); undo() runs the "
+                    "compensation and emits events.",
+    ),
+    "notification_action_service": _d(
+        "notification_action_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("job_service", "undo_service", "navigation_service"),
+        consumers=("notification_bridge",),
+        description="Canonical notification action dispatch: retry re-runs "
+                    "the original durable job, undo runs a real compensation, "
+                    "open_* routes through NavigationService.",
     ),
     "recognition_service": _d(
         "recognition_service", ServiceClass.APPLICATION_SERVICE,

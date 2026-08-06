@@ -104,6 +104,70 @@ class LibraryMutationService:
                 fail += 1
         return {"ok": fail == 0, "updated": ok, "failed": fail}
 
+    def update_media_fields(self, track_id: int, data: dict) -> OperationResult:
+        """Canonical multi-field metadata update with readback verification.
+
+        Supports every editable ``media_items`` column; each field update is
+        committed and then read back to confirm the side effect before the
+        result reports success (ADR-005). Used by the metadata editor.
+        """
+        if not isinstance(data, dict) or not data:
+            return OperationResult.fail("NO_FIELDS", "No fields to update")
+        if not self._db:
+            return OperationResult.fail("INFRASTRUCTURE_UNAVAILABLE",
+                                        "Library database unavailable")
+        if not track_id:
+            return OperationResult.fail("INVALID_TRACK_ID",
+                                        "track_id must be provided")
+        editable = getattr(self._db, "_EDITABLE_FIELDS", frozenset())
+        updates = {k: v for k, v in data.items() if k in editable}
+        if not updates:
+            return OperationResult.fail("NO_FIELDS",
+                                        "None of the requested fields are editable")
+        try:
+            with self._db.conn:
+                for field, value in updates.items():
+                    self._db.conn.execute(
+                        f"UPDATE media_items SET {field}=? WHERE id=?",
+                        (value, track_id),
+                    )
+        except Exception as error:  # noqa: BLE001
+            logger.exception("update_media_fields failed")
+            return OperationResult.fail("DB_UPDATE_FAILED", str(error))
+
+        applied = []
+        for field, value in updates.items():
+            try:
+                row = self._db.conn.execute(
+                    f"SELECT {field} FROM media_items WHERE id=?",
+                    (track_id,),
+                ).fetchone()
+            except Exception:  # noqa: BLE001
+                row = None
+            actual = str(row[0]) if row and row[0] is not None else ""
+            if str(actual) == str(value):
+                applied.append(field)
+            else:
+                logger.warning(
+                    "readback mismatch for track %d field %s: expected %r, got %r",
+                    track_id, field, value, actual,
+                )
+
+        self._emit_metadata(track_id, [f"{f}=" for f in updates],
+                            list(updates.values()))
+        if len(applied) != len(updates):
+            return OperationResult.fail(
+                "READBACK_MISMATCH",
+                f"{len(updates) - len(applied)} field(s) did not verify after write",
+                recoverable=True,
+            )
+        return OperationResult.success({
+            "track_id": track_id,
+            "updated": len(applied),
+            "fields": applied,
+            "readback_verified": True,
+        })
+
     # ── track removal ────────────────────────────────────────────────────
 
     def remove_tracks_from_library(self, track_ids: list[int],

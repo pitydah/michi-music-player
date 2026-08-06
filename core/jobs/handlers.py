@@ -38,6 +38,7 @@ def register_production_job_handlers(job_service, container) -> None:
     job_service.register_handler("metadata_scan", _make_metadata_scan_handler(container))
     job_service.register_handler("doctor_scan", _make_doctor_scan_handler(container))
     job_service.register_handler("metadata_batch", _make_metadata_batch_handler(container))
+    job_service.register_handler("doctor_repair", _make_doctor_repair_handler(container))
     job_service.register_handler("history_export", _make_history_export_handler(container))
 
 
@@ -119,17 +120,45 @@ def _make_metadata_scan_handler(container):
 
 def _make_doctor_scan_handler(container):
     def handler(job, ctx):
-        from core.metadata_batch_adapter import LibraryDoctorAdapter
-
-        db = container.get("database")
+        doctor = container.get("library_doctor_service")
+        if doctor is None:
+            raise RuntimeError("LibraryDoctorService unavailable")
         ctx.report_progress(0.1, "Revisando biblioteca")
         ctx.token.raise_if_cancelled()
-        adapter = LibraryDoctorAdapter(db=db)
-        result = adapter.scan()
+        result = doctor.scan(ctx)
         ctx.token.raise_if_cancelled()
-        if result.get("error"):
-            raise RuntimeError(result["error"])
+        if result.get("code") == "CANCELLED":
+            ctx.token.raise_if_cancelled()
+        if not result.get("ok"):
+            raise RuntimeError(result.get("message", "SCAN_FAILED"))
         ctx.report_progress(1.0, "Revisión finalizada")
+        return result
+
+    return handler
+
+
+def _make_doctor_repair_handler(container):
+    def handler(job, ctx):
+        doctor = container.get("library_doctor_service")
+        if doctor is None:
+            raise RuntimeError("LibraryDoctorService unavailable")
+        payload = job.payload or {}
+        issue = payload.get("issue") or {}
+        ctx.report_progress(0.1, "Reparando")
+        ctx.token.raise_if_cancelled()
+        result = doctor.repair(
+            issue,
+            confirmation_token=str(payload.get("confirmation_token", "") or ""),
+            confirmed_source=str(payload.get("confirmed_source", "") or ""),
+            ctx=ctx,
+        )
+        if result.get("code") == "CANCELLED":
+            ctx.token.raise_if_cancelled()
+        ctx.report_progress(1.0, "Reparación finalizada")
+        if not result.get("ok"):
+            if result.get("status") == "JOB_STARTED":
+                return {"partial": True, **result}
+            raise RuntimeError(result.get("code", "REPAIR_FAILED"))
         return result
 
     return handler
@@ -137,54 +166,32 @@ def _make_doctor_scan_handler(container):
 
 def _make_metadata_batch_handler(container):
     def handler(job, ctx):
-        from metadata.tag_reader import read_tags as rt
-        from ui_qml_bridge.metadata_tag_adapter import (
-            apply_patch,
-            create_backup,
-            rollback,
-            write_tags_safe,
-        )
-
+        editor = container.get("metadata_editor_service")
+        if editor is None:
+            raise RuntimeError("MetadataEditorService unavailable")
         payload = job.payload or {}
         filepaths = list(payload.get("filepaths") or [])
         key = payload.get("field", "")
         value = str(payload.get("value", ""))
-        total = max(len(filepaths), 1)
-        applied = 0
-        errors = 0
-        details = []
-        for idx, fp in enumerate(filepaths):
+        proposal = editor.build_proposal(
+            [{"filepath": fp} for fp in filepaths],
+            {key: value},
+        )
+        if not proposal.get("ok"):
+            raise RuntimeError(proposal.get("code", "PROPOSAL_FAILED"))
+        result = editor.apply_batch(
+            [{"proposal_id": proposal["proposal_id"],
+              "confirmed": True, "source": "ui"}],
+            ctx=ctx,
+        )
+        if result.get("status") == "CANCELLED":
             ctx.token.raise_if_cancelled()
-            ctx.report_progress(idx / total, fp)
-            try:
-                base = rt(fp)
-                if base is None:
-                    errors += 1
-                    details.append({"filepath": fp, "error": "FILE_NOT_FOUND"})
-                    continue
-                tags = apply_patch(base, {key: value})
-                if not tags.dirty:
-                    continue
-                backup = create_backup(fp)
-                write_result = write_tags_safe(tags, backup)
-                if write_result.get("ok"):
-                    applied += 1
-                else:
-                    errors += 1
-                    details.append({"filepath": fp,
-                                    "error": write_result.get("error_code")})
-                    if backup:
-                        rollback(backup, fp)
-            except Exception as e:
-                errors += 1
-                details.append({"filepath": fp, "error": str(e)})
-        ctx.report_progress(1.0, "Lote finalizado")
-        result = {
-            "ok": errors == 0, "applied": applied, "errors": errors,
-            "details": details, "total": len(filepaths),
-        }
-        if errors > 0 and applied > 0:
+        result["ok"] = result.get("ok", False)
+        result["total"] = len(filepaths)
+        if result.get("status") == "PARTIAL_SUCCESS":
             result["partial"] = True
+        if result.get("status") == "FAILED":
+            raise RuntimeError(result.get("error") or "BATCH_FAILED")
         return result
 
     return handler

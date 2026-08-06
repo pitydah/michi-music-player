@@ -2,14 +2,26 @@
 
 from __future__ import annotations
 
+import threading
 from typing import Any
 
 from integrations.ai_assistant.schemas import ToolResult
 
+# One shared MetadataReviewService per library database: tools never construct
+# a review service ad hoc per call (single canonical instance per db).
+_review_services: dict[int, Any] = {}
+_review_lock = threading.Lock()
+
 
 def _get_review_service(db: Any, kb: Any = None) -> Any:
     from metadata.review.metadata_review_service import MetadataReviewService
-    return MetadataReviewService(db, kb)
+    key = id(db)
+    with _review_lock:
+        svc = _review_services.get(key)
+        if svc is None:
+            svc = MetadataReviewService(db, kb)
+            _review_services[key] = svc
+        return svc
 
 
 def find_metadata_inconsistencies(db: Any, limit: int = 100) -> ToolResult:

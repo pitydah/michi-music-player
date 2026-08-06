@@ -52,19 +52,93 @@ class Notification:
 
 
 class NotificationService:
-    def __init__(self, event_bus=None):
+    def __init__(self, event_bus=None, persistence_path: str | None = None):
         self._lock = threading.Lock()
         self._notifications: dict[str, Notification] = {}
         self._listeners: list[Callable] = []
         self._max_size = 200
         self._persistent_ids: set[str] = set()
         self._event_bus = event_bus
+        self._persistence_path = persistence_path or self._default_persistence_path()
+        self._load_persistent()
+
+    @staticmethod
+    def _default_persistence_path() -> str:
+        try:
+            from core.paths import app_data_dir
+            import os
+            return os.path.join(app_data_dir(), "persistent_notifications.json")
+        except Exception:
+            return ""
+
+    # ── persistence (announced persistent notifications survive restart) ─
+
+    def _load_persistent(self):
+        if not self._persistence_path:
+            return
+        import json
+        import os
+        try:
+            if not os.path.isfile(self._persistence_path):
+                return
+            with open(self._persistence_path, encoding="utf-8") as fh:
+                payload = json.load(fh)
+            for item in payload or []:
+                try:
+                    n = Notification(
+                        id=item["id"],
+                        type=NotificationType(item.get("type", "info")),
+                        title=item.get("title", ""),
+                        message=item.get("message", ""),
+                        timestamp=item.get("timestamp", time.time()),
+                        progress=item.get("progress", -1.0),
+                        persistent=True,
+                        dismissible=item.get("dismissible", True),
+                        actions=list(item.get("actions", [])),
+                        source=item.get("source", ""),
+                        entity=item.get("entity", ""),
+                        job_id=item.get("job_id", ""),
+                        error_code=item.get("error_code", ""),
+                    )
+                    self._notifications[n.id] = n
+                    self._persistent_ids.add(n.id)
+                except (KeyError, ValueError):
+                    continue
+        except Exception:
+            logger = __import__("logging").getLogger("michi.notifications")
+            logger.debug("Failed to load persistent notifications",
+                         exc_info=True)
+
+    def _persist_locked(self):
+        """Persist persistent notifications (callers hold the lock)."""
+        if not self._persistence_path:
+            return
+        try:
+            items = [self._notifications[nid].to_dict()
+                     for nid in self._persistent_ids
+                     if nid in self._notifications]
+        except Exception:
+            return
+        import json
+        import os
+        try:
+            directory = os.path.dirname(self._persistence_path)
+            if directory:
+                os.makedirs(directory, exist_ok=True)
+            tmp_path = self._persistence_path + ".tmp"
+            with open(tmp_path, "w", encoding="utf-8") as fh:
+                json.dump(items, fh, ensure_ascii=False)
+            os.replace(tmp_path, self._persistence_path)
+        except Exception:
+            logger = __import__("logging").getLogger("michi.notifications")
+            logger.debug("Failed to persist notifications", exc_info=True)
 
     def notify(self, notification: Notification) -> Notification:
         with self._lock:
             self._notifications[notification.id] = notification
             if notification.persistent:
                 self._persistent_ids.add(notification.id)
+                self._persist_locked()
             self._trim()
         self._emit(notification)
         return notification
@@ -78,6 +152,8 @@ class NotificationService:
                 if hasattr(n, k):
                     setattr(n, k, v)
             n.timestamp = time.time()
+            if n.persistent:
+                self._persist_locked()
         self._emit(n)
         return n
 
@@ -87,8 +163,34 @@ class NotificationService:
             if not n or not n.dismissible:
                 return False
             self._notifications.pop(notification_id, None)
-            self._persistent_ids.discard(notification_id)
+            if n.persistent and notification_id in self._persistent_ids:
+                self._persistent_ids.discard(notification_id)
+                self._persist_locked()
         return True
+
+    def _persist_locked(self):
+        """Persist persistent notifications (callers hold the lock)."""
+        if not self._persistence_path:
+            return
+        try:
+            items = [self._notifications[nid].to_dict()
+                     for nid in self._persistent_ids
+                     if nid in self._notifications]
+        except Exception:
+            return
+        import json
+        import os
+        try:
+            directory = os.path.dirname(self._persistence_path)
+            if directory:
+                os.makedirs(directory, exist_ok=True)
+            tmp_path = self._persistence_path + ".tmp"
+            with open(tmp_path, "w", encoding="utf-8") as fh:
+                json.dump(items, fh, ensure_ascii=False)
+            os.replace(tmp_path, self._persistence_path)
+        except Exception:
+            logger = __import__("logging").getLogger("michi.notifications")
+            logger.debug("Failed to persist notifications", exc_info=True)
 
     def get(self, notification_id: str) -> Notification | None:
         with self._lock:
@@ -100,16 +202,19 @@ class NotificationService:
 
     def list_persistent(self) -> list[Notification]:
         with self._lock:
-            return [self._notifications[nid] for nid in self._persistent_ids if nid in self._notifications]
+            return [self._notifications[nid] for nid in self._persistent_ids
+                    if nid in self._notifications]
 
     def list_by_source(self, source: str) -> list[Notification]:
         with self._lock:
-            return [n for n in self._notifications.values() if n.source == source]
+            return [n for n in self._notifications.values()
+                    if n.source == source]
 
     def clear(self):
         with self._lock:
             self._notifications.clear()
             self._persistent_ids.clear()
+            self._persist_locked()
 
     def on(self, listener: Callable):
         self._listeners.append(listener)
@@ -120,7 +225,8 @@ class NotificationService:
     def _trim(self):
         if len(self._notifications) <= self._max_size:
             return
-        non_persistent = {nid: n for nid, n in self._notifications.items() if not n.persistent}
+        non_persistent = {nid: n for nid, n in self._notifications.items()
+                          if not n.persistent}
         sorted_np = sorted(non_persistent.items(), key=lambda x: x[1].timestamp)
         to_remove = sorted_np[:len(self._notifications) - self._max_size]
         for nid, _ in to_remove:
@@ -139,38 +245,3 @@ class NotificationService:
                                         notification_id=notification.id,
                                         type=notification.type.value,
                                         title=notification.title)
-
-    def retry(self, notification_id: str) -> dict:
-        notif = self._notifications.get(notification_id)
-        if not notif:
-            return {"ok": False, "error": "NOT_FOUND"}
-        new = Notification(
-            type=notif.type, title=notif.title, message=notif.message,
-            source=notif.source, entity=notif.entity, job_id=notif.job_id)
-        self._notifications[new.id] = new
-        self._emit(new)
-        return {"ok": True, "notification_id": new.id}
-
-    def undo(self, notification_id: str) -> dict:
-        notif = self._notifications.pop(notification_id, None)
-        if not notif:
-            return {"ok": False, "error": "NOT_FOUND"}
-        return {"ok": True, "undone": notification_id}
-
-    def open_job(self, notification_id: str) -> dict:
-        notif = self._notifications.get(notification_id)
-        if notif and notif.job_id:
-            return {"ok": True, "job_id": notif.job_id}
-        return {"ok": False, "error": "NO_JOB"}
-
-    def open_track(self, notification_id: str) -> dict:
-        notif = self._notifications.get(notification_id)
-        if notif and notif.entity:
-            return {"ok": True, "entity": notif.entity}
-        return {"ok": False, "error": "NO_ENTITY"}
-
-    def open_settings(self, notification_id: str) -> dict:
-        return {"ok": True, "route": "settings"}
-
-    def open_diagnostics(self, notification_id: str) -> dict:
-        return {"ok": True, "route": "diagnostics"}

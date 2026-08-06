@@ -11,10 +11,11 @@ def _unavailable(name: str) -> dict[str, Any]:
 
 
 class ProductionMetadataGateway:
-    def __init__(self, metadata_service: Any = None, confirmation_service: Any = None, job_service: Any = None) -> None:
+    def __init__(self, metadata_service: Any = None, confirmation_service: Any = None, job_service: Any = None, metadata_editor: Any = None) -> None:
         self._ms = metadata_service
         self._cs = confirmation_service
         self._js = job_service
+        self._editor = metadata_editor
 
     def inspect_metadata(self, track_id: str) -> dict[str, Any]:
         if self._ms is None:
@@ -58,74 +59,95 @@ class ProductionMetadataGateway:
         }
 
     def build_proposal(self, track_ids: list[str]) -> dict[str, Any]:
-        if self._ms is None:
-            return _unavailable("MetadataService")
+        """Create a metadata proposal through the canonical editor service.
+
+        The editor is the single editing authority: it reads current DB
+        values, fills detectable gaps and returns a proposal id for the
+        preview/apply steps.
+        """
+        if self._editor is None:
+            return _unavailable("MetadataEditorService (build_proposal)")
         try:
-            if hasattr(self._ms, "build_proposal"):
-                proposal = self._ms.build_proposal(track_ids)
-                review_id = getattr(proposal, "review_id", None) or proposal.get("review_id", "")
-                return {
-                    "ok": True,
-                    "status": "COMPLETED",
-                    "review_id": review_id,
-                    "track_count": len(track_ids),
-                    "field_change_count": proposal.get("field_count", 0),
-                    "high_confidence_count": proposal.get("high_confidence", 0),
-                    "ambiguous_count": proposal.get("ambiguous", 0),
-                    "warnings": proposal.get("warnings", []),
-                }
-            return {"ok": False, "error": "build_proposal not available", "code": "CAPABILITY_UNAVAILABLE"}
+            refs = [{"track_id": int(tid)} for tid in track_ids if str(tid).isdigit()]
+            if not refs:
+                return {"ok": False, "error": "NO_VALID_TRACK_IDS",
+                        "code": "NO_VALID_TRACK_IDS"}
+            proposal = self._editor.build_proposal(refs)
+            return {
+                "ok": True,
+                "status": "COMPLETED",
+                "review_id": proposal.get("proposal_id", ""),
+                "track_count": len(track_ids),
+                "field_change_count": proposal.get("field_count", 0),
+                "fields": proposal.get("fields", []),
+                "warnings": [],
+            }
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
     def preview_changes(self, review_id: str) -> dict[str, Any]:
-        if self._ms is None:
-            return _unavailable("MetadataService")
+        if self._editor is None:
+            return _unavailable("MetadataEditorService (preview)")
         try:
-            if hasattr(self._ms, "preview_review"):
-                preview = self._ms.preview_review(review_id)
-            else:
-                return {"ok": False, "error": "preview not available", "code": "CAPABILITY_UNAVAILABLE"}
+            preview = self._editor.preview_proposal(review_id)
+            if not preview.get("ok"):
+                return {"ok": False, "error": preview.get("message", "PREVIEW_FAILED"),
+                        "code": "REVIEW_NOT_FOUND"}
             return {
                 "ok": True,
                 "status": "COMPLETED",
                 "review_id": review_id,
-                "changes": preview.get("changes", preview.get("fields", [])),
-                "backup_available": preview.get("backup", True),
-                "rollback_available": preview.get("rollback", True),
+                "changes": preview.get("changes", []),
+                "backup_available": True,
+                "rollback_available": True,
             }
         except Exception as e:
             return {"ok": False, "error": str(e), "code": "REVIEW_NOT_FOUND"}
 
     def apply_review(self, review_id: str, confirmation_token: str = "") -> dict[str, Any]:
-        if self._ms is None:
-            return _unavailable("MetadataService")
+        if self._editor is None:
+            return _unavailable("MetadataEditorService (apply)")
         if self._cs and confirmation_token:
-            valid = self._cs.validate(confirmation_token, review_id)
-            if not valid.ok:
-                return {"ok": False, "error": valid.message or "INVALID_CONFIRMATION", "code": "INVALID_CONFIRMATION"}
+            request = self._cs.approve(confirmation_token)
+            if request is None or request.operation_id != review_id:
+                return {"ok": False, "error": "INVALID_CONFIRMATION",
+                        "code": "INVALID_CONFIRMATION"}
         try:
-            if self._js and hasattr(self._ms, "apply_review"):
-                job = self._js.create("metadata_apply", {"review_id": review_id})
-                job_id = job.job_id if hasattr(job, "job_id") else ""
-                return {"ok": True, "status": "JOB_STARTED", "job_id": job_id, "review_id": review_id}
-            return {"ok": False, "error": "apply not available", "code": "CAPABILITY_UNAVAILABLE"}
+            result = self._editor.apply_batch([{
+                "proposal_id": review_id,
+                "confirmation_token": confirmation_token,
+                "confirmed": True,
+                "source": "ai_plan",
+            }])
+            if not result.get("ok"):
+                return {"ok": False, "error": result.get("status", "APPLY_FAILED"),
+                        "code": result.get("status", "APPLY_FAILED"),
+                        "review_id": review_id,
+                        "applied": result.get("applied", 0),
+                        "failed": result.get("failed", 0),
+                        "conflicts": result.get("conflicts", 0)}
+            return {"ok": True, "status": "COMPLETED", "review_id": review_id,
+                    "applied": result.get("applied", 0),
+                    "failed": result.get("failed", 0),
+                    "conflicts": result.get("conflicts", 0),
+                    "operation_id": result.get("operation_id", ""),
+                    "readback_verified": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
     def rollback(self, operation_id: str, confirmation_token: str = "") -> dict[str, Any]:
-        if self._ms is None:
-            return _unavailable("MetadataService")
+        if self._editor is None:
+            return _unavailable("MetadataEditorService (rollback)")
         if self._cs and confirmation_token:
-            valid = self._cs.validate(confirmation_token, operation_id)
-            if not valid.ok:
-                return {"ok": False, "error": valid.message or "INVALID_CONFIRMATION", "code": "INVALID_CONFIRMATION"}
+            request = self._cs.approve(confirmation_token)
+            if request is None or request.operation_id != operation_id:
+                return {"ok": False, "error": "INVALID_CONFIRMATION",
+                        "code": "INVALID_CONFIRMATION"}
         try:
-            if hasattr(self._ms, "rollback"):
-                result = self._ms.rollback(operation_id)
-                status = "ROLLED_BACK" if result else "ROLLBACK_FAILED"
-                return {"ok": bool(result), "status": status}
-            return {"ok": False, "error": "rollback not available", "code": "CAPABILITY_UNAVAILABLE"}
+            result = self._editor.undo(operation_id)
+            status = "ROLLED_BACK" if result.get("ok") else result.get("code", "ROLLBACK_FAILED")
+            return {"ok": bool(result.get("ok")), "status": status,
+                    "operation_id": operation_id}
         except Exception as e:
             return {"ok": False, "error": str(e), "code": "ROLLBACK_FAILED"}
 

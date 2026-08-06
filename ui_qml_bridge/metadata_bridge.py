@@ -23,12 +23,14 @@ class MetadataBridge(QObject):
     operationFailed = Signal(str, str)
     confirmationRequested = Signal(str, int)
 
-    def __init__(self, metadata_service=None, job_service=None, parent=None):
+    def __init__(self, metadata_service=None, job_service=None,
+                 metadata_editor_service=None, parent=None):
         super().__init__(parent)
         if metadata_service is None:
             logger.warning("MetadataBridge: metadata_service is None — running in degraded mode")
         self._ms = metadata_service
         self._js = job_service
+        self._editor = metadata_editor_service
         self._current_filepath = ""
         self._has_selection = False
         self._is_loading = False
@@ -40,7 +42,9 @@ class MetadataBridge(QObject):
         self._quality_summary = ""
         self._artwork_status = ""
         self._all_fields: dict = {}
+        self._original_fields: dict = {}
         self._pending_review_id = ""
+        self._pending_token = ""
         self._status = "IDLE"
 
     @Property(bool, notify=selectionChanged)
@@ -109,6 +113,7 @@ class MetadataBridge(QObject):
             if result.ok:
                 fields = result.data.get("fields", {})
                 self._all_fields = fields
+                self._original_fields = dict(fields)
                 self._track_title = fields.get("title", _NA)
                 self._track_artist = fields.get("artist", _NA)
                 self._track_album = fields.get("album", _NA)
@@ -213,6 +218,22 @@ class MetadataBridge(QObject):
         if not changes:
             return {"ok": False, "error_code": "NO_CHANGES", "message": "Sin cambios"}
 
+        if self._editor:
+            proposal = self._editor.build_proposal(
+                [{"filepath": self._current_filepath}], changes)
+            if not proposal.get("ok"):
+                return {"ok": False,
+                        "error_code": proposal.get("code", "PROPOSAL_FAILED"),
+                        "message": proposal.get("message", "No se pudo proponer el cambio")}
+            conf = self._editor.confirm(
+                proposal["proposal_id"], selected_fields=list(changes))
+            self._pending_review_id = proposal["proposal_id"]
+            self._pending_token = conf.get("confirmation_token", "")
+            self._set_status("AWAITING_CONFIRMATION")
+            self.confirmationRequested.emit(self._pending_review_id, len(changes))
+            return {"ok": True, "review_id": self._pending_review_id,
+                    "awaiting_confirmation": True}
+
         from metadata.tag_reader import read_tags as rt
         tags = rt(self._current_filepath)
         if tags is None:
@@ -249,8 +270,30 @@ class MetadataBridge(QObject):
 
     @Slot(str, result=dict)
     def confirmSave(self, review_id: str):
-        if not self._ms or self._pending_review_id != review_id:
+        if self._pending_review_id != review_id:
             return {"ok": False, "error_code": "INVALID_TOKEN"}
+
+        if self._editor:
+            result = self._editor.apply_single(
+                review_id,
+                confirmation_token=self._pending_token,
+                source="ui",
+            )
+            self._pending_review_id = ""
+            self._pending_token = ""
+            if result.get("ok"):
+                self._set_status("SUCCEEDED")
+                self._error_message = ""
+                self._quality_summary = "Metadatos guardados"
+                self._original_fields = dict(self._all_fields)
+                self.dataChanged.emit()
+                self.operationCompleted.emit("save")
+            else:
+                self._set_status("FAILED")
+                self.operationFailed.emit(result.get("code", "APPLY_FAILED"),
+                                           result.get("message", ""))
+            return {"ok": result.get("ok"), "code": result.get("code", "OK"),
+                    "message": result.get("message", "")}
 
         from metadata.tag_reader import read_tags as rt
         tags = rt(self._current_filepath)
@@ -288,6 +331,7 @@ class MetadataBridge(QObject):
     @Slot(result=dict)
     def rejectSave(self):
         self._pending_review_id = ""
+        self._pending_token = ""
         self._set_status("IDLE")
         return {"ok": True}
 
@@ -322,18 +366,23 @@ class MetadataBridge(QObject):
         self._set_status("SUCCEEDED")
         self._error_message = ""
         self._quality_summary = "Metadatos guardados"
+        self._original_fields = dict(self._all_fields)
         self.dataChanged.emit()
         self.operationCompleted.emit("save")
         return {"ok": True}
 
     def _collect_changes(self) -> dict:
+        """Return ONLY fields whose value differs from the loaded original."""
         editable = {"title", "artist", "album", "album_artist", "genre",
                      "year", "track_number", "track_total", "disc_number",
                      "disc_total", "composer", "comment", "bpm"}
         changes = {}
         for key in editable:
             val = self._all_fields.get(key)
-            if val is not None and val != "":
+            original = self._original_fields.get(key)
+            if val is None or val == "":
+                continue
+            if str(original) != str(val):
                 changes[key] = val
         return changes
 
@@ -431,7 +480,9 @@ class MetadataBridge(QObject):
         self._quality_summary = ""
         self._artwork_status = ""
         self._all_fields = {}
+        self._original_fields = {}
         self._pending_review_id = ""
+        self._pending_token = ""
         self._set_status("IDLE")
         self.dataChanged.emit()
 
@@ -463,6 +514,39 @@ class MetadataBridge(QObject):
         self._set_status("APPLYING")
         results = {"ok": True, "applied": 0, "errors": 0, "details": [],
                     "cancelled": False, "job_id": None}
+
+        if self._editor:
+            proposal = self._editor.build_proposal(
+                [{"filepath": fp} for fp in filepaths],
+                {key: str(value)},
+            )
+            if not proposal.get("ok"):
+                results["ok"] = False
+                results["errors"] = len(filepaths)
+                results["details"] = [
+                    {"filepath": fp, "error": proposal.get("code", "PROPOSAL_FAILED")}
+                    for fp in filepaths
+                ]
+            else:
+                batch = self._editor.apply_batch([{
+                    "proposal_id": proposal["proposal_id"],
+                    "confirmed": True,
+                    "source": "ui",
+                }])
+                results["applied"] = batch.get("applied", 0)
+                results["errors"] = (
+                    batch.get("failed", 0) + batch.get("conflicts", 0))
+                results["details"] = [
+                    {"filepath": t.get("filepath", ""),
+                     "error": t.get("error", t.get("status", ""))}
+                    for t in batch.get("per_track", [])
+                    if t.get("status") in ("failed", "conflict", "skipped")
+                ]
+                results["ok"] = batch.get("ok", False)
+            self._set_status("SUCCEEDED" if results["errors"] == 0 else "PARTIAL" if results["applied"] > 0 else "FAILED")
+            self.batchProgress.emit(results["applied"], len(filepaths))
+            self.dataChanged.emit()
+            return results
 
         from metadata.tag_reader import read_tags as rt
         from ui_qml_bridge.metadata_tag_adapter import (
