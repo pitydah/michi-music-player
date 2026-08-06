@@ -27,11 +27,15 @@ class LyricsProviderRegistry:
         return self._providers.get(provider_id)
 
     def list_enabled(self) -> list[LyricsProvider]:
-        enabled = [
-            p for pid, p in self._providers.items()
-            if self._contracts.get(pid, ProviderContract(provider_id=pid)).enabled
-        ]
-        enabled.sort(key=lambda p: self._contracts.get(p.contract.provider_id, ProviderContract(provider_id=p.contract.provider_id)).priority)
+        enabled = []
+        for pid, provider in self._providers.items():
+            contract = self._contracts.get(pid)
+            if contract is not None and contract.enabled:
+                enabled.append(provider)
+        enabled.sort(key=lambda p: self._contracts.get(
+            p.contract.provider_id, ProviderContract(
+                provider_id=p.contract.provider_id, display_name=p.contract.display_name,
+            )).priority)
         return enabled
 
     def resolve_order(self, provider_ids: list[str] | None = None) -> list[LyricsProvider]:
@@ -39,7 +43,8 @@ class LyricsProviderRegistry:
             ordered = []
             for pid in provider_ids:
                 p = self._providers.get(pid)
-                if p and self._contracts.get(pid, ProviderContract(provider_id=pid)).enabled:
+                contract = self._contracts.get(pid)
+                if p and contract is not None and contract.enabled:
                     ordered.append(p)
             return ordered
         return self.list_enabled()

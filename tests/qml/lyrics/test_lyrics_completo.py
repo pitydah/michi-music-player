@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ui_qml_bridge.lyrics_bridge import LyricsBridge, _parse_lrc, _make_cache_key
+from ui_qml_bridge.lyrics_bridge import LyricsBridge, _parse_lrc
 pytestmark = [pytest.mark.qml_module("lyrics")]
 
 
@@ -81,24 +81,33 @@ def test_offset_affects_get_active_line(mock_nowplaying, mock_worker):
     assert bridge.getActiveLine(5000) == 1
 
 
-def test_cache_stores_and_retrieves(mock_nowplaying, mock_worker):
-    bridge = LyricsBridge(worker_manager=mock_worker, nowplaying_bridge=mock_nowplaying)
-    key = _make_cache_key("CachedSong", "CachedArtist", "CachedAlbum", 200)
-    bridge._cache[key] = {"lyrics": "Cached", "synced_lyrics": "", "source": "LRCLIB", "timestamp": 100}
-    bridge._cache_order.append(key)
+def test_service_result_stores_in_bridge(mock_nowplaying, mock_worker):
+    from core.lyrics.models import LyricsOperationResult, LyricsDocument, LyricsSource
+    svc = MagicMock()
+    svc.resolve.return_value = LyricsOperationResult(
+        ok=True,
+        document=LyricsDocument(plain_text="Cached", synced_text="",
+                                source=LyricsSource.CACHE),
+    )
+    wm = MagicMock()
+
+    def run_task(name, fn, on_done=None, **kw):
+        if on_done:
+            on_done(fn())
+
+    wm.run_task.side_effect = run_task
+    bridge = LyricsBridge(worker_manager=wm, lyrics_service=svc,
+                          nowplaying_bridge=mock_nowplaying)
     bridge.search("CachedSong", "CachedArtist", "CachedAlbum", 200)
     assert bridge.status == "done"
     assert bridge.lyrics == "Cached"
+    svc.resolve.assert_called_once()
 
 
-def test_cache_trim(mock_nowplaying, mock_worker):
+def test_no_second_cache_in_bridge(mock_nowplaying, mock_worker):
     bridge = LyricsBridge(worker_manager=mock_worker, nowplaying_bridge=mock_nowplaying)
-    for i in range(60):
-        key = _make_cache_key(f"Song{i}", "Artist", "", 100)
-        bridge._cache[key] = {"lyrics": f"lyrics{i}", "synced_lyrics": "", "source": "LRCLIB", "timestamp": float(i)}
-        bridge._cache_order.append(key)
-    bridge._trim_cache()
-    assert len(bridge._cache) <= 50
+    assert not hasattr(bridge, "_cache")
+    assert not hasattr(bridge, "_cache_order")
 
 
 def test_cancel_search_during_request(mock_nowplaying, mock_worker):
@@ -152,17 +161,17 @@ def test_refresh_no_track(mock_nowplaying, mock_worker):
     assert result["ok"] is True
 
 
-def test_clear_cache(mock_nowplaying, mock_worker):
-    bridge = LyricsBridge(worker_manager=mock_worker, nowplaying_bridge=mock_nowplaying)
-    key = _make_cache_key("Song", "Artist", "Album", 200)
-    bridge._cache[key] = {"lyrics": "x", "synced_lyrics": "", "source": "LRCLIB", "timestamp": 1}
-    bridge._cache_order.append(key)
+def test_clear_cache_delegates(mock_nowplaying, mock_worker):
+    svc = MagicMock()
+    bridge = LyricsBridge(worker_manager=mock_worker, lyrics_service=svc,
+                          nowplaying_bridge=mock_nowplaying)
     bridge._current_title = "Song"
     bridge._current_artist = "Artist"
     bridge._current_album = "Album"
     bridge._current_duration = 200
-    bridge.clearCacheForCurrentTrack()
-    assert key not in bridge._cache
+    result = bridge.clearCacheForCurrentTrack()
+    assert result["ok"]
+    svc.invalidate_identity.assert_called_once()
 
 
 def test_get_active_line_none(mock_nowplaying, mock_worker):

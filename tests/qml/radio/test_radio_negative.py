@@ -3,34 +3,22 @@ from unittest.mock import MagicMock
 import pytest
 
 from ui_qml_bridge.radio_bridge import RadioBridge
+from tests.qml.radio._svc_fixtures import make_radio_service_mock
 
 
 @pytest.fixture
 def mock_stations():
-    stations = []
-    for i, (name, url) in enumerate([
-        ("Jazz FM", "http://jazz.stream"),
-        ("Rock FM", "http://rock.stream"),
-    ]):
-        s = MagicMock()
-        s.id = i + 1
-        s.name = name
-        s.url = url
-        s.codec = "MP3"
-        s.country = "US"
-        s.tags = []
-        s.favorite = False
-        s.bitrate = 128
-        s.image_path = ""
-        stations.append(s)
-    return stations
+    return [
+        {"id": 1, "name": "Jazz FM", "url": "http://jazz.stream", "codec": "MP3",
+         "country": "US", "tags": [], "favorite": False, "image_path": "", "bitrate": 128},
+        {"id": 2, "name": "Rock FM", "url": "http://rock.stream", "codec": "MP3",
+         "country": "US", "tags": [], "favorite": False, "image_path": "", "bitrate": 128},
+    ]
 
 
 @pytest.fixture
 def mock_radio_mgr(mock_stations):
-    mgr = MagicMock()
-    mgr.get_all.return_value = mock_stations
-    return mgr
+    return make_radio_service_mock(stations=mock_stations)
 
 
 @pytest.fixture
@@ -62,9 +50,11 @@ class TestConnectionFailure:
 
 class TestInvalidUrl:
     def test_add_station_malformed_url(self, mock_radio_mgr, mock_player):
+        # The bridge does not validate URLs; the canonical service does.
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         result = bridge.addStation("Bad", "not-a-url", "MP3", "")
         assert result["ok"]
+        mock_radio_mgr.add_station.assert_called_once()
 
     def test_play_malformed_url(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
@@ -80,22 +70,16 @@ class TestInvalidUrl:
 
 class TestUnavailableCodec:
     def test_get_codec_no_stations(self, mock_radio_mgr, mock_player):
-        mock_radio_mgr.get_all.return_value = []
+        mock_radio_mgr.get_stations.return_value = []
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         codec = bridge.getCodec()
         assert codec == ""
 
     def test_get_codec_station_without_codec(self, mock_radio_mgr, mock_player):
-        s = MagicMock()
-        s.codec = ""
-        s.name = "No Codec"
-        s.url = "http://stream.url"
-        s.country = ""
-        s.tags = []
-        s.favorite = False
-        s.bitrate = 0
-        s.image_path = ""
-        mock_radio_mgr.get_all.return_value = [s]
+        mock_radio_mgr.get_stations.return_value = [
+            {"id": 1, "name": "No Codec", "url": "http://stream.url", "codec": "",
+             "country": "", "tags": [], "favorite": False, "image_path": "", "bitrate": 0},
+        ]
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         codec = bridge.getCodec()
         assert codec == ""
@@ -148,7 +132,6 @@ class TestEdgeCases:
         assert result["error"] == "NO_METADATA"
 
     def test_get_metadata_error(self, mock_radio_mgr, mock_player):
-        mock_radio_mgr.get_metadata.side_effect = Exception("Metadata error")
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         result = bridge.getMetadata("http://stream.url")
         assert not result["ok"]
@@ -160,7 +143,7 @@ class TestEdgeCases:
         assert not result["ok"]
 
     def test_export_m3u_without_stations(self, mock_radio_mgr, mock_player, tmp_path):
-        mock_radio_mgr.get_all.return_value = []
+        mock_radio_mgr.get_stations.return_value = []
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         bridge.refresh()
         out = tmp_path / "empty.m3u"

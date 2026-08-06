@@ -121,12 +121,40 @@ def build(container: ServiceContainer) -> None:
     container.register("radio_service", RadioService(event_bus=event_bus))
 
     try:
-        from core.lyrics_service import LyricsService
-        from lyrics.lrclib_client import LrcLibClient
+        from core.lyrics.service import LyricsService
+        from core.lyrics.resolver import LyricsResolver
+        from core.lyrics.registry import LyricsProviderRegistry
+        from core.lyrics.storage import LyricsStorageService
+        from core.lyrics.editor import LyricsEditorService
+        from core.lyrics.events import LyricEventBus
+        from core.paths import lyrics_cache_path
+        from infrastructure.lyrics.cache_repository import SqliteLyricsCacheRepository
+        from infrastructure.lyrics.sidecar_provider import FileSidecarProvider
+        from infrastructure.lyrics.embedded_writer import MutagenEmbeddedLyricsWriter
+        from infrastructure.lyrics.providers.lrclib_provider import LrcLibProvider
 
+        cache_repo = SqliteLyricsCacheRepository(lyrics_cache_path())
+        cache_repo.initialize()
+        registry = LyricsProviderRegistry()
+        registry.register(LrcLibProvider(cache=cache_repo))
+        sidecar_provider = FileSidecarProvider()
+        storage_service = LyricsStorageService(
+            sidecar_provider=sidecar_provider,
+            embedded_writer=MutagenEmbeddedLyricsWriter(),
+        )
+        resolver = LyricsResolver(
+            provider_registry=registry,
+            cache_repo=cache_repo,
+            sidecar_provider=sidecar_provider,
+            event_bus=LyricEventBus(),
+        )
         lyrics_service = LyricsService(
-            lrclib_client=LrcLibClient(),
-            worker_manager=container.get("worker_manager"),
+            resolver=resolver,
+            provider_registry=registry,
+            cache_repo=cache_repo,
+            storage_service=storage_service,
+            editor_service=LyricsEditorService(),
+            event_bus=LyricEventBus(),
         )
         container.register("lyrics_service", lyrics_service)
     except Exception as exc:

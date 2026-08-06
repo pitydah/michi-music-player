@@ -82,7 +82,7 @@ CONTEXT_BINDINGS: list[ContextBinding] = [
     ContextBinding(QueueBridge,         "queueBridge",     required_services=("playback_service", "queue_service")),
     ContextBinding(HistoryBridge,       "historyBridge",   required_services=("database",), optional_services=("history_query_service", "query_executor", "playback_service")),
     ContextBinding(MixBridge,           "mixBridge",       required_services=("mix_service", "job_service", "playlist_service", "playback_service", "queue_service")),
-    ContextBinding(LyricsBridge,        "lyricsBridge",    required_services=("worker_manager",)),
+    ContextBinding(LyricsBridge,        "lyricsBridge",   required_services=("worker_manager",), optional_services=("lyrics_service",)),
     ContextBinding(GlobalSearchBridge,  "globalSearchBridge", required_services=("global_search_service", "query_executor")),
     ContextBinding(SettingsBridgeV2,    "settingsBridge",  required_services=("settings_service",)),
     ContextBinding(OutputProfilesBridge,"outputProfilesBridge", required_services=("playback_service",)),

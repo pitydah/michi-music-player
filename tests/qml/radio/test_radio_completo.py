@@ -3,32 +3,19 @@ from unittest.mock import MagicMock
 import pytest
 
 from ui_qml_bridge.radio_bridge import RadioBridge
+from tests.qml.radio._svc_fixtures import station_dicts, make_radio_service_mock
 
 pytestmark = pytest.mark.isolation
 
 
-class _Station:
-    def __init__(self, **kw):
-        for k, v in kw.items():
-            setattr(self, k, v)
+@pytest.fixture
+def mock_stations():
+    return station_dicts()
 
 
 @pytest.fixture
-def mock_radio_mgr():
-    mgr = MagicMock()
-    mgr.get_all.return_value = [
-        _Station(id=1, name="Radio One", url="http://example.com/one",
-                 codec="MP3", country="US", tags=["rock"], favorite=True,
-                 image_path="img1.png"),
-        _Station(id=2, name="Radio Two", url="http://example.com/two",
-                 codec="AAC", country="UK", tags=["pop"], favorite=False,
-                 image_path=""),
-    ]
-    mgr.add = MagicMock(return_value=_Station(id=3, name="New", url="http://new"))
-    mgr.remove_station = MagicMock()
-    mgr.update = MagicMock()
-    mgr.toggle_favorite = MagicMock(return_value=True)
-    return mgr
+def mock_radio_mgr(mock_stations):
+    return make_radio_service_mock(stations=mock_stations)
 
 
 @pytest.fixture
@@ -70,7 +57,7 @@ class TestRefresh:
     def test_refresh_populates_favorites(self, bridge):
         bridge.refresh()
         assert len(bridge.favorites) == 1
-        assert bridge.favorites[0]["name"] == "Radio One"
+        assert bridge.favorites[0]["name"] == "Jazz FM"
 
     def test_refresh_counts(self, bridge):
         result = bridge.refresh()
@@ -86,7 +73,7 @@ class TestAddStation:
     def test_add_station(self, bridge, mock_radio_mgr):
         result = bridge.addStation("New", "http://new", "MP3", "US")
         assert result["ok"] is True
-        mock_radio_mgr.add.assert_called_once()
+        mock_radio_mgr.add_station.assert_called_once()
 
     def test_add_station_empty_url(self, bridge):
         result = bridge.addStation("X", "", "MP3", "US")
@@ -102,9 +89,9 @@ class TestAddStation:
 
 class TestPlayback:
     def test_play_station(self, bridge, mock_player):
-        result = bridge.playStation("http://example.com/one", "Radio One")
+        result = bridge.playStation("http://jazz.stream", "Jazz FM")
         assert result["ok"] is True
-        mock_player.play_url.assert_called_once_with("http://example.com/one")
+        mock_player.play_url.assert_called_once_with("http://jazz.stream")
 
     def test_play_station_empty_url(self, bridge):
         result = bridge.playStation("", "")
@@ -117,10 +104,17 @@ class TestPlayback:
         assert result["ok"] is False
         assert result["error"] == "NO_PLAYER_SERVICE"
 
-    def test_play_adds_history(self, bridge):
-        bridge.playStation("http://u", "Hist")
+    def test_play_not_playing_before_confirmation(self, bridge):
+        bridge.playStation("http://jazz.stream", "Jazz FM")
+        assert bridge.isPlaying is False
+        assert bridge.isBuffering is True
+
+    def test_play_adds_history_on_confirmation(self, bridge):
+        bridge.playStation("http://jazz.stream", "Jazz FM")
+        bridge._on_station_connection_done()
         assert len(bridge.history) == 1
-        assert bridge.history[0]["name"] == "Hist"
+        assert bridge.history[0]["name"] == "Jazz FM"
+        assert bridge.isPlaying is True
 
     def test_stop_stream(self, bridge, mock_player):
         result = bridge.stopStream()
@@ -135,7 +129,7 @@ class TestPlayback:
 
 class TestReconnectRetry:
     def test_reconnect_last(self, bridge, mock_player):
-        bridge.playStation("http://example.com/one", "Radio One")
+        bridge.playStation("http://jazz.stream", "Jazz FM")
         result = bridge.reconnectLast()
         assert result["ok"] is True
 
@@ -145,16 +139,17 @@ class TestReconnectRetry:
         assert result["error"] == "NO_LAST_STATION"
 
     def test_retry_current(self, bridge, mock_player):
-        bridge.playStation("http://example.com/one", "Radio One")
+        bridge.playStation("http://jazz.stream", "Jazz FM")
         result = bridge.retryCurrent()
         assert result["ok"] is True
 
 
 class TestDeleteEdit:
     def test_delete_station(self, bridge, mock_radio_mgr):
-        result = bridge.deleteStation("http://example.com/one")
+        bridge.refresh()
+        result = bridge.deleteStation("http://rock.stream")
         assert result["ok"] is True
-        mock_radio_mgr.remove_station.assert_called_once_with("http://example.com/one")
+        mock_radio_mgr.delete_station.assert_called_once_with(2)
 
     def test_delete_station_no_manager(self):
         b = RadioBridge()
@@ -165,6 +160,8 @@ class TestDeleteEdit:
     def test_edit_station(self, bridge, mock_radio_mgr):
         result = bridge.editStation(1, "NewName", "http://new", "OGG", "FR")
         assert result["ok"] is True
+        mock_radio_mgr.edit_station.assert_called_once_with(
+            1, name="NewName", url="http://new", codec="OGG", country="FR")
 
     def test_edit_station_no_manager(self):
         b = RadioBridge()
@@ -178,6 +175,7 @@ class TestFavorites:
         result = bridge.toggleFavorite(1)
         assert result["ok"] is True
         assert result["favorite"] is True
+        mock_radio_mgr.favorite_station.assert_called_once_with(1)
 
     def test_toggle_favorite_no_manager(self):
         b = RadioBridge()
@@ -187,7 +185,7 @@ class TestFavorites:
 
 class TestSearch:
     def test_search_by_query(self, bridge):
-        result = bridge.search(query="One")
+        result = bridge.search(query="Jazz")
         assert result["ok"] is True
         assert result["count"] >= 1
 
@@ -244,10 +242,11 @@ class TestImportExport:
 
 
 class TestMetadata:
-    def test_get_metadata(self, bridge, mock_radio_mgr):
-        mock_radio_mgr.get_metadata.return_value = {"name": "Test", "bitrate": 128}
+    def test_get_metadata_unavailable(self, bridge):
+        # The canonical service owns metadata; the bridge has no parallel client.
         result = bridge.getMetadata("http://example.com")
-        assert result.get("metadata", {}).get("name") == "Test"
+        assert result["ok"] is False
+        assert result["error"] == "NO_METADATA"
 
     def test_get_metadata_no_manager(self):
         b = RadioBridge()
@@ -257,23 +256,26 @@ class TestMetadata:
 
 class TestStates:
     def test_connecting_state(self, bridge):
-        assert True
+        bridge.playStation("http://jazz.stream", "Jazz FM")
+        assert bridge.isBuffering is True
 
     def test_buffering_state(self, bridge):
         assert True
 
     def test_playing_state(self, bridge):
-        result = bridge.playStation("http://x", "X")
-        assert result["ok"] is True
+        bridge.playStation("http://jazz.stream", "Jazz FM")
+        bridge._on_station_connection_done()
+        assert bridge.isPlaying is True
 
     def test_reconnecting_state(self, bridge):
-        bridge.playStation("http://x", "X")
+        bridge.playStation("http://jazz.stream", "Jazz FM")
         result = bridge.reconnectLast()
         assert result["ok"] is True
 
     def test_stopped_state(self, bridge):
         result = bridge.stopStream()
         assert result["ok"] is True
+        assert bridge.isPlaying is False
 
     def test_cancelling_state(self, bridge):
         result = bridge.cancelStream()
@@ -283,6 +285,12 @@ class TestStates:
         bridge._player = None
         result = bridge.playStation("http://fail", "")
         assert result["ok"] is False
+
+    def test_connect_timeout_resets_playing(self, bridge):
+        bridge.playStation("http://jazz.stream", "Jazz FM")
+        bridge._on_connect_timeout()
+        assert bridge.isPlaying is False
+        assert bridge.isBuffering is False
 
 
 class TestEdgeCases:
@@ -318,8 +326,9 @@ class TestEdgeCases:
         assert result["ok"] is False
 
     def test_delete_error_reports(self, bridge, mock_radio_mgr):
-        mock_radio_mgr.remove_station.side_effect = RuntimeError("DB error")
-        result = bridge.deleteStation("http://x")
+        bridge.refresh()
+        mock_radio_mgr.delete_station.side_effect = RuntimeError("DB error")
+        result = bridge.deleteStation("http://rock.stream")
         assert result["ok"] is False
 
     def test_import_m3u_no_manager(self):
@@ -333,16 +342,21 @@ class TestEdgeCases:
         assert result["ok"] is False
 
     def test_search_error_reports(self, bridge, mock_radio_mgr):
-        mock_radio_mgr.get_all.side_effect = RuntimeError("Search error")
+        mock_radio_mgr.search_stations.side_effect = RuntimeError("Search error")
         result = bridge.search(query="test")
         assert result["ok"] is False
 
     def test_edit_error_reports(self, bridge, mock_radio_mgr):
-        mock_radio_mgr.update.side_effect = RuntimeError("Update failed")
+        mock_radio_mgr.edit_station.side_effect = RuntimeError("Update failed")
         result = bridge.editStation(1, "X", "http://x")
         assert result["ok"] is False
 
     def test_toggle_favorite_error_reports(self, bridge, mock_radio_mgr):
-        mock_radio_mgr.toggle_favorite.side_effect = RuntimeError("Fav error")
+        mock_radio_mgr.favorite_station.side_effect = RuntimeError("Fav error")
         result = bridge.toggleFavorite(1)
         assert result["ok"] is False
+
+    def test_remove_station_delegates_to_service(self, bridge, mock_radio_mgr):
+        result = bridge.removeStation("2")
+        assert result["ok"] is True
+        mock_radio_mgr.delete_station.assert_called_once_with("2")

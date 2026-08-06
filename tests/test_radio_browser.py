@@ -14,17 +14,13 @@ class TestRadioBrowserApi:
     @patch("ui_qml_bridge.radio_bridge.logger")
     def test_radio_bridge_search(self, mock_logger):
         mock_mgr = MagicMock()
-        mock_station = MagicMock()
-        mock_station.id = 1
-        mock_station.name = "Test FM"
-        mock_station.url = "http://test.stream/audio"
-        mock_station.codec = "MP3"
-        mock_station.country = "Testland"
-        mock_station.tags = ["pop", "rock"]
-        mock_station.favorite = False
-        mock_station.bitrate = 128
-        mock_station.image_path = ""
-        mock_mgr.get_all.return_value = [mock_station]
+        mock_mgr.search_stations.return_value = {
+            "ok": True, "results": [{
+                "id": 1, "name": "Test FM", "url": "http://test.stream/audio",
+                "codec": "MP3", "country": "Testland", "tags": ["pop", "rock"],
+                "favorite": False, "image_path": "", "bitrate": 128,
+            }], "count": 1,
+        }
 
         bridge = RadioBridge(radio_manager=mock_mgr, player_service=MagicMock())
         result = bridge.search(query="Test")
@@ -38,7 +34,7 @@ class TestRadioBrowserApi:
     @patch("ui_qml_bridge.radio_bridge.logger")
     def test_radio_bridge_search_empty(self, mock_logger):
         mock_mgr = MagicMock()
-        mock_mgr.get_all.return_value = []
+        mock_mgr.search_stations.return_value = {"ok": True, "results": [], "count": 0}
 
         bridge = RadioBridge(radio_manager=mock_mgr, player_service=MagicMock())
         result = bridge.search(query="Nothing")
@@ -50,7 +46,7 @@ class TestRadioBrowserApi:
     @patch("ui_qml_bridge.radio_bridge.logger")
     def test_radio_bridge_search_error(self, mock_logger):
         mock_mgr = MagicMock()
-        mock_mgr.get_all.side_effect = ConnectionError("Network failure")
+        mock_mgr.search_stations.side_effect = ConnectionError("Network failure")
 
         bridge = RadioBridge(radio_manager=mock_mgr, player_service=MagicMock())
         result = bridge.search(query="Test")

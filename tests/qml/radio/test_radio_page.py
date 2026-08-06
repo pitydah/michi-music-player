@@ -4,40 +4,34 @@ from unittest.mock import MagicMock
 import pytest
 
 from ui_qml_bridge.radio_bridge import RadioBridge
+from tests.qml.radio._svc_fixtures import make_radio_service_mock
 
 pytestmark = [pytest.mark.qml_module("radio")]
 
 
+def _page_stations():
+    return [
+        {"id": 1, "name": "Jazz FM", "url": "http://jazz.stream", "codec": "MP3",
+         "country": "US", "tags": [], "favorite": True, "image_path": "", "bitrate": 128},
+        {"id": 2, "name": "Rock FM", "url": "http://rock.stream", "codec": "AAC",
+         "country": "UK", "tags": [], "favorite": False, "image_path": "", "bitrate": 160},
+        {"id": 3, "name": "Classical", "url": "http://classical.stream", "codec": "MP3",
+         "country": "DE", "tags": [], "favorite": False, "image_path": "", "bitrate": 192},
+        {"id": 4, "name": "News Talk", "url": "http://news.stream", "codec": "AAC",
+         "country": "US", "tags": [], "favorite": True, "image_path": "", "bitrate": 224},
+        {"id": 5, "name": "Latin Beats", "url": "http://latin.stream", "codec": "MP3",
+         "country": "MX", "tags": [], "favorite": False, "image_path": "", "bitrate": 256},
+    ]
+
+
 @pytest.fixture
 def mock_stations():
-    stations = []
-    for i, (name, url, codec, country, fav) in enumerate([
-        ("Jazz FM", "http://jazz.stream", "MP3", "US", True),
-        ("Rock FM", "http://rock.stream", "AAC", "UK", False),
-        ("Classical", "http://classical.stream", "MP3", "DE", False),
-        ("News Talk", "http://news.stream", "AAC", "US", True),
-        ("Latin Beats", "http://latin.stream", "MP3", "MX", False),
-    ]):
-        s = MagicMock()
-        s.id = i + 1
-        s.name = name
-        s.url = url
-        s.codec = codec
-        s.country = country
-        s.tags = []
-        s.favorite = fav
-        s.bitrate = 128 + i * 32
-        stations.append(s)
-    return stations
+    return _page_stations()
 
 
 @pytest.fixture
 def mock_radio_mgr(mock_stations):
-    mgr = MagicMock()
-    mgr.get_all.return_value = mock_stations
-    mgr.add.return_value = mock_stations[0]
-    mgr.toggle_favorite.return_value = True
-    return mgr
+    return make_radio_service_mock(stations=mock_stations)
 
 
 @pytest.fixture
@@ -111,7 +105,7 @@ class TestRadioPage:
 
     def test_empty_stations_list(self):
         mgr = MagicMock()
-        mgr.get_all.return_value = []
+        mgr.get_stations.return_value = []
         b = RadioBridge(radio_manager=mgr, player_service=MagicMock())
         b.refresh()
         assert len(b.stations) == 0

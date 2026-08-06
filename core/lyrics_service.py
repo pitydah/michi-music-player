@@ -1,4 +1,10 @@
-"""LyricsService — real lyrics fetching from LRC files and network providers."""
+"""# LEGACY — LyricsService facade (superseded by core/lyrics/service.py).
+
+Deprecated: the canonical implementation is :class:`core.lyrics.service.LyricsService`
+(resolver/registry/providers/cache/editor/timeline/undo/attribution), registered
+in the container under ``lyrics_service``. This legacy class only keeps its own
+unit tests green during the ADR-002 migration; new code must not import it.
+"""
 from __future__ import annotations
 
 import logging
@@ -7,6 +13,12 @@ logger = logging.getLogger("michi.lyrics_service")
 
 
 class LyricsService:
+    """Deprecated legacy lyrics fetcher.
+
+    .. deprecated::
+        Use :class:`core.lyrics.service.LyricsService` (canonical). This class
+        is kept for legacy tests only and is not wired into the container.
+    """
     def __init__(self, lrclib_client=None, worker_manager=None, db=None):
         self._lrclib = lrclib_client
         self._worker_manager = worker_manager

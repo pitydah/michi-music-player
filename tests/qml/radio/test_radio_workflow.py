@@ -4,39 +4,18 @@ from unittest.mock import MagicMock
 import pytest
 
 from ui_qml_bridge.radio_bridge import RadioBridge
+from tests.qml.radio._svc_fixtures import station_dicts, make_radio_service_mock
 pytestmark = [pytest.mark.qml_module("radio")]
 
 
 @pytest.fixture
 def mock_stations():
-    s1 = MagicMock()
-    s1.id = 1
-    s1.name = "Jazz FM"
-    s1.url = "http://jazz.stream"
-    s1.codec = "MP3"
-    s1.country = "US"
-    s1.tags = ["jazz", "cool"]
-    s1.favorite = True
-    s1.bitrate = 128
-    s2 = MagicMock()
-    s2.id = 2
-    s2.name = "Rock FM"
-    s2.url = "http://rock.stream"
-    s2.codec = "AAC"
-    s2.country = "UK"
-    s2.tags = ["rock", "classic"]
-    s2.favorite = False
-    s2.bitrate = 256
-    return [s1, s2]
+    return station_dicts()
 
 
 @pytest.fixture
 def mock_radio_mgr(mock_stations):
-    mgr = MagicMock()
-    mgr.get_all.return_value = mock_stations
-    mgr.add.return_value = mock_stations[0]
-    mgr.toggle_favorite.return_value = True
-    return mgr
+    return make_radio_service_mock(stations=mock_stations)
 
 
 @pytest.fixture
@@ -65,7 +44,7 @@ def test_add_station(mock_radio_mgr, mock_player):
     bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
     result = bridge.addStation("New Station", "http://new.stream", "MP3", "DE")
     assert result["ok"]
-    mock_radio_mgr.add.assert_called_once()
+    mock_radio_mgr.add_station.assert_called_once()
 
 
 def test_add_station_empty_url(mock_radio_mgr, mock_player):
@@ -90,10 +69,10 @@ def test_play_station_empty_url(mock_radio_mgr, mock_player):
 
 def test_delete_station(mock_radio_mgr, mock_player):
     bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
-    mock_radio_mgr.remove_station.return_value = True
+    bridge.refresh()
     result = bridge.deleteStation("http://rock.stream")
     assert result["ok"]
-    mock_radio_mgr.remove_station.assert_called_once()
+    mock_radio_mgr.delete_station.assert_called_once_with(2)
 
 
 def test_toggle_favorite(mock_radio_mgr, mock_player):
@@ -101,7 +80,7 @@ def test_toggle_favorite(mock_radio_mgr, mock_player):
     result = bridge.toggleFavorite(1)
     assert result["ok"]
     assert result["favorite"] is True
-    mock_radio_mgr.toggle_favorite.assert_called_once_with(1)
+    mock_radio_mgr.favorite_station.assert_called_once_with(1)
 
 
 def test_search_stations(mock_radio_mgr, mock_player):
@@ -119,7 +98,6 @@ def test_search_empty_query(mock_radio_mgr, mock_player):
 
 def test_edit_station(mock_radio_mgr, mock_player):
     bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
-    mock_radio_mgr.update.return_value = True
     result = bridge.editStation(1, "Edited FM", "http://edited.stream", "MP3", "FR")
     assert result["ok"]
-    mock_radio_mgr.update.assert_called_once()
+    mock_radio_mgr.edit_station.assert_called_once()

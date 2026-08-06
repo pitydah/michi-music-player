@@ -1,14 +1,15 @@
 """Tests for Radio v12 — sin operaciones sincronas prolongadas en UI thread."""
 from unittest.mock import MagicMock
 
-import pytest
-
 
 class TestRadioBridgeCreation:
-    def test_requires_player(self):
+    def test_creates_without_player(self):
         from ui_qml_bridge.radio_bridge import RadioBridge
-        with pytest.raises(Exception):
-            RadioBridge()
+        rb = RadioBridge()
+        assert rb is not None
+        result = rb.playStation("http://x", "X")
+        assert result.get("ok") is False
+        assert result.get("error") == "NO_PLAYER_SERVICE"
 
     def test_creation(self):
         from ui_qml_bridge.radio_bridge import RadioBridge
@@ -79,10 +80,16 @@ class TestRadioOperations:
     def test_delete_station(self):
         from ui_qml_bridge.radio_bridge import RadioBridge
         mgr = MagicMock()
-        mgr.remove_station.return_value = None
+        mgr.get_stations.return_value = [
+            {"id": 1, "name": "Test", "url": "http://stream.url", "codec": "",
+             "country": "", "tags": [], "favorite": False, "image_path": "", "bitrate": 0},
+        ]
+        mgr.delete_station.return_value = {"ok": True}
         rb = RadioBridge(player_service=MagicMock(), radio_manager=mgr)
+        rb.refresh()
         result = rb.deleteStation("http://stream.url")
         assert result.get("ok")
+        mgr.delete_station.assert_called_once_with(1)
 
     def test_toggle_favorite(self):
         from ui_qml_bridge.radio_bridge import RadioBridge

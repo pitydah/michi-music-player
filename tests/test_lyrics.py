@@ -129,7 +129,7 @@ class TestLyricsService:
         assert isinstance(result, dict)
 
     def test_lyrics_save_with_audio_path(self, tmp_path):
-        """saveLocalLyrics with a real audio path writes a sidecar file."""
+        """saveLocalLyrics with a real audio path writes a sidecar via the service."""
         import wave
         audio = tmp_path / "test_song.wav"
         with wave.open(str(audio), "w") as w:
@@ -139,8 +139,26 @@ class TestLyricsService:
             w.writeframes(b"\x00\x00" * 44100)
         from unittest.mock import MagicMock
         from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        from core.lyrics.service import LyricsService
+        from core.lyrics.resolver import LyricsResolver
+        from core.lyrics.registry import LyricsProviderRegistry
+        from core.lyrics.storage import LyricsStorageService
+        from core.lyrics.editor import LyricsEditorService
+        from infrastructure.lyrics.sidecar_provider import FileSidecarProvider
+        from infrastructure.lyrics.embedded_writer import MutagenEmbeddedLyricsWriter
+
+        storage = LyricsStorageService(
+            sidecar_provider=FileSidecarProvider(),
+            embedded_writer=MutagenEmbeddedLyricsWriter(),
+        )
+        svc = LyricsService(
+            resolver=LyricsResolver(provider_registry=LyricsProviderRegistry()),
+            provider_registry=LyricsProviderRegistry(),
+            storage_service=storage,
+            editor_service=LyricsEditorService(),
+        )
         wm = MagicMock()
-        bridge = LyricsBridge(worker_manager=wm)
+        bridge = LyricsBridge(worker_manager=wm, lyrics_service=svc)
 
         # Set current filepath via bridge internals
         bridge._np_bridge = MagicMock()
@@ -148,6 +166,7 @@ class TestLyricsService:
 
         result = bridge.saveLocalLyrics("Line 1\nLine 2\nLine 3")
         assert result.get("ok", result.get("error", ""))
+        assert (tmp_path / "test_song.lrc").exists()
 
     def test_lyrics_lrclib_result_to_document(self):
         """Verify LrcLibClient.LyricsResult can map to canonical LyricsDocument."""

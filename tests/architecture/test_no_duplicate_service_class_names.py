@@ -29,12 +29,12 @@ SERVICE_DUPLICATES: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
         ("integrations/michi_link/continue_on_server_service.py",),
     ),
     "RadioService": (
-        ("core/radio/radio_service.py",),
         ("core/radio/service.py",),
+        ("core/radio/radio_service.py",),
     ),
     "LyricsService": (
-        ("core/lyrics_service.py",),
         ("core/lyrics/service.py",),
+        ("core/lyrics_service.py",),
     ),
     "DiagnosticsService": (
         ("core/diagnostics_service.py",),

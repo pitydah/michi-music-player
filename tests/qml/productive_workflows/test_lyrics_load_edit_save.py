@@ -12,8 +12,9 @@ class TestLyrics:
     def test_lyrics_service_methods(self, bootstrap):
         svc = bootstrap.container.get("lyrics_service")
         assert svc is not None
-        assert hasattr(svc, 'get_lyrics')
-        assert hasattr(svc, 'save_lyrics')
+        # Canonical LyricsService API (Slice 5 single authority).
+        assert hasattr(svc, 'resolve')
+        assert hasattr(svc, 'save_sidecar')
         assert hasattr(svc, 'health')
 
     def test_lyrics_bridge_exists(self, bootstrap):

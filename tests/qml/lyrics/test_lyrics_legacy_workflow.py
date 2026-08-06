@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ui_qml_bridge.lyrics_bridge import LyricsBridge, _parse_lrc, _make_cache_key
+from ui_qml_bridge.lyrics_bridge import LyricsBridge, _parse_lrc
 pytestmark = [pytest.mark.qml_module("lyrics")]
 
 
@@ -42,17 +42,27 @@ def test_search_triggers_async_worker(mock_nowplaying, mock_worker):
     assert mock_worker.run_task.called
 
 
-def test_cache_hit_returns_immediately(mock_nowplaying, mock_worker):
-    bridge = LyricsBridge(worker_manager=mock_worker, nowplaying_bridge=mock_nowplaying)
-    key = _make_cache_key("Test", "Artist", "Album", 300)
-    bridge._cache[key] = {
-        "lyrics": "Cached text", "synced_lyrics": "",
-        "source": "LRCLIB", "timestamp": 1000,
-    }
-    bridge._cache_order.append(key)
+def test_service_cache_result_flows_to_bridge(mock_nowplaying, mock_worker):
+    from core.lyrics.models import LyricsOperationResult, LyricsDocument, LyricsSource
+    svc = MagicMock()
+    svc.resolve.return_value = LyricsOperationResult(
+        ok=True,
+        document=LyricsDocument(
+            plain_text="Cached text", synced_text="", source=LyricsSource.CACHE),
+    )
+    wm = MagicMock()
+
+    def run_task(name, fn, on_done=None, **kw):
+        if on_done:
+            on_done(fn())
+
+    wm.run_task.side_effect = run_task
+    bridge = LyricsBridge(worker_manager=wm, lyrics_service=svc,
+                          nowplaying_bridge=mock_nowplaying)
     bridge.search("Test", "Artist", "Album", 300)
     assert bridge.status == "done"
     assert bridge.lyrics == "Cached text"
+    svc.resolve.assert_called_once()
 
 
 def test_save_local_lyrics(mock_nowplaying, mock_worker):
@@ -101,16 +111,15 @@ def test_cancel_search_resets_to_idle(mock_nowplaying, mock_worker):
     assert bridge._active_search_id == 0
 
 
-def test_clear_cache_for_current_track(mock_nowplaying, mock_worker):
-    bridge = LyricsBridge(worker_manager=mock_worker, nowplaying_bridge=mock_nowplaying)
+def test_clear_cache_for_current_track_delegates(mock_nowplaying, mock_worker):
+    svc = MagicMock()
+    bridge = LyricsBridge(worker_manager=mock_worker, lyrics_service=svc,
+                          nowplaying_bridge=mock_nowplaying)
     bridge._current_title = "Test"
     bridge._current_artist = "Artist"
-    key = _make_cache_key("Test", "Artist", "", 0)
-    bridge._cache[key] = {"lyrics": "x"}
-    bridge._cache_order.append(key)
-    assert len(bridge._cache) == 1
-    bridge.clearCacheForCurrentTrack()
-    assert len(bridge._cache) == 0
+    result = bridge.clearCacheForCurrentTrack()
+    assert result["ok"]
+    svc.invalidate_identity.assert_called_once()
 
 
 def test_manual_search(mock_nowplaying, mock_worker):

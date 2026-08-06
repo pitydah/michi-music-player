@@ -121,6 +121,60 @@ class RadioService:
         self._event_bus.emit("favorite_changed", {"station_id": station_id, "favorite": favorite})
         return RadioOperationResult(ok=True)
 
+    def toggle_favorite(self, station_id: StationId) -> RadioOperationResult:
+        """Toggle the favorite flag for a station (single authority).
+
+        Added as the canonical home of the toggle semantics that the legacy
+        facade and the QML bridge expose through ``favorite_station``.
+        """
+        station = self._station_repo.get(station_id)
+        if station is None:
+            return RadioOperationResult(
+                ok=False, error=RadioError.NOT_FOUND,
+                message=f"Station {station_id} not found",
+            )
+        return self.set_favorite(station_id, not station.favorite)
+
+    def mark_played(self, station_id: StationId) -> RadioOperationResult:
+        """Record a play: bump the station counters and append to history.
+
+        Kept as a public operation so the bridge can report a play that was
+        started through the external playback backend without owning a
+        StreamSession.
+        """
+        station = self._station_repo.get(station_id)
+        if station is None:
+            return RadioOperationResult(
+                ok=False, error=RadioError.NOT_FOUND,
+                message=f"Station {station_id} not found",
+            )
+        self._station_repo.mark_played(station_id)
+        self._history_repo.record_play(station_id)
+        return RadioOperationResult(ok=True)
+
+    def bulk_import(self, stations: list[StationCreateRequest],
+                    mode: AtomicMode = AtomicMode.BEST_EFFORT) -> RadioOperationResult:
+        """Import a list of stations (upsert by URL) into the repository."""
+        imported = self._station_repo.bulk_add(stations, mode.value)
+        self._event_bus.emit("stations_imported", {"imported": imported})
+        return RadioOperationResult(ok=True, details={"imported": imported})
+
+    def export_stations(self) -> list[dict]:
+        """All stations as plain dicts (name/url/genre/country/codec)."""
+        return [
+            {
+                "name": s.name,
+                "url": s.stream_url,
+                "genre": s.genre,
+                "country": s.country,
+                "codec": s.codec,
+                "id": s.id,
+                "favorite": s.favorite,
+                "bitrate": s.bitrate,
+            }
+            for s in self._station_repo.get_all_for_export()
+        ]
+
     def list_favorites(self, page: int = 1, page_size: int = 50) -> PaginatedResult:
         return self._station_repo.list_favorites(page, page_size)
 
@@ -164,8 +218,7 @@ class RadioService:
         self._session = self._create_session(station.id, station.stream_url, gen)
 
         self._session.start()
-        self._station_repo.mark_played(station_id)
-        self._history_repo.record_play(station_id)
+        self.mark_played(station_id)
         self._event_bus.emit("session_state_changed", {
             "station_id": station_id,
             "state": SessionState.CONNECTING.value,

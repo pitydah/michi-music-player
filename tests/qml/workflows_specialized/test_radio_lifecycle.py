@@ -3,30 +3,21 @@ import pytest
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.radio_bridge import RadioBridge
+from tests.qml.radio._svc_fixtures import make_radio_service_mock
 
 
-class _Station:
-    def __init__(self, sid=1, name="Test FM", url="https://stream.example.com/radio",
-                 codec="MP3", country="US", tags=None, favorite=False):
-        self.id = sid
-        self.name = name
-        self.url = url
-        self.codec = codec
-        self.country = country
-        self.tags = tags or []
-        self.favorite = favorite
-        self.image_path = ""
+def _lifecycle_stations():
+    return [
+        {"id": 1, "name": "Jazz FM", "url": "https://jazz.stream", "codec": "FLAC",
+         "country": "US", "tags": ["jazz"], "favorite": False, "image_path": "", "bitrate": 0},
+        {"id": 2, "name": "Rock FM", "url": "https://rock.stream", "codec": "MP3",
+         "country": "UK", "tags": ["rock"], "favorite": False, "image_path": "", "bitrate": 0},
+    ]
 
 
 @pytest.fixture
 def radio_mgr():
-    mgr = MagicMock()
-    mgr.get_all.return_value = [
-        _Station(1, "Jazz FM", "https://jazz.stream", "FLAC", "US", ["jazz"]),
-        _Station(2, "Rock FM", "https://rock.stream", "MP3", "UK", ["rock"]),
-    ]
-    mgr.add.return_value = _Station(3, "New Station", "https://new.stream")
-    return mgr
+    return make_radio_service_mock(stations=_lifecycle_stations())
 
 
 @pytest.fixture
@@ -58,7 +49,7 @@ class TestRadioLifecycle:
     def test_add_station_calls_manager(self, bridge, radio_mgr):
         result = bridge.addStation("New FM", "https://new.fm/stream", "AAC", "DE")
         assert result["ok"] is True
-        radio_mgr.add.assert_called_once()
+        radio_mgr.add_station.assert_called_once()
 
     def test_add_station_without_url_fails(self, bridge):
         result = bridge.addStation("Empty", "", "MP3", "")
@@ -95,10 +86,10 @@ class TestRadioLifecycle:
         assert result["ok"] is True
 
     def test_delete_station_calls_manager(self, bridge, radio_mgr):
-        radio_mgr.remove_station = MagicMock(return_value=True)
-        result = bridge.deleteStation("https://stream.example.com/radio")
+        bridge.refresh()
+        result = bridge.deleteStation("https://rock.stream")
         assert result["ok"] is True
-        radio_mgr.remove_station.assert_called_once()
+        radio_mgr.delete_station.assert_called_once()
 
     def test_delete_without_manager_fails(self):
         b = RadioBridge()
@@ -106,16 +97,14 @@ class TestRadioLifecycle:
         assert result.get("error") == "NO_RADIO_MANAGER"
 
     def test_edit_station_calls_manager(self, bridge, radio_mgr):
-        radio_mgr.update = MagicMock(return_value=True)
         result = bridge.editStation(1, "New Name", "http://new.url")
         assert result["ok"] is True
-        radio_mgr.update.assert_called_once()
+        radio_mgr.edit_station.assert_called_once()
 
     def test_toggle_favorite_calls_manager(self, bridge, radio_mgr):
-        radio_mgr.toggle_favorite = MagicMock(return_value=True)
         result = bridge.toggleFavorite(1)
         assert result["ok"] is True
-        radio_mgr.toggle_favorite.assert_called_once_with(1)
+        radio_mgr.favorite_station.assert_called_once_with(1)
 
     def test_search_returns_results(self, bridge):
         result = bridge.search(query="Jazz")
@@ -139,13 +128,19 @@ class TestRadioLifecycle:
         assert result.get("error") == "NO_LAST_STATION"
 
     def test_history_records_played_stations(self, bridge):
-        bridge.playStation("http://a", "Alpha")
-        bridge.playStation("http://b", "Beta")
-        assert len(bridge.history) == 2
+        bridge.playStation("https://jazz.stream", "Jazz FM")
+        bridge.playStation("https://rock.stream", "Rock FM")
+        assert len(bridge.history) == 0
+        bridge._on_station_connection_done()
+        assert len(bridge.history) == 1
+        assert bridge.history[0]["name"] == "Rock FM"
 
     def test_history_max_50(self, bridge):
-        for i in range(60):
-            bridge.playStation(f"http://{i}", f"Station {i}")
+        radio_mgr = bridge.radio_manager
+        radio_mgr.get_history.side_effect = lambda limit=50: [
+            {"name": f"Station {i}", "url": f"http://{i}", "played_at": "now"}
+            for i in range(60)
+        ][:limit]
         assert len(bridge.history) <= 50
 
     def test_export_m3u_without_stations_fails(self, bridge):
@@ -153,17 +148,20 @@ class TestRadioLifecycle:
         result = b.exportM3u("/tmp/test.m3u")
         assert result.get("error") == "NO_STATIONS"
 
-    def test_get_codec_returns_codec(self, bridge):
-        codec = bridge.getCodec()
-        assert codec == "FLAC"
+    def test_get_codec_from_station(self, bridge):
+        bridge.refresh()
+        assert bridge.stations[0]["codec"] == "FLAC"
+        assert bridge.getCodec() == ""
 
     def test_get_bitrate_returns_zero(self, bridge):
         assert bridge.getBitrate() == 0
 
-    def test_play_adds_to_history(self, bridge):
-        bridge.playStation("http://a", "Alpha")
-        assert len(bridge.history) > 0
-        assert bridge.history[0]["name"] == "Alpha"
+    def test_play_adds_to_history_on_confirmation(self, bridge):
+        bridge.playStation("https://jazz.stream", "Jazz FM")
+        assert len(bridge.history) == 0
+        bridge._on_station_connection_done()
+        assert len(bridge.history) == 1
+        assert bridge.history[0]["name"] == "Jazz FM"
 
     def test_favorites_after_refresh(self, bridge):
         bridge.refresh()

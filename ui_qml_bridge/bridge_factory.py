@@ -414,6 +414,7 @@ class BridgeFactory(QObject):
             self._bridges["lyrics"] = LyricsBridge(
                 worker_manager=self._get("worker_manager"),
                 nowplaying_bridge=self.get("nowplaying"),
+                lyrics_service=self._get("lyrics_service"),
             )
 
     def create_settings_bridge(self):
