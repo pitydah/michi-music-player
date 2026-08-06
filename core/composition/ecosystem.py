@@ -125,10 +125,23 @@ def build(container: ServiceContainer) -> None:
 
     try:
         from core.mobile_sync_service import MobileSyncService
+        from core.settings_manager import get_bool, get_list, get_str
 
         container.register(
             "mobile_sync_service",
-            MobileSyncService(db=container.get("database")),
+            MobileSyncService(
+                db=container.get("database"),
+                device_registry=container.get("device_registry"),
+                bind_host=get_str("mobile_sync/bind_host") or "127.0.0.1",
+                allow_lan_pairing=get_bool("mobile_sync/allow_lan_pairing"),
+                tls_mode=get_str("mobile_sync/tls_mode") or "none",
+                allowed_networks=list(
+                    get_list("mobile_sync/allowed_networks") or []),
+                legacy_code_pairing_enabled=get_bool(
+                    "mobile_sync/legacy_code_pairing_enabled"),
+                signature_pairing_enabled=get_bool(
+                    "mobile_sync/signature_pairing_enabled"),
+            ),
         )
     except Exception as exc:
         logger.error("Failed to create mobile_sync_service: %s", exc)

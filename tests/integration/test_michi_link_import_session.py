@@ -2,16 +2,18 @@
 
 The harness is the REAL production listener: MobileSyncService.start() boots
 ``SyncRequestHandler`` with the Michi Link v1 routes; the client pairs over
-HTTP with a one-time code (``/api/v1/pair/code``) and receives a persistent
-token, then drives a full import session: preflight → session → track +
-artwork + playlist upload → remote readback → checksum verification →
-commit. Failures (session expired, rollback with partial uploads) are
-exercised against the same real server.
+HTTP with a REAL Ed25519 signature (``/api/v1/pair/challenge`` +
+``/api/v1/pair/request``), the device is approved desktop-side, and the
+approved device exchanges a token over ``/api/v1/pair/code``. It then drives
+a full import session: preflight → session → track + artwork + playlist
+upload → remote readback → checksum verification → commit. Failures (session
+expired, rollback with partial uploads) are exercised against the same real
+server.
 """
 from __future__ import annotations
 
+import base64
 import hashlib
-import hmac
 import json
 import urllib.error
 import urllib.request
@@ -19,6 +21,27 @@ import urllib.request
 import pytest
 
 from integrations.michi_link.client import RemoteServerInfo
+
+
+def _ed25519_keypair():
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+        Ed25519PrivateKey,
+    )
+    from cryptography.hazmat.primitives.serialization import (
+        Encoding,
+        PublicFormat,
+    )
+
+    private = Ed25519PrivateKey.generate()
+    raw = private.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+    return private, raw
+
+
+def _payload(protocol_version: str, session_id: str, nonce: str,
+             fingerprint: str, device_id: str) -> bytes:
+    return (
+        f"{protocol_version}|{session_id}|{nonce}|{fingerprint}|{device_id}"
+    ).encode()
 
 
 class _ServerHarness:
@@ -49,29 +72,56 @@ class _ServerHarness:
         )
         self.db.conn.commit()
 
-    def pair(self, device_id: str = "test-phone",
-             public_key: str = "", fingerprint: str = "",
-             proof: str | None = None) -> RemoteServerInfo:
-        """Complete the QR/code pairing over HTTP; returns a tokenized server."""
-        pair = self.svc.start_pairing()
-        sid = pair["session_id"]
-        challenge = self.svc.get_pairing_challenge(sid)["challenge"]
-        if proof is None:
-            proof = hmac.new(pair["code"].encode(), challenge.encode(),
-                             hashlib.sha256).hexdigest()
-        body = json.dumps({
-            "session_id": sid, "code": pair["code"],
-            "device_id": device_id, "name": "Test Phone",
-            "public_key": public_key, "fingerprint": fingerprint,
-            "proof": proof,
-        }).encode()
+    def _post(self, path: str, payload: dict) -> dict:
+        body = json.dumps(payload).encode()
         req = urllib.request.Request(
-            f"http://127.0.0.1:{self.port}/api/v1/pair/code",
+            f"http://127.0.0.1:{self.port}{path}",
             data=body, method="POST",
             headers={"Content-Type": "application/json"},
         )
         with urllib.request.urlopen(req, timeout=10) as r:
-            resp = json.loads(r.read().decode())
+            return json.loads(r.read().decode())
+
+    def pair(self, device_id: str = "test-phone") -> RemoteServerInfo:
+        """Signature pairing over HTTP + desktop approval + token exchange."""
+        private, raw = _ed25519_keypair()
+        pub_b64 = base64.b64encode(raw).decode()
+        fp = hashlib.sha256(raw).hexdigest()
+
+        # 1. Session + nonce over the wire.
+        pair = self.svc.start_pairing()
+        challenge = self._post("/api/v1/pair/challenge", {
+            "session_id": pair["session_id"],
+        })
+        assert challenge.get("ok"), challenge
+        nonce = challenge["nonce"]
+
+        # 2. Signed pair request → awaiting_approval.
+        signature = base64.b64encode(private.sign(_payload(
+            "1.0", pair["session_id"], nonce, fp, device_id))).decode()
+        req_resp = self._post("/api/v1/pair/request", {
+            "session_id": pair["session_id"], "nonce": nonce,
+            "public_key": pub_b64, "signature": signature,
+            "device_id": device_id, "name": "Test Phone",
+            "protocol_version": "1.0",
+        })
+        assert req_resp.get("ok"), req_resp
+        assert req_resp.get("status") == "awaiting_approval", req_resp
+
+        # 3. Desktop-side user approval.
+        assert self.svc.approve_device(device_id)["ok"]
+
+        # 4. Token exchange: the approved device re-pairs with the same key.
+        pair2 = self.svc.start_pairing()
+        sig2 = base64.b64encode(private.sign(_payload(
+            "1.0", pair2["session_id"], pair2["nonce"], fp, device_id
+        ))).decode()
+        resp = self._post("/api/v1/pair/code", {
+            "session_id": pair2["session_id"], "code": pair2["code"],
+            "device_id": device_id, "name": "Test Phone",
+            "public_key": pub_b64, "fingerprint": fp,
+            "signature": sig2, "protocol_version": "1.0",
+        })
         assert resp.get("success"), resp
         return RemoteServerInfo(
             host="127.0.0.1", port=self.port,
