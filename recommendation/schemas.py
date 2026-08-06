@@ -55,6 +55,22 @@ class ListeningProfile:
 
 
 @dataclass
+class SeedCriteria:
+    """Static seed criteria for similarity engines (replaces dynamic classes).
+
+    The similarity functions only read attributes (``artist``, ``genre``,
+    ``year``, ``ext``, ``album``), so a plain dataclass is a drop-in
+    replacement for the former ``type("Seed", ...)`` construction.
+    """
+
+    artist: str = ""
+    genre: str = ""
+    year: int = 0
+    ext: str = ""
+    album: str = ""
+
+
+@dataclass
 class SmartMix:
     mix_id: str = ""
     title: str = ""
@@ -66,6 +82,7 @@ class SmartMix:
     explanation: str = ""
     created_at: str = ""
     is_saved: bool = False
+    warnings: list[str] = field(default_factory=list)
 
 
 def generate_mix_id() -> str:

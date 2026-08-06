@@ -1114,6 +1114,12 @@ class ProductionMixGateway(MixGateway, ProductionCapabilityMixin):
     mix is kept in memory so it can be saved as a playlist.
     """
 
+    # MixService generation status → gateway error code.  EMPTY_LIBRARY is
+    # reported as NO_MATCHES: there is simply nothing to match.
+    _STATUS_TO_CODE = {
+        "EMPTY_LIBRARY": "NO_MATCHES",
+    }
+
     def __init__(self, mix_service: Any = None, playlist_service: Any = None,
                  job_service: Any = None) -> None:
         self._ms = mix_service
@@ -1132,8 +1138,10 @@ class ProductionMixGateway(MixGateway, ProductionCapabilityMixin):
             limit = int(params.get("limit") or 30)
             result = self._ms.generate(strategy=strategy, seed=seed, limit=limit)
             if not result.get("ok"):
-                return {"ok": False, "error": result.get("error", "MIX_FAILED"),
-                        "code": result.get("error", "MIX_FAILED")}
+                status = result.get("status", "")
+                code = self._STATUS_TO_CODE.get(status) or status or "MIX_FAILED"
+                return {"ok": False, "error": result.get("message") or "MIX_FAILED",
+                        "code": code, "status": status, "mix_id": result.get("mix_id")}
             if not result.get("tracks"):
                 return {"ok": False, "code": "NO_MATCHES",
                         "error": "No tracks matched the mix criteria",

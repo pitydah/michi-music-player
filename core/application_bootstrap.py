@@ -87,6 +87,9 @@ class ApplicationBootstrap:
         settings_builder.build(self.container)
         from core.navigation_service import NavigationService
         self.container.register("navigation_service", NavigationService())
+        settings_svc = self.container.get("settings_service")
+        if settings_svc is not None and hasattr(settings_svc, "set_navigation_service"):
+            settings_svc.set_navigation_service(self.container.get("navigation_service"))
 
         intel_builder.build(self.container)
 

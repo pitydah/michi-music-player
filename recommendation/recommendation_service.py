@@ -8,6 +8,7 @@ from typing import Any
 from recommendation.schemas import (
     RecommendationResult,
     SmartMix,
+    SeedCriteria,
     ListeningProfile,
     generate_recommendation_id,
 )
@@ -81,14 +82,13 @@ class RecommendationService:
             results = seed_radio(items, seed, limit=limit)
             strategy = "seed_radio"
         elif self._profile and self._profile.top_artists:
-            seed_obj = type("Seed", (), {
-                "artist": self._profile.top_artists[0],
-                "genre": self._profile.top_genres[0] if self._profile.top_genres else "",
-                "year": self._profile.preferred_years[0] if self._profile.preferred_years else 0,
-                "ext": self._profile.preferred_formats[0] if self._profile.preferred_formats else "",
-                "album": "",
-            })()
-            results = metadata_similarity(items, seed_obj, limit=limit)
+            criteria = SeedCriteria(
+                artist=self._profile.top_artists[0],
+                genre=self._profile.top_genres[0] if self._profile.top_genres else "",
+                year=self._profile.preferred_years[0] if self._profile.preferred_years else 0,
+                ext=self._profile.preferred_formats[0] if self._profile.preferred_formats else "",
+            )
+            results = metadata_similarity(items, criteria, limit=limit)
             strategy = "metadata_similarity"
         else:
             results = discovery(items, limit=limit)
@@ -132,10 +132,8 @@ class RecommendationService:
                               limit: int = 30) -> dict[str, Any]:
         rec_id = generate_recommendation_id()
         items = self._items()
-        seed = type("Seed", (), {
-            "artist": artist_name, "genre": "", "year": 0, "ext": "", "album": "",
-        })()
-        results = metadata_similarity(items, seed, limit=limit)
+        criteria = SeedCriteria(artist=artist_name)
+        results = metadata_similarity(items, criteria, limit=limit)
         explanations = [explain(r) for r in results]
         self._repo.cache_recommendation(rec_id, "artist", artist_name,
                                          "metadata_similarity", results, explanations, self._cache_days)
@@ -151,10 +149,8 @@ class RecommendationService:
                              limit: int = 30) -> dict[str, Any]:
         rec_id = generate_recommendation_id()
         items = self._items()
-        seed = type("Seed", (), {
-            "artist": artist_name, "genre": "", "year": 0, "ext": "", "album": album_title,
-        })()
-        results = metadata_similarity(items, seed, limit=limit)
+        criteria = SeedCriteria(artist=artist_name, album=album_title)
+        results = metadata_similarity(items, criteria, limit=limit)
         explanations = [explain(r) for r in results]
         self._repo.cache_recommendation(rec_id, "album", album_title,
                                          "metadata_similarity", results, explanations, self._cache_days)
@@ -169,10 +165,8 @@ class RecommendationService:
     def recommend_from_genre(self, genre: str, limit: int = 30) -> dict[str, Any]:
         rec_id = generate_recommendation_id()
         items = self._items()
-        seed = type("Seed", (), {
-            "artist": "", "genre": genre, "year": 0, "ext": "", "album": "",
-        })()
-        results = metadata_similarity(items, seed, limit=limit)
+        criteria = SeedCriteria(genre=genre)
+        results = metadata_similarity(items, criteria, limit=limit)
         explanations = [explain(r) for r in results]
         self._repo.cache_recommendation(rec_id, "genre", genre,
                                          "metadata_similarity", results, explanations, self._cache_days)

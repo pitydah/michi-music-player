@@ -22,18 +22,21 @@ def build(container: ServiceContainer) -> None:
         from recommendation.smart_mix_service import SmartMixService
         from recommendation.recommendation_service import RecommendationService
         from core.mix_service import MixService
+        from core.mix_query_service import MixQueryService
         db = container.get("database")
         pls = container.get("playlist_service")
         lqs = container.get("library_query_service")
         eb = container.get("event_bus")
         sms = SmartMixService(db)
         mqs = RecommendationService(db)
+        queries = MixQueryService(db)
         mix_svc = MixService(db=db, recommendation_service=mqs,
                              smart_mix_service=sms,
                              library_query_service=lqs,
                              playlist_service=pls,
-                             event_bus=eb)
-        container.register("mix_query_service", mqs)
+                             event_bus=eb,
+                             mix_query_service=queries)
+        container.register("mix_query_service", queries)
         container.register("mix_service", mix_svc)
     except Exception:
         logger.error("Failed to create mix services", exc_info=True)

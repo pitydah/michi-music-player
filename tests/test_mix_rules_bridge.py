@@ -24,7 +24,7 @@ class TestMixRulesBridge:
         from unittest.mock import MagicMock
         svc = MixService()
         svc._library_query = MagicMock()
-        svc._library_query.search.return_value = [
+        svc._library_query.fetch_tracks.return_value = [
             {"title": "Rock Song", "genre": "Rock", "year": 2020},
             {"title": "Jazz Song", "genre": "Jazz", "year": 2019},
         ]
@@ -37,6 +37,7 @@ class TestMixRulesBridge:
         })
         result = svc.preview_rules(rules)
         assert result["ok"]
+        assert result["matched"] == 1
 
     def test_preview_rules_invalid_json(self):
         from core.mix_service import MixService

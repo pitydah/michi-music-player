@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 from typing import Any
 
-from recommendation.schemas import RecommendationResult
+from recommendation.schemas import RecommendationResult, SeedCriteria
 
 
 def _get(item, attr, default=""):
@@ -181,12 +181,12 @@ def favorites_like(all_items: list, favorite_ids: set[int],
             if val:
                 avg.setdefault(attr, []).append(val)
 
-    seed = type("Seed", (), {
-        "artist": max(set(avg.get("artist", [])), key=avg.get("artist", []).count) if avg.get("artist") else "",
-        "genre": max(set(avg.get("genre", [])), key=avg.get("genre", []).count) if avg.get("genre") else "",
-        "year": int(sum(int(y) for y in avg.get("year", []) if y) / max(len(avg.get("year", [])), 1)) if avg.get("year") else 0,
-        "ext": max(set(avg.get("ext", [])), key=avg.get("ext", []).count) if avg.get("ext") else "",
-    })()
+    seed = SeedCriteria(
+        artist=max(set(avg.get("artist", [])), key=avg.get("artist", []).count) if avg.get("artist") else "",
+        genre=max(set(avg.get("genre", [])), key=avg.get("genre", []).count) if avg.get("genre") else "",
+        year=int(sum(int(y) for y in avg.get("year", []) if y) / max(len(avg.get("year", [])), 1)) if avg.get("year") else 0,
+        ext=max(set(avg.get("ext", [])), key=avg.get("ext", []).count) if avg.get("ext") else "",
+    )
 
     return metadata_similarity(all_items, seed, limit)
 
