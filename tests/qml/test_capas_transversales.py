@@ -223,39 +223,58 @@ class TestCapabilityBridgeIntegrations:
 
 
 class TestAccessibilityBridgeIntegrations:
+    @staticmethod
+    def _bridge():
+        from core.accessibility_service import AccessibilityService
+
+        class _FakeSettings:
+            def __init__(self):
+                self._data = {}
+
+            def value(self, key, default=None):
+                return self._data.get(key, default)
+
+            def setValue(self, key, value):
+                self._data[key] = value
+
+        return AccessibilityBridge(
+            service=AccessibilityService(settings=_FakeSettings()))
+
     def test_accessibility_bridge_defaults(self):
-        ab = AccessibilityBridge()
+        ab = self._bridge()
         assert isinstance(ab.fontScale, float)
         assert isinstance(ab.highContrast, bool)
         assert isinstance(ab.reduceMotion, bool)
 
     def test_accessibility_bridge_set_font_scale(self):
-        ab = AccessibilityBridge()
+        ab = self._bridge()
         ab.fontScale = 1.5
         assert ab.fontScale == 1.5
 
     def test_accessibility_bridge_set_high_contrast(self):
-        ab = AccessibilityBridge()
+        ab = self._bridge()
         ab.highContrast = True
         assert ab.highContrast
 
     def test_accessibility_bridge_set_reduce_motion(self):
-        ab = AccessibilityBridge()
+        ab = self._bridge()
         ab.reduceMotion = True
         assert ab.reduceMotion
 
     def test_accessibility_bridge_set_mono(self):
-        ab = AccessibilityBridge()
+        ab = self._bridge()
+        ab = AccessibilityBridge(
+            service=ab._svc, playback_service=MagicMock())
         ab.mono = True
         assert ab.mono
 
     def test_accessibility_bridge_set_balance(self):
-        ab = AccessibilityBridge()
+        ab = self._bridge()
         ab.balance = 0.3
         assert ab.balance == 0.3
 
     def test_accessibility_bridge_balance_clamped(self):
-        ab = AccessibilityBridge()
+        ab = self._bridge()
         ab.balance = 5.0
         assert ab.balance <= 1.0
         ab.balance = -5.0
@@ -267,7 +286,7 @@ class TestAccessibilityBridgeIntegrations:
         assert ab._playback_service is ps
 
     def test_accessibility_bridge_restore_on_error(self):
-        ab = AccessibilityBridge()
+        ab = self._bridge()
         ab.mono = True
         ab.balance = 0.5
         result = ab.restoreOnError()
@@ -276,7 +295,7 @@ class TestAccessibilityBridgeIntegrations:
         assert result["balance"] == 0.0
 
     def test_accessibility_bridge_refresh(self):
-        ab = AccessibilityBridge()
+        ab = self._bridge()
         old = ab.fontScale
         ab.fontScale = 1.5 if old != 1.5 else 0.8
         ab.refresh()

@@ -776,34 +776,54 @@ class TestWorkflow8PlaylistCRUD:
 
 # ── WF9: Theme — Change  QML tokens  restart  persistence ──
 
+class _FakeSettings:
+    """In-memory QSettings-like backend (S11: service-owned persistence)."""
+
+    def __init__(self):
+        self._data = {}
+
+    def value(self, key, default=None):
+        return self._data.get(key, default)
+
+    def setValue(self, key, value):
+        self._data[key] = value
+
+
+def _theme_bridge():
+    from core.accessibility_service import AccessibilityService
+    from core.theme_service import ThemeService
+    from ui_qml_bridge.theme_bridge import ThemeBridge
+    backend = _FakeSettings()
+    return ThemeBridge(
+        service=ThemeService(settings=backend),
+        accessibility_service=AccessibilityService(settings=backend),
+    )
+
+
 class TestWorkflow9Theme:
     """WF9: Theme change real."""
 
     def test_wf9_theme_change_dark_mode(self):
-        from ui_qml_bridge.theme_bridge import ThemeBridge
-        tb = ThemeBridge()
+        tb = _theme_bridge()
         tb.darkMode = False
         assert tb.darkMode is False
         tb.darkMode = True
         assert tb.darkMode is True
 
     def test_wf9_theme_accent_color(self):
-        from ui_qml_bridge.theme_bridge import ThemeBridge
-        tb = ThemeBridge()
+        tb = _theme_bridge()
         tb.accentColor = "#FF5733"
         assert tb.accentColor == "#FF5733"
 
     def test_wf9_theme_density(self):
-        from ui_qml_bridge.theme_bridge import ThemeBridge
-        tb = ThemeBridge()
+        tb = _theme_bridge()
         tb.compactMode = True
         assert tb.compactMode is True
         tb.compactMode = False
         assert tb.compactMode is False
 
     def test_wf9_theme_font_scale(self):
-        from ui_qml_bridge.theme_bridge import ThemeBridge
-        tb = ThemeBridge()
+        tb = _theme_bridge()
         tb.fontScale = 1.5
         assert tb.fontScale == 1.5
 
@@ -813,8 +833,9 @@ class TestWorkflow9Theme:
         SETTINGS.setValue("appearance/theme", "light")
         SETTINGS.sync()
         try:
+            from core.theme_service import ThemeService
             from ui_qml_bridge.theme_bridge import ThemeBridge
-            tb = ThemeBridge()
+            tb = ThemeBridge(service=ThemeService())
             assert tb.theme == "light"
         finally:
             SETTINGS.setValue("appearance/theme", old)

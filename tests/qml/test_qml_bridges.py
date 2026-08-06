@@ -291,22 +291,33 @@ class TestCommandBus:
 
 
 class TestThemeBridge:
+    @staticmethod
+    def _bridge():
+        from core.theme_service import ThemeService
+
+        class _FakeSettings:
+            def __init__(self):
+                self._data = {}
+
+            def value(self, key, default=None):
+                return self._data.get(key, default)
+
+            def setValue(self, key, value):
+                self._data[key] = value
+
+        return ThemeBridge(service=ThemeService(settings=_FakeSettings()))
+
     def test_default_dark(self):
-        from unittest.mock import MagicMock, patch
-        with patch("ui_qml_bridge.theme_bridge.SETTINGS") as mock_settings:
-            mock_settings.value.return_value = "dark"
-            bridge = ThemeBridge(coordinator=MagicMock())
-            assert bridge.darkMode is True
+        bridge = self._bridge()
+        assert bridge.darkMode is True
 
     def test_set_light(self):
-        from unittest.mock import MagicMock
-        bridge = ThemeBridge(coordinator=MagicMock())
+        bridge = self._bridge()
         bridge.darkMode = False
         assert bridge.darkMode is False
 
     def test_set_dark(self):
-        from unittest.mock import MagicMock
-        bridge = ThemeBridge(coordinator=MagicMock())
+        bridge = self._bridge()
         bridge.darkMode = True
         assert bridge.darkMode is True
 

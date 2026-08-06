@@ -702,20 +702,28 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         consumers=("lyrics_bridge",),
         description="Lyrics via LRCLIB.",
     ),
-    # ── Settings / presentation (2 registered keys) ──────────────────────
+    # ── Settings / presentation (3 registered keys) ──────────────────────
     "theme_service": _d(
         "theme_service", ServiceClass.MANAGED_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.REQUIRED,
         optional=True,
         capabilities=("theme",),
-        description="Background theme service.",
+        description="Canonical theme authority (mode, accent, artwork background).",
     ),
     "accessibility_service": _d(
         "accessibility_service", ServiceClass.MANAGED_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.REQUIRED,
         optional=True,
         capabilities=(),
-        description="Accessibility runtime settings.",
+        description="Accessibility runtime settings (canonical owner).",
+    ),
+    "context_service": _d(
+        "context_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("playback_snapshot_service", "queue_service", "database"),
+        capabilities=("context",),
+        consumers=("home_bridge", "home_dashboard_service", "michi_ai_snapshot_service"),
+        description="Canonical contextual truth source (S11) — provider registry snapshot.",
     ),
     # ── Intelligence (4 registered keys) ─────────────────────────────────
     "action_registry": _d(

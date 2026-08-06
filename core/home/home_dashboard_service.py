@@ -49,9 +49,14 @@ class HomeDashboardService:
         self._settings_mgr = settings_mgr
         self._michi_link_ctrl = michi_link_ctrl
         self._ecosystem_doctor = ecosystem_doctor
+        self._sections_cache: dict | None = None
+
+    def _clear_sections_cache(self) -> None:
+        self._sections_cache = None
 
     def build_snapshot(self) -> HomeDashboardSnapshot:
         errors: list[HomeCardError] = []
+        self._clear_sections_cache()
 
         try:
             library = self._build_library_status()
@@ -122,7 +127,50 @@ class HomeDashboardService:
             generated_at=time.time(),
         )
 
+    def _context_sections(self) -> dict | None:
+        """Canonical ContextService sections, or None when unavailable.
+
+        Home consumes the SAME context/query service as every other surface
+        (ADR-002): the canonical ``ContextService.snapshot()`` is the source
+        for the shared playback/audio/ecosystem/library sections. A dict is
+        accepted only when it contains real sections — a mock or an empty
+        payload falls back to the per-card builders.
+        """
+        if self._sections_cache is not None:
+            return self._sections_cache or None
+        ctx = self._context_svc
+        if ctx is None:
+            self._sections_cache = {}
+            return None
+        snapshot_method = getattr(ctx, "snapshot", None)
+        if not callable(snapshot_method):
+            self._sections_cache = {}
+            return None
+        try:
+            snap = snapshot_method()
+        except Exception:
+            logger.debug("ContextService.snapshot unavailable", exc_info=True)
+            self._sections_cache = {}
+            return None
+        if not isinstance(snap, dict):
+            self._sections_cache = {}
+            return None
+        sections = {
+            name: snap.get(name)
+            for name in ("playback", "audio", "ecosystem", "library")
+            if isinstance(snap.get(name), dict)
+        }
+        self._sections_cache = sections or {}
+        return sections or None
+
     def _build_library_status(self) -> LibraryHomeStatus:
+        sections = self._context_sections()
+        if sections and "library" in sections:
+            try:
+                from core.home.builders.library_home_builder import build_library_status_from_section
+                return build_library_status_from_section(sections["library"])
+            except Exception:
+                logger.debug("Library section mapping failed", exc_info=True)
         from core.home.builders.library_home_builder import build_library_status
         return build_library_status(db=self._db, context_svc=self._context_svc)
 
@@ -142,10 +190,24 @@ class HomeDashboardService:
         return "stopped"
 
     def _build_playback_status(self) -> PlaybackHomeStatus:
+        sections = self._context_sections()
+        if sections and "playback" in sections:
+            try:
+                from core.home.builders.playback_home_builder import build_playback_status_from_section
+                return build_playback_status_from_section(sections["playback"])
+            except Exception:
+                logger.debug("Playback section mapping failed", exc_info=True)
         from core.home.builders.playback_home_builder import build_playback_status
         return build_playback_status(playback=self._playback, context_svc=self._context_svc)
 
     def _build_audio_status(self) -> AudioHomeStatus:
+        sections = self._context_sections()
+        if sections and "audio" in sections:
+            try:
+                from core.home.builders.audio_home_builder import build_audio_status_from_section
+                return build_audio_status_from_section(sections["audio"])
+            except Exception:
+                logger.debug("Audio section mapping failed", exc_info=True)
         output_device = ""
         output_profile = ""
         replaygain_enabled = False
@@ -238,6 +300,18 @@ class HomeDashboardService:
         )
 
     def _build_ecosystem_status(self) -> EcosystemHomeStatus:
+        sections = self._context_sections()
+        if sections and "ecosystem" in sections:
+            try:
+                from core.home.builders.ecosystem_home_builder import build_ecosystem_status_from_section
+                return build_ecosystem_status_from_section(
+                    sections["ecosystem"],
+                    context_svc=self._context_svc,
+                    sync_mgr=self._sync_mgr,
+                    michi_link_ctrl=self._michi_link_ctrl,
+                )
+            except Exception:
+                logger.debug("Ecosystem section mapping failed", exc_info=True)
         micro_state = "not_configured"
         micro_name = ""
         micro_issue_code = ""

@@ -1,22 +1,21 @@
+"""AccessibilityBridge — thin QML adapter over the canonical AccessibilityService.
+
+No QSettings access and no independent state: the service owns accessibility
+state, persistence and signals; this bridge re-exposes them to QML and
+re-emits the service signals (ADR-002, S11). The bridge keeps one side
+effect: applying ``mono``/``balance`` to the playback service, which only the
+UI layer can own.
+"""
+
 from __future__ import annotations
 
 import logging
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
 
-from core.settings_manager import SETTINGS
-
 _instance = None
 
 logger = logging.getLogger(__name__)
-
-
-def _to_float(value, default: float) -> float:
-    """Coerce a QSettings value to float, falling back to default."""
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return float(default)
 
 
 class AccessibilityBridge(QObject):
@@ -28,50 +27,49 @@ class AccessibilityBridge(QObject):
         super().__init__(parent)
         _instance = self
         logger.debug("AccessibilityBridge.__init__ called")
-        if playback_service is None:
-            logger.warning("AccessibilityBridge: playback_service is None — running in degraded mode")
-        self._svc = service or settings_service
-        self._coordinator = coordinator or settings_coordinator
+        self._svc = service or settings_service or coordinator or settings_coordinator
         self._playback_service = playback_service
-        self._font_scale = _to_float(SETTINGS.value("accessibility/font_size", 1.0), 1.0)
-        self._high_contrast = bool(SETTINGS.value("accessibility/high_contrast", False))
-        self._reduce_motion = bool(SETTINGS.value("accessibility/reduced_motion", False))
-        self._focus_indicators = bool(SETTINGS.value("accessibility/focus_indicators", True))
-        self._mono = bool(SETTINGS.value("accessibility/mono", False))
-        self._balance = _to_float(SETTINGS.value("accessibility/balance", 0.0), 0.0)
         self._last_error = ""
-        self._reduce_transparency = bool(SETTINGS.value("accessibility/reduce_transparency", False))
+        if self._svc is None:
+            logger.warning("AccessibilityBridge: service is None — running in degraded mode")
+        else:
+            if hasattr(self._svc, "register_consumer"):
+                self._svc.register_consumer("accessibility_bridge")
+            if hasattr(self._svc, "stateChanged") and hasattr(
+                    self._svc.stateChanged, "connect"):
+                self._svc.stateChanged.connect(self._on_service_state)
 
         self._apply_mono_to_playback()
         self._apply_balance_to_playback()
 
-    def _set_via_service(self, key: str, value):
-        if self._svc:
-            self._svc.set_(key, value)
-        elif self._coordinator:
-            self._coordinator.execute(key, value)
-        else:
-            SETTINGS.setValue(key, value)
-            SETTINGS.sync()
+    # ── Service state access ──
+
+    def _svc_attr(self, name, default):
+        if self._svc is None:
+            return default
+        return getattr(self._svc, name, default)
+
+    def _on_service_state(self, *_args):
+        self._apply_mono_to_playback()
+        self._apply_balance_to_playback()
+        self.dataChanged.emit()
 
     def _apply_mono_to_playback(self):
         if self._playback_service and hasattr(self._playback_service, 'set_mono'):
             try:
-                self._playback_service.set_mono(self._mono)
+                self._playback_service.set_mono(self.mono)
                 self._last_error = ""
             except Exception:
-                self._mono = not self._mono
                 self._last_error = "Backend rejected mono change"
                 self.dataChanged.emit()
 
     def _apply_balance_to_playback(self):
         if self._playback_service and hasattr(self._playback_service, 'set_balance'):
             try:
-                self._playback_service.set_balance(self._balance)
+                self._playback_service.set_balance(self.balance)
                 self._last_error = ""
             except Exception as e:
                 self._last_error = str(e)
-                self._balance = 0
                 self.dataChanged.emit()
 
     def _restore_visual_control(self):
@@ -80,85 +78,82 @@ class AccessibilityBridge(QObject):
 
     @Property(float, notify=dataChanged)
     def fontScale(self):
-        return self._font_scale
+        return float(self._svc_attr("font_scale", 1.0))
 
     @fontScale.setter
     def fontScale(self, val: float):
-        if val != self._font_scale:
-            self._font_scale = val
-            self._set_via_service("accessibility/font_size", val)
+        if self._svc is not None and hasattr(self._svc, "set_font_scale"):
+            self._svc.set_font_scale(float(val))
             self.dataChanged.emit()
 
     @Property(bool, notify=dataChanged)
     def highContrast(self):
-        return self._high_contrast
+        return bool(self._svc_attr("high_contrast", False))
 
     @highContrast.setter
     def highContrast(self, val: bool):
-        if val != self._high_contrast:
-            self._high_contrast = val
-            self._set_via_service("accessibility/high_contrast", val)
+        if self._svc is not None and hasattr(self._svc, "set_high_contrast"):
+            self._svc.set_high_contrast(bool(val))
             self.dataChanged.emit()
 
     @Property(bool, notify=dataChanged)
     def reduceMotion(self):
-        return self._reduce_motion
+        return bool(self._svc_attr("reduced_motion", False))
 
     @reduceMotion.setter
     def reduceMotion(self, val: bool):
-        if val != self._reduce_motion:
-            self._reduce_motion = val
-            self._set_via_service("accessibility/reduced_motion", val)
+        if self._svc is not None and hasattr(self._svc, "set_reduced_motion"):
+            self._svc.set_reduced_motion(bool(val))
             self.dataChanged.emit()
 
     @Property(bool, notify=dataChanged)
     def reduceTransparency(self):
-        return self._reduce_transparency
+        return bool(self._svc_attr("reduce_transparency", False))
 
     @reduceTransparency.setter
     def reduceTransparency(self, val: bool):
-        if val != self._reduce_transparency:
-            self._reduce_transparency = val
-            self._set_via_service("accessibility/reduce_transparency", val)
+        if self._svc is not None and hasattr(self._svc, "set_reduce_transparency"):
+            self._svc.set_reduce_transparency(bool(val))
             self.dataChanged.emit()
 
     @Property(bool, notify=dataChanged)
     def focusIndicators(self):
-        return self._focus_indicators
+        return bool(self._svc_attr("focus_indicators", True))
 
     @focusIndicators.setter
     def focusIndicators(self, val: bool):
-        if val != self._focus_indicators:
-            self._focus_indicators = val
-            self._set_via_service("accessibility/focus_indicators", val)
+        if self._svc is not None and hasattr(self._svc, "set_focus_indicators"):
+            self._svc.set_focus_indicators(bool(val))
             self.dataChanged.emit()
 
     @Property(bool, notify=dataChanged)
     def mono(self):
-        return self._mono
+        return bool(self._svc_attr("mono", False))
 
     @mono.setter
     def mono(self, val: bool):
-        if val != self._mono:
-            old = self._mono
-            self._mono = val
-            self._set_via_service("accessibility/mono", val)
-            self._apply_mono_to_playback()
-            if not self._playback_service:
-                self._mono = old
-            self.dataChanged.emit()
+        old = self.mono
+        if self._svc is not None and hasattr(self._svc, "set_mono"):
+            self._svc.set_mono(bool(val))
+        self._apply_mono_to_playback()
+        if (self._last_error or not self._playback_service) and self._svc is not None \
+                and hasattr(self._svc, "set_mono"):
+            # Backend rejection (or absence) reverts the control.
+            self._svc.set_mono(old)
+        self.dataChanged.emit()
 
     @Property(float, notify=dataChanged)
     def balance(self):
-        return self._balance
+        return float(self._svc_attr("balance", 0.0))
 
     @balance.setter
     def balance(self, val: float):
-        if val != self._balance:
-            self._balance = max(-1.0, min(1.0, val))
-            self._set_via_service("accessibility/balance", self._balance)
-            self._apply_balance_to_playback()
-            self.dataChanged.emit()
+        if self._svc is not None and hasattr(self._svc, "set_balance"):
+            self._svc.set_balance(float(val))
+        self._apply_balance_to_playback()
+        if self._last_error and self._svc is not None and hasattr(self._svc, "set_balance"):
+            self._svc.set_balance(0.0)
+        self.dataChanged.emit()
 
     @Slot(result=dict)
     def restoreOnError(self):
@@ -172,19 +167,19 @@ class AccessibilityBridge(QObject):
     @Slot(result=dict)
     def accessibilityScore(self) -> dict:
         score = 0
-        if self._font_scale:
+        if self.fontScale:
             score += 10
-        if self._high_contrast:
+        if self.highContrast:
             score += 10
-        if self._focus_indicators:
+        if self.focusIndicators:
             score += 10
-        if self._reduce_motion:
+        if self.reduceMotion:
             score += 10
-        if self._reduce_transparency:
+        if self.reduceTransparency:
             score += 10
-        if not self._mono:
+        if not self.mono:
             score += 10
-        if self._balance != 0:
+        if self.balance != 0:
             score += 10
         if self._playback_service:
             score += 20
@@ -198,23 +193,16 @@ class AccessibilityBridge(QObject):
             pass
         return {
             "score": min(100, score),
-            "font_scale": self._font_scale,
-            "high_contrast": self._high_contrast,
-            "reduce_motion": self._reduce_motion,
-            "reduce_transparency": self._reduce_transparency,
-            "focus_indicators": self._focus_indicators,
-            "mono": self._mono,
-            "balance": self._balance,
+            "font_scale": self.fontScale,
+            "high_contrast": self.highContrast,
+            "reduce_motion": self.reduceMotion,
+            "reduce_transparency": self.reduceTransparency,
+            "focus_indicators": self.focusIndicators,
+            "mono": self.mono,
+            "balance": self.balance,
             "has_playback_service": self._playback_service is not None,
         }
 
     @Slot()
     def refresh(self):
-        self._font_scale = _to_float(SETTINGS.value("accessibility/font_size", 1.0), 1.0)
-        self._high_contrast = bool(SETTINGS.value("accessibility/high_contrast", False))
-        self._reduce_motion = bool(SETTINGS.value("accessibility/reduced_motion", False))
-        self._reduce_transparency = bool(SETTINGS.value("accessibility/reduce_transparency", False))
-        self._focus_indicators = bool(SETTINGS.value("accessibility/focus_indicators", True))
-        self._mono = bool(SETTINGS.value("accessibility/mono", False))
-        self._balance = _to_float(SETTINGS.value("accessibility/balance", 0.0), 0.0)
         self.dataChanged.emit()

@@ -261,7 +261,7 @@ class BridgeFactory(QObject):
         if "accessibility" not in self._bridges:
             from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
             self._bridges["accessibility"] = AccessibilityBridge(
-                service=self._get("settings_coordinator"),
+                service=self._get("accessibility_service"),
                 settings_service=self._get("settings_coordinator"),
                 playback_service=self._get("playback_service"),
             )
@@ -270,7 +270,9 @@ class BridgeFactory(QObject):
         if "theme" not in self._bridges:
             from ui_qml_bridge.theme_bridge import ThemeBridge
             self._bridges["theme"] = ThemeBridge(
+                service=self._get("theme_service"),
                 coordinator=self._get("settings_coordinator"),
+                accessibility_service=self._get("accessibility_service"),
             )
 
     def create_capability_bridge(self):
@@ -638,6 +640,7 @@ class BridgeFactory(QObject):
                 library_sources_service=self._get("library_sources_service"),
                 job_bridge=self._bridges.get("job_bridge"),
                 connections_bridge=self._bridges.get("connections"),
+                context_service=self._get("context_service"),
             )
 
     def create_app_bridge(self):

@@ -746,12 +746,44 @@ class TestWF10DevicesUMSTransfer:
 
 # ── WF11: Theme persistence ──
 
+class _FakeSettings:
+    """In-memory QSettings-like backend (S11: service-owned persistence)."""
+
+    def __init__(self):
+        self._data = {}
+
+    def value(self, key, default=None):
+        return self._data.get(key, default)
+
+    def setValue(self, key, value):
+        self._data[key] = value
+
+
+def _theme_bridge():
+    from core.accessibility_service import AccessibilityService
+    from core.theme_service import ThemeService
+    from ui_qml_bridge.theme_bridge import ThemeBridge
+    backend = _FakeSettings()
+    return ThemeBridge(
+        service=ThemeService(settings=backend),
+        accessibility_service=AccessibilityService(settings=backend),
+    )
+
+
+def _a11y_bridge(playback=None):
+    from core.accessibility_service import AccessibilityService
+    from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
+    return AccessibilityBridge(
+        service=AccessibilityService(settings=_FakeSettings()),
+        playback_service=playback,
+    )
+
+
 class TestWF11ThemePersistence:
     """WF11: change theme  QML tokens update  restart  verify persistence."""
 
     def test_wf11_theme_change(self, real_db_and_player):
-        from ui_qml_bridge.theme_bridge import ThemeBridge
-        tb = ThemeBridge()
+        tb = _theme_bridge()
         assert tb.darkMode in (True, False)
         tb.theme = "dark"
         assert tb.theme == "dark"
@@ -760,8 +792,7 @@ class TestWF11ThemePersistence:
         assert tb.accentColor == "#FF0000"
 
     def test_wf11_theme_tokens_updated(self, real_db_and_player):
-        from ui_qml_bridge.theme_bridge import ThemeBridge
-        tb = ThemeBridge()
+        tb = _theme_bridge()
         tb.highContrast = True
         assert tb.highContrast is True
         tb.compactMode = True
@@ -779,8 +810,7 @@ class TestWF12AccessibilityMonoBalance:
 
     def test_wf12_mono_toggle(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
-        from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
-        ab = AccessibilityBridge(playback_service=player)
+        ab = _a11y_bridge(playback=player)
         was = ab.mono
         ab.mono = not was
         assert ab.mono is not was
@@ -789,16 +819,14 @@ class TestWF12AccessibilityMonoBalance:
 
     def test_wf12_balance_adjust(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
-        from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
-        ab = AccessibilityBridge(playback_service=player)
+        ab = _a11y_bridge(playback=player)
         ab.balance = -0.5
         assert ab.balance == -0.5
         assert player.balance == -0.5
 
     def test_wf12_restore(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
-        from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
-        ab = AccessibilityBridge(playback_service=player)
+        ab = _a11y_bridge(playback=player)
         ab.mono = True
         ab.balance = -0.3
         r = ab.restoreOnError()

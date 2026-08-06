@@ -1,4 +1,10 @@
-"""Tests: Assistant snapshot contract — route, selection, capabilities, no filepaths."""
+"""Tests: Assistant snapshot contract — route, selection, capabilities, no filepaths.
+
+Capabilities are RUNTIME-gated (S11): each capability requires its backing
+service to be present and healthy. Tests build a minimal container stub to
+exercise scope gating; without services every capability is False with a
+reason (ADR-005 — never a static all-True dict).
+"""
 
 import os
 from core.context import context_repository as repo
@@ -13,6 +19,25 @@ class DummyTrack:
     genre = "Rock"
 
 
+class StubContainer:
+    """Minimal container duck-type: every capability service present/healthy."""
+
+    def __init__(self, present: set[str]):
+        self._present = set(present)
+
+    def contains(self, name: str) -> bool:
+        return name in self._present
+
+    def is_capable(self, name: str) -> bool:
+        return name in self._present
+
+
+_CAP_SERVICES = {
+    "global_search_service", "playlist_service", "queue_service",
+    "library_mutation_service", "audio_lab_service", "playback_service",
+}
+
+
 class TestAssistantSnapshotContract:
 
     def teardown_method(self):
@@ -22,6 +47,10 @@ class TestAssistantSnapshotContract:
     def _svc(self, tmp_path):
         repo.override_db_path(os.path.join(str(tmp_path), "ctx.sqlite"))
         return ContextService()
+
+    def _svc_with_services(self, tmp_path, present: set[str] | None = None):
+        repo.override_db_path(os.path.join(str(tmp_path), "ctx.sqlite"))
+        return ContextService(container=StubContainer(present or _CAP_SERVICES))
 
     def test_contains_route_selection_playback_health(self, tmp_path):
         svc = self._svc(tmp_path)
@@ -41,6 +70,19 @@ class TestAssistantSnapshotContract:
         assert "selection_scope" in snap
         assert "now_playing" in snap
         assert "queue_length" in snap
+
+    def test_capabilities_are_runtime_gated_without_services(self, tmp_path):
+        svc = self._svc(tmp_path)
+        svc.update_selection(scope="track", track=DummyTrack())
+        snap = svc.get_assistant_snapshot()
+        caps = snap.get("assistant_capabilities", {})
+        # No runtime services -> every capability False with an evidence reason.
+        for name, value in caps.items():
+            assert value is False, f"{name} must be False without services"
+        reasons = snap.get("capability_reasons", {})
+        assert all(reasons.get(name) for name in caps), (
+            "every disabled capability must carry a reason"
+        )
 
     def test_sanitizes_absolute_paths_from_selection(self, tmp_path):
         svc = self._svc(tmp_path)
@@ -68,7 +110,7 @@ class TestAssistantSnapshotContract:
         assert "Music" in str(snap)
 
     def test_track_scope_capabilities(self, tmp_path):
-        svc = self._svc(tmp_path)
+        svc = self._svc_with_services(tmp_path)
         svc.update_selection(scope="track", track=DummyTrack())
         snap = svc.get_assistant_snapshot()
         caps = snap.get("assistant_capabilities", {})
@@ -78,7 +120,7 @@ class TestAssistantSnapshotContract:
         assert caps.get("can_analyze_selected_tracks") is True
 
     def test_playlist_scope_capabilities(self, tmp_path):
-        svc = self._svc(tmp_path)
+        svc = self._svc_with_services(tmp_path)
         svc.update_selection(scope="playlist", playlist_id=1, playlist_name="P")
         snap = svc.get_assistant_snapshot()
         caps = snap.get("assistant_capabilities", {})
@@ -87,7 +129,7 @@ class TestAssistantSnapshotContract:
         assert caps.get("can_create_playlist_from_selection") is True
 
     def test_search_scope_capabilities(self, tmp_path):
-        svc = self._svc(tmp_path)
+        svc = self._svc_with_services(tmp_path)
         svc.update_selection(scope="search", search_query="abc")
         snap = svc.get_assistant_snapshot()
         caps = snap.get("assistant_capabilities", {})
@@ -96,7 +138,7 @@ class TestAssistantSnapshotContract:
         assert caps.get("can_edit_metadata") is False
 
     def test_folder_scope_capabilities(self, tmp_path):
-        svc = self._svc(tmp_path)
+        svc = self._svc_with_services(tmp_path)
         svc.update_selection(scope="folder", folder_name="Music")
         snap = svc.get_assistant_snapshot()
         caps = snap.get("assistant_capabilities", {})
@@ -104,18 +146,31 @@ class TestAssistantSnapshotContract:
         assert caps.get("can_create_playlist_from_selection") is True
 
     def test_no_scope_capabilities_default_false(self, tmp_path):
-        svc = self._svc(tmp_path)
+        svc = self._svc_with_services(tmp_path)
         svc.update_selection()  # no scope
         snap = svc.get_assistant_snapshot()
         caps = snap.get("assistant_capabilities", {})
         # When scope is None, only can_search_library is True
         assert caps.get("can_search_library") is True
+        assert caps.get("can_create_playlist_from_selection") is False
 
     def test_scope_none_capabilities(self, tmp_path):
         svc = self._svc(tmp_path)
         snap = svc.get_assistant_snapshot()
         caps = snap.get("assistant_capabilities", {})
         assert "can_search_library" in caps
+
+    def test_capability_false_when_service_removed(self, tmp_path):
+        svc = self._svc_with_services(
+            tmp_path, present=_CAP_SERVICES - {"playlist_service"})
+        svc.update_selection(scope="track", track=DummyTrack())
+        snap = svc.get_assistant_snapshot()
+        caps = snap.get("assistant_capabilities", {})
+        assert caps.get("can_create_playlist_from_selection") is False
+        reasons = snap.get("capability_reasons", {})
+        assert "playlist_service" in reasons.get(
+            "can_create_playlist_from_selection", "")
+        assert caps.get("can_edit_metadata") is True
 
     def test_recent_events_max_10(self, tmp_path):
         svc = self._svc(tmp_path)
@@ -148,7 +203,7 @@ class TestAssistantSnapshotContract:
         assert caps.get("can_play_selection") is play
 
     def test_caps_scope_none(self, tmp_path):
-        svc = self._svc(tmp_path)
+        svc = self._svc_with_services(tmp_path)
         snap = svc.get_assistant_snapshot()
         self._assert_caps(
             snap.get("assistant_capabilities", {}),
@@ -157,7 +212,7 @@ class TestAssistantSnapshotContract:
         )
 
     def test_caps_scope_track(self, tmp_path):
-        svc = self._svc(tmp_path)
+        svc = self._svc_with_services(tmp_path)
         svc.update_selection(scope="track", track=DummyTrack())
         snap = svc.get_assistant_snapshot()
         self._assert_caps(
@@ -166,7 +221,7 @@ class TestAssistantSnapshotContract:
         )
 
     def test_caps_scope_album(self, tmp_path):
-        svc = self._svc(tmp_path)
+        svc = self._svc_with_services(tmp_path)
         svc.update_selection(scope="album", album="Album")
         snap = svc.get_assistant_snapshot()
         self._assert_caps(
@@ -175,7 +230,7 @@ class TestAssistantSnapshotContract:
         )
 
     def test_caps_scope_artist(self, tmp_path):
-        svc = self._svc(tmp_path)
+        svc = self._svc_with_services(tmp_path)
         svc.update_selection(scope="artist", artist="Artist")
         snap = svc.get_assistant_snapshot()
         self._assert_caps(
@@ -184,7 +239,7 @@ class TestAssistantSnapshotContract:
         )
 
     def test_caps_scope_genre(self, tmp_path):
-        svc = self._svc(tmp_path)
+        svc = self._svc_with_services(tmp_path)
         svc.update_selection(scope="genre", genre="Rock")
         snap = svc.get_assistant_snapshot()
         self._assert_caps(
@@ -193,7 +248,7 @@ class TestAssistantSnapshotContract:
         )
 
     def test_caps_scope_playlist(self, tmp_path):
-        svc = self._svc(tmp_path)
+        svc = self._svc_with_services(tmp_path)
         svc.update_selection(scope="playlist", playlist_id=1, playlist_name="P")
         snap = svc.get_assistant_snapshot()
         self._assert_caps(
@@ -202,7 +257,7 @@ class TestAssistantSnapshotContract:
         )
 
     def test_caps_scope_mix(self, tmp_path):
-        svc = self._svc(tmp_path)
+        svc = self._svc_with_services(tmp_path)
         svc.update_selection(scope="mix", mix_key="daily")
         snap = svc.get_assistant_snapshot()
         self._assert_caps(
@@ -211,7 +266,7 @@ class TestAssistantSnapshotContract:
         )
 
     def test_caps_scope_folder(self, tmp_path):
-        svc = self._svc(tmp_path)
+        svc = self._svc_with_services(tmp_path)
         svc.update_selection(scope="folder", folder_name="Music")
         snap = svc.get_assistant_snapshot()
         self._assert_caps(
@@ -220,7 +275,7 @@ class TestAssistantSnapshotContract:
         )
 
     def test_caps_scope_search(self, tmp_path):
-        svc = self._svc(tmp_path)
+        svc = self._svc_with_services(tmp_path)
         svc.update_selection(scope="search", search_query="abc")
         snap = svc.get_assistant_snapshot()
         self._assert_caps(
