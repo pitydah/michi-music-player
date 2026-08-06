@@ -538,6 +538,7 @@ class BridgeFactory(QObject):
                 metadata_service=self._get("metadata_service"),
                 job_service=self._get("job_service"),
                 metadata_editor_service=self._get("metadata_editor_service"),
+                confirmation_service=self._get("confirmation_service"),
             )
 
     def create_smart_tagging_bridge(self):

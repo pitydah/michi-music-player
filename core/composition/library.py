@@ -45,6 +45,11 @@ def build(container: ServiceContainer) -> None:
         db=db, event_bus=eb, favorite_service=favorite_service,
     )
     container.register("library_mutation_service", mutation_service)
+    # UndoService restores DB values for persisted undo records via the
+    # mutation service (P0: undo survives restarts when a record persists).
+    undo_svc = container.get("undo_service")
+    if undo_svc is not None:
+        undo_svc.bind_db(db=db, mutation_service=mutation_service)
     # MetadataEditorService is THE metadata editing authority (Slice 8):
     # proposal -> preview -> confirm -> apply_batch -> readback -> undo, with
     # real DB (via LibraryMutationService), physical tag writer, EventBus,
@@ -160,7 +165,11 @@ def build(container: ServiceContainer) -> None:
         recog = RecognitionService(provider_manager=ProviderManager(None))
         container.register("recognition_service", recog)
         sts = SmartTaggingService(worker_manager=wm, library_query_service=lqs,
-                                   recognition_service=recog)
+                                   recognition_service=recog,
+                                   metadata_editor=container.get(
+                                       "metadata_editor_service"),
+                                   confirmation_service=container.get(
+                                       "confirmation_service"))
         container.register("smart_tagging_service", sts)
     except Exception:
         logger.error("Failed to create smart_tagging_service", exc_info=True)

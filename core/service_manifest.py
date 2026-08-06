@@ -479,7 +479,9 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
     "smart_tagging_service": _d(
         "smart_tagging_service", ServiceClass.MANAGED_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
-        dependencies=("worker_manager", "library_query_service", "recognition_service"),
+        dependencies=("worker_manager", "library_query_service",
+                      "recognition_service", "metadata_editor_service",
+                      "confirmation_service"),
         optional=True,
         capabilities=("smart_tagging",),
         description="Smart tagging suggestions; may be None.",

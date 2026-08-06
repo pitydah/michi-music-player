@@ -2,12 +2,23 @@
 
 Single pipeline: build_proposal → preview_proposal → confirm → apply_batch
 (atomic per track: DB via LibraryMutationService + physical tags via the
-mutagen tag writer, with compensation on phase failure) → readback → undo
-(real compensation through UndoService). Every stage emits an EventBus event.
+mutagen tag writer, with compensation on phase failure) → readback (per-field
+DB + physical verification) → undo (real compensation through UndoService).
 
-Legacy single-file surface (``preview``/``apply``/``rollback``,
-``update_metadata``/``batch_update``) is preserved for existing callers and
-tests; new callers use the proposal pipeline.
+Authorization (P0 Fase Metadata): apply_batch/apply_single ONLY execute with
+a valid ConfirmationToken issued by ConfirmationService and approved by the
+user flow. Self-declared ``confirmed=True`` + ``source=`` intents are NEVER
+accepted (TOKEN_REQUIRED). effective_fields = proposal.fields ∩
+token.selected_fields — unselected fields are never applied.
+
+Backup policy: physical tag writes snapshot the file into
+``{tmpdir}/michi_metadata_undo``; backups are kept for the undo window
+(BACKUP_RETENTION_DAYS, default 7) and pruned by ``cleanup_backups()`` on
+every apply.
+
+Legacy single-file surface (``preview``/``apply``/``rollback``) is preserved
+for existing callers and tests; legacy DB-only ``update_metadata``/``batch_update``
+are disabled (LEGACY_OPERATION_DISABLED) — no production consumer exists.
 """
 from __future__ import annotations
 
@@ -19,9 +30,11 @@ import shutil
 import tempfile
 import time
 import uuid
+from contextlib import suppress
 from dataclasses import dataclass, field as dc_field
 from typing import Any, Callable
 
+from core.confirmation_service import compute_target_hash
 from core.models.operation_result import OperationResult
 from core.worker_manager import CancelledError
 
@@ -32,6 +45,18 @@ EVENT_PROPOSAL_PREVIEWED = "metadata.proposal.previewed"
 EVENT_PROPOSAL_CONFIRMED = "metadata.proposal.confirmed"
 EVENT_BATCH_APPLIED = "metadata.batch.applied"
 EVENT_READBACK_COMPLETED = "metadata.readback.completed"
+
+# Readback statuses per field (ADR-005: no nominal ok).
+RB_VERIFIED = "VERIFIED"
+RB_DB_MISMATCH = "DB_MISMATCH"
+RB_TAG_MISMATCH = "TAG_MISMATCH"
+RB_READ_ERROR = "READ_ERROR"
+RB_UNSUPPORTED_TAG = "UNSUPPORTED_TAG"
+RB_FILE_MISSING = "FILE_MISSING"
+
+# Backup retention: backups are kept for the undo window (7 days).
+BACKUP_RETENTION_DAYS = 7
+_BACKUP_DIR_NAME = "michi_metadata_undo"
 
 # Bridge/editor field name -> media_items column name.
 _FIELD_TO_DB = {
@@ -67,7 +92,8 @@ _DB_TO_TAG = {
     "bpm": "bpm",
 }
 
-_CONFIRMATION_SOURCES = frozenset({"ui", "doctor", "ai_plan", "durable_job"})
+# Default TTL for apply tokens (long enough for durable job execution).
+_APPLY_TOKEN_TTL_S = 3600
 
 
 @dataclass
@@ -200,38 +226,37 @@ class MetadataEditorService:
                 "changes": changes, "count": len(changes)}
 
     def confirm(self, proposal_id: str, selected_fields: list[str] | None = None,
-                command_hash: str = "") -> dict:
-        """Request (or record) confirmation for a proposal.
+                command_hash: str = "", ttl: int | None = None) -> dict:
+        """Issue a ConfirmationToken for a proposal (user confirmation step).
 
-        With a ConfirmationService the proposal is bound to a command hash;
-        the returned token must be approved before ``apply_batch`` accepts it.
+        The token binds the proposal's command hash, target hash (track
+        refs) and selected fields; it must be approved before ``apply_batch``
+        accepts it. Without a ConfirmationService no token can be issued and
+        the pipeline reports CONFIRMATION_UNAVAILABLE.
         """
         proposal = self._proposals.get(proposal_id)
         if proposal is None:
             return {"ok": False, "code": "PROPOSAL_NOT_FOUND",
                     "message": f"Unknown proposal: {proposal_id}"}
+        if self._cs is None:
+            return {"ok": False, "code": "CONFIRMATION_UNAVAILABLE",
+                    "message": "No ConfirmationService injected; tokens "
+                               "cannot be issued"}
         proposal.selected_fields = list(selected_fields or proposal.fields)
         proposal.command_hash = command_hash or self._default_command_hash(proposal)
-        if self._cs is None:
-            proposal.state = "confirmed"
-            self._emit(EVENT_PROPOSAL_CONFIRMED, {
-                "proposal_id": proposal_id, "confirmation_token": "",
-            })
-            return {"ok": True, "proposal_id": proposal_id,
-                    "confirmation_token": "", "requires_confirmation": False}
-        request = self._cs.confirm(
+        token = self._cs.issue(
             operation_id=proposal_id,
             command_hash=proposal.command_hash,
-            target=",".join(r.get("filepath", "") for r in proposal.track_refs),
-            description=f"Modificar metadatos de {len(proposal.track_refs)} pista(s)",
-            risk_level="high",
+            target_hash=self._proposal_target_hash(proposal),
+            selected_fields=tuple(proposal.selected_fields),
+            ttl=ttl or _APPLY_TOKEN_TTL_S,
         )
         proposal.state = "awaiting_confirmation"
         self._emit(EVENT_PROPOSAL_CONFIRMED, {
-            "proposal_id": proposal_id, "confirmation_token": request.token,
+            "proposal_id": proposal_id, "confirmation_token": token.token_id,
         })
         return {"ok": True, "proposal_id": proposal_id,
-                "confirmation_token": request.token,
+                "confirmation_token": token.token_id,
                 "requires_confirmation": True}
 
     def approve(self, token: str) -> dict:
@@ -246,19 +271,33 @@ class MetadataEditorService:
     def apply_batch(self, confirmations: list[dict], ctx=None) -> dict:
         """Apply confirmed proposals atomically per track.
 
-        Each confirmation entry carries ``proposal_id`` plus exactly one of:
-        an approved ``confirmation_token``, a pre-confirmed ``command_hash``,
-        or an explicit ``confirmed=True`` intent with a declared ``source``
-        (ui / doctor / ai_plan / durable_job). Tracks without a valid
-        confirmation land in ``missing_confirmations`` and are NOT applied.
+        Each confirmation entry carries ``proposal_id`` plus an approved
+        ``confirmation_token`` issued by ConfirmationService. Self-declared
+        ``confirmed=True`` / ``source=`` entries WITHOUT a token are rejected
+        with TOKEN_REQUIRED and land in ``missing_confirmations`` (never
+        applied).
+
+        Authorization is enforced per entry:
+
+        - command_hash must match the proposal (TOKEN_COMMAND_MISMATCH)
+        - target_hash must match the proposal track refs (TOKEN_TARGET_MISMATCH)
+        - requested fields must be ⊆ token.selected_fields (TOKEN_FIELD_MISMATCH)
+        - token must be approved, unexpired and single-use not consumed.
+
+        effective_fields = proposal.fields ∩ token.selected_fields — fields
+        the token did not select are NEVER applied. After each track write the
+        DB value and the physical tag are read back per field
+        (VERIFIED/DB_MISMATCH/TAG_MISMATCH/READ_ERROR/UNSUPPORTED_TAG/
+        FILE_MISSING); ``ok`` is True ONLY when every non-skipped track
+        verified. Unverified tracks are compensated (DB restore + backup).
 
         Returns real counters: requested, applied, failed, skipped,
         conflicts, missing_confirmations, rollback_performed, per_track.
-        ``ok`` is True only when every non-skipped track was applied.
         """
         if not confirmations:
             return self._batch_result(0, 0, 0, 0, 0, 0, False, [],
                                       "COMPLETED")
+        self.cleanup_backups()
         requested = 0
         applied = 0
         failed = 0
@@ -270,6 +309,7 @@ class MetadataEditorService:
         operation_id = ""
         compensated: list[dict[str, Any]] = []
         proposal = None
+        rejection_code = ""
 
         try:
             for entry in confirmations:
@@ -278,9 +318,12 @@ class MetadataEditorService:
                 if proposal is None:
                     return {"ok": False, "code": "PROPOSAL_NOT_FOUND",
                             "message": f"Unknown proposal: {proposal_id}"}
-                confirmed, reason = self._check_confirmation(entry, proposal)
+                confirmed, reason, token = self._check_confirmation(entry,
+                                                                    proposal)
                 if not confirmed:
                     missing_confirmations += len(proposal.track_refs)
+                    if not rejection_code:
+                        rejection_code = reason
                     for ref in proposal.track_refs:
                         per_track.append({
                             "filepath": ref.get("filepath", ""),
@@ -290,7 +333,25 @@ class MetadataEditorService:
                         })
                     continue
 
+                effective_fields = {
+                    k: v for k, v in proposal.fields.items()
+                    if not token.selected_fields or k in token.selected_fields
+                }
+                if not effective_fields:
+                    missing_confirmations += len(proposal.track_refs)
+                    if not rejection_code:
+                        rejection_code = "TOKEN_FIELD_MISMATCH"
+                    for ref in proposal.track_refs:
+                        per_track.append({
+                            "filepath": ref.get("filepath", ""),
+                            "track_id": ref.get("track_id"),
+                            "status": "missing_confirmation",
+                            "reason": "TOKEN_FIELD_MISMATCH",
+                        })
+                    continue
+
                 operation_id = f"metadata_batch:{proposal_id}"
+                entry_succeeded = True
                 for ref in proposal.track_refs:
                     requested += 1
                     if ctx is not None:
@@ -309,7 +370,8 @@ class MetadataEditorService:
                             "reason": "TRACK_NOT_IN_DB",
                         })
                         continue
-                    result = self._apply_track(proposal, fp, track_id)
+                    result = self._apply_track(proposal, fp, track_id,
+                                               effective_fields)
                     per_track.append(result)
                     if result["status"] == "applied":
                         applied += 1
@@ -318,8 +380,11 @@ class MetadataEditorService:
                         conflicts += 1
                     elif result["status"] == "failed":
                         failed += 1
+                        entry_succeeded = False
                         if result.get("rolled_back"):
                             rollback_performed = True
+                if entry_succeeded and token is not None and self._cs is not None:
+                    self._cs.consume(token.token_id)
 
             if applied > 0 and self._undo is not None and proposal is not None:
                 self._register_undo(operation_id, proposal, compensated)
@@ -348,6 +413,7 @@ class MetadataEditorService:
             requested, applied, failed, skipped, conflicts,
             missing_confirmations, rollback_performed, per_track, status,
             operation_id=operation_id,
+            code=rejection_code if missing_confirmations else "",
         )
         self._emit(EVENT_BATCH_APPLIED, {
             "proposal_id": confirmations[0].get("proposal_id", ""),
@@ -363,7 +429,7 @@ class MetadataEditorService:
     def _batch_result(requested, applied, failed, skipped, conflicts,
                       missing_confirmations, rollback_performed, per_track,
                       status: str, *, operation_id: str = "",
-                      error: str = "") -> dict:
+                      error: str = "", code: str = "") -> dict:
         ok = (failed == 0 and conflicts == 0 and applied > 0
               and status != "CANCELLED")
         return {
@@ -379,31 +445,49 @@ class MetadataEditorService:
             "per_track": per_track,
             "operation_id": operation_id,
             "error": error,
+            "code": code,
         }
 
     def _check_confirmation(self, entry: dict, proposal: MetadataProposal):
-        token = entry.get("confirmation_token", "")
-        if self._cs is not None:
-            if self._cs.is_confirmed(proposal.proposal_id,
-                                     proposal.command_hash):
-                return True, "confirmed_hash"
-            if token:
-                request = self._cs.approve(token)
-                if request is not None and request.operation_id == proposal.proposal_id:
-                    return True, "approved_token"
-                return False, "INVALID_CONFIRMATION_TOKEN"
-        if entry.get("confirmed") is True:
-            source = str(entry.get("source", ""))
-            if source in _CONFIRMATION_SOURCES:
-                return True, f"declared_source:{source}"
-            return False, "UNKNOWN_CONFIRMATION_SOURCE"
-        return False, "CONFIRMATION_REQUIRED"
+        """Token-only authorization; never accepts self-declared sources."""
+        token_id = str(entry.get("confirmation_token") or "")
+        if self._cs is None or not token_id:
+            return False, "TOKEN_REQUIRED", None
+        token = self._cs.get_token(token_id)
+        if token is None:
+            return False, "TOKEN_REQUIRED", None
+        # A proposal that was never confirmed has no command hash of its own:
+        # fall back to the canonical default hash so the token cannot be
+        # repurposed for an unconfirmed proposal.
+        command_hash = proposal.command_hash or self._default_command_hash(proposal)
+        requested = tuple(
+            entry.get("fields")
+            or entry.get("selected_fields")
+            or proposal.selected_fields
+            or list(proposal.fields)
+        )
+        ok, code = self._cs.validate(
+            token_id,
+            command_hash=command_hash,
+            target_hash=self._proposal_target_hash(proposal),
+            requested_fields=requested,
+        )
+        if not ok:
+            return False, code, None
+        return True, "TOKEN_OK", token
 
     def _apply_track(self, proposal: MetadataProposal, fp: str,
-                     track_id: int) -> dict:
-        """Apply one track: DB first, physical tags second, compensate on failure."""
+                     track_id: int, effective_fields: dict | None = None) -> dict:
+        """Apply one track: DB first, physical tags second, then verify.
+
+        Only ``effective_fields`` (proposal fields authorized by the token)
+        are written. After the write each field is read back from the DB and
+        the physical tag; an unverified track is compensated (DB restore +
+        backup copy) and reported as failed — never as applied.
+        """
         db_changes = {
-            field: str(value) for field, value in proposal.fields.items()
+            field: str(value)
+            for field, value in (effective_fields or proposal.fields).items()
         }
         old_values = self._read_db_values(track_id, db_changes)
 
@@ -440,6 +524,21 @@ class MetadataEditorService:
                 "rolled_back": bool(backup_path) or db_ok,
             }
 
+        readback = self._verify_track(fp, track_id, db_changes)
+        if not readback["ok"]:
+            self._restore_db_values(track_id, old_values)
+            with suppress(OSError):
+                if backup_path and os.path.exists(backup_path):
+                    shutil.copy2(backup_path, fp)
+                    os.unlink(backup_path)
+            return {
+                "filepath": fp, "track_id": track_id,
+                "status": "failed",
+                "error": readback["code"],
+                "rolled_back": True,
+                "readback": readback,
+            }
+
         compensation = {
             "track_id": track_id,
             "filepath": fp,
@@ -447,7 +546,28 @@ class MetadataEditorService:
             "backup_path": backup_path,
         }
         return {"filepath": fp, "track_id": track_id, "status": "applied",
-                "fields": list(db_changes), "compensation": compensation}
+                "fields": list(db_changes), "compensation": compensation,
+                "readback": readback}
+
+    def _verify_track(self, fp: str, track_id: int,
+                      expected: dict[str, Any]) -> dict:
+        """Per-field readback: expected DB value vs actual, expected tag vs actual."""
+        ok = True
+        code = ""
+        item = None
+        if self._db is not None:
+            try:
+                item = self._db.get_media_item_by_id(track_id)
+            except Exception:  # noqa: BLE001
+                item = None
+        statuses = self._readback_statuses(fp, item, expected)
+        for status in statuses.values():
+            if not status["ok"]:
+                ok = False
+                code = code or (
+                    status["db"] if status["db"] != RB_VERIFIED
+                    else status["tag"])
+        return {"ok": ok, "code": code or "VERIFIED", "fields": statuses}
 
     def _apply_db_fields(self, track_id: int, db_changes: dict) -> dict:
         if self._mutation is not None and hasattr(self._mutation,
@@ -496,14 +616,28 @@ class MetadataEditorService:
             logger.debug("physical tag write failed for %s: %s", fp, error)
             return False
 
-    def readback(self, proposal_id: str = "", filepaths: list[str] | None = None) -> dict:
-        """Verify DB and physical tags after an apply (readback authority)."""
+    def readback(self, proposal_id: str = "", filepaths: list[str] | None = None,
+                 expected: dict | None = None) -> dict:
+        """Verify DB and physical tags after an apply (readback authority).
+
+        ``expected`` maps filepath -> {field: value} (or a single
+        {field: value} applied to every target). When provided, every field
+        gets a per-field status: VERIFIED / DB_MISMATCH / TAG_MISMATCH /
+        READ_ERROR / UNSUPPORTED_TAG / FILE_MISSING.
+        """
         targets: list[str] = []
         if filepaths:
             targets = list(filepaths)
         elif proposal_id and proposal_id in self._proposals:
             targets = [r.get("filepath", "") for r in
                        self._proposals[proposal_id].track_refs]
+        expected_per_fp: dict = {}
+        if expected:
+            for key, value in expected.items():
+                if isinstance(value, dict):
+                    expected_per_fp[key] = value
+                else:
+                    expected_per_fp.setdefault("__all__", {})[key] = value
         results = []
         for fp in targets:
             if not fp:
@@ -524,15 +658,58 @@ class MetadataEditorService:
                             physical[field] = str(getattr(tags, tag_field, "") or "")
             except Exception:  # noqa: BLE001
                 physical = {}
-            results.append({
+            entry: dict[str, Any] = {
                 "filepath": fp,
                 "db": db_values,
                 "physical": physical,
-            })
+            }
+            want = dict(expected_per_fp.get("__all__", {}))
+            want.update(expected_per_fp.get(fp, {}))
+            if want:
+                entry["status"] = self._readback_statuses(fp, item, want)
+            results.append(entry)
         self._emit(EVENT_READBACK_COMPLETED, {
             "proposal_id": proposal_id, "track_count": len(results),
         })
         return {"ok": True, "results": results}
+
+    def _readback_statuses(self, fp: str, item, expected: dict) -> dict:
+        """Per-field readback statuses for one file (used by readback())."""
+        statuses: dict[str, str] = {}
+        file_exists = bool(fp) and os.path.isfile(fp)
+        tags = None
+        reader = self._tag_reader or self._default_reader()
+        if file_exists:
+            try:
+                tags = reader(fp)
+            except Exception:  # noqa: BLE001
+                tags = None
+        for field, value in expected.items():
+            db_col = _FIELD_TO_DB.get(field, field)
+            if item is None:
+                db_status = RB_READ_ERROR
+            else:
+                actual = str(getattr(item, db_col, "") or "")
+                db_status = (RB_VERIFIED if str(actual) == str(value)
+                             else RB_DB_MISMATCH)
+            if not file_exists:
+                tag_status = RB_FILE_MISSING
+            else:
+                tag_field = _DB_TO_TAG.get(field)
+                if tag_field is None:
+                    tag_status = RB_UNSUPPORTED_TAG
+                elif tags is None:
+                    tag_status = RB_READ_ERROR
+                else:
+                    actual = str(getattr(tags, tag_field, "") or "")
+                    tag_status = (RB_VERIFIED if str(actual) == str(value)
+                                  else RB_TAG_MISMATCH)
+            statuses[field] = {
+                "db": db_status,
+                "tag": tag_status,
+                "ok": db_status == RB_VERIFIED and tag_status == RB_VERIFIED,
+            }
+        return statuses
 
     def undo(self, operation_id: str) -> dict:
         """Real compensation via UndoService."""
@@ -546,14 +723,16 @@ class MetadataEditorService:
         return {"ok": True, "operation_id": operation_id,
                 "status": "UNDONE", "description": result.data.get("description")}
 
-    def apply_single(self, proposal_id: str, confirmation_token: str = "",
-                     source: str = "ui") -> dict:
-        """Apply a single-track proposal (bridge confirmSave path)."""
+    def apply_single(self, proposal_id: str,
+                     confirmation_token: str = "") -> dict:
+        """Apply a single-track proposal (bridge confirmSave path).
+
+        Requires an approved ConfirmationToken issued for this proposal —
+        self-declared sources are rejected (TOKEN_REQUIRED).
+        """
         result = self.apply_batch([{
             "proposal_id": proposal_id,
             "confirmation_token": confirmation_token,
-            "confirmed": True,
-            "source": source,
         }])
         return {
             "ok": result["ok"],
@@ -563,7 +742,8 @@ class MetadataEditorService:
             "conflicts": result["conflicts"],
             "per_track": result["per_track"],
             "operation_id": result["operation_id"],
-            "code": result["error"] or ("OK" if result["ok"] else "APPLY_FAILED"),
+            "code": result["error"] or result.get("code")
+            or ("OK" if result["ok"] else "APPLY_FAILED"),
         }
 
     # ── helpers ──────────────────────────────────────────────────────────
@@ -590,6 +770,18 @@ class MetadataEditorService:
                     errors.append(str(error))
             return {"restored": restored, "errors": errors}
 
+        compensation_data = {
+            "kind": "metadata_batch",
+            "tracks": [
+                {
+                    "track_id": track["track_id"],
+                    "filepath": track["filepath"],
+                    "old_values": dict(track["old_values"]),
+                    "backup_path": track.get("backup_path", ""),
+                }
+                for track in compensated
+            ],
+        }
         self._undo_ctx[operation_id] = {
             "compensated": compensated,
             "proposal_id": proposal.proposal_id,
@@ -600,6 +792,7 @@ class MetadataEditorService:
             kind="metadata_batch",
             metadata={"proposal_id": proposal.proposal_id,
                       "field_count": len(compensated)},
+            compensation_data=compensation_data,
         )
 
     def _restore_db_values(self, track_id: int, old_values: dict) -> None:
@@ -670,6 +863,11 @@ class MetadataEditorService:
         ).hexdigest()[:16]
 
     @staticmethod
+    def _proposal_target_hash(proposal: MetadataProposal) -> str:
+        """Stable hash of the proposal's target entities (track refs)."""
+        return compute_target_hash(proposal.track_refs)
+
+    @staticmethod
     def _default_reader() -> Callable:
         from metadata.tag_reader import read_tags
         return read_tags
@@ -680,8 +878,41 @@ class MetadataEditorService:
         return write_tags
 
     @staticmethod
-    def _backup_file(fp: str) -> str:
-        backup_dir = os.path.join(tempfile.gettempdir(), "michi_metadata_undo")
+    def backup_dir() -> str:
+        return os.path.join(tempfile.gettempdir(), _BACKUP_DIR_NAME)
+
+    @classmethod
+    def cleanup_backups(cls, max_age_days: int = BACKUP_RETENTION_DAYS) -> int:
+        """Remove backups older than the retention policy (undo window).
+
+        Policy: a physical-tag backup is kept for ``max_age_days`` (default
+        BACKUP_RETENTION_DAYS = 7) — enough for the undo window — and is also
+        deleted when the undo compensation consumes it. Called automatically
+        at the start of every ``apply_batch``.
+        """
+        backup_dir = cls.backup_dir()
+        if not os.path.isdir(backup_dir):
+            return 0
+        cutoff = time.time() - max_age_days * 86400
+        removed = 0
+        try:
+            for name in os.listdir(backup_dir):
+                path = os.path.join(backup_dir, name)
+                try:
+                    if not os.path.isfile(path) or not name.endswith(".bak"):
+                        continue
+                    if os.path.getmtime(path) < cutoff:
+                        os.unlink(path)
+                        removed += 1
+                except OSError:
+                    continue
+        except OSError:
+            return removed
+        return removed
+
+    @classmethod
+    def _backup_file(cls, fp: str) -> str:
+        backup_dir = cls.backup_dir()
         os.makedirs(backup_dir, exist_ok=True)
         backup = os.path.join(
             backup_dir,
@@ -701,43 +932,22 @@ class MetadataEditorService:
     # ── legacy single-file surface (kept for existing callers/tests) ─────
 
     def update_metadata(self, track_id: int, data: dict) -> dict:
-        if self._mutation is not None:
-            return self._mutation.update_metadata(track_id, data)
-        if not self._db:
-            return {"ok": False, "error": "NO_DB"}
-        try:
-            fields = []
-            values = []
-            for k, v in data.items():
-                if k in ("title", "artist", "album", "genre", "year",
-                         "track", "disc"):
-                    fields.append(f"{k}=?")
-                    values.append(v)
-            if not fields:
-                return {"ok": False, "error": "NO_FIELDS"}
-            values.append(track_id)
-            self._db.conn.execute(
-                f"UPDATE media_items SET {','.join(fields)} WHERE id=?",
-                values,
-            )
-            self._db.conn.commit()
-            return {"ok": True}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        """Legacy DB-only API — disabled (LEGACY_OPERATION_DISABLED).
+
+        No production consumer exists; all metadata edits must go through the
+        canonical proposal→token→apply pipeline.
+        """
+        return {"ok": False, "code": "LEGACY_OPERATION_DISABLED",
+                "error": "LEGACY_OPERATION_DISABLED",
+                "message": "update_metadata is disabled; use the canonical "
+                           "proposal→token→apply pipeline"}
 
     def batch_update(self, updates: list[dict]) -> dict:
-        if not self._db and self._mutation is None:
-            return {"ok": False, "error": "NO_DB"}
-        ok = 0
-        fail = 0
-        for item in updates:
-            result = self.update_metadata(item.get("track_id", 0),
-                                          item.get("data", {}))
-            if result.get("ok"):
-                ok += 1
-            else:
-                fail += 1
-        return {"ok": fail == 0, "updated": ok, "failed": fail}
+        """Legacy DB-only API — disabled (LEGACY_OPERATION_DISABLED)."""
+        return {"ok": False, "code": "LEGACY_OPERATION_DISABLED",
+                "error": "LEGACY_OPERATION_DISABLED",
+                "message": "batch_update is disabled; use the canonical "
+                           "proposal→token→apply pipeline"}
 
     def preview(self, filepath: str, changes: dict) -> dict:
         return {"ok": True, "filepath": filepath, "changes": changes,
@@ -783,6 +993,7 @@ class MetadataEditorService:
             "undo_available": self._undo is not None,
             "confirmation_available": self._cs is not None,
             "proposals_pending": len(self._proposals),
+            "backup_retention_days": BACKUP_RETENTION_DAYS,
         }
 
     def shutdown(self):

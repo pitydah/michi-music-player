@@ -74,10 +74,9 @@ class DoctorRepairPort(Protocol):
         self,
         issue: dict[str, Any],
         confirmation_token: str = "",
-        confirmed_source: str = "",
         ctx: Any | None = None,
     ) -> dict[str, Any]:
-        """Execute a repair for one issue."""
+        """Execute a repair for one issue (approved token required)."""
         ...
 
 

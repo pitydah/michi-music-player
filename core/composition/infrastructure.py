@@ -1,6 +1,8 @@
 """Infrastructure services — config, database, workers, persistence."""
 from __future__ import annotations
 
+import os
+
 from core.service_container import ServiceContainer
 
 
@@ -54,10 +56,17 @@ def build(container: ServiceContainer) -> None:
 
     job_service = JobService(worker_manager=wm)
     container.register("job_service", job_service)
-    container.register("confirmation_service", ConfirmationService())
+
+    from core import paths as core_paths
+    confirmation_audit = os.path.join(core_paths.app_data_dir(),
+                                      "confirmation_audit.jsonl")
+    container.register("confirmation_service",
+                       ConfirmationService(audit_path=confirmation_audit))
 
     from core.undo_service import UndoService
-    container.register("undo_service", UndoService(event_bus=eb))
+    undo_log = os.path.join(core_paths.app_data_dir(), "undo_log.jsonl")
+    container.register("undo_service",
+                       UndoService(event_bus=eb, persistence_path=undo_log))
 
     from core.notification_action_service import NotificationActionService
     container.register(

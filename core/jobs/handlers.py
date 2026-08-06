@@ -123,7 +123,6 @@ def make_doctor_repair_handler(port) -> callable:
         result = port.repair(
             issue,
             confirmation_token=str(payload.get("confirmation_token", "") or ""),
-            confirmed_source=str(payload.get("confirmed_source", "") or ""),
             ctx=ctx,
         )
         if result.get("code") == "CANCELLED":
@@ -139,28 +138,31 @@ def make_doctor_repair_handler(port) -> callable:
 
 
 def make_metadata_batch_handler(port) -> callable:
-    """Close over a MetadataBatchPort; apply a batch metadata edit."""
+    """Close over a MetadataBatchPort; apply a batch metadata edit.
+
+    The job payload carries the proposal_id and the approved ConfirmationToken
+    issued by the bridge flow (proposal → confirm → approve). A job without a
+    token is rejected with TOKEN_REQUIRED — self-declared confirmation is
+    never accepted.
+    """
 
     def handler(job, ctx):
         payload = job.payload or {}
-        filepaths = list(payload.get("filepaths") or [])
-        key = payload.get("field", "")
-        value = str(payload.get("value", ""))
-        proposal = port.build_proposal(
-            [{"filepath": fp} for fp in filepaths],
-            {key: value},
-        )
-        if not proposal.get("ok"):
-            raise RuntimeError(proposal.get("code", "PROPOSAL_FAILED"))
+        proposal_id = str(payload.get("proposal_id", "") or "")
+        confirmation_token = str(payload.get("confirmation_token", "") or "")
+        if not proposal_id or not confirmation_token:
+            raise RuntimeError(
+                "TOKEN_REQUIRED: batch edit requires an approved "
+                "confirmation token")
         result = port.apply_batch(
-            [{"proposal_id": proposal["proposal_id"],
-              "confirmed": True, "source": "ui"}],
+            [{"proposal_id": proposal_id,
+              "confirmation_token": confirmation_token}],
             ctx=ctx,
         )
         if result.get("status") == "CANCELLED":
             ctx.token.raise_if_cancelled()
         result["ok"] = result.get("ok", False)
-        result["total"] = len(filepaths)
+        result["total"] = len(payload.get("filepaths") or [])
         if result.get("status") == "PARTIAL_SUCCESS":
             result["partial"] = True
         if result.get("status") == "FAILED":

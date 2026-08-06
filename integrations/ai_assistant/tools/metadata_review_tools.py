@@ -137,6 +137,13 @@ def create_metadata_review(db: Any, track_ids: list[int],
 
 def apply_metadata_review(db: Any, review_id: str = "",
                            accepted_fields: dict | None = None) -> ToolResult:
+    """Apply a review through the canonical editor pipeline (token-gated).
+
+    P0: direct DB/tag writes from the review stack are disabled; the apply
+    routes through MetadataEditorService (proposal → token → apply with
+    readback) when an editor is injected, otherwise it reports
+    LEGACY_OPERATION_DISABLED honestly.
+    """
     try:
         if not review_id:
             return ToolResult(

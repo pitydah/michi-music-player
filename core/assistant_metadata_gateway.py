@@ -105,23 +105,28 @@ class ProductionMetadataGateway:
             return {"ok": False, "error": str(e), "code": "REVIEW_NOT_FOUND"}
 
     def apply_review(self, review_id: str, confirmation_token: str = "") -> dict[str, Any]:
+        """Apply an approved metadata review through the canonical editor.
+
+        Authorization (P0): only an approved ConfirmationToken issued by
+        ConfirmationService is accepted — the gateway never self-declares
+        ``source="ai_plan"``. The token must be approved by the user/plan
+        confirmation flow BEFORE this call; apply_batch validates it
+        (command/target/fields/expiry/single-use).
+        """
         if self._editor is None:
             return _unavailable("MetadataEditorService (apply)")
-        if self._cs and confirmation_token:
-            request = self._cs.approve(confirmation_token)
-            if request is None or request.operation_id != review_id:
-                return {"ok": False, "error": "INVALID_CONFIRMATION",
-                        "code": "INVALID_CONFIRMATION"}
+        if not confirmation_token:
+            return {"ok": False, "error": "TOKEN_REQUIRED",
+                    "code": "TOKEN_REQUIRED", "review_id": review_id}
         try:
             result = self._editor.apply_batch([{
                 "proposal_id": review_id,
                 "confirmation_token": confirmation_token,
-                "confirmed": True,
-                "source": "ai_plan",
             }])
             if not result.get("ok"):
                 return {"ok": False, "error": result.get("status", "APPLY_FAILED"),
-                        "code": result.get("status", "APPLY_FAILED"),
+                        "code": result.get("code")
+                        or result.get("status", "APPLY_FAILED"),
                         "review_id": review_id,
                         "applied": result.get("applied", 0),
                         "failed": result.get("failed", 0),
