@@ -16,9 +16,29 @@ Item {
     property var _songs: []
     property string _mixType: ""
     property bool _loading: false
+    property bool _waiting: false
     property string _errorMessage: ""
 
     signal backRequested()
+
+    Connections {
+        target: root.mx
+        function onStateChanged(state) {
+            if (!root._waiting) return
+            if (state === "COMPLETED_WITH_TRACKS" || state === "PARTIAL_RECOMMENDATION") {
+                root._waiting = false
+                root._loading = false
+                root.refresh()
+            } else if (state === "CANCELLED") {
+                root._waiting = false
+                root._loading = false
+            } else {
+                root._waiting = false
+                root._loading = false
+                root._errorMessage = root.mx.errorMessage || qsTr("Error al regenerar el mix")
+            }
+        }
+    }
 
     function routeEnter(route, params) {
         root.refresh()
@@ -48,11 +68,17 @@ Item {
             return
         root._loading = true
         root._errorMessage = ""
+        root._waiting = false
         var result = root.mx.regenerate()
-        root._loading = false
         if (result && result.ok) {
-            root.refresh()
+            if (root.mx.currentSongs && root.mx.currentSongs.length > 0) {
+                root._loading = false
+                root.refresh()
+            } else {
+                root._waiting = true
+            }
         } else {
+            root._loading = false
             root._errorMessage = (result && result.error) || qsTr("Error al regenerar el mix")
         }
     }

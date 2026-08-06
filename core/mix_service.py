@@ -20,6 +20,35 @@ from core.mix.repository import MixDefinition as PersistedMix
 
 logger = logging.getLogger("michi.mix_service")
 
+# Query-backed strategies: generated through MixQueryService with the same
+# explicit-outcome semantics as smart strategies (S10): an empty result is
+# NO_MATCHES / EMPTY_LIBRARY with ok=False, never a fake success.
+QUERY_STRATEGIES = frozenset({
+    "favorites", "most_played", "unplayed", "rediscovery",
+    "by_artist", "by_genre", "by_album", "by_decade", "by_year",
+    "high_quality", "custom",
+})
+
+# Smart strategy aliases: QML category ids that map onto SmartMixService
+# strategy names (business mapping lives in the service, not the bridge).
+SMART_ALIASES = {
+    "daily_mix": "daily",
+}
+
+REASON_LABELS = {
+    "favorites": "Favoritos",
+    "most_played": "Más escuchadas",
+    "unplayed": "No escuchadas",
+    "rediscovery": "Redescubrimiento",
+    "by_artist": "Por artista",
+    "by_genre": "Por género",
+    "by_album": "Por álbum",
+    "by_decade": "Por década",
+    "by_year": "Por año",
+    "high_quality": "Alta calidad",
+    "custom": "Mix personalizado",
+}
+
 
 class MixService:
     def __init__(self, db=None, recommendation_service=None, smart_mix_service=None,
@@ -34,6 +63,7 @@ class MixService:
         self._rule_engine = MixRuleEngine(library_query_service)
         self._repo = MixRepository(db) if db else None
         self._cancelled = False
+        self._last_result: dict | None = None
         if mix_query_service is not None:
             self._queries = mix_query_service
         elif db is not None:
@@ -52,9 +82,13 @@ class MixService:
                  limit: int = 30) -> dict:
         """Generate a mix with an explicit outcome status (MixGenerationStatus).
 
-        ``ok`` is True only for COMPLETED_WITH_TRACKS / PARTIAL_RECOMMENDATION;
-        NO_MATCHES / EMPTY_LIBRARY / INVALID_STRATEGY / GENERATOR_UNAVAILABLE
-        return ``ok=False`` with the status that explains why.
+        Single entry point for EVERY strategy: smart strategies
+        (SmartMixService), the "recent" history strategy, the QML query
+        categories (favorites, by_artist, custom, ...) and the
+        "daily_mix" alias.  ``ok`` is True only for
+        COMPLETED_WITH_TRACKS / PARTIAL_RECOMMENDATION; NO_MATCHES /
+        EMPTY_LIBRARY / INVALID_STRATEGY / GENERATOR_UNAVAILABLE return
+        ``ok=False`` with the status that explains why.
         """
         self._cancelled = False
         if strategy not in KNOWN_STRATEGIES:
@@ -62,6 +96,15 @@ class MixService:
                 ok=False, status=MixGenerationStatus.INVALID_STRATEGY,
                 message=f"Estrategia desconocida: {strategy}", strategy=strategy,
             )
+        result = self._generate_impl(strategy, seed, limit)
+        self._last_result = result
+        return result
+
+    def _generate_impl(self, strategy: str, seed: dict | None,
+                       limit: int) -> dict:
+        strategy = SMART_ALIASES.get(strategy, strategy)
+        if strategy in QUERY_STRATEGIES:
+            return self._generate_from_queries(strategy, seed, limit)
         if strategy == "recent":
             return self._generate_recent(limit)
         if self._smart_mix is None:
@@ -101,6 +144,101 @@ class MixService:
         )
         return self._format_mix(mix, status=status, warnings=warnings)
 
+    def _generate_from_queries(self, strategy: str, seed: dict | None,
+                               limit: int) -> dict:
+        """Generate a query-backed category mix with explicit outcomes.
+
+        Empty results are honest NO_MATCHES / EMPTY_LIBRARY (ok=False) —
+        never an empty success.  Tracks are built as fresh copies, so the
+        reason label never mutates the query service's dicts.
+        """
+        if self._queries is None:
+            return self._outcome(
+                ok=False, status=MixGenerationStatus.GENERATOR_UNAVAILABLE,
+                message="Servicio de consultas de mix no disponible",
+                strategy=strategy,
+            )
+        try:
+            items = self._query_items(strategy, seed, limit)
+        except Exception as e:
+            logger.error("Mix query %s error: %s", strategy, e)
+            return self._outcome(
+                ok=False, status=MixGenerationStatus.GENERATOR_UNAVAILABLE,
+                message="Fallo al consultar canciones", strategy=strategy,
+                error=str(e),
+            )
+        if not items:
+            status = (
+                MixGenerationStatus.EMPTY_LIBRARY
+                if self._library_empty()
+                else MixGenerationStatus.NO_MATCHES
+            )
+            return self._outcome(
+                ok=False, status=status,
+                message=("La biblioteca no tiene canciones"
+                         if status == MixGenerationStatus.EMPTY_LIBRARY
+                         else "Ninguna canción coincide con el criterio del mix"),
+                strategy=strategy, mix_id=f"query:{strategy}",
+            )
+        tracks = self._normalize_query_tracks(items, strategy)
+        return self._outcome(
+            ok=True, status=MixGenerationStatus.COMPLETED_WITH_TRACKS,
+            message="Mix generado", strategy=strategy,
+            mix_id=f"query:{strategy}", tracks=tracks, count=len(tracks),
+        )
+
+    def _query_items(self, strategy: str, seed: dict | None,
+                     limit: int) -> list[dict]:
+        seed = seed or {}
+        if strategy == "favorites":
+            return self._queries.favorites(limit)
+        if strategy == "most_played":
+            return self._queries.most_played(limit)
+        if strategy == "unplayed":
+            return self._queries.unplayed(limit)
+        if strategy == "rediscovery":
+            return self._queries.rediscovery(limit)
+        if strategy == "by_artist":
+            return self._queries.by_field("artist", value=seed.get("artist", ""),
+                                          limit=limit)
+        if strategy == "by_genre":
+            return self._queries.by_field("genre", value=seed.get("genre", ""),
+                                          limit=limit)
+        if strategy == "by_album":
+            return self._queries.by_field("album", value=seed.get("album", ""),
+                                          limit=limit)
+        if strategy == "custom":
+            if seed.get("artist"):
+                return self._queries.by_field("artist", value=seed["artist"],
+                                              limit=limit)
+            if seed.get("genre"):
+                return self._queries.by_field("genre", value=seed["genre"],
+                                              limit=limit)
+            return self._queries.by_field("artist", limit=limit)
+        if strategy == "by_decade":
+            return self._queries.by_decade(decade=int(seed.get("year") or 0),
+                                           limit=limit)
+        if strategy == "by_year":
+            return self._queries.by_year(year=int(seed.get("year") or 0),
+                                         limit=limit)
+        if strategy == "high_quality":
+            return self._queries.high_quality(limit=limit)
+        return []
+
+    def _normalize_query_tracks(self, items: list[dict],
+                                strategy: str) -> list[dict]:
+        """Normalize query rows into canonical track dicts (copies only)."""
+        tracks = []
+        for item in items:
+            track_id = item.get("track_id") or item.get("id", 0)
+            track = dict(item)
+            track["id"] = track_id
+            track["track_id"] = track_id
+            track.setdefault("score", 0.0)
+            track["reason"] = REASON_LABELS.get(strategy, "")
+            tracks.append(track)
+        return tracks
+
     def _generate_recent(self, limit: int) -> dict:
         if self._library_query is None:
             return self._outcome(
@@ -133,13 +271,14 @@ class MixService:
                 "track_id": t.get("track_id") or t.get("id", 0),
                 "title": t.get("title", ""), "artist": t.get("artist", ""),
                 "album": t.get("album", ""), "score": 0.0,
+                "reason": "Escuchadas recientemente",
             }
             for t in items
         ]
         return self._outcome(
             ok=True, status=MixGenerationStatus.COMPLETED_WITH_TRACKS,
             message="Mix de recientes generado", strategy="recent",
-            tracks=tracks, count=len(tracks),
+            mix_id="query:recent", tracks=tracks, count=len(tracks),
         )
 
     def _outcome(self, ok: bool, status: MixGenerationStatus, message: str,
@@ -188,6 +327,7 @@ class MixService:
             reasons = list(getattr(t, "reasons", []) or [])
             if reasons:
                 track["reasons"] = reasons
+                track["reason"] = "; ".join(str(r) for r in reasons)
             explanation = self._explain_track(t, reasons)
             if explanation is not None:
                 track["explanation"] = explanation
@@ -212,6 +352,66 @@ class MixService:
             }
         except Exception:
             return None
+
+    # ── Save-as-playlist ──────────────────────────────────────────────────
+
+    def save_mix_as_playlist(self, mix_id: str, name: str) -> dict:
+        """Persist the last generated mix (matched by *mix_id*) as a playlist.
+
+        Uses the REAL playlist id from ``playlist_service.create()["id"]`` —
+        never a dict — and reports PARTIAL_SUCCESS with counts when some
+        tracks fail; an empty save is never reported as a full success.
+        """
+        if self._playlist_service is None:
+            return {"ok": False, "status": "FAILED",
+                    "error_code": "NO_PLAYLIST_SERVICE"}
+        result = self._last_result or {}
+        if not result or result.get("mix_id") != mix_id:
+            return {"ok": False, "status": "FAILED",
+                    "error_code": "NO_MIX_CONTENT",
+                    "detail": "El mix no está disponible para guardar"}
+        track_ids = [
+            t.get("id") or t.get("track_id")
+            for t in (result.get("tracks") or [])
+            if t.get("id") or t.get("track_id")
+        ]
+        if not track_ids:
+            return {"ok": False, "status": "FAILED", "error_code": "EMPTY_MIX",
+                    "detail": "El mix no tiene canciones para guardar"}
+        try:
+            create_result = self._playlist_service.create(name)
+        except Exception as e:
+            return {"ok": False, "status": "FAILED",
+                    "error_code": "CREATE_FAILED", "detail": str(e)}
+        if not isinstance(create_result, dict) or not create_result.get("ok"):
+            return {"ok": False, "status": "FAILED",
+                    "error_code": "CREATE_FAILED",
+                    "detail": "No se pudo crear la playlist"}
+        playlist_id = create_result.get("id")
+        if playlist_id is None or isinstance(playlist_id, dict):
+            return {"ok": False, "status": "FAILED",
+                    "error_code": "CREATE_FAILED",
+                    "detail": "Id de playlist inválido"}
+        added = 0
+        failed = 0
+        for track_id in track_ids:
+            try:
+                add_result = self._playlist_service.add_track(playlist_id, track_id)
+                if isinstance(add_result, dict) and not add_result.get("ok"):
+                    failed += 1
+                else:
+                    added += 1
+            except Exception:
+                failed += 1
+        if added == 0:
+            return {"ok": False, "status": "FAILED",
+                    "error_code": "SAVE_FAILED",
+                    "requested": len(track_ids), "added": 0,
+                    "failed": len(track_ids),
+                    "detail": "No se pudo agregar ninguna canción"}
+        status = "PARTIAL_SUCCESS" if failed else "COMPLETED"
+        return {"ok": True, "status": status, "playlist_id": playlist_id,
+                "requested": len(track_ids), "added": added, "failed": failed}
 
     # ── Mix query facade (MixQueryService delegation, bridge contract) ────
 
@@ -247,16 +447,16 @@ class MixService:
     def save_rules(self, mix_id: str, rules_json: str) -> dict:
         try:
             data = json.loads(rules_json)
-            from core.mix_rules import MixRuleGroup, MixRule
-            definition = type('', (), {})()
-            definition.name = data.get("name", mix_id)
-            definition.groups = [MixRuleGroup(
-                rules=[MixRule(**r) for r in g.get("rules", [])],
-                logic=g.get("logic", "AND"))
-                for g in data.get("groups", [])]
-            definition.limit = data.get("limit", 30)
-            definition.sort_by = data.get("sort_by", "random")
-            definition.seed = data.get("seed", 0)
+            definition = MixEngineDef(
+                name=data.get("name", mix_id),
+                groups=[MixRuleGroup(
+                    rules=[MixRule(**r) for r in g.get("rules", [])],
+                    logic=g.get("logic", "AND"))
+                    for g in data.get("groups", [])],
+                limit=data.get("limit", 30),
+                sort_by=data.get("sort_by", "random"),
+                seed=data.get("seed", 0),
+            )
             new_id = self._rule_engine.generate_id(definition)
 
             if self._repo:

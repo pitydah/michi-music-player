@@ -2,36 +2,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ui_qml_bridge.mix_bridge import MixBridge
-from core.worker_manager import WorkerManager
 
-
-@pytest.fixture
-def worker_manager():
-    wm = MagicMock(spec=WorkerManager)
-    wm.cancel_all = MagicMock(return_value=None)
-    return wm
+from ..mix.conftest import make_bridge, make_mix_service
 
 
 @pytest.fixture
 def mock_mqs():
-    mqs = MagicMock()
-    mqs.favorites.return_value = [
-        {"track_id": i, "title": f"Fav {i}", "artist": f"Artist {chr(65 + (i % 26))}",
-         "album": "Album F", "duration": 200, "reason": "Favorito"}
-        for i in range(1, 11)
-    ]
-    mqs.recent.return_value = [
-        {"track_id": i, "title": f"Recent {i}", "artist": f"Artist {chr(75 + (i % 26))}",
-         "album": "Album D", "duration": 220}
-        for i in range(11, 21)
-    ]
-    mqs.unplayed.return_value = [
-        {"track_id": i, "title": f"Unplayed {i}", "artist": f"Artist {chr(69 + (i % 26))}",
-         "album": "Album F", "duration": 190}
-        for i in range(21, 26)
-    ]
-    return mqs
+    return make_mix_service(default_track_count=10)
 
 
 @pytest.fixture
@@ -45,19 +22,19 @@ def mock_queue_svc():
 @pytest.fixture
 def mock_playlist_svc():
     ps = MagicMock()
-    ps.create.return_value = "playlist_1"
-    ps.add_track.return_value = True
+    ps.create.return_value = {"ok": True, "id": "playlist_1"}
+    ps.add_track.return_value = {"ok": True}
     return ps
 
 
 @pytest.fixture
-def bridge(mock_mqs, worker_manager, mock_queue_svc, mock_playlist_svc):
-    return MixBridge(
-        mix_service=mock_mqs,
-        job_service=worker_manager,
+def bridge(mock_mqs, mock_queue_svc, mock_playlist_svc, tmp_path):
+    b, _svc = make_bridge(
+        mock_mqs, tmp_path,
         queue_service=mock_queue_svc,
         playlist_service=mock_playlist_svc,
     )
+    return b
 
 
 class TestMixWorkflow:
@@ -65,7 +42,7 @@ class TestMixWorkflow:
     def test_load_mix_favorites(self, bridge):
         result = bridge.loadMix("favorites")
         assert result["ok"] is True
-        assert result["count"] == 10
+        assert bridge.stateName == "COMPLETED_WITH_TRACKS"
         assert len(bridge.currentSongs) == 10
 
     def test_generate_recent_then_cancel(self, bridge):
@@ -98,12 +75,15 @@ class TestMixWorkflow:
         assert result["ok"] is True
         assert mock_queue_svc.enqueue.call_count == 1
 
-    def test_save_as_playlist(self, bridge, mock_playlist_svc):
+    def test_save_as_playlist(self, bridge):
+        bridge._mix_svc.save_mix_as_playlist.return_value = {
+            "ok": True, "status": "COMPLETED", "playlist_id": "playlist_1",
+            "requested": 10, "added": 10, "failed": 0, "count": 10,
+        }
         bridge.loadMix("favorites")
         result = bridge.saveMixAsPlaylist("Mi Mix Favoritos")
         assert result["ok"] is True
         assert result["count"] == 10
-        mock_playlist_svc.create.assert_called_once_with("Mi Mix Favoritos")
 
     def test_full_workflow_configure_generate_cancel_generate_play(self, bridge, mock_queue_svc):
         bridge.loadMix("favorites")
@@ -136,7 +116,7 @@ class TestMixWorkflow:
         bridge.loadMix("favorites")
         explanation = bridge.explainCurrentMix()
         assert explanation["ok"] is True
-        assert "Favorito" in explanation["reasons"]
+        assert explanation["reasons"]
 
     def test_explain_after_generation_and_cancel(self, bridge):
         bridge.loadMix("favorites")
@@ -160,7 +140,7 @@ class TestMixWorkflow:
         bridge.cancelGeneration()
 
         bridge.loadMix("unplayed")
-        assert len(bridge.currentSongs) == 5
+        assert len(bridge.currentSongs) == 10
         play = bridge.playFromIndex(0)
         assert play["ok"] is True
 

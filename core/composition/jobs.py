@@ -62,6 +62,23 @@ class _MetadataPort:
         return self._editor.apply_batch(requests, ctx=ctx)
 
 
+class _MixPort:
+    """MixGenerationPort over the composed MixService (single facade).
+
+    The MixService owns every strategy (smart, recent and query-backed
+    categories); the port adds no business logic, only the ctx-shaped call.
+    """
+
+    def __init__(self, mix_service):
+        self._mix = mix_service
+
+    def generate(self, strategy: str, seed: dict | None = None,
+                 limit: int = 30, ctx=None) -> dict:
+        if self._mix is None:
+            raise RuntimeError("MixService unavailable")
+        return self._mix.generate(strategy=strategy, seed=seed, limit=limit)
+
+
 def _build_ports(container: ServiceContainer) -> dict[str, object]:
     """Assemble the port implementations from composed services."""
     from core.scanner_job_adapter import ScannerJobAdapter
@@ -83,12 +100,14 @@ def _build_ports(container: ServiceContainer) -> dict[str, object]:
     )
     history_port = HistoryExportService(db=db) if db is not None else None
     doctor_port = container.get("library_doctor_service")
+    mix_port = _MixPort(container.get("mix_service"))
 
     return {
         "scan": scan_port,
         "metadata": metadata_port,
         "history": history_port,
         "doctor": doctor_port,
+        "mix": mix_port,
     }
 
 
@@ -106,6 +125,7 @@ def register_production_job_handlers(job_service, container: ServiceContainer) -
         make_library_scan_handler,
         make_metadata_batch_handler,
         make_metadata_scan_handler,
+        make_mix_generate_handler,
     )
 
     ports = _build_ports(container)
@@ -123,6 +143,8 @@ def register_production_job_handlers(job_service, container: ServiceContainer) -
                                  make_doctor_repair_handler(ports["doctor"]))
     job_service.register_handler("history_export",
                                  make_history_export_handler(ports["history"]))
+    job_service.register_handler("mix_generate",
+                                 make_mix_generate_handler(ports["mix"]))
 
 
 def build(container: ServiceContainer) -> None:

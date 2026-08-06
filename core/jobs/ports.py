@@ -110,3 +110,23 @@ class AudioLabPort(Protocol):
     def analyze(self, filepath: str, ctx: Any | None = None) -> dict[str, Any]:
         """Run a technical analysis on an audio file."""
         ...
+
+
+@runtime_checkable
+class MixGenerationPort(Protocol):
+    """Port for the mix_generate handler.
+
+    ``generate`` returns the canonical MixService outcome dict
+    ({ok, status, tracks, ...}); the handler surfaces it as the job result
+    verbatim so the bridge can adapt it to the QML shape (Fase Mix).
+    """
+
+    def generate(
+        self,
+        strategy: str,
+        seed: dict[str, Any] | None = None,
+        limit: int = 30,
+        ctx: Any | None = None,
+    ) -> dict[str, Any]:
+        """Generate a mix with an explicit MixGenerationStatus outcome."""
+        ...

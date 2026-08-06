@@ -24,6 +24,7 @@ JOB_TITLES = {
     "doctor_scan": "Revisando biblioteca",
     "metadata_batch": "Edición de metadatos en lote",
     "history_export": "Exportando historial",
+    "mix_generate": "Generando mix",
 }
 
 
@@ -189,6 +190,36 @@ def make_history_export_handler(port) -> callable:
         if not result.get("ok"):
             raise RuntimeError(result.get("error", "Export failed"))
         ctx.report_progress(1.0, "Exportación finalizada")
+        return result
+
+    return handler
+
+
+def make_mix_generate_handler(port) -> callable:
+    """Close over a MixGenerationPort; generate the mix from the job payload.
+
+    The job payload carries {strategy, seed, limit}; the canonical
+    MixService outcome ({ok, status, tracks, ...}) becomes the job result
+    verbatim — including honest ok=False outcomes (NO_MATCHES,
+    EMPTY_LIBRARY, ...) that are NOT failures of the job itself.  Only a
+    raised exception fails the job; cancellation is cooperative through ctx.
+    """
+
+    def handler(job, ctx):
+        if port is None:
+            raise RuntimeError("MixService unavailable")
+        payload = job.payload or {}
+        strategy = str(payload.get("strategy", "") or "daily")
+        seed = payload.get("seed") or {}
+        try:
+            limit = int(payload.get("limit") or 30)
+        except (TypeError, ValueError):
+            limit = 30
+        ctx.report_progress(0.1, "Generando mix")
+        ctx.token.raise_if_cancelled()
+        result = port.generate(strategy, seed, limit, ctx)
+        ctx.token.raise_if_cancelled()
+        ctx.report_progress(1.0, "Mix generado")
         return result
 
     return handler

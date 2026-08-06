@@ -2,31 +2,21 @@ import pytest
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.mix_bridge import MixBridge
+
+from .conftest import make_bridge, make_mix_service
+
 pytestmark = [pytest.mark.qml_module("mix")]
 
 
 @pytest.fixture
 def mock_mix_svc():
-    mqs = MagicMock()
-    mqs.favorites.return_value = [
-        {"track_id": i, "title": f"Fav {i}", "artist": "A", "album": "B", "duration": 200}
-        for i in range(1, 11)
-    ]
-    mqs.recent.return_value = [
-        {"track_id": i, "title": f"Recent {i}", "artist": "C", "album": "D", "duration": 220}
-        for i in range(11, 16)
-    ]
-    return mqs
+    return make_mix_service(default_track_count=10)
 
 
 @pytest.fixture
-def bridge(mock_mix_svc):
-    return MixBridge(
-        mix_service=mock_mix_svc,
-        playback_service=MagicMock(),
-        queue_service=MagicMock(),
-        playlist_service=MagicMock(),
-    )
+def bridge(mock_mix_svc, tmp_path):
+    b, _svc = make_bridge(mock_mix_svc, tmp_path)
+    return b
 
 
 def test_cancel_generation_increments_counter(bridge):

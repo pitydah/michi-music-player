@@ -20,10 +20,16 @@ class MixGenerationStatus(str, Enum):
     PARTIAL_RECOMMENDATION = "PARTIAL_RECOMMENDATION"
 
 
-# Strategies the MixService facade can dispatch.  Most are handled by
-# SmartMixService; "recent" is a library-history strategy.
+# Strategies the MixService facade can dispatch.  Smart strategies are
+# handled by SmartMixService ("recent" is a library-history strategy);
+# query-backed categories (the QML mix hub ids) are handled by
+# MixQueryService through MixService — the bridge never dispatches them.
 KNOWN_STRATEGIES = frozenset({
     "daily", "balanced", "recent", "genre_journey", "decade_mix",
     "lossless_showcase", "favorites_neighbors", "recently_missed",
     "deep_cuts", "similar_to_artist", "similar_to_album",
+    # QML mix categories — single facade for every strategy.
+    "favorites", "most_played", "unplayed", "rediscovery", "daily_mix",
+    "by_artist", "by_genre", "by_album", "by_decade", "by_year",
+    "high_quality", "custom",
 })
