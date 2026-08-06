@@ -31,7 +31,7 @@ def test_export_no_db_no_service(bridge_no_db, tmp_path):
     out = tmp_path / "fail.json"
     result = bridge_no_db.exportHistory(str(out))
     assert not result["ok"]
-    assert result["error"] == "NO_DB"
+    assert result["error"] == "NO_SERVICE"
 
 
 def test_play_item_no_backend(bridge_no_db):
@@ -86,7 +86,7 @@ def test_export_no_db_no_service(bridge_no_db, tmp_path):
     out = tmp_path / "fail.json"
     result = bridge_no_db.exportHistory(str(out))
     assert not result["ok"]
-    assert result["error"] == "NO_DB"
+    assert result["error"] == "NO_SERVICE"
 
 
 def test_play_item_no_backend(bridge_no_db):
@@ -123,7 +123,7 @@ def test_remove_from_empty_history(bridge_empty):
 def test_clear_empty_history(bridge_empty):
     result = bridge_empty.clearHistory()
     assert not result["ok"]
-    assert result["error"] == "NO_DB"
+    assert result["error"] == "NO_SERVICE"
 
 
 def test_export_empty_history_fails(bridge_empty, tmp_path):
@@ -150,12 +150,12 @@ def test_export_cancel_no_file(bridge_empty):
 
 def test_set_history_enabled_no_service(bridge_no_db):
     result = bridge_no_db.setHistoryEnabled(False)
-    assert result["ok"]
+    assert result == {"ok": False, "error": "SERVICE_UNAVAILABLE"}
 
 
 def test_set_history_limit_no_service(bridge_no_db):
     result = bridge_no_db.setHistoryLimit(100)
-    assert result["ok"]
+    assert result == {"ok": False, "error": "SERVICE_UNAVAILABLE"}
 
 
 def test_bridge_refresh_called_multiple_times(bridge_no_db):

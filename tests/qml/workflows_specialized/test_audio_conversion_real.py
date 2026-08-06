@@ -54,8 +54,9 @@ class TestAudioConversionReal:
     def test_conversion_audio_only(self, bridge):
         modules = bridge.modules
         for m in modules:
-            assert "desc" in m
-            assert "title" in m
+            assert "id" in m
+            assert "available" in m
+            assert "status" in m
 
     def test_conversion_probe_audio(self, bridge, tmp_path):
         f = tmp_path / "test.wav"

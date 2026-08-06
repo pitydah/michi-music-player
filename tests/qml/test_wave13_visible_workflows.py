@@ -185,12 +185,14 @@ class TestWave13VisibleWorkflows:
         # SmartTaggingBridge with mock service
         from unittest.mock import MagicMock
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
-        from types import SimpleNamespace
         svc = MagicMock()
-        svc.suggest_for_track.return_value = [
-            SimpleNamespace(field="genre", current="", suggested="Rock",
-                          confidence=0.9, source="acoustic", warning="")
-        ]
+        svc.suggest_for_track.return_value = {
+            "ok": True,
+            "suggestions": [
+                {"field": "genre", "current": "", "suggested": "Rock",
+                 "confidence": 0.9, "source": "acoustic", "warning": ""}
+            ],
+        }
         stb = SmartTaggingBridge(service=svc, worker_manager=wm, query_service=qs)
         result = stb.scanTrackById(1)
         assert result.get("ok") is True

@@ -27,7 +27,7 @@ STANDALONE_MANIFEST_KEYS = frozenset({
     "job_bridge", "job_manager", "audio_lab_job_adapter",
     "action_registry_binder", "selection_context_bridge", "bridge_factory",
     "page_state_store", "hybrid_audio_manager", "provider_manager",
-    "knowledge_broker", "mpd_service_manager", "library_mutation_engine",
+    "knowledge_broker", "mpd_service_manager",
 })
 
 

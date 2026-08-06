@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 def build(container: ServiceContainer) -> None:
     from ui_qml_bridge.action_registry import ActionRegistry
-    ar = ActionRegistry()
+    ar = ActionRegistry(container=container)
     container.register("action_registry", ar)
     try:
         from recommendation.smart_mix_service import SmartMixService

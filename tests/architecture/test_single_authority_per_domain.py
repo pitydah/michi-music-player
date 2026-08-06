@@ -86,7 +86,6 @@ def test_legacy_files_are_designated_in_manifest() -> None:
     }
     assert "job_manager" in legacy_classes
     assert "audio_lab_job_adapter" in legacy_classes
-    assert "library_mutation_engine" in legacy_classes
 
 
 def test_radio_and_lyrics_authority_match_manifest() -> None:

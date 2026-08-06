@@ -56,9 +56,6 @@ SYS_MODULE_PATCHES = {
     "audio": MagicMock(),
 }
 
-for mod_name, mock in SYS_MODULE_PATCHES.items():
-    if mod_name not in sys.modules:
-        sys.modules[mod_name] = mock
 
 
 @pytest.fixture(autouse=True)
@@ -71,6 +68,13 @@ def _apply_patches():
     yield
     for p in patches:
         p.stop()
+    # patch.dict restores keys present at start, but keys first imported while
+    # patched are only removed from sys.modules if not already present — the
+    # mock can survive teardown and poison every later import. Purge any
+    # remaining MagicMock so this module never leaks into other tests.
+    for mod_name in SYS_MODULE_PATCHES:
+        if isinstance(sys.modules.get(mod_name), MagicMock):
+            sys.modules.pop(mod_name, None)
 
 
 def _make_bootstrap():

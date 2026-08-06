@@ -244,6 +244,22 @@ MIGRATIONS = [
         DROP INDEX IF EXISTS idx_media_active_norm_artist_album;
         DROP INDEX IF EXISTS idx_media_active_norm_title;
     """),
+    (7, "Canonical favorite identity columns", """
+        ALTER TABLE favorites ADD COLUMN entity_type TEXT DEFAULT 'track';
+        ALTER TABLE favorites ADD COLUMN entity_id TEXT DEFAULT '';
+        ALTER TABLE favorites ADD COLUMN public_ref TEXT DEFAULT '';
+        ALTER TABLE favorites ADD COLUMN created_at REAL DEFAULT (strftime('%s','now'));
+        ALTER TABLE favorites ADD COLUMN source TEXT DEFAULT 'ui';
+        UPDATE favorites SET source = 'legacy' WHERE entity_id = '' AND source = 'ui';
+        CREATE INDEX IF NOT EXISTS idx_favorites_entity ON favorites(entity_type, entity_id);
+    """, """
+        DROP INDEX IF EXISTS idx_favorites_entity;
+        ALTER TABLE favorites DROP COLUMN source;
+        ALTER TABLE favorites DROP COLUMN created_at;
+        ALTER TABLE favorites DROP COLUMN public_ref;
+        ALTER TABLE favorites DROP COLUMN entity_id;
+        ALTER TABLE favorites DROP COLUMN entity_type;
+    """),
 ]
 
 _ADD_COLUMN = re.compile(

@@ -3,7 +3,7 @@ import sqlite3
 
 from library.migrations import ensure_migrations_table, get_current_version, migrate
 
-LATEST_VERSION = 6
+LATEST_VERSION = 7
 
 
 def test_empty_db():

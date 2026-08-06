@@ -11,7 +11,6 @@ import os
 from PySide6.QtCore import QObject, Signal, Property, Slot
 import logging
 
-from core.history_query_service import HistoryQueryService
 from ui_qml.models.HistoryListModel import HistoryListModel
 
 logger = logging.getLogger("michi.history")
@@ -31,7 +30,7 @@ class HistoryBridge(QObject):
                  notification_bridge=None, job_bridge=None, parent=None):
         super().__init__(parent)
         self._db = db
-        self._hqs = history_query_service or HistoryQueryService(db=db)
+        self._hqs = history_query_service
         self._qe = query_executor
         self._playback_svc = playback_service
         self._action_registry = action_registry

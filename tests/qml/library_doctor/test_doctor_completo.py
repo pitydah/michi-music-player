@@ -1,9 +1,22 @@
 """PQ — Library Doctor completo: scan, issue list, dry run, confirmation,
 repair, progress, cancel, report, undo."""
+
 from __future__ import annotations
+from core.library_doctor.repositories.scan_repository import LibraryDoctorScanRepository
+from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
+
 import sqlite3
 from unittest.mock import MagicMock
 import pytest
+
+
+def _doctor_bridge(db=None, worker_manager=None):
+    """Build LibraryDoctorBridge with the injected scan repository (ADR-003)."""
+
+    repo = LibraryDoctorScanRepository(db) if db is not None else None
+    return LibraryDoctorBridge(db=db, worker_manager=worker_manager,
+                               scan_repository=repo)
+
 
 pytestmark = pytest.mark.isolation
 
@@ -43,8 +56,7 @@ class TestLibraryDoctorScan:
 
     @pytest.fixture
     def bridge(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-        return LibraryDoctorBridge(db=db)
+        return _doctor_bridge(db=db)
 
     def test_scan_detects_missing_files(self, bridge):
         bridge.scan()
@@ -86,10 +98,9 @@ class TestLibraryDoctorScan:
         assert bridge.missingFileCount >= 0
 
     def test_scan_no_db_conn(self):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
         db = MagicMock()
         db.conn = None
-        b = LibraryDoctorBridge(db=db)
+        b = _doctor_bridge(db=db)
         b.scan()
         assert b.issues == []
 
@@ -104,8 +115,7 @@ class TestLibraryDoctorIssueList:
 
     @pytest.fixture
     def bridge(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-        return LibraryDoctorBridge(db=db)
+        return _doctor_bridge(db=db)
 
     def test_issues_are_list_of_dicts(self, bridge):
         bridge.scan()
@@ -163,8 +173,7 @@ class TestLibraryDoctorDryRun:
 
     @pytest.fixture
     def bridge(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-        return LibraryDoctorBridge(db=db)
+        return _doctor_bridge(db=db)
 
     def test_dry_run_does_not_mutate_db(self, bridge):
         conn = bridge._db.conn
@@ -179,8 +188,7 @@ class TestLibraryDoctorDryRun:
 class TestLibraryDoctorConfirmation:
     @pytest.fixture
     def bridge(self):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-        return LibraryDoctorBridge(db=_make_mock_db([
+        return _doctor_bridge(db=_make_mock_db([
             (1, "/test/real.flac", "Song", "Artist", "Album", "ak1", "uid1"),
         ]))
 
@@ -206,8 +214,7 @@ class TestLibraryDoctorRepair:
 
     @pytest.fixture
     def bridge(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-        return LibraryDoctorBridge(db=db)
+        return _doctor_bridge(db=db)
 
     def test_repair_missing_metadata_updates_title(self, bridge):
         bridge.scan()
@@ -243,8 +250,7 @@ class TestLibraryDoctorRepair:
 class TestLibraryDoctorProgress:
     @pytest.fixture
     def bridge(self):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-        return LibraryDoctorBridge(db=_make_mock_db())
+        return _doctor_bridge(db=_make_mock_db())
 
     def test_scan_progress_signal(self, bridge):
         assert hasattr(bridge, 'scanProgress')
@@ -259,8 +265,7 @@ class TestLibraryDoctorProgress:
 class TestLibraryDoctorCancel:
     @pytest.fixture
     def bridge(self):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-        return LibraryDoctorBridge(db=_make_mock_db())
+        return _doctor_bridge(db=_make_mock_db())
 
     def test_cancel_scan_returns_to_idle(self, bridge):
         bridge._status = "scanning"
@@ -284,8 +289,7 @@ class TestLibraryDoctorCancel:
 class TestLibraryDoctorReport:
     @pytest.fixture
     def bridge(self):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-        return LibraryDoctorBridge(db=_make_mock_db([
+        return _doctor_bridge(db=_make_mock_db([
             (1, "/test/real.flac", "Song", "Artist", "Album", "ak1", "uid1"),
         ]))
 
@@ -312,8 +316,7 @@ class TestLibraryDoctorUndo:
         ])
 
     def test_repair_is_transactional(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-        bridge = LibraryDoctorBridge(db=db)
+        bridge = _doctor_bridge(db=db)
         conn = db.conn
         bridge.scan()
         bridge._selected_ids = set(i["id"] for i in bridge._issues if i.get("type") == "missing_metadata")

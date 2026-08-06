@@ -1,12 +1,24 @@
-from __future__ import annotations
 """Tests for Library Doctor — scan types, progress, cancel, results, states."""
+
+from __future__ import annotations
+from core.library_doctor.repositories.scan_repository import LibraryDoctorScanRepository
+from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
 
 import sqlite3
 from unittest.mock import MagicMock
 
 import pytest
 
-from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge, ISSUE_TYPES
+from ui_qml_bridge.library_doctor_bridge import ISSUE_TYPES
+
+
+def _doctor_bridge(db=None, worker_manager=None):
+    """Build LibraryDoctorBridge with the injected scan repository (ADR-003)."""
+
+    repo = LibraryDoctorScanRepository(db) if db is not None else None
+    return LibraryDoctorBridge(db=db, worker_manager=worker_manager,
+                               scan_repository=repo)
+
 
 pytestmark = [pytest.mark.qml_module("library_doctor")]
 
@@ -66,7 +78,7 @@ class TestScanTypes:
             "VALUES ('/nonexistent/file.flac', 'Test', 'Artist')"
         )
         mock_db.conn.commit()
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge.scan()
         types = [i["type"] for i in bridge._issues]
         assert "missing_file" in types
@@ -77,7 +89,7 @@ class TestScanTypes:
             "VALUES ('/test.flac', '', '')"
         )
         mock_db.conn.commit()
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge.scan()
         types = [i["type"] for i in bridge._issues]
         assert "missing_metadata" in types
@@ -92,7 +104,7 @@ class TestScanTypes:
             "VALUES ('/dup.flac', 'C', 'D')"
         )
         mock_db.conn.commit()
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge.scan()
         types = [i["type"] for i in bridge._issues]
         assert "duplicate_path" in types
@@ -107,7 +119,7 @@ class TestScanTypes:
             "VALUES ('/b.flac', 'C', 'D', 'uid1')"
         )
         mock_db.conn.commit()
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge.scan()
         types = [i["type"] for i in bridge._issues]
         assert "duplicate_uid" in types
@@ -117,7 +129,7 @@ class TestScanTypes:
             "INSERT INTO playlist_items (playlist_id, filepath) VALUES (1, '/orphan.flac')"
         )
         mock_db.conn.commit()
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge.scan()
         types = [i["type"] for i in bridge._issues]
         assert "orphan_playlist_item" in types
@@ -127,7 +139,7 @@ class TestScanTypes:
             "INSERT INTO play_history (filepath) VALUES ('/orphan.flac')"
         )
         mock_db.conn.commit()
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge.scan()
         types = [i["type"] for i in bridge._issues]
         assert "orphan_history" in types
@@ -140,7 +152,7 @@ class TestScanProgress:
             "VALUES ('/test.flac', 'Song', 'Artist')"
         )
         mock_db.conn.commit()
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         assert bridge.status == "idle"
         bridge.scan()
         assert bridge.status in ("done", "no_data")
@@ -152,7 +164,7 @@ class TestScanProgress:
                 "VALUES (?, 'S', 'A')", (f"/test{i}.flac",)
             )
         mock_db.conn.commit()
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge.scan()
         assert bridge.totalChecked == 5
 
@@ -162,28 +174,28 @@ class TestScanProgress:
             "VALUES ('/missing.flac', '', '')"
         )
         mock_db.conn.commit()
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge.scan()
         assert bridge.issueCount > 0
 
 
 class TestCancelScan:
     def test_cancel_resets_state(self, mock_db):
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge._status = "scanning"
         result = bridge.cancelScan()
         assert result["ok"]
         assert bridge.status == "idle"
 
     def test_cancel_during_repair(self, mock_db):
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge._status = "repairing"
         result = bridge.cancelScan()
         assert result["ok"]
         assert bridge.status == "idle"
 
     def test_cancel_when_idle(self, mock_db):
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         result = bridge.cancelScan()
         assert result["ok"]
         assert bridge.status == "idle"
@@ -191,7 +203,7 @@ class TestCancelScan:
 
 class TestStates:
     def test_initial_state(self, mock_db):
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         assert bridge.status == "idle"
 
     def test_scan_transitions_to_done(self, mock_db):
@@ -200,17 +212,17 @@ class TestStates:
             "VALUES ('/test.flac', 'S', 'A')"
         )
         mock_db.conn.commit()
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge.scan()
         assert bridge.status in ("done", "no_data")
 
     def test_no_db_no_crash(self):
-        bridge = LibraryDoctorBridge(db=None)
+        bridge = _doctor_bridge(db=None)
         bridge.scan()
         assert bridge.status in ("no_data", "done", "error")
 
     def test_empty_db(self, mock_db):
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge.scan()
         assert bridge.status in ("no_data", "done")
 
@@ -222,12 +234,12 @@ class TestResultsSummary:
             "VALUES ('/real.flac', 'S', 'A')"
         )
         mock_db.conn.commit()
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge.scan()
         assert bridge.healthyCount >= 0
 
     def test_missing_metadata_count(self, mock_db):
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge._issues = [
             {"type": "missing_metadata"}, {"type": "missing_file"},
             {"type": "missing_metadata"},
@@ -235,7 +247,7 @@ class TestResultsSummary:
         assert bridge.missingMetadataCount == 2
 
     def test_missing_file_count(self, mock_db):
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge._issues = [
             {"type": "missing_file"}, {"type": "missing_metadata"},
             {"type": "missing_file"},
@@ -243,7 +255,7 @@ class TestResultsSummary:
         assert bridge.missingFileCount == 2
 
     def test_issues_property_returns_copy(self, mock_db):
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge._issues = [{"id": 1, "type": "test"}]
         issues = bridge.issues
         assert len(issues) == 1
@@ -251,7 +263,7 @@ class TestResultsSummary:
         assert len(bridge._issues) == 1
 
     def test_select_all_updates_all(self, mock_db):
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge._issues = [
             {"id": 1, "type": "missing_file"},
             {"id": 2, "type": "missing_metadata"},
@@ -261,7 +273,7 @@ class TestResultsSummary:
         assert 2 in bridge._selected_ids
 
     def test_select_none_clears(self, mock_db):
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge._issues = [{"id": 1, "type": "missing_file"}]
         bridge.selectAll()
         bridge.selectNone()

@@ -286,10 +286,33 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
     "library_mutation_service": _d(
         "library_mutation_service", ServiceClass.DOMAIN_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        dependencies=("database", "event_bus", "favorite_service"),
+        capabilities=("library", "metadata"),
+        consumers=("metadata_service", "library_doctor_service",
+                   "library_bridge", "track_action_service"),
+        description="Canonical library mutation authority (S3): favorites via "
+                    "FavoriteService, track removal, metadata field edits.",
+    ),
+    "favorite_service": _d(
+        "favorite_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("database", "event_bus"),
+        capabilities=("library",),
+        consumers=("library_bridge", "track_action_service", "songs_service",
+                   "library_mutation_service"),
+        description="Canonical favorites with entity identity "
+                    "(entity_type/entity_id/public_ref); always registered by "
+                    "composition, optional priority so the frozen required "
+                    "set stays the start gate.",
+    ),
+    "metadata_editor_service": _d(
+        "metadata_editor_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
         dependencies=("database",),
         capabilities=("metadata",),
-        consumers=("metadata_bridge", "metadata_service", "library_doctor_service"),
-        description="Metadata editing; bound to MetadataEditorService (S3 rebinds to LibraryMutationService).",
+        consumers=("metadata_service", "metadata_bridge"),
+        description="MetadataEditorService — field-level metadata editing with "
+                    "preview/rollback (legacy library_mutation_service binding).",
     ),
     "library_service": _d(
         "library_service", ServiceClass.APPLICATION_SERVICE,
@@ -345,6 +368,15 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         capabilities=("library_doctor",),
         consumers=("library_doctor_bridge",),
         description="Library health diagnosis; may be None.",
+    ),
+    "library_doctor_scan_repository": _d(
+        "library_doctor_scan_repository", ServiceClass.PASSIVE_REPOSITORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("database",),
+        optional=True,
+        consumers=("library_doctor_bridge",),
+        description="Scan/repair repository for the library doctor; injected "
+                    "into LibraryDoctorBridge (no bridge construction).",
     ),
     "recognition_service": _d(
         "recognition_service", ServiceClass.APPLICATION_SERVICE,
@@ -638,11 +670,6 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         "mpd_service_manager", ServiceClass.PROCESS_MANAGER,
         LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
         description="MPD daemon management owned by MpdBackend.",
-    ),
-    "library_mutation_engine": _d(
-        "library_mutation_engine", ServiceClass.LEGACY_COMPONENT,
-        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
-        description="LibraryMutationService real class (orphan until S3 binds the key to it).",
     ),
 }
 

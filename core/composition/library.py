@@ -22,10 +22,14 @@ def build(container: ServiceContainer) -> None:
     from core.metadata_service import MetadataService
     from core.smart_tagging_service import SmartTaggingService
     from core.track_action_service import TrackActionService
+    from core.favorite_service import FavoriteService
+    from core.library_mutation_service import LibraryMutationService
+    from core.file_manager_service import FileManagerService
 
     cf = container.get("connection_factory")
     db = container.get("database")
     wm = container.get("worker_manager")
+    eb = container.get("event_bus")
 
     sources_svc = LibrarySourcesService(cf)
     container.register("library_sources_service", sources_svc)
@@ -35,7 +39,13 @@ def build(container: ServiceContainer) -> None:
     container.register("library_filtered_query_service", lqs)
     container.register("collection_service", CollectionService(db=db, query_service=lqs))
     container.register("folder_tree_model", FolderTreeModel(sources_svc.root_paths()))
-    container.register("library_mutation_service", MetadataEditorService(db=db))
+    favorite_service = FavoriteService(db=db, event_bus=eb)
+    container.register("favorite_service", favorite_service)
+    container.register(
+        "library_mutation_service",
+        LibraryMutationService(db=db, event_bus=eb, favorite_service=favorite_service),
+    )
+    container.register("metadata_editor_service", MetadataEditorService(db=db))
     container.register("library_service", LibraryService(db=db, worker_manager=wm, library_query_service=lqs))
     playlist_service = PlaylistService(cf)
     container.register("playlist_service", playlist_service)
@@ -46,6 +56,8 @@ def build(container: ServiceContainer) -> None:
             queue_service=container.require("queue_service"),
             playlist_service=playlist_service,
             db=db,
+            favorite_service=favorite_service,
+            file_manager_service=FileManagerService,
         ),
     )
     container.register("history_query_service", HistoryQueryService(cf))
@@ -58,6 +70,15 @@ def build(container: ServiceContainer) -> None:
     except Exception:
         logger.error("Failed to create library_doctor_service", exc_info=True)
         container.register("library_doctor_service", None)
+
+    try:
+        from core.library_doctor.repositories.scan_repository import (
+            LibraryDoctorScanRepository,
+        )
+        container.register("library_doctor_scan_repository", LibraryDoctorScanRepository(db))
+    except Exception:
+        logger.error("Failed to create library_doctor_scan_repository", exc_info=True)
+        container.register("library_doctor_scan_repository", None)
 
     try:
         from core.recognition_service import RecognitionService

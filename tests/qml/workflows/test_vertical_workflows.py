@@ -1,5 +1,8 @@
-from __future__ import annotations
 """10 vertical workflows obligatorios con SQLite real, servicios reales, bridges reales."""
+
+from __future__ import annotations
+from core.library_doctor.repositories.scan_repository import LibraryDoctorScanRepository
+from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
 
 import sqlite3
 import struct
@@ -92,6 +95,17 @@ def _create_schema(conn: sqlite3.Connection):
         CREATE TABLE IF NOT EXISTS library_scan_log (path TEXT, last_scan INTEGER);
         INSERT OR IGNORE INTO metadata (key, value) VALUES ('schema_version', '12');
     """)
+
+
+def _wf_playlists_bridge(db, **kw):
+    """PlaylistsBridge with injected service (ADR-003 — bridges never construct)."""
+    from ui_qml_bridge.playlists_bridge import PlaylistsBridge
+    from core.playlist_service import PlaylistService
+    return PlaylistsBridge(db=db, **{'playlist_service': PlaylistService(db)}, **kw)
+
+def _wf_doctor_bridge(db, **kw):
+    """LibraryDoctorBridge with injected service (ADR-003 — bridges never construct)."""
+    return LibraryDoctorBridge(db=db, **{'scan_repository': LibraryDoctorScanRepository(db)}, **kw)
 
 pytestmark = [pytest.mark.qml_module("workflows"), pytest.mark.qml_dimension("vertical_workflow"), pytest.mark.qml_workflow("vertical")]
 
@@ -433,8 +447,7 @@ class TestWorkflow2AlbumToPlaylist:
         conn.commit()
         pl_id = conn.execute("SELECT id FROM playlists WHERE name='Test PL'").fetchone()[0]
 
-        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
-        pb = PlaylistsBridge(db=real_db)
+        pb = _wf_playlists_bridge(db=real_db)
         track_fp = conn.execute(
             "SELECT filepath FROM media_items WHERE deleted_at IS NULL LIMIT 1"
         ).fetchone()[0]
@@ -445,8 +458,7 @@ class TestWorkflow2AlbumToPlaylist:
         conn = real_db.conn
         conn.execute("INSERT INTO playlists (name) VALUES (?)", ("My PL",))
         conn.commit()
-        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
-        pb = PlaylistsBridge(db=real_db)
+        pb = _wf_playlists_bridge(db=real_db)
         pb.refresh()
         assert len(pb.playlists) > 0
 
@@ -621,23 +633,20 @@ class TestWorkflow6Doctor:
     """WF6: Library Doctor real."""
 
     def test_wf6_doctor_scan_real_db(self, sql_tmpdb, real_db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-        ldb = LibraryDoctorBridge(db=real_db)
+        ldb = _wf_doctor_bridge(db=real_db)
         ldb.scan()
         assert ldb.status in ("done", "scanning", "no_data")
         assert ldb.totalChecked >= 9
 
     def test_wf6_doctor_issues_found(self, sql_tmpdb, real_db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-        ldb = LibraryDoctorBridge(db=real_db)
+        ldb = _wf_doctor_bridge(db=real_db)
         ldb.scan()
         total = ldb.totalChecked
         assert total >= 9
 
     def test_wf6_doctor_select_and_repair(self, sql_tmpdb, real_db):
         conn = real_db.conn
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-        ldb = LibraryDoctorBridge(db=real_db)
+        ldb = _wf_doctor_bridge(db=real_db)
 
         missing_fp = str(sql_tmpdb[1][0]) + ".missing"
         conn.execute(
@@ -656,14 +665,12 @@ class TestWorkflow6Doctor:
         assert r.get("ok") or not r.get("ok")
 
     def test_wf6_doctor_healthy_count(self, sql_tmpdb, real_db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-        ldb = LibraryDoctorBridge(db=real_db)
+        ldb = _wf_doctor_bridge(db=real_db)
         ldb.scan()
         assert ldb.healthyCount >= 0
 
     def test_wf6_doctor_cancel(self, sql_tmpdb, real_db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-        ldb = LibraryDoctorBridge(db=real_db)
+        ldb = _wf_doctor_bridge(db=real_db)
         r = ldb.cancelScan()
         assert r.get("ok")
 
@@ -716,8 +723,7 @@ class TestWorkflow8PlaylistCRUD:
     """WF8: Playlist CRUD real."""
 
     def test_wf8_create_playlist(self, sql_tmpdb, real_db):
-        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
-        pb = PlaylistsBridge(db=real_db)
+        pb = _wf_playlists_bridge(db=real_db)
         r = pb.createPlaylist("WF8 Test PL")
         assert r.get("ok"), f"create failed: {r}"
         assert r.get("id") is not None
@@ -728,8 +734,7 @@ class TestWorkflow8PlaylistCRUD:
         conn.commit()
         pl_id = conn.execute("SELECT id FROM playlists WHERE name='WF8 Tracks'").fetchone()[0]
 
-        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
-        pb = PlaylistsBridge(db=real_db)
+        pb = _wf_playlists_bridge(db=real_db)
         track_fp = conn.execute(
             "SELECT filepath FROM media_items WHERE deleted_at IS NULL LIMIT 1"
         ).fetchone()[0]
@@ -764,8 +769,7 @@ class TestWorkflow8PlaylistCRUD:
         conn = real_db.conn
         conn.execute("INSERT INTO playlists (name) VALUES (?)", ("WF8 Last",))
         conn.commit()
-        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
-        pb = PlaylistsBridge(db=real_db)
+        pb = _wf_playlists_bridge(db=real_db)
         pb.refresh()
         assert len(pb.playlists) > 0
 

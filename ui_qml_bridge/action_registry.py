@@ -2,12 +2,26 @@
 
 Used by Command Palette, context menus, keyboard shortcuts, and toolbars.
 Each action can optionally reference a service + method for contract validation.
+
+Execution model (Slice 3): ``execute(action_id, context)`` with an explicit
+``ActionContext`` is the canonical path — the context is the ONLY source of
+truth for the action target. Executing without a context keeps the legacy
+handler-based behavior for the transition but logs a deprecation warning;
+destructive actions without a context that have no bound handler are refused
+with ``REQUIRE_CONTEXT``. Destructive actions executed with a context require
+a confirmation bound to the context hash (ConfirmationService).
 """
 from __future__ import annotations
 
+import inspect
+import logging
 from typing import Any, Callable
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
+
+from core.action_context import ActionContext
+
+logger = logging.getLogger("michi.action_registry")
 
 
 class ActionDescriptor:
@@ -17,7 +31,9 @@ class ActionDescriptor:
                  handler: Callable | None = None,
                  service_name: str = "", method_name: str = "",
                  argument_schema: tuple[str, ...] = (),
-                 capability: str | None = None):
+                 capability: str | None = None,
+                 service_key: str = "",
+                 requires_context: bool = False):
         self.id = action_id
         self.title = title
         self.category = category
@@ -26,10 +42,12 @@ class ActionDescriptor:
         self.destructive = destructive
         self.requires_confirmation = requires_confirmation
         self.handler = handler
-        self.service_name = service_name
+        self.service_name = service_name or service_key
+        self.service_key = service_key or service_name
         self.method_name = method_name
         self.argument_schema = argument_schema
         self.capability = capability
+        self.requires_context = requires_context
         self.enabled = True
         self.visible = True
 
@@ -172,21 +190,25 @@ class ActionRegistry(QObject):
     def validate_all(self) -> list[dict]:
         issues = []
         for aid, action in self._actions.items():
-            if action.handler is None and not action.service_name:
+            if action.handler is None and not (action.service_name or action.service_key):
                 continue
-            if action.service_name and self._container:
-                svc = getattr(self._container, action.service_name, None)
-                if svc is None:
+            if action.service_key and self._container:
+                svc_name = action.service_key
+                if not self._container.contains(svc_name):
                     issues.append({
                         "action_id": aid, "issue": "service_not_found",
-                        "service": action.service_name,
+                        "service": svc_name,
                     })
-                elif action.method_name and not hasattr(svc, action.method_name):
-                    issues.append({
-                        "action_id": aid, "issue": "method_not_found",
-                        "method": action.method_name,
-                        "service": type(svc).__name__,
-                    })
+                    continue
+                svc = self._container.get(svc_name)
+                if action.method_name:
+                    method = getattr(svc, action.method_name, None)
+                    if not callable(method):
+                        issues.append({
+                            "action_id": aid, "issue": "method_not_found",
+                            "method": action.method_name,
+                            "service": type(svc).__name__,
+                        })
             if action.capability and self._container:
                 cap_bridge = getattr(self._container, 'capability_bridge', None)
                 if cap_bridge and not cap_bridge.has(action.capability):
@@ -226,14 +248,69 @@ class ActionRegistry(QObject):
         return [a for a in self.actions if a["category"] == category]
 
     @Slot(str, result=dict)
-    def execute(self, action_id: str):
+    def execute(self, action_id: str, context: ActionContext | None = None):
         action = self._actions.get(action_id)
         if not action or not action.enabled:
             return {"ok": False, "error": "NOT_FOUND"}
-        if action.handler:
-            try:
+        if context is None:
+            logger.warning(
+                "ActionRegistry.execute(%s) without ActionContext is deprecated",
+                action_id,
+            )
+            if action.requires_context or (action.destructive and action.handler is None):
+                return {"ok": False, "code": "REQUIRE_CONTEXT",
+                        "action_id": action_id,
+                        "message": "This action requires an explicit ActionContext"}
+            return self._call_handler(action, None)
+        if action.destructive or action.requires_confirmation:
+            cs = self._confirmation_service()
+            context_hash = context.command_hash(action_id)
+            if cs is None:
+                return {"ok": False, "code": "CONFIRMATION_UNAVAILABLE",
+                        "action_id": action_id, "context_hash": context_hash}
+            confirmed = cs.confirmed_hash(action_id)
+            if confirmed is not None and confirmed != context_hash:
+                return {"ok": False, "code": "CONFIRMATION_MISMATCH",
+                        "action_id": action_id, "context_hash": context_hash,
+                        "message": "Selection or parameters changed since confirmation"}
+            if confirmed is None:
+                return {"ok": False, "code": "CONFIRMATION_REQUIRED",
+                        "action_id": action_id, "context_hash": context_hash,
+                        "requires_confirmation": True,
+                        "message": "Destructive action requires confirmation"}
+        return self._call_handler(action, context)
+
+    def _call_handler(self, action: ActionDescriptor,
+                      context: ActionContext | None) -> dict:
+        if action.handler is None:
+            return {"ok": False, "error": "NO_HANDLER"}
+        try:
+            if context is None:
                 result = action.handler()
-                return result if isinstance(result, dict) else {"ok": True}
-            except Exception as e:
-                return {"ok": False, "error": str(e)}
-        return {"ok": False, "error": "NO_HANDLER"}
+            else:
+                result = (action.handler(context)
+                          if self._handler_accepts_arg(action.handler)
+                          else action.handler())
+            return result if isinstance(result, dict) else {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @staticmethod
+    def _handler_accepts_arg(handler: Callable) -> bool:
+        try:
+            signature = inspect.signature(handler)
+            return any(
+                p.default is inspect.Parameter.empty and p.name != "self"
+                for p in signature.parameters.values()
+            )
+        except (TypeError, ValueError):
+            return False
+
+    def _confirmation_service(self):
+        if self._container is None:
+            return None
+        return self._container.get("confirmation_service")
+
+    def execute_with_context(self, action_id: str,
+                             context: ActionContext | None = None) -> dict:
+        return self.execute(action_id, context)

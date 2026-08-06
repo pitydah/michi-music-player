@@ -303,6 +303,7 @@ class BridgeFactory(QObject):
                 container=self._container,
                 artwork_svc=self._get("artwork_service"),
                 cover_provider=self._bridges.get("cover_provider"),
+                favorite_service=self._get("favorite_service"),
             )
 
     def create_library_sources_bridge(self):
@@ -559,6 +560,7 @@ class BridgeFactory(QObject):
             self._bridges["library_doctor"] = LibraryDoctorBridge(
                 db=self._get("database"),
                 worker_manager=self._get("worker_manager"),
+                scan_repository=self._get("library_doctor_scan_repository"),
             )
 
     def create_diagnostics_bridge(self):

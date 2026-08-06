@@ -30,48 +30,61 @@ def favorite_bridge():
             track_uid TEXT,
             deleted_at REAL
         );
-        CREATE TABLE favorites (track_id TEXT PRIMARY KEY);
+        CREATE TABLE favorites (
+            track_id TEXT PRIMARY KEY,
+            entity_type TEXT DEFAULT 'track',
+            entity_id TEXT DEFAULT '',
+            public_ref TEXT DEFAULT '',
+            created_at REAL DEFAULT (strftime('%s','now')),
+            source TEXT DEFAULT 'ui'
+        );
         INSERT INTO media_items VALUES
             (1, '/a/one.flac', 'album-a', 'Album A', 'Artist A', 'Artist A', 'uid-1', NULL),
             (2, '/a/two.flac', 'album-a', 'Album A', 'Guest', 'Artist A', 'uid-2', NULL),
             (3, '/b/three.flac', 'album-b', 'Album B', 'Artist B', 'Artist B', 'uid-3', NULL);
         """
     )
+    from core.favorite_service import FavoriteService
     query = MagicMock()
     query.search_backend = "like"
     query.count_tracks.return_value = 0
     query.count_albums.return_value = 0
     query.count_artists.return_value = 0
-    bridge = LibraryBridge(db=SimpleNamespace(conn=connection), query_service=query)
+    bridge = LibraryBridge(
+        db=SimpleNamespace(conn=connection),
+        query_service=query,
+        favorite_service=FavoriteService(db=SimpleNamespace(conn=connection)),
+    )
     bridge._refresh_coordinator = MagicMock()
     bridge._sync_state = MagicMock()
     yield bridge, connection
     connection.close()
 
 
-def test_album_favorite_uses_track_favorites_for_every_album_track(favorite_bridge):
+def test_album_favorite_uses_canonical_entity_identity(favorite_bridge):
     bridge, connection = favorite_bridge
 
     result = bridge.setAlbumFavorite("album-a", True)
 
-    assert result == {"ok": True, "favorite": True, "count": 2}
-    assert connection.execute("SELECT track_id FROM favorites ORDER BY track_id").fetchall() == [
-        ("/a/one.flac",),
-        ("/a/two.flac",),
-    ]
+    assert result == {"ok": True, "favorite": True, "count": 1}
+    assert connection.execute(
+        "SELECT track_id, entity_type, entity_id FROM favorites"
+    ).fetchall() == [("album:album-a", "album", "album-a")]
 
-    connection.execute("INSERT INTO favorites(track_id) VALUES ('uid-1')")
+    connection.execute("INSERT INTO favorites(track_id) VALUES ('/a/one.flac')")
     assert bridge.setAlbumFavorite("album-a", False)["ok"] is True
     assert connection.execute("SELECT track_id FROM favorites").fetchall() == []
 
 
-def test_artist_favorite_matches_artist_and_album_artist(favorite_bridge):
+def test_artist_favorite_uses_canonical_entity_identity(favorite_bridge):
     bridge, connection = favorite_bridge
 
     result = bridge.setArtistFavorite("Artist A", True)
 
-    assert result["count"] == 2
-    assert connection.execute("SELECT COUNT(*) FROM favorites").fetchone()[0] == 2
+    assert result == {"ok": True, "favorite": True, "count": 1}
+    assert connection.execute(
+        "SELECT track_id, entity_type, entity_id FROM favorites"
+    ).fetchall() == [("artist:Artist A", "artist", "Artist A")]
 
 
 def test_custom_collection_is_validated_and_upserted():

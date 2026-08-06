@@ -25,6 +25,19 @@ from unittest.mock import MagicMock
 REPO = Path(__file__).resolve().parent.parent.parent.parent
 
 
+
+def _wf_history_bridge(db, **kw):
+    """HistoryBridge with injected service (ADR-003 — bridges never construct)."""
+    from ui_qml_bridge.history_bridge import HistoryBridge
+    from core.history_query_service import HistoryQueryService
+    return HistoryBridge(db=db, **{'history_query_service': HistoryQueryService(db)}, **kw)
+
+def _wf_playlists_bridge(db, **kw):
+    """PlaylistsBridge with injected service (ADR-003 — bridges never construct)."""
+    from ui_qml_bridge.playlists_bridge import PlaylistsBridge
+    from core.playlist_service import PlaylistService
+    return PlaylistsBridge(db=db, **{'playlist_service': PlaylistService(db)}, **kw)
+
 @pytest.fixture
 def mock_qs():
     qs = MagicMock()
@@ -422,8 +435,7 @@ class TestWorkflow3History:
     """WF3: History — load timeline, filter, play, export, remove, clear."""
 
     def test_wf3_history_loaded(self, sql_tmpdb, real_db):
-        from ui_qml_bridge.history_bridge import HistoryBridge
-        hb = HistoryBridge(db=real_db)
+        hb = _wf_history_bridge(db=real_db)
         r = hb.refresh()
         assert r.get("ok")
 
@@ -432,8 +444,7 @@ class TestWorkflow3History:
         conn.execute("INSERT INTO play_history (track_id, played_at) VALUES (?, ?)",
                      ("uid_test", time.time()))
         conn.commit()
-        from ui_qml_bridge.history_bridge import HistoryBridge
-        hb = HistoryBridge(db=real_db)
+        hb = _wf_history_bridge(db=real_db)
         r = hb.refresh()
         assert isinstance(r, dict)
 
@@ -442,8 +453,7 @@ class TestWorkflow3History:
         conn.execute("INSERT INTO play_history (track_id, played_at) VALUES (?, ?)",
                      ("uid_remove", time.time()))
         conn.commit()
-        from ui_qml_bridge.history_bridge import HistoryBridge
-        hb = HistoryBridge(db=real_db)
+        hb = _wf_history_bridge(db=real_db)
         hb.removeHistoryItem("uid_remove")
         hb.refresh()
 
@@ -452,22 +462,19 @@ class TestWorkflow3History:
         conn.execute("INSERT INTO play_history (track_id, played_at) VALUES (?, ?)",
                      ("uid_clear", time.time()))
         conn.commit()
-        from ui_qml_bridge.history_bridge import HistoryBridge
-        hb = HistoryBridge(db=real_db)
+        hb = _wf_history_bridge(db=real_db)
         hb.clearHistory()
         hb.refresh()
         count = real_db.conn.execute("SELECT COUNT(*) FROM play_history").fetchone()[0]
         assert count == 0
 
     def test_wf3_history_filter(self, sql_tmpdb, real_db):
-        from ui_qml_bridge.history_bridge import HistoryBridge
-        hb = HistoryBridge(db=real_db)
+        hb = _wf_history_bridge(db=real_db)
         hb.refresh()
         assert isinstance(hb.historyCount, int)
 
     def test_wf3_history_toggle_enabled(self, sql_tmpdb, real_db):
-        from ui_qml_bridge.history_bridge import HistoryBridge
-        hb = HistoryBridge(db=real_db)
+        hb = _wf_history_bridge(db=real_db)
         r = hb.setHistoryEnabled(False)
         assert isinstance(r, dict)
 
@@ -594,8 +601,7 @@ class TestWorkflow7Playlists:
     """WF7: Playlist operations — create, add, duplicate, export."""
 
     def test_wf7_create_playlist(self, sql_tmpdb, real_db):
-        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
-        pb = PlaylistsBridge(db=real_db)
+        pb = _wf_playlists_bridge(db=real_db)
         r = pb.createPlaylist("Test Playlist")
         assert r.get("ok"), f"create failed: {r}"
         assert r.get("id") is not None
@@ -605,8 +611,7 @@ class TestWorkflow7Playlists:
         conn.execute("INSERT INTO playlists (name) VALUES (?)", ("WF7 PL",))
         conn.commit()
         pl_id = conn.execute("SELECT id FROM playlists WHERE name='WF7 PL'").fetchone()[0]
-        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
-        pb = PlaylistsBridge(db=real_db)
+        pb = _wf_playlists_bridge(db=real_db)
         track_fp = conn.execute(
             "SELECT filepath FROM media_items WHERE deleted_at IS NULL LIMIT 1"
         ).fetchone()[0]
@@ -614,8 +619,7 @@ class TestWorkflow7Playlists:
         assert isinstance(r, dict)
 
     def test_wf7_playlist_refresh(self, sql_tmpdb, real_db):
-        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
-        pb = PlaylistsBridge(db=real_db)
+        pb = _wf_playlists_bridge(db=real_db)
         pb.refresh()
         assert isinstance(pb.playlists, list)
 
@@ -623,8 +627,7 @@ class TestWorkflow7Playlists:
         conn = real_db.conn
         conn.execute("INSERT INTO playlists (name) VALUES (?)", ("Renamable PL",))
         conn.commit()
-        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
-        pb = PlaylistsBridge(db=real_db)
+        pb = _wf_playlists_bridge(db=real_db)
         pb.refresh()
         names = [p.get("title", "") for p in pb.playlists]
         assert "Renamable PL" in names
@@ -694,8 +697,7 @@ class TestWorkflow10CrossWorkflow:
         conn.execute("INSERT INTO play_history (track_id, played_at) VALUES (?, ?)",
                      ("uid_0", time.time()))
         conn.commit()
-        from ui_qml_bridge.history_bridge import HistoryBridge
-        hb = HistoryBridge(db=real_db)
+        hb = _wf_history_bridge(db=real_db)
         r = hb.refresh()
         assert r.get("ok")
 

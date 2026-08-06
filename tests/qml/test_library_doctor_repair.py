@@ -1,4 +1,3 @@
-from __future__ import annotations
 """Wave XLIII — 10.3: Library Doctor con reparación.
 Tests:
   - Detección: missing files, duplicate UID, duplicate path, metadata missing,
@@ -7,6 +6,10 @@ Tests:
   - Async scan with progress
   - No silent 500-track limit
 """
+
+from __future__ import annotations
+from core.library_doctor.repositories.scan_repository import LibraryDoctorScanRepository
+from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
 
 import time
 import sqlite3
@@ -64,6 +67,15 @@ def _make_db() -> sqlite3.Connection:
     return conn
 
 
+
+def _doctor_bridge(db=None, worker_manager=None):
+    """Build LibraryDoctorBridge with the injected scan repository (ADR-003)."""
+
+    repo = LibraryDoctorScanRepository(db) if db is not None else None
+    return LibraryDoctorBridge(db=db, worker_manager=worker_manager,
+                               scan_repository=repo)
+
+
 class TestLibraryDoctorRepair:
     @pytest.fixture
     def app(self):
@@ -81,74 +93,67 @@ class TestLibraryDoctorRepair:
         return _make_db()
 
     def test_detects_missing_file(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
         db.execute("INSERT INTO media_items (filepath, title, artist) VALUES ('/nonexistent/file.flac', 'Test', 'Artist')")
         db.commit()
         class FakeDB:
             conn = db
-        br = LibraryDoctorBridge(db=FakeDB())
+        br = _doctor_bridge(db=FakeDB())
         br.scan()
         assert any(i["type"] == "missing_file" for i in br._issues)
 
     def test_detects_missing_metadata(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
         db.execute("INSERT INTO media_items (filepath, title, artist) VALUES ('/music/test.flac', '', '')")
         db.commit()
         class FakeDB:
             conn = db
-        br = LibraryDoctorBridge(db=FakeDB())
+        br = _doctor_bridge(db=FakeDB())
         br.scan()
         assert any(i["type"] == "missing_metadata" for i in br._issues)
 
     def test_detects_orphan_playlist_item(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
         db.execute("INSERT INTO playlist_items (playlist_id, filepath) VALUES (1, '/orphan/file.flac')")
         db.commit()
         class FakeDB:
             conn = db
-        br = LibraryDoctorBridge(db=FakeDB())
+        br = _doctor_bridge(db=FakeDB())
         br.scan()
         assert any(i["type"] == "orphan_playlist_item" for i in br._issues)
 
     def test_detects_orphan_history(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
         db.execute("INSERT INTO play_history (filepath) VALUES ('/orphan/old.flac')")
         db.commit()
         class FakeDB:
             conn = db
-        br = LibraryDoctorBridge(db=FakeDB())
+        br = _doctor_bridge(db=FakeDB())
         br.scan()
         assert any(i["type"] == "orphan_history" for i in br._issues)
 
     def test_detects_duplicate_path(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
         db.execute("INSERT INTO media_items (filepath, title, artist) VALUES ('/dup/file.flac', 'A', 'B')")
         db.execute("INSERT INTO media_items (filepath, title, artist) VALUES ('/dup/file.flac', 'C', 'D')")
         db.commit()
         class FakeDB:
             conn = db
-        br = LibraryDoctorBridge(db=FakeDB())
+        br = _doctor_bridge(db=FakeDB())
         br.scan()
         assert any(i["type"] == "duplicate_path" for i in br._issues)
 
     def test_detects_duplicate_uid(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
         db.execute("INSERT INTO media_items (filepath, title, artist, track_uid) VALUES ('/a.flac', 'A', 'B', 'dup_uid')")
         db.execute("INSERT INTO media_items (filepath, title, artist, track_uid) VALUES ('/b.flac', 'C', 'D', 'dup_uid')")
         db.commit()
         class FakeDB:
             conn = db
-        br = LibraryDoctorBridge(db=FakeDB())
+        br = _doctor_bridge(db=FakeDB())
         br.scan()
         assert any(i["type"] == "duplicate_uid" for i in br._issues)
 
     def test_selection_and_deselection(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
         db.execute("INSERT INTO media_items (filepath, title, artist) VALUES ('/test.flac', '', '')")
         db.commit()
         class FakeDB:
             conn = db
-        br = LibraryDoctorBridge(db=FakeDB())
+        br = _doctor_bridge(db=FakeDB())
         br.scan()
         assert any(i["type"] == "missing_metadata" for i in br._issues)
         for i in br._issues:
@@ -160,35 +165,32 @@ class TestLibraryDoctorRepair:
                 break
 
     def test_select_all(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
         db.execute("INSERT INTO media_items (filepath, title, artist) VALUES ('/test.flac', '', '')")
         db.commit()
         class FakeDB:
             conn = db
-        br = LibraryDoctorBridge(db=FakeDB())
+        br = _doctor_bridge(db=FakeDB())
         br.scan()
         br.selectAll()
         assert len(br._selected_ids) > 0
 
     def test_select_none(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
         db.execute("INSERT INTO media_items (filepath, title, artist) VALUES ('/test.flac', '', '')")
         db.commit()
         class FakeDB:
             conn = db
-        br = LibraryDoctorBridge(db=FakeDB())
+        br = _doctor_bridge(db=FakeDB())
         br.scan()
         br.selectAll()
         br.selectNone()
         assert len(br._selected_ids) == 0
 
     def test_repair_missing_metadata_fills_title(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
         db.execute("INSERT INTO media_items (filepath, title, artist) VALUES ('/music/test_track.flac', '', 'Artist')")
         db.commit()
         class FakeDB:
             conn = db
-        br = LibraryDoctorBridge(db=FakeDB())
+        br = _doctor_bridge(db=FakeDB())
         br.scan()
         br.selectAll()
         br.repairSelected()
@@ -196,12 +198,11 @@ class TestLibraryDoctorRepair:
         assert row and row[0] == "test_track"
 
     def test_repair_orphan_playlist_deletes(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
         db.execute("INSERT INTO playlist_items (playlist_id, filepath) VALUES (1, '/orphan.flac')")
         db.commit()
         class FakeDB:
             conn = db
-        br = LibraryDoctorBridge(db=FakeDB())
+        br = _doctor_bridge(db=FakeDB())
         br.scan()
         assert any(i["type"] == "orphan_playlist_item" for i in br._issues)
         br.selectAll()
@@ -211,12 +212,11 @@ class TestLibraryDoctorRepair:
         assert remaining[0] == 0
 
     def test_repair_orphan_history_deletes(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
         db.execute("INSERT INTO play_history (filepath) VALUES ('/orphan.flac')")
         db.commit()
         class FakeDB:
             conn = db
-        br = LibraryDoctorBridge(db=FakeDB())
+        br = _doctor_bridge(db=FakeDB())
         br.scan()
         assert any(i["type"] == "orphan_history" for i in br._issues)
         br.selectAll()
@@ -225,31 +225,27 @@ class TestLibraryDoctorRepair:
         assert remaining[0] == 0
 
     def test_cancel_scan(self, worker_manager):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-        br = LibraryDoctorBridge(worker_manager=worker_manager)
+        br = _doctor_bridge(worker_manager=worker_manager)
         br.scan()
         br.cancelScan()
         assert br._status in ("idle", "cancelled")
 
     def test_async_scan_api_returns_correctly(self):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-        br = LibraryDoctorBridge(db=None, worker_manager=None)
+        br = _doctor_bridge(db=None, worker_manager=None)
         br.scan()
         assert br._status in ("no_data", "done", "error")
 
     def test_scan_with_issues_returns_them(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
         db.execute("INSERT INTO media_items (filepath, title, artist) VALUES ('/real/file.flac', 'Real', 'Artist')")
         db.commit()
         class FakeDB:
             conn = db
-        br = LibraryDoctorBridge(db=FakeDB())
+        br = _doctor_bridge(db=FakeDB())
         br.scan()
         assert br._total_checked > 0
         assert br._status == "done"
 
     def test_no_silent_500_track_limit(self, db):
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
         for i in range(1000):
             db.execute(
                 "INSERT OR IGNORE INTO media_items (filepath, title, artist) VALUES (?,?,?)",
@@ -258,6 +254,6 @@ class TestLibraryDoctorRepair:
         db.commit()
         class FakeDB:
             conn = db
-        br = LibraryDoctorBridge(db=FakeDB())
+        br = _doctor_bridge(db=FakeDB())
         br.scan()
         assert br._total_checked >= 1000, f"Debe escanear 1000+ pistas, no solo {br._total_checked}"

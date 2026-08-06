@@ -1,12 +1,23 @@
-from __future__ import annotations
 """Library Doctor workflow: scan  issue list  select  dry run  repair  report."""
+
+from __future__ import annotations
+from core.library_doctor.repositories.scan_repository import LibraryDoctorScanRepository
+from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
 
 import sqlite3
 from unittest.mock import MagicMock
 
 import pytest
 
-from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
+
+
+def _doctor_bridge(db=None, worker_manager=None):
+    """Build LibraryDoctorBridge with the injected scan repository (ADR-003)."""
+
+    repo = LibraryDoctorScanRepository(db) if db is not None else None
+    return LibraryDoctorBridge(db=db, worker_manager=worker_manager,
+                               scan_repository=repo)
+
 
 pytestmark = [pytest.mark.qml_module("library_doctor"), pytest.mark.qml_workflow("library_doctor")]
 
@@ -62,7 +73,7 @@ def mock_db(db):
 
 class TestLibraryDoctorWorkflow:
     def test_full_workflow_scan_to_report(self, mock_db):
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
 
         assert bridge.status == "idle"
         assert bridge.issues == []
@@ -107,7 +118,7 @@ class TestLibraryDoctorWorkflow:
         )
         mock_db.conn.commit()
 
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge.scan()
         types_found = set(i["type"] for i in bridge._issues)
         assert "missing_file" in types_found
@@ -117,7 +128,7 @@ class TestLibraryDoctorWorkflow:
         assert "orphan_history" in types_found
 
     def test_select_and_deselect_individual(self, mock_db):
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge._issues = [
             {"id": 1, "type": "missing_file", "selected": False},
             {"id": 2, "type": "missing_metadata", "selected": False},
@@ -140,12 +151,12 @@ class TestLibraryDoctorWorkflow:
                 "VALUES (?, 'S', 'A')", (f"/t{i}.flac",)
             )
         mock_db.conn.commit()
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge.scan()
         assert bridge.totalChecked >= 100
 
     def test_report_counts_match(self, mock_db):
-        bridge = LibraryDoctorBridge(db=mock_db)
+        bridge = _doctor_bridge(db=mock_db)
         bridge.scan()
         total = bridge.totalChecked
         issues = bridge.issueCount

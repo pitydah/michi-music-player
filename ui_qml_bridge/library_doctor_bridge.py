@@ -5,8 +5,6 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
 
-from core.library_doctor.repositories.scan_repository import LibraryDoctorScanRepository
-
 logger = logging.getLogger("michi.library_doctor")
 
 ISSUE_TYPES = {
@@ -28,20 +26,27 @@ class LibraryDoctorBridge(QObject):
     scanProgress = Signal(int, int)
     repairProgress = Signal(int, int)
 
-    def __init__(self, db=None, worker_manager=None, parent=None):
+    def __init__(self, db=None, worker_manager=None, scan_repository=None, parent=None):
         if db is None:
             logger.warning("LibraryDoctorBridge: db is None — running in degraded mode")
         if worker_manager is None:
             logger.warning("LibraryDoctorBridge: worker_manager is None — running in degraded mode")
+        if scan_repository is None:
+            logger.warning("LibraryDoctorBridge: scan_repository is None — running in degraded mode")
         super().__init__(parent)
         self._db = db
         self._wm = worker_manager
+        self._repo = scan_repository
         self._status = "idle"
         self._issues: list[dict] = []
         self._selected_ids: set[int] = set()
         self._total_checked = 0
         self._issue_count = 0
         self._scan_gen = 0
+
+    def _scan_repository(self):
+        """Return the injected repository or None (degraded, ADR-003)."""
+        return self._repo
 
     @Property(str, notify=dataChanged)
     def status(self):
@@ -132,7 +137,10 @@ class LibraryDoctorBridge(QObject):
         self.dataChanged.emit()
 
     def _run_scan_impl(self, gen: int, ctx) -> dict:
-        repo = LibraryDoctorScanRepository(self._db)
+        repo = self._scan_repository()
+        if repo is None:
+            return {"issues": [], "total_checked": 0,
+                    "error": "INFRASTRUCTURE_UNAVAILABLE"}
         issues: list[dict] = []
         total = 0
         conn = getattr(self._db, 'conn', None) if self._db else None
@@ -312,10 +320,12 @@ class LibraryDoctorBridge(QObject):
         self.dataChanged.emit()
 
     def _repair_impl(self, selected: list[dict], ctx) -> dict:
-        repo = LibraryDoctorScanRepository(self._db)
+        repo = self._scan_repository()
         conn = getattr(self._db, 'conn', None) if self._db else None
         if conn is None:
             return {"ok": False}
+        if repo is None:
+            return {"ok": False, "error": "INFRASTRUCTURE_UNAVAILABLE"}
 
         try:
             repo.begin()

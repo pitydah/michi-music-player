@@ -1,9 +1,12 @@
-from __future__ import annotations
 """Real QML interaction tests — 13 workflows, 50+ tests.
 QQmlApplicationEngine, ServiceContainer with real services, real SQLite,
 QTest.mouseClick, QTest.keyClick, objectName, signals, backend verification.
 Real interaction test — loads real bridges, no mocks.
 """
+
+from __future__ import annotations
+from core.library_doctor.repositories.scan_repository import LibraryDoctorScanRepository
+from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
 
 import os
 import sqlite3
@@ -19,6 +22,23 @@ from unittest.mock import MagicMock
 
 REPO = Path(__file__).resolve().parent.parent.parent.parent
 
+
+
+def _wf_history_bridge(db, **kw):
+    """HistoryBridge with injected service (ADR-003 — bridges never construct)."""
+    from ui_qml_bridge.history_bridge import HistoryBridge
+    from core.history_query_service import HistoryQueryService
+    return HistoryBridge(db=db, **{'history_query_service': HistoryQueryService(db)}, **kw)
+
+def _wf_playlists_bridge(db, **kw):
+    """PlaylistsBridge with injected service (ADR-003 — bridges never construct)."""
+    from ui_qml_bridge.playlists_bridge import PlaylistsBridge
+    from core.playlist_service import PlaylistService
+    return PlaylistsBridge(db=db, **{'playlist_service': PlaylistService(db)}, **kw)
+
+def _wf_doctor_bridge(db, **kw):
+    """LibraryDoctorBridge with injected service (ADR-003 — bridges never construct)."""
+    return LibraryDoctorBridge(db=db, **{'scan_repository': LibraryDoctorScanRepository(db)}, **kw)
 
 @pytest.fixture
 def mock_qs():
@@ -428,8 +448,7 @@ class TestWF2AlbumPlaylist:
         ).fetchone()[0]
         conn.execute("INSERT INTO playlist_items (playlist_id, filepath) VALUES (?,?)", (pl_id, track_fp))
         conn.commit()
-        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
-        pb = PlaylistsBridge(db=db_wrapper)
+        pb = _wf_playlists_bridge(db=db_wrapper)
         pb.refresh()
         assert isinstance(pb.playlists, list)
 
@@ -437,8 +456,7 @@ class TestWF2AlbumPlaylist:
         conn, db_wrapper, player, files = real_db_and_player
         conn.execute("INSERT INTO playlists (name) VALUES (?)", ("WF2 Open",))
         conn.commit()
-        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
-        pb = PlaylistsBridge(db=db_wrapper)
+        pb = _wf_playlists_bridge(db=db_wrapper)
         pb.refresh()
         names = [p.get("title", "") for p in pb.playlists]
         assert "WF2 Open" in names
@@ -491,8 +509,7 @@ class TestWF3ArtistMix:
     def test_wf3_mix_save_playlist(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
         from ui_qml_bridge.mix_bridge import MixBridge
-        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
-        pb = PlaylistsBridge(db=db_wrapper)
+        pb = _wf_playlists_bridge(db=db_wrapper)
         mb = MixBridge(db=db_wrapper, playlist_bridge=pb)
         mb.loadMix("favorites")
         r = mb.saveMixAsPlaylist("Mix Saved")
@@ -552,8 +569,7 @@ class TestWF5HistoryExportRemove:
         conn.execute("INSERT INTO play_history (track_id, played_at) VALUES (?, ?)",
                      ("uid_history_loaded", time.time()))
         conn.commit()
-        from ui_qml_bridge.history_bridge import HistoryBridge
-        hb = HistoryBridge(db=db_wrapper)
+        hb = _wf_history_bridge(db=db_wrapper)
         r = hb.refresh()
         assert r.get("ok")
 
@@ -562,8 +578,7 @@ class TestWF5HistoryExportRemove:
         conn.execute("INSERT INTO play_history (track_id, played_at) VALUES (?, ?)",
                      ("uid_test", time.time()))
         conn.commit()
-        from ui_qml_bridge.history_bridge import HistoryBridge
-        hb = HistoryBridge(db=db_wrapper)
+        hb = _wf_history_bridge(db=db_wrapper)
         r = hb.refresh()
         assert isinstance(r, dict)
 
@@ -572,8 +587,7 @@ class TestWF5HistoryExportRemove:
         conn.execute("INSERT INTO play_history (track_id, played_at) VALUES (?, ?)",
                      ("uid_remove", time.time()))
         conn.commit()
-        from ui_qml_bridge.history_bridge import HistoryBridge
-        hb = HistoryBridge(db=db_wrapper)
+        hb = _wf_history_bridge(db=db_wrapper)
         hb.removeHistoryItem("uid_remove")
         hb.refresh()
 
@@ -582,8 +596,7 @@ class TestWF5HistoryExportRemove:
         conn.execute("INSERT INTO play_history (track_id, played_at) VALUES (?, ?)",
                      ("uid_clear", time.time()))
         conn.commit()
-        from ui_qml_bridge.history_bridge import HistoryBridge
-        hb = HistoryBridge(db=db_wrapper)
+        hb = _wf_history_bridge(db=db_wrapper)
         hb.clearHistory()
         hb.refresh()
         count = conn.execute("SELECT COUNT(*) FROM play_history").fetchone()[0]
@@ -591,8 +604,7 @@ class TestWF5HistoryExportRemove:
 
     def test_wf5_history_filter(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
-        from ui_qml_bridge.history_bridge import HistoryBridge
-        hb = HistoryBridge(db=db_wrapper)
+        hb = _wf_history_bridge(db=db_wrapper)
         hb.refresh()
         assert isinstance(hb.historyCount, int)
 
@@ -601,8 +613,7 @@ class TestWF5HistoryExportRemove:
         conn.execute("INSERT INTO play_history (track_id, played_at) VALUES (?, ?)",
                      ("uid_0", time.time()))
         conn.commit()
-        from ui_qml_bridge.history_bridge import HistoryBridge
-        hb = HistoryBridge(db=db_wrapper)
+        hb = _wf_history_bridge(db=db_wrapper)
         r = hb.refresh()
         assert r.get("ok")
 
@@ -696,14 +707,12 @@ class TestWF9DoctorRepair:
 
     def test_wf9_library_doctor_loaded(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-        ld = LibraryDoctorBridge(db=db_wrapper)
+        ld = _wf_doctor_bridge(db=db_wrapper)
         assert ld is not None
 
     def test_wf9_library_doctor_scan(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
-        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-        ld = LibraryDoctorBridge(db=db_wrapper)
+        ld = _wf_doctor_bridge(db=db_wrapper)
         assert ld.status in ("idle", "done")
         ld.scan()
         assert ld.status in ("scanning", "done", "idle")
