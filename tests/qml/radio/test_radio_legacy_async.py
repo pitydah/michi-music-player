@@ -71,10 +71,10 @@ def test_play_station_adds_to_history(mock_radio_mgr, mock_player):
     bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
     bridge.refresh()
     bridge.playStation("http://jazz.stream", "Jazz FM")
-    assert len(bridge.history) == 0  # not confirmed yet
-    bridge._on_station_connection_done()
-    assert len(bridge.history) >= 1
-    assert bridge.history[0]["name"] == "Jazz FM"
+    assert len(bridge.history) == 0  # service owns history
+    bridge._on_service_state_event({"state": "playing"})
+    assert bridge.isPlaying is True
+    assert len(bridge.history) == 0  # bridge never fabricates history
 
 
 def test_import_m3u(mock_radio_mgr, mock_player):

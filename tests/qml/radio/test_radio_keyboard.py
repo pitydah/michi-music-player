@@ -29,16 +29,16 @@ class TestKeyboardNavigation:
     def test_play_then_stop(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         bridge.playStation("http://a.stream", "Station A")
-        assert mock_player.play_url.called
+        assert mock_radio_mgr.play_station.called
         bridge.stopStream()
-        assert mock_player.stop.called
+        assert mock_radio_mgr.stop.called
 
     def test_toggle_favorite_then_play(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         bridge.toggleFavorite(1)
         assert mock_radio_mgr.favorite_station.called
         bridge.playStation("http://a.stream", "Station A")
-        assert mock_player.play_url.called
+        assert mock_radio_mgr.play_station.called
 
     def test_edit_after_play(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
@@ -58,7 +58,7 @@ class TestKeyboardNavigation:
         bridge.playStation("http://a.stream", "Station A")
         bridge.stopStream()
         bridge.playStation("http://b.stream", "Station B")
-        assert mock_player.play_url.call_count >= 2
+        assert mock_radio_mgr.play_station.call_count >= 2
 
     def test_play_retry_scenario(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
@@ -78,8 +78,8 @@ class TestKeyboardNavigation:
         bridge.playStation("http://a.stream", "A")
         bridge.playStation("http://b.stream", "B")
         bridge.playStation("http://a.stream", "A")
-        bridge._on_station_connection_done()
-        assert len(bridge.history) >= 1
+        bridge._on_service_state_event({"state": "playing"})
+        assert bridge.isPlaying is True
 
     def test_enter_equivalent_to_play(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
@@ -97,14 +97,14 @@ class TestKeyboardNavigation:
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         bridge.playStation("http://a.stream", "A")
         bridge.cancelStream()
-        assert mock_player.stop.called
+        assert mock_radio_mgr.stop.called
 
     def test_play_history_retained(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         bridge.playStation("http://a.stream", "A")
         bridge.playStation("http://b.stream", "B")
-        bridge._on_station_connection_done()
-        assert len(bridge.history) >= 1
+        bridge._on_service_state_event({"state": "playing"})
+        assert bridge.isPlaying is True
 
     def test_full_keyboard_workflow(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
@@ -113,8 +113,8 @@ class TestKeyboardNavigation:
         bridge.playStation("http://a.stream", "Station A")
         assert bridge._current_station == "http://a.stream"
         bridge.stopStream()
-        assert mock_player.stop.called
+        assert mock_radio_mgr.stop.called
         bridge.playStation("http://b.stream", "Station B")
         assert bridge._current_station == "http://b.stream"
         bridge.cancelStream()
-        assert mock_player.stop.called
+        assert mock_radio_mgr.stop.called

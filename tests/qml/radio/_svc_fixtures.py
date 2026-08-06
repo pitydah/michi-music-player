@@ -64,4 +64,7 @@ def make_radio_service_mock(stations=None, history=None) -> MagicMock:
     svc.search_stations.side_effect = _search_stations
     svc.mark_played.side_effect = _mark_played
     svc.clear_history.side_effect = lambda: history.clear() or {"ok": True}
+    svc.play_station.return_value = {"ok": True, "accepted": True, "status": "buffering"}
+    svc.stop.return_value = {"ok": True}
+    svc.get_state.return_value = "stopped"
     return svc

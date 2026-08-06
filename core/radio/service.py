@@ -29,7 +29,11 @@ class RadioService:
         scheduler: RadioScheduler | None = None,
         clock: Callable[[], str] | None = None,
         playback_backend: Callable[[str], bool] | None = None,
+        playback_adapter=None,
         reconnect_config: ReconnectPolicyConfig | None = None,
+        confirm_interval_ms: int = 300,
+        connect_timeout_s: int = 10,
+        monotonic_clock: Callable[[], float] | None = None,
     ):
         self._station_repo = station_repo
         self._history_repo = history_repo
@@ -38,7 +42,11 @@ class RadioService:
         self._scheduler = scheduler or RadioScheduler()
         self._clock = clock or (lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
         self._playback_backend = playback_backend
+        self._playback_adapter = playback_adapter
         self._reconnect_config = reconnect_config or ReconnectPolicyConfig()
+        self._confirm_interval_ms = confirm_interval_ms
+        self._connect_timeout_s = connect_timeout_s
+        self._monotonic_clock = monotonic_clock
         self._import_service = RadioImportService(self._station_repo)
         self._export_service = RadioExportService(self._station_repo)
 
@@ -54,6 +62,27 @@ class RadioService:
         if self._session:
             return self._session.state
         return None
+
+    def get_state(self) -> SessionState:
+        """Effective playback state: the adapter (PlayerService) is the truth.
+
+        When no adapter is wired, fall back to the session state so legacy
+        (backend-callable) playback remains observable.
+        """
+        if self._playback_adapter is not None:
+            return self._playback_adapter.get_state()
+        if self._session:
+            return self._session.state.state
+        return SessionState.IDLE
+
+    def poll_playback(self):
+        """One confirmation step against the playback adapter.
+
+        Tests drive this deterministically; the session self-schedules the
+        same step in production via its scheduler.
+        """
+        if self._session:
+            self._session.poll_playback()
 
     def list_stations(self, page: int = 1, page_size: int = 50,
                       sort_by: str = "name", sort_dir: str = "asc") -> PaginatedResult:
@@ -138,9 +167,11 @@ class RadioService:
     def mark_played(self, station_id: StationId) -> RadioOperationResult:
         """Record a play: bump the station counters and append to history.
 
-        Kept as a public operation so the bridge can report a play that was
-        started through the external playback backend without owning a
-        StreamSession.
+        Kept as a public operation so the legacy bridge API can report a play
+        that was confirmed through the playback path without owning a
+        StreamSession. The playback flow itself records plays on PLAYING via
+        :meth:`_on_session_state_change` — this method is NOT called at
+        connection start.
         """
         station = self._station_repo.get(station_id)
         if station is None:
@@ -149,7 +180,7 @@ class RadioService:
                 message=f"Station {station_id} not found",
             )
         self._station_repo.mark_played(station_id)
-        self._history_repo.record_play(station_id)
+        self._history_repo.record_event(station_id, "play")
         return RadioOperationResult(ok=True)
 
     def bulk_import(self, stations: list[StationCreateRequest],
@@ -203,12 +234,39 @@ class RadioService:
             "probe_result": result,
         })
 
+    def play_station(self, url: str, name: str = "") -> RadioOperationResult:
+        """Start playback by URL (or id) — the entry point used by the bridge.
+
+        Resolves the station and delegates to :meth:`start_station`. The
+        result is *accepted* (status CONNECTING/BUFFERING), never a completed
+        operation: effective success is only emitted on PLAYING.
+        """
+        station = self._station_repo.find_by_url(url)
+        if station is None:
+            try:
+                station = self._station_repo.get(int(url))
+            except (TypeError, ValueError):
+                station = None
+        if station is None:
+            return RadioOperationResult(
+                ok=False, accepted=False, error=RadioError.NOT_FOUND,
+                status="failed", message=f"Station {url} not found",
+            )
+        return self.start_station(station.id)
+
     def start_station(self, station_id: StationId) -> RadioOperationResult:
         station = self._station_repo.get(station_id)
         if station is None:
             return RadioOperationResult(
-                ok=False, error=RadioError.NOT_FOUND,
-                message=f"Station {station_id} not found",
+                ok=False, accepted=False, error=RadioError.NOT_FOUND,
+                status="failed", message=f"Station {station_id} not found",
+            )
+
+        if self._playback_adapter is None and self._playback_backend is None:
+            return RadioOperationResult(
+                ok=False, accepted=False, error=RadioError.BACKEND_UNAVAILABLE,
+                status="failed",
+                message="No playback adapter is available — cannot start playback",
             )
 
         self.stop()
@@ -218,29 +276,44 @@ class RadioService:
         self._session = self._create_session(station.id, station.stream_url, gen)
 
         self._session.start()
-        self.mark_played(station_id)
+        state = self._session.state.state
+        if state == SessionState.FAILED:
+            # Synchronous failure (e.g. load_stream rejected): this is an
+            # explicit failure, never an accepted operation.
+            session_error = self._session.state.error or RadioError.CONNECTION_FAILED
+            return RadioOperationResult(
+                ok=False, accepted=False, station=station,
+                error=session_error, status="failed",
+                message=self._session.state.error_message or "Playback failed to start",
+            )
         self._event_bus.emit("session_state_changed", {
             "station_id": station_id,
-            "state": SessionState.CONNECTING.value,
+            "state": state.value,
             "generation": gen,
         })
-        return RadioOperationResult(ok=True, station=station)
+        return RadioOperationResult(
+            ok=True, accepted=True, station=station,
+            status=state.value,
+            details={"state": state.value, "generation": gen},
+        )
 
-    def stop(self):
+    def stop(self) -> RadioOperationResult:
         if self._session:
             old_session = self._session
             self._session = None
             old_session.stop()
+        return RadioOperationResult(ok=True)
 
     def retry(self):
         if self._session:
             self._session.retry()
 
-    def cancel(self):
+    def cancel(self) -> RadioOperationResult:
         if self._session:
             old_session = self._session
             self._session = None
             old_session.cancel()
+        return RadioOperationResult(ok=True)
 
     def import_playlist(self, content: str, fmt: str = "",
                         mode: AtomicMode = AtomicMode.BEST_EFFORT) -> ImportResult:
@@ -272,19 +345,18 @@ class RadioService:
         return self._station_repo.count()
 
     def _create_session(self, station_id: StationId, stream_url: str, generation: int) -> StreamSession:
-        def playback_backend_wrapper(url: str) -> bool:
-            if self._playback_backend:
-                return self._playback_backend(url)
-            return True
-
         return StreamSession(
             station_id=station_id,
             stream_url=stream_url,
             event_bus=self._event_bus,
             generation=generation,
             reconnect_config=self._reconnect_config,
+            confirm_interval_ms=self._confirm_interval_ms,
+            connect_timeout_ms=self._connect_timeout_s * 1000,
+            monotonic=self._monotonic_clock,
             on_state_change=self._on_session_state_change,
-            playback_backend=playback_backend_wrapper,
+            playback_backend=self._playback_backend,
+            playback_adapter=self._playback_adapter,
             scheduler=self._scheduler,
         )
 
@@ -294,20 +366,36 @@ class RadioService:
             "state": state.state.value,
             "metadata": state.metadata,
             "error": state.error.value,
+            "error_message": state.error_message,
             "generation": state.generation,
+            "attempt": state.reconnect_attempt,
         })
-        if state.state == SessionState.PLAYING and state.metadata.stream_title:
-            self._history_repo.record_play(
-                state.station_id, title=state.metadata.stream_title,
+        if state.state == SessionState.REQUESTED:
+            self._history_repo.record_event(state.station_id, "attempt")
+        if state.state == SessionState.PLAYING:
+            self._station_repo.mark_played(state.station_id)
+            self._history_repo.record_event(
+                state.station_id, "play",
+                title=state.metadata.stream_title,
             )
+        if state.state == SessionState.RECONNECTING:
+            self._history_repo.record_event(
+                state.station_id, "reconnect",
+                error_code=state.error.value,
+            )
+            self._event_bus.emit("reconnect_scheduled", {
+                "station_id": state.station_id,
+                "attempt": state.reconnect_attempt,
+            })
+        if state.state == SessionState.STOPPED:
+            self._history_repo.record_event(state.station_id, "stopped")
         if state.state == SessionState.FAILED:
+            self._history_repo.record_event(
+                state.station_id, "failure",
+                error_code=state.error.value,
+            )
             self._event_bus.emit("playback_failed", {
                 "station_id": state.station_id,
                 "error": state.error.value,
                 "message": state.error_message,
-            })
-        if state.state == SessionState.RECONNECTING:
-            self._event_bus.emit("reconnect_scheduled", {
-                "station_id": state.station_id,
-                "attempt": state.reconnect_attempt,
             })

@@ -216,9 +216,42 @@ def build(container: ServiceContainer) -> None:
                     "michi_link_diagnostics_service"):
             container.register(key, None)
 
-    from core.radio.radio_service import RadioService
+    try:
+        # ── Radio (ADR-002 single domain authority) ──────────────────────
+        # Composition registers the canonical stack directly — no facade
+        # constructs the canonical service internally:
+        #   SqliteStationRepository + SqliteRadioHistoryRepository (PASSIVE)
+        #   + RadioPlaybackAdapter (over PlayerService) + CanonicalRadioService
+        from core.paths import radio_database_path
+        from core.radio.playback_adapter import RadioPlaybackAdapter
+        from core.radio.service import RadioService as CanonicalRadioService
+        from infrastructure.radio.history_repository import SqliteRadioHistoryRepository
+        from infrastructure.radio.station_repository import SqliteStationRepository
 
-    container.register("radio_service", RadioService(event_bus=event_bus))
+        radio_db = radio_database_path()
+        station_repo = SqliteStationRepository(radio_db)
+        station_repo.initialize()
+        history_repo = SqliteRadioHistoryRepository(radio_db)
+        history_repo.initialize()
+        playback_adapter = RadioPlaybackAdapter(
+            player_service=container.get("playback_service"),
+        )
+        radio_service = CanonicalRadioService(
+            station_repo=station_repo,
+            history_repo=history_repo,
+            playback_adapter=playback_adapter,
+            event_bus=event_bus,
+        )
+        container.register("radio_station_repository", station_repo)
+        container.register("radio_history_repository", history_repo)
+        container.register("radio_playback_adapter", playback_adapter)
+        container.register("radio_service", radio_service)
+    except Exception as exc:
+        logger.error("Failed to create radio_service: %s", exc)
+        container.register("radio_station_repository", None)
+        container.register("radio_history_repository", None)
+        container.register("radio_playback_adapter", None)
+        container.register("radio_service", None)
 
     try:
         from core.lyrics.service import LyricsService

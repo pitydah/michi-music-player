@@ -68,6 +68,26 @@ class SqliteRadioHistoryRepository:
         finally:
             conn.close()
 
+    def record_event(self, station_id: StationId, kind: str, title: str = "",
+                     error_code: str = "", duration: int = 0):
+        """Record a typed history event.
+
+        ``kind`` is the event kind stored in the ``result`` column — one of
+        ``attempt`` / ``play`` / ``failure`` / ``reconnect`` / ``stopped`` —
+        so attempt vs play vs failure are distinguishable rows.
+        """
+        now = self._clock()
+        conn = self._conn()
+        try:
+            conn.execute(
+                "INSERT INTO radio_history (station_id, started_at, result, error_code, metadata_title, duration) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (station_id, now, kind, error_code, title, duration),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
     def update_end(self, history_id: int, ended_at: str, duration: int):
         conn = self._conn()
         try:

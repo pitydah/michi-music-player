@@ -28,9 +28,9 @@ def mock_player():
 
 class TestConnectionFailure:
     def test_play_station_player_fails(self, mock_radio_mgr):
-        player = MagicMock()
-        player.play_url.side_effect = Exception("Connection refused")
-        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=player)
+        mock_radio_mgr.play_station.return_value = {
+            "ok": False, "error": "Connection refused"}
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=MagicMock())
         result = bridge.playStation("http://fail.stream")
         assert not result["ok"]
         assert "error" in result

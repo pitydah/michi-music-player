@@ -4,21 +4,26 @@ QML emits intention; the bridge validates and delegates. The bridge keeps no
 parallel state: stations/favorites/history are read from the injected
 ``RadioService`` (``get_stations``/``get_favorites``/``get_history``), CRUD
 delegates (``add_station``/``edit_station``/``delete_station``/``favorite_station``),
-and ``isPlaying`` is only set when the player backend confirms playback
-(state readback / ``state_changed`` signal), never optimistically.
+and playback delegates to ``play_station``.
+
+Playback state is NEVER optimistic in the bridge: ``isPlaying``/``isBuffering``
+reflect the service's own state events (``session_state_changed`` on the
+service event bus) or the player backend readback signal. The service emits
+effective success only when the session reaches PLAYING.
 """
 from __future__ import annotations
 
 import logging
 from typing import Any
 
-from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
+from PySide6.QtCore import QObject, Signal, Property, Slot
 
 logger = logging.getLogger("michi.radio")
 
-_CONNECT_TIMEOUT_MS = 15000
-_CONFIRM_CHECK_MS = 1200
 _HISTORY_LIMIT = 50
+
+_STATE_PLAYING = "playing"
+_STATE_PENDING = ("requested", "connecting", "buffering", "reconnecting")
 
 
 class RadioBridge(QObject):
@@ -38,11 +43,19 @@ class RadioBridge(QObject):
         self._is_playing = False
         self._is_buffering = False
         self._metadata: dict = {}
-        self._connect_timer: QTimer | None = None
-        self._confirm_timer: QTimer | None = None
-        self._pending_connect = False
-        self._buffer_timeout_ms = _CONNECT_TIMEOUT_MS
+        self._buffer_timeout_ms = 15000
+        self._subscribe_service_events()
         self._connect_player_signals()
+
+    def _subscribe_service_events(self):
+        event_bus = getattr(self._radio_mgr, "event_bus", None)
+        subscribe = getattr(event_bus, "subscribe", None)
+        if subscribe is None:
+            return
+        try:
+            subscribe("session_state_changed", self._on_service_state_event)
+        except Exception:
+            logger.debug("Radio: could not subscribe to service events", exc_info=True)
 
     def _connect_player_signals(self):
         state_changed = getattr(self._player, "state_changed", None)
@@ -134,16 +147,6 @@ class RadioBridge(QObject):
             "image_path": station.get("image_path", "") or "",
             "bitrate": station.get("bitrate", 0) or 0,
         }
-
-    def _cancel_connect_timeout(self):
-        if self._connect_timer:
-            self._connect_timer.stop()
-            self._connect_timer = None
-
-    def _cancel_confirm_timer(self):
-        if self._confirm_timer:
-            self._confirm_timer.stop()
-            self._confirm_timer = None
 
     #  Refresh
 
@@ -353,83 +356,34 @@ class RadioBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    #  Connect / Buffer / Play
-
-    def _start_connect_timeout(self):
-        self._cancel_connect_timeout()
-        self._connect_timer = QTimer(self)
-        self._connect_timer.setSingleShot(True)
-        self._connect_timer.setInterval(self._buffer_timeout_ms)
-        self._connect_timer.timeout.connect(self._on_connect_timeout)
-        self._connect_timer.start()
-
-    def _start_confirm_check(self):
-        self._cancel_confirm_timer()
-        self._confirm_timer = QTimer(self)
-        self._confirm_timer.setSingleShot(True)
-        self._confirm_timer.setInterval(_CONFIRM_CHECK_MS)
-        self._confirm_timer.timeout.connect(self._on_confirm_check)
-        self._confirm_timer.start()
-
-    def _on_confirm_check(self):
-        self._confirm_timer = None
-        state = getattr(self._player, "state", "")
-        try:
-            if callable(state):
-                state = state()
-        except Exception:
-            state = ""
-        if state == "playing" and self._pending_connect:
-            self._on_station_connection_done()
-
-    def _on_player_state_changed(self, state):
-        if state == "playing" and self._pending_connect:
-            self._on_station_connection_done()
-
-    def _on_connect_timeout(self):
-        self._pending_connect = False
-        self._cancel_confirm_timer()
-        self._is_buffering = False
-        self._is_playing = False
-        self._metadata = {"error": "TIMEOUT"}
-        logger.debug("Radio connect timeout for %s", self._current_station)
-        self.dataChanged.emit()
+    #  Play / Stop — delegated to the service, reflected via service events
 
     @Slot(str, str, result=dict)
     def playStation(self, url: str, name: str = ""):
         if not url:
             return {"ok": False, "error": "EMPTY_URL"}
-        if not self._player:
-            return {"ok": False, "error": "NO_PLAYER_SERVICE"}
+        if not self._radio_mgr:
+            return {"ok": False, "error": "NO_RADIO_MANAGER"}
+        play_station = getattr(self._radio_mgr, "play_station", None)
+        if play_station is None:
+            return {"ok": False, "error": "NOT_IMPLEMENTED"}
         try:
-            self._cancel_connect_timeout()
-            self._cancel_confirm_timer()
-            self._is_buffering = True
-            self._is_playing = False
-            self._pending_connect = True
+            result = play_station(url, name)
+            if not result or not result.get("ok"):
+                self._sync_readback()
+                self.dataChanged.emit()
+                return {"ok": False, "error": (result or {}).get("error", "PLAY_FAILED")}
             self._current_station = url
             self._current_station_name = name
             self._reconnect_attempts = 0
-            self._metadata = {}
             self.dataChanged.emit()
-
-            if hasattr(self._player, 'play_url'):
-                self._player.play_url(url)
-            elif hasattr(self._player, 'play'):
-                self._player.play(url)
-            else:
-                self._pending_connect = False
-                self._is_buffering = False
-                return {"ok": False, "error": "NO_PLAY_METHOD"}
-
-            self._start_confirm_check()
-            self._start_connect_timeout()
-            self.dataChanged.emit()
-            return {"ok": True}
+            return {
+                "ok": True,
+                "accepted": bool(result.get("accepted", True)),
+                "status": result.get("status", ""),
+            }
         except Exception as e:
-            self._pending_connect = False
-            self._is_buffering = False
-            self._is_playing = False
+            self._sync_readback()
             self.dataChanged.emit()
             return {"ok": False, "error": str(e)}
 
@@ -445,19 +399,23 @@ class RadioBridge(QObject):
 
     @Slot(result=dict)
     def stopStream(self):
-        self._cancel_connect_timeout()
-        self._cancel_confirm_timer()
-        self._pending_connect = False
-        self._is_playing = False
-        self._is_buffering = False
-        if self._player and hasattr(self._player, 'stop'):
-            try:
-                self._player.stop()
-                self.dataChanged.emit()
-                return {"ok": True}
-            except Exception as e:
-                return {"ok": False, "error": str(e)}
-        return {"ok": False, "error": "NO_PLAYER"}
+        if not self._radio_mgr:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        stop = getattr(self._radio_mgr, "stop", None)
+        if stop is None:
+            return {"ok": False, "error": "NOT_IMPLEMENTED"}
+        try:
+            result = stop()
+            ok = True
+            if result is not None:
+                ok = result.get("ok", True) if isinstance(result, dict) else bool(getattr(result, "ok", True))
+            self._sync_readback()
+            self.dataChanged.emit()
+            return {"ok": ok}
+        except Exception as e:
+            self._sync_readback()
+            self.dataChanged.emit()
+            return {"ok": False, "error": str(e)}
 
     @Slot(result=dict)
     def cancelStream(self):
@@ -475,15 +433,20 @@ class RadioBridge(QObject):
 
     @Slot(int, result=dict)
     def setTimeoutMs(self, ms: int):
+        # The service owns the connect timeout; the bridge keeps the setter
+        # for API stability (the value is informational here).
         self._buffer_timeout_ms = max(1000, min(120000, ms))
         return {"ok": True, "timeout_ms": self._buffer_timeout_ms}
 
     @Slot(result=dict)
     def cancel(self):
-        self._cancel_connect_timeout()
-        self._cancel_confirm_timer()
-        self._pending_connect = False
-        self._is_buffering = False
+        cancel = getattr(self._radio_mgr, "cancel", None)
+        if cancel is not None:
+            try:
+                cancel()
+            except Exception:
+                logger.debug("Radio: service cancel failed", exc_info=True)
+        self._sync_readback()
         self.dataChanged.emit()
         return {"ok": True}
 
@@ -548,29 +511,47 @@ class RadioBridge(QObject):
     def getBitrate(self):
         return 0
 
-    def _record_play(self):
-        """Tell the service a station actually started playing (confirmed)."""
-        if not self._radio_mgr or not self._current_station:
+    #  Service state reflection (never optimistic)
+
+    def _on_service_state_event(self, event):
+        """Reflect the canonical service ``session_state_changed`` event."""
+        data = getattr(event, "data", event) or {}
+        state = data.get("state", "")
+        self._apply_state(str(state).lower())
+        if "attempt" in data and data.get("attempt") is not None:
+            self._reconnect_attempts = int(data["attempt"] or 0)
+        self.dataChanged.emit()
+
+    def _on_player_state_changed(self, state):
+        """Player backend readback — a secondary truth source."""
+        self._apply_state(str(state or "").lower())
+        self.dataChanged.emit()
+
+    def _apply_state(self, state: str):
+        if state == _STATE_PLAYING:
+            self._is_playing = True
+            self._is_buffering = False
+        elif state in _STATE_PENDING:
+            self._is_playing = False
+            self._is_buffering = True
+        else:
+            self._is_playing = False
+            self._is_buffering = False
+
+    def _sync_readback(self):
+        """Read the service's effective state (PlayerService truth)."""
+        get_state = getattr(self._radio_mgr, "get_state", None)
+        if get_state is None:
+            self._is_playing = False
+            self._is_buffering = False
             return
         try:
-            stations = self._radio_mgr.get_stations() or []
-            station = next(
-                (s for s in stations if s.get("url") == self._current_station),
-                None,
-            )
-            if station is None:
-                return
-            mark_played = getattr(self._radio_mgr, "mark_played", None)
-            if mark_played is not None:
-                mark_played(station.get("id"))
+            state = get_state()
+            if callable(state):
+                state = state()
+            value = getattr(state, "value", state)
+            self._apply_state(str(value or "").lower())
         except Exception:
-            logger.debug("Radio: could not record play", exc_info=True)
-
-    def _on_station_connection_done(self):
-        self._cancel_connect_timeout()
-        self._cancel_confirm_timer()
-        self._pending_connect = False
-        self._is_buffering = False
-        self._is_playing = True
-        self._record_play()
-        self.dataChanged.emit()
+            logger.debug("Radio: state readback failed", exc_info=True)
+            self._is_playing = False
+            self._is_buffering = False

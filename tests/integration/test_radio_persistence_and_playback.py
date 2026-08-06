@@ -111,16 +111,52 @@ class TestRadioPersistence:
 
 class TestRadioPlayback:
     def test_start_station_records_history(self, db_path):
-        svc = _build_service(db_path)
+        """Start is accepted (attempt) and PLAYING confirm records a play."""
+        from core.radio.models import SessionState, StreamMetadata
+        from infrastructure.radio.station_repository import SqliteStationRepository
+        from infrastructure.radio.history_repository import SqliteRadioHistoryRepository
+        station_repo = SqliteStationRepository(db_path)
+        station_repo.initialize()
+        history_repo = SqliteRadioHistoryRepository(db_path)
+        history_repo.initialize()
+
+        class ConfirmingPlayer:
+            state = "playing"
+
+            def play_url(self, url):
+                pass
+
+            def stop(self):
+                self.state = "stopped"
+
+            def resume(self):
+                pass
+
+        from core.radio.playback_adapter import RadioPlaybackAdapter
+        from core.radio.service import RadioService
+        svc = RadioService(
+            station_repo=station_repo,
+            history_repo=history_repo,
+            playback_adapter=RadioPlaybackAdapter(player_service=ConfirmingPlayer()),
+            confirm_interval_ms=50,
+        )
         result = svc.create_station(StationCreateRequest(
             name="Play FM", stream_url="http://play.fm/stream"))
         station_id = result.station.id
 
         started = svc.start_station(station_id)
-        assert started.ok
-        assert len(svc.history()) == 1
+        assert started.ok and started.accepted  # accepted, not completed
+        kinds = [h.get("result") or "" for h in svc.history()]
+        assert "attempt" in kinds
+        assert "play" not in kinds  # no play until PLAYING is confirmed
+
+        svc._session.update_metadata(StreamMetadata(stream_title="Live"))
+        svc.poll_playback()  # player readback says playing
+        assert svc.session.state == SessionState.PLAYING
+        kinds = [h.get("result") or "" for h in svc.history()]
+        assert "play" in kinds
         svc.stop()
-        assert svc.session is None or svc.session.state.value != "playing"  # stop is idempotent
+        assert svc.session is None  # stop is idempotent
 
     def test_playback_backend_confirms(self, db_path):
         calls = []
@@ -172,7 +208,13 @@ class TestLegacyFacadePersistence:
         from core.radio.radio_service import RadioService
         svc = RadioService()
         result = svc.add_station("Hist FM", "http://hist.fm/stream")
-        assert svc.play_station("http://hist.fm/stream") is True
+        # No playback mechanism is wired: play must fail explicitly, never
+        # return True (no `return True` fallback).
+        assert svc.play_station("http://hist.fm/stream") is False
+        assert svc.get_history() == []
+
+        # History persists through mark_played across re-instantiation.
+        assert svc.mark_played(result["id"])["ok"]
         assert len(svc.get_history()) == 1
 
         svc2 = RadioService()

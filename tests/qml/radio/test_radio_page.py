@@ -93,15 +93,16 @@ class TestRadioPage:
         assert result["ok"]
         assert result["favorite"] is True
 
-    def test_play_station(self, bridge, mock_player):
+    def test_play_station(self, bridge, mock_radio_mgr):
         result = bridge.playStation("http://test.stream")
         assert result["ok"]
-        mock_player.play_url.assert_called_once_with("http://test.stream")
+        mock_radio_mgr.play_station.assert_called_once_with(
+            "http://test.stream", "")
 
-    def test_stop_stream(self, bridge, mock_player):
+    def test_stop_stream(self, bridge, mock_radio_mgr):
         result = bridge.stopStream()
         assert result["ok"]
-        mock_player.stop.assert_called_once()
+        mock_radio_mgr.stop.assert_called_once()
 
     def test_empty_stations_list(self):
         mgr = MagicMock()
