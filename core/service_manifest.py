@@ -811,6 +811,18 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
         description="QML page state store.",
     ),
+    "route_registry_bridge": _d(
+        "route_registry_bridge", ServiceClass.UI_ADAPTER,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        capabilities=("route_registry",),
+        description="QML route registry bridge (standalone UI adapter).",
+    ),
+    "command_palette_bridge": _d(
+        "command_palette_bridge", ServiceClass.UI_ADAPTER,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        capabilities=("command_palette",),
+        description="QML command palette bridge (standalone UI adapter).",
+    ),
     "hybrid_audio_manager": _d(
         "hybrid_audio_manager", ServiceClass.APPLICATION_SERVICE,
         LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,

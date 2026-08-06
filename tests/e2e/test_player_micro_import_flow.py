@@ -506,9 +506,9 @@ class TestResult:
 class TestDiagnosticsService:
     def test_generates_report(self):
         from integrations.michi_link.services.diagnostics_service import (
-            DiagnosticsService,
+            LinkDiagnosticsService,
         )
-        svc = DiagnosticsService()
+        svc = LinkDiagnosticsService()
         report = svc.generate_report(registry=MagicMock())
         assert "player_api" in report
         assert "sync_server" in report
@@ -523,9 +523,9 @@ class TestDiagnosticsService:
 
     def test_pairing_with_devices(self):
         from integrations.michi_link.services.diagnostics_service import (
-            DiagnosticsService,
+            LinkDiagnosticsService,
         )
-        svc = DiagnosticsService()
+        svc = LinkDiagnosticsService()
         registry = MagicMock()
         dev1 = MagicMock()
         dev1.token_hash = "abc"
@@ -541,18 +541,18 @@ class TestDiagnosticsService:
 
     def test_diagnostics_remote_micro(self):
         from integrations.michi_link.services.diagnostics_service import (
-            DiagnosticsService,
+            LinkDiagnosticsService,
         )
-        svc = DiagnosticsService()
+        svc = LinkDiagnosticsService()
         with patch.object(svc._client, "discover", return_value=None):
             result = svc.check_remote_micro("10.0.0.99")
             assert result["status"] in ("unreachable", "skipped")
 
     def test_continue_readiness_no_queue(self):
         from integrations.michi_link.services.diagnostics_service import (
-            DiagnosticsService,
+            LinkDiagnosticsService,
         )
-        svc = DiagnosticsService()
+        svc = LinkDiagnosticsService()
         ps = MagicMock()
         ps.get_queue.return_value = []
         result = svc.check_continue_readiness(ps)

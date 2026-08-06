@@ -157,7 +157,7 @@ def build(container: ServiceContainer) -> None:
             TrackIdentityService,
         )
         from integrations.michi_link.services.diagnostics_service import (
-            DiagnosticsService,
+            LinkDiagnosticsService,
         )
 
         michi_link_client = MichiLinkClient()
@@ -206,7 +206,7 @@ def build(container: ServiceContainer) -> None:
             "michi_link_remote_library_service",
             RemoteLibraryService(micro=server_svc),
         )
-        container.register("michi_link_diagnostics_service", DiagnosticsService())
+        container.register("michi_link_diagnostics_service", LinkDiagnosticsService())
     except Exception as exc:
         logger.error("Failed to create michi_link services: %s", exc)
         for key in ("michi_link_client", "michi_link_server_service",

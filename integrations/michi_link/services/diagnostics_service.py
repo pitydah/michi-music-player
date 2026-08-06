@@ -1,7 +1,11 @@
-"""DiagnosticsService — full health check for the Michi ecosystem.
+"""LinkDiagnosticsService — full health check for the Michi ecosystem.
 
 Tests: Player API, sync server, pairing, stream, artwork, playback,
 queue, Micro Server discovery, import availability, continue readiness.
+
+Named LinkDiagnosticsService (not DiagnosticsService) to keep a single
+productive class per name (ADR-006); the Audio Lab diagnostics service
+owns the plain ``DiagnosticsService`` name.
 """
 from __future__ import annotations
 
@@ -22,7 +26,7 @@ FALLBACK_AVAILABLE = "FALLBACK_AVAILABLE"
 logger = logging.getLogger("michi.service.diagnostics")
 
 
-class DiagnosticsService:
+class LinkDiagnosticsService:
     """Generates structured health reports for Michi services."""
 
     def __init__(self) -> None:

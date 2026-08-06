@@ -33,7 +33,7 @@ PRODUCTIVE_MODULES = {
     "integrations/michi_link/services/import_to_server_service.py": "ImportToServerService",
     "integrations/michi_link/services/remote_library_service.py": "RemoteLibraryService",
     "integrations/michi_link/services/track_identity_service.py": "TrackIdentityService",
-    "integrations/michi_link/services/diagnostics_service.py": "DiagnosticsService",
+    "integrations/michi_link/services/diagnostics_service.py": "LinkDiagnosticsService",
 }
 
 COMPOSITION_KEYS = (

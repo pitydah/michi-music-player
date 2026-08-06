@@ -36,10 +36,6 @@ SERVICE_DUPLICATES: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
         ("core/lyrics/service.py",),
         ("core/lyrics_service.py",),
     ),
-    "DiagnosticsService": (
-        ("core/diagnostics_service.py",),
-        ("integrations/michi_link/services/diagnostics_service.py",),
-    ),
     "CoverArtService": (
         ("core/library/artwork_resolver.py",),
         ("core/cover_art_service.py", "library/cover_art_service.py"),

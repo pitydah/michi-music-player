@@ -28,6 +28,7 @@ STANDALONE_MANIFEST_KEYS = frozenset({
     "action_registry_binder", "selection_context_bridge", "bridge_factory",
     "page_state_store", "hybrid_audio_manager", "provider_manager",
     "knowledge_broker", "mpd_service_manager",
+    "route_registry_bridge", "command_palette_bridge",
 })
 
 
