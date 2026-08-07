@@ -79,6 +79,31 @@ class _MixPort:
         return self._mix.generate(strategy=strategy, seed=seed, limit=limit)
 
 
+class _DeviceSyncPort:
+    """DeviceSyncPort over the composed DeviceSyncService facade.
+
+    The facade owns the pipeline (plan → transfer → verify → playlist →
+    history → event); the port adds no business logic, only the ctx-shaped
+    call used by the durable job handlers.
+    """
+
+    def __init__(self, device_sync):
+        self._svc = device_sync
+
+    def sync_device(self, device_id: str, track_ids: list,
+                    playlist_name: str = "", ctx=None) -> dict:
+        if self._svc is None:
+            raise RuntimeError("DeviceSyncService unavailable")
+        return self._svc.run_device_sync(device_id, list(track_ids),
+                                         playlist_name, ctx)
+
+    def transfer_file(self, source_path: str, dest_path: str,
+                      ctx=None) -> dict:
+        if self._svc is None:
+            raise RuntimeError("DeviceSyncService unavailable")
+        return self._svc.run_transfer_file(source_path, dest_path, ctx)
+
+
 def _build_ports(container: ServiceContainer) -> dict[str, object]:
     """Assemble the port implementations from composed services."""
     from core.scanner_job_adapter import ScannerJobAdapter
@@ -101,6 +126,7 @@ def _build_ports(container: ServiceContainer) -> dict[str, object]:
     history_port = HistoryExportService(db=db) if db is not None else None
     doctor_port = container.get("library_doctor_service")
     mix_port = _MixPort(container.get("mix_service"))
+    device_port = _DeviceSyncPort(container.get("device_sync_service"))
 
     return {
         "scan": scan_port,
@@ -108,6 +134,7 @@ def _build_ports(container: ServiceContainer) -> dict[str, object]:
         "history": history_port,
         "doctor": doctor_port,
         "mix": mix_port,
+        "device_sync": device_port,
     }
 
 
@@ -118,6 +145,8 @@ def register_production_job_handlers(job_service, container: ServiceContainer) -
     architecture audits can verify registration happens in composition.
     """
     from core.jobs.handlers import (
+        make_device_sync_handler,
+        make_device_transfer_handler,
         make_doctor_repair_handler,
         make_doctor_scan_handler,
         make_history_export_handler,
@@ -145,6 +174,10 @@ def register_production_job_handlers(job_service, container: ServiceContainer) -
                                  make_history_export_handler(ports["history"]))
     job_service.register_handler("mix_generate",
                                  make_mix_generate_handler(ports["mix"]))
+    job_service.register_handler("device_sync",
+                                 make_device_sync_handler(ports["device_sync"]))
+    job_service.register_handler("device_transfer",
+                                 make_device_transfer_handler(ports["device_sync"]))
 
 
 def build(container: ServiceContainer) -> None:

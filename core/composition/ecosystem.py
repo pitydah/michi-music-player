@@ -104,12 +104,58 @@ def build(container: ServiceContainer) -> None:
         container.register("home_audio_service", None)
 
     try:
+        # ── Device sync (Fase Sync, single authority) ────────────────────
+        # The facade owns NO parallel system: registry, discovery adapters,
+        # resolvers, planners, job service, transfer adapter, verification
+        # and history repository are all composed HERE and injected.
+        from core.device_sync.discovery import (
+            DiscoveryComposite,
+            MscDiscoveryAdapter,
+            MtpDiscoveryAdapter,
+            NetworkDiscoveryAdapter,
+        )
+        from core.device_sync.history import SyncHistoryRepository
+        from core.device_sync.planning import DeviceSyncPlanner
+        from core.device_sync.profile_resolver import DeviceProfileResolver
+        from core.device_sync.transcode_planning import TranscodePlanner
+        from core.device_sync.transfer import TransferAdapter
+        from core.device_sync.verification import VerificationService
         from core.device_sync_service import DeviceSyncService
         from core.sync.device_registry import DeviceRegistry
 
-        container.register("device_sync_service", DeviceSyncService())
         device_registry = DeviceRegistry()
         container.register("device_registry", device_registry)
+
+        process_controller = container.get("process_controller")
+        discovery_adapters = DiscoveryComposite([
+            MscDiscoveryAdapter(),
+            MtpDiscoveryAdapter(process_controller=process_controller),
+            NetworkDiscoveryAdapter(),
+        ])
+        profile_resolver = DeviceProfileResolver()
+        transcode_planner = TranscodePlanner()
+        sync_planner = DeviceSyncPlanner(transcode_planner=transcode_planner)
+        transfer_adapter = TransferAdapter(process_controller=process_controller)
+        verification_service = VerificationService()
+
+        app_db = container.get("database")
+        history_repository = SyncHistoryRepository(app_db)
+        history_repository.initialize()
+
+        device_sync = DeviceSyncService(
+            device_registry=device_registry,
+            discovery_adapters=discovery_adapters,
+            profile_resolver=profile_resolver,
+            sync_planner=sync_planner,
+            transcode_planner=transcode_planner,
+            job_service=container.get("job_service"),
+            transfer_adapter=transfer_adapter,
+            verification_service=verification_service,
+            history_repository=history_repository,
+            event_bus=event_bus,
+            process_controller=process_controller,
+        )
+        container.register("device_sync_service", device_sync)
         search_registry = container.get("search_provider_registry")
         if search_registry is not None:
             from core.search.models import SearchDomain

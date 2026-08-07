@@ -44,6 +44,13 @@ class PairedDevice:
     sync_mode: str = "selected_playlists"
     revoked_at: str = ""
     last_pairing_at: str = ""
+    # Physical device fields (Fase Sync): stable identity + trust state.
+    serial: str = ""
+    mount_point: str = ""
+    vendor: str = ""
+    protocol: str = ""
+    authorized: bool = False
+    fingerprint: str = ""
 
 
 class DeviceRegistry:

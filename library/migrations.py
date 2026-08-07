@@ -287,6 +287,26 @@ MIGRATIONS = [
         ALTER TABLE favorites DROP COLUMN parent_entity;
         ALTER TABLE favorites DROP COLUMN origin;
     """),
+    (10, "Persistent device sync history", """
+        CREATE TABLE IF NOT EXISTS device_sync_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            job_id TEXT NOT NULL DEFAULT '',
+            device_id TEXT NOT NULL DEFAULT '',
+            device_label TEXT NOT NULL DEFAULT '',
+            direction TEXT NOT NULL DEFAULT 'to_device',
+            status TEXT NOT NULL DEFAULT 'completed',
+            total_bytes INTEGER NOT NULL DEFAULT 0,
+            transferred_bytes INTEGER NOT NULL DEFAULT 0,
+            error TEXT NOT NULL DEFAULT '',
+            playlist_path TEXT NOT NULL DEFAULT '',
+            created_at REAL NOT NULL DEFAULT (strftime('%s','now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_device_sync_history_device
+            ON device_sync_history(device_id, created_at);
+    """, """
+        DROP INDEX IF EXISTS idx_device_sync_history_device;
+        DROP TABLE IF EXISTS device_sync_history;
+    """),
 ]
 
 _ADD_COLUMN = re.compile(

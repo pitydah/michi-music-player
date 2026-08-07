@@ -3,7 +3,7 @@ import sqlite3
 
 from library.migrations import ensure_migrations_table, get_current_version, migrate
 
-LATEST_VERSION = 9
+LATEST_VERSION = 10
 
 
 def test_empty_db():
@@ -163,7 +163,12 @@ def test_migration9_adds_favorite_origin_columns():
 
 
 def test_migration9_backfills_legacy_rows_with_migrated_legacy_origin():
-    """Pre-migration rows (filepath-only identity) get provenance backfilled."""
+    """Pre-migration rows (filepath-only identity) get provenance backfilled.
+
+    Re-running migration 9 requires dropping every later migration record
+    too (the runner only applies ``version > current``); the backfill must
+    run exactly like on a v9-era database.
+    """
     conn = sqlite3.connect(":memory:")
     migrate(conn)
     conn.execute("INSERT INTO favorites (track_id) VALUES ('/legacy/a.flac')")
@@ -171,7 +176,7 @@ def test_migration9_backfills_legacy_rows_with_migrated_legacy_origin():
                  "(track_id, entity_type, entity_id, public_ref, source) "
                  "VALUES ('/legacy/b.flac', 'track', 'uid-b', 'track_9', 'ui')")
     conn.commit()
-    conn.execute("DELETE FROM _migrations WHERE version=9")
+    conn.execute("DELETE FROM _migrations WHERE version >= 9")
     conn.commit()
 
     migrate(conn)

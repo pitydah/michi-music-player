@@ -112,7 +112,7 @@ COEXISTING_DUPLICATES: dict[str, tuple[str, ...]] = {
         "core/models/operation_result.py",
     ),
     "PairedDevice": (
-        "core/device_sync_service.py",
+        "core/device_sync/models.py",
         "core/mobile_sync_service.py",
         "core/sync/device_registry.py",
     ),
@@ -121,6 +121,7 @@ COEXISTING_DUPLICATES: dict[str, tuple[str, ...]] = {
         "sync/sync_protocol.py",
     ),
     "DeviceInfo": (
+        "core/device_sync/models.py",
         "sync/sync_protocol.py",
         "sync/transport.py",
     ),

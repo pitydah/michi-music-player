@@ -9,14 +9,14 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.device_sync_service import (
-    DeviceSyncService,
     DeviceIdentity,
     DeviceProtocol,
     SyncDirection,
     TransferStatus,
 )
-from core.job_service import JobService
 from ui_qml_bridge.devices_bridge import DevicesBridge
+
+from tests.helpers.device_sync_stack import make_device_sync_stack
 
 
 pytestmark = pytest.mark.isolation
@@ -40,13 +40,13 @@ def temp_music(tmp_path):
 
 
 @pytest.fixture
-def dev_svc():
-    return DeviceSyncService()
+def dev_svc(tmp_path):
+    return make_device_sync_stack(tmp_path)
 
 
 @pytest.fixture
 def job_svc():
-    return JobService()
+    return None
 
 
 @pytest.fixture
@@ -117,7 +117,8 @@ class TestDeviceWorkflow:
         src = str(temp_music / "Music" / "track.flac")
         dst = str(temp_music / "planned.flac")
         job = dev_svc.create_transfer_job(src, dst, SyncDirection.TO_DEVICE)
-        assert job.job_id.startswith("sync_")
+        assert job is not None
+        assert job.job_id
         assert job.total_bytes > 0
         assert job.status == TransferStatus.QUEUED
 

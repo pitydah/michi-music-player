@@ -82,15 +82,30 @@ class DoctorRepairPort(Protocol):
 
 @runtime_checkable
 class DeviceSyncPort(Protocol):
-    """Port for device sync jobs (reserved — Fase Sync).
+    """Port for device sync jobs (Fase Sync).
 
-    No handler is registered in this phase; the port documents the surface
-    a future device_sync handler will receive instead of resolving
-    device_sync_service itself.
+    Implemented by the composed DeviceSyncService facade (see
+    ``core.composition.jobs``); the handler receives the port instance
+    instead of resolving device_sync_service itself.
     """
 
-    def sync_device(self, device_id: str, ctx: Any | None = None) -> dict[str, Any]:
-        """Synchronize the library with *device_id*."""
+    def sync_device(
+        self,
+        device_id: str,
+        track_ids: list[str],
+        playlist_name: str = "",
+        ctx: Any | None = None,
+    ) -> dict[str, Any]:
+        """Run the full pipeline: plan → transfer → verify → playlist → history."""
+        ...
+
+    def transfer_file(
+        self,
+        source_path: str,
+        dest_path: str,
+        ctx: Any | None = None,
+    ) -> dict[str, Any]:
+        """Transfer a single file (copy + verification)."""
         ...
 
 

@@ -25,6 +25,8 @@ JOB_TITLES = {
     "metadata_batch": "Edición de metadatos en lote",
     "history_export": "Exportando historial",
     "mix_generate": "Generando mix",
+    "device_sync": "Sincronizando dispositivo",
+    "device_transfer": "Transfiriendo archivos",
 }
 
 
@@ -220,6 +222,64 @@ def make_mix_generate_handler(port) -> callable:
         result = port.generate(strategy, seed, limit, ctx)
         ctx.token.raise_if_cancelled()
         ctx.report_progress(1.0, "Mix generado")
+        return result
+
+    return handler
+
+
+def make_device_sync_handler(port) -> callable:
+    """Close over a DeviceSyncPort; run the device sync pipeline.
+
+    The job payload carries {device_id, track_ids, playlist_name}. The
+    pipeline outcome ({ok, error_code, transferred, ...}) becomes the job
+    result; an explicit error_code raises the job (FAILED with the code as
+    error). Cancellation is cooperative through ctx — a CANCELLED outcome
+    re-raises via the token so the job lands CANCELLED, never FAILED.
+    """
+
+    def handler(job, ctx):
+        if port is None:
+            raise RuntimeError("DeviceSyncService unavailable")
+        payload = job.payload or {}
+        device_id = str(payload.get("device_id", "") or "")
+        track_ids = list(payload.get("track_ids") or [])
+        playlist_name = str(payload.get("playlist_name", "") or "")
+        if not device_id or not track_ids:
+            raise RuntimeError("INVALID_PAYLOAD: device_id and track_ids required")
+        ctx.report_progress(0.05, "Planificando sincronización")
+        result = port.sync_device(device_id, track_ids, playlist_name, ctx)
+        if result.get("status") == "CANCELLED":
+            ctx.token.raise_if_cancelled()
+        if not result.get("ok"):
+            raise RuntimeError(
+                result.get("error_code") or result.get("error") or "SYNC_FAILED"
+            )
+        ctx.report_progress(1.0, "Sincronización finalizada")
+        return result
+
+    return handler
+
+
+def make_device_transfer_handler(port) -> callable:
+    """Close over a DeviceSyncPort; transfer one file (copy + verify)."""
+
+    def handler(job, ctx):
+        if port is None:
+            raise RuntimeError("DeviceSyncService unavailable")
+        payload = job.payload or {}
+        source_path = str(payload.get("source_path", "") or "")
+        dest_path = str(payload.get("dest_path", "") or "")
+        if not source_path or not dest_path:
+            raise RuntimeError("INVALID_PAYLOAD: source_path and dest_path required")
+        ctx.report_progress(0.1, "Transfiriendo archivo")
+        result = port.transfer_file(source_path, dest_path, ctx)
+        if result.get("status") == "CANCELLED":
+            ctx.token.raise_if_cancelled()
+        if not result.get("ok"):
+            raise RuntimeError(
+                result.get("error_code") or result.get("error") or "TRANSFER_FAILED"
+            )
+        ctx.report_progress(1.0, "Transferencia completada")
         return result
 
     return handler
