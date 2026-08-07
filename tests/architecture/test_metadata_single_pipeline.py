@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import re
 import sqlite3
+
+import pytest
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -43,7 +45,11 @@ def test_apply_batch_returns_real_counters(tmp_path) -> None:
     """apply_batch requires an approved ConfirmationToken and returns real
     counters (P0: self-declared confirmed=True/source= is rejected)."""
     import numpy as np
-    import soundfile as sf
+
+    sf = pytest.importorskip(
+        "soundfile",
+        reason="audio-analysis extra required to build FLAC fixtures",
+    )
     from core.confirmation_service import ConfirmationService
     from core.metadata_editor_service import MetadataEditorService
 
