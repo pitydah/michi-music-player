@@ -683,6 +683,22 @@ class TestGStreamerEngine:
         assert result is False
         assert engine._shuffle is False
 
+    def test_set_shuffle_preserves_canonical_queue_order(self, engine):
+        engine._queue = ["a.flac", "b.flac", "c.flac"]
+
+        assert engine.set_shuffle(True) is True
+        assert engine._shuffle is True
+        assert engine._queue == ["a.flac", "b.flac", "c.flac"]
+
+    def test_set_repeat_accepts_canonical_modes(self, engine):
+        for mode in ("none", "all", "one"):
+            assert engine.set_repeat(mode) == mode
+            assert engine._repeat == mode
+
+    def test_set_repeat_rejects_invalid_mode(self, engine):
+        with pytest.raises(ValueError, match="Invalid repeat mode"):
+            engine.set_repeat("track")
+
     def test_toggle_repeat_cycles(self, engine):
         engine._repeat = "none"
         assert engine.toggle_repeat() == "all"

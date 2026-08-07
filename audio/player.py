@@ -907,6 +907,18 @@ class GStreamerEngine(QObject):
             self._db.save_queue(self._queue, self._queue_index)
         return self._shuffle
 
+    def set_shuffle(self, enabled: bool) -> bool:
+        """Synchronize shuffle state without mutating the canonical queue order."""
+        self._shuffle = bool(enabled)
+        return self._shuffle
+
+    def set_repeat(self, mode: str) -> str:
+        """Synchronize the repeat mode supplied by QueueService."""
+        if mode not in {"none", "all", "one"}:
+            raise ValueError(f"Invalid repeat mode: {mode}")
+        self._repeat = mode
+        return self._repeat
+
     def toggle_repeat(self) -> str:
         modes = {"none": "all", "all": "one", "one": "none"}
         return self.set_repeat(modes.get(self._repeat, "none"))

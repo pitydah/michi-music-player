@@ -44,7 +44,8 @@ def _fingerprint(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
-def _pair_device(svc, device_id: str) -> None:
+def _pair_device(svc, device_id: str):
+    """Pair + approve a device; returns (private, raw) for later re-pair."""
     private, raw = _keypair()
     pair = svc.start_pairing()
     payload = (
@@ -61,13 +62,14 @@ def _pair_device(svc, device_id: str) -> None:
     )
     assert result["ok"]
     assert svc.approve_device(device_id)["ok"]
+    return private, raw
 
 
 def test_revoked_device_reported_in_health(db) -> None:
     from core.mobile_sync_service import MobileSyncService
 
     svc = MobileSyncService(db=db)
-    _pair_device(svc, "dev-revoked")
+    private, raw = _pair_device(svc, "dev-revoked")
 
     assert svc.revoke_trust("dev-revoked")["ok"]
     health = svc.health()
@@ -76,8 +78,8 @@ def test_revoked_device_reported_in_health(db) -> None:
     assert not svc.is_trusted("dev-revoked")
 
     # Re-pairing the SAME device id requires a NEW pairing session + NEW
-    # user approval (old trust is never reused).
-    private, raw = _keypair()
+    # user approval (old trust is never reused). The device keeps its own
+    # key — a DIFFERENT key is rejected (key-swap guard).
     pair = svc.start_pairing()
     payload = (
         f"1.0|{pair['session_id']}|{pair['nonce']}|"

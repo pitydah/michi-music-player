@@ -47,6 +47,7 @@ def test_now_playing_bar_matches_two_row_reference_structure():
     assert 'objectName: "nowPlayingLowerPrimaryRow"' in content
     assert 'objectName: "nowPlayingCenteredTransport"' in content
     assert 'objectName: "nowPlayingLowerUtilities"' in content
+<<<<<<< Updated upstream
     assert 'objectName: "nowPlayingOutputProfileButton"' not in content
 
 
@@ -56,6 +57,9 @@ def test_now_playing_seek_commits_only_on_release() -> None:
 
     assert "onCommit: root.seekRequested(Math.round(value))" in content
     assert "onValueChanged" not in content
+=======
+    assert 'objectName: "nowPlayingOutputProfileButton"' in content
+>>>>>>> Stashed changes
 
 
 def test_now_playing_bar_has_premium_track_card():
