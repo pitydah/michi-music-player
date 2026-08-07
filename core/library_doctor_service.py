@@ -372,31 +372,16 @@ class DuplicateUidHandler(BaseRepairHandler):
         fp = issue.get("filepath", "")
         import hashlib as _hashlib
         expected = f"fp:{_hashlib.sha256(fp.encode()).hexdigest()[:16]}"
-        conn = getattr(self._repo, "_conn", None) or getattr(
-            getattr(self._repo, "_db", None), "conn", None)
-        if conn is None:
-            return False
-        row = conn.execute(
-            "SELECT track_uid FROM media_items WHERE id=?", (track_id,),
-        ).fetchone()
-        return row is not None and row[0] == expected
+        return self._repo.get_track_uid(track_id) == expected
 
     def undo(self, issue: dict, ctx=None) -> bool:
-        conn = getattr(self._repo, "_conn", None) or getattr(
-            getattr(self._repo, "_db", None), "conn", None)
+        if self._repo is None:
+            return False
         track_id = (issue.get("details") or {}).get("track_id")
         old_uid = (issue.get("details") or {}).get("_old_uid", "")
-        if conn is None or not old_uid:
+        if not track_id or not old_uid:
             return False
-        try:
-            conn.execute(
-                "UPDATE media_items SET track_uid=? WHERE id=?",
-                (old_uid, track_id),
-            )
-            conn.commit()
-            return True
-        except Exception:  # noqa: BLE001
-            return False
+        return self._repo.restore_track_uid(track_id, old_uid)
 
 
 class MissingMetadataHandler(BaseRepairHandler):
@@ -457,11 +442,11 @@ class MissingMetadataHandler(BaseRepairHandler):
         return RepairOutcome(1, "Título completado", [{"track_id": track_id}])
 
     def readback(self, issue: dict) -> bool:
-        if self._editor is None or self._editor._db is None:
+        if self._editor is None:
             return False
         track_id = (issue.get("details") or {}).get("track_id")
         try:
-            item = self._editor._db.get_media_item_by_id(track_id)
+            item = self._editor.read_media_item(track_id)
         except Exception:  # noqa: BLE001
             return False
         return item is not None and bool(getattr(item, "title", "") or "")
@@ -506,36 +491,18 @@ class GenreFragmentationHandler(BaseRepairHandler):
         }
 
     def execute(self, issue: dict, ctx=None) -> RepairOutcome:
-        if self._cleanup is None or self._cleanup._repo is None:
+        if self._cleanup is None:
             return RepairOutcome(0, "GenreCleanupService unavailable", [])
         details = issue.get("details") or {}
         sources = list(details.get("raw_values", []))
         target = details.get("canonical", "")
         if not sources or not target:
             return RepairOutcome(0, "Missing genre variants", [])
-        conn = getattr(self._cleanup._repo, "_conn", None)
-        if conn is None:
-            return RepairOutcome(0, "Genre repository unavailable", [])
-        snapshot = self._snapshot_genres(conn, sources)
-        affected = 0
-        placeholders = ",".join("?" * len(sources))
-        try:
-            cur = conn.execute(
-                f"UPDATE media_items SET genre=? "
-                f"WHERE genre IN ({placeholders})",
-                (target, *sources),
-            )
-            affected += max(0, cur.rowcount)
-            cur = conn.execute(
-                f"UPDATE track_genres SET genre=? "
-                f"WHERE genre IN ({placeholders})",
-                (target, *sources),
-            )
-            affected += max(0, cur.rowcount)
-            conn.commit()
-        except Exception as error:  # noqa: BLE001
-            logger.warning("genre normalization failed: %s", error)
-            return RepairOutcome(0, f"Normalization failed: {error}", [])
+        result = self._cleanup.normalize_genres(sources, target)
+        snapshot = result.get("snapshot", [])
+        affected = int(result.get("affected", 0))
+        if result.get("error"):
+            return RepairOutcome(0, f"Normalization failed: {result['error']}", [])
         self._cleanup.execute_merge(sources, target)
         if affected == 0:
             return RepairOutcome(0, "No tracks affected by merge", [])
@@ -543,89 +510,24 @@ class GenreFragmentationHandler(BaseRepairHandler):
         return RepairOutcome(affected, f"{affected} valor(es) normalizados a "
                                        f"'{target}'", snapshot)
 
-    def _snapshot_genres(self, conn, sources: list[str]) -> list[dict]:
-        snapshot = []
-        placeholders = ",".join("?" * len(sources))
-        try:
-            rows = conn.execute(
-                f"SELECT id, genre FROM media_items "
-                f"WHERE genre IN ({placeholders})",
-                tuple(sources),
-            ).fetchall()
-            for row in rows:
-                snapshot.append({"kind": "media_item", "id": row[0],
-                                 "genre": row[1]})
-            rows = conn.execute(
-                f"SELECT track_id, genre, canonical_genre FROM track_genres "
-                f"WHERE genre IN ({placeholders})",
-                tuple(sources),
-            ).fetchall()
-            for row in rows:
-                snapshot.append({"kind": "track_genre", "track_id": row[0],
-                                 "genre": row[1], "canonical": row[2]})
-        except Exception:  # noqa: BLE001
-            return []
-        return snapshot
-
     def readback(self, issue: dict) -> bool:
-        if self._cleanup is None or self._cleanup._repo is None:
+        if self._cleanup is None:
             return False
         sources = (issue.get("details") or {}).get("raw_values", [])
         target = (issue.get("details") or {}).get("canonical", "")
         leftover = [s for s in sources if s != target]
         if not leftover:
             return True
-        conn = getattr(self._cleanup._repo, "_conn", None)
-        if conn is None:
-            return False
-        placeholders = ",".join("?" * len(leftover))
-        try:
-            row = conn.execute(
-                f"SELECT COUNT(*) FROM media_items "
-                f"WHERE genre IN ({placeholders})",
-                tuple(leftover),
-            ).fetchone()
-            if row is None or row[0] != 0:
-                return False
-            row = conn.execute(
-                f"SELECT COUNT(*) FROM track_genres "
-                f"WHERE genre IN ({placeholders})",
-                tuple(leftover),
-            ).fetchone()
-            return row is not None and row[0] == 0
-        except Exception:  # noqa: BLE001
-            return False
+        remaining = self._cleanup.count_genres_remaining(leftover)
+        return remaining == 0
 
     def undo(self, issue: dict, ctx=None) -> bool:
-        if self._cleanup is None or self._cleanup._repo is None:
+        if self._cleanup is None:
             return False
         snapshot = (issue.get("details") or {}).get("_snapshot", [])
         if not snapshot:
             return False
-        conn = getattr(self._cleanup._repo, "_conn", None)
-        if conn is None:
-            return False
-        restored = 0
-        for entry in snapshot:
-            try:
-                if entry.get("kind") == "media_item":
-                    conn.execute(
-                        "UPDATE media_items SET genre=? WHERE id=?",
-                        (entry["genre"], entry["id"]),
-                    )
-                else:
-                    conn.execute(
-                        "UPDATE track_genres SET genre=?, canonical_genre=? "
-                        "WHERE track_id=? AND canonical_genre=?",
-                        (entry["genre"], entry["canonical"], entry["track_id"],
-                         entry["canonical"]),
-                    )
-                restored += 1
-            except Exception:  # noqa: BLE001
-                continue
-        if restored:
-            conn.commit()
-        return restored > 0
+        return self._cleanup.restore_genres(snapshot) > 0
 
 
 class LibraryDoctorService:

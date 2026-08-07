@@ -38,15 +38,13 @@ class TrackActionService:
         return track
 
     def _favorite_service(self):
-        if self._favorites is None:
-            from core.favorite_service import FavoriteService
-            self._favorites = FavoriteService(db=self._db)
+        # P0 FASE 10: no lazy construction — the canonical FavoriteService is
+        # injected by composition; callers handle None explicitly.
         return self._favorites
 
     def _file_manager(self):
-        if self._fm is None:
-            from core.file_manager_service import FileManagerService
-            self._fm = FileManagerService
+        # P0 FASE 10: no lazy construction — the canonical FileManagerService
+        # port is injected by composition; callers handle None explicitly.
         return self._fm
 
     # ── track actions (public id surface, QML stable) ───────────────────
@@ -109,6 +107,8 @@ class TrackActionService:
     def toggle_favorite(self, track_id: int) -> dict:
         if not self._qs:
             return {"ok": False, "error": "NO_QUERY_SERVICE"}
+        if self._favorites is None:
+            return {"ok": False, "error": "NO_FAVORITE_SERVICE"}
         try:
             track = self._qs.fetch_track_internal(track_id)
             if not track:
@@ -118,7 +118,7 @@ class TrackActionService:
                 return {"ok": False, "error": "NO_FILEPATH"}
             uid = track.get("track_uid") or ""
             entity_id = uid or str(track_id)
-            result = self._favorite_service().toggle_favorite(
+            result = self._favorites.toggle_favorite(
                 "track", entity_id, public_ref=f"track_{track_id}")
             if result.ok:
                 return {"ok": True, "favorite": bool(result.data.get("favorite", True))}

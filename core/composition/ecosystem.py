@@ -85,8 +85,10 @@ def build(container: ServiceContainer) -> None:
             ha_token,
             websocket_port=ha_ws_port,
         )
-        if ha_url and ha_token:
-            ha_client.subscribe_events()
+        # P0 FASE 10: the HA client is composed WITHOUT starting any network.
+        # The constructor only stores config; the WebSocket connects and the
+        # poll timer starts when HomeAudioService.enable_* explicitly calls
+        # configure()/subscribe_events() at runtime.
         home_audio = HomeAudioService(
             snapcast_group_manager=group_manager,
             snapcast_discovery=discovery,
@@ -284,6 +286,7 @@ def build(container: ServiceContainer) -> None:
         from core.paths import radio_database_path
         from core.radio.playback_adapter import RadioPlaybackAdapter
         from core.radio.service import RadioService as CanonicalRadioService
+        from core.radio.events import EventBus as RadioEventBus
         from infrastructure.radio.history_repository import SqliteRadioHistoryRepository
         from infrastructure.radio.station_repository import SqliteStationRepository
 
@@ -295,11 +298,14 @@ def build(container: ServiceContainer) -> None:
         playback_adapter = RadioPlaybackAdapter(
             player_service=container.get("playback_service"),
         )
+        # P0 FASE 10: radio events flow through the canonical event_bus via a
+        # typed namespace wrapper — no second pub/sub instance.
+        radio_event_bus = RadioEventBus(event_bus)
         radio_service = CanonicalRadioService(
             station_repo=station_repo,
             history_repo=history_repo,
             playback_adapter=playback_adapter,
-            event_bus=event_bus,
+            event_bus=radio_event_bus,
         )
         container.register("radio_station_repository", station_repo)
         container.register("radio_history_repository", history_repo)
@@ -334,11 +340,15 @@ def build(container: ServiceContainer) -> None:
             sidecar_provider=sidecar_provider,
             embedded_writer=MutagenEmbeddedLyricsWriter(),
         )
+        # P0 FASE 10: ONE LyricEventBus wrapping the canonical event_bus,
+        # shared by resolver and service so lyrics events flow through the
+        # single bus (typed namespace, no second pub/sub).
+        lyric_event_bus = LyricEventBus(event_bus)
         resolver = LyricsResolver(
             provider_registry=registry,
             cache_repo=cache_repo,
             sidecar_provider=sidecar_provider,
-            event_bus=LyricEventBus(),
+            event_bus=lyric_event_bus,
         )
         lyrics_service = LyricsService(
             resolver=resolver,
@@ -346,7 +356,7 @@ def build(container: ServiceContainer) -> None:
             cache_repo=cache_repo,
             storage_service=storage_service,
             editor_service=LyricsEditorService(),
-            event_bus=LyricEventBus(),
+            event_bus=lyric_event_bus,
         )
         container.register("lyrics_service", lyrics_service)
     except Exception as exc:

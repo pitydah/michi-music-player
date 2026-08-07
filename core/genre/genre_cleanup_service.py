@@ -245,6 +245,121 @@ class GenreCleanupService:
                             write_tags: bool = False) -> int:
         return self._repo.apply_genre_to_tracks(track_ids, genre, write_tags=write_tags)
 
+    # ── Public genre-normalization ports (P0 FASE 10) ────────────────────
+    # The library doctor used to reach into this service's repository
+    # (``_repo._conn``); these ports own the raw-value normalization across
+    # media_items + track_genres with snapshot/readback/restore.
+
+    def normalize_genres(self, source_genres: list[str],
+                         target: str) -> dict:
+        """Rewrite *source_genres* to *target* in both genre tables.
+
+        Returns ``{"affected": n, "snapshot": [...]}`` where snapshot is the
+        pre-write state of every touched row (for compensation).
+        """
+        sources = [s for s in (source_genres or []) if s]
+        if not sources or not target:
+            return {"affected": 0, "snapshot": []}
+        conn = self._repo.connection()
+        if conn is None:
+            return {"affected": 0, "snapshot": [], "error": "Genre repository unavailable"}
+        snapshot = self._snapshot_raw_genres(conn, sources)
+        affected = 0
+        placeholders = ",".join("?" * len(sources))
+        try:
+            cur = conn.execute(
+                f"UPDATE media_items SET genre=? "
+                f"WHERE genre IN ({placeholders})",
+                (target, *sources),
+            )
+            affected += max(0, cur.rowcount)
+            cur = conn.execute(
+                f"UPDATE track_genres SET genre=? "
+                f"WHERE genre IN ({placeholders})",
+                (target, *sources),
+            )
+            affected += max(0, cur.rowcount)
+            conn.commit()
+        except Exception as error:  # noqa: BLE001
+            _log.warning("genre normalization failed: %s", error)
+            return {"affected": 0, "snapshot": [], "error": f"{error}"}
+        return {"affected": affected, "snapshot": snapshot}
+
+    def count_genres_remaining(self, source_genres: list[str]) -> int:
+        """Readback port: how many rows still carry one of *source_genres*."""
+        sources = [s for s in (source_genres or []) if s]
+        if not sources:
+            return 0
+        conn = self._repo.connection()
+        if conn is None:
+            return -1
+        placeholders = ",".join("?" * len(sources))
+        total = 0
+        try:
+            for table in ("media_items", "track_genres"):
+                row = conn.execute(
+                    f"SELECT COUNT(*) FROM {table} "
+                    f"WHERE genre IN ({placeholders})",
+                    tuple(sources),
+                ).fetchone()
+                total += int(row[0]) if row else 0
+        except Exception:  # noqa: BLE001
+            return -1
+        return total
+
+    def restore_genres(self, snapshot: list[dict]) -> int:
+        """Undo port: restore rows to the values recorded in *snapshot*."""
+        if not snapshot:
+            return 0
+        conn = self._repo.connection()
+        if conn is None:
+            return 0
+        restored = 0
+        for entry in snapshot:
+            try:
+                if entry.get("kind") == "media_item":
+                    conn.execute(
+                        "UPDATE media_items SET genre=? WHERE id=?",
+                        (entry["genre"], entry["id"]),
+                    )
+                else:
+                    conn.execute(
+                        "UPDATE track_genres SET genre=?, canonical_genre=? "
+                        "WHERE track_id=? AND canonical_genre=?",
+                        (entry["genre"], entry["canonical"], entry["track_id"],
+                         entry["canonical"]),
+                    )
+                restored += 1
+            except Exception:  # noqa: BLE001
+                continue
+        if restored:
+            conn.commit()
+        return restored
+
+    def _snapshot_raw_genres(self, conn, sources: list[str]) -> list[dict]:
+        snapshot = []
+        placeholders = ",".join("?" * len(sources))
+        try:
+            rows = conn.execute(
+                f"SELECT id, genre FROM media_items "
+                f"WHERE genre IN ({placeholders})",
+                tuple(sources),
+            ).fetchall()
+            for row in rows:
+                snapshot.append({"kind": "media_item", "id": row[0],
+                                 "genre": row[1]})
+            rows = conn.execute(
+                f"SELECT track_id, genre, canonical_genre FROM track_genres "
+                f"WHERE genre IN ({placeholders})",
+                tuple(sources),
+            ).fetchall()
+            for row in rows:
+                snapshot.append({"kind": "track_genre", "track_id": row[0],
+                                 "genre": row[1], "canonical": row[2]})
+        except Exception:  # noqa: BLE001
+            return []
+        return snapshot
+
     def _get_untagged_items(self):
         all_items = self._db.get_all() or []
         return [item for item in all_items if not (getattr(item, 'genre', '') or '').strip()]

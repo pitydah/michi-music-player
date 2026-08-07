@@ -73,5 +73,14 @@ class ProviderManager(QObject):
         ok = self._recognizer.is_configured()
         self.provider_changed.emit(name, ok)
 
+    def get_provider(self, name: str) -> BaseRecognizer | None:
+        """Return the shared recognizer for *name* (or None when unavailable).
+
+        Uses the canonical provider key space (``shazamio``/``audd``/
+        ``acoustid``) with the module-level shared instances so composition
+        and ad-hoc consumers never build a second recognizer.
+        """
+        return _get_provider(name)
+
     def test_current(self) -> tuple[bool, str]:
         return self._recognizer.test_connection()

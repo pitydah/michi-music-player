@@ -830,6 +830,19 @@ class MetadataEditorService:
         except Exception:  # noqa: BLE001
             return None
 
+    def read_media_item(self, track_id: int):
+        """Public read port: return the media item row for *track_id*.
+
+        Lets consumers (e.g. the library doctor readback) read track state
+        without reaching into the editor's private database handle.
+        """
+        if self._db is None or not track_id:
+            return None
+        try:
+            return self._db.get_media_item_by_id(track_id)
+        except Exception:  # noqa: BLE001
+            return None
+
     def _get_item(self, fp: str):
         if not fp or self._db is None:
             return None

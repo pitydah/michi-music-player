@@ -31,28 +31,36 @@ class LibraryMutationService:
     # ── favorites ────────────────────────────────────────────────────────
 
     def _favorite_service(self) -> Any:
-        if self._fav is None:
-            from core.favorite_service import FavoriteService
-            self._fav = FavoriteService(db=self._db, event_bus=self._eb)
+        # P0 FASE 10: no lazy construction — the canonical FavoriteService is
+        # injected by composition; callers handle None explicitly.
         return self._fav
 
     def set_favorite(self, entity_type: str, entity_id: str,
                      public_ref: str = "", favorite: bool = True,
                      source: str = "ui") -> OperationResult:
         """Set favorite state for a canonical entity (track/album/artist/...)."""
-        return self._favorite_service().set_favorite(
+        if self._fav is None:
+            return OperationResult.fail("FAVORITE_SERVICE_UNAVAILABLE",
+                                        "FavoriteService not injected")
+        return self._fav.set_favorite(
             entity_type, entity_id, public_ref, favorite, source)
 
     def toggle_favorite(self, entity_type: str, entity_id: str,
                         public_ref: str = "", source: str = "ui") -> OperationResult:
-        return self._favorite_service().toggle_favorite(
+        if self._fav is None:
+            return OperationResult.fail("FAVORITE_SERVICE_UNAVAILABLE",
+                                        "FavoriteService not injected")
+        return self._fav.toggle_favorite(
             entity_type, entity_id, public_ref, source)
 
     def set_track_favorites_bulk(self, track_ids: list[int],
                                  favorite: bool,
                                  source: str = "ui",
                                  atomic: bool = False) -> OperationResult:
-        return self._favorite_service().set_track_favorites_bulk(
+        if self._fav is None:
+            return OperationResult.fail("FAVORITE_SERVICE_UNAVAILABLE",
+                                        "FavoriteService not injected")
+        return self._fav.set_track_favorites_bulk(
             track_ids, favorite, source, atomic)
 
     # ── metadata edits (legacy dict surface, kept for editor consumers) ──

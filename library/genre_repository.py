@@ -34,6 +34,10 @@ class GenreRepository:
     def __init__(self, conn: sqlite3.Connection):
         self._conn = conn
 
+    def connection(self):
+        """Public read port for the underlying SQLite connection."""
+        return self._conn
+
     # ── Track-genre operations ──
 
     def ensure_track_genre(

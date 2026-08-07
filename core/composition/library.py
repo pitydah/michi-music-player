@@ -33,6 +33,10 @@ def build(container: ServiceContainer) -> None:
 
     sources_svc = LibrarySourcesService(cf)
     container.register("library_sources_service", sources_svc)
+    # P0 FASE 10: FileManagerService is a stateless facade (static methods
+    # only). The CLASS is the registered port — one canonical object, injected
+    # everywhere; nothing constructs it ad hoc.
+    container.register("file_manager_service", FileManagerService)
     canonical_query_service = LibraryQueryService(cf, library_sources_service=sources_svc)
     lqs = LibraryFilteredQueryService(canonical_query_service)
     container.register("library_query_service", lqs)
@@ -76,7 +80,7 @@ def build(container: ServiceContainer) -> None:
             playlist_service=playlist_service,
             db=db,
             favorite_service=favorite_service,
-            file_manager_service=FileManagerService,
+            file_manager_service=container.get("file_manager_service"),
         ),
     )
     container.register("history_query_service", HistoryQueryService(cf))
@@ -160,10 +164,29 @@ def build(container: ServiceContainer) -> None:
         container.register("library_doctor_service", None)
 
     try:
+        # ── Recognition (P0 FASE 10): canonical ADVANCED detection runtime ──
+        # Shared ProviderManager + AudioCaptureService + DetectionService are
+        # composed here and injected into RecognitionService. Construction is
+        # passive: no device open, no socket, no timer — the runtime starts on
+        # explicit enable (DetectionService.start()), never at bootstrap.
         from core.recognition_service import RecognitionService
         from recognition.provider_manager import ProviderManager
-        recog = RecognitionService(provider_manager=ProviderManager(None))
+        from recognition.audio_capture_service import AudioCaptureService
+        from recognition.detection_service import DetectionService
+
+        provider_manager = ProviderManager()
+        capture_service = AudioCaptureService()
+        detection_service = DetectionService(
+            db=db, provider_manager=provider_manager)
+        detection_service.set_worker_manager(wm)
+        recog = RecognitionService(
+            provider_manager=provider_manager,
+            detection_service=detection_service,
+            capture=capture_service,
+            db=db,
+        )
         container.register("recognition_service", recog)
+        container.register("provider_manager", provider_manager)
         sts = SmartTaggingService(worker_manager=wm, library_query_service=lqs,
                                    recognition_service=recog,
                                    metadata_editor=container.get(
@@ -173,6 +196,8 @@ def build(container: ServiceContainer) -> None:
         container.register("smart_tagging_service", sts)
     except Exception:
         logger.error("Failed to create smart_tagging_service", exc_info=True)
+        container.register("recognition_service", None)
+        container.register("provider_manager", None)
         container.register("smart_tagging_service", None)
 
     try:

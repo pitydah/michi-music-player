@@ -45,11 +45,15 @@ class LyricsResolver:
         self._cache = cache_repo
         self._embedded = embedded_reader
         self._sidecar = sidecar_provider
-        self._bus = event_bus or LyricEventBus()
+        self._bus = event_bus
         self._trace = trace
         self._network = network_status
         self._settings = settings or LyricsSettings()
         self._tracker = LyricsRequestTracker()
+
+    def _emit(self, event_type: str, **kwargs) -> None:
+        if self._bus is not None:
+            self._bus.emit(event_type, **kwargs)
 
     def resolve(
         self,
@@ -61,7 +65,7 @@ class LyricsResolver:
         request_id = self._next_request_id(identity)
         track_hash = _hash_identity(identity)
 
-        self._bus.emit("lyrics_resolution_started", request_id=request_id, track_hash=track_hash)
+        self._emit("lyrics_resolution_started", request_id=request_id, track_hash=track_hash)
         if self._trace:
             self._trace.begin(request_id, identity)
 
@@ -89,7 +93,7 @@ class LyricsResolver:
             else:
                 continue
 
-            self._bus.emit("lyrics_source_checked", request_id=request_id,
+            self._emit("lyrics_source_checked", request_id=request_id,
                            track_hash=track_hash, source=source.value,
                            status=result.code.value if result else "error")
             if self._trace and result:
@@ -97,7 +101,7 @@ class LyricsResolver:
 
             if result and result.ok and result.document:
                 result.document.match_confidence = compute_match_score(identity, result.document)
-                self._bus.emit("lyrics_resolved", request_id=request_id,
+                self._emit("lyrics_resolved", request_id=request_id,
                                track_hash=track_hash, source=source.value,
                                status="found")
                 if self._trace:
@@ -107,7 +111,7 @@ class LyricsResolver:
             if result and result.code == LyricsErrorCode.CANCELLED:
                 return result
 
-        self._bus.emit("lyrics_not_found", request_id=request_id, track_hash=track_hash)
+        self._emit("lyrics_not_found", request_id=request_id, track_hash=track_hash)
         if self._trace:
             self._trace.end("not_found")
         return LyricsOperationResult(
@@ -174,7 +178,7 @@ class LyricsResolver:
 
     def cancel(self):
         self._tracker.cancel_current()
-        self._bus.emit("lyrics_resolution_cancelled")
+        self._emit("lyrics_resolution_cancelled")
 
     def _check_manual(self, identity: TrackIdentity) -> LyricsOperationResult | None:
         return None
@@ -237,7 +241,7 @@ class LyricsResolver:
         return list(_DEFAULT_ORDER)
 
     def _cancelled(self, request_id: str, track_hash: str) -> LyricsOperationResult:
-        self._bus.emit("lyrics_resolution_cancelled", request_id=request_id, track_hash=track_hash)
+        self._emit("lyrics_resolution_cancelled", request_id=request_id, track_hash=track_hash)
         return LyricsOperationResult(
             ok=False, code=LyricsErrorCode.CANCELLED,
             cancelled=True, message="Cancelled",

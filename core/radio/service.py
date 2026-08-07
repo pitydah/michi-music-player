@@ -37,7 +37,7 @@ class RadioService:
     ):
         self._station_repo = station_repo
         self._history_repo = history_repo
-        self._event_bus = event_bus or EventBus()
+        self._event_bus = event_bus
         self._probe_service = probe_service or StreamProbeService()
         self._scheduler = scheduler or RadioScheduler()
         self._clock = clock or (lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
@@ -52,6 +52,10 @@ class RadioService:
 
         self._session: StreamSession | None = None
         self._session_generation = 0
+
+    def _emit(self, event_type: str, data: dict | None = None) -> None:
+        if self._event_bus is not None:
+            self._event_bus.emit(event_type, data)
 
     @property
     def event_bus(self) -> EventBus:
@@ -108,7 +112,7 @@ class RadioService:
                 ok=False, error=e.error, message=str(e),
             )
         station = self._station_repo.add(req)
-        self._event_bus.emit("station_created", {"station_id": station.id})
+        self._emit("station_created", {"station_id": station.id})
         return RadioOperationResult(ok=True, station=station)
 
     def update_station(self, station_id: StationId, req: StationUpdateRequest) -> RadioOperationResult:
@@ -125,7 +129,7 @@ class RadioService:
                 ok=False, error=RadioError.NOT_FOUND,
                 message=f"Station {station_id} not found",
             )
-        self._event_bus.emit("station_updated", {"station_id": station_id})
+        self._emit("station_updated", {"station_id": station_id})
         return RadioOperationResult(ok=True, station=station)
 
     def delete_station(self, station_id: StationId) -> RadioOperationResult:
@@ -137,7 +141,7 @@ class RadioService:
                 ok=False, error=RadioError.NOT_FOUND,
                 message=f"Station {station_id} not found",
             )
-        self._event_bus.emit("station_deleted", {"station_id": station_id})
+        self._emit("station_deleted", {"station_id": station_id})
         return RadioOperationResult(ok=True)
 
     def set_favorite(self, station_id: StationId, favorite: bool) -> RadioOperationResult:
@@ -147,7 +151,7 @@ class RadioService:
                 ok=False, error=RadioError.NOT_FOUND,
                 message=f"Station {station_id} not found",
             )
-        self._event_bus.emit("favorite_changed", {"station_id": station_id, "favorite": favorite})
+        self._emit("favorite_changed", {"station_id": station_id, "favorite": favorite})
         return RadioOperationResult(ok=True)
 
     def toggle_favorite(self, station_id: StationId) -> RadioOperationResult:
@@ -187,7 +191,7 @@ class RadioService:
                     mode: AtomicMode = AtomicMode.BEST_EFFORT) -> RadioOperationResult:
         """Import a list of stations (upsert by URL) into the repository."""
         imported = self._station_repo.bulk_add(stations, mode.value)
-        self._event_bus.emit("stations_imported", {"imported": imported})
+        self._emit("stations_imported", {"imported": imported})
         return RadioOperationResult(ok=True, details={"imported": imported})
 
     def export_stations(self) -> list[dict]:
@@ -219,13 +223,13 @@ class RadioService:
                 ok=False, error=RadioError.NOT_FOUND,
                 message=f"Station {station_id} not found",
             )
-        self._event_bus.emit("probe_started", {"station_id": station_id})
+        self._emit("probe_started", {"station_id": station_id})
         result = self._probe_service.probe(station.stream_url)
         now = self._clock()
         self._station_repo.update_probe(
             station_id, result.status.value, now,
         )
-        self._event_bus.emit("probe_completed", {
+        self._emit("probe_completed", {
             "station_id": station_id,
             "status": result.status.value,
             "result": result,
@@ -286,7 +290,7 @@ class RadioService:
                 error=session_error, status="failed",
                 message=self._session.state.error_message or "Playback failed to start",
             )
-        self._event_bus.emit("session_state_changed", {
+        self._emit("session_state_changed", {
             "station_id": station_id,
             "state": state.value,
             "generation": gen,
@@ -361,7 +365,7 @@ class RadioService:
         )
 
     def _on_session_state_change(self, state: StreamSessionState):
-        self._event_bus.emit("session_state_changed", {
+        self._emit("session_state_changed", {
             "station_id": state.station_id,
             "state": state.state.value,
             "metadata": state.metadata,
@@ -383,7 +387,7 @@ class RadioService:
                 state.station_id, "reconnect",
                 error_code=state.error.value,
             )
-            self._event_bus.emit("reconnect_scheduled", {
+            self._emit("reconnect_scheduled", {
                 "station_id": state.station_id,
                 "attempt": state.reconnect_attempt,
             })
@@ -394,7 +398,7 @@ class RadioService:
                 state.station_id, "failure",
                 error_code=state.error.value,
             )
-            self._event_bus.emit("playback_failed", {
+            self._emit("playback_failed", {
                 "station_id": state.station_id,
                 "error": state.error.value,
                 "message": state.error_message,

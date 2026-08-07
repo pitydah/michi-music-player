@@ -152,6 +152,11 @@ class DeviceSyncService:
         self._discovered: dict[str, DeviceIdentity] = {}
         self._on_progress: Callable[[TransferJob], None] | None = None
 
+    @property
+    def device_registry(self):
+        """Public read port: the injected DeviceRegistry (single instance)."""
+        return self._registry
+
     # ── Internal helpers ──
 
     def _composite(self) -> DiscoveryComposite:

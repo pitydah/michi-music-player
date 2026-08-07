@@ -356,6 +356,11 @@ class MobileSyncService:
         self._routes_mounted = False
         self._load_devices()
 
+    @property
+    def device_registry(self):
+        """Public read port: the injected DeviceRegistry (single instance)."""
+        return self._device_registry
+
     # ── Persistence ──
 
     @property

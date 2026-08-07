@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+from core.event_bus import EventBus
+
 
 @dataclass
 class LyricDomainEvent:
@@ -18,19 +20,27 @@ class LyricDomainEvent:
 
 EventHandler = Callable[[LyricDomainEvent], None]
 
+_EVENT_PREFIX = "lyrics."
+
 
 class LyricEventBus:
-    def __init__(self):
-        self._handlers: dict[str, list[EventHandler]] = {}
+    """Thin typed wrapper over the canonical event bus (single EventBus rule).
+
+    All lyrics events flow through the wrapped :class:`EventBus` instance
+    under the ``lyrics.*`` namespace; this class only adds the typed
+    :class:`LyricDomainEvent` payload. It keeps no handler state of its own —
+    ``subscribe``/``unsubscribe`` delegate to the canonical bus.
+    """
+
+    def __init__(self, bus: EventBus | None = None):
+        self._bus = bus if bus is not None else EventBus()
         self._generation: int = 0
 
     def subscribe(self, event_type: str, handler: EventHandler):
-        self._handlers.setdefault(event_type, []).append(handler)
+        self._bus.on(f"{_EVENT_PREFIX}{event_type}", handler)
 
     def unsubscribe(self, event_type: str, handler: EventHandler):
-        handlers = self._handlers.get(event_type, [])
-        if handler in handlers:
-            handlers.remove(handler)
+        self._bus.off(f"{_EVENT_PREFIX}{event_type}", handler)
 
     def emit(self, event_type: str, request_id: str = "", track_hash: str = "",
              source: str = "", status: str = "", trace_id: str = "",
@@ -41,8 +51,8 @@ class LyricEventBus:
             source=source, status=status, trace_id=trace_id,
             data=data or {}, generation=self._generation,
         )
-        for handler in self._handlers.get(event_type, []):
-            handler(event)
+        self._bus.publish(f"{_EVENT_PREFIX}{event_type}", event)
 
     def clear(self):
-        self._handlers.clear()
+        """Drop all handlers registered in the lyrics namespace."""
+        self._bus.clear_namespace(_EVENT_PREFIX)

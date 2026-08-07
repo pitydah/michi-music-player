@@ -472,9 +472,13 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
     "recognition_service": _d(
         "recognition_service", ServiceClass.APPLICATION_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
-        dependencies=(),
+        dependencies=("provider_manager", "database"),
         consumers=("smart_tagging_service", "identifier_controller"),
-        description="Music identification via providers (ProviderManager injected by constructor); start() is a no-op and safe at bootstrap.",
+        description="Music identification over the canonical ADVANCED "
+                    "detection runtime (P0 FASE 10): shared ProviderManager + "
+                    "AudioCaptureService + DetectionService are composed and "
+                    "injected; construction never opens devices/sockets; "
+                    "start() is a no-op safe at bootstrap.",
     ),
     "smart_tagging_service": _d(
         "smart_tagging_service", ServiceClass.MANAGED_SERVICE,
@@ -594,7 +598,9 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         optional=True,
         capabilities=("home_audio", "snapcast", "transmit"),
         consumers=("home_audio_bridge",),
-        description="Home Audio orchestration (Snapcast + Home Assistant).",
+        description="Home Audio orchestration (Snapcast + Home Assistant); "
+                    "the HA client is composed WITHOUT starting network — it "
+                    "connects only on explicit runtime enable (P0 FASE 10).",
     ),
     "device_sync_service": _d(
         "device_sync_service", ServiceClass.MANAGED_SERVICE,
@@ -611,18 +617,21 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         dependencies=(),
         optional=True,
         capabilities=("devices_sync",),
-        consumers=("device_sync_service",),
-        description="Paired device registry.",
+        consumers=("device_sync_service", "mobile_sync_service",
+                   "devices_bridge", "assistant_runtime"),
+        description="Paired device registry (P0 FASE 10): ONE instance "
+                    "composed in ecosystem; every consumer gets it injected.",
     ),
     "mobile_sync_service": _d(
         "mobile_sync_service", ServiceClass.DOMAIN_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
-        dependencies=("database",),
+        dependencies=("database", "device_registry"),
         optional=True,
         capabilities=("devices_sync",),
         consumers=("mobile_sync_bridge",),
         description="Mobile sync: persistent pairing/trust (migration 8), "
-                    "real listener lifecycle, truthful health.",
+                    "real listener lifecycle, truthful health; shares the "
+                    "single composed DeviceRegistry.",
     ),
     "michi_link_client": _d(
         "michi_link_client", ServiceClass.EXTERNAL_RESOURCE,
@@ -732,16 +741,20 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         capabilities=("radio",),
         consumers=("radio_bridge",),
         description="Canonical RadioService: stations + sessions + playback "
-                    "readback + persisted history with event kinds.",
+                    "readback + persisted history; radio events flow through "
+                    "the canonical event_bus via a typed namespace wrapper "
+                    "(P0 FASE 10).",
     ),
     "lyrics_service": _d(
         "lyrics_service", ServiceClass.MANAGED_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
-        dependencies=("worker_manager",),
+        dependencies=("worker_manager", "event_bus"),
         optional=True,
         capabilities=("lyrics",),
         consumers=("lyrics_bridge",),
-        description="Lyrics via LRCLIB.",
+        description="Lyrics via LRCLIB; lyrics events flow through the "
+                    "canonical event_bus via ONE typed LyricEventBus wrapper "
+                    "shared by resolver and service (P0 FASE 10).",
     ),
     # ── Settings / presentation (3 registered keys) ──────────────────────
     "theme_service": _d(
@@ -884,8 +897,18 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
     "provider_manager": _d(
         "provider_manager", ServiceClass.REGISTRY,
         LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
-        consumers=("recognition_service",),
-        description="Recognition provider registry (Shazam/AudD/AcoustID).",
+        consumers=("recognition_service", "identifier_controller"),
+        description="Recognition provider registry (Shazam/AudD/AcoustID); "
+                    "composed in library (P0 FASE 10) and shared with the "
+                    "advanced detection runtime.",
+    ),
+    "file_manager_service": _d(
+        "file_manager_service", ServiceClass.PASSIVE_REPOSITORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        consumers=("track_action_service",),
+        description="Stateless file-manager facade (static methods only); "
+                    "the class itself is the registered port (P0 FASE 10) — "
+                    "nothing constructs it ad hoc.",
     ),
     "knowledge_broker": _d(
         "knowledge_broker", ServiceClass.DOMAIN_SERVICE,
