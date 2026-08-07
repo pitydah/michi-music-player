@@ -442,3 +442,29 @@ class TestLegacyAndUndoAndBackup:
         from mutagen.flac import FLAC
 
         assert FLAC(fp)["title"][0] == "Old"
+
+
+def test_batch_job_lost_state_non_retryable(tmp_path):
+    """A metadata_batch job whose proposal/token no longer exist (in-memory
+    state lost after restart) must fail closed as NON-retryable — it can
+    never succeed and must not loop forever."""
+    from core.jobs.handlers import make_metadata_batch_handler
+    from core.jobs.job_service import DurableJobService
+
+    class _LostStatePort:
+        def apply_batch(self, confirmations, ctx=None):
+            return {"ok": False, "code": "PROPOSAL_NOT_FOUND",
+                    "message": "Unknown proposal"}
+
+    svc = DurableJobService(db_path=str(tmp_path / "jobs.db"))
+    handler = make_metadata_batch_handler(_LostStatePort())
+    svc.register_handler("metadata_batch", handler)
+    job_id = svc.create_job(
+        "metadata_batch", owner="metadata_bridge",
+        payload={"proposal_id": "gone", "confirmation_token": "gone",
+                 "filepaths": ["/x.flac"]})
+    svc.start_job(job_id)
+    job = svc.get_job(job_id)
+    assert job.state.value == "FAILED"
+    assert job.retryable is False
+    assert any("PROPOSAL_NOT_FOUND" in e for e in job.errors)

@@ -737,7 +737,13 @@ class DeviceSyncService:
 
         caps = self._caps_for_device(device)
         music_root = self._music_root(device)
-        plan = self._planner.plan(device, track_ids, caps, music_root=music_root)
+        track_paths = self._resolve_track_paths(track_ids)
+        if not track_paths:
+            return {"ok": False,
+                    "error_code": SyncErrorCode.NO_TRACKS.value,
+                    "error": "NO_TRACKS_SELECTED"}
+        plan = self._planner.plan(device, track_paths, caps,
+                                  music_root=music_root)
         if plan.error_code:
             self._record_history(device, "", TransferStatus.FAILED,
                                  0, 0, plan.error, "")

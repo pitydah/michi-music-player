@@ -551,7 +551,12 @@ class MetadataEditorService:
 
     def _verify_track(self, fp: str, track_id: int,
                       expected: dict[str, Any]) -> dict:
-        """Per-field readback: expected DB value vs actual, expected tag vs actual."""
+        """Per-field readback: expected DB value vs actual, expected tag vs actual.
+
+        In memory-only mode (``db=None``) no DB readback is possible: every
+        field is reported READ_ERROR and the operation is rolled back — the
+        caller must inject a real database for productive use.
+        """
         ok = True
         code = ""
         item = None

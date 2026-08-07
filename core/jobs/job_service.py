@@ -399,6 +399,7 @@ class DurableJobService(QObject):
         job.errors = []
         job.warnings = []
         job.message = ""
+        job.result = {}
         job.finishedAt = ""
         self._save_job(job)
         self.queueChanged.emit(self._queue_count())

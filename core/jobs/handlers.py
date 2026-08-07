@@ -162,6 +162,16 @@ def make_metadata_batch_handler(port) -> callable:
               "confirmation_token": confirmation_token}],
             ctx=ctx,
         )
+        # In-memory proposal/token state is not durable across restarts: a
+        # recovered job referencing a lost proposal/token can NEVER succeed.
+        # Fail closed as non-retryable so it does not loop forever.
+        if result.get("code") in ("PROPOSAL_NOT_FOUND", "TOKEN_REQUIRED",
+                                  "TOKEN_USED", "TOKEN_EXPIRED",
+                                  "TOKEN_NOT_APPROVED"):
+            job.retryable = False
+            raise RuntimeError(
+                f"{result.get('code')}: in-memory confirmation state lost; "
+                "re-run the edit from the UI")
         if result.get("status") == "CANCELLED":
             ctx.token.raise_if_cancelled()
         result["ok"] = result.get("ok", False)

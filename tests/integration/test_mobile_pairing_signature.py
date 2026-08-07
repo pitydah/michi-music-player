@@ -383,3 +383,39 @@ def test_routes_not_mounted(db, monkeypatch) -> None:
     assert not svc.is_listening()
     assert svc.health()["routes_mounted"] is False
     assert svc.health()["server_listening"] is False
+
+
+def test_key_swap_pending_device_rejected(db) -> None:
+    """A second device claiming the SAME pending device_id with a DIFFERENT
+    public key must be rejected (DEVICE_ID_CONFLICT) — the pending identity
+    cannot be swapped before user approval."""
+    from core.mobile_sync_service import MobileSyncService
+
+    svc = MobileSyncService(db=db)
+
+    # Attacker claims device_id "phone-x" with attacker's own key first.
+    atk_private, atk_raw = _ed25519_keypair()
+    req1 = _signed_request(svc, atk_private, atk_raw, device_id="phone-x",
+                           name="Attacker")
+    result1 = svc.pair_request(**req1)
+    assert result1["ok"]
+    assert result1["status"] == "awaiting_approval"
+
+    # Victim tries the same device_id with a different key → conflict.
+    vic_private, vic_raw = _ed25519_keypair()
+    req2 = _signed_request(svc, vic_private, vic_raw, device_id="phone-x",
+                           name="Victim")
+    result2 = svc.pair_request(**req2)
+    assert not result2["ok"]
+    assert result2["error"] == "DEVICE_ID_CONFLICT"
+
+    # The pending device still holds the FIRST key (not swapped).
+    pending = svc._paired_devices.get("phone-x")
+    assert pending is not None
+    assert pending.public_key == _public_key_b64(atk_raw)
+
+    # The same key can still re-request (idempotent, no conflict).
+    req3 = _signed_request(svc, atk_private, atk_raw, device_id="phone-x",
+                           name="Attacker")
+    result3 = svc.pair_request(**req3)
+    assert result3["ok"]

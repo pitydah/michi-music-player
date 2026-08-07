@@ -117,6 +117,11 @@ def _signature_payload(protocol_version: str, session_id: str, nonce: str,
     ).encode()
 
 
+
+
+class _DeviceIdConflict:
+    """Sentinel returned by _create_pending_device on key-swap conflict."""
+
 @dataclass
 class PairedDevice:
     device_id: str
@@ -622,6 +627,9 @@ class MobileSyncService:
         device = self._create_pending_device(
             device_id=device_id, name=name, public_key=public_key,
             fingerprint=derived, protocol_version=protocol_version)
+        if isinstance(device, _DeviceIdConflict):
+            return {"ok": False, "error": "DEVICE_ID_CONFLICT",
+                    "status": "DEVICE_ID_CONFLICT"}
         if device is None:
             return {"ok": False, "error": "PERSISTENCE_FAILED",
                     "status": "PERSISTENCE_FAILED"}
@@ -653,7 +661,18 @@ class MobileSyncService:
 
         Never returns a device that failed to persist: on DB failure the
         device is NOT added to the trusted in-memory cache.
+
+        Key-swap guard: if a pending device with the SAME device_id already
+        exists with a DIFFERENT public key, the pairing is rejected with
+        DEVICE_ID_CONFLICT — the attacker must not be able to claim a
+        victim's pending device id with their own key (INSERT OR REPLACE
+        would silently overwrite it).
         """
+        existing = self._paired_devices.get(device_id)
+        if (existing is not None and not existing.trusted
+                and existing.public_key and public_key
+                and existing.public_key != public_key):
+            return _DeviceIdConflict()
         now = time.time()
         device = PairedDevice(
             device_id=device_id,
@@ -753,6 +772,9 @@ class MobileSyncService:
         device = self._create_pending_device(
             device_id=did, name=device_name, public_key="",
             fingerprint="", protocol_version=protocol_version)
+        if isinstance(device, _DeviceIdConflict):
+            return {"ok": False, "error": "DEVICE_ID_CONFLICT",
+                    "status": "DEVICE_ID_CONFLICT"}
         if device is None:
             return {"ok": False, "error": "PERSISTENCE_FAILED",
                     "status": "PERSISTENCE_FAILED"}

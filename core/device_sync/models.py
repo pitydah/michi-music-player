@@ -62,6 +62,7 @@ class SyncErrorCode(str, Enum):
     DEVICE_DISCONNECTED = "DEVICE_DISCONNECTED"
     CANCELLED = "CANCELLED"
     INVALID_PAYLOAD = "INVALID_PAYLOAD"
+    NO_TRACKS = "NO_TRACKS"
 
 
 class IdentitySource(str, Enum):
