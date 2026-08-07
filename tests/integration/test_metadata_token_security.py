@@ -29,7 +29,10 @@ from core.confirmation_service import (
 
 def _make_flac(path, title: str, artist: str = "Artist",
                album: str = "Album", year: int = 2020, genre: str = "Rock"):
-    import soundfile as sf
+    sf = pytest.importorskip(
+        "soundfile",
+        reason="audio-analysis extra required to build FLAC fixtures",
+    )
 
     path.parent.mkdir(parents=True, exist_ok=True)
     sf.write(path, np.zeros(64, dtype=np.float32), 8000, format="FLAC")

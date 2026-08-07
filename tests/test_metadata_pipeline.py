@@ -5,6 +5,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from PySide6.QtCore import QObject, QUrl, Signal, Slot
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 
@@ -33,7 +35,11 @@ def _write_mp3_with_cover(path: Path, cover: bytes = PNG_COVER) -> None:
 
 def _write_flac_with_cover(path: Path, cover: bytes = JPEG_COVER) -> None:
     import numpy as np
-    import soundfile as sf
+
+    sf = pytest.importorskip(
+        "soundfile",
+        reason="audio-analysis extra required to build FLAC fixtures",
+    )
     from mutagen.flac import FLAC, Picture
 
     sf.write(path, np.zeros(64, dtype=np.float32), 8000, format="FLAC")
