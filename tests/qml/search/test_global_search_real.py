@@ -30,12 +30,6 @@ def db_path(tmp_path):
             name TEXT NOT NULL, track_count INTEGER DEFAULT 0
         )
     """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS radio_stations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT, url TEXT, codec TEXT, country TEXT
-        )
-    """)
     items = [
         ("/path/genesis.flac", "Supper's Ready", "Genesis", "Foxtrot", "key1", 1972),
         ("/path/jethro.flac", "Aqualung", "Jethro Tull", "Aqualung", "key2", 1971),
@@ -48,7 +42,6 @@ def db_path(tmp_path):
         )
     conn.execute("INSERT INTO playlists (name, track_count) VALUES ('Favorites', 10)")
     conn.execute("INSERT INTO playlists (name, track_count) VALUES ('Rock Classics', 25)")
-    conn.execute("INSERT INTO radio_stations (name, url, codec, country) VALUES ('Jazz FM', 'http://jazz.fm', 'MP3', 'UK')")
     conn.commit()
     conn.execute("INSERT INTO media_fts (rowid, title, artist, album) SELECT id, title, artist, album FROM media_items")
     conn.commit()
@@ -96,11 +89,40 @@ def test_search_playlists(svc):
     assert len(playlists) >= 1
 
 
-def test_search_radio(svc):
-    result = svc.search("Jazz", timeout_ms=10000)
+def test_search_radio(svc, tmp_path):
+    # D2: the library DB has no radio_stations table — the legacy default
+    # registry never returns radio items. RADIO results come from the
+    # canonical radio database through the composed station repository.
+    from core.radio.models import StationCreateRequest
+    from core.search.models import SearchDomain
+    from core.search.providers import (
+        RadioStationSearchProvider,
+        SearchProviderRegistry,
+    )
+    from infrastructure.radio.station_repository import SqliteStationRepository
+
+    legacy = svc.search("Jazz", timeout_ms=10000)
+    assert legacy["ok"]
+    assert not [r for r in legacy["results"] if r["type"] == "radio"], (
+        "library DB must never fabricate radio results"
+    )
+
+    repo = SqliteStationRepository(str(tmp_path / "radio.db"))
+    repo.initialize()
+    repo.add(StationCreateRequest(
+        name="Jazz FM", stream_url="http://jazz.fm",
+        genre="Jazz", country="UK", codec="MP3",
+    ))
+    registry = SearchProviderRegistry()
+    registry.register(SearchDomain.RADIO, RadioStationSearchProvider(repo))
+    radio_svc = GlobalSearchService(
+        db_path=svc._db_path, provider_registry=registry,
+    )
+    result = radio_svc.search("Jazz", timeout_ms=10000)
     assert result["ok"]
     radios = [r for r in result["results"] if r["type"] == "radio"]
     assert len(radios) >= 1
+    assert radios[0]["title"] == "Jazz FM"
 
 
 def test_search_empty_query(svc):

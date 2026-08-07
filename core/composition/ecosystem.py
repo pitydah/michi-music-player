@@ -311,6 +311,19 @@ def build(container: ServiceContainer) -> None:
         container.register("radio_history_repository", history_repo)
         container.register("radio_playback_adapter", playback_adapter)
         container.register("radio_service", radio_service)
+        # D2: the RADIO global-search domain routes through the canonical
+        # station repository — never a radio_stations table in the library
+        # database (which does not exist in production). The provider gets
+        # the SAME composed repository instance registered above.
+        search_registry = container.get("search_provider_registry")
+        if search_registry is not None:
+            from core.search.models import SearchDomain
+            from core.search.providers import RadioStationSearchProvider
+
+            search_registry.register(
+                SearchDomain.RADIO,
+                RadioStationSearchProvider(station_repo),
+            )
     except Exception as exc:
         logger.error("Failed to create radio_service: %s", exc)
         container.register("radio_station_repository", None)

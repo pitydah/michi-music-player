@@ -92,7 +92,6 @@ def build(container: ServiceContainer) -> None:
         FolderSearchRepository,
         GenreSearchRepository,
         PlaylistSearchRepository,
-        RadioSearchRepository,
         SearchProviderRegistry,
         SettingsSearchProvider,
         TrackSearchRepository,
@@ -103,7 +102,6 @@ def build(container: ServiceContainer) -> None:
     search_registry.register(SearchDomain.ALBUM, AlbumSearchRepository(cf))
     search_registry.register(SearchDomain.ARTIST, ArtistSearchRepository(cf))
     search_registry.register(SearchDomain.PLAYLIST, PlaylistSearchRepository(cf))
-    search_registry.register(SearchDomain.RADIO, RadioSearchRepository(cf))
     search_registry.register(SearchDomain.GENRE, GenreSearchRepository(cf))
     search_registry.register(SearchDomain.FOLDER, FolderSearchRepository(cf))
     settings_service = container.get("settings_service")

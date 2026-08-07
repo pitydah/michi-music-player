@@ -1,9 +1,10 @@
 """Search providers — one provider per domain.
 
-Repositories (tracks, albums, artists, playlists, radio, genres, folders) own
-their SQL and open fresh read-only connections per query, so they are safe to
-run from any worker thread. In-memory providers (devices, connections,
-actions, settings) query their backing registry/service.
+Repositories (tracks, albums, artists, playlists, genres, folders) own
+their SQL and open fresh read-only connections per query, so they are safe
+to run from any worker thread. Service-backed providers (devices,
+connections, actions, settings, radio) query their injected registry,
+service or repository.
 
 A provider returns ``(items, status_code)``; status codes are the typed
 contract of the search response (see core.search.models). A provider must
@@ -368,49 +369,53 @@ class PlaylistSearchRepository(_SqlRepositoryBase):
         )
 
 
-class RadioSearchRepository(_SqlRepositoryBase):
-    """Radio stations by name/url/country (LIKE).
+class RadioStationSearchProvider:
+    """Search radio stations through the canonical station repository.
 
-    The production library database has no ``radio_stations`` table (radio
-    persists in its own database); the typed failure is reported instead of
-    being swallowed, matching the old silent-empty behavior only through the
-    response's domain status.
+    Stations persist in the radio database (``SqliteStationRepository``),
+    never in the library database — the library schema has no station table.
+    The repository is injected at composition time
+    (``core.composition.ecosystem``); the provider never constructs one and
+    never opens a database itself. A missing repository is a real error and
+    reports ``SEARCH_FAILED`` rather than fabricating results.
     """
+
+    def __init__(self, station_repo: Any = None) -> None:
+        self._repo = station_repo
 
     def __call__(
         self, request: SearchRequest, limit: int
     ) -> tuple[list[SearchResultItem], str]:
+        if self._repo is None:
+            return [], SEARCH_FAILED
         query = (request.query or "").strip()
         if not query:
             return [], STATUS_OK
         try:
-            conn = self._conn()
-        except RuntimeError:
-            return [], SERVICE_UNAVAILABLE
-        p = f"%{query}%"
-        try:
-            rows = conn.execute(
-                "SELECT id, name, url, codec, country FROM radio_stations "
-                "WHERE name LIKE ? OR url LIKE ? OR country LIKE ? LIMIT ?",
-                (p, p, p, limit),
-            ).fetchall()
-            return [self._item(r) for r in rows], STATUS_OK
-        except sqlite3.DatabaseError as exc:
-            if "no such table" in str(exc).lower():
-                return [], SEARCH_FAILED
-            return [], _sql_status(exc)
-        finally:
-            conn.close()
+            result = self._repo.search(query, 1, limit)
+        except Exception as exc:
+            logger.warning("Radio search failed: %s", exc)
+            return [], SEARCH_FAILED
+        stations = getattr(result, "items", None)
+        if stations is None:
+            stations = result if isinstance(result, list) else []
+        return [self._item(s) for s in stations[:limit]], STATUS_OK
 
     @staticmethod
-    def _item(r: sqlite3.Row) -> SearchResultItem:
+    def _item(station: Any) -> SearchResultItem:
+        station_id = str(getattr(station, "id", "") or "")
+        name = str(getattr(station, "name", "") or "")
+        country = str(getattr(station, "country", "") or "")
+        genre = str(getattr(station, "genre", "") or "")
+        url = str(getattr(station, "stream_url", "") or "")
+        codec = str(getattr(station, "codec", "") or "")
         return SearchResultItem(
-            result_id=str(r["id"]),
+            result_id=station_id,
             result_type="radio",
-            public_ref=f"radio_{r['id']}",
-            title=r["name"] or "",
-            subtitle=f"{r['country'] or ''} · {r['codec'] or ''}",
-            extra={"score": 0.6, "url": r["url"] or ""},
+            public_ref=f"radio_{station_id}",
+            title=name,
+            subtitle=" · ".join(p for p in (country, genre) if p),
+            extra={"score": 0.6, "url": url, "codec": codec},
         )
 
 
@@ -695,13 +700,18 @@ def build_default_registry(
     action_registry: Any = None,
     settings_service: Any = None,
 ) -> SearchProviderRegistry:
-    """Legacy-compatible registry for callers that only provide a DB source."""
+    """Legacy-compatible registry for callers that only provide a DB source.
+
+    RADIO is deliberately absent: stations live in the radio database and the
+    provider needs the composed ``SqliteStationRepository`` (injected by
+    ``core.composition.ecosystem``). Without a radio source the domain
+    reports ``PROVIDER_MISSING`` — an honest status, never a fabricated hit.
+    """
     registry = SearchProviderRegistry()
     registry.register(SearchDomain.TRACK, TrackSearchRepository(conn_source))
     registry.register(SearchDomain.ALBUM, AlbumSearchRepository(conn_source))
     registry.register(SearchDomain.ARTIST, ArtistSearchRepository(conn_source))
     registry.register(SearchDomain.PLAYLIST, PlaylistSearchRepository(conn_source))
-    registry.register(SearchDomain.RADIO, RadioSearchRepository(conn_source))
     registry.register(SearchDomain.GENRE, GenreSearchRepository(conn_source))
     registry.register(SearchDomain.FOLDER, FolderSearchRepository(conn_source))
     if device_registry is not None:
@@ -727,7 +737,7 @@ __all__ = [
     "AlbumSearchRepository",
     "ArtistSearchRepository",
     "PlaylistSearchRepository",
-    "RadioSearchRepository",
+    "RadioStationSearchProvider",
     "GenreSearchRepository",
     "FolderSearchRepository",
     "DeviceSearchProvider",
