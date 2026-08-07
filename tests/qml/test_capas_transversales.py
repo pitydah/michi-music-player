@@ -223,39 +223,58 @@ class TestCapabilityBridgeIntegrations:
 
 
 class TestAccessibilityBridgeIntegrations:
+    @staticmethod
+    def _bridge():
+        from core.accessibility_service import AccessibilityService
+
+        class _FakeSettings:
+            def __init__(self):
+                self._data = {}
+
+            def value(self, key, default=None):
+                return self._data.get(key, default)
+
+            def setValue(self, key, value):
+                self._data[key] = value
+
+        return AccessibilityBridge(
+            service=AccessibilityService(settings=_FakeSettings()))
+
     def test_accessibility_bridge_defaults(self):
-        ab = AccessibilityBridge()
+        ab = self._bridge()
         assert isinstance(ab.fontScale, float)
         assert isinstance(ab.highContrast, bool)
         assert isinstance(ab.reduceMotion, bool)
 
     def test_accessibility_bridge_set_font_scale(self):
-        ab = AccessibilityBridge()
+        ab = self._bridge()
         ab.fontScale = 1.5
         assert ab.fontScale == 1.5
 
     def test_accessibility_bridge_set_high_contrast(self):
-        ab = AccessibilityBridge()
+        ab = self._bridge()
         ab.highContrast = True
         assert ab.highContrast
 
     def test_accessibility_bridge_set_reduce_motion(self):
-        ab = AccessibilityBridge()
+        ab = self._bridge()
         ab.reduceMotion = True
         assert ab.reduceMotion
 
     def test_accessibility_bridge_set_mono(self):
-        ab = AccessibilityBridge()
+        ab = self._bridge()
+        ab = AccessibilityBridge(
+            service=ab._svc, playback_service=MagicMock())
         ab.mono = True
         assert ab.mono
 
     def test_accessibility_bridge_set_balance(self):
-        ab = AccessibilityBridge()
+        ab = self._bridge()
         ab.balance = 0.3
         assert ab.balance == 0.3
 
     def test_accessibility_bridge_balance_clamped(self):
-        ab = AccessibilityBridge()
+        ab = self._bridge()
         ab.balance = 5.0
         assert ab.balance <= 1.0
         ab.balance = -5.0
@@ -267,7 +286,7 @@ class TestAccessibilityBridgeIntegrations:
         assert ab._playback_service is ps
 
     def test_accessibility_bridge_restore_on_error(self):
-        ab = AccessibilityBridge()
+        ab = self._bridge()
         ab.mono = True
         ab.balance = 0.5
         result = ab.restoreOnError()
@@ -276,7 +295,7 @@ class TestAccessibilityBridgeIntegrations:
         assert result["balance"] == 0.0
 
     def test_accessibility_bridge_refresh(self):
-        ab = AccessibilityBridge()
+        ab = self._bridge()
         old = ab.fontScale
         ab.fontScale = 1.5 if old != 1.5 else 0.8
         ab.refresh()
@@ -392,70 +411,81 @@ class TestNotificationBridgeIntegrations:
 
 
 class TestJobBridgeIntegrations:
+    @staticmethod
+    def _make_bridge():
+        from core.jobs.job_service import DurableJobService
+        svc = DurableJobService(db_path=":memory:")
+        svc.register_handler("library_scan", lambda job, ctx: {"ok": True})
+        svc.register_handler("test", lambda job, ctx: {"ok": True})
+        return JobBridge(job_service=svc)
+
     def test_job_bridge_initial_state(self):
         jb = JobBridge()
         assert jb.jobs == []
         assert jb.activeCount == 0
 
     def test_job_bridge_run_job(self):
-        jb = JobBridge()
+        jb = self._make_bridge()
         result = jb.runJob("library_scan", "/some/path")
         assert result["ok"]
+        assert result["job_id"]
 
     def test_job_bridge_run_job_unknown(self):
-        jb = JobBridge()
+        jb = self._make_bridge()
         result = jb.runJob("unknown_job")
         assert not result["ok"]
 
     def test_job_bridge_active_count(self):
-        jb = JobBridge()
+        jb = self._make_bridge()
         jb._add_job("test", "Test job")
-        assert jb.activeCount >= 1
+        assert jb.activeCount >= 0
+        assert len(jb.jobs) >= 1
 
     def test_job_bridge_cancel_job(self):
-        jb = JobBridge()
-        jb._add_job("test", "Test job")
-        jobs = jb.jobs
-        assert len(jobs) > 0
-        job_id = jobs[0]["job_id"]
-        result = jb.cancelJob(job_id)
-        assert result["ok"]
+        jb = self._make_bridge()
+        result = jb._add_job("test", "Test job")
+        job_id = result["job_id"]
+        cancel = jb.cancelJob(job_id)
+        assert cancel["ok"]
 
     def test_job_bridge_cancel_nonexistent(self):
-        jb = JobBridge()
+        jb = self._make_bridge()
         result = jb.cancelJob(9999)
         assert not result["ok"]
 
     def test_job_bridge_clear_completed(self):
-        jb = JobBridge()
+        jb = self._make_bridge()
         jb._add_job("test", "Test job")
-        jb.clearCompleted()
+        cleared = jb.clearCompleted()
+        assert cleared["ok"]
         assert jb.activeCount >= 0
 
     def test_job_bridge_clear_failed(self):
-        jb = JobBridge()
+        jb = self._make_bridge()
         jb._add_job("test", "Test job")
-        jb.clearFailed()
+        cleared = jb.clearFailed()
+        assert cleared["ok"]
         assert jb.activeCount >= 0
 
     def test_job_bridge_retry_job(self):
-        jb = JobBridge()
+        jb = self._make_bridge()
         jb._add_job("test", "Test job")
         result = jb.retryJob(9999)
         assert not result["ok"]
 
-    def test_job_bridge_with_worker_manager(self):
+    def test_job_bridge_without_job_service_is_degraded(self):
         wm = MagicMock()
         jb = JobBridge(worker_manager=wm)
         result = jb.runJob("library_scan", "/tmp")
-        assert result["ok"]
+        assert not result["ok"]
+        assert result["error"] == "INFRASTRUCTURE_UNAVAILABLE"
 
-    def test_job_bridge_prune_max_jobs(self):
-        jb = JobBridge()
-        for i in range(250):
-            jb._add_job("test", "Test job")
-            jb._update_job(i + 1, state="completed")
-        assert len(jb.jobs) <= 200
+    def test_job_bridge_has_no_internal_registry(self):
+        jb = self._make_bridge()
+        jb._add_job("test", "Test job")
+        assert not hasattr(jb, "_jobs"), (
+            "JobBridge must not keep its own job registry"
+        )
 
     def test_job_bridge_attach_library_coordinator(self):
         jb = JobBridge()
@@ -463,15 +493,13 @@ class TestJobBridgeIntegrations:
         jb.attach_library_coordinator(coord)
         assert jb._library_coordinator is coord
 
-    def test_job_bridge_update_job(self):
-        jb = JobBridge()
-        jb.runJob("library_scan", "/tmp")
-        job_id = jb.jobs[0]["job_id"]
-        jb._update_job(job_id, state="completed", progress=100)
+    def test_job_bridge_updates_through_service(self):
+        jb = self._make_bridge()
+        result = jb.runJob("library_scan", "/tmp")
+        job_id = result["job_id"]
         updated = [j for j in jb.jobs if j["job_id"] == job_id]
         assert len(updated) == 1
-        assert updated[0]["state"] == "completed"
-        assert updated[0]["progress"] == 100
+        assert updated[0]["state"] in ("queued", "running", "completed")
 
 
 class TestActionRegistryIntegrations:

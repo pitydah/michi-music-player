@@ -14,7 +14,9 @@ class MetadataApplyService:
     def __init__(self, db, repository: MetadataReviewRepository,
                  apply_to_db: bool = True,
                  apply_to_files: bool = False,
-                 require_confirmation: bool = True):
+                 require_confirmation: bool = True,
+                 metadata_editor: Any | None = None,
+                 confirmation_service: Any | None = None):
         if not hasattr(db, 'update_media_item_field'):
             raise TypeError("db object must implement update_media_item_field()")
         if not hasattr(db, 'get_media_item_by_id'):
@@ -24,6 +26,8 @@ class MetadataApplyService:
         self._apply_to_db = apply_to_db
         self._apply_to_files = apply_to_files
         self._require_confirm = require_confirmation
+        self._editor = metadata_editor
+        self._cs = confirmation_service
 
     def apply(self, review_id: str, accepted_fields: dict[int, list[str]]) -> dict[str, Any]:
         review = self._repo.load_review(review_id)
@@ -37,86 +41,73 @@ class MetadataApplyService:
             return {"status": "error", "error": "Aplicacion a DB desactivada en configuracion."}
         if target == "file_tags" and not self._apply_to_files:
             return {"status": "error", "error": "Escritura a archivos desactivada en configuracion."}
-        if target == "file_tags" and self._apply_to_files:
-            return self._apply_to_files_target(review_id, review, accepted_fields)
-        if target != "local_db":
-            return {"status": "error", "error": f"apply_target '{target}' no soportado."}
 
-        return self._apply_to_db_target(review_id, review, accepted_fields)
+        # P0: all metadata mutations route through the canonical editor with
+        # a ConfirmationToken. The legacy direct DB/tag writes are disabled.
+        if self._editor is not None:
+            return self._apply_via_editor(review_id, review, accepted_fields)
+        return {"status": "error", "error": "LEGACY_OPERATION_DISABLED",
+                "message": "Metadata apply requires the canonical "
+                           "MetadataEditorService (proposal → token → apply)"}
 
-    def _apply_to_db_target(self, review_id: str, review, accepted_fields: dict[int, list[str]]) -> dict[str, Any]:
-        if self._require_confirm and not accepted_fields:
-            return {"status": "error", "error": "Debes confirmar al menos un campo para aplicar los cambios."}
+    def _apply_via_editor(self, review_id: str, review,
+                          accepted_fields: dict[int, list[str]]) -> dict[str, Any]:
+        """Route accepted review changes through the canonical editor pipeline.
+
+        Every track with accepted fields becomes a proposal → token (issued
+        and approved via ConfirmationService) → apply_batch with readback
+        verification. Unsupported fields are skipped honestly.
+        """
         applied = 0
         skipped = 0
         for proposal in review.proposals:
-            accepted = accepted_fields.get(proposal.track_id, [])
-            for change in proposal.changes:
-                if change.field in accepted and change.suggested_value:
-                    old_val = self._get_current(proposal.track_id, change.field)
-                    if old_val is None:
-                        skipped += 1
-                        continue
-                    ok = self._db.update_media_item_field(
-                        proposal.track_id, change.field, change.suggested_value,
-                    )
-                    if ok:
-                        self._repo.save_undo(
-                            review_id, proposal.track_id, change.field, old_val,
-                        )
-                        change.accepted = True
-                        applied += 1
-                    else:
-                        skipped += 1
-                else:
-                    skipped += 1
-
-            proposal.status = "applied" if applied == len(proposal.changes) else "partial" if applied > 0 else "rejected"
-            self._repo.save_proposal(proposal)
-
-        review.status = "applied"
-        self._repo.log_action(
-            review_id, "apply", "applied" if skipped == 0 else "partial",
-            f"Aplicados {applied} cambios, omitidos {skipped}",
-        )
-        return {"status": "applied", "applied": applied, "skipped": skipped, "target": "local_db"}
-
-    def _apply_to_files_target(self, review_id: str, review, accepted_fields: dict[int, list[str]]) -> dict[str, Any]:
-        applied = 0
-        skipped = 0
-        for proposal in review.proposals:
-            accepted = accepted_fields.get(proposal.track_id, [])
-            changes_to_write = [c for c in proposal.changes if c.field in accepted and c.suggested_value]
-            if not changes_to_write:
-                skipped += len(proposal.changes)
+            accepted = set(accepted_fields.get(proposal.track_id, []))
+            changes = {
+                c.field: c.suggested_value
+                for c in proposal.changes
+                if c.field in accepted and c.suggested_value
+            }
+            if not changes:
+                skipped += 1
                 continue
             item = self._db.get_media_item_by_id(proposal.track_id)
-            if not item or not getattr(item, "filepath", ""):
-                skipped += len(proposal.changes)
+            filepath = getattr(item, "filepath", "") if item else ""
+            ref = {"track_id": proposal.track_id}
+            if filepath:
+                ref["filepath"] = filepath
+            build = self._editor.build_proposal([ref], changes)
+            if not build.get("ok"):
+                skipped += 1
                 continue
-            ok = _write_tags_for_track(item.filepath, changes_to_write)
-            if ok:
-                for c in changes_to_write:
-                    old_val = self._get_current(proposal.track_id, c.field)
-                    if old_val is None:
-                        skipped += 1
-                        continue
-                    self._db.update_media_item_field(proposal.track_id, c.field, c.suggested_value)
-                    self._repo.save_undo(review_id, proposal.track_id, c.field, old_val)
+            conf = self._editor.confirm(
+                build["proposal_id"], selected_fields=list(changes))
+            if not conf.get("ok"):
+                skipped += 1
+                continue
+            token = conf["confirmation_token"]
+            if not self._editor.approve(token).get("ok"):
+                skipped += 1
+                continue
+            result = self._editor.apply_batch([{
+                "proposal_id": build["proposal_id"],
+                "confirmation_token": token,
+            }])
+            applied += result.get("applied", 0)
+            skipped += result.get("failed", 0) + result.get("conflicts", 0)
+            for c in proposal.changes:
+                if c.field in accepted:
                     c.accepted = True
-                    applied += 1
-            else:
-                skipped += len(changes_to_write)
-
-            proposal.status = "applied" if applied == len(proposal.changes) else "partial" if applied > 0 else "rejected"
+            proposal.status = ("applied" if applied
+                               else "rejected")
             self._repo.save_proposal(proposal)
 
-        review.status = "applied"
+        review.status = "applied" if skipped == 0 else "partial"
         self._repo.log_action(
-            review_id, "apply", "applied_to_files" if skipped == 0 else "partial",
-            f"Escritos {applied} cambios en archivos, omitidos {skipped}",
+            review_id, "apply", review.status,
+            f"Aplicados {applied} cambios, omitidos {skipped}",
         )
-        return {"status": "applied", "applied": applied, "skipped": skipped, "target": "file_tags"}
+        return {"status": review.status, "applied": applied,
+                "skipped": skipped, "target": review.apply_target}
 
     def _get_current(self, track_id: int, field: str) -> str | None:
         try:
@@ -127,21 +118,3 @@ class MetadataApplyService:
             logger.warning("Failed to get current value for track %d field %s: %s",
                            track_id, field, e)
         return None
-
-
-def _write_tags_for_track(filepath: str, changes: list) -> bool:
-    if not changes:
-        return False
-    try:
-        from metadata.tag_reader import read_tags
-        from metadata.tag_writer import write_tags
-        tags = read_tags(filepath)
-        if tags is None:
-            return False
-        for change in changes:
-            if change.suggested_value:
-                tags.set_field(change.field, change.suggested_value)
-        return write_tags(tags)
-    except Exception as e:
-        logger.warning("Tag write failed for %s: %s", filepath, e)
-        return False

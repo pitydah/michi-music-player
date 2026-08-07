@@ -1,0 +1,943 @@
+"""Declarative service manifest — single source of truth for container lifecycle.
+
+Every stateful runtime component (including *Manager/*Registry/*Executor/*Store
+classes that do not end in "Service") is declared here with its lifecycle kind,
+priority, dependencies and consumers. ServiceContainer derives start/shutdown
+behaviour from SERVICE_MANIFEST instead of static name lists (ADR-001).
+
+Rule: the manifest is the source of truth; composition builders only construct.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import Enum
+
+
+class ServiceClass(Enum):
+    """Taxonomy of runtime components (audit RUNTIME_SERVICE_AUDIT_CURRENT §5)."""
+
+    MANAGED_SERVICE = "managed_service"
+    DOMAIN_SERVICE = "domain_service"
+    APPLICATION_SERVICE = "application_service"
+    PASSIVE_REPOSITORY = "passive_repository"
+    STATE_STORE = "state_store"
+    EXECUTOR = "executor"
+    PROCESS_MANAGER = "process_manager"
+    UI_ADAPTER = "ui_adapter"
+    REGISTRY = "registry"
+    FACTORY = "factory"
+    EXTERNAL_RESOURCE = "external_resource"
+    LEGACY_COMPONENT = "legacy_component"
+
+
+class ServicePriority(Enum):
+    """Availability requirements for a registered service."""
+
+    REQUIRED = "required"
+    OPTIONAL = "optional"
+    CAPABILITY_GATED = "capability_gated"
+    DEFERRED_PHYSICAL = "deferred_physical"
+    DEFERRED = "deferred"
+
+
+class LifecycleKind(Enum):
+    """How the container treats a component's lifecycle."""
+
+    MANAGED = "managed"
+    PASSIVE = "passive"
+    EXTERNAL = "external"
+
+
+@dataclass(frozen=True)
+class ServiceDescriptor:
+    """Declarative description of a runtime component.
+
+    Attributes:
+        name: Canonical key (registered container key, or component name for
+            standalone components that live outside the container).
+        service_class: Taxonomy bucket from ServiceClass.
+        lifecycle: MANAGED (start/shutdown called), PASSIVE (no lifecycle
+            calls), EXTERNAL (only shutdown/cancel, never start).
+        priority: Availability requirement (ServicePriority).
+        dependencies: Container keys that must exist before this one.
+        consumers: Bridges/modules that consume this component (best effort;
+            empty tuple is acceptable for shared infrastructure).
+        capabilities: Real capability keys used by the capability bridge.
+        start_method/shutdown_method/stop_method/cancel_method: Method names
+            to invoke; missing methods are skipped, not errors.
+        optional: True when registration may be None or absent.
+        description: Why this component exists / how it is used.
+        alias_of: Canonical key this descriptor is an alias of. The alias
+            shares the registered instance and lifecycle with the target:
+            aliases are never started/shutdown separately and they are not
+            graph nodes for dependency ordering.
+    """
+
+    name: str
+    service_class: ServiceClass
+    lifecycle: LifecycleKind
+    priority: ServicePriority
+    dependencies: tuple[str, ...] = ()
+    consumers: tuple[str, ...] = ()
+    capabilities: tuple[str, ...] = ()
+    start_method: str = "start"
+    shutdown_method: str = "shutdown"
+    stop_method: str = "stop"
+    cancel_method: str = "cancel"
+    optional: bool = False
+    description: str = ""
+    alias_of: str | None = None
+
+
+def _d(name, service_class, lifecycle, priority, **kwargs) -> ServiceDescriptor:
+    """Compact descriptor factory for the manifest table."""
+    return ServiceDescriptor(
+        name=name,
+        service_class=service_class,
+        lifecycle=lifecycle,
+        priority=priority,
+        **kwargs,
+    )
+
+
+SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
+    # ── Infrastructure (18 registered keys) ──────────────────────────────
+    "settings_manager": _d(
+        "settings_manager", ServiceClass.PASSIVE_REPOSITORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        capabilities=("settings",),
+        description="QSettings wrapper; passive by design.",
+    ),
+    "paths": _d(
+        "paths", ServiceClass.PASSIVE_REPOSITORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        description="XDG path resolver (function); passive by design.",
+    ),
+    "database": _d(
+        "database", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        capabilities=("library",),
+        description="LibraryDB — SQLite WAL database handle.",
+    ),
+    "connection_factory": _d(
+        "connection_factory", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        alias_of="database",
+        description="Alias of database object for legacy consumers (same "
+                    "LibraryDB instance; never started/shutdown separately).",
+    ),
+    "read_connection_factory": _d(
+        "read_connection_factory", ServiceClass.PASSIVE_REPOSITORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("database",),
+        consumers=("capability_bridge",),
+        description="Read-only SQLite connection factory.",
+    ),
+    "writer_coordinator": _d(
+        "writer_coordinator", ServiceClass.STATE_STORE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("database",),
+        description="Coordinated SQLite write queue; no lifecycle methods yet.",
+    ),
+    "track_repository": _d(
+        "track_repository", ServiceClass.PASSIVE_REPOSITORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("database",),
+        consumers=("library_query_service",),
+        description="Track CRUD repository.",
+    ),
+    "album_repository": _d(
+        "album_repository", ServiceClass.PASSIVE_REPOSITORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("database",),
+        consumers=("library_query_service",),
+        description="Album CRUD repository.",
+    ),
+    "artist_repository": _d(
+        "artist_repository", ServiceClass.PASSIVE_REPOSITORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("database",),
+        consumers=("library_query_service",),
+        description="Artist CRUD repository.",
+    ),
+    "runtime_persistence": _d(
+        "runtime_persistence", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        description="Persists runtime session state.",
+    ),
+    "process_controller": _d(
+        "process_controller", ServiceClass.PROCESS_MANAGER,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        description="Controls owned subprocesses.",
+    ),
+    "event_bus": _d(
+        "event_bus", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        description="In-process pub/sub event bus.",
+    ),
+    "worker_manager": _d(
+        "worker_manager", ServiceClass.EXECUTOR,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        consumers=("job_bridge", "query_executor", "library_service",
+                   "folder_service", "smart_tagging_service", "metadata_service"),
+        description="ThreadPool executor; single productive instance.",
+    ),
+    "query_executor": _d(
+        "query_executor", ServiceClass.EXECUTOR,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        dependencies=("worker_manager",),
+        description="Async SQLite queries with sync fallback.",
+    ),
+    "job_service": _d(
+        "job_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        consumers=("notification_service",),
+        capabilities=("app_state",),
+        description="Durable job service (S2 migrates JobBridge onto it).",
+    ),
+    "confirmation_service": _d(
+        "confirmation_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        dependencies=("action_registry",),
+        description="Destructive-action confirmation flow.",
+    ),
+    "settings_coordinator": _d(
+        "settings_coordinator", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        capabilities=("settings",),
+        consumers=("settings_service", "settings_bridge"),
+        description="SettingsRuntimeCoordinator — applies runtime settings. "
+                    "Does NOT depend on settings_service (wiring direction: "
+                    "settings_service -> coordinator); playback/queue/worker "
+                    "are late-wired by composition, not manifest deps.",
+    ),
+    "settings_service": _d(
+        "settings_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        dependencies=("settings_coordinator",),
+        capabilities=("settings",),
+        consumers=("settings_bridge",),
+        description="Settings get/set/reset service.",
+    ),
+    # ── Playback (4 registered keys) ─────────────────────────────────────
+    "queue_service": _d(
+        "queue_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        dependencies=("playback_service",),
+        capabilities=("playback", "nowplaying"),
+        consumers=("nowplaying_bridge", "playback_bridge", "track_action_service"),
+        description="Canonical play queue synced to the active backend.",
+    ),
+    "playback_service": _d(
+        "playback_service", ServiceClass.APPLICATION_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        dependencies=("worker_manager", "event_bus", "database"),
+        capabilities=("playback", "eq", "output_profiles", "transmit"),
+        consumers=("queue_service", "mpris_adapter", "home_audio_service",
+                   "playback_bridge", "home_dashboard"),
+        description="PlayerService facade over GStreamer/MPD engines.",
+    ),
+    "notification_service": _d(
+        "notification_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        dependencies=("event_bus",),
+        capabilities=("notifications",),
+        consumers=("notification_bridge",),
+        description="User-facing notifications.",
+    ),
+    "mpris_adapter": _d(
+        "mpris_adapter", ServiceClass.UI_ADAPTER,
+        LifecycleKind.EXTERNAL, ServicePriority.OPTIONAL,
+        dependencies=("playback_service", "queue_service"),
+        optional=True,
+        description="MPRIS D-Bus adapter; may be None when D-Bus is absent.",
+    ),
+    "playback_snapshot_service": _d(
+        "playback_snapshot_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("playback_service", "queue_service"),
+        capabilities=("playback", "nowplaying"),
+        consumers=("player_bar_service", "context_service"),
+        description="Canonical honest playback readback (S9, ADR-005).",
+    ),
+    "player_bar_service": _d(
+        "player_bar_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("playback_snapshot_service",),
+        consumers=("playback_bridge",),
+        description="Player bar facade; honest SERVICE_UNAVAILABLE without player.",
+    ),
+    "output_profile_service": _d(
+        "output_profile_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("playback_service", "event_bus"),
+        capabilities=("output_profiles",),
+        consumers=("output_profiles_bridge",),
+        description="Output profiles with apply -> readback verification.",
+    ),
+    "equalizer_service": _d(
+        "equalizer_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("playback_service", "event_bus"),
+        capabilities=("eq",),
+        consumers=("eq_bridge",),
+        description="EQ facade: validate -> apply -> readback -> persist.",
+    ),
+    # ── Library (20 registered keys) ─────────────────────────────────────
+    "library_sources_service": _d(
+        "library_sources_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        capabilities=("library",),
+        consumers=("library_bridge", "folder_tree_model"),
+        description="Library root paths and sources.",
+    ),
+    "library_query_service": _d(
+        "library_query_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        dependencies=("connection_factory", "library_sources_service"),
+        capabilities=("library",),
+        consumers=("library_bridge", "track_action_service", "playlist_service",
+                   "global_search_service", "mix_service", "collection_service",
+                   "library_service", "smart_tagging_service", "audio_lab_service"),
+        description="Canonical library queries (FTS5).",
+    ),
+    "library_filtered_query_service": _d(
+        "library_filtered_query_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        alias_of="library_query_service",
+        description="Alias of library_query_service (same object; not a "
+                    "lifecycle owner — never started/shutdown separately).",
+    ),
+    "collection_service": _d(
+        "collection_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("database", "library_query_service"),
+        consumers=("library_bridge",),
+        capabilities=("library",),
+        description="User collections over the library.",
+    ),
+    "folder_tree_model": _d(
+        "folder_tree_model", ServiceClass.STATE_STORE,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("library_sources_service",),
+        consumers=("folder_bridge",),
+        description="Qt model of the folder tree.",
+    ),
+    "library_mutation_service": _d(
+        "library_mutation_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        dependencies=("database", "event_bus", "favorite_service"),
+        capabilities=("library", "metadata"),
+        consumers=("metadata_service", "library_doctor_service",
+                   "library_bridge", "track_action_service"),
+        description="Canonical library mutation authority (S3): favorites via "
+                    "FavoriteService, track removal, metadata field edits.",
+    ),
+    "favorite_service": _d(
+        "favorite_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("database", "event_bus"),
+        capabilities=("library",),
+        consumers=("library_bridge", "track_action_service", "songs_service",
+                   "library_mutation_service"),
+        description="Canonical favorites with entity identity "
+                    "(entity_type/entity_id/public_ref); always registered by "
+                    "composition, optional priority so the frozen required "
+                    "set stays the start gate.",
+    ),
+    "metadata_editor_service": _d(
+        "metadata_editor_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("database", "library_mutation_service", "event_bus",
+                      "confirmation_service", "undo_service", "worker_manager"),
+        capabilities=("metadata",),
+        consumers=("metadata_service", "metadata_bridge",
+                   "assistant_metadata_gateway", "library_doctor_service"),
+        description="MetadataEditorService — canonical metadata editing "
+                    "authority (proposal/preview/confirm/apply/readback/undo) "
+                    "with DB + tag writer + EventBus + UndoService injected.",
+    ),
+    "library_service": _d(
+        "library_service", ServiceClass.APPLICATION_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("database", "worker_manager", "library_query_service"),
+        consumers=("library_bridge",),
+        capabilities=("library",),
+        description="Scan/index orchestration; shutdown-only (no start method).",
+    ),
+    "playlist_service": _d(
+        "playlist_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        dependencies=("library_query_service", "connection_factory"),
+        capabilities=("playlists",),
+        consumers=("playlists_bridge", "track_action_service", "mix_service"),
+        description="Playlist CRUD.",
+    ),
+    "track_action_service": _d(
+        "track_action_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        dependencies=("queue_service", "library_query_service", "playlist_service"),
+        capabilities=("library",),
+        description="Track-level actions (queue, playlists, files).",
+    ),
+    "history_query_service": _d(
+        "history_query_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        dependencies=("connection_factory",),
+        consumers=("history_bridge",),
+        description="Playback history queries.",
+    ),
+    "global_search_service": _d(
+        "global_search_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        dependencies=("connection_factory", "library_query_service",
+                      "search_provider_registry", "query_executor",
+                      "worker_manager"),
+        capabilities=("global_search",),
+        consumers=("global_search_bridge",),
+        description="Global FTS5 search.",
+    ),
+    "search_provider_registry": _d(
+        "search_provider_registry", ServiceClass.PASSIVE_REPOSITORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("connection_factory",),
+        consumers=("global_search_service",),
+        description="SearchDomain -> provider registry for global search.",
+    ),
+    "metadata_service": _d(
+        "metadata_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        dependencies=("database",),
+        capabilities=("metadata",),
+        consumers=("metadata_bridge", "audio_lab_service",
+                   "assistant_metadata_gateway"),
+        description="Metadata read authority: physical tag reads, validation "
+                    "and single-file editor (legacy editing surface kept for "
+                    "backward compatibility; batch editing goes through "
+                    "metadata_editor_service).",
+    ),
+    "library_doctor_service": _d(
+        "library_doctor_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("database", "library_mutation_service", "worker_manager",
+                      "library_doctor_scan_repository", "job_service",
+                      "confirmation_service", "undo_service",
+                      "metadata_editor_service", "genre_cleanup_service",
+                      "event_bus"),
+        optional=True,
+        capabilities=("library_doctor",),
+        consumers=("library_doctor_bridge", "assistant_gateway"),
+        description="Library health diagnosis with a real repair registry "
+                    "(IssueType -> RepairHandler: preview/execute/readback/"
+                    "undo); repairs require confirmation and register real "
+                    "compensations in UndoService.",
+    ),
+    "library_doctor_scan_repository": _d(
+        "library_doctor_scan_repository", ServiceClass.PASSIVE_REPOSITORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("database",),
+        optional=True,
+        consumers=("library_doctor_bridge", "library_doctor_service"),
+        description="Scan/repair repository for the library doctor; injected "
+                    "into LibraryDoctorBridge (no bridge construction).",
+    ),
+    "genre_cleanup_service": _d(
+        "genre_cleanup_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("database",),
+        capabilities=("genres",),
+        consumers=("library_doctor_service",),
+        description="GenreCleanupService — detect fragmented/duplicate genres "
+                    "and merge them; used by the library doctor genre repair.",
+    ),
+    "undo_service": _d(
+        "undo_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("event_bus",),
+        consumers=("metadata_editor_service", "library_doctor_service",
+                   "notification_action_service"),
+        description="UndoService — operation log mapping operation_id to real "
+                    "compensation callbacks (ADR-005); undo() runs the "
+                    "compensation and emits events.",
+    ),
+    "notification_action_service": _d(
+        "notification_action_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("job_service", "undo_service", "navigation_service"),
+        consumers=("notification_bridge",),
+        description="Canonical notification action dispatch: retry re-runs "
+                    "the original durable job, undo runs a real compensation, "
+                    "open_* routes through NavigationService.",
+    ),
+    "recognition_service": _d(
+        "recognition_service", ServiceClass.APPLICATION_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("provider_manager", "database"),
+        consumers=("smart_tagging_service", "identifier_controller"),
+        description="Music identification over the canonical ADVANCED "
+                    "detection runtime (P0 FASE 10): shared ProviderManager + "
+                    "AudioCaptureService + DetectionService are composed and "
+                    "injected; construction never opens devices/sockets; "
+                    "start() is a no-op safe at bootstrap.",
+    ),
+    "smart_tagging_service": _d(
+        "smart_tagging_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("worker_manager", "library_query_service",
+                      "recognition_service", "metadata_editor_service",
+                      "confirmation_service"),
+        optional=True,
+        capabilities=("smart_tagging",),
+        description="Smart tagging suggestions; may be None.",
+    ),
+    "artwork_service": _d(
+        "artwork_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("database",),
+        optional=True,
+        capabilities=("cover",),
+        consumers=("library_bridge", "cover_bridge"),
+        description="CoverArtService; shutdown-only (no start method).",
+    ),
+    "songs_service": _d(
+        "songs_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("database", "library_query_service"),
+        optional=True,
+        capabilities=("library",),
+        consumers=("library_bridge",),
+        description="Songs view service; shutdown-only.",
+    ),
+    "track_service": _d(
+        "track_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("database",),
+        optional=True,
+        capabilities=("library",),
+        consumers=("library_bridge",),
+        description="Track detail service; shutdown-only.",
+    ),
+    "genres_service": _d(
+        "genres_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("database",),
+        optional=True,
+        capabilities=("library",),
+        consumers=("library_bridge",),
+        description="Genres service; shutdown-only.",
+    ),
+    "folder_service": _d(
+        "folder_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("database", "worker_manager"),
+        optional=True,
+        capabilities=("library",),
+        consumers=("folder_bridge",),
+        description="Folder browsing service; shutdown-only.",
+    ),
+    # ── Audio Lab (3 registered keys) ────────────────────────────────────
+    "audio_lab_service": _d(
+        "audio_lab_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("worker_manager", "library_query_service", "metadata_service"),
+        optional=True,
+        capabilities=("audio_lab", "disc_lab"),
+        consumers=("audio_lab_bridge",),
+        description="Audio Lab orchestrator; start() is idempotent.",
+    ),
+    "diagnostics_service": _d(
+        "diagnostics_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        dependencies=("worker_manager", "library_query_service", "settings_service"),
+        optional=True,
+        capabilities=("diagnostics",),
+        consumers=("diagnostics_bridge",),
+        description="Audio/backend diagnostics.",
+    ),
+    "cd_ripper_service": _d(
+        "cd_ripper_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=(),
+        optional=True,
+        capabilities=("disc_lab",),
+        consumers=("audio_lab_bridge",),
+        description="CD ripping; cancel/shutdown only, no start.",
+    ),
+    # ── Ecosystem (9 registered keys) ────────────────────────────────────
+    "connection_service": _d(
+        "connection_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("worker_manager",),
+        optional=True,
+        capabilities=("connections", "connections_michilink"),
+        consumers=("connections_bridge",),
+        description="Michi Link / connection management.",
+    ),
+    "snapcast_control": _d(
+        "snapcast_control", ServiceClass.EXTERNAL_RESOURCE,
+        LifecycleKind.EXTERNAL, ServicePriority.OPTIONAL,
+        optional=True,
+        capabilities=("snapcast",),
+        consumers=("home_audio_service",),
+        description="Snapcast JSON-RPC client; external resource, never started.",
+    ),
+    "snapserver_manager": _d(
+        "snapserver_manager", ServiceClass.PROCESS_MANAGER,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=(),
+        optional=True,
+        capabilities=("snapcast",),
+        consumers=("home_audio_service", "capability_bridge"),
+        description="Owned snapserver daemon lifecycle; start degrades gracefully when the binary is missing.",
+    ),
+    "home_audio_service": _d(
+        "home_audio_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("worker_manager", "playback_service",
+                      "snapserver_manager", "snapcast_control"),
+        optional=True,
+        capabilities=("home_audio", "snapcast", "transmit"),
+        consumers=("home_audio_bridge",),
+        description="Home Audio orchestration (Snapcast + Home Assistant); "
+                    "the HA client is composed WITHOUT starting network — it "
+                    "connects only on explicit runtime enable (P0 FASE 10).",
+    ),
+    "device_sync_service": _d(
+        "device_sync_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("worker_manager", "library_query_service"),
+        optional=True,
+        capabilities=("devices_sync",),
+        consumers=("sync_bridge",),
+        description="Mobile device sync orchestration.",
+    ),
+    "device_registry": _d(
+        "device_registry", ServiceClass.REGISTRY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=(),
+        optional=True,
+        capabilities=("devices_sync",),
+        consumers=("device_sync_service", "mobile_sync_service",
+                   "devices_bridge", "assistant_runtime"),
+        description="Paired device registry (P0 FASE 10): ONE instance "
+                    "composed in ecosystem; every consumer gets it injected.",
+    ),
+    "mobile_sync_service": _d(
+        "mobile_sync_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.EXTERNAL, ServicePriority.OPTIONAL,
+        dependencies=("database", "device_registry"),
+        optional=True,
+        capabilities=("devices_sync",),
+        consumers=("mobile_sync_bridge",),
+        description="Mobile sync: persistent pairing/trust (migration 8), "
+                    "real listener lifecycle, truthful health; shares the "
+                    "single composed DeviceRegistry. Listener starts LAZY "
+                    "via start_pairing (never opened at boot).",
+    ),
+    "michi_link_client": _d(
+        "michi_link_client", ServiceClass.EXTERNAL_RESOURCE,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=(),
+        optional=True,
+        capabilities=("connections_michilink",),
+        consumers=("connection_service", "michi_link_server_service"),
+        description="Thin HTTP client facade for remote Michi services.",
+    ),
+    "michi_link_server_service": _d(
+        "michi_link_server_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("michi_link_client",),
+        optional=True,
+        capabilities=("connections_michilink",),
+        consumers=("michi_link_continue_service",
+                   "michi_link_remote_library_service",
+                   "michi_link_diagnostics_service"),
+        description="Advanced MicroServerService (ADR-002 canonical Michi "
+                    "Link stack; legacy variants are LEGACY-marked).",
+    ),
+    "michi_link_import_service": _d(
+        "michi_link_import_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("michi_link_track_identity_service",),
+        optional=True,
+        capabilities=("connections_michilink",),
+        consumers=("michi_link_continue_service",),
+        description="ImportToServerService: real uploads, checksums, retries, "
+                    "cancellation, commit/rollback with readback.",
+    ),
+    "michi_link_continue_service": _d(
+        "michi_link_continue_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("michi_link_import_service",
+                      "michi_link_track_identity_service"),
+        optional=True,
+        capabilities=("connections_michilink",),
+        consumers=("michi_link_diagnostics_service",),
+        description="ContinueOnServerService: handoff pauses local only "
+                    "after remote confirms playing.",
+    ),
+    "michi_link_remote_library_service": _d(
+        "michi_link_remote_library_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("michi_link_server_service",),
+        optional=True,
+        capabilities=("connections_michilink",),
+        consumers=("michi_link_diagnostics_service",),
+        description="RemoteLibraryService: read-only remote library with "
+                    "explicit UNAVAILABLE status.",
+    ),
+    "michi_link_track_identity_service": _d(
+        "michi_link_track_identity_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=(),
+        optional=True,
+        capabilities=("connections_michilink",),
+        consumers=("michi_link_import_service",
+                   "michi_link_continue_service"),
+        description="TrackIdentityService: quick/content hashes for dedup.",
+    ),
+    "michi_link_diagnostics_service": _d(
+        "michi_link_diagnostics_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("michi_link_server_service",),
+        optional=True,
+        capabilities=("connections_michilink",),
+        consumers=(),
+        description="DiagnosticsService: ecosystem health report.",
+    ),
+    "radio_station_repository": _d(
+        "radio_station_repository", ServiceClass.PASSIVE_REPOSITORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        optional=True,
+        dependencies=(),
+        capabilities=("radio",),
+        consumers=("radio_service",),
+        description="SqliteStationRepository: persisted radio stations (PASSIVE).",
+    ),
+    "radio_history_repository": _d(
+        "radio_history_repository", ServiceClass.PASSIVE_REPOSITORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        optional=True,
+        dependencies=(),
+        capabilities=("radio",),
+        consumers=("radio_service",),
+        description="SqliteRadioHistoryRepository: persisted radio history with event kinds (PASSIVE).",
+    ),
+    "radio_playback_adapter": _d(
+        "radio_playback_adapter", ServiceClass.EXTERNAL_RESOURCE,
+        LifecycleKind.EXTERNAL, ServicePriority.OPTIONAL,
+        optional=True,
+        dependencies=("playback_service",),
+        capabilities=("radio",),
+        consumers=("radio_service",),
+        description="RadioPlaybackAdapter: formal playback boundary over PlayerService; "
+                    "lifecycle delegated to the player backend (EXTERNAL).",
+    ),
+    "radio_service": _d(
+        "radio_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("event_bus", "playback_service", "radio_playback_adapter",
+                      "radio_station_repository", "radio_history_repository"),
+        optional=True,
+        capabilities=("radio",),
+        consumers=("radio_bridge",),
+        description="Canonical RadioService: stations + sessions + playback "
+                    "readback + persisted history; radio events flow through "
+                    "the canonical event_bus via a typed namespace wrapper "
+                    "(P0 FASE 10).",
+    ),
+    "lyrics_service": _d(
+        "lyrics_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("worker_manager", "event_bus"),
+        optional=True,
+        capabilities=("lyrics",),
+        consumers=("lyrics_bridge",),
+        description="Lyrics via LRCLIB; lyrics events flow through the "
+                    "canonical event_bus via ONE typed LyricEventBus wrapper "
+                    "shared by resolver and service (P0 FASE 10).",
+    ),
+    # ── Settings / presentation (3 registered keys) ──────────────────────
+    "theme_service": _d(
+        "theme_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        optional=True,
+        capabilities=("theme",),
+        consumers=("theme_bridge",),
+        description="Canonical theme authority (mode, accent, artwork background).",
+    ),
+    "accessibility_service": _d(
+        "accessibility_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        optional=True,
+        capabilities=(),
+        consumers=("accessibility_bridge",),
+        description="Accessibility runtime settings (canonical owner).",
+    ),
+    "context_service": _d(
+        "context_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        dependencies=("playback_snapshot_service", "queue_service", "database"),
+        capabilities=("context",),
+        consumers=("home_bridge", "home_dashboard_service", "michi_ai_snapshot_service"),
+        description="Canonical contextual truth source (S11) — provider registry snapshot.",
+    ),
+    # ── Intelligence (5 registered keys) ─────────────────────────────────
+    "action_registry": _d(
+        "action_registry", ServiceClass.REGISTRY,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        consumers=("action_registry_binder", "notification_service",
+                   "confirmation_service"),
+        description="Registry of user actions.",
+    ),
+    "mix_query_service": _d(
+        "mix_query_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        dependencies=("database",),
+        optional=True,
+        capabilities=("mix",),
+        consumers=("mix_bridge", "mix_service"),
+        description="Smart-mix/recommendation queries.",
+    ),
+    "mix_service": _d(
+        "mix_service", ServiceClass.MANAGED_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.REQUIRED,
+        dependencies=("database", "library_query_service", "playlist_service",
+                      "mix_query_service"),
+        optional=True,
+        capabilities=("mix",),
+        consumers=("mix_bridge",),
+        description="Mix creation/editing.",
+    ),
+    "assistant_runtime": _d(
+        "assistant_runtime", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        consumers=("michi_ai_service",),
+        description="Single governed Michi AI runtime composition (F9): "
+                    "intent/capability/context/plan/confirmation/execution/"
+                    "tool-registry/conversation/trace/backend as one unit.",
+    ),
+    "michi_ai_service": _d(
+        "michi_ai_service", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.CAPABILITY_GATED,
+        dependencies=("global_search_service", "playback_service", "queue_service",
+                      "playlist_service", "diagnostics_service", "settings_service",
+                      "action_registry", "assistant_runtime"),
+        optional=True,
+        capabilities=("michi_ai", "ai"),
+        consumers=("michi_ai_bridge",),
+        description="Michi AI engine facade over assistant_runtime "
+                    "(capability-gated; S4 fixes gateways, F9 delegates).",
+    ),
+    # ── Application (1 registered key) ───────────────────────────────────
+    "navigation_service": _d(
+        "navigation_service", ServiceClass.APPLICATION_SERVICE,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        capabilities=("navigation",),
+        consumers=("navigation_bridge", "assistant_context_providers"),
+        description="View navigation state; passive (used directly by shell).",
+    ),
+    # ── Standalone components (not registered in the container) ──────────
+    "job_bridge": _d(
+        "job_bridge", ServiceClass.UI_ADAPTER,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("worker_manager", "job_service"),
+        description="QML scan jobs (de facto productive); S2 migrates onto job_service.",
+    ),
+    "job_manager": _d(
+        "job_manager", ServiceClass.LEGACY_COMPONENT,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        description="Legacy job repository (job_queue.db); retired in S2.",
+    ),
+    "audio_lab_job_adapter": _d(
+        "audio_lab_job_adapter", ServiceClass.LEGACY_COMPONENT,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("worker_manager",),
+        description="Legacy audio-lab job adapter without callers; retired in S2.",
+    ),
+    "action_registry_binder": _d(
+        "action_registry_binder", ServiceClass.FACTORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("action_registry",),
+        description="Binds registry actions to widgets/bridges.",
+    ),
+    "selection_context_bridge": _d(
+        "selection_context_bridge", ServiceClass.STATE_STORE,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        description="Shared QML selection context.",
+    ),
+    "bridge_factory": _d(
+        "bridge_factory", ServiceClass.FACTORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("worker_manager", "job_service"),
+        description="Builds QML bridges from the container.",
+    ),
+    "page_state_store": _d(
+        "page_state_store", ServiceClass.STATE_STORE,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        description="QML page state store.",
+    ),
+    "route_registry_bridge": _d(
+        "route_registry_bridge", ServiceClass.UI_ADAPTER,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        capabilities=("route_registry",),
+        description="QML route registry bridge (standalone UI adapter).",
+    ),
+    "command_palette_bridge": _d(
+        "command_palette_bridge", ServiceClass.UI_ADAPTER,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        capabilities=("command_palette",),
+        description="QML command palette bridge (standalone UI adapter).",
+    ),
+    "hybrid_audio_manager": _d(
+        "hybrid_audio_manager", ServiceClass.APPLICATION_SERVICE,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("playback_service",),
+        description="GStreamer/MPD backend orchestrator owned by PlayerService.",
+    ),
+    "provider_manager": _d(
+        "provider_manager", ServiceClass.REGISTRY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        consumers=("recognition_service", "identifier_controller"),
+        description="Recognition provider registry (Shazam/AudD/AcoustID); "
+                    "composed in library (P0 FASE 10) and shared with the "
+                    "advanced detection runtime.",
+    ),
+    "file_manager_service": _d(
+        "file_manager_service", ServiceClass.PASSIVE_REPOSITORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        consumers=("track_action_service",),
+        description="Stateless file-manager facade (static methods only); "
+                    "the class itself is the registered port (P0 FASE 10) — "
+                    "nothing constructs it ad hoc.",
+    ),
+    "knowledge_broker": _d(
+        "knowledge_broker", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        description="AI knowledge broker; production wiring unverified (S4).",
+    ),
+    "mpd_service_manager": _d(
+        "mpd_service_manager", ServiceClass.PROCESS_MANAGER,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        dependencies=("process_controller",),
+        description="MPD daemon management owned by MpdBackend; "
+                    "daemon spawned through ProcessController.",
+    ),
+}
+
+
+def descriptor_for(name: str) -> ServiceDescriptor | None:
+    """Return the manifest descriptor for *name*, or None when absent."""
+    return SERVICE_MANIFEST.get(name)
+
+
+def priority_for(name: str) -> ServicePriority | None:
+    """Return the manifest priority for *name*, or None when absent."""
+    desc = SERVICE_MANIFEST.get(name)
+    return desc.priority if desc else None
+
+
+def managed_names() -> list[str]:
+    """Return manifest keys with MANAGED lifecycle, in declaration order."""
+    return [name for name, desc in SERVICE_MANIFEST.items()
+            if desc.lifecycle == LifecycleKind.MANAGED]

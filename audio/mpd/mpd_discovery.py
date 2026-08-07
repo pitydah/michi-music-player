@@ -1,7 +1,6 @@
 """MPD Discovery — finds MPD instances on the local network or system."""
 
 import logging
-import subprocess
 
 from audio.mpd.mpd_client import MpdClient
 from audio.mpd.mpd_errors import MpdConnectionError
@@ -34,23 +33,23 @@ def find_local_mpd(host: str = "127.0.0.1", ports: list[int] | None = None) -> l
 def find_mpd_processes() -> list[dict]:
     """Find MPD processes running on the system via ps.
 
-    Returns list of dicts with pid and command.
+    Returns list of dicts with pid and command. Uses the safe process runner
+    (timeout-bounded, truncated output) — never a bare subprocess call.
     """
-    try:
-        result = subprocess.run(
-            ["ps", "-e", "-o", "pid,args"],
-            capture_output=True, text=True, timeout=5.0,
-        )
-        mpds = []
-        for line in result.stdout.split("\n"):
-            if "mpd" in line.lower() and "mpd_discovery" not in line:
-                parts = line.strip().split(None, 1)
-                if len(parts) >= 2:
-                    mpds.append({"pid": parts[0], "command": parts[1]})
+    from core.external_process import run_process
+
+    result = run_process(["ps", "-e", "-o", "pid,args"], timeout=5.0)
+    mpds = []
+    if not result.ok:
+        logger.debug("Failed to list MPD processes: %s",
+                     result.error or result.stderr)
         return mpds
-    except (subprocess.TimeoutExpired, OSError) as e:
-        logger.debug("Failed to list MPD processes: %s", e)
-        return []
+    for line in result.stdout.split("\n"):
+        if "mpd" in line.lower() and "mpd_discovery" not in line:
+            parts = line.strip().split(None, 1)
+            if len(parts) >= 2:
+                mpds.append({"pid": parts[0], "command": parts[1]})
+    return mpds
 
 
 def format_discovery_report() -> str:

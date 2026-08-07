@@ -137,16 +137,47 @@ class TestBootstrapAPI:
 
 # ── HE: ServiceContainer real ──
 
+def _manifest_start_keys() -> set[str]:
+    """Every REQUIRED manifest key plus its transitive declared dependencies.
+
+    FASE 1: validation fails when a REQUIRED descriptor's dependency is
+    missing (SERVICE_MANIFEST is the single source of truth), so the fixture
+    must register the closure, not just the REQUIRED names.
+    """
+    from core.service_manifest import SERVICE_MANIFEST, ServicePriority
+    needed = {
+        name for name, desc in SERVICE_MANIFEST.items()
+        if desc.priority == ServicePriority.REQUIRED
+    }
+    changed = True
+    while changed:
+        changed = False
+        for name, desc in SERVICE_MANIFEST.items():
+            if name in needed:
+                for dep in desc.dependencies:
+                    if dep not in needed:
+                        needed.add(dep)
+                        changed = True
+    return needed
+
+
 def _make_container(**overrides):
     from core.service_container import ServiceContainer
+    from core.service_manifest import SERVICE_MANIFEST
     c = ServiceContainer()
-    defaults = {}
-    for name in c._required_names():
-        defaults[name] = MagicMock()
+    instances: dict[str, object] = {}
+    for name in _manifest_start_keys():
+        desc = SERVICE_MANIFEST[name]
+        if desc.alias_of is None:
+            instances[name] = MagicMock()
+    for name in _manifest_start_keys():
+        desc = SERVICE_MANIFEST[name]
+        if desc.alias_of is not None:
+            instances[name] = instances[desc.alias_of]
+    defaults = dict(instances)
     defaults.update(overrides)
     for name, svc in defaults.items():
-        if name in c._all_names() or name in c._required_names():
-            c.register(name, svc)
+        c.register(name, svc)
     return c
 
 

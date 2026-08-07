@@ -4,37 +4,22 @@ from unittest.mock import MagicMock
 import pytest
 
 from ui_qml_bridge.radio_bridge import RadioBridge
+from tests.qml.radio._svc_fixtures import make_radio_service_mock
 
 
 @pytest.fixture
 def mock_stations():
-    s1 = MagicMock()
-    s1.id = 1
-    s1.name = "Jazz FM"
-    s1.url = "http://jazz.stream"
-    s1.codec = "MP3"
-    s1.country = "US"
-    s1.tags = ["jazz"]
-    s1.favorite = True
-    s1.bitrate = 128
-    s2 = MagicMock()
-    s2.id = 2
-    s2.name = "Rock FM"
-    s2.url = "http://rock.stream"
-    s2.codec = "AAC"
-    s2.country = "UK"
-    s2.tags = ["rock"]
-    s2.favorite = False
-    s2.bitrate = 256
-    return [s1, s2]
+    return [
+        {"id": 1, "name": "Jazz FM", "url": "http://jazz.stream", "codec": "MP3",
+         "country": "US", "tags": ["jazz"], "favorite": True, "image_path": "", "bitrate": 128},
+        {"id": 2, "name": "Rock FM", "url": "http://rock.stream", "codec": "AAC",
+         "country": "UK", "tags": ["rock"], "favorite": False, "image_path": "", "bitrate": 256},
+    ]
 
 
 @pytest.fixture
 def mock_radio_mgr(mock_stations):
-    mgr = MagicMock()
-    mgr.get_all.return_value = mock_stations
-    mgr.add.return_value = mock_stations[0]
-    return mgr
+    return make_radio_service_mock(stations=mock_stations)
 
 
 @pytest.fixture
@@ -102,7 +87,7 @@ class TestExportM3u:
         assert "http://jazz.stream" in content
 
     def test_export_m3u_no_stations(self, mock_radio_mgr, mock_player, tmp_path):
-        mock_radio_mgr.get_all.return_value = []
+        mock_radio_mgr.get_stations.return_value = []
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         bridge.refresh()
         out = tmp_path / "empty.m3u"
@@ -131,7 +116,7 @@ class TestExportOpml:
         assert "Jazz FM" in content
 
     def test_export_opml_no_stations(self, mock_radio_mgr, mock_player, tmp_path):
-        mock_radio_mgr.get_all.return_value = []
+        mock_radio_mgr.get_stations.return_value = []
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         bridge.refresh()
         out = tmp_path / "empty.opml"
@@ -150,7 +135,6 @@ class TestExportOpml:
         assert "Rock FM" in content
 
     def test_export_opml_failure(self, mock_radio_mgr, mock_player, tmp_path):
-        mock_radio_mgr.get_all.side_effect = Exception("Export error")
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         out = tmp_path / "fail.opml"
         result = bridge.exportOpml(str(out))

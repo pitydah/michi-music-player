@@ -43,7 +43,7 @@ class LyricsService:
         self._storage = storage_service
         self._editor = editor_service
         self._timeline = timeline or LyricsTimeline()
-        self._bus = event_bus or LyricEventBus()
+        self._bus = event_bus
         self._trace = trace or LyricsTraceRecorder()
         self._attribution = attribution or LyricsAttributionPolicy()
         self._clock = clock or (lambda: __import__("time").strftime("%Y-%m-%dT%H:%M:%SZ", __import__("time").gmtime()))
@@ -94,9 +94,16 @@ class LyricsService:
             self._cache.invalidate(cache_key)
 
     def load_sidecar(self, directory: str, identity: TrackIdentity) -> LyricsOperationResult:
+        """Read a sidecar document from disk (never writes).
+
+        .. note::
+            Regression fixed in Slice 5: this used to call ``save_sidecar``,
+            writing an empty document instead of reading. Reads now go through
+            the sidecar provider (``SidecarProvider.read``) via storage.
+        """
         if not self._storage:
-            return LyricsOperationResult(ok=False, code=LyricsErrorCode.WRITE_ERROR)
-        return self._storage.save_sidecar(directory, LyricsDocument(identity=identity))
+            return LyricsOperationResult(ok=False, code=LyricsErrorCode.READ_ERROR)
+        return self._storage.load_sidecar(directory, identity)
 
     def save_sidecar(self, directory: str, doc: LyricsDocument) -> LyricsOperationResult:
         if not self._storage:
@@ -107,6 +114,66 @@ class LyricsService:
         if not self._storage:
             return LyricsOperationResult(ok=False, code=LyricsErrorCode.WRITE_ERROR)
         return self._storage.save_embedded(filepath, doc)
+
+    def save_local(self, filepath: str, doc: LyricsDocument) -> LyricsOperationResult:
+        """Persist local lyrics next to an audio file.
+
+        Writes the sidecar (atomic temp-file + rename) and embeds the text in
+        the audio tags as a best-effort second step. Single entry point used by
+        the QML bridge for "save local lyrics".
+        """
+        if not filepath:
+            return LyricsOperationResult(
+                ok=False, code=LyricsErrorCode.PATH_REJECTED,
+                message="No audio file path",
+            )
+        import os as _os
+        directory = _os.path.dirname(filepath)
+        result = self.save_sidecar(directory, doc)
+        if not result.ok:
+            return result
+        embedded = self.save_embedded(filepath, doc)
+        if embedded.ok:
+            result.details["embedded"] = True
+        else:
+            result.details["embedded"] = False
+        result.details["path"] = _os.path.join(
+            directory,
+            f"{_os.path.splitext(_os.path.basename(filepath))[0]}.lrc",
+        )
+        return result
+
+    def search_manual(self, query: str) -> LyricsOperationResult:
+        """Free-text search across providers; best candidate as document."""
+        if not query or not query.strip():
+            return LyricsOperationResult(
+                ok=False, code=LyricsErrorCode.INVALID_IDENTITY,
+                message="Empty query",
+            )
+        identity = TrackIdentity(title=query.strip(), artist="")
+        result = self._resolver.search_candidates(identity)
+        if result.ok and result.candidates:
+            return LyricsOperationResult(
+                ok=True, document=result.candidates[0],
+                source=result.candidates[0].source,
+            )
+        if result.candidates:
+            return LyricsOperationResult(
+                ok=True, document=result.candidates[0],
+                source=result.candidates[0].source,
+            )
+        return LyricsOperationResult(
+            ok=False, code=LyricsErrorCode.NOT_FOUND,
+            message="No candidates found",
+        )
+
+    def invalidate_identity(self, identity: TrackIdentity):
+        """Drop cached results for an identity across all enabled providers."""
+        if not self._cache:
+            return
+        for provider in self._registry.list_enabled():
+            provider_id = provider.contract.provider_id
+            self._cache.invalidate(self._make_cache_key(provider_id, identity))
 
     def begin_edit(self, doc: LyricsDocument | None = None):
         self._editor.load(doc or self._current_document or LyricsDocument())

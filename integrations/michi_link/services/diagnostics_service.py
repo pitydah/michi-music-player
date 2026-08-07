@@ -1,7 +1,11 @@
-"""DiagnosticsService — full health check for the Michi ecosystem.
+"""LinkDiagnosticsService — full health check for the Michi ecosystem.
 
 Tests: Player API, sync server, pairing, stream, artwork, playback,
 queue, Micro Server discovery, import availability, continue readiness.
+
+Named LinkDiagnosticsService (not DiagnosticsService) to keep a single
+productive class per name (ADR-006); the Audio Lab diagnostics service
+owns the plain ``DiagnosticsService`` name.
 """
 from __future__ import annotations
 
@@ -11,7 +15,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from integrations.michi_link.client import MichiLinkClient
+from integrations.michi_link.client import MichiLinkClient, RemoteServerInfo
 
 CONTRACT_OK = "CONTRACT_OK"
 CONTRACT_PARTIAL = "CONTRACT_PARTIAL"
@@ -22,11 +26,21 @@ FALLBACK_AVAILABLE = "FALLBACK_AVAILABLE"
 logger = logging.getLogger("michi.service.diagnostics")
 
 
-class DiagnosticsService:
-    """Generates structured health reports for Michi services."""
+class LinkDiagnosticsService:
+    """Generates structured health reports for Michi services.
 
-    def __init__(self) -> None:
-        self._client = MichiLinkClient()
+    Dependencies are injected by composition (debt D3b): the client and the
+    track-identity/import services are NEVER constructed inside methods.
+    A missing dependency degrades the affected check to an explicit
+    ``skipped`` status — never a silent fallback construction.
+    """
+
+    def __init__(self, client: MichiLinkClient | None = None,
+                 track_identity_service: Any | None = None,
+                 import_service: Any | None = None) -> None:
+        self._client = client if client is not None else MichiLinkClient()
+        self._track_identity_service = track_identity_service
+        self._import_service = import_service
 
     def check_player_api(self, handler: Any | None = None) -> dict[str, Any]:
         status = "unknown"
@@ -117,10 +131,10 @@ class DiagnosticsService:
     def check_track_identity(self, filepath: str = "") -> dict[str, Any]:
         if not filepath:
             return {"status": "skipped", "reason": "no filepath specified"}
-        from integrations.michi_link.services.track_identity_service import (
-            TrackIdentityService,
-        )
-        svc = TrackIdentityService()
+        svc = self._track_identity_service
+        if svc is None:
+            return {"status": "skipped",
+                    "reason": "track identity service not injected"}
         result = svc.compute(filepath)
         if result.ok:
             ident = result.data
@@ -156,21 +170,20 @@ class DiagnosticsService:
         if not host:
             return {"status": "skipped"}
         # Check endpoint existence directly
-        from integrations.michi_link.client import RemoteServerInfo
         endpoint_check = self._check_micro_endpoint(
             host, port, "/api/v1/import/preflight", "POST",
         )
         if endpoint_check.get("status") == "not_found":
             return {"status": "ok", "preflight_supported": False,
                     "endpoint": "not_found"}
+        if self._import_service is None:
+            return {"status": "ok", "preflight_supported": False,
+                    "endpoint": "found",
+                    "note": "import service not injected"}
 
         # Try actual call
-        from integrations.michi_link.services.import_to_server_service import (
-            ImportToServerService,
-        )
-        svc = ImportToServerService()
         fake = RemoteServerInfo(host=host, port=port)
-        result = svc.preflight(fake, [])
+        result = self._import_service.preflight(fake, [])
         if result.ok:
             return {"status": "ok", "preflight_supported": True,
                     "fallback_used": False}
@@ -185,13 +198,11 @@ class DiagnosticsService:
     ) -> dict[str, Any]:
         if not host:
             return {"status": "skipped"}
-        from integrations.michi_link.client import RemoteServerInfo
-        from integrations.michi_link.services.import_to_server_service import (
-            ImportToServerService,
-        )
-        svc = ImportToServerService()
+        if self._import_service is None:
+            return {"status": "skipped",
+                    "reason": "import service not injected"}
         fake = RemoteServerInfo(host=host, port=port)
-        result = svc.preflight(fake, [])
+        result = self._import_service.preflight(fake, [])
         if result.ok and isinstance(result.data, dict):
             return {"status": "ok", "mapping_supported": True}
         if result.code == "PREFLIGHT_CONTRACT_MISMATCH":
@@ -204,6 +215,8 @@ class DiagnosticsService:
     ) -> dict[str, Any]:
         if not host:
             return {"status": "skipped", "reason": "no host specified"}
+        if self._client is None:
+            return {"status": "skipped", "reason": "client not injected"}
         start = time.time()
         info = self._client.discover(host, port)
         elapsed = time.time() - start
@@ -222,6 +235,8 @@ class DiagnosticsService:
     ) -> dict[str, Any]:
         if not host:
             return {"status": "skipped"}
+        if self._client is None:
+            return {"status": "skipped", "reason": "client not injected"}
         info = self._client.discover(host, port)
         if info:
             return {

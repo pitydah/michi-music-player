@@ -123,6 +123,42 @@ class MicroServerService:
             return Result.fail("STATS_FAILED", "Cannot fetch library stats")
         return Result.success(stats)
 
+    def get_playlists(self, server: RemoteServerInfo) -> Result:
+        """Fetch playlists from the remote server (real readback).
+
+        Returns ``Result`` with ``data={"playlists": [...], "total": N}`` on
+        success; a remote that is unreachable or lacks the endpoint fails
+        explicitly (never an empty success list).
+        """
+        import json
+        import urllib.error
+        import urllib.request
+
+        headers = {"Content-Type": "application/json"}
+        if server.device_token:
+            headers["Authorization"] = f"Bearer {server.device_token}"
+            headers["X-Michi-Device-Id"] = server.device_id
+        try:
+            req = urllib.request.Request(
+                f"http://{server.host}:{server.port}/api/v1/playlists",
+                method="GET", headers=headers,
+            )
+            with urllib.request.urlopen(req, timeout=10) as r:
+                data = json.loads(r.read().decode())
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return Result.fail("PLAYLISTS_ENDPOINT_MISSING",
+                                   "Server does not expose /api/v1/playlists")
+            return Result.fail("PLAYLISTS_FAILED", f"HTTP {e.code}: {e.reason}")
+        except Exception as e:
+            return Result.fail("REMOTE_UNAVAILABLE",
+                               f"Cannot fetch playlists: {e}")
+        playlists = data.get("playlists", []) if isinstance(data, dict) else []
+        return Result.success({
+            "playlists": playlists,
+            "total": len(playlists),
+        }, f"{len(playlists)} playlists")
+
     def search(self, server: RemoteServerInfo, query: str) -> Result:
         results = self._client.search(server, query)
         if results is None:

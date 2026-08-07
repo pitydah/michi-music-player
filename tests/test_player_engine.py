@@ -635,33 +635,57 @@ class TestGStreamerEngine:
 
     # ── play_next / play_prev ──
 
-    def test_play_next_delegates(self, engine):
-        """DRIFT: origin/main play_next() delegates to transport.play_next()."""
-        self._transport.play_next.return_value = True
+    def test_play_next_advances_queue(self, engine):
+        """P0 fix: play_next() advances the engine's OWN queue (the
+        transport never had play_next — origin/main was broken)."""
+        engine._queue = ["a.flac", "b.flac"]
+        engine._queue_index = 0
+        engine.play = MagicMock()
+        engine._db = None
         result = engine.play_next()
         assert result is True
-        self._transport.play_next.assert_called_once()
-        engine.queue_changed.emit.assert_called_once()
+        engine.play.assert_called_once_with("b.flac")
+        assert engine._queue_index == 1
 
     def test_play_next_at_end(self, engine):
-        self._transport.play_next.return_value = False
+        engine._queue = ["a.flac"]
+        engine._queue_index = 0
+        engine.play = MagicMock()
+        engine._db = None
         result = engine.play_next()
         assert result is False
-        self._transport.play_next.assert_called_once()
+        engine.play.assert_not_called()
 
-    def test_play_prev_delegates(self, engine):
-        """DRIFT: origin/main play_prev() delegates to transport.play_prev()."""
-        self._transport.play_prev.return_value = True
+    def test_play_next_repeat_all_wraps(self, engine):
+        engine._queue = ["a.flac", "b.flac"]
+        engine._queue_index = 1
+        engine._repeat = "all"
+        engine.play = MagicMock()
+        engine._db = None
+        result = engine.play_next()
+        assert result is True
+        engine.play.assert_called_once_with("a.flac")
+        assert engine._queue_index == 0
+
+    def test_play_prev_steps_back(self, engine):
+        """P0 fix: play_prev() steps back in the engine's own queue."""
+        engine._queue = ["a.flac", "b.flac"]
+        engine._queue_index = 1
+        engine.play = MagicMock()
+        engine._db = None
         result = engine.play_prev()
         assert result is True
-        self._transport.play_prev.assert_called_once()
-        engine.queue_changed.emit.assert_called_once()
+        engine.play.assert_called_once_with("a.flac")
+        assert engine._queue_index == 0
 
     def test_play_prev_at_start(self, engine):
-        self._transport.play_prev.return_value = False
+        engine._queue = ["a.flac"]
+        engine._queue_index = 0
+        engine.play = MagicMock()
+        engine._db = None
         result = engine.play_prev()
         assert result is False
-        self._transport.play_prev.assert_called_once()
+        engine.play.assert_not_called()
 
     # ── shuffle / repeat ──
 
@@ -682,6 +706,22 @@ class TestGStreamerEngine:
         result = engine.toggle_shuffle()
         assert result is False
         assert engine._shuffle is False
+
+    def test_set_shuffle_preserves_canonical_queue_order(self, engine):
+        engine._queue = ["a.flac", "b.flac", "c.flac"]
+
+        assert engine.set_shuffle(True) is True
+        assert engine._shuffle is True
+        assert engine._queue == ["a.flac", "b.flac", "c.flac"]
+
+    def test_set_repeat_accepts_canonical_modes(self, engine):
+        for mode in ("none", "all", "one"):
+            assert engine.set_repeat(mode) == mode
+            assert engine._repeat == mode
+
+    def test_set_repeat_rejects_invalid_mode(self, engine):
+        with pytest.raises(ValueError, match="Invalid repeat mode"):
+            engine.set_repeat("track")
 
     def test_toggle_repeat_cycles(self, engine):
         engine._repeat = "none"
@@ -896,14 +936,17 @@ class TestGStreamerEngine:
 
     # ── _on_media_finished / _on_media_finished_eos ──
 
-    def test_on_media_finished_delegates_to_play_next(self, engine):
-        """DRIFT: origin/main _on_media_finished uses play_next() for
-        transport delegation."""
-        self._transport.play_next.return_value = True
+    def test_on_media_finished_advances_queue(self, engine):
+        """P0 fix: _on_media_finished advances through play_next() (engine
+        queue), not a transport call."""
+        engine._queue = ["a.flac", "b.flac"]
+        engine._queue_index = 0
+        engine.play = MagicMock()
+        engine._db = None
 
         engine._on_media_finished()
 
-        self._transport.play_next.assert_called_once()
+        engine.play.assert_called_once_with("b.flac")
         engine.finished.emit.assert_not_called()
 
     def test_on_media_finished_at_end_stops(self, engine):
@@ -913,12 +956,14 @@ class TestGStreamerEngine:
             MOCK_GST.State.NULL,
         )
         self._transport.get_pipeline.return_value = pipeline
-        self._transport.play_next.return_value = False
+        engine._queue = ["a.flac"]
+        engine._queue_index = 0
+        engine.play = MagicMock()
+        engine._db = None
         from audio.player import PlaybackState
 
         engine._on_media_finished()
 
-        self._transport.play_next.assert_called_once()
         pipeline.set_state.assert_called_with(MOCK_GST.State.NULL)
         signals = [c[0][0] for c in engine.state_changed.emit.call_args_list]
         assert any(s == PlaybackState.STOPPED for s in signals)

@@ -3,8 +3,12 @@ from __future__ import annotations
 
 import logging
 
+from core.settings_manager import get_bool, get_int, set_
 
 logger = logging.getLogger("michi.history_query")
+
+_HISTORY_ENABLED_KEY = "history/enabled"
+_HISTORY_LIMIT_KEY = "history/limit"
 
 
 class HistoryQueryService:
@@ -17,6 +21,7 @@ class HistoryQueryService:
         if not self._db:
             return []
         try:
+            limit = self._capped_limit(limit)
             where, params = self._build_where(artist, album, device, search)
             rows = self._db.conn.execute(
                 f"SELECT h.track_id, h.played_at, h.device, "
@@ -90,6 +95,8 @@ class HistoryQueryService:
     def record_play(self, track_id: str, device: str = "") -> dict:
         if not self._db:
             return {"ok": False, "error": "NO_DB"}
+        if not self._history_enabled():
+            return {"ok": False, "error": "HISTORY_DISABLED"}
         try:
             import time
             self._db.conn.execute(
@@ -97,15 +104,70 @@ class HistoryQueryService:
                 (track_id, int(time.time()), device or "local"),
             )
             self._db.conn.commit()
-            return {"ok": True}
+            pruned = self._prune_to_limit()
+            return {"ok": True, "pruned": pruned}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
     def set_history_enabled(self, enabled: bool) -> dict:
-        return {"ok": True}
+        """Persist the recording flag (debt D4 — real behavior, not a stub).
+
+        When disabled, ``record_play`` refuses new entries with
+        ``HISTORY_DISABLED``; existing entries remain queryable.
+        """
+        set_(_HISTORY_ENABLED_KEY, bool(enabled))
+        return {"ok": True, "enabled": bool(enabled)}
 
     def set_history_limit(self, limit: int) -> dict:
-        return {"ok": True}
+        """Persist the retention limit and apply it to stored entries.
+
+        The limit caps ``fetch_history`` results and prunes the oldest
+        entries beyond the newest *limit* (debt D4 — real behavior).
+        """
+        try:
+            limit = int(limit)
+        except (TypeError, ValueError):
+            return {"ok": False, "error": "INVALID_LIMIT"}
+        if limit < 0:
+            return {"ok": False, "error": "INVALID_LIMIT"}
+        set_(_HISTORY_LIMIT_KEY, limit)
+        pruned = self._prune_to_limit() if self._db else 0
+        return {"ok": True, "limit": limit, "pruned": pruned}
+
+    def _history_enabled(self) -> bool:
+        try:
+            return get_bool(_HISTORY_ENABLED_KEY)
+        except Exception:
+            return True
+
+    def _history_limit(self) -> int:
+        try:
+            return get_int(_HISTORY_LIMIT_KEY)
+        except Exception:
+            return 0
+
+    def _capped_limit(self, limit: int) -> int:
+        pref = self._history_limit()
+        if pref > 0:
+            return min(limit, pref)
+        return limit
+
+    def _prune_to_limit(self) -> int:
+        """Delete rows beyond the newest persisted limit; returns count."""
+        pref = self._history_limit()
+        if pref <= 0 or self._db is None:
+            return 0
+        try:
+            cur = self._db.conn.execute(
+                "DELETE FROM play_history WHERE rowid NOT IN ("
+                "  SELECT rowid FROM play_history "
+                "  ORDER BY played_at DESC, rowid DESC LIMIT ?)",
+                (pref,),
+            )
+            self._db.conn.commit()
+            return cur.rowcount
+        except Exception:
+            return 0
 
     def fetch_history_with_event_ids(self, offset: int = 0, limit: int = 100,
                                       artist: str = "", album: str = "",
@@ -113,6 +175,7 @@ class HistoryQueryService:
         if not self._db:
             return []
         try:
+            limit = self._capped_limit(limit)
             where, params = self._build_where(artist, album, device, search)
             rows = self._db.conn.execute(
                 f"SELECT h.id, h.track_id, h.played_at, h.device, "

@@ -2,14 +2,26 @@
 
 from __future__ import annotations
 
+import threading
 from typing import Any
 
 from integrations.ai_assistant.schemas import ToolResult
 
+# One shared MetadataReviewService per library database: tools never construct
+# a review service ad hoc per call (single canonical instance per db).
+_review_services: dict[int, Any] = {}
+_review_lock = threading.Lock()
+
 
 def _get_review_service(db: Any, kb: Any = None) -> Any:
     from metadata.review.metadata_review_service import MetadataReviewService
-    return MetadataReviewService(db, kb)
+    key = id(db)
+    with _review_lock:
+        svc = _review_services.get(key)
+        if svc is None:
+            svc = MetadataReviewService(db, kb)
+            _review_services[key] = svc
+        return svc
 
 
 def find_metadata_inconsistencies(db: Any, limit: int = 100) -> ToolResult:
@@ -125,6 +137,13 @@ def create_metadata_review(db: Any, track_ids: list[int],
 
 def apply_metadata_review(db: Any, review_id: str = "",
                            accepted_fields: dict | None = None) -> ToolResult:
+    """Apply a review through the canonical editor pipeline (token-gated).
+
+    P0: direct DB/tag writes from the review stack are disabled; the apply
+    routes through MetadataEditorService (proposal → token → apply with
+    readback) when an editor is injected, otherwise it reports
+    LEGACY_OPERATION_DISABLED honestly.
+    """
     try:
         if not review_id:
             return ToolResult(

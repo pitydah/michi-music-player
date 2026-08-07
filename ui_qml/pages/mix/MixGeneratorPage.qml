@@ -33,9 +33,33 @@ Item {
     property int _progressTotal: 0
     property string _errorMessage: ""
     property string _statusMessage: ""
+    property bool _waiting: false
 
     signal backRequested()
     signal showResults(var songs, string mixType)
+
+    Connections {
+        target: root.mx
+        function onStateChanged(state) {
+            if (!root._waiting) return
+            if (state === "COMPLETED_WITH_TRACKS" || state === "PARTIAL_RECOMMENDATION") {
+                root._waiting = false
+                root._resultSongs = root.mx.currentSongs || []
+                root._state = "READY"
+                root._statusMessage = qsTr("Mix generado: %1 canciones").arg(root._resultSongs.length)
+            } else if (state === "CANCELLED") {
+                root._waiting = false
+                root._state = "CANCELLED"
+                root._statusMessage = qsTr("Generación cancelada")
+                root._resultSongs = []
+            } else {
+                root._waiting = false
+                root._state = "NO_CANDIDATES"
+                root._statusMessage = ""
+                root._errorMessage = root.mx.errorMessage || ""
+            }
+        }
+    }
 
     MichiResponsive { id: responsive; availableWidth: root.width }
 
@@ -44,6 +68,7 @@ Item {
         root._errorMessage = ""
         root._statusMessage = ""
         root._resultSongs = []
+        root._waiting = false
         root._progressCurrent = 0
         root._progressTotal = 0
     }
@@ -73,6 +98,7 @@ Item {
         root._state = "GENERATING"
         root._statusMessage = qsTr("Generando mix...")
         root._resultSongs = []
+        root._waiting = false
 
         if (root.mx && typeof root.mx.loadMix === "function") {
             var params = {}
@@ -96,8 +122,7 @@ Item {
                     root._state = "READY"
                     root._statusMessage = qsTr("Mix generado: %1 canciones").arg(root._resultSongs.length)
                 } else {
-                    root._state = "NO_CANDIDATES"
-                    root._statusMessage = ""
+                    root._waiting = true
                 }
             } else {
                 root._state = "FAILED"

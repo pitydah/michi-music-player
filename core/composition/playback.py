@@ -34,6 +34,31 @@ def build(container: ServiceContainer) -> None:
     container.register("playback_service", ps)
     container.register("notification_service", ns)
 
+    # Canonical playback readback + honest player bar facade (ADR-005, S9).
+    from core.playback_snapshot_service import PlaybackSnapshotService
+    from core.player_bar_service import PlayerBarService
+    from core.output_profile_service import OutputProfileService
+    from core.equalizer_service import (
+        EqualizerPresetRepository,
+        EqualizerService,
+    )
+
+    snapshot_service = PlaybackSnapshotService(
+        player_service=ps, queue_service=qs)
+    container.register("playback_snapshot_service", snapshot_service)
+    container.register("player_bar_service",
+                       PlayerBarService(snapshot_service=snapshot_service))
+    container.register("output_profile_service",
+                       OutputProfileService(player_service=ps, event_bus=eb))
+    container.register(
+        "equalizer_service",
+        EqualizerService(
+            player_service=ps,
+            preset_repository=EqualizerPresetRepository(persist=True),
+            event_bus=eb,
+        ),
+    )
+
     try:
         from adapters.mpris import MPRISAdapter
         adapter = MPRISAdapter(player_service=ps, queue_service=qs)

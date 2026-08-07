@@ -47,6 +47,12 @@ class RemoteLibraryService:
             return result.data.get("audio", 0)
         return 0
 
-    def get_playlists(self, server: RemoteServerInfo) -> list[dict]:
-        """Get playlists from remote server. Uses sync/manifest."""
-        return []
+    def get_playlists(self, server: RemoteServerInfo) -> Result:
+        """Get playlists from the remote server via /api/v1/playlists.
+
+        Returns a Result: ``success({"playlists": [...], "total": N})`` on
+        real readback, or an explicit failure (REMOTE_UNAVAILABLE /
+        PLAYLISTS_ENDPOINT_MISSING) when the remote is not connected or does
+        not expose the endpoint — never an empty list passed off as success.
+        """
+        return self._micro.get_playlists(server)

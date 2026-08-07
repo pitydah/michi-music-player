@@ -1,34 +1,25 @@
 import pytest
 from unittest.mock import MagicMock
 
-from ui_qml_bridge.mix_bridge import MixBridge
+
+from .conftest import make_bridge, make_mix_service
 
 
 @pytest.fixture
 def mock_mix_svc():
-    mqs = MagicMock()
-    mqs.favorites.return_value = [
-        {"track_id": i, "title": f"Track {i}", "artist": f"Artist {i}",
-         "album": f"Album {i}", "duration": 200}
-        for i in range(1, 6)
-    ]
-    mqs.recent.return_value = [{"track_id": 10, "title": "Recent 1", "artist": "C", "album": "D", "duration": 220}]
-    mqs.most_played.return_value = []
-    mqs.unplayed.return_value = []
-    return mqs
+    return make_mix_service(default_track_count=5)
 
 
 @pytest.fixture
-def bridge(mock_mix_svc):
+def bridge(mock_mix_svc, tmp_path):
     queue_svc = MagicMock()
     queue_svc.replace_and_play.return_value = {"ok": True}
     queue_svc.enqueue.return_value = {"ok": True, "count": 5}
-    return MixBridge(
-        mix_service=mock_mix_svc,
-        playback_service=MagicMock(),
+    b, _svc = make_bridge(
+        mock_mix_svc, tmp_path,
         queue_service=queue_svc,
-        playlist_service=MagicMock(),
     )
+    return b
 
 
 class TestMixKeyboard:
@@ -92,7 +83,10 @@ class TestMixKeyboard:
         assert result["count"] == 5
 
     def test_save_mix_as_playlist_keyboard_accessible(self, bridge):
-        bridge._playlist_svc.create.return_value = 42
+        bridge._mix_svc.save_mix_as_playlist.return_value = {
+            "ok": True, "status": "COMPLETED", "playlist_id": 42,
+            "requested": 5, "added": 5, "failed": 0, "count": 5,
+        }
         bridge.loadMix("favorites")
         result = bridge.saveMixAsPlaylist("Keyboard Mix")
         assert result["ok"] is True

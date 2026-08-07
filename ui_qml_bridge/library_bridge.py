@@ -52,6 +52,7 @@ class LibraryBridge(QObject):
                  playlists_bridge: Any | None = None, container: Any | None = None,
                  queue_service: Any | None = None,
                  artwork_svc: Any | None = None, cover_provider: Any | None = None,
+                 favorite_service: Any | None = None,
                  parent: QObject | None = None) -> None:
         assert query_service is not None, "LibraryBridge: query_service is REQUIRED"
         super().__init__(parent)
@@ -74,6 +75,7 @@ class LibraryBridge(QObject):
         self._folder_tree_model = folder_tree_model
         self._artwork_svc = artwork_svc
         self._cover_provider = cover_provider
+        self._fav_svc = favorite_service
         self._search_query = ""
         self._sort_key = "title"
         self._sort_asc = True
@@ -617,9 +619,7 @@ class LibraryBridge(QObject):
 
     @Slot(str, bool, result=dict)
     def setFavoriteBulk(self, track_ids_json: str, favorite: bool):
-        """Set favorite status on multiple tracks in one SQL operation."""
-        if not self._db or not hasattr(self._db, "conn"):
-            return {"ok": False, "error": "NO_DB"}
+        """Set favorite status on multiple tracks through FavoriteService."""
         try:
             track_ids = json.loads(track_ids_json)
         except json.JSONDecodeError as e:
@@ -631,30 +631,32 @@ class LibraryBridge(QObject):
                    for track_id in track_ids)
         ):
             return {"ok": False, "error": "INVALID_TRACK_IDS"}
-
+        if not self._fav_svc:
+            return {"ok": False, "error": "NO_FAVORITE_SERVICE",
+                    "code": "INFRASTRUCTURE_UNAVAILABLE"}
         unique_ids = list(dict.fromkeys(track_ids))
-        placeholders = ", ".join("?" for _ in unique_ids)
         try:
-            if favorite:
-                sql = (
-                    "INSERT OR IGNORE INTO favorites (track_id) "
-                    "SELECT filepath FROM media_items "
-                    f"WHERE deleted_at IS NULL AND id IN ({placeholders})"
-                )
-            else:
-                sql = (
-                    "DELETE FROM favorites WHERE track_id IN ("
-                    "SELECT filepath FROM media_items "
-                    f"WHERE id IN ({placeholders}))"
-                )
-            with self._db.conn:
-                cursor = self._db.conn.execute(sql, unique_ids)
-            self._refresh_coordinator.refresh_tracks()
-            self._sync_state()
-            self.dataChanged.emit()
-            return {"ok": True, "favorite": favorite, "count": cursor.rowcount}
+            result = self._fav_svc.set_track_favorites_bulk(unique_ids, favorite)
         except Exception as e:
             return {"ok": False, "error": str(e)}
+        if not result.ok:
+            return {"ok": False, "error": result.code,
+                    "message": result.message}
+        data = result.data
+        payload = {"ok": True, "favorite": favorite,
+                   "count": data.get("count", 0)}
+        if data.get("not_found") or data.get("failed") or data.get("already_set"):
+            payload["results"] = {
+                str(tid): status for tid, status in data.get("results", {}).items()
+            }
+            payload["applied"] = data.get("applied", 0)
+            payload["already_set"] = data.get("already_set", 0)
+            payload["not_found"] = data.get("not_found", 0)
+            payload["failed"] = data.get("failed", 0)
+        self._refresh_coordinator.refresh_tracks()
+        self._sync_state()
+        self.dataChanged.emit()
+        return payload
 
     def _tracks_for_bulk(self, track_ids_json: str) -> tuple[list[dict[str, Any]], str | None]:
         """Fetch canonical queue payloads for track IDs with one SQL query."""
@@ -724,66 +726,52 @@ class LibraryBridge(QObject):
 
     def _set_group_favorite(
         self,
-        where_clause: str,
-        params: tuple[Any, ...],
+        entity_type: str,
+        entity_id: str,
         favorite: bool,
     ) -> dict:
-        """Set favorite state for every track matching a trusted SQL predicate."""
-        if not self._db or not hasattr(self._db, "conn"):
-            return {"ok": False, "error": "NO_DB"}
+        """Set favorite state for a canonical group entity (album/artist/genre).
+
+        Group favorites create inherited track rows; unfavoriting removes only
+        the inherited relations (never direct track favorites).
+        """
+        if not self._fav_svc:
+            return {"ok": False, "error": "NO_FAVORITE_SERVICE",
+                    "code": "INFRASTRUCTURE_UNAVAILABLE"}
         try:
-            count_row = self._db.conn.execute(
-                f"SELECT COUNT(*) FROM media_items WHERE deleted_at IS NULL AND {where_clause}",
-                params,
-            ).fetchone()
-            matched = int(count_row[0]) if count_row else 0
-            if favorite:
-                sql = (
-                    "INSERT OR IGNORE INTO favorites (track_id) "
-                    "SELECT filepath FROM media_items "
-                    f"WHERE deleted_at IS NULL AND {where_clause}"
-                )
+            if entity_type == "album":
+                result = self._fav_svc.set_album_favorite(entity_id, favorite)
+            elif entity_type == "artist":
+                result = self._fav_svc.set_artist_favorite(entity_id, favorite)
+            elif entity_type == "genre":
+                result = self._fav_svc.set_genre_favorite(entity_id, favorite)
             else:
-                sql = (
-                    "DELETE FROM favorites WHERE track_id IN ("
-                    "SELECT filepath FROM media_items WHERE deleted_at IS NULL AND "
-                    f"{where_clause} UNION SELECT CAST(id AS TEXT) FROM media_items "
-                    f"WHERE deleted_at IS NULL AND {where_clause} UNION SELECT track_uid "
-                    f"FROM media_items WHERE deleted_at IS NULL AND {where_clause})"
-                )
-                params = params * 3
-            with self._db.conn:
-                self._db.conn.execute(sql, params)
-            self._refresh_coordinator.refresh_all()
-            self._sync_state()
-            self.dataChanged.emit()
-            return {"ok": True, "favorite": favorite, "count": matched}
+                result = self._fav_svc.set_favorite(
+                    entity_type, entity_id, f"{entity_type}:{entity_id}", favorite)
         except Exception as e:
             return {"ok": False, "error": str(e)}
+        if not result.ok:
+            return {"ok": False, "error": result.code, "message": result.message}
+        self._refresh_coordinator.refresh_all()
+        self._sync_state()
+        self.dataChanged.emit()
+        return {"ok": True, "favorite": favorite, "count": 1}
 
     @Slot(str, bool, result=dict)
     def setAlbumFavorite(self, album_key: str, favorite: bool):
-        """Set favorite state for every track belonging to an album."""
+        """Set favorite state for an album as a canonical entity."""
         key = str(album_key or "").strip()
         if not key:
             return {"ok": False, "error": "EMPTY_ALBUM_KEY"}
-        return self._set_group_favorite(
-            "COALESCE(NULLIF(album_key, ''), album, '') = ? COLLATE NOCASE",
-            (key,),
-            favorite,
-        )
+        return self._set_group_favorite("album", key, favorite)
 
     @Slot(str, bool, result=dict)
     def setArtistFavorite(self, artist_name: str, favorite: bool):
-        """Set favorite state for every track belonging to an artist."""
+        """Set favorite state for an artist as a canonical entity."""
         artist = str(artist_name or "").strip()
         if not artist:
             return {"ok": False, "error": "EMPTY_ARTIST_NAME"}
-        return self._set_group_favorite(
-            "(artist = ? COLLATE NOCASE OR albumartist = ? COLLATE NOCASE)",
-            (artist, artist),
-            favorite,
-        )
+        return self._set_group_favorite("artist", artist, favorite)
 
     @Slot(str, result=dict)
     def enqueueSong(self, filepath: str):

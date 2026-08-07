@@ -116,6 +116,7 @@ class LibraryQueryService:
                      genre: str = "", fmt: str = "", folder: str = "",
                      year: str = "", quality: str = "", composer: str = "",
                      missing_artist: bool = False, missing_album: bool = False,
+                     missing_year: bool = False, missing_genre: bool = False,
                      missing_file: bool = False,
                      _use_fts: bool = False, **extra) -> tuple[str, list[Any]]:
         """Build parameterized predicates shared by library aggregate queries."""
@@ -157,6 +158,10 @@ class LibraryQueryService:
             clauses.append(f"({_artist_key_sql()} = '' OR {_artist_key_sql()} IS NULL)")
         if missing_album:
             clauses.append("(album = '' OR album IS NULL)")
+        if missing_year:
+            clauses.append("(year IS NULL OR year = 0)")
+        if missing_genre:
+            clauses.append("(genre = '' OR genre IS NULL)")
         if missing_file:
             clauses.append(
                 "LOWER(COALESCE(scan_status, '')) IN "
@@ -694,3 +699,24 @@ class LibraryQueryService:
         except Exception as e:
             logger.debug("recently_played failed: %s", e)
             return []
+
+    def fetch_unplayed(self, limit: int = 20) -> list[dict[str, Any]]:
+        """Tracks with no play history, ordered by title (canonical query)."""
+        self._check_db()
+        try:
+            rows = self._exec(
+                "SELECT id, filepath, filename, ext, duration, title, artist, album, "
+                "albumartist, year, genre, track_number, track_total, disc_number, "
+                "disc_total, bitrate, sample_rate, bit_depth, channels, play_count, "
+                "last_played, album_key, track_uid, created_at "
+                "FROM media_items WHERE deleted_at IS NULL "
+                "AND (play_count IS NULL OR play_count = 0) "
+                "ORDER BY title ASC LIMIT ?",
+                [limit],
+            ).fetchall()
+            return [self._row_to_public(r) for r in rows]
+        except LibraryQueryError:
+            raise
+        except Exception as e:
+            raise LibraryQueryError("QUERY_FAILED", "fetch_unplayed", str(e)) from e
+

@@ -24,11 +24,27 @@ pytestmark = [pytest.mark.qml_module("settings")]
 
 @pytest.fixture
 def coordinator():
+    from core.accessibility_service import AccessibilityService
+    from core.theme_service import ThemeService
+
+    class _FakeSettings:
+        def __init__(self):
+            self._data = {}
+
+        def value(self, key, default=None):
+            return self._data.get(key, default)
+
+        def setValue(self, key, value):
+            self._data[key] = value
+
     c = SettingsRuntimeCoordinator(
         player_service=MagicMock(), queue_service=MagicMock()
     )
-    theme_bridge = ThemeBridge(coordinator=MagicMock())
-    acc_bridge = AccessibilityBridge(playback_service=MagicMock())
+    theme_bridge = ThemeBridge(service=ThemeService(settings=_FakeSettings()))
+    acc_bridge = AccessibilityBridge(
+        service=AccessibilityService(settings=_FakeSettings()),
+        playback_service=MagicMock(),
+    )
     register_all_adapters(
         c, theme_bridge=theme_bridge, accessibility_bridge=acc_bridge,
     )

@@ -1,21 +1,33 @@
-"""Tests for ThemeStore runtime — settings change  ThemeBridge  ThemeStore  QML color update  persistence."""
-from unittest.mock import MagicMock, patch
+"""Tests for ThemeStore runtime — settings change  ThemeBridge  ThemeService  ThemeStore  QML color update  persistence.
+
+Single authority (S11): the ThemeService owns state and persistence; the
+bridge is a thin adapter. Persistence survives service re-instantiation."""
+from unittest.mock import MagicMock
 
 import pytest
 
+from core.theme_service import ThemeService
+from core.accessibility_service import AccessibilityService
 from ui_qml_bridge.theme_bridge import ThemeBridge
+
+
+class _FakeSettings:
+    def __init__(self, initial: dict | None = None):
+        self._data = dict(initial or {})
+
+    def value(self, key, default=None):
+        return self._data.get(key, default)
+
+    def setValue(self, key, value):
+        self._data[key] = value
 
 
 @pytest.fixture
 def bridge():
-    b = ThemeBridge(coordinator=MagicMock())
-    b._theme = "dark"
-    b._accent_color = "#8FB7FF"
-    b._high_contrast = False
-    b._compact_mode = False
-    b._font_scale = 1.0
-    b._reduced_motion = False
-    b._dark_mode = True
+    b = ThemeBridge(
+        service=ThemeService(settings=_FakeSettings()),
+        accessibility_service=AccessibilityService(settings=_FakeSettings()),
+    )
     return b
 
 
@@ -24,138 +36,118 @@ class TestThemeBridgeProperties:
         assert bridge.darkMode is True
         assert bridge.theme == "dark"
 
-    def test_theme_setter_calls_coordinator(self, bridge):
-        with patch("ui_qml_bridge.theme_bridge.SETTINGS"):
-            bridge.theme = "light"
-            bridge._service.set_.assert_called_once_with("appearance/theme", "light")
+    def test_theme_setter_persists_via_service(self, bridge):
+        bridge.theme = "light"
+        assert bridge._service.theme == "light"
 
     def test_theme_setter_updates_dark_mode(self, bridge):
-        with patch("ui_qml_bridge.theme_bridge.SETTINGS"):
-            bridge.theme = "light"
-            assert bridge.darkMode is False
-            assert bridge.theme == "light"
+        bridge.theme = "light"
+        assert bridge.darkMode is False
+        assert bridge.theme == "light"
 
     def test_accent_color_setter(self, bridge):
-        with patch("ui_qml_bridge.theme_bridge.SETTINGS"):
-            bridge.accentColor = "#FF0000"
-            assert bridge.accentColor == "#FF0000"
+        bridge.accentColor = "#FF0000"
+        assert bridge.accentColor == "#FF0000"
+        assert bridge._service.accent_color == "#FF0000"
 
     def test_high_contrast_setter(self, bridge):
-        with patch("ui_qml_bridge.theme_bridge.SETTINGS"):
-            bridge.highContrast = True
-            assert bridge.highContrast is True
+        bridge.highContrast = True
+        assert bridge.highContrast is True
 
     def test_compact_mode_setter(self, bridge):
-        with patch("ui_qml_bridge.theme_bridge.SETTINGS"):
-            bridge.compactMode = True
-            assert bridge.compactMode is True
+        bridge.compactMode = True
+        assert bridge.compactMode is True
 
     def test_font_scale_setter(self, bridge):
-        with patch("ui_qml_bridge.theme_bridge.SETTINGS"):
-            bridge.fontScale = 1.5
-            assert bridge.fontScale == 1.5
+        bridge.fontScale = 1.5
+        assert bridge.fontScale == 1.5
 
     def test_reduce_motion_setter(self, bridge):
-        with patch("ui_qml_bridge.theme_bridge.SETTINGS"):
-            bridge.reducedMotion = True
-            assert bridge.reducedMotion is True
+        bridge.reducedMotion = True
+        assert bridge.reducedMotion is True
 
     def test_theme_setter_emits_signal(self, bridge):
-        with patch("ui_qml_bridge.theme_bridge.SETTINGS"):
-            handler = MagicMock()
-            bridge.themeChanged.connect(handler)
-            bridge.theme = "light"
-            handler.assert_called_once()
+        handler = MagicMock()
+        bridge.themeChanged.connect(handler)
+        bridge.theme = "light"
+        handler.assert_called_once()
 
     def test_theme_noop_same_value(self, bridge):
-        with patch("ui_qml_bridge.theme_bridge.SETTINGS") as ms:
-            bridge.theme = "dark"
-            ms.setValue.assert_not_called()
+        backend = bridge._service._settings
+        bridge.theme = "dark"
+        assert backend.value("appearance/theme") is None
 
 
 class TestThemeStoreIntegration:
     def test_theme_store_values_after_update(self):
-        try:
-            class FakeThemeStore:
-                def __init__(self):
-                    self.currentTheme = "dark"
-                    self.accentColor = "#8FB7FF"
-                    self.highContrast = False
-                    self.compactMode = False
-                    self.fontScale = 1.0
-                    self.reducedMotion = False
-                    self.darkMode = True
-                    self.ready = False
+        class FakeThemeStore:
+            def __init__(self):
+                self.currentTheme = "dark"
+                self.accentColor = "#8FB7FF"
+                self.highContrast = False
+                self.compactMode = False
+                self.fontScale = 1.0
+                self.reducedMotion = False
+                self.darkMode = True
+                self.ready = False
 
-                def updateFromBridge(self, bridge):
-                    self.currentTheme = bridge.theme
-                    self.accentColor = bridge.accentColor
-                    self.highContrast = bridge.highContrast
-                    self.compactMode = bridge.compactMode
-                    self.fontScale = bridge.fontScale
-                    self.reducedMotion = bridge.reducedMotion
-                    self.darkMode = bridge.darkMode
-                    self.ready = True
+            def updateFromBridge(self, bridge):
+                self.currentTheme = bridge.theme
+                self.accentColor = bridge.accentColor
+                self.highContrast = bridge.highContrast
+                self.compactMode = bridge.compactMode
+                self.fontScale = bridge.fontScale
+                self.reducedMotion = bridge.reducedMotion
+                self.darkMode = bridge.darkMode
+                self.ready = True
 
-            store = FakeThemeStore()
-            bridge = ThemeBridge(coordinator=MagicMock())
-            bridge._theme = "light"
-            bridge._accent_color = "#00FF00"
-            bridge._high_contrast = True
-            bridge._compact_mode = True
-            bridge._font_scale = 1.5
-            bridge._reduced_motion = True
-            bridge._dark_mode = False
+        store = FakeThemeStore()
+        backend = _FakeSettings({
+            "appearance/theme": "light",
+            "appearance/accent_color": "#00FF00",
+            "accessibility/high_contrast": True,
+            "appearance/compact_mode": True,
+            "accessibility/font_size": 1.5,
+            "accessibility/reduced_motion": True,
+        })
+        bridge = ThemeBridge(
+            service=ThemeService(settings=backend),
+            accessibility_service=AccessibilityService(settings=backend),
+        )
 
-            store.updateFromBridge(bridge)
+        store.updateFromBridge(bridge)
 
-            assert store.currentTheme == "light"
-            assert store.accentColor == "#00FF00"
-            assert store.highContrast is True
-            assert store.compactMode is True
-            assert store.fontScale == 1.5
-            assert store.reducedMotion is True
-            assert store.darkMode is False
-            assert store.ready is True
-        except ImportError:
-            pytest.skip("PySide6 QML import not available")
+        assert store.currentTheme == "light"
+        assert store.accentColor == "#00FF00"
+        assert store.highContrast is True
+        assert store.compactMode is True
+        assert store.fontScale == 1.5
+        assert store.reducedMotion is True
+        assert store.darkMode is False
+        assert store.ready is True
 
     def test_settings_change_propagates_to_bridge(self, bridge):
-        with patch("ui_qml_bridge.theme_bridge.SETTINGS") as mock_s:
-            mock_s.value.side_effect = lambda k, d=None: {
-                "appearance/theme": "light",
-                "appearance/accent_color": "#FF7A00",
-                "accessibility/high_contrast": True,
-                "appearance/compact_mode": True,
-                "accessibility/font_size": 1.5,
-                "accessibility/reduced_motion": True,
-            }.get(k, d)
+        bridge.theme = "light"
+        bridge.accentColor = "#FF7A00"
+        bridge.highContrast = True
 
-            bridge.theme = "light"
-            bridge.accentColor = "#FF7A00"
-            bridge.highContrast = True
-
-            assert bridge.theme == "light"
-            assert bridge.accentColor == "#FF7A00"
-            assert bridge.highContrast is True
+        assert bridge.theme == "light"
+        assert bridge.accentColor == "#FF7A00"
+        assert bridge.highContrast is True
 
     def test_persistence_survives_simulated_restart(self):
-        with patch("ui_qml_bridge.theme_bridge.SETTINGS") as mock_s:
-            stored = {"appearance/theme": "light", "accessibility/high_contrast": True}
+        backend = _FakeSettings()
 
-            def mock_value(key, default=None):
-                return stored.get(key, default)
+        bridge1 = ThemeBridge(
+            service=ThemeService(settings=backend),
+            accessibility_service=AccessibilityService(settings=backend),
+        )
+        bridge1.theme = "light"
+        bridge1.highContrast = True
 
-            def mock_setValue(key, value):
-                stored[key] = value
-
-            mock_s.value.side_effect = mock_value
-            mock_s.setValue.side_effect = mock_setValue
-
-            bridge1 = ThemeBridge(coordinator=MagicMock())
-            bridge1.theme = "light"
-            bridge1.highContrast = True
-
-            bridge2 = ThemeBridge(coordinator=MagicMock())
-            assert bridge2.theme == "light"
-            assert bridge2.highContrast is True
+        bridge2 = ThemeBridge(
+            service=ThemeService(settings=backend),
+            accessibility_service=AccessibilityService(settings=backend),
+        )
+        assert bridge2.theme == "light"
+        assert bridge2.highContrast is True

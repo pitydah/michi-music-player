@@ -1,48 +1,35 @@
+"""No false success: an empty mix is NEVER ok end-to-end; the bridge maps
+the canonical outcome 1:1 (Fase Mix)."""
 import pytest
 from unittest.mock import MagicMock
 
-from ui_qml_bridge.mix_bridge import MixBridge
+
+from .conftest import make_bridge, make_mix_service
+
 pytestmark = [pytest.mark.qml_module("mix")]
 
 
 @pytest.fixture
 def mock_mix_svc():
-    mqs = MagicMock()
-    mqs.favorites.return_value = [
-        {"track_id": 1, "title": "Fav 1", "artist": "A", "album": "B", "duration": 200, "reason": "Favorito"},
-        {"track_id": 2, "title": "Fav 2", "artist": "A", "album": "B", "duration": 180, "reason": "Favorito"},
-    ]
-    mqs.recent.return_value = [
-        {"track_id": 3, "title": "Recent 1", "artist": "C", "album": "D", "duration": 220},
-    ]
-    mqs.unplayed.return_value = [
-        {"track_id": 4, "title": "Unplayed 1", "artist": "D", "album": "E", "duration": 190},
-    ]
-    mqs.most_played.return_value = [
-        {"track_id": 5, "title": "Top 1", "artist": "E", "album": "F", "duration": 210},
-    ]
-    mqs.rediscovery.return_value = []
-    mqs.by_field.return_value = []
-    mqs.by_decade.return_value = []
-    mqs.by_year.return_value = []
-    mqs.high_quality.return_value = []
-    return mqs
+    return make_mix_service(default_track_count=2)
 
 
 @pytest.fixture
-def bridge(mock_mix_svc):
-    return MixBridge(
-        mix_service=mock_mix_svc,
+def bridge(mock_mix_svc, tmp_path):
+    b, _svc = make_bridge(
+        mock_mix_svc, tmp_path,
         playback_service=MagicMock(),
         queue_service=MagicMock(),
         playlist_service=MagicMock(),
     )
+    return b
 
 
 def test_favorites_mix_returns_real_tracks(bridge):
     result = bridge.loadMix("favorites")
     assert result["ok"]
-    assert result["count"] == 2
+    assert bridge.stateName == "COMPLETED_WITH_TRACKS"
+    assert len(bridge.currentSongs) == 2
 
 
 def test_empty_mix_play_returns_error(bridge):
@@ -110,7 +97,7 @@ def test_play_from_index_no_track_id(bridge):
     assert not result["ok"]
 
 
-def test_daily_mix_deduplicates(bridge):
+def test_generated_tracks_have_unique_ids(bridge):
     bridge.loadMix("daily_mix")
     ids = set()
     for s in bridge.currentSongs:

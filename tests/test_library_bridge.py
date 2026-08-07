@@ -3,8 +3,13 @@ import sqlite3
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from core.favorite_service import FavoriteService
 from library.schema import Schema
 from ui_qml_bridge.library_bridge import LibraryBridge
+
+
+def _favorite_db(connection):
+    return SimpleNamespace(conn=connection)
 
 
 class TestLibraryBridge:
@@ -17,18 +22,24 @@ class TestLibraryBridge:
         Schema.initialize(connection)
         connection.executemany(
             "INSERT INTO media_items "
-            "(filepath, filename, directory, ext, kind, title) VALUES (?, ?, ?, ?, ?, ?)",
+            "(filepath, filename, directory, ext, kind, title, track_uid) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
             [
-                ("/music/one.flac", "one.flac", "/music", ".flac", "audio", "One"),
-                ("/music/two.flac", "two.flac", "/music", ".flac", "audio", "Two"),
-                ("/music/three.flac", "three.flac", "/music", ".flac", "audio", "Three"),
+                ("/music/one.flac", "one.flac", "/music", ".flac", "audio", "One",
+                 "uid-1"),
+                ("/music/two.flac", "two.flac", "/music", ".flac", "audio", "Two",
+                 "uid-2"),
+                ("/music/three.flac", "three.flac", "/music", ".flac", "audio",
+                 "Three", "uid-3"),
             ],
         )
         bridge = LibraryBridge(
-            db=SimpleNamespace(conn=connection),
+            db=_favorite_db(connection),
             query_service=MagicMock(),
             track_action_service=MagicMock(),
+            favorite_service=FavoriteService(db=_favorite_db(connection)),
         )
+        bridge._refresh_coordinator = MagicMock()
 
         added = bridge.setFavoriteBulk(json.dumps([1, 3]), True)
         favorites = connection.execute(
@@ -47,9 +58,10 @@ class TestLibraryBridge:
         connection = sqlite3.connect(":memory:")
         Schema.initialize(connection)
         bridge = LibraryBridge(
-            db=SimpleNamespace(conn=connection),
+            db=_favorite_db(connection),
             query_service=MagicMock(),
             track_action_service=MagicMock(),
+            favorite_service=FavoriteService(db=_favorite_db(connection)),
         )
 
         malformed = bridge.setFavoriteBulk("not-json", True)
@@ -58,6 +70,52 @@ class TestLibraryBridge:
         assert malformed["ok"] is False
         assert malformed["error"].startswith("INVALID_JSON")
         assert invalid_ids == {"ok": False, "error": "INVALID_TRACK_IDS"}
+
+    def test_set_favorite_bulk_unavailable_without_service(self):
+        """Without an injected FavoriteService the slot reports unavailable."""
+        bridge = LibraryBridge(
+            query_service=MagicMock(),
+            track_action_service=MagicMock(),
+        )
+        result = bridge.setFavoriteBulk(json.dumps([1]), True)
+        assert result == {"ok": False, "error": "NO_FAVORITE_SERVICE",
+                          "code": "INFRASTRUCTURE_UNAVAILABLE"}
+
+    def test_album_favorite_is_canonical_entity(self):
+        """setAlbumFavorite delegates to FavoriteService as an album entity."""
+        connection = sqlite3.connect(":memory:")
+        Schema.initialize(connection)
+        connection.executemany(
+            "INSERT INTO media_items "
+            "(filepath, filename, directory, ext, kind, title, artist, album, album_key) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                ("/music/one.flac", "one.flac", "/music", ".flac", "audio", "One",
+                 "Artist", "Album", "album-key"),
+                ("/music/two.flac", "two.flac", "/music", ".flac", "audio", "Two",
+                 "Artist", "Album", "album-key"),
+            ],
+        )
+        service = FavoriteService(db=_favorite_db(connection))
+        bridge = LibraryBridge(
+            db=_favorite_db(connection),
+            query_service=MagicMock(),
+            track_action_service=MagicMock(),
+            favorite_service=service,
+        )
+        bridge._refresh_coordinator = MagicMock()
+
+        added = bridge.setAlbumFavorite("album-key", True)
+        assert added == {"ok": True, "favorite": True, "count": 1}
+        assert service.is_favorite("album", "album-key") is True
+        row = connection.execute(
+            "SELECT track_id, entity_type, entity_id FROM favorites"
+        ).fetchone()
+        assert row == ("album:album-key", "album", "album-key")
+
+        removed = bridge.setAlbumFavorite("album-key", False)
+        assert removed["ok"] is True
+        assert service.is_favorite("album", "album-key") is False
 
     def test_bulk_queue_operations_fetch_once_and_mutate_queue_once(self):
         connection = sqlite3.connect(":memory:")

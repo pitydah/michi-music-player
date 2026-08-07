@@ -17,6 +17,7 @@ from core.context.context_snapshot import (
     build_library_health_snapshot,
     build_mix_snapshot,
     build_playback_snapshot,
+    build_playback_snapshot_from_snapshot,
     sanitize_snapshot,
 )
 
@@ -26,13 +27,79 @@ _SNAPSHOT_TTL = 120
 
 
 class ContextService:
-    def __init__(self, db=None, playback=None, sync=None, section_registry=None):
+    """Canonical contextual truth source.
+
+    Builds snapshot sections through registered providers
+    (``ContextProviderRegistry``) that consume the REAL injected services
+    (``services``) — the canonical snapshot is the single readback authority
+    for Home, Michi AI, diagnostics and the Now Playing surface (ADR-002).
+    Capabilities are derived from runtime checks (container health + the S4
+    capability resolver); they are never a static all-True dict.
+    """
+
+    def __init__(self, db=None, playback=None, sync=None, section_registry=None,
+                 snapshot_service=None, services: dict | None = None,
+                 container=None, capability_resolver=None):
         self._db = db
         self._playback = playback
         self._sync = sync
         self._section_registry = section_registry
+        self._snapshot_service = snapshot_service
         self._current_section = ""
         self._current_tab = ""
+        self._services: dict = dict(services or {})
+        if db is not None:
+            self._services.setdefault("database", db)
+        if playback is not None:
+            self._services.setdefault("playback_service", playback)
+        if sync is not None:
+            self._services.setdefault("device_sync_service", sync)
+        if snapshot_service is not None:
+            self._services.setdefault("playback_snapshot_service", snapshot_service)
+        self._container = container
+        self._capability_resolver = capability_resolver
+        self._registry = None
+
+    @property
+    def services(self) -> dict:
+        """Injected real services consumed by the snapshot providers."""
+        return self._services
+
+    @property
+    def container(self):
+        """The service container used for capability health checks."""
+        return self._container
+
+    @property
+    def capability_resolver(self):
+        """The S4 capability resolver used for capability evidence."""
+        return self._capability_resolver
+
+    @property
+    def db(self):
+        return self._db
+
+    def _ensure_registry(self):
+        if self._registry is None:
+            from core.context.providers.snapshot import build_snapshot_registry
+            self._registry = build_snapshot_registry()
+        return self._registry
+
+    def register_section_provider(self, section_key: str, provider) -> None:
+        """Register (or replace) a snapshot section provider (additive)."""
+        self._ensure_registry().register(section_key, provider)
+
+    def snapshot(self) -> dict:
+        """Build the canonical runtime snapshot from all registered providers.
+
+        Returns a sanitized dict with one section per provider:
+        playback, queue, library, audio, ecosystem, jobs, radio, recognition,
+        errors, capabilities. Sections never fabricate values: a missing
+        service yields ``available: False`` with a reason.
+        """
+        registry = self._ensure_registry()
+        sections = registry.build_all(self)
+        return sanitize_snapshot(sections)
 
     # ── Helpers ──
 
@@ -445,8 +512,12 @@ class ContextService:
             sel = repo.get_state("selection", {})
             scope = sel.get("selection_scope")
             label = sel.get("album") or sel.get("artist") or sel.get("genre") or sel.get("playlist_name") or sel.get("folder_name") or sel.get("mix_key") or sel.get("search_query") or ""
+            playback = self._playback
+            if self._snapshot_service is not None:
+                snap = self._snapshot_service.snapshot()
+                playback = _CanonicalPlaybackView(snap)
             return build_home_snapshot(
-                self._db, self._playback, self._sync,
+                self._db, playback, self._sync,
                 current_section=self._current_section,
                 selection_scope=scope,
                 selection_label=label,
@@ -454,10 +525,85 @@ class ContextService:
             )
         return self._rebuild_if_dirty("home_snapshot", _build)
 
-    @staticmethod
-    def _assistant_capabilities_for_scope(scope):
+    def _runtime_capability(self, service_key: str) -> tuple[bool, str]:
+        """Runtime capability evidence for a backing service.
+
+        Container health is authoritative (``contains`` + ``is_capable``);
+        without a container, the injected service presence is used. A missing
+        or unhealthy service yields ``(False, reason)`` — never a fabricated
+        True (ADR-005).
+        """
+        container = self._container
+        if container is not None:
+            present = bool(container.contains(service_key))
+            if not present:
+                return False, f"service_missing:{service_key}"
+            capable = bool(container.is_capable(service_key))
+            if not capable:
+                return False, f"service_unhealthy:{service_key}"
+            return True, ""
+        if self._services.get(service_key) is not None:
+            return True, ""
+        return False, f"service_missing:{service_key}"
+
+    def _resolver_capability(self, cap_name: str, fallback_service_key: str) -> tuple[bool, str]:
+        """Capability evidence from the S4 resolver, falling back to container."""
+        resolver = self._capability_resolver
+        if resolver is not None:
+            try:
+                resolved = resolver.resolve(cap_name)
+                evidence = resolved.get(cap_name)
+                if evidence is not None:
+                    return bool(evidence.available), evidence.reason or ""
+            except Exception:
+                return False, f"capability_resolver_error:{cap_name}"
+        return self._runtime_capability(fallback_service_key)
+
+    def _assistant_capabilities_for_scope(self, scope):
+        def _cap(name: str, service_key: str) -> bool:
+            available, _reason = self._runtime_capability(service_key)
+            return available
+
         return {
-            "can_search_library": True,
+            "can_search_library": _cap(
+                "can_search_library", "global_search_service"),
+            "can_create_playlist_from_selection": (
+                _cap("can_create_playlist_from_selection", "playlist_service")
+                and scope in {
+                    "track", "album", "artist", "genre", "playlist",
+                    "mix", "folder", "search",
+                }
+            ),
+            "can_queue_selection": (
+                _cap("can_queue_selection", "queue_service")
+                and scope in {
+                    "track", "album", "artist", "genre", "playlist",
+                    "mix", "folder", "search",
+                }
+            ),
+            "can_edit_metadata": (
+                _cap("can_edit_metadata", "library_mutation_service")
+                and scope in {"track", "album", "artist", "genre"}
+            ),
+            "can_analyze_selected_tracks": (
+                _cap("can_analyze_selected_tracks", "audio_lab_service")
+                and scope in {
+                    "track", "album", "artist", "genre", "playlist",
+                    "mix", "search",
+                }
+            ),
+            "can_play_selection": (
+                _cap("can_play_selection", "playback_service")
+                and scope in {
+                    "track", "album", "artist", "genre", "playlist",
+                    "mix", "folder", "search",
+                }
+            ),
+        }
+
+    def _assistant_capability_reasons(self, scope) -> dict[str, str]:
+        """Per-capability evidence reasons (additive diagnostics surface)."""
+        scope_ok = {
             "can_create_playlist_from_selection": scope in {
                 "track", "album", "artist", "genre", "playlist",
                 "mix", "folder", "search",
@@ -476,6 +622,21 @@ class ContextService:
                 "mix", "folder", "search",
             },
         }
+        service_map = {
+            "can_search_library": "global_search_service",
+            "can_create_playlist_from_selection": "playlist_service",
+            "can_queue_selection": "queue_service",
+            "can_edit_metadata": "library_mutation_service",
+            "can_analyze_selected_tracks": "audio_lab_service",
+            "can_play_selection": "playback_service",
+        }
+        reasons: dict[str, str] = {}
+        for name, service_key in service_map.items():
+            _available, reason = self._runtime_capability(service_key)
+            if name in scope_ok and not scope_ok[name]:
+                reason = f"scope_not_eligible:{scope}"
+            reasons[name] = reason
+        return reasons
 
     def get_assistant_snapshot(self) -> dict:
         def _build():
@@ -512,7 +673,11 @@ class ContextService:
             snap["selected_artist"] = selection["artist"]
             snap["selected_genre"] = selection["genre"]
 
+            # Runtime-gated capabilities: never a static all-True dict
+            # (ADR-005): each capability requires its backing service to be
+            # present and healthy in the container.
             snap["assistant_capabilities"] = self._assistant_capabilities_for_scope(scope)
+            snap["capability_reasons"] = self._assistant_capability_reasons(scope)
             snap["contextual_action_hints"] = _contextual_action_hints(snap)
             return sanitize_snapshot(snap)
         return self._rebuild_if_dirty("assistant_snapshot", _build)
@@ -523,6 +688,9 @@ class ContextService:
 
     def get_playback_context(self) -> dict:
         def _build():
+            if self._snapshot_service is not None:
+                snap = self._snapshot_service.snapshot()
+                return build_playback_snapshot_from_snapshot(snap)
             return build_playback_snapshot(self._playback, recent_events=repo.recent_events(limit=20))
         return self._rebuild_if_dirty(
             "playback_context", _build, ttl=60)
@@ -532,6 +700,36 @@ class ContextService:
 
     def recent_events(self, limit: int = 20) -> list[dict]:
         return repo.recent_events(limit=limit)
+
+
+class _CanonicalPlaybackView:
+    """Duck-typed playback facade over the canonical snapshot dict.
+
+    Lets legacy snapshot builders read playback state from the canonical
+    ``PlaybackSnapshotService`` output (S9) instead of the raw player. Never
+    fabricates values: when the canonical snapshot reports ``available False``
+    the view exposes the honest defaults the builders already expect.
+    """
+
+    def __init__(self, snap: dict):
+        self._snap = snap or {}
+        track = self._snap.get("track")
+        self.current_track = None
+        if track and self._snap.get("available"):
+            self.current_track = type(
+                "_CanonicalTrack", (),
+                {
+                    "title": track.get("title"),
+                    "name": track.get("title"),
+                    "artist": track.get("artist"),
+                    "album": track.get("album"),
+                },
+            )()
+        queue = self._snap.get("queue") or {}
+        self.queue_length = int(queue.get("count", 0)) if self._snap.get("available") else 0
+        self.recent_count = 0
+        self.favorites_count = 0
+        self.source_type = self._snap.get("source") or "local"
 
 
 def _contextual_action_hints(snapshot: dict) -> list[str]:

@@ -50,5 +50,33 @@ def compute_capabilities(container: "ServiceContainer") -> dict[str, str]:
         "command_palette": "available",
         "cover": "available",
         "notifications": "available",
-        "global_search": "available" if container.contains("global_search_service") else "unavailable",
+        "global_search": _global_search_state(container),
     }
+
+
+def _global_search_state(container: "ServiceContainer") -> str:
+    """Truthful global search capability (Slice 6).
+
+    ``available`` only when the service exists AND ``search_available()``
+    reports the whole chain operative (query executor + worker manager active,
+    database readable, at least one provider registered). Falls back to
+    presence for legacy service objects without the probe.
+    """
+    try:
+        contains = container.contains("global_search_service")
+    except Exception:
+        return "unavailable"
+    if not contains:
+        return "unavailable"
+    try:
+        service = container.get("global_search_service")
+    except Exception:
+        return "unavailable"
+    checker = getattr(service, "search_available", None)
+    if not callable(checker):
+        return "available"
+    try:
+        info = checker()
+        return "available" if bool(info.get("ok")) else "unavailable"
+    except Exception:
+        return "unavailable"

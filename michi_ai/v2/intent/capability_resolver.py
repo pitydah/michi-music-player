@@ -1,15 +1,57 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 from michi_ai.v2.core.models import Capability, PermissionLevel
 
+# Capability -> backing container service key. The resolver consults the
+# container health per backing service at RESOLVE time (ADR-006 rule 2):
+# a tool is available only when the gateway exists AND the backing service
+# is registered AND healthy AND the method exists (handler evidence).
+_CAPABILITY_BACKING_SERVICES: dict[str, str] = {
+    "playback.control": "playback_service",
+    "queue.read": "queue_service",
+    "queue.modify": "queue_service",
+    "library.search": "global_search_service",
+    "library.read": "library_query_service",
+    "playlist.read": "playlist_service",
+    "playlist.modify": "playlist_service",
+    "mix.generate": "mix_service",
+    "metadata.read": "metadata_editor_service",
+    "metadata.modify": "metadata_editor_service",
+    "library_doctor.scan": "library_doctor_service",
+    "library_doctor.repair": "library_doctor_service",
+    "audio_lab.analyze": "audio_lab_service",
+    "audio_lab.convert": "audio_lab_service",
+    "audio_lab.replaygain": "audio_lab_service",
+    "diagnostics.read": "diagnostics_service",
+    "devices.read": "device_sync_service",
+    "devices.sync": "device_sync_service",
+    "settings.read": "settings_service",
+    "settings.modify": "settings_service",
+    "navigation.request": "navigation_service",
+    "history.read": "history_query_service",
+}
+
 
 class CapabilityResolver:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        health_provider: Callable[[str], bool] | None = None,
+        service_map: dict[str, str] | None = None,
+    ) -> None:
         self._capabilities: dict[str, Capability] = {}
+        self._health_provider = health_provider
+        self._service_map = dict(service_map or _CAPABILITY_BACKING_SERVICES)
 
     def register(self, name: str, available: bool = True, degraded: bool = False, reason: str = "", requires_confirmation: bool = False, permission: PermissionLevel = PermissionLevel.READ_ONLY) -> None:
+        existing = self._capabilities.get(name)
+        if existing is not None:
+            # Re-registration (e.g. capability evidence after tool
+            # registration) must not clobber the permission/confirmation
+            # contract declared by the tool definitions.
+            requires_confirmation = existing.requires_confirmation or requires_confirmation
+            permission = existing.permission
         self._capabilities[name] = Capability(
             name=name, available=available, degraded=degraded,
             reason=reason, requires_confirmation=requires_confirmation,
@@ -53,25 +95,38 @@ class CapabilityResolver:
             )
 
     def register_from_gateways(self, gateways: dict[str, Any]) -> None:
-        capability_map: dict[str, str] = {
-            "playback": "playback.control",
-            "queue": "queue.read",
-            "library": "library.search",
-            "playlist": "playlist.read",
-            "audio_lab": "audio_lab.analyze",
-            "device": "devices.read",
-            "settings": "settings.read",
-            "diagnostics": "diagnostics.read",
-            "navigation": "navigation.request",
-            "mix": "mix.generate",
-            "job": "diagnostics.read",
-        }
-        for gateway_key, capability_name in capability_map.items():
-            gateway = gateways.get(gateway_key)
-            if gateway is not None:
-                self.register(capability_name, available=True)
-            else:
-                self.register(capability_name, available=False, reason=f"No gateway: {gateway_key}")
+        """Register capabilities from GATEWAY EVIDENCE, not object existence.
+
+        A capability is available only when a gateway reports it operational
+        through ``operational_capabilities()`` (which derives from backing
+        service presence). Every capability declared by the builtin tool
+        definitions is (re)registered here, so a tool whose gateway is missing
+        or unbacked is blocked at execution time.
+        """
+        all_caps: set[str] = set()
+        evidence: dict[str, bool] = {}
+        for _gateway_key, gateway in gateways.items():
+            if gateway is None:
+                continue
+            ops: dict[str, bool] = {}
+            if hasattr(gateway, "operational_capabilities"):
+                try:
+                    ops = dict(gateway.operational_capabilities() or {})
+                except Exception:
+                    ops = {}
+            for cap, available in ops.items():
+                all_caps.add(cap)
+                evidence[cap] = evidence.get(cap, True) and bool(available)
+
+        from michi_ai.v2.tools.tool_definitions import BUILTIN_TOOL_DEFINITIONS
+        for defn in BUILTIN_TOOL_DEFINITIONS:
+            for cap in defn.capabilities:
+                all_caps.add(cap)
+
+        for cap in all_caps:
+            available = evidence.get(cap, False)
+            self.register(cap, available=available,
+                          reason="" if available else f"No gateway provides '{cap}'")
 
     def resolve(self, needed: str | list[str]) -> dict[str, Capability]:
         needed_list = [needed] if isinstance(needed, str) else needed
@@ -79,7 +134,27 @@ class CapabilityResolver:
         for name in needed_list:
             cap = self._capabilities.get(name)
             if cap is not None:
-                result[name] = cap
+                available = cap.available
+                reason = cap.reason
+                service_key = self._service_map.get(name)
+                if available and service_key and self._health_provider is not None:
+                    # Full health gate (F9): the backing service must be
+                    # registered AND healthy (container READY-or-DEGRADED with
+                    # that service ok) at RESOLVE time — object existence and
+                    # gateway evidence alone are not enough.
+                    try:
+                        healthy = bool(self._health_provider(service_key))
+                    except Exception:
+                        healthy = False
+                    if not healthy:
+                        available = False
+                        reason = f"service_unhealthy:{service_key}"
+                result[name] = Capability(
+                    name=name, available=available, degraded=cap.degraded,
+                    reason=reason,
+                    requires_confirmation=cap.requires_confirmation,
+                    permission=cap.permission,
+                )
             else:
                 result[name] = Capability(
                     name=name, available=False,

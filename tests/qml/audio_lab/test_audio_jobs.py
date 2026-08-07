@@ -76,37 +76,39 @@ class TestAudioJobs:
         source = (QML_DIR / "pages/audio_lab/AudioBatchJobsPage.qml").read_text()
         assert "retryJob" in source or "Reintentar" in source
 
-    def test_job_bridge_clear_completed(self):
+    def _degraded_job_bridge(self):
         from unittest.mock import MagicMock
         from ui_qml_bridge.job_bridge import JobBridge
-        jb = JobBridge(worker_manager=MagicMock(), db=MagicMock())
+        return JobBridge(worker_manager=MagicMock(), db=MagicMock())
+
+    def test_job_bridge_clear_completed(self):
+        jb = self._degraded_job_bridge()
         result = jb.clearCompleted()
-        assert result["ok"] is True
+        assert result["ok"] is False
+        assert result["error"] == "INFRASTRUCTURE_UNAVAILABLE"
 
     def test_job_bridge_clear_failed(self):
-        from unittest.mock import MagicMock
-        from ui_qml_bridge.job_bridge import JobBridge
-        jb = JobBridge(worker_manager=MagicMock(), db=MagicMock())
+        jb = self._degraded_job_bridge()
         result = jb.clearFailed()
-        assert result["ok"] is True
+        assert result["ok"] is False
+        assert result["error"] == "INFRASTRUCTURE_UNAVAILABLE"
 
     def test_job_bridge_active_count(self):
-        from unittest.mock import MagicMock
-        from ui_qml_bridge.job_bridge import JobBridge
-        jb = JobBridge(worker_manager=MagicMock(), db=MagicMock())
+        jb = self._degraded_job_bridge()
         assert jb.activeCount >= 0
 
     def test_job_bridge_cancel_job_existing(self):
-        from unittest.mock import MagicMock
+        from core.jobs.job_service import DurableJobService
         from ui_qml_bridge.job_bridge import JobBridge
-        jb = JobBridge(worker_manager=MagicMock(), db=MagicMock())
+        svc = DurableJobService(db_path=":memory:")
+        svc.register_handler("library_scan", lambda job, ctx: {"ok": True})
+        jb = JobBridge(job_service=svc)
         result = jb.runJob("library_scan", "/tmp")
         assert result["ok"] is True
+        assert result["job_id"]
 
     def test_job_bridge_retry_job_nonexistent(self):
-        from unittest.mock import MagicMock
-        from ui_qml_bridge.job_bridge import JobBridge
-        jb = JobBridge(worker_manager=MagicMock(), db=MagicMock())
+        jb = self._degraded_job_bridge()
         result = jb.retryJob(99999)
         assert result["ok"] is False
 

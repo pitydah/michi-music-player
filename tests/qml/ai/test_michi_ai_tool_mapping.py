@@ -74,3 +74,83 @@ def test_engine_suggestions_use_natural_actions():
         assert intent.intent_id != "unknown", (
             f"Suggestion action '{action}' is not understood by the IntentRouter"
         )
+
+
+class TestFixedToolHandlerWiring:
+    """ADR-006: the previously-broken tools must reach their REAL gateway
+    methods through the composition wiring (not just be registered)."""
+
+    @staticmethod
+    def _composition(fakes: dict):
+        from core.assistant_initializer import create_assistant_composition
+        return create_assistant_composition(**fakes)
+
+    def test_draft_playlist_reaches_playlists_create(self):
+        from unittest.mock import MagicMock
+        playlist_svc = MagicMock()
+        playlist_svc.create_playlist.return_value = {"ok": True, "id": 5, "name": "N"}
+        playlist_svc.batch_add.return_value = {"ok": True, "count": 0}
+        db = MagicMock()
+        db.get_playlists.return_value = []
+        comp = self._composition({"library_db": db, "playlist_service": playlist_svc})
+
+        result = comp.tool_registry.execute("draft_playlist", {"name": "Nueva"})
+
+        assert result.ok is True, result.error
+        playlist_svc.create_playlist.assert_called_once_with("Nueva")
+        playlist_svc.batch_add.assert_not_called()
+
+    def test_delete_playlist_reaches_playlists_delete(self):
+        from unittest.mock import MagicMock
+        playlist_svc = MagicMock()
+        playlist_svc.delete_playlist.return_value = {"ok": True}
+        db = MagicMock()
+        db.get_playlists.return_value = []
+        comp = self._composition({"library_db": db, "playlist_service": playlist_svc})
+
+        result = comp.tool_registry.execute("delete_playlist", {"playlist_id": "3"})
+
+        assert result.ok is True, result.error
+        playlist_svc.delete_playlist.assert_called_once_with(3)
+        playlist_svc.create_playlist.assert_not_called()
+
+    def test_restore_setting_reaches_settings_apply_change(self):
+        from unittest.mock import MagicMock
+        settings_svc = MagicMock()
+        settings_svc.get.return_value = "old"
+        settings_svc.set_.return_value = {"ok": True}
+        settings_svc.reset.return_value = {"ok": True}
+        comp = self._composition({"settings_service": settings_svc})
+
+        result = comp.tool_registry.execute("restore_setting", {"key": "audio/volume"})
+
+        assert result.ok is True, result.error
+        settings_svc.reset.assert_called_once_with("audio/volume")
+
+    def test_scan_library_health_reaches_doctor_scan(self):
+        from unittest.mock import MagicMock
+        doctor = MagicMock()
+        doctor.scan.return_value = {"ok": True, "issues": [], "count": 0}
+        comp = self._composition({"library_doctor_service": doctor})
+
+        result = comp.tool_registry.execute("scan_library_health")
+
+        assert result.ok is True, result.error
+        doctor.scan.assert_called_once()
+
+    def test_get_sync_status_reaches_device_diagnosis(self):
+        from unittest.mock import MagicMock
+        sync_manager = MagicMock()
+        sync_manager.get_paired.return_value = []
+        sync_manager.get_discovered.return_value = []
+        sync_manager.list_jobs.return_value = []
+        sync_manager.get_history.return_value = []
+        comp = self._composition({"sync_manager": sync_manager})
+
+        result = comp.tool_registry.execute("get_sync_status")
+
+        assert result.ok is True, result.error
+        sync_manager.list_jobs.assert_called_once()
+        sync_manager.get_history.assert_called_once()
+        sync_manager.get_paired.assert_not_called()
+

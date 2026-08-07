@@ -1,4 +1,9 @@
-"""MQ: Test GlobalSearchBridge — stale guard, debounce, partial results, errors."""
+"""MQ: Test GlobalSearchBridge — stale guard, debounce, partial results, errors.
+
+Slice 6 contract: the bridge NEVER executes searches inline. Without a
+QueryExecutor it reports INFRASTRUCTURE_UNAVAILABLE; with one it submits and
+the results arrive through ``_on_search_done`` (async delivery only).
+"""
 import pytest
 from unittest.mock import MagicMock
 
@@ -20,8 +25,16 @@ def search_service():
 
 
 @pytest.fixture
-def bridge(search_service):
-    return GlobalSearchBridge(search_service=search_service)
+def qe():
+    q = MagicMock()
+    q.submit = MagicMock(return_value=42)
+    q.cancel_owner = MagicMock()
+    return q
+
+
+@pytest.fixture
+def bridge(search_service, qe):
+    return GlobalSearchBridge(search_service=search_service, query_executor=qe)
 
 
 class TestGlobalSearchStaleGuard:
@@ -37,13 +50,16 @@ class TestGlobalSearchStaleGuard:
         assert bridge.results == []
         assert bridge.isSearching is False
 
-    def test_search_calls_service(self, bridge, search_service):
+    def test_search_submits_async(self, bridge, search_service, qe):
         result = bridge.search("test")
         assert result["ok"] is True
-        search_service.search.assert_called_once()
+        assert result.get("async") is True
+        qe.submit.assert_called_once()
+        search_service.search.assert_not_called()
 
-    def test_search_populates_results(self, bridge):
-        bridge.search("test")
+    def test_search_populates_results(self, bridge, search_service):
+        bridge._active_request_id = 1
+        bridge._on_search_done(search_service.search.return_value, 1)
         assert len(bridge.results) > 0
 
     def test_search_stale_result_is_discarded(self, bridge, search_service):
@@ -80,21 +96,37 @@ class TestGlobalSearchStaleGuard:
         assert b.errorCode == "SERVICE_UNAVAILABLE"
         assert b.isSearching is False
 
-    def test_service_exception_returns_error(self, search_service):
-        search_service.search.side_effect = Exception("Search crashed")
-        b = GlobalSearchBridge(search_service=search_service)
+    def test_no_query_executor_reports_infrastructure_unavailable(self):
+        b = GlobalSearchBridge(search_service=MagicMock(), query_executor=None)
         result = b.search("test")
         assert result.get("ok") is False
+        assert result.get("error_code") == "INFRASTRUCTURE_UNAVAILABLE"
+        assert b.isSearching is False
+        assert b.errorCode == "INFRASTRUCTURE_UNAVAILABLE"
+
+    def test_service_exception_returns_error(self, search_service, qe):
+        search_service.search.side_effect = Exception("Search crashed")
+        b = GlobalSearchBridge(search_service=search_service, query_executor=qe)
+        b.search("test")
+        submitted = qe.submit.call_args
+        fn = submitted.kwargs["callable_fn"]
+        result = fn()
+        assert result.get("ok") is False
+        assert b.isSearching is True
+        submitted.kwargs["on_success"](result)
         assert b.isSearching is False
         assert b.errorMessage == "Search crashed"
 
-    def test_search_by_domain_unknown(self, bridge):
+    def test_search_by_domain_unknown_falls_back_to_all_domains(self, bridge, qe):
         result = bridge.searchDomain("nonexistent", "test")
-        assert result.get("error") == "UNKNOWN_DOMAIN"
+        assert result.get("ok") is True
+        assert result.get("async") is True
+        qe.submit.assert_called_once()
 
-    def test_search_by_domain_calls_search(self, bridge, search_service):
+    def test_search_by_domain_submits_async(self, bridge, search_service, qe):
         bridge.searchDomain("track", "test")
-        search_service.search.assert_called_once()
+        qe.submit.assert_called_once()
+        search_service.search.assert_not_called()
 
     def test_search_increments_request_counter(self, bridge):
         c1 = bridge._request_counter
@@ -104,12 +136,13 @@ class TestGlobalSearchStaleGuard:
         c3 = bridge._request_counter
         assert c3 > c2 > c1
 
-    def test_result_count_limited_to_max(self, search_service):
+    def test_result_count_limited_to_max(self, search_service, qe):
         many = [{"type": "track", "id": str(i), "title": f"Song {i}", "section": "Canciones"}
                 for i in range(100)]
         search_service.search.return_value = {"ok": True, "results": many}
-        b = GlobalSearchBridge(search_service=search_service)
-        b.search("test")
+        b = GlobalSearchBridge(search_service=search_service, query_executor=qe)
+        b._active_request_id = 1
+        b._on_search_done(search_service.search.return_value, 1)
         assert len(b.results) <= 50
 
     def test_error_code_cleared_on_new_search(self, bridge):
@@ -119,12 +152,11 @@ class TestGlobalSearchStaleGuard:
         assert bridge.errorCode == ""
         assert bridge.errorMessage == ""
 
-    def test_searching_flag_set_during_search(self, bridge, search_service):
-        def slow_search(q, **kw):
-            assert bridge.isSearching is True
-            return {"ok": True, "results": []}
-        search_service.search.side_effect = slow_search
+    def test_searching_flag_set_during_search(self, bridge):
         bridge.search("test")
+        assert bridge.isSearching is True
+        bridge._active_request_id = 1
+        bridge._on_search_done({"ok": True, "results": []}, 1)
         assert bridge.isSearching is False
 
     def test_double_search_cancels_previous(self, bridge, search_service):
@@ -143,7 +175,8 @@ class TestGlobalSearchStaleGuard:
     def test_results_changed_signal_emitted(self, bridge):
         fired = []
         bridge.resultsChanged.connect(lambda: fired.append(True))
-        bridge.search("test")
+        bridge._active_request_id = 1
+        bridge._on_search_done({"ok": True, "results": []}, 1)
         assert len(fired) >= 1
 
     def test_searching_changed_signal_emitted(self, bridge):

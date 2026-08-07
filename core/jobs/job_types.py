@@ -8,6 +8,8 @@ from typing import Any
 
 
 class JobStatus(str, Enum):
+    """Legacy vocabulary (LEGACY: migrate to DurableJobService states)."""
+
     PENDING = "pending"
     RUNNING = "running"
     PAUSED = "paused"
@@ -17,6 +19,12 @@ class JobStatus(str, Enum):
 
 
 class JobType(str, Enum):
+    """Legacy vocabulary (LEGACY: migrate to DurableJobService).
+
+    Superseded by the string job types of DurableJobService
+    (library_scan, metadata_scan, history_export, ...).
+    """
+
     QUALITY_ANALYSIS = "quality_analysis"
     SPECTRAL_ANALYSIS = "spectral_analysis"
     FEATURE_EXTRACTION = "feature_extraction"

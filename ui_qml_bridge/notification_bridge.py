@@ -22,13 +22,16 @@ class NotificationBridge(QObject):
 
     def __init__(self, action_registry=None, job_bridge=None,
                  notification_service=None, navigation_bridge=None,
-                 diagnostics_service=None, parent=None):
+                 diagnostics_service=None, notification_action_service=None,
+                 job_service=None, parent=None):
         super().__init__(parent)
         self._action_registry = action_registry
         self._job_bridge = job_bridge
         self._notification_service: NotificationService | None = notification_service
         self._navigation_bridge = navigation_bridge
         self._diagnostics_service = diagnostics_service
+        self._action_svc = notification_action_service
+        self._job_service = job_service
         self._current: dict | None = None
         self._queue: list[dict] = []
         self._max_queue = 50
@@ -43,6 +46,59 @@ class NotificationBridge(QObject):
 
         if self._notification_service is not None:
             self._notification_service.on(self._on_service_notification)
+        if self._job_service is not None:
+            self._wire_job_signals()
+
+    def _wire_job_signals(self):
+        """Reflect REAL durable jobs in the notification center (ADR-004)."""
+        js = self._job_service
+        for signal_name, handler in (
+            ("jobStarted", self._on_job_started),
+            ("jobCompleted", self._on_job_completed_notify),
+            ("jobFailed", self._on_job_failed),
+            ("jobCancelled", self._on_job_cancelled),
+        ):
+            signal = getattr(js, signal_name, None)
+            if signal is not None:
+                try:
+                    signal.connect(handler)
+                except TypeError:
+                    logger.debug("job signal %s not connectable", signal_name,
+                                 exc_info=True)
+
+    def _on_job_started(self, job_id: str):
+        self.updateProgress(job_id, 0.0, f"Tarea {job_id} iniciada")
+
+    def _on_job_completed_notify(self, job_id: str, result=None):
+        self._drop_progress(job_id)
+        self.showMessage(f"Tarea {job_id} completada", kind="success")
+
+    def _on_job_failed(self, job_id: str, error: str):
+        self._drop_progress(job_id)
+        msg = self._build_notification(
+            f"Tarea {job_id} falló: {error}", kind="error",
+            persistent=True, action_id="retry", job_id=job_id,
+        )
+        msg["_priority"] = _PRIORITY_HIGH
+        self._queue.insert(0, msg)
+        if not self._current:
+            self._next()
+        self._persistent_map[msg["id"]] = msg
+        self.notificationChanged.emit()
+        self.notificationCountChanged.emit()
+
+    def _on_job_cancelled(self, job_id: str):
+        self._drop_progress(job_id)
+        self.showMessage(f"Tarea {job_id} cancelada", kind="info")
+
+    def _drop_progress(self, job_id: str):
+        key = f"progress:{job_id}"
+        if self._current and self._current.get("_dedup_key") == key:
+            self._current = None
+            self._timeout_timer.stop()
+        self._queue = [n for n in self._queue if n.get("_dedup_key") != key]
+        self._dedup_map.pop(key, None)
+        self.notificationCountChanged.emit()
 
     def _on_service_notification(self, n: Notification):
         kind = n.type.value if isinstance(n.type, NotificationType) else "info"
@@ -193,15 +249,31 @@ class NotificationBridge(QObject):
     def _execute_action(self, action_id: str, notification: dict | None = None) -> dict:
         if not action_id:
             return {"ok": False, "error": "NO_ACTION"}
-        if action_id == "openJob" and notification:
-            return self.openJob(notification.get("job_id", ""))
         if action_id == "cancelJob" and notification:
             return self.cancelJobById(notification.get("job_id", ""))
+        if action_id == "openJob" and notification:
+            if self._action_svc is not None:
+                return self._action_svc.route(
+                    "open_job", {"job_id": notification.get("job_id", "")})
+            return self.openJob(notification.get("job_id", ""))
         if action_id == "retry" and notification:
-            return self.retry(notification.get("id", ""))
+            if self._action_svc is not None:
+                return self._action_svc.route(
+                    "retry", {"job_id": notification.get("job_id", ""),
+                              "notification_id": notification.get("id", "")})
+            job_id = notification.get("job_id", "")
+            if job_id:
+                return self.retryJob(job_id)
+            return {"ok": False, "error": "NO_JOB_ID"}
         if action_id == "undo":
-            result = self.undoAction(notification.get("undo_key", "") if notification else "")
-            return result
+            undo_key = (notification.get("undo_key", "")
+                        if notification else "") or (
+                        notification.get("operation_id", "")
+                        if notification else "")
+            if self._action_svc is not None and undo_key:
+                return self._action_svc.route(
+                    "undo", {"operation_id": undo_key})
+            return self.undoAction(undo_key)
         if action_id == "openTrack" and notification:
             track_id = notification.get("entity", "").replace("track_", "")
             if track_id.isdigit():

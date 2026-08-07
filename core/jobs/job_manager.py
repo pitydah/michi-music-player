@@ -1,6 +1,12 @@
 """Unified job manager — queue, progress, cancellation, persistence.
 
-Wraps WorkerManager (QThreadPool) with a persistent SQLite queue.
+# LEGACY: migrate to DurableJobService (core/jobs/job_service.py).
+
+This module is kept importable for tests and for the unreachable
+``diagnostics_service.analyse_directory_job`` route. It owns a private
+SQLite repository (job_queue.db) without DI and is NOT registered in the
+composition container. New jobs must use DurableJobService, the single
+durable job authority (ADR-004).
 """
 
 from __future__ import annotations
@@ -18,6 +24,13 @@ logger = logging.getLogger("michi.jobs.manager")
 
 
 class JobManager(QObject):
+    """Legacy job manager (LEGACY: migrate to DurableJobService).
+
+    Own repository without dependency injection, fake cancellation and no
+    production callers. Superseded by ``core.jobs.job_service.DurableJobService``
+    (ADR-004). Kept importable for tests only; do NOT register in composition.
+    """
+
     job_created = Signal(str)  # job_id
     job_started = Signal(str)
     job_progress = Signal(str, float)  # job_id, progress (0..1)

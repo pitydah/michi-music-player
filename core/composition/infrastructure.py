@@ -1,6 +1,8 @@
 """Infrastructure services — config, database, workers, persistence."""
 from __future__ import annotations
 
+import os
+
 from core.service_container import ServiceContainer
 
 
@@ -52,11 +54,37 @@ def build(container: ServiceContainer) -> None:
     container.register("worker_manager", wm)
     container.register("query_executor", qe)
 
-    container.register("job_service", JobService())
-    container.register("confirmation_service", ConfirmationService())
+    job_service = JobService(worker_manager=wm)
+    container.register("job_service", job_service)
+
+    from core import paths as core_paths
+    confirmation_audit = os.path.join(core_paths.app_data_dir(),
+                                      "confirmation_audit.jsonl")
+    container.register("confirmation_service",
+                       ConfirmationService(audit_path=confirmation_audit))
+
+    from core.undo_service import UndoService
+    undo_log = os.path.join(core_paths.app_data_dir(), "undo_log.jsonl")
+    container.register("undo_service",
+                       UndoService(event_bus=eb, persistence_path=undo_log))
+
+    from core.notification_action_service import NotificationActionService
+    container.register(
+        "notification_action_service",
+        NotificationActionService(
+            job_service=job_service,
+            undo_service=container.get("undo_service"),
+            service_locator=container.get,
+        ),
+    )
 
     migrate_all()
+    # Settings wiring direction (manifest cycle fix, P0 FASE 1):
+    # settings_coordinator is constructed FIRST without any settings_service
+    # dependency; settings_service consumes the coordinator. The coordinator
+    # never depends on settings_service — playback/queue/worker are late-wired
+    # in composition/settings.py as explicit wiring, not manifest deps.
     coordinator = SettingsRuntimeCoordinator()
-    svc = SettingsService(coordinator=coordinator)
+    svc = SettingsService(coordinator=coordinator, event_bus=eb)
     container.register("settings_coordinator", coordinator)
     container.register("settings_service", svc)

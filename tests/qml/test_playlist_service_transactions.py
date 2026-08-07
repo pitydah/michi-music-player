@@ -232,13 +232,14 @@ def test_export(svc, tmp_path):
 
 def test_cancel_import(svc):
     result = svc.cancel_import("import_123")
-    assert result["ok"]
-    assert result["cancelled"] is True
+    assert not result["ok"]
+    assert result["error_code"] == "NO_ACTIVE_IMPORT"
 
 
 def test_cancel_import_no_id(svc):
     result = svc.cancel_import("")
     assert not result["ok"]
+    assert result["error_code"] == "NO_ACTIVE_IMPORT"
 
 
 def test_transaction_commit_rollback(svc):

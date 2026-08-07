@@ -18,9 +18,15 @@ def _process_events(duration=2.0):
 
 
 class TestMetadataBatchEdit:
+    _app_ref = None
+
     @pytest.fixture
     def app(self):
-        return QCoreApplication.instance() or QCoreApplication()
+        if TestMetadataBatchEdit._app_ref is None:
+            TestMetadataBatchEdit._app_ref = (
+                QCoreApplication.instance() or QCoreApplication()
+            )
+        return TestMetadataBatchEdit._app_ref
 
     @pytest.fixture
     def worker_manager(self):
@@ -31,18 +37,39 @@ class TestMetadataBatchEdit:
 
     @pytest.fixture
     def bridge(self, worker_manager):
+        from core.jobs.job_service import DurableJobService
         from ui_qml_bridge.metadata_bridge import MetadataBridge
-        return MetadataBridge(metadata_service=MagicMock())
+
+        def _handler(job, ctx):
+            payload = job.payload or {}
+            count = len(payload.get("filepaths") or [])
+            for idx in range(count):
+                ctx.token.raise_if_cancelled()
+                ctx.report_progress(idx / max(count, 1), payload.get("field", ""))
+            return {"ok": True, "applied": 0, "errors": count, "total": count}
+
+        svc = DurableJobService(db_path=":memory:", worker_manager=worker_manager)
+        svc.register_handler("metadata_batch", _handler)
+        return MetadataBridge(metadata_service=MagicMock(), job_service=svc)
 
     def test_batch_set_field_async(self, bridge):
         result = bridge.batchSetField(["/fake/file.flac"], "artist", "Batch Artist")
         assert result.get("async")
         _process_events(0.5)
 
-    def test_batch_set_field_different_keys(self, bridge):
+    def test_batch_set_field_different_keys(self, app, bridge):
+        terminal = ("SUCCEEDED", "FAILED", "CANCELLED")
         for key in ("title", "artist", "album", "genre", "year", "track_number", "disc_number", "composer", "comment", "bpm"):
             result = bridge.batchSetField(["/fake/file.flac"], key, "test_val")
             assert result.get("async")
+            deadline = time.time() + 2.0
+            job_id = result["job_id"]
+            while time.time() < deadline:
+                state = bridge._js.get_job(job_id).state.value
+                if state in terminal:
+                    break
+                QCoreApplication.processEvents()
+                time.sleep(0.01)
 
     def test_batch_cancellation(self, bridge):
         many_files = [f"/fake/file_{i}.flac" for i in range(500)]

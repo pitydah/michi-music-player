@@ -79,8 +79,10 @@ class TestReducedMotionBridge:
         assert isinstance(bridge.reduceMotion, bool)
 
     def test_bridge_exposes_reduce_motion_setter(self):
+        from core.accessibility_service import AccessibilityService
         from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
-        bridge = AccessibilityBridge()
+        bridge = AccessibilityBridge(
+            service=AccessibilityService(settings=_FakeSettings()))
         bridge.reduceMotion = True
         assert bridge.reduceMotion is True
 
@@ -90,6 +92,17 @@ class TestReducedMotionBridge:
         assert hasattr(bridge, "reducedMotion"), \
             "ThemeBridge lacks reducedMotion property"
         assert isinstance(bridge.reducedMotion, bool)
+
+
+class _FakeSettings:
+    def __init__(self, initial: dict | None = None):
+        self._data = dict(initial or {})
+
+    def value(self, key, default=None):
+        return self._data.get(key, default)
+
+    def setValue(self, key, value):
+        self._data[key] = value
 
 
 class TestReducedMotionPages:

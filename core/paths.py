@@ -108,6 +108,16 @@ def radio_stations_path() -> str:
     return os.path.join(app_data_dir(), "radio_stations.json")
 
 
+def radio_database_path() -> str:
+    """SQLite database for the canonical radio service (stations + history)."""
+    return os.path.join(app_data_dir(), "radio.db")
+
+
+def lyrics_cache_path() -> str:
+    """SQLite cache database for the canonical lyrics service."""
+    return os.path.join(app_data_dir(), "lyrics_cache.db")
+
+
 def auto_eq_cache_dir() -> str:
     return os.path.join(app_data_dir(), "autoeq")
 
@@ -126,6 +136,11 @@ def playlist_covers_dir() -> str:
 
 def context_db_path() -> str:
     return os.path.join(app_data_dir(), "context.sqlite")
+
+
+def michi_link_import_store_path() -> str:
+    """SQLite ledger for committed Michi Link import sessions."""
+    return os.path.join(app_data_dir(), "michi_link_imports.sqlite")
 
 
 def transmit_devices_path() -> str:

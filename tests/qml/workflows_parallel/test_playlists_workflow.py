@@ -119,7 +119,7 @@ def svc(fake_db):
 
 @pytest.fixture
 def bridge(fake_db):
-    return PlaylistsBridge(db=fake_db)
+    return PlaylistsBridge(db=fake_db, playlist_service=PlaylistService(db=fake_db))
 
 
 class TestPlaylistsWorkflow:

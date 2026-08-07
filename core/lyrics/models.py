@@ -169,6 +169,7 @@ class LyricsOperationResult:
     cancelled: bool = False
     source: LyricsSource = LyricsSource.MANUAL
     trace_id: str = ""
+    details: dict = field(default_factory=dict)
 
 
 @dataclass

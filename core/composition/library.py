@@ -22,22 +22,56 @@ def build(container: ServiceContainer) -> None:
     from core.metadata_service import MetadataService
     from core.smart_tagging_service import SmartTaggingService
     from core.track_action_service import TrackActionService
+    from core.favorite_service import FavoriteService
+    from core.library_mutation_service import LibraryMutationService
+    from core.file_manager_service import FileManagerService
 
     cf = container.get("connection_factory")
     db = container.get("database")
     wm = container.get("worker_manager")
+    eb = container.get("event_bus")
 
     sources_svc = LibrarySourcesService(cf)
     container.register("library_sources_service", sources_svc)
+    # P0 FASE 10: FileManagerService is a stateless facade (static methods
+    # only). The CLASS is the registered port — one canonical object, injected
+    # everywhere; nothing constructs it ad hoc.
+    container.register("file_manager_service", FileManagerService)
     canonical_query_service = LibraryQueryService(cf, library_sources_service=sources_svc)
     lqs = LibraryFilteredQueryService(canonical_query_service)
     container.register("library_query_service", lqs)
     container.register("library_filtered_query_service", lqs)
     container.register("collection_service", CollectionService(db=db, query_service=lqs))
     container.register("folder_tree_model", FolderTreeModel(sources_svc.root_paths()))
-    container.register("library_mutation_service", MetadataEditorService(db=db))
+    favorite_service = FavoriteService(db=db, event_bus=eb)
+    container.register("favorite_service", favorite_service)
+    mutation_service = LibraryMutationService(
+        db=db, event_bus=eb, favorite_service=favorite_service,
+    )
+    container.register("library_mutation_service", mutation_service)
+    # UndoService restores DB values for persisted undo records via the
+    # mutation service (P0: undo survives restarts when a record persists).
+    undo_svc = container.get("undo_service")
+    if undo_svc is not None:
+        undo_svc.bind_db(db=db, mutation_service=mutation_service)
+    # MetadataEditorService is THE metadata editing authority (Slice 8):
+    # proposal -> preview -> confirm -> apply_batch -> readback -> undo, with
+    # real DB (via LibraryMutationService), physical tag writer, EventBus,
+    # ConfirmationService and UndoService injected.
+    container.register(
+        "metadata_editor_service",
+        MetadataEditorService(
+            db=db,
+            mutation_service=mutation_service,
+            event_bus=eb,
+            confirmation_service=container.get("confirmation_service"),
+            undo_service=container.get("undo_service"),
+            worker_manager=wm,
+        ),
+    )
     container.register("library_service", LibraryService(db=db, worker_manager=wm, library_query_service=lqs))
-    playlist_service = PlaylistService(cf)
+    # Debt D1: PlaylistService cancels imports through the real job service.
+    playlist_service = PlaylistService(cf, job_service=container.get("job_service"))
     container.register("playlist_service", playlist_service)
     container.register(
         "track_action_service",
@@ -46,29 +80,123 @@ def build(container: ServiceContainer) -> None:
             queue_service=container.require("queue_service"),
             playlist_service=playlist_service,
             db=db,
+            favorite_service=favorite_service,
+            file_manager_service=container.get("file_manager_service"),
         ),
     )
     container.register("history_query_service", HistoryQueryService(cf))
-    container.register("global_search_service", GlobalSearchService(cf.db_path))
-    container.register("metadata_service", MetadataService())
+    from core.search.models import SearchDomain
+    from core.search.providers import (
+        AlbumSearchRepository,
+        ArtistSearchRepository,
+        FolderSearchRepository,
+        GenreSearchRepository,
+        PlaylistSearchRepository,
+        SearchProviderRegistry,
+        SettingsSearchProvider,
+        TrackSearchRepository,
+    )
+
+    search_registry = SearchProviderRegistry()
+    search_registry.register(SearchDomain.TRACK, TrackSearchRepository(cf))
+    search_registry.register(SearchDomain.ALBUM, AlbumSearchRepository(cf))
+    search_registry.register(SearchDomain.ARTIST, ArtistSearchRepository(cf))
+    search_registry.register(SearchDomain.PLAYLIST, PlaylistSearchRepository(cf))
+    search_registry.register(SearchDomain.GENRE, GenreSearchRepository(cf))
+    search_registry.register(SearchDomain.FOLDER, FolderSearchRepository(cf))
+    settings_service = container.get("settings_service")
+    if settings_service is not None:
+        search_registry.register(
+            SearchDomain.SETTINGS, SettingsSearchProvider(settings_service)
+        )
+    container.register("search_provider_registry", search_registry)
+    container.register(
+        "global_search_service",
+        GlobalSearchService(
+            connection_factory=cf,
+            provider_registry=search_registry,
+            query_executor=container.get("query_executor"),
+            worker_manager=wm,
+        ),
+    )
+    container.register("metadata_service", MetadataService(db=db))
+
+    try:
+        from library.genre_repository import GenreRepository
+        from core.genre.genre_cleanup_service import GenreCleanupService
+        genre_cleanup = GenreCleanupService(db=db, genre_repo=GenreRepository(db.conn))
+        container.register("genre_cleanup_service", genre_cleanup)
+    except Exception:
+        logger.error("Failed to create genre_cleanup_service", exc_info=True)
+        container.register("genre_cleanup_service", None)
+
+    try:
+        from core.library_doctor.repositories.scan_repository import (
+            LibraryDoctorScanRepository,
+        )
+        scan_repo = LibraryDoctorScanRepository(db)
+        container.register("library_doctor_scan_repository", scan_repo)
+    except Exception:
+        logger.error("Failed to create library_doctor_scan_repository", exc_info=True)
+        scan_repo = None
+        container.register("library_doctor_scan_repository", None)
 
     try:
         from core.library_doctor_service import LibraryDoctorService
-        container.register("library_doctor_service", LibraryDoctorService(db))
+        container.register(
+            "library_doctor_service",
+            LibraryDoctorService(
+                db=db,
+                scan_repository=scan_repo,
+                worker_manager=wm,
+                job_service=container.get("job_service"),
+                mutation_service=container.get("library_mutation_service"),
+                confirmation_service=container.get("confirmation_service"),
+                undo_service=container.get("undo_service"),
+                metadata_editor=container.get("metadata_editor_service"),
+                genre_cleanup=container.get("genre_cleanup_service"),
+                event_bus=eb,
+            ),
+        )
     except Exception:
         logger.error("Failed to create library_doctor_service", exc_info=True)
         container.register("library_doctor_service", None)
 
     try:
+        # ── Recognition (P0 FASE 10): canonical ADVANCED detection runtime ──
+        # Shared ProviderManager + AudioCaptureService + DetectionService are
+        # composed here and injected into RecognitionService. Construction is
+        # passive: no device open, no socket, no timer — the runtime starts on
+        # explicit enable (DetectionService.start()), never at bootstrap.
         from core.recognition_service import RecognitionService
         from recognition.provider_manager import ProviderManager
-        recog = RecognitionService(provider_manager=ProviderManager(None))
+        from recognition.audio_capture_service import AudioCaptureService
+        from recognition.detection_service import DetectionService
+
+        provider_manager = ProviderManager()
+        capture_service = AudioCaptureService()
+        detection_service = DetectionService(
+            db=db, provider_manager=provider_manager)
+        detection_service.set_worker_manager(wm)
+        recog = RecognitionService(
+            provider_manager=provider_manager,
+            detection_service=detection_service,
+            capture=capture_service,
+            db=db,
+        )
         container.register("recognition_service", recog)
+        container.register("provider_manager", provider_manager)
         sts = SmartTaggingService(worker_manager=wm, library_query_service=lqs,
-                                   recognition_service=recog)
+                                   recognition_service=recog,
+                                   metadata_editor=container.get(
+                                       "metadata_editor_service"),
+                                   confirmation_service=container.get(
+                                       "confirmation_service"))
         container.register("smart_tagging_service", sts)
     except Exception:
         logger.error("Failed to create smart_tagging_service", exc_info=True)
+        container.register("recognition_service", None)
+        container.register("provider_manager", None)
         container.register("smart_tagging_service", None)
 
     try:

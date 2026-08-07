@@ -22,22 +22,27 @@ def test_lite_responds_without_llm():
 def test_lite_handles_search_intent():
     engine = MichiAIEngine()
     result = engine.process_message("busca música de jazz")
-    assert result["ok"] is True
     assert result["intent"] == "search_library"
+    # ADR-006: a bare engine has no registered tools — the failed tool
+    # execution is never reported as ok.
+    assert result["ok"] is False
+    assert result["tool_result"]["ok"] is False
 
 
 def test_lite_handles_playback_intent():
     engine = MichiAIEngine()
     result = engine.process_message("reproduce algo de rock")
-    assert result["ok"] is True
     assert result["intent"] == "playback_play"
+    assert result["ok"] is False
+    assert result["tool_result"]["ok"] is False
 
 
 def test_lite_handles_diagnosis_intent():
     engine = MichiAIEngine()
     result = engine.process_message("diagnostica el sistema")
-    assert result["ok"] is True
     assert result["intent"] == "diagnosis"
+    assert result["ok"] is False
+    assert result["tool_result"]["ok"] is False
 
 
 def test_lite_handles_help_intent():

@@ -15,7 +15,7 @@ class HomeBridge(QObject):
                  library_sources_service=None, job_bridge=None, playback_service=None,
                  library_query_service=None, library_mutation_service=None,
                  track_action_service=None, query_executor=None,
-                 connections_bridge=None, parent=None):
+                 connections_bridge=None, context_service=None, parent=None):
         super().__init__(parent)
         self._db = db
         self._player = player_service or playback_service
@@ -23,6 +23,7 @@ class HomeBridge(QObject):
         self._lib = library_bridge
         self._src_svc = library_sources_service
         self._job_bridge = job_bridge
+        self._context_service = context_service
         self._albums = 0
         self._artists = 0
         self._tracks = 0
@@ -114,6 +115,14 @@ class HomeBridge(QObject):
         self._error_message = ""
         errors: list[dict] = []
 
+        if self._consume_context_snapshot():
+            self._has_library = bool(self._tracks or self._albums or self._artists)
+            self._loading = False
+            self._ready = True
+            self.snapshotChanged.emit()
+            return {"ok": not errors, "ready": True, "errors": errors,
+                    "has_library": self._has_library, "sources": self._sources_count}
+
         for section, loader in (
             ("library_stats", self._load_library_stats),
             ("playback", self._load_playback),
@@ -137,6 +146,56 @@ class HomeBridge(QObject):
         self.snapshotChanged.emit()
         return {"ok": not errors, "ready": True, "errors": errors,
                 "has_library": self._has_library, "sources": self._sources_count}
+
+    def _consume_context_snapshot(self) -> bool:
+        """Consume the canonical ContextService snapshot (S11).
+
+        Home reads the SAME context service as HomeDashboardService — no
+        independent second snapshot. Returns False (falling back to the
+        per-section loaders) when no canonical snapshot is available.
+        """
+        ctx = self._context_service
+        if ctx is None:
+            return False
+        snapshot_method = getattr(ctx, "snapshot", None)
+        if not callable(snapshot_method):
+            return False
+        try:
+            snap = snapshot_method()
+        except Exception:
+            logger.exception("HomeBridge: ContextService snapshot failed")
+            return False
+        if not isinstance(snap, dict):
+            return False
+        sections = snap
+        try:
+            library = sections.get("library")
+            if isinstance(library, dict) and library.get("available"):
+                self._tracks = int(library.get("track_count", 0) or 0)
+                self._albums = int(library.get("album_count", 0) or 0)
+                self._artists = int(library.get("artist_count", 0) or 0)
+            playback = sections.get("playback")
+            if isinstance(playback, dict):
+                np_track = playback.get("now_playing")
+                if np_track and playback.get("available"):
+                    self._current_track = str(np_track.get("title", "") or "—") or "—"
+                    self._current_artist = str(np_track.get("artist", "") or "—") or "—"
+                    self._has_playback = bool(self._current_track != "—")
+                else:
+                    self._has_playback = False
+            audio = sections.get("audio")
+            if isinstance(audio, dict):
+                self._backend = str(audio.get("backend_id", "") or "")
+                self._output = str(audio.get("output_device", "") or "")
+                if self._output == "Predeterminado":
+                    self._output = ""
+            jobs = sections.get("jobs")
+            if isinstance(jobs, dict):
+                self._active_jobs = int(jobs.get("active", 0) or 0)
+        except Exception:
+            logger.exception("HomeBridge: context section mapping failed")
+            return False
+        return True
 
     def _load_library_stats(self):
         if self._lib:

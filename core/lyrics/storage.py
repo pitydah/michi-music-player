@@ -29,6 +29,15 @@ class LyricsStorageService:
         doc.updated_at = self._clock()
         return self._sidecar.write(directory, doc)
 
+    def load_sidecar(self, directory: str, identity: TrackIdentity) -> LyricsOperationResult:
+        """Read a sidecar file (never writes)."""
+        if not self._sidecar:
+            return LyricsOperationResult(
+                ok=False, code=LyricsErrorCode.READ_ERROR,
+                message="Sidecar provider not available",
+            )
+        return self._sidecar.read(directory, identity)
+
     def delete_sidecar(self, directory: str, identity: TrackIdentity) -> bool:
         if not self._sidecar:
             return False

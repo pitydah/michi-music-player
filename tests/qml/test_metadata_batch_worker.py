@@ -92,7 +92,12 @@ class TestMetadataBatchWorker:
             assert result.get("async") or result.get("ok")
 
     def test_cancel_batch_returns_ok(self, bridge):
-        result = bridge.cancelBatch()
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.metadata_bridge import MetadataBridge
+        js = MagicMock()
+        js.list_jobs.return_value = []
+        br = MetadataBridge(job_service=js)
+        result = br.cancelBatch()
         assert result.get("ok")
 
     def test_batch_set_field_rejects_busy(self, bridge, worker_manager):

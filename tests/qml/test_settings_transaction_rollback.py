@@ -114,8 +114,20 @@ class TestCoordinatorRevert:
 class TestAdapterIntegration:
     def test_coordinator_finds_adapter(self, coordinator):
         from core.settings_adapters import ThemeSettingsAdapter
+        from core.theme_service import ThemeService
         from ui_qml_bridge.theme_bridge import ThemeBridge
-        bridge = ThemeBridge(coordinator=MagicMock())
+
+        class _FakeSettings:
+            def __init__(self):
+                self._data = {}
+
+            def value(self, key, default=None):
+                return self._data.get(key, default)
+
+            def setValue(self, key, value):
+                self._data[key] = value
+
+        bridge = ThemeBridge(service=ThemeService(settings=_FakeSettings()))
         coordinator.register_adapter(ThemeSettingsAdapter(theme_bridge=bridge))
         result = coordinator.execute("appearance/theme", "dark")
         assert result["ok"] is True

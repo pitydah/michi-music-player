@@ -44,15 +44,27 @@ def test_search_sets_searching_status(mock_nowplaying, mock_worker):
     assert bridge.status == "searching"
 
 
-def test_cache_hit(mock_nowplaying, mock_worker):
-    bridge = LyricsBridge(worker_manager=mock_worker, nowplaying_bridge=mock_nowplaying)
-    bridge._cache["Test||Artist||Album||300"] = {
-        "lyrics": "Cached lyrics", "synced_lyrics": "",
-        "source": "cache", "timestamp": 1000,
-    }
+def test_service_result_reaches_bridge(mock_nowplaying):
+    from core.lyrics.models import LyricsOperationResult, LyricsDocument, LyricsSource
+    svc = MagicMock()
+    svc.resolve.return_value = LyricsOperationResult(
+        ok=True,
+        document=LyricsDocument(
+            plain_text="Cached lyrics", synced_text="", source=LyricsSource.CACHE),
+    )
+    wm = MagicMock()
+
+    def run_task(name, fn, on_done=None, **kw):
+        if on_done:
+            on_done(fn())
+
+    wm.run_task.side_effect = run_task
+    bridge = LyricsBridge(worker_manager=wm, lyrics_service=svc,
+                          nowplaying_bridge=mock_nowplaying)
     bridge.search("Test", "Artist", "Album", 300)
     assert bridge.status == "done"
     assert bridge.lyrics == "Cached lyrics"
+    svc.resolve.assert_called_once()
 
 
 def test_cancel_search(mock_nowplaying, mock_worker):
@@ -78,15 +90,15 @@ def test_parse_lrc_unparseable():
     assert len(lines) == 2
 
 
-def test_clear_cache_for_current_track(mock_nowplaying, mock_worker):
-    bridge = LyricsBridge(worker_manager=mock_worker, nowplaying_bridge=mock_nowplaying)
+def test_clear_cache_delegates_to_service(mock_nowplaying, mock_worker):
+    svc = MagicMock()
+    bridge = LyricsBridge(worker_manager=mock_worker, lyrics_service=svc,
+                          nowplaying_bridge=mock_nowplaying)
     bridge._current_title = "Test"
     bridge._current_artist = "Artist"
-    bridge._cache["Test||Artist||||0"] = {"lyrics": "x"}
-    bridge._cache_order.append("Test||Artist||||0")
     result = bridge.clearCacheForCurrentTrack()
     assert result["ok"]
-    assert len(bridge._cache) == 0
+    svc.invalidate_identity.assert_called_once()
 
 
 def test_no_blocking_on_playback_while_searching(mock_nowplaying, mock_worker):

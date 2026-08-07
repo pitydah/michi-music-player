@@ -16,10 +16,12 @@ logger = logging.getLogger("michi.audio_lab.service")
 class AudioLabService(QObject):
     stateChanged = Signal(str, object)
 
-    def __init__(self, db: Any = None, worker_manager: WorkerManager | None = None, parent=None):
+    def __init__(self, db: Any = None, worker_manager: WorkerManager | None = None,
+                 job_service: Any = None, parent=None):
         super().__init__(parent)
         self._db = db
         self._wm = worker_manager
+        self._job_svc = job_service
         self._subscribers: dict[str, list] = {}
         self._started = False
 
@@ -126,6 +128,7 @@ class AudioLabService(QObject):
         self._job_adapter = AudioLabJobAdapter(
             db=self._db,
             wm=self._wm,
+            job_service=self._job_svc,
             probe=self._probe_service,
             analysis=self._analysis_service,
             conversion=self._conversion_service,

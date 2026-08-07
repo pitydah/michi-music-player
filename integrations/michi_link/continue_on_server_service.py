@@ -1,4 +1,11 @@
-"""Continue on server service — contractual stub for handoff to Micro Server."""
+# LEGACY: deprecated variant — see ADR-002 single domain authority
+"""LEGACY: Continue on server service — contractual stub for handoff to Micro Server.
+
+Deprecated by ADR-002 (single domain authority): the canonical
+``integrations/michi_link/services/continue_on_server_service.py`` (advanced
+stack, Result-based) is the productive implementation. This stub is dead code
+(imported nowhere) and is kept only to document the designation.
+"""
 from __future__ import annotations
 
 import logging
@@ -9,6 +16,12 @@ logger = logging.getLogger("michi.link.continue_on_server")
 
 
 class ContinueOnServerService:
+    """LEGACY ContinueOnServerService (deprecated stub) — use
+    ``integrations.michi_link.services.ContinueOnServerService`` instead.
+
+    Deprecated since Slice 7 (ADR-002 single domain authority).
+    """
+
     def __init__(self):
         pass
 

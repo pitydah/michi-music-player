@@ -1,45 +1,25 @@
-"""LyricsBridge — real LRCLIB lyrics with async search, cache, timeout, cancel.
+"""LyricsBridge — thin adapter over the canonical LyricsService.
 
-No synchronous HTTP in QML thread. Uses WorkerManager when available.
-Returns dict ok/error. Caches by title+artist+album+duration.
+QML emits intention; the bridge validates, converts types and delegates to the
+injected ``LyricsService`` (``resolve``/``search_manual``/``save_local``/
+``invalidate_identity``). The bridge constructs no HTTP client and keeps no
+second cache: caching lives in the service. Async search still runs through
+the WorkerManager; results arrive via the callback and are exposed through the
+same QML properties/slots as before.
 """
 from __future__ import annotations
 
 import logging
-import time
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
 if TYPE_CHECKING:
     from core.worker_manager import WorkerManager
+    from core.lyrics.models import TrackIdentity
     from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
 
 logger = logging.getLogger("michi.lyrics")
-
-_CACHE_MAX = 50
-
-
-def _make_cache_key(title: str, artist: str, album: str = "", duration: int = 0) -> str:
-    return f"{title}||{artist}||{album}||{duration}"
-
-
-def _search_impl(title: str, artist: str, album: str = "", duration: int = 0) -> dict:
-    """Actual LRCLIB search — runs in worker thread."""
-    from lyrics.lrclib_client import LrcLibClient
-    client = LrcLibClient()
-    result = client.get_lyrics(title, artist, album, float(duration))
-    if not result:
-        return {"ok": False, "error": "NOT_FOUND"}
-    plain = getattr(result, 'plain_lyrics', '') or result.get("plainLyrics", "") if isinstance(result, dict) else ""
-    synced = getattr(result, 'synced_lyrics', '') or result.get("syncedLyrics", "") if isinstance(result, dict) else ""
-    source = "LRCLIB"
-    return {
-        "ok": True,
-        "lyrics": plain,
-        "synced_lyrics": synced,
-        "source": source,
-    }
 
 
 def _parse_lrc(text: str) -> list[dict]:
@@ -63,14 +43,64 @@ def _parse_lrc(text: str) -> list[dict]:
     return lines
 
 
+def _result_to_dict(result) -> dict:
+    """Map a canonical LyricsOperationResult to the legacy bridge dict shape."""
+    if result is None:
+        return {"ok": False, "error": "NOT_FOUND"}
+    if not result.ok:
+        code = getattr(result, "code", None)
+        error = code.value if hasattr(code, "value") else (code or "NOT_FOUND")
+        if error == "not_found":
+            error = "NOT_FOUND"
+        return {"ok": False, "error": error}
+    doc = result.document
+    if doc is None:
+        return {"ok": False, "error": "NOT_FOUND"}
+    return {
+        "ok": True,
+        "lyrics": doc.plain_text or "",
+        "synced_lyrics": doc.synced_text or "",
+        "source": (doc.source.value if hasattr(doc.source, "value") else str(doc.source))
+        or "LRCLIB",
+    }
+
+
+def _identity_for(title: str, artist: str, album: str = "", duration: int = 0,
+                  filepath: str = "") -> "TrackIdentity":
+    from core.lyrics.models import TrackIdentity
+    return TrackIdentity(
+        title=title, artist=artist, album=album,
+        duration_ms=int(duration) * 1000, filepath=filepath,
+    )
+
+
+def _search_impl(service, title: str, artist: str, album: str = "",
+                 duration: int = 0) -> dict:
+    """Canonical resolve — runs in the worker thread."""
+    if service is None:
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+    identity = _identity_for(title, artist, album, duration)
+    return _result_to_dict(service.resolve(identity))
+
+
+def _search_manual_impl(service, query: str) -> dict:
+    """Canonical free-text search — runs in the worker thread."""
+    if service is None:
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+    return _result_to_dict(service.search_manual(query))
+
+
 class LyricsBridge(QObject):
     dataChanged = Signal()
 
-    def __init__(self, worker_manager: WorkerManager | None = None, nowplaying_bridge: NowPlayingBridge | None = None, parent=None):
+    def __init__(self, worker_manager: WorkerManager | None = None,
+                 nowplaying_bridge: NowPlayingBridge | None = None,
+                 lyrics_service=None, parent=None):
         super().__init__(parent)
         assert worker_manager is not None, "LyricsBridge: worker_manager is REQUIRED"
         self._wm = worker_manager
         self._np_bridge = nowplaying_bridge
+        self._lyrics_svc = lyrics_service
 
         self._lyrics = ""
         self._synced_lyrics: list[dict] = []
@@ -84,8 +114,6 @@ class LyricsBridge(QObject):
 
         self._search_counter = 0
         self._active_search_id = 0
-        self._cache: dict[str, dict] = {}
-        self._cache_order: list[str] = []
 
         self._timeout_timer = QTimer(self)
         self._timeout_timer.setSingleShot(True)
@@ -133,11 +161,6 @@ class LyricsBridge(QObject):
 
     # ── Private ──
 
-    def _trim_cache(self):
-        while len(self._cache) > _CACHE_MAX:
-            oldest = self._cache_order.pop(0)
-            self._cache.pop(oldest, None)
-
     def _set_result(self, status: str, lyrics: str = "", synced: str = "",
                     source: str = "", error: str = ""):
         self._status = status
@@ -163,15 +186,6 @@ class LyricsBridge(QObject):
             self._lyrics = plain
             self._source = result.get("source", "LRCLIB")
             self._status = "done"
-            # Cache
-            key = _make_cache_key(self._current_title, self._current_artist,
-                                  self._current_album, self._current_duration)
-            self._cache[key] = {
-                "lyrics": plain, "synced_lyrics": synced,
-                "source": self._source, "timestamp": time.time(),
-            }
-            self._cache_order.append(key)
-            self._trim_cache()
         else:
             err = result.get("error", "NOT_FOUND")
             if err == "NOT_FOUND":
@@ -210,20 +224,6 @@ class LyricsBridge(QObject):
         self._current_album = album
         self._current_duration = duration
 
-        # Check cache
-        key = _make_cache_key(title, artist, album, duration)
-        cached = self._cache.get(key)
-        if cached:
-            logger.debug("Lyrics: cache hit for '%s'", title)
-            lrc = _parse_lrc(cached.get("synced_lyrics", "")) if cached.get("synced_lyrics") else []
-            self._synced_lyrics = lrc
-            self._lyrics = cached.get("lyrics", "")
-            self._source = cached.get("source", "LRCLIB")
-            self._status = "done"
-            self._error_message = ""
-            self.dataChanged.emit()
-            return {"ok": True, "cached": True}
-
         self._search_counter += 1
         self._active_search_id = self._search_counter
         self._status = "searching"
@@ -235,24 +235,23 @@ class LyricsBridge(QObject):
             search_id = self._search_counter
             self._wm.run_task(
                 f"lyrics_{search_id}",
-                lambda: _search_impl(title, artist, album, duration),
+                lambda: _search_impl(self._lyrics_svc, title, artist, album, duration),
                 on_done=lambda r: self._on_search_complete(search_id, r),
                 cancellable=True, owner="lyrics",
             )
         else:
-            from PySide6.QtCore import QTimer
             QTimer.singleShot(0, lambda: self._sync_fallback(title, artist, album, duration))
 
         return {"ok": True}
 
     def _sync_fallback(self, title: str, artist: str, album: str = "", duration: int = 0):
         sid = self._active_search_id
-        result = _search_impl(title, artist, album, duration)
+        result = _search_impl(self._lyrics_svc, title, artist, album, duration)
         self._on_search_complete(sid, result)
 
     @Slot(str, result=dict)
     def searchManual(self, query: str):
-        """Manual search by free-text query."""
+        """Manual search by free-text query — delegates to the service."""
         if not query:
             return {"ok": False, "error": "EMPTY_QUERY"}
         self._current_title = query
@@ -269,26 +268,15 @@ class LyricsBridge(QObject):
 
         search_id = self._search_counter
 
-        def search_manual_impl(q: str) -> dict:
-            from lyrics.lrclib_client import search_lyrics
-            result = search_lyrics(q)
-            if not result:
-                return {"ok": False, "error": "NOT_FOUND"}
-            plain = result.get("plainLyrics", result.get("lyrics", "")) or ""
-            synced = result.get("syncedLyrics", "") or ""
-            source = result.get("source", "LRCLIB")
-            return {"ok": True, "lyrics": plain, "synced_lyrics": synced, "source": source}
-
         if self._wm and hasattr(self._wm, 'run_task'):
             self._wm.run_task(
                 f"lyrics_manual_{search_id}",
-                lambda: search_manual_impl(query),
+                lambda: _search_manual_impl(self._lyrics_svc, query),
                 on_done=lambda r: self._on_search_complete(search_id, r),
                 cancellable=True, owner="lyrics",
             )
         else:
-            from PySide6.QtCore import QTimer
-            QTimer.singleShot(0, lambda: self._on_search_complete(search_id, search_manual_impl(query)))
+            QTimer.singleShot(0, lambda: self._on_search_complete(search_id, _search_manual_impl(self._lyrics_svc, query)))
         return {"ok": True}
 
     @Slot()
@@ -307,10 +295,16 @@ class LyricsBridge(QObject):
 
     @Slot(result=dict)
     def clearCacheForCurrentTrack(self):
-        key = _make_cache_key(self._current_title, self._current_artist,
-                              self._current_album, self._current_duration)
-        self._cache.pop(key, None)
-        self._cache_order = [k for k in self._cache_order if k != key]
+        if self._lyrics_svc is None:
+            return {"ok": True}
+        try:
+            identity = _identity_for(
+                self._current_title, self._current_artist,
+                self._current_album, self._current_duration,
+            )
+            self._lyrics_svc.invalidate_identity(identity)
+        except Exception as exc:
+            logger.warning("clearCacheForCurrentTrack failed: %s", exc)
         return {"ok": True}
 
     @Slot(str, result=dict)
@@ -321,15 +315,38 @@ class LyricsBridge(QObject):
         self._source = "local"
         self.dataChanged.emit()
         audio_path = getattr(self._np_bridge, "currentFilePath", "") or ""
-        if audio_path:
-            try:
-                from core.lyrics.lyrics_storage_service import save_sidecar
-                ext = ".lrc" if "[" in text and "]" in text else ".txt"
-                result = save_sidecar(audio_path, text, extension=ext)
-                return {**result, "source": "local"}
-            except Exception as exc:
-                logger.warning("saveLocalLyrics: sidecar write failed: %s", exc)
-        return {"ok": True, "source": "local"}
+        if not isinstance(audio_path, str) or not audio_path:
+            return {"ok": True, "source": "local"}
+        if self._lyrics_svc is None:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        try:
+            from core.lyrics.models import LyricsDocument, LyricsSource
+
+            has_timestamps = "[" in text and "]" in text
+            title = getattr(self._np_bridge, 'trackTitle', '') or ''
+            artist = getattr(self._np_bridge, 'trackArtist', '') or ''
+            identity = _identity_for(title, artist, filepath=audio_path)
+            doc = LyricsDocument(
+                identity=identity,
+                plain_text="" if has_timestamps else text,
+                synced_text=text if has_timestamps else "",
+                source=LyricsSource.MANUAL,
+            )
+            result = self._lyrics_svc.save_local(audio_path, doc)
+            if result.ok:
+                path = result.details.get("path", "")
+                return {
+                    "ok": True,
+                    "path": path,
+                    "embedded": bool(result.details.get("embedded", False)),
+                    "source": "local",
+                }
+            code = getattr(result, "code", None)
+            error = code.value if hasattr(code, "value") else "SAVE_FAILED"
+            return {"ok": False, "error": error or "SAVE_FAILED", "source": "local"}
+        except Exception as exc:
+            logger.warning("saveLocalLyrics: sidecar write failed: %s", exc)
+            return {"ok": False, "error": str(exc), "source": "local"}
 
     def getActiveLine(self, position_ms: float) -> int | None:
         """Return index of active synced line for a given position in ms."""

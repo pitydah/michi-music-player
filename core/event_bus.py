@@ -41,6 +41,17 @@ class EventBus:
     def clear(self):
         self._handlers.clear()
 
+    def clear_namespace(self, prefix: str) -> None:
+        """Remove handlers registered under an event-name prefix.
+
+        Namespaced wrappers (lyrics/radio) clear their own events without
+        touching other domains sharing the canonical bus.
+        """
+        if not prefix:
+            return
+        for name in [n for n in self._handlers if n.startswith(prefix)]:
+            self._handlers.pop(name, None)
+
     def health(self) -> dict:
         return {"active": self._active, "events": len(self._handlers),
                 "total_handlers": sum(len(v) for v in self._handlers.values())}

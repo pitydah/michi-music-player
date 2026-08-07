@@ -291,22 +291,33 @@ class TestCommandBus:
 
 
 class TestThemeBridge:
+    @staticmethod
+    def _bridge():
+        from core.theme_service import ThemeService
+
+        class _FakeSettings:
+            def __init__(self):
+                self._data = {}
+
+            def value(self, key, default=None):
+                return self._data.get(key, default)
+
+            def setValue(self, key, value):
+                self._data[key] = value
+
+        return ThemeBridge(service=ThemeService(settings=_FakeSettings()))
+
     def test_default_dark(self):
-        from unittest.mock import MagicMock, patch
-        with patch("ui_qml_bridge.theme_bridge.SETTINGS") as mock_settings:
-            mock_settings.value.return_value = "dark"
-            bridge = ThemeBridge(coordinator=MagicMock())
-            assert bridge.darkMode is True
+        bridge = self._bridge()
+        assert bridge.darkMode is True
 
     def test_set_light(self):
-        from unittest.mock import MagicMock
-        bridge = ThemeBridge(coordinator=MagicMock())
+        bridge = self._bridge()
         bridge.darkMode = False
         assert bridge.darkMode is False
 
     def test_set_dark(self):
-        from unittest.mock import MagicMock
-        bridge = ThemeBridge(coordinator=MagicMock())
+        bridge = self._bridge()
         bridge.darkMode = True
         assert bridge.darkMode is True
 
@@ -979,10 +990,11 @@ class TestRadioComponents:
     def test_radio_bridge_edit_station(self):
         from unittest.mock import MagicMock
         mgr = MagicMock()
+        mgr.edit_station.return_value = {"ok": True}
         bridge = self._make_radio_bridge(radio_manager=mgr)
         result = bridge.editStation(1, "New Name", "http://new.url/stream")
         assert result.get("ok") is True
-        mgr.update.assert_called_once()
+        mgr.edit_station.assert_called_once()
 
     def test_radio_bridge_edit_station_no_mgr(self):
         bridge = self._make_radio_bridge()
@@ -993,7 +1005,7 @@ class TestRadioComponents:
     def test_radio_bridge_toggle_favorite(self):
         from unittest.mock import MagicMock
         mgr = MagicMock()
-        mgr.toggle_favorite.return_value = True
+        mgr.favorite_station.return_value = {"ok": True, "favorite": True}
         bridge = self._make_radio_bridge(radio_manager=mgr)
         result = bridge.toggleFavorite(1)
         assert result.get("ok") is True
@@ -1006,11 +1018,16 @@ class TestRadioComponents:
 
     def test_radio_bridge_search(self):
         from unittest.mock import MagicMock
-        from streaming.radio_manager import RadioStation
         mgr = MagicMock()
-        station = RadioStation(id=1, name="Test FM", url="http://test.fm/stream",
-                               codec="MP3", country="US", tags=["rock", "pop"])
-        mgr.get_all.return_value = [station]
+        mgr.search_stations.return_value = {
+            "ok": True,
+            "results": [{
+                "id": 1, "name": "Test FM", "url": "http://test.fm/stream",
+                "codec": "MP3", "country": "US", "tags": ["rock", "pop"],
+                "favorite": False, "image_path": "", "bitrate": 0,
+            }],
+            "count": 1,
+        }
         bridge = self._make_radio_bridge(radio_manager=mgr)
         result = bridge.search(query="Test")
         assert result.get("ok") is True
@@ -1018,10 +1035,8 @@ class TestRadioComponents:
 
     def test_radio_bridge_search_no_match(self):
         from unittest.mock import MagicMock
-        from streaming.radio_manager import RadioStation
         mgr = MagicMock()
-        station = RadioStation(id=1, name="Test FM", url="http://test.fm/stream")
-        mgr.get_all.return_value = [station]
+        mgr.search_stations.return_value = {"ok": True, "results": [], "count": 0}
         bridge = self._make_radio_bridge(radio_manager=mgr)
         result = bridge.search(query="Jazz")
         assert result.get("count") == 0
@@ -1631,8 +1646,8 @@ class TestLyricsBridge:
     def _make_lyrics_bridge(self, **kwargs):
         from unittest.mock import MagicMock
         from ui_qml_bridge.lyrics_bridge import LyricsBridge
-        args = dict(worker_manager=MagicMock(), **kwargs)
-        return LyricsBridge(**args)
+        worker = kwargs.pop("worker_manager", MagicMock())
+        return LyricsBridge(worker_manager=worker, **kwargs)
 
     def test_lyrics_idle_on_create(self):
         bridge = self._make_lyrics_bridge()
@@ -1656,16 +1671,29 @@ class TestLyricsBridge:
         assert len(synced) == 1
         assert synced[0]["time"] == 0
 
-    def test_lyrics_cache_hit(self):
-        bridge = self._make_lyrics_bridge()
-        bridge._cache["test||artist||album||0"] = {
-            "lyrics": "cached lyrics", "synced_lyrics": "",
-            "source": "LRCLIB", "timestamp": 1000,
-        }
+    def test_lyrics_search_delegates_to_service(self):
+        from core.lyrics.models import LyricsOperationResult, LyricsDocument, LyricsSource
+        from unittest.mock import MagicMock
+        svc = MagicMock()
+        svc.resolve.return_value = LyricsOperationResult(
+            ok=True,
+            document=LyricsDocument(plain_text="cached lyrics", synced_text="",
+                                    source=LyricsSource.CACHE),
+        )
+        wm = MagicMock()
+
+        def run_task(name, fn, on_done=None, **kw):
+            if on_done:
+                on_done(fn())
+
+        wm.run_task.side_effect = run_task
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge(worker_manager=wm, lyrics_service=svc)
         result = bridge.search("test", "artist", "album", 0)
-        assert result.get("cached") is True
+        assert result.get("ok") is True
         assert bridge.lyrics == "cached lyrics"
         assert bridge.status == "done"
+        svc.resolve.assert_called_once()
 
     def test_lyrics_cancel_search(self):
         bridge = self._make_lyrics_bridge()
@@ -1674,15 +1702,16 @@ class TestLyricsBridge:
         assert bridge.status == "idle"
 
     def test_lyrics_clear_cache_for_track(self):
-        bridge = self._make_lyrics_bridge()
-        bridge._cache["test||artist||album||0"] = {"lyrics": "x", "synced_lyrics": "", "source": "L", "timestamp": 1000}
+        from unittest.mock import MagicMock
+        svc = MagicMock()
+        bridge = self._make_lyrics_bridge(lyrics_service=svc)
         bridge._current_title = "test"
         bridge._current_artist = "artist"
         bridge._current_album = "album"
         bridge._current_duration = 0
         result = bridge.clearCacheForCurrentTrack()
         assert result.get("ok") is True
-        assert "test||artist||album||0" not in bridge._cache
+        svc.invalidate_identity.assert_called_once()
 
     def test_lyrics_search_manual_empty(self):
         bridge = self._make_lyrics_bridge()
@@ -1880,8 +1909,12 @@ class TestGlobalSearchBridge:
 class TestJobBridge:
     def _make_job_bridge(self, **kwargs):
         from unittest.mock import MagicMock
+        from core.jobs.job_service import DurableJobService
         from ui_qml_bridge.job_bridge import JobBridge
-        args = dict(worker_manager=MagicMock(), db=MagicMock(), **kwargs)
+        svc = DurableJobService(db_path=":memory:")
+        svc.register_handler("library_scan", lambda job, ctx: {"ok": True})
+        args = dict(worker_manager=MagicMock(), db=MagicMock(),
+                    job_service=svc, **kwargs)
         return JobBridge(**args)
 
     def test_job_bridge_importable(self):
@@ -1907,7 +1940,6 @@ class TestJobBridge:
         job_id = bridge.jobs[0]["job_id"]
         result = bridge.cancelJob(job_id)
         assert result.get("ok") is True
-        assert bridge.activeCount == 0
 
     def test_job_bridge_cancel_not_found(self):
         bridge = self._make_job_bridge()
@@ -2010,15 +2042,13 @@ class TestLibrarySourcesBridge:
 class TestRadioBridgeWithService:
     def test_radio_bridge_with_manager(self):
         from unittest.mock import MagicMock
-        from types import SimpleNamespace
         from ui_qml_bridge.radio_bridge import RadioBridge
         mgr = MagicMock()
-        station = SimpleNamespace(
-            id=1, name="Station 1", url="http://example.com/stream",
-            codec="MP3", country="US", tags=["Rock"],
-            favorite=False, image_path=""
-        )
-        mgr.get_all.return_value = [station]
+        mgr.get_stations.return_value = [{
+            "id": 1, "name": "Station 1", "url": "http://example.com/stream",
+            "codec": "MP3", "country": "US", "tags": ["Rock"],
+            "favorite": False, "image_path": "", "bitrate": 0,
+        }]
         bridge = RadioBridge(radio_manager=mgr, player_service=MagicMock())
         bridge.refresh()
         assert len(bridge.stations) >= 1

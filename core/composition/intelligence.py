@@ -10,24 +10,33 @@ logger = logging.getLogger(__name__)
 
 def build(container: ServiceContainer) -> None:
     from ui_qml_bridge.action_registry import ActionRegistry
-    ar = ActionRegistry()
+    ar = ActionRegistry(container=container)
     container.register("action_registry", ar)
+    search_registry = container.get("search_provider_registry")
+    if search_registry is not None:
+        from core.search.models import SearchDomain
+        from core.search.providers import ActionSearchProvider
+
+        search_registry.register(SearchDomain.ACTION, ActionSearchProvider(ar))
     try:
         from recommendation.smart_mix_service import SmartMixService
         from recommendation.recommendation_service import RecommendationService
         from core.mix_service import MixService
+        from core.mix_query_service import MixQueryService
         db = container.get("database")
         pls = container.get("playlist_service")
         lqs = container.get("library_query_service")
         eb = container.get("event_bus")
         sms = SmartMixService(db)
         mqs = RecommendationService(db)
+        queries = MixQueryService(db)
         mix_svc = MixService(db=db, recommendation_service=mqs,
                              smart_mix_service=sms,
                              library_query_service=lqs,
                              playlist_service=pls,
-                             event_bus=eb)
-        container.register("mix_query_service", mqs)
+                             event_bus=eb,
+                             mix_query_service=queries)
+        container.register("mix_query_service", queries)
         container.register("mix_service", mix_svc)
     except Exception:
         logger.error("Failed to create mix services", exc_info=True)
@@ -36,6 +45,15 @@ def build(container: ServiceContainer) -> None:
 
     try:
         nav_svc = container.get("navigation_service")
+
+        def _health_provider(service_key: str) -> bool:
+            # Full health gate (F9): the backing service must be registered
+            # AND capable (container READY or DEGRADED with that service ok).
+            try:
+                return bool(container.contains(service_key)) and bool(container.is_capable(service_key))
+            except Exception:
+                return False
+
         from core.assistant_initializer import create_assistant_composition
         comp = create_assistant_composition(
             metadata_service=container.get("metadata_service"),
@@ -57,7 +75,17 @@ def build(container: ServiceContainer) -> None:
             library_doctor_service=container.get("library_doctor_service"),
             track_action_service=container.get("track_action_service"),
             library_query_service=container.get("library_query_service"),
+            device_registry=container.get("device_registry"),
+            global_search_service=container.get("global_search_service"),
+            metadata_editor_service=container.get("metadata_editor_service"),
+            health_provider=_health_provider,
+            context_service=container.get("context_service"),
         )
+        # F9: the SINGLE governed runtime object plus the engine facade
+        # (QML bridge compatibility) registered together. michi_ai_service
+        # declares a dependency on assistant_runtime in the manifest — the
+        # runtime owns the lifecycle, the facade does not duplicate it.
+        container.register("assistant_runtime", comp.runtime)
         container.register("michi_ai_service", comp.core_service)
 
         from michi_ai.recommender import set_library_provider

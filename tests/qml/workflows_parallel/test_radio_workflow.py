@@ -3,40 +3,26 @@ from unittest.mock import MagicMock
 import pytest
 
 from ui_qml_bridge.radio_bridge import RadioBridge
+from tests.qml.radio._svc_fixtures import make_radio_service_mock
 
 pytestmark = pytest.mark.isolation
 
 
 @pytest.fixture
 def mock_stations():
-    s1 = MagicMock()
-    s1.id = 1
-    s1.name = "Jazz FM"
-    s1.url = "http://jazz.stream"
-    s1.codec = "MP3"
-    s1.country = "US"
-    s1.tags = ["jazz", "cool"]
-    s1.favorite = False
-    s1.bitrate = 128
-    s2 = MagicMock()
-    s2.id = 2
-    s2.name = "Rock FM"
-    s2.url = "http://rock.stream"
-    s2.codec = "AAC"
-    s2.country = "UK"
-    s2.tags = ["rock", "classic"]
-    s2.favorite = False
-    s2.bitrate = 256
-    return [s1, s2]
+    return [
+        {"id": 1, "name": "Jazz FM", "url": "http://jazz.stream", "codec": "MP3",
+         "country": "US", "tags": ["jazz", "cool"], "favorite": False,
+         "image_path": "", "bitrate": 128},
+        {"id": 2, "name": "Rock FM", "url": "http://rock.stream", "codec": "AAC",
+         "country": "UK", "tags": ["rock", "classic"], "favorite": False,
+         "image_path": "", "bitrate": 256},
+    ]
 
 
 @pytest.fixture
 def mock_radio_mgr(mock_stations):
-    mgr = MagicMock()
-    mgr.get_all.return_value = mock_stations
-    mgr.add.return_value = mock_stations[0]
-    mgr.toggle_favorite.return_value = True
-    return mgr
+    return make_radio_service_mock(stations=mock_stations)
 
 
 @pytest.fixture
@@ -62,19 +48,20 @@ class TestRadioWorkflow:
         bridge.playStation("http://jazz.stream", "Jazz FM")
         assert bridge._current_station == "http://jazz.stream"
 
-    def test_play_adds_to_history(self, mock_radio_mgr, mock_player):
+    def test_play_adds_to_history_on_confirmation(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         bridge.playStation("http://jazz.stream", "Jazz FM")
+        assert len(bridge.history) == 0
+        bridge._on_station_connection_done()
         assert len(bridge.history) == 1
         assert bridge.history[0]["name"] == "Jazz FM"
 
-    def test_get_metadata_after_play(self, mock_radio_mgr, mock_player):
+    def test_get_metadata_unavailable(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         bridge.playStation("http://jazz.stream", "Jazz FM")
         result = bridge.getMetadata("http://jazz.stream")
-        assert result["ok"]
-        assert result["title"] == "Take Five"
-        assert result["artist"] == "Dave Brubeck"
+        assert not result["ok"]
+        assert result["error"] == "NO_METADATA"
 
     def test_reconnect_after_play(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
@@ -107,7 +94,7 @@ class TestRadioWorkflow:
     def test_favorite_then_play(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         bridge.toggleFavorite(1)
-        assert mock_radio_mgr.toggle_favorite.called
+        assert mock_radio_mgr.favorite_station.called
         bridge.playStation("http://jazz.stream", "Jazz FM")
         assert mock_player.play_url.called
 
@@ -117,8 +104,8 @@ class TestRadioWorkflow:
         assert len(bridge.stations) == 2
         bridge.playStation("http://jazz.stream", "Jazz FM")
         assert bridge._current_station == "http://jazz.stream"
-        meta = bridge.getMetadata("http://jazz.stream")
-        assert meta["ok"]
+        bridge._on_station_connection_done()
+        assert bridge.isPlaying is True
         bridge.reconnectLast()
         assert mock_player.play_url.called
         bridge.stopStream()

@@ -85,7 +85,7 @@ class TestEqualizer:
         assert eq_with_player.available
         eq_with_player.set_enabled(True)
         eq_with_player._player.set_eq_bypass.assert_called_with(False)
-        eq_with_player.set_bands([2.0] * 10)
-        eq_with_player._player.set_eq_graphic.assert_called_with([2.0] * 10)
+        eq_with_player.set_bands([2.0] * 31)
+        eq_with_player._player.set_eq_graphic.assert_called_with([2.0] * 31)
         eq_with_player.set_preamp(-2.0)
         eq_with_player._player.set_eq_preamp.assert_called_with(-2.0)

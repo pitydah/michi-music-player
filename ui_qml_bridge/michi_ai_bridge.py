@@ -257,12 +257,12 @@ class MichiAIBridge(QObject):
             self._ai_engine.cancel()
         pending_plan_id = (self._pending_action or {}).get("plan_id", "")
         if pending_plan_id and self._ai_engine and hasattr(self._ai_engine, "cancel_plan"):
-            import contextlib
-            with contextlib.suppress(Exception):
+            try:
                 self._ai_engine.cancel_plan(pending_plan_id)
+            except Exception:
+                logger.debug("cancel_plan failed", exc_info=True)
         if self._current_task_id and self._job_svc:
-            import contextlib
-            with contextlib.suppress(Exception):
+            if self._job_svc.get_job(self._current_task_id) is not None:
                 self._job_svc.cancel_job(self._current_task_id)
             self._current_task_id = ""
         self._pending_action = None

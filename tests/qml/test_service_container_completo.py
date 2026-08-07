@@ -1,59 +1,31 @@
-"""Tests for ServiceContainer completo — all 33 services registered.
+"""Tests for ServiceContainer completo — every manifest service registered.
 
-Verifica: 33 servicios clasificados (REQUIRED, OPTIONAL, CAPABILITY_GATED, DEFERRED_PHYSICAL).
+Verifica: todos los servicios del manifest clasificados (REQUIRED, OPTIONAL, CAPABILITY_GATED).
 Prohíbe: REQUIRED con None, servicios ficticios, bridge que abre DB como fallback.
+
+FASE 1 (P0 stabilization): los sets se derivan de SERVICE_MANIFEST — la única
+fuente de verdad — en lugar del inventario congelado eliminado.
 """
 from core.service_container import ServiceContainer, ServicePriority, ContainerState
+from core.service_manifest import SERVICE_MANIFEST
 
 
-ALL_SERVICE_NAMES = {
-    # REQUIRED (20)
-    "database", "connection_factory", "worker_manager",
-    "query_executor", "job_service", "event_bus",
-    "settings_coordinator", "settings_service",
-    "library_query_service", "library_sources_service",
-    "library_mutation_service", "playlist_service",
-    "history_query_service", "global_search_service",
-    "mix_query_service", "mix_service",
-    "track_action_service", "playback_service",
-    "queue_service", "metadata_service",
-    # OPTIONAL (16)
-    "theme_service", "accessibility_service",
-    "audio_lab_service", "smart_tagging_service",
-    "library_doctor_service", "device_sync_service",
-    "connection_service", "home_audio_service",
-    "radio_service", "lyrics_service",
-    "diagnostics_service", "notification_service",
-    "action_registry", "confirmation_service",
-    "runtime_persistence", "process_controller",
-    # CAPABILITY_GATED (1)
-    "michi_ai_service",
-}
+ALL_SERVICE_NAMES = set(SERVICE_MANIFEST)
 
 REQUIRED_NAMES = {
-    "database", "connection_factory", "worker_manager",
-    "query_executor", "job_service", "event_bus",
-    "settings_coordinator", "settings_service",
-    "library_query_service", "library_sources_service",
-    "library_mutation_service", "playlist_service",
-    "history_query_service", "global_search_service",
-    "mix_query_service", "mix_service",
-    "track_action_service", "playback_service",
-    "queue_service", "metadata_service",
+    name for name, desc in SERVICE_MANIFEST.items()
+    if desc.priority == ServicePriority.REQUIRED
 }
 
 OPTIONAL_NAMES = {
-    "theme_service", "accessibility_service",
-    "audio_lab_service", "smart_tagging_service",
-    "library_doctor_service", "device_sync_service",
-    "connection_service", "home_audio_service",
-    "radio_service", "lyrics_service",
-    "diagnostics_service", "notification_service",
-    "action_registry", "confirmation_service",
-    "runtime_persistence", "process_controller",
+    name for name, desc in SERVICE_MANIFEST.items()
+    if desc.priority == ServicePriority.OPTIONAL
 }
 
-CAPABILITY_GATED_NAMES = {"michi_ai_service"}
+CAPABILITY_GATED_NAMES = {
+    name for name, desc in SERVICE_MANIFEST.items()
+    if desc.priority == ServicePriority.CAPABILITY_GATED
+}
 
 
 class TestCompletoRegistration:
@@ -109,26 +81,8 @@ class TestCompletoRegistration:
         for name in c._required_names():
             svc = c.get(name)
             assert svc is None, f"Required service {name} should not be pre-registered"
-        c.register("database", object())
-        c.register("connection_factory", object())
-        c.register("worker_manager", object())
-        c.register("query_executor", object())
-        c.register("job_service", object())
-        c.register("event_bus", object())
-        c.register("settings_coordinator", object())
-        c.register("settings_service", object())
-        c.register("library_query_service", object())
-        c.register("library_sources_service", object())
-        c.register("library_mutation_service", object())
-        c.register("playlist_service", object())
-        c.register("history_query_service", object())
-        c.register("global_search_service", object())
-        c.register("mix_query_service", object())
-        c.register("mix_service", object())
-        c.register("track_action_service", object())
-        c.register("playback_service", object())
-        c.register("queue_service", object())
-        c.register("metadata_service", object())
+        for name in REQUIRED_NAMES:
+            c.register(name, object())
         for name in c._required_names():
             assert c.get(name) is not None, f"Required service {name} must be registered"
             assert c.require(name) is not None, f"Required service {name} must be retrievable via require()"
@@ -151,7 +105,7 @@ class TestCompletoLifecycle:
 
     def test_service_count_in_all_names(self):
         c = ServiceContainer()
-        assert len(c._all_names()) == 37
+        assert len(c._all_names()) == len(SERVICE_MANIFEST)
 
 
 class TestCompletoCapability:
@@ -236,6 +190,9 @@ class TestCompletoNegative:
 
     def test_unexpected_names_rejected(self):
         c = ServiceContainer()
-        all_known = c._all_names()
-        unexpected = [n for n in all_known if n not in ALL_SERVICE_NAMES]
-        assert len(unexpected) == 0, f"Unexpected services: {unexpected}"
+        c.register("totally_unknown_service", object())
+        assert "totally_unknown_service" not in c._all_names()
+        warnings = c.manifest_diagnostics()
+        assert any(
+            "totally_unknown_service" in w for w in warnings
+        ), f"Unknown key not flagged: {warnings}"

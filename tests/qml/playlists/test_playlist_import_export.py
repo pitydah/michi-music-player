@@ -249,7 +249,8 @@ class TestPlaylistImportExport:
 
     def test_cancel_import(self, svc):
         result = svc.cancel_import("import_123")
-        assert result["ok"]
+        assert not result["ok"]
+        assert result["error_code"] == "NO_ACTIVE_IMPORT"
 
     def test_export_m3u_with_multiple_tracks(self, svc, tmp_path):
         svc.create("Multi")

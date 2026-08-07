@@ -6,8 +6,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.device_sync_service import DeviceSyncService, DeviceIdentity, DeviceProtocol
+from core.device_sync_service import DeviceIdentity, DeviceProtocol
 from ui_qml_bridge.devices_bridge import DevicesBridge
+
+from tests.helpers.device_sync_stack import make_device_sync_stack
 
 pytestmark = pytest.mark.isolation
 
@@ -22,8 +24,8 @@ def temp_device(tmp_path):
 
 
 @pytest.fixture
-def svc():
-    return DeviceSyncService()
+def svc(tmp_path):
+    return make_device_sync_stack(tmp_path)
 
 
 @pytest.fixture
@@ -130,14 +132,35 @@ class TestDeviceDetailActions:
         result = svc.authorize(key)
         assert result["ok"] is True
 
-    def test_eject_device(self, bridge, svc, temp_device):
+    def test_eject_device(self, tmp_path):
+        """Eject goes through the controlled process port (no subprocess)."""
+        import time
+
+        class _FakeProc:
+            pid = 1
+            started_at = time.monotonic()
+
+            def poll(self):
+                return 0
+
+        class _FakePC:
+            def spawn_sync(self, cmd="", args=None, **kwargs):
+                return _FakeProc()
+
+            def cleanup_sync(self, pid):
+                return True
+
+        svc = make_device_sync_stack(tmp_path, process_controller=_FakePC())
+        mgr = MagicMock()
+        mgr.is_active = True
+        bridge = DevicesBridge(sync_manager=mgr, device_sync_service=svc)
         identity = DeviceIdentity(
             protocol=DeviceProtocol.USB_MASS_STORAGE,
             vendor="Test", model="USB", serial="eject1",
-            mount_point=str(temp_device),
+            mount_point=str(tmp_path),
         )
         svc.pair(identity)
-        result = bridge.ejectDevice(str(temp_device))
+        result = bridge.ejectDevice(str(tmp_path))
         assert result["ok"] is True
 
     def test_eject_no_service(self):
@@ -156,7 +179,8 @@ class TestDeviceTransferPlan:
         src = str(temp_device / "Music" / "track.flac")
         dst = str(temp_device / "dest.flac")
         job = svc.create_transfer_job(src, dst)
-        assert job.job_id.startswith("sync_")
+        assert job is not None
+        assert job.job_id
         assert job.total_bytes > 0
 
     def test_transfer_job_execution(self, bridge, temp_device):

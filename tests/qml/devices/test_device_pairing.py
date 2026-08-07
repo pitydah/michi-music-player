@@ -27,8 +27,9 @@ def temp_music(tmp_path):
 
 
 @pytest.fixture
-def dev_svc():
-    return DeviceSyncService()
+def dev_svc(tmp_path):
+    from tests.helpers.device_sync_stack import make_device_sync_stack
+    return make_device_sync_stack(tmp_path)
 
 
 @pytest.fixture

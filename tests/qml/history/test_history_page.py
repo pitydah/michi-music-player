@@ -30,11 +30,12 @@ class TestHistoryPage:
         bridge = HistoryBridge()
         result = bridge.removeHistoryItem("42")
         assert result["ok"] is False
-        assert result["error"] == "NO_DB"
+        assert result["error"] == "NO_SERVICE"
 
     def test_bridge_remove_item_with_db(self):
-        db = MagicMock()
-        bridge = HistoryBridge(db=db)
+        hqs = MagicMock()
+        hqs.remove_history_item.return_value = {"ok": True}
+        bridge = HistoryBridge(db=MagicMock(), history_query_service=hqs)
         result = bridge.removeHistoryItem("42")
         assert result["ok"] is True
 
@@ -54,11 +55,12 @@ class TestHistoryPage:
         bridge = HistoryBridge()
         result = bridge.clearHistory()
         assert result["ok"] is False
-        assert result["error"] == "NO_DB"
+        assert result["error"] == "NO_SERVICE"
 
     def test_bridge_clear_with_db(self):
-        db = MagicMock()
-        bridge = HistoryBridge(db=db)
+        hqs = MagicMock()
+        hqs.clear_history.return_value = {"ok": True}
+        bridge = HistoryBridge(db=MagicMock(), history_query_service=hqs)
         result = bridge.clearHistory()
         assert result["ok"] is True
 
@@ -79,12 +81,12 @@ class TestHistoryPage:
         bridge = HistoryBridge()
         result = bridge.getStatistics()
         assert result["ok"] is False
-        assert result["error"] == "NO_DB"
+        assert result["error"] == "NO_SERVICE"
 
     def test_bridge_get_statistics_with_db(self):
-        db = MagicMock()
-        db.conn.execute.return_value.fetchone.return_value = [42]
-        bridge = HistoryBridge(db=db)
+        hqs = MagicMock()
+        hqs.get_statistics.return_value = {"ok": True, "total_plays": 42}
+        bridge = HistoryBridge(db=MagicMock(), history_query_service=hqs)
         result = bridge.getStatistics()
         assert result["ok"] is True
         assert result["total_plays"] == 42

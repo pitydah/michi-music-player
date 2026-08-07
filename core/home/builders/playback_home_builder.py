@@ -25,6 +25,35 @@ def normalize_playback_state(state: Any) -> str:
     return "stopped"
 
 
+def build_playback_status_from_section(section: dict) -> PlaybackHomeStatus:
+    """Map the canonical ContextService playback section (S11 authority).
+
+    The section is produced by ``PlaybackSectionProvider`` from the canonical
+    ``PlaybackSnapshotService`` (S9); this adapter never re-reads the raw
+    player and never invents values when the section reports unavailable.
+    """
+    if not isinstance(section, dict) or not section.get("available"):
+        return PlaybackHomeStatus()
+
+    state = normalize_playback_state(section.get("state"))
+    np = section.get("now_playing") or {}
+    queue = section.get("queue") or {}
+    has_current = bool(np) and state in ("playing", "paused")
+    return PlaybackHomeStatus(
+        has_current_track=has_current,
+        current_title=str(np.get("title", "") or ""),
+        current_artist=str(np.get("artist", "") or ""),
+        current_album=str(np.get("album", "") or ""),
+        current_position=float(section.get("position") or 0.0),
+        current_duration=float(section.get("duration") or 0.0),
+        queue_active=bool(queue.get("active", False)),
+        queue_count=int(queue.get("count", 0)),
+        can_continue=has_current,
+        source=str(section.get("source", "") or ""),
+        state=state,
+    )
+
+
 def build_playback_status(playback: Any = None, context_svc: Any = None) -> PlaybackHomeStatus:
     if playback is None:
         return PlaybackHomeStatus()

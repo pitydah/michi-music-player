@@ -1,18 +1,24 @@
 from __future__ import annotations
-"""Test DeviceSyncService — discovery, pairing, authorization, transfer, playlists."""
+"""Test DeviceSyncService — discovery, pairing, authorization, transfer, playlists.
+
+Fase Sync: the facade receives every pipeline dependency injected; the
+fixture builds the real stack (temp registry, planners, job service,
+history repository) via the shared test helper.
+"""
 
 from pathlib import Path
 
 import pytest
 
 from core.device_sync_service import (
-    DeviceSyncService,
     DeviceIdentity,
     DeviceProtocol,
     SyncDirection,
     TransferStatus,
     StorageInfo,
 )
+
+from tests.helpers.device_sync_stack import make_device_sync_stack
 
 
 @pytest.fixture
@@ -30,8 +36,8 @@ def temp_music(tmp_path):
 
 
 @pytest.fixture
-def svc():
-    return DeviceSyncService()
+def svc(tmp_path):
+    return make_device_sync_stack(tmp_path)
 
 
 class TestDiscovery:
@@ -243,7 +249,8 @@ class TestTransfer:
         src = str(temp_music / "Music" / "track.flac")
         dst = str(temp_music / "dest.flac")
         job = svc.create_transfer_job(src, dst, SyncDirection.TO_DEVICE)
-        assert job.job_id.startswith("sync_")
+        assert job is not None
+        assert job.job_id
         assert job.source_path == src
         assert job.total_bytes > 0
 
@@ -266,7 +273,7 @@ class TestTransfer:
         job = svc.create_transfer_job(src, dst)
         result = svc.cancel_job(job.job_id)
         assert result["ok"] is True
-        assert job.status == TransferStatus.CANCELLED
+        assert svc.get_job(job.job_id).status == TransferStatus.CANCELLED
 
     def test_cancel_job_not_found(self, svc):
         result = svc.cancel_job("nonexistent")
@@ -285,7 +292,7 @@ class TestTransfer:
         dst = str(temp_music / "retry.flac")
         job = svc.create_transfer_job(src, dst)
         svc.execute_job(job.job_id)
-        assert job.status == TransferStatus.COMPLETED
+        assert svc.get_job(job.job_id).status == TransferStatus.COMPLETED
 
     def test_progress_tracking(self, svc, temp_music):
         src = str(temp_music / "Music" / "track.flac")
@@ -299,7 +306,7 @@ class TestTransfer:
         svc.set_on_progress(track)
         svc.execute_job(job.job_id)
         assert len(progress_values) > 0
-        assert progress_values[-1] == job.total_bytes
+        assert progress_values[-1] == svc.get_job(job.job_id).total_bytes
 
     def test_list_jobs(self, svc, temp_music):
         src = str(temp_music / "Music" / "track.flac")

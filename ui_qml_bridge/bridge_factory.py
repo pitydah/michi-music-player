@@ -244,6 +244,7 @@ class BridgeFactory(QObject):
         if "job_bridge" not in self._bridges:
             from ui_qml_bridge.job_bridge import JobBridge
             self._bridges["job_bridge"] = JobBridge(
+                job_service=self._get("job_service"),
                 worker_manager=self._get("worker_manager"),
                 db=self._get("database"),
             )
@@ -260,7 +261,7 @@ class BridgeFactory(QObject):
         if "accessibility" not in self._bridges:
             from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
             self._bridges["accessibility"] = AccessibilityBridge(
-                service=self._get("settings_coordinator"),
+                service=self._get("accessibility_service"),
                 settings_service=self._get("settings_coordinator"),
                 playback_service=self._get("playback_service"),
             )
@@ -269,7 +270,9 @@ class BridgeFactory(QObject):
         if "theme" not in self._bridges:
             from ui_qml_bridge.theme_bridge import ThemeBridge
             self._bridges["theme"] = ThemeBridge(
+                service=self._get("theme_service"),
                 coordinator=self._get("settings_coordinator"),
+                accessibility_service=self._get("accessibility_service"),
             )
 
     def create_capability_bridge(self):
@@ -302,6 +305,7 @@ class BridgeFactory(QObject):
                 container=self._container,
                 artwork_svc=self._get("artwork_service"),
                 cover_provider=self._bridges.get("cover_provider"),
+                favorite_service=self._get("favorite_service"),
             )
 
     def create_library_sources_bridge(self):
@@ -356,6 +360,7 @@ class BridgeFactory(QObject):
                 accessibility_bridge=self._bridges.get("accessibility"),
                 notification_bridge=self._bridges.get("notification"),
                 job_bridge=self._bridges.get("job_bridge"),
+                job_service=self._get("job_service"),
             )
 
     def create_history_bridge(self):
@@ -412,6 +417,7 @@ class BridgeFactory(QObject):
             self._bridges["lyrics"] = LyricsBridge(
                 worker_manager=self._get("worker_manager"),
                 nowplaying_bridge=self.get("nowplaying"),
+                lyrics_service=self._get("lyrics_service"),
             )
 
     def create_settings_bridge(self):
@@ -532,6 +538,8 @@ class BridgeFactory(QObject):
             self._bridges["metadata"] = MetadataBridge(
                 metadata_service=self._get("metadata_service"),
                 job_service=self._get("job_service"),
+                metadata_editor_service=self._get("metadata_editor_service"),
+                confirmation_service=self._get("confirmation_service"),
             )
 
     def create_smart_tagging_bridge(self):
@@ -558,6 +566,7 @@ class BridgeFactory(QObject):
             self._bridges["library_doctor"] = LibraryDoctorBridge(
                 db=self._get("database"),
                 worker_manager=self._get("worker_manager"),
+                scan_repository=self._get("library_doctor_scan_repository"),
             )
 
     def create_diagnostics_bridge(self):
@@ -607,6 +616,8 @@ class BridgeFactory(QObject):
                 notification_service=self._get("notification_service"),
                 navigation_bridge=self._bridges.get("navigation"),
                 diagnostics_service=self._get("diagnostics_service"),
+                notification_action_service=self._get("notification_action_service"),
+                job_service=self._get("job_service"),
             )
 
     def create_command_palette_bridge(self):
@@ -631,6 +642,7 @@ class BridgeFactory(QObject):
                 library_sources_service=self._get("library_sources_service"),
                 job_bridge=self._bridges.get("job_bridge"),
                 connections_bridge=self._bridges.get("connections"),
+                context_service=self._get("context_service"),
             )
 
     def create_app_bridge(self):
@@ -782,6 +794,13 @@ class BridgeFactory(QObject):
             br = self._bridges.get(name)
             if br is not None and nb is not None and hasattr(br, "set_notification_bridge"):
                 br.set_notification_bridge(nb)
+
+        # JobBridge needs LibraryBridge (created after job_bridge) to refresh
+        # the library view when a scan job completes.
+        jb = self._bridges.get("job_bridge")
+        lib = self._bridges.get("library")
+        if jb is not None and lib is not None and hasattr(jb, "set_library_bridge"):
+            jb.set_library_bridge(lib)
 
     def _validate_bridge_identities(self):
         keys = set(self._bridges.keys())

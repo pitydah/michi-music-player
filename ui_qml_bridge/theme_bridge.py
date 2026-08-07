@@ -1,3 +1,12 @@
+"""ThemeBridge — thin QML adapter over the canonical ThemeService.
+
+No QSettings access and no independent state: the service owns theme state,
+persistence and signals; this bridge only re-exposes them to QML and re-emits
+the service signals (ADR-002, S11). Accessibility values exposed for the
+ThemeStore (``reducedMotion``/``highContrast``/...) delegate to the canonical
+``AccessibilityService``.
+"""
+
 from __future__ import annotations
 
 import logging
@@ -5,22 +14,15 @@ from typing import Any
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
 
-from core.settings_manager import SETTINGS, set_
-
 _instance = None
 logger = logging.getLogger("michi.theme_bridge")
 
-
-def _to_float(value, default: float) -> float:
-    """Coerce a QSettings value to float, falling back to default."""
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return float(default)
+DEFAULT_THEME = "dark"
+DEFAULT_ACCENT = "#8FB7FF"
 
 
 class ThemeBridge(QObject):
-    """Expose persisted theme and accessibility preferences to QML."""
+    """Expose the canonical theme service state to QML (thin adapter)."""
 
     themeChanged = Signal()
     highContrastChanged = Signal(bool)
@@ -31,30 +33,57 @@ class ThemeBridge(QObject):
         self,
         service: Any | None = None,
         coordinator: Any | None = None,
+        accessibility_service: Any | None = None,
         parent: QObject | None = None,
     ) -> None:
         global _instance
         super().__init__(parent)
         _instance = self
-        if coordinator is None:
-            logger.warning(
-                "ThemeBridge: coordinator is None — running in degraded mode"
-            )
         self._service = service or coordinator
-        self._theme = SETTINGS.value("appearance/theme", "dark")
-        self._accent_color = SETTINGS.value("appearance/accent_color", "#8FB7FF")
-        self._high_contrast = bool(SETTINGS.value("accessibility/high_contrast", False))
-        self._compact_mode = bool(SETTINGS.value("appearance/compact_mode", False))
-        self._font_scale = _to_float(SETTINGS.value("accessibility/font_size", 1.0), 1.0)
-        self._reduced_motion = bool(SETTINGS.value("accessibility/reduced_motion", False))
-        self._reduce_transparency = bool(SETTINGS.value("accessibility/reduce_transparency", False))
-        self._dark_mode = self._theme not in ("light",)
-
-    def _write(self, key: str, value):
-        if self._service and hasattr(self._service, 'set_'):
-            self._service.set_(key, value)
+        self._accessibility_service = accessibility_service
+        if self._service is None:
+            logger.warning("ThemeBridge: service is None — running in degraded mode")
         else:
-            set_(key, value)
+            if hasattr(self._service, "register_consumer"):
+                self._service.register_consumer("theme_bridge")
+            for signal_name, forward in (
+                ("themeChanged", self._on_service_theme),
+                ("accentChanged", self._on_service_accent),
+                ("compactModeChanged", self._on_service_compact),
+            ):
+                sig = getattr(self._service, signal_name, None)
+                if sig is not None and hasattr(sig, "connect"):
+                    sig.connect(forward)
+        if self._accessibility_service is not None and hasattr(
+                self._accessibility_service, "register_consumer"):
+            self._accessibility_service.register_consumer("theme_bridge")
+            self._accessibility_service.stateChanged.connect(self._on_service_state)
+            high_contrast_sig = getattr(
+                self._accessibility_service, "highContrastChanged", None)
+            if high_contrast_sig is not None and hasattr(high_contrast_sig, "connect"):
+                high_contrast_sig.connect(self.highContrastChanged.emit)
+
+    # ── Service signal forwarding ──
+
+    def _on_service_theme(self, *_args):
+        self.themeChanged.emit()
+
+    def _on_service_accent(self, *_args):
+        self.themeChanged.emit()
+
+    def _on_service_compact(self, *_args):
+        self.themeChanged.emit()
+
+    def _on_service_state(self, *_args):
+        self.themeChanged.emit()
+
+    # ── Service state access ──
+
+    def _state(self) -> Any:
+        return self._service
+
+    def _a11y(self) -> Any:
+        return self._accessibility_service
 
     def _notify_theme_store(self):
         try:
@@ -69,117 +98,130 @@ class ThemeBridge(QObject):
 
     @Property(bool, notify=themeChanged)
     def darkMode(self):
-        return self._dark_mode
+        service = self._state()
+        if service is not None and hasattr(service, "dark_mode"):
+            return service.dark_mode
+        return DEFAULT_THEME != "light"
 
     @darkMode.setter
     def darkMode(self, enabled: bool):
-        if enabled != self._dark_mode:
-            self._dark_mode = enabled
-            self._theme = "dark" if enabled else "light"
-            self._write("appearance/theme", self._theme)
-            self._notify_theme_store()
-            self.themeChanged.emit()
+        service = self._state()
+        if service is None:
+            return
+        if hasattr(service, "set_theme"):
+            service.set_theme("dark" if enabled else "light")
 
     @Property(str, notify=themeChanged)
     def theme(self):
-        return self._theme
+        service = self._state()
+        if service is not None and hasattr(service, "theme"):
+            return service.theme
+        return DEFAULT_THEME
 
     @theme.setter
     def theme(self, val: str):
-        val = val.lower()
-        if val not in self.VALID_THEMES:
-            val = "dark"
-        if val != self._theme:
-            self._theme = val
-            self._dark_mode = val != "light"
-            self._write("appearance/theme", val)
-            self._notify_theme_store()
-            self.themeChanged.emit()
+        service = self._state()
+        if service is None:
+            return
+        if hasattr(service, "set_theme"):
+            service.set_theme(val)
 
     @Property(str, notify=themeChanged)
     def accentColor(self):
-        return self._accent_color
+        service = self._state()
+        if service is not None and hasattr(service, "accent_color"):
+            return service.accent_color
+        return DEFAULT_ACCENT
 
     @accentColor.setter
     def accentColor(self, color: str):
-        if color != self._accent_color:
-            self._accent_color = color
-            self._write("appearance/accent_color", color)
-            self._notify_theme_store()
-            self.themeChanged.emit()
+        service = self._state()
+        if service is None:
+            return
+        if hasattr(service, "set_accent_color"):
+            service.set_accent_color(color)
 
     @Property(bool, notify=highContrastChanged)
     def highContrast(self):
-        return self._high_contrast
+        a11y = self._a11y()
+        if a11y is not None and hasattr(a11y, "high_contrast"):
+            return a11y.high_contrast
+        return False
 
     @highContrast.setter
     def highContrast(self, val: bool):
-        if val != self._high_contrast:
-            self._high_contrast = val
-            self._write("accessibility/high_contrast", val)
-            self.highContrastChanged.emit(val)
+        a11y = self._a11y()
+        if a11y is not None and hasattr(a11y, "set_high_contrast"):
+            a11y.set_high_contrast(bool(val))
+            self.highContrastChanged.emit(bool(val))
 
     @Property(bool, notify=themeChanged)
     def compactMode(self):
-        return self._compact_mode
+        service = self._state()
+        if service is not None and hasattr(service, "compact_mode"):
+            return service.compact_mode
+        return False
 
     @compactMode.setter
     def compactMode(self, val: bool):
-        if val != self._compact_mode:
-            self._compact_mode = val
-            self._write("appearance/compact_mode", val)
-            self._notify_theme_store()
-            self.themeChanged.emit()
+        service = self._state()
+        if service is None:
+            return
+        if hasattr(service, "set_compact_mode"):
+            service.set_compact_mode(bool(val))
 
     @Property(float, notify=themeChanged)
     def fontScale(self):
-        return self._font_scale
+        a11y = self._a11y()
+        if a11y is not None and hasattr(a11y, "font_scale"):
+            return float(a11y.font_scale)
+        return 1.0
 
     @fontScale.setter
     def fontScale(self, val: float):
-        if val != self._font_scale:
-            self._font_scale = val
-            self._write("accessibility/font_size", val)
-            self._notify_theme_store()
-            self.themeChanged.emit()
+        a11y = self._a11y()
+        if a11y is not None and hasattr(a11y, "set_font_scale"):
+            a11y.set_font_scale(float(val))
 
     @Property(bool, notify=themeChanged)
     def reducedMotion(self):
-        return self._reduced_motion
+        a11y = self._a11y()
+        if a11y is not None and hasattr(a11y, "reduced_motion"):
+            return a11y.reduced_motion
+        return False
 
     @reducedMotion.setter
     def reducedMotion(self, val: bool):
-        if val != self._reduced_motion:
-            self._reduced_motion = val
-            self._write("accessibility/reduced_motion", val)
-            self._notify_theme_store()
-            self.themeChanged.emit()
+        a11y = self._a11y()
+        if a11y is not None and hasattr(a11y, "set_reduced_motion"):
+            a11y.set_reduced_motion(bool(val))
 
     @Property(float, notify=themeChanged)
     def animationScale(self) -> float:
         """Return the global animation multiplier for the current motion setting."""
-        return 0.0 if self._reduced_motion else 1.0
+        return 0.0 if self.reducedMotion else 1.0
 
     @Property(bool, notify=themeChanged)
     def reduceTransparency(self):
-        return self._reduce_transparency
+        a11y = self._a11y()
+        if a11y is not None and hasattr(a11y, "reduce_transparency"):
+            return a11y.reduce_transparency
+        return False
 
     @reduceTransparency.setter
     def reduceTransparency(self, val: bool):
-        if val != self._reduce_transparency:
-            self._reduce_transparency = val
-            self._write("accessibility/reduce_transparency", val)
-            self._notify_theme_store()
-            self.themeChanged.emit()
+        a11y = self._a11y()
+        if a11y is not None and hasattr(a11y, "set_reduce_transparency"):
+            a11y.set_reduce_transparency(bool(val))
 
     @Slot(result=dict)
     def themeInfo(self):
         return {
-            "theme": self._theme,
-            "dark_mode": self._dark_mode,
-            "accent_color": self._accent_color,
-            "high_contrast": self._high_contrast,
-            "reduced_motion": self._reduced_motion,
-            "reduce_transparency": self._reduce_transparency,
+            "theme": self.theme,
+            "dark_mode": self.darkMode,
+            "accent_color": self.accentColor,
+            "high_contrast": self.highContrast,
+            "reduced_motion": self.reducedMotion,
+            "reduce_transparency": self.reduceTransparency,
             "valid_themes": list(self.VALID_THEMES),
         }

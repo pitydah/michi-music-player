@@ -27,15 +27,20 @@ _METADATA_GAP_FIELDS = ("title", "artist", "album", "albumartist", "genre", "yea
 
 
 class MetadataReviewService:
-    def __init__(self, db: Any, kb: Any = None):
+    def __init__(self, db: Any, kb: Any = None,
+                 metadata_editor: Any | None = None,
+                 confirmation_service: Any | None = None):
         self._db = db
         self._kb = kb
+        self._editor = metadata_editor
         self._repo = MetadataReviewRepository()
         self._apply = MetadataApplyService(
             db, self._repo,
             apply_to_db=self._apply_to_db,
             apply_to_files=self._apply_to_files,
             require_confirmation=self._require_confirm,
+            metadata_editor=metadata_editor,
+            confirmation_service=confirmation_service,
         )
         self._undo = MetadataUndo(db, self._repo)
 

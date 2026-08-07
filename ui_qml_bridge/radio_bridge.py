@@ -1,19 +1,29 @@
-"""RadioBridge — station CRUD, favorites, history, search, import, export,
-connect, buffer, play, reconnect, stop, metadata, timeout, cancel.
-No synchronous long operations.
+"""RadioBridge — thin adapter over the canonical radio service.
+
+QML emits intention; the bridge validates and delegates. The bridge keeps no
+parallel state: stations/favorites/history are read from the injected
+``RadioService`` (``get_stations``/``get_favorites``/``get_history``), CRUD
+delegates (``add_station``/``edit_station``/``delete_station``/``favorite_station``),
+and playback delegates to ``play_station``.
+
+Playback state is NEVER optimistic in the bridge: ``isPlaying``/``isBuffering``
+reflect the service's own state events (``session_state_changed`` on the
+service event bus) or the player backend readback signal. The service emits
+effective success only when the session reaches PLAYING.
 """
 from __future__ import annotations
 
 import logging
-import time
 from typing import Any
 
-from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
+from PySide6.QtCore import QObject, Signal, Property, Slot
 
 logger = logging.getLogger("michi.radio")
 
-_MAX_HISTORY = 50
-_CONNECT_TIMEOUT_MS = 15000
+_HISTORY_LIMIT = 50
+
+_STATE_PLAYING = "playing"
+_STATE_PENDING = ("requested", "connecting", "buffering", "reconnecting")
 
 
 class RadioBridge(QObject):
@@ -27,15 +37,33 @@ class RadioBridge(QObject):
         self._player = player_service
         self._stations: list[dict] = []
         self._favorites: list[dict] = []
-        self._history: list[dict] = []
         self._current_station = ""
         self._current_station_name = ""
         self._reconnect_attempts = 0
         self._is_playing = False
         self._is_buffering = False
         self._metadata: dict = {}
-        self._connect_timer: QTimer | None = None
-        self._buffer_timeout_ms = _CONNECT_TIMEOUT_MS
+        self._buffer_timeout_ms = 15000
+        self._subscribe_service_events()
+        self._connect_player_signals()
+
+    def _subscribe_service_events(self):
+        event_bus = getattr(self._radio_mgr, "event_bus", None)
+        subscribe = getattr(event_bus, "subscribe", None)
+        if subscribe is None:
+            return
+        try:
+            subscribe("session_state_changed", self._on_service_state_event)
+        except Exception:
+            logger.debug("Radio: could not subscribe to service events", exc_info=True)
+
+    def _connect_player_signals(self):
+        state_changed = getattr(self._player, "state_changed", None)
+        if state_changed is not None and hasattr(state_changed, "connect"):
+            try:
+                state_changed.connect(self._on_player_state_changed)
+            except Exception:
+                logger.debug("Radio: could not subscribe to player state_changed", exc_info=True)
 
     @property
     def radio_manager(self) -> Any:
@@ -55,7 +83,17 @@ class RadioBridge(QObject):
 
     @Property("QVariantList", notify=dataChanged)
     def history(self):
-        return list(self._history)
+        if self._radio_mgr is None:
+            return []
+        get_history = getattr(self._radio_mgr, "get_history", None)
+        if get_history is None:
+            return []
+        try:
+            entries = get_history(_HISTORY_LIMIT) or []
+        except Exception:
+            logger.debug("Radio: history read failed", exc_info=True)
+            return []
+        return [self._history_entry(e) for e in entries[:_HISTORY_LIMIT]]
 
     @Property(str, notify=dataChanged)
     def currentStation(self):
@@ -81,22 +119,34 @@ class RadioBridge(QObject):
     def currentMetadata(self):
         return self._metadata
 
-    def _find_station(self, station_id: int) -> dict | None:
+    def _find_station(self, station_id) -> dict | None:
         for s in self._stations:
-            if s.get("id") == station_id:
+            if str(s.get("id")) == str(station_id):
                 return s
         return None
 
-    def _add_to_history(self, name: str, url: str):
-        self._history.insert(0, {
-            "name": name, "url": url, "played_at": time.time(),
-        })
-        self._history = self._history[:_MAX_HISTORY]
+    @staticmethod
+    def _history_entry(entry: dict) -> dict:
+        return {
+            "name": entry.get("station_name") or entry.get("name") or "",
+            "url": entry.get("stream_url") or entry.get("url") or "",
+            "played_at": entry.get("started_at") or entry.get("played_at")
+            or entry.get("timestamp") or "",
+        }
 
-    def _cancel_connect_timeout(self):
-        if self._connect_timer:
-            self._connect_timer.stop()
-            self._connect_timer = None
+    @staticmethod
+    def _station_entry(station: dict) -> dict:
+        return {
+            "id": station.get("id", 0),
+            "name": station.get("name", "") or "",
+            "url": station.get("url", "") or "",
+            "codec": station.get("codec", "") or "",
+            "country": station.get("country", "") or "",
+            "tags": station.get("tags", []) or [],
+            "favorite": bool(station.get("favorite", False)),
+            "image_path": station.get("image_path", "") or "",
+            "bitrate": station.get("bitrate", 0) or 0,
+        }
 
     #  Refresh
 
@@ -104,28 +154,26 @@ class RadioBridge(QObject):
     def refresh(self):
         result = []
         favs = []
-        if self._radio_mgr and hasattr(self._radio_mgr, 'get_all'):
-            try:
-                all_stations = self._radio_mgr.get_all()
-                for s in all_stations:
-                    entry = {
-                        "id": getattr(s, 'id', 0),
-                        "name": getattr(s, 'name', '') or '',
-                        "url": getattr(s, 'url', '') or '',
-                        "codec": getattr(s, 'codec', '') or '',
-                        "country": getattr(s, 'country', '') or '',
-                        "tags": getattr(s, 'tags', []) or [],
-                        "favorite": getattr(s, 'favorite', False),
-                        "image_path": getattr(s, 'image_path', '') or '',
-                        "bitrate": getattr(s, 'bitrate', 0) or 0,
-                    }
-                    result.append(entry)
-                    if entry["favorite"]:
-                        favs.append(entry)
-            except Exception:
-                logger.debug("Radio refresh failed", exc_info=True)
-        self._stations = result
-        self._favorites = favs
+        if self._radio_mgr is None:
+            self._stations = []
+            self._favorites = []
+            self.dataChanged.emit()
+            return {"ok": True, "count": 0}
+        try:
+            get_stations = getattr(self._radio_mgr, "get_stations", None)
+            if get_stations is None:
+                logger.debug("Radio: injected service has no get_stations")
+                return {"ok": True, "count": 0}
+            stations = get_stations() or []
+            for s in stations:
+                entry = self._station_entry(s if isinstance(s, dict) else vars(s))
+                result.append(entry)
+                if entry["favorite"]:
+                    favs.append(entry)
+            self._stations = result
+            self._favorites = favs
+        except Exception:
+            logger.debug("Radio refresh failed", exc_info=True)
         self.dataChanged.emit()
         return {"ok": True, "count": len(result)}
 
@@ -137,12 +185,15 @@ class RadioBridge(QObject):
             return {"ok": False, "error": "EMPTY_URL"}
         if not self._radio_mgr:
             return {"ok": False, "error": "NO_RADIO_MANAGER"}
-        try:
-            if hasattr(self._radio_mgr, 'add'):
-                station = self._radio_mgr.add(name, url, country=country, codec=codec)
-                self.refresh()
-                return {"ok": True, "id": getattr(station, 'id', 0)}
+        add_station = getattr(self._radio_mgr, "add_station", None)
+        if add_station is None:
             return {"ok": False, "error": "NOT_IMPLEMENTED"}
+        try:
+            result = add_station(name, url, genre="", country=country, codec=codec)
+            self.refresh()
+            if result.get("ok"):
+                return {"ok": True, "id": result.get("id", 0)}
+            return {"ok": False, "error": result.get("error", "ADD_FAILED")}
         except Exception as e:
             logger.warning("Radio add failed: %s", e, exc_info=True)
             return {"ok": False, "error": str(e)}
@@ -151,33 +202,47 @@ class RadioBridge(QObject):
     def deleteStation(self, url: str):
         if not self._radio_mgr:
             return {"ok": False, "error": "NO_RADIO_MANAGER"}
-        try:
-            if hasattr(self._radio_mgr, 'remove_station'):
-                self._radio_mgr.remove_station(url)
-                self.refresh()
-                return {"ok": True}
+        delete_station = getattr(self._radio_mgr, "delete_station", None)
+        if delete_station is None:
             return {"ok": False, "error": "NOT_IMPLEMENTED"}
+        station = next((s for s in self._stations if s.get("url") == url), None)
+        if station is None:
+            return {"ok": False, "error": "NOT_FOUND"}
+        try:
+            result = delete_station(station["id"])
+            self.refresh()
+            return {"ok": bool(result.get("ok")), "error": result.get("error")} if not result.get("ok") else {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
     @Slot(str, result=dict)
     def removeStation(self, station_id: str):
-        if not self._radio_svc:
+        if not self._radio_mgr:
             return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
-        return self._radio_svc.delete_station(station_id)
+        delete_station = getattr(self._radio_mgr, "delete_station", None)
+        if delete_station is None:
+            return {"ok": False, "error": "NOT_IMPLEMENTED"}
+        result = delete_station(station_id)
+        self.refresh()
+        if result.get("ok"):
+            return {"ok": True}
+        return {"ok": False, "error": result.get("error", "DELETE_FAILED")}
 
     @Slot(int, str, str, str, str, result=dict)
     def editStation(self, station_id: int, name: str, url: str,
                     codec: str = "", country: str = ""):
         if not self._radio_mgr:
             return {"ok": False, "error": "NO_RADIO_MANAGER"}
-        try:
-            if hasattr(self._radio_mgr, 'update'):
-                self._radio_mgr.update(station_id, name=name, url=url,
-                                       codec=codec, country=country)
-                self.refresh()
-                return {"ok": True}
+        edit_station = getattr(self._radio_mgr, "edit_station", None)
+        if edit_station is None:
             return {"ok": False, "error": "NOT_IMPLEMENTED"}
+        try:
+            result = edit_station(station_id, name=name, url=url,
+                                  codec=codec, country=country)
+            self.refresh()
+            if result.get("ok"):
+                return {"ok": True}
+            return {"ok": False, "error": result.get("error", "EDIT_FAILED")}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -187,12 +252,15 @@ class RadioBridge(QObject):
     def toggleFavorite(self, station_id: int):
         if not self._radio_mgr:
             return {"ok": False, "error": "NO_RADIO_MANAGER"}
-        try:
-            if hasattr(self._radio_mgr, 'toggle_favorite'):
-                is_fav = self._radio_mgr.toggle_favorite(station_id)
-                self.refresh()
-                return {"ok": True, "favorite": is_fav}
+        favorite_station = getattr(self._radio_mgr, "favorite_station", None)
+        if favorite_station is None:
             return {"ok": False, "error": "NOT_IMPLEMENTED"}
+        try:
+            result = favorite_station(station_id)
+            self.refresh()
+            if result.get("ok"):
+                return {"ok": True, "favorite": bool(result.get("favorite", True))}
+            return {"ok": False, "error": result.get("error", "FAVORITE_FAILED")}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -200,9 +268,17 @@ class RadioBridge(QObject):
 
     @Slot(result=dict)
     def clearHistory(self):
-        self._history = []
-        self.dataChanged.emit()
-        return {"ok": True}
+        if self._radio_mgr is None:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        clear_history = getattr(self._radio_mgr, "clear_history", None)
+        if clear_history is None:
+            return {"ok": False, "error": "NOT_IMPLEMENTED"}
+        try:
+            result = clear_history()
+            self.dataChanged.emit()
+            return {"ok": bool(result.get("ok", True))}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     #  Search
 
@@ -210,30 +286,21 @@ class RadioBridge(QObject):
     def search(self, query: str = "", country: str = "", tag: str = ""):
         if not self._radio_mgr:
             return {"ok": False, "error": "NO_RADIO_MANAGER"}
+        search_stations = getattr(self._radio_mgr, "search_stations", None)
+        if search_stations is None:
+            return {"ok": False, "error": "NOT_IMPLEMENTED"}
         try:
-            all_stations = self._radio_mgr.get_all()
+            result = search_stations(query or "")
             results = []
-            for s in all_stations:
-                name = getattr(s, 'name', '') or ''
-                country_s = getattr(s, 'country', '') or ''
-                tags = getattr(s, 'tags', []) or []
-                match = True
-                if query and query.lower() not in name.lower():
-                    match = False
+            for s in result.get("results", []) or []:
+                entry = self._station_entry(s if isinstance(s, dict) else vars(s))
+                country_s = entry["country"]
+                tags = [t.lower() for t in entry["tags"]]
                 if country and country.lower() != country_s.lower():
-                    match = False
-                if tag and tag.lower() not in [t.lower() for t in tags]:
-                    match = False
-                if match:
-                    results.append({
-                        "id": getattr(s, 'id', 0), "name": name,
-                        "url": getattr(s, 'url', '') or '',
-                        "codec": getattr(s, 'codec', '') or '',
-                        "country": country_s,
-                        "tags": tags,
-                        "favorite": getattr(s, 'favorite', False),
-                        "bitrate": getattr(s, 'bitrate', 0) or 0,
-                    })
+                    continue
+                if tag and tag.lower() not in tags:
+                    continue
+                results.append(entry)
             return {"ok": True, "results": results, "count": len(results)}
         except Exception as e:
             return {"ok": False, "error": str(e)}
@@ -254,7 +321,7 @@ class RadioBridge(QObject):
                     line = line.strip()
                     if line and not line.startswith("#") and line.startswith("http"):
                         name = Path(line).stem or "Imported"
-                        self._radio_mgr.add(name, line)
+                        self._radio_mgr.add_station(name, line)
                         count += 1
             self.refresh()
             return {"ok": True, "count": count}
@@ -289,55 +356,34 @@ class RadioBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    #  Connect / Buffer / Play
-
-    def _start_connect_timeout(self):
-        self._cancel_connect_timeout()
-        self._connect_timer = QTimer(self)
-        self._connect_timer.setSingleShot(True)
-        self._connect_timer.setInterval(self._buffer_timeout_ms)
-        self._connect_timer.timeout.connect(self._on_connect_timeout)
-        self._connect_timer.start()
-
-    def _on_connect_timeout(self):
-        self._is_buffering = False
-        self._is_playing = False
-        self._metadata = {"error": "TIMEOUT"}
-        logger.debug("Radio connect timeout for %s", self._current_station)
-        self.dataChanged.emit()
+    #  Play / Stop — delegated to the service, reflected via service events
 
     @Slot(str, str, result=dict)
     def playStation(self, url: str, name: str = ""):
         if not url:
             return {"ok": False, "error": "EMPTY_URL"}
-        if not self._player:
-            return {"ok": False, "error": "NO_PLAYER_SERVICE"}
+        if not self._radio_mgr:
+            return {"ok": False, "error": "NO_RADIO_MANAGER"}
+        play_station = getattr(self._radio_mgr, "play_station", None)
+        if play_station is None:
+            return {"ok": False, "error": "NOT_IMPLEMENTED"}
         try:
-            self._cancel_connect_timeout()
-            self._is_buffering = True
+            result = play_station(url, name)
+            if not result or not result.get("ok"):
+                self._sync_readback()
+                self.dataChanged.emit()
+                return {"ok": False, "error": (result or {}).get("error", "PLAY_FAILED")}
             self._current_station = url
             self._current_station_name = name
             self._reconnect_attempts = 0
-            self._metadata = {}
             self.dataChanged.emit()
-
-            if hasattr(self._player, 'play_url'):
-                self._player.play_url(url)
-            elif hasattr(self._player, 'play'):
-                self._player.play(url)
-            else:
-                return {"ok": False, "error": "NO_PLAY_METHOD"}
-
-            self._is_buffering = False
-            self._is_playing = True
-            if name:
-                self._add_to_history(name, url)
-            self._start_connect_timeout()
-            self.dataChanged.emit()
-            return {"ok": True}
+            return {
+                "ok": True,
+                "accepted": bool(result.get("accepted", True)),
+                "status": result.get("status", ""),
+            }
         except Exception as e:
-            self._is_buffering = False
-            self._is_playing = False
+            self._sync_readback()
             self.dataChanged.emit()
             return {"ok": False, "error": str(e)}
 
@@ -353,17 +399,23 @@ class RadioBridge(QObject):
 
     @Slot(result=dict)
     def stopStream(self):
-        self._cancel_connect_timeout()
-        self._is_playing = False
-        self._is_buffering = False
-        if self._player and hasattr(self._player, 'stop'):
-            try:
-                self._player.stop()
-                self.dataChanged.emit()
-                return {"ok": True}
-            except Exception as e:
-                return {"ok": False, "error": str(e)}
-        return {"ok": False, "error": "NO_PLAYER"}
+        if not self._radio_mgr:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        stop = getattr(self._radio_mgr, "stop", None)
+        if stop is None:
+            return {"ok": False, "error": "NOT_IMPLEMENTED"}
+        try:
+            result = stop()
+            ok = True
+            if result is not None:
+                ok = result.get("ok", True) if isinstance(result, dict) else bool(getattr(result, "ok", True))
+            self._sync_readback()
+            self.dataChanged.emit()
+            return {"ok": ok}
+        except Exception as e:
+            self._sync_readback()
+            self.dataChanged.emit()
+            return {"ok": False, "error": str(e)}
 
     @Slot(result=dict)
     def cancelStream(self):
@@ -373,33 +425,28 @@ class RadioBridge(QObject):
 
     @Slot(str, result=dict)
     def getMetadata(self, url: str = ""):
-        target = url or self._current_station
-        if not target:
-            return {"ok": False, "error": "NO_URL"}
-        if self._radio_mgr and hasattr(self._radio_mgr, 'get_metadata'):
-            try:
-                meta = self._radio_mgr.get_metadata(target)
-                if isinstance(meta, dict):
-                    self._metadata = meta
-                else:
-                    self._metadata = {"data": str(meta)}
-                self.dataChanged.emit()
-                return {"ok": True, "metadata": self._metadata}
-            except Exception as e:
-                return {"ok": False, "error": str(e)}
+        # The canonical radio service owns metadata via probe/stream sessions;
+        # the bridge does not keep a parallel metadata client.
         return {"ok": False, "error": "NO_METADATA"}
 
     #  Timeout / Cancel
 
     @Slot(int, result=dict)
     def setTimeoutMs(self, ms: int):
+        # The service owns the connect timeout; the bridge keeps the setter
+        # for API stability (the value is informational here).
         self._buffer_timeout_ms = max(1000, min(120000, ms))
         return {"ok": True, "timeout_ms": self._buffer_timeout_ms}
 
     @Slot(result=dict)
     def cancel(self):
-        self._cancel_connect_timeout()
-        self._is_buffering = False
+        cancel = getattr(self._radio_mgr, "cancel", None)
+        if cancel is not None:
+            try:
+                cancel()
+            except Exception:
+                logger.debug("Radio: service cancel failed", exc_info=True)
+        self._sync_readback()
         self.dataChanged.emit()
         return {"ok": True}
 
@@ -464,8 +511,47 @@ class RadioBridge(QObject):
     def getBitrate(self):
         return 0
 
-    def _on_station_connection_done(self):
-        self._cancel_connect_timeout()
-        self._is_buffering = False
-        self._is_playing = True
+    #  Service state reflection (never optimistic)
+
+    def _on_service_state_event(self, event):
+        """Reflect the canonical service ``session_state_changed`` event."""
+        data = getattr(event, "data", event) or {}
+        state = data.get("state", "")
+        self._apply_state(str(state).lower())
+        if "attempt" in data and data.get("attempt") is not None:
+            self._reconnect_attempts = int(data["attempt"] or 0)
         self.dataChanged.emit()
+
+    def _on_player_state_changed(self, state):
+        """Player backend readback — a secondary truth source."""
+        self._apply_state(str(state or "").lower())
+        self.dataChanged.emit()
+
+    def _apply_state(self, state: str):
+        if state == _STATE_PLAYING:
+            self._is_playing = True
+            self._is_buffering = False
+        elif state in _STATE_PENDING:
+            self._is_playing = False
+            self._is_buffering = True
+        else:
+            self._is_playing = False
+            self._is_buffering = False
+
+    def _sync_readback(self):
+        """Read the service's effective state (PlayerService truth)."""
+        get_state = getattr(self._radio_mgr, "get_state", None)
+        if get_state is None:
+            self._is_playing = False
+            self._is_buffering = False
+            return
+        try:
+            state = get_state()
+            if callable(state):
+                state = state()
+            value = getattr(state, "value", state)
+            self._apply_state(str(value or "").lower())
+        except Exception:
+            logger.debug("Radio: state readback failed", exc_info=True)
+            self._is_playing = False
+            self._is_buffering = False

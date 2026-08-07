@@ -108,7 +108,10 @@ class TestWave16CoreWorkflows:
         qe = QueryExecutor(worker_manager=wm)
         qs = LibraryQueryService(db, db_path=db_path)
         src_svc = LibrarySourcesService(db=db)
-        jb = JobBridge(worker_manager=wm, db=db)
+        from core.jobs.job_service import DurableJobService
+        job_svc = DurableJobService(db_path=":memory:", worker_manager=wm)
+        job_svc.register_handler("library_scan", lambda job, ctx: {"ok": True})
+        jb = JobBridge(job_service=job_svc, worker_manager=wm, db=db)
         hb = HistoryBridge(db=db)
 
         class FakePlayer:

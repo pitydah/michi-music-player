@@ -1,66 +1,97 @@
-"""Tests for ServiceContainer v12 — 28 REQUIRED, single composition, no aliases.
+"""Tests for ServiceContainer v12 — manifest-driven sets, single composition, no aliases.
 
 X10.03: ServiceContainer must be the UNICA composicion.
 Validates: required_present, dependencies_present, no_none_required, acyclic_graph, build_start_order.
 If REQUIRED missing: state=FAILED, start() fails, QML NOT loaded.
+
+FASE 1 (P0 stabilization): REQUIRED/OPTIONAL/CAPABILITY_GATED are derived from
+SERVICE_MANIFEST — the single source of truth — instead of the removed frozen
+inventory (REQUIRED_28/OPTIONAL_8/ALL_37).
 """
-from core.service_container import ServiceContainer, ContainerState
+import pytest
+
+from core.service_container import (
+    ContainerState,
+    ManifestCycleError,
+    ServiceContainer,
+)
+from core.service_manifest import (
+    SERVICE_MANIFEST,
+    LifecycleKind,
+    ServiceClass,
+    ServiceDescriptor,
+    ServicePriority,
+)
 
 
-REQUIRED_28 = {
-    "database", "connection_factory", "worker_manager",
-    "query_executor", "job_service", "event_bus",
-    "settings_coordinator", "settings_service",
-    "library_query_service", "library_sources_service",
-    "library_mutation_service", "playlist_service",
-    "history_query_service", "global_search_service",
-    "mix_query_service", "mix_service",
-    "track_action_service", "playback_service",
-    "queue_service", "metadata_service",
-    "process_controller", "runtime_persistence",
-    "theme_service", "accessibility_service",
-    "action_registry", "confirmation_service",
-    "notification_service", "diagnostics_service",
+REQUIRED = {
+    name for name, desc in SERVICE_MANIFEST.items()
+    if desc.priority == ServicePriority.REQUIRED
 }
 
-OPTIONAL_8 = {
-    "audio_lab_service", "smart_tagging_service",
-    "library_doctor_service", "device_sync_service",
-    "connection_service", "home_audio_service",
-    "radio_service", "lyrics_service",
+OPTIONAL = {
+    name for name, desc in SERVICE_MANIFEST.items()
+    if desc.priority == ServicePriority.OPTIONAL
 }
 
-CAPABILITY_GATED = {"michi_ai_service"}
+CAPABILITY_GATED = {
+    name for name, desc in SERVICE_MANIFEST.items()
+    if desc.priority == ServicePriority.CAPABILITY_GATED
+}
 
-ALL_37 = REQUIRED_28 | OPTIONAL_8 | CAPABILITY_GATED
+ALL_MANIFEST = set(SERVICE_MANIFEST)
+
+
+def _register_all(sc):
+    """Register every manifest key; aliases share the instance of their target."""
+    instances = {}
+    for name, desc in SERVICE_MANIFEST.items():
+        if desc.alias_of is None:
+            instances[name] = object()
+    for name, desc in SERVICE_MANIFEST.items():
+        if desc.alias_of is not None:
+            instances[name] = instances[desc.alias_of]
+    for name, svc in instances.items():
+        sc.register(name, svc)
+
+
+def _cycle_descriptor(name: str, deps: tuple[str, ...]) -> ServiceDescriptor:
+    """Standalone OPTIONAL descriptor used to inject a manifest cycle."""
+    return ServiceDescriptor(
+        name=name,
+        service_class=ServiceClass.MANAGED_SERVICE,
+        lifecycle=LifecycleKind.MANAGED,
+        priority=ServicePriority.OPTIONAL,
+        dependencies=deps,
+    )
 
 
 class TestV12RequiredCount:
-    def test_28_required_services(self):
+    def test_required_services_count(self):
         c = ServiceContainer()
-        assert len(c._required_names()) == 28, f"Expected 28, got {len(c._required_names())}"
+        assert len(c._required_names()) == len(REQUIRED)
 
-    def test_8_optional_services(self):
+    def test_optional_services_count(self):
         c = ServiceContainer()
-        assert len(c._optional_names()) == 8, f"Expected 8, got {len(c._optional_names())}"
+        assert len(c._optional_names()) == len(OPTIONAL)
 
-    def test_1_capability_gated(self):
+    def test_capability_gated_count(self):
         c = ServiceContainer()
-        assert len(c._capability_gated_names()) == 1
+        assert len(c._capability_gated_names()) == len(CAPABILITY_GATED)
 
-    def test_37_total_services(self):
+    def test_total_manifest_services(self):
         c = ServiceContainer()
-        assert len(c._all_names()) == 37
+        assert len(c._all_names()) == len(ALL_MANIFEST)
 
-    def test_required_set_matches_28(self):
+    def test_required_set_matches_manifest(self):
         c = ServiceContainer()
-        assert c._required_names() == REQUIRED_28
+        assert c._required_names() == REQUIRED
 
-    def test_optional_set_matches_8(self):
+    def test_optional_set_matches_manifest(self):
         c = ServiceContainer()
-        assert c._optional_names() == OPTIONAL_8
+        assert c._optional_names() == OPTIONAL
 
-    def test_capability_gated_matches(self):
+    def test_capability_gated_matches_manifest(self):
         c = ServiceContainer()
         assert c._capability_gated_names() == CAPABILITY_GATED
 
@@ -74,79 +105,86 @@ class TestV12RequiredValidation:
     def test_validate_required_present_all_missing(self):
         c = ServiceContainer()
         missing = c.validate_required_present()
-        assert len(missing) == 28
+        assert len(missing) == len(REQUIRED)
 
     def test_validate_required_present_all_registered(self):
         c = ServiceContainer()
-        for name in REQUIRED_28:
+        for name in REQUIRED:
             c.register(name, object())
         missing = c.validate_required_present()
         assert missing == []
 
     def test_validate_no_none_required_empty(self):
         c = ServiceContainer()
-        assert len(c.validate_no_none_required()) == 28
+        assert len(c.validate_no_none_required()) == len(REQUIRED)
 
     def test_validate_no_none_required_after_register(self):
         c = ServiceContainer()
-        for name in REQUIRED_28:
+        for name in REQUIRED:
             c.register(name, object())
         assert c.validate_no_none_required() == []
 
     def test_validate_no_none_required_rejects_none(self):
         c = ServiceContainer()
-        for name in REQUIRED_28:
+        for name in REQUIRED:
             c.register(name, None)
         bad = c.validate_no_none_required()
-        assert len(bad) == 28
+        assert len(bad) == len(REQUIRED)
 
     def test_acyclic_graph_valid(self):
         c = ServiceContainer()
-        for name in ALL_37:
-            c.register(name, object())
+        _register_all(c)
         order = c.validate_acyclic_graph()
-        assert len(order) == 37
         assert isinstance(order, list)
+        non_alias = [name for name, desc in SERVICE_MANIFEST.items()
+                     if desc.alias_of is None]
+        assert len(order) == len(non_alias)
 
-    def test_acyclic_graph_raises_on_cycle(self):
+    def test_acyclic_graph_raises_on_cycle(self, monkeypatch):
         c = ServiceContainer()
-        for name in ALL_37:
-            c.register(name, object())
-        c._dependencies["database"] = ("database",)
-        try:
+        monkeypatch.setitem(
+            SERVICE_MANIFEST, "cycle_a", _cycle_descriptor("cycle_a", ("cycle_b",))
+        )
+        monkeypatch.setitem(
+            SERVICE_MANIFEST, "cycle_b", _cycle_descriptor("cycle_b", ("cycle_a",))
+        )
+        with pytest.raises(ManifestCycleError):
             c.validate_acyclic_graph()
-            assert False, "Should have raised"
-        except ValueError:
-            pass
+        errors = c.validate()
+        assert any("Circular dependency" in e for e in errors)
+        c.start()
+        assert c.state == ContainerState.FAILED
 
     def test_build_start_order_returns_list(self):
         c = ServiceContainer()
-        for name in REQUIRED_28:
+        for name in REQUIRED:
             c.register(name, object())
         order = c.build_start_order()
         assert isinstance(order, list)
-        assert len(order) >= 28
+        assert len(order) >= len(REQUIRED)
 
     def test_start_order_prioritizes_required(self):
         c = ServiceContainer()
-        for name in ALL_37:
-            c.register(name, object())
+        _register_all(c)
         order = c.build_start_order()
-        required = {n for n in REQUIRED_28}
-        seen_optional = False
-        for svc in order:
-            if svc not in required:
-                seen_optional = True
-            elif seen_optional:
-                pass
-        required_first = order[:28]
-        for r in required:
-            assert r in required_first[:28]
+        positions = {name: idx for idx, name in enumerate(order)}
+        required_no_alias = {
+            name for name in REQUIRED if SERVICE_MANIFEST[name].alias_of is None
+        }
+        for name in required_no_alias:
+            assert name in positions, f"REQUIRED '{name}' missing from start order"
+        for name, desc in SERVICE_MANIFEST.items():
+            if desc.alias_of is not None:
+                continue
+            for dep in desc.dependencies:
+                target = SERVICE_MANIFEST[dep].alias_of or dep
+                assert positions[target] < positions[name], (
+                    f"dependency '{dep}' must start before '{name}'"
+                )
 
     def test_dependencies_present_valid(self):
         c = ServiceContainer()
-        for name in ALL_37:
-            c.register(name, object())
+        _register_all(c)
         broken = c.validate_dependencies_present()
         assert broken == []
 
@@ -160,37 +198,33 @@ class TestV12StartFailure:
 
     def test_start_fails_on_none_required(self):
         c = ServiceContainer()
-        for name in REQUIRED_28:
+        for name in REQUIRED:
             c.register(name, None if name != "database" else object())
         c.start()
         assert c.state == ContainerState.FAILED
 
     def test_start_succeeds_with_all_required(self):
         c = ServiceContainer()
-        for name in ALL_37:
-            c.register(name, object())
+        _register_all(c)
         c.start()
         assert c.state in (ContainerState.READY, ContainerState.DEGRADED)
 
     def test_start_ready_state_with_all_required(self):
         c = ServiceContainer()
-        for name in ALL_37:
-            c.register(name, object())
+        _register_all(c)
         c.start()
         assert c.state == ContainerState.READY
 
     def test_start_degraded_when_optional_fails(self):
         c = ServiceContainer()
-        for name in ALL_37:
-            c.register(name, object())
+        _register_all(c)
         c.report_failure("radio_service", "unavailable")
         c.start()
         assert c.state == ContainerState.DEGRADED
 
     def test_start_idempotent(self):
         c = ServiceContainer()
-        for name in ALL_37:
-            c.register(name, object())
+        _register_all(c)
         c.start()
         s1 = c.state
         c.start()
@@ -201,12 +235,12 @@ class TestV12Health:
     def test_health_reports_28_required(self):
         c = ServiceContainer()
         h = c.health()
-        assert h["required"] == 28
+        assert h["required"] == len(REQUIRED)
 
     def test_health_reports_8_optional(self):
         c = ServiceContainer()
         h = c.health()
-        assert h["optional"] == 8
+        assert h["optional"] == len(OPTIONAL)
 
     def test_health_reports_state(self):
         c = ServiceContainer()
@@ -227,8 +261,7 @@ class TestV12Health:
 
     def test_health_after_ready(self):
         c = ServiceContainer()
-        for name in ALL_37:
-            c.register(name, object())
+        _register_all(c)
         c.start()
         h = c.health()
         assert h["state"] == "ready"
@@ -252,16 +285,14 @@ class TestV12NoAliases:
 class TestV12Lifecycle:
     def test_shutdown_resets(self):
         c = ServiceContainer()
-        for name in ALL_37:
-            c.register(name, object())
+        _register_all(c)
         c.start()
         c.shutdown()
         assert c.state == ContainerState.STOPPED
 
     def test_cancel_all_does_not_raise(self):
         c = ServiceContainer()
-        for name in ALL_37:
-            c.register(name, object())
+        _register_all(c)
         c.cancel_all()
 
     def test_shutdown_clears_failures(self):

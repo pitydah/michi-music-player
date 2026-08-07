@@ -5,6 +5,7 @@ Implements org.mpris.MediaPlayer2 and Player interfaces using dbus-python.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any, Callable
 
 import dbus
@@ -13,6 +14,8 @@ from dbus.mainloop.glib import DBusGMainLoop
 
 from PySide6.QtCore import QObject
 from audio.player import PlaybackState, PlayerEngine
+
+logger = logging.getLogger("michi.mpris")
 
 if TYPE_CHECKING:
     from audio.player_service import PlayerService
@@ -317,8 +320,16 @@ class MPRISAdapter(QObject):
         super().__init__(parent)
         DBusGMainLoop(set_as_default=True)
         bus = dbus.SessionBus()
-        bus_name = dbus.service.BusName(SERVICE_NAME, bus)
-        self._object = MPRISObject(bus_name, OBJECT_PATH)
+        try:
+            bus_name = dbus.service.BusName(SERVICE_NAME, bus)
+            self._object = MPRISObject(bus_name, OBJECT_PATH)
+        except (dbus.exceptions.DBusException, KeyError) as exc:
+            # Another instance/test already owns the MPRIS name or object
+            # path on this session bus. MPRIS is optional: degrade without
+            # breaking boot.
+            logger.warning("MPRIS unavailable (bus name taken): %s", exc)
+            self._object = None
+            return
         if player_service is not None:
             self._object.set_player_service(player_service)
         if queue_service is not None:
@@ -333,8 +344,9 @@ class MPRISAdapter(QObject):
         self._object.set_raise_handler(handler)
 
     @property
-    def player(self) -> MPRISObject:
+    def player(self) -> MPRISObject | None:
         return self._object
 
     def shutdown(self) -> None:
-        self._object.remove_from_connection()
+        if self._object is not None:
+            self._object.remove_from_connection()

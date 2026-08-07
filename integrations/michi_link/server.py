@@ -43,6 +43,7 @@ class MichiLinkServer:
     _player_service: object | None = None
     _queue_service: object | None = None
     _window_ref: object | None = None
+    _pairing_service: object | None = None
 
     @classmethod
     def mount(
@@ -52,15 +53,18 @@ class MichiLinkServer:
         player_service: Any = None,
         queue_service: Any = None,
         window: Any = None,
+        pairing_service: Any = None,
     ) -> None:
         cls._playback = playback
         cls._player_service = player_service
         cls._queue_service = queue_service
         cls._window_ref = window
+        cls._pairing_service = pairing_service
         V1Mixin._playback = playback
         V1Mixin._player_service = player_service
         V1Mixin._queue_service = queue_service
         V1Mixin._window_ref = window
+        V1Mixin._pairing_service = pairing_service
         if getattr(handler_class, "_michi_link_mounted", False):
             return
         _orig_get = handler_class.do_GET
@@ -91,6 +95,7 @@ class V1Mixin:
     _player_service: object | None = None
     _queue_service: object | None = None
     _window_ref: object | None = None
+    _pairing_service: object | None = None
 
     @classmethod
     def _check_v1_permission(cls, handler, method: str, path: str) -> bool:
@@ -103,6 +108,22 @@ class V1Mixin:
         if best:
             return handler._require_permission(best)
         return True
+
+    @classmethod
+    def _server_import_store(cls, srv: Any):
+        """Return the import store attached to a server instance (lazily).
+
+        The store persists committed sessions to the server's ledger path
+        (``srv._import_store_path``, default: memory-only) so a restart with
+        the same path restores the committed-session records (debt D3a).
+        """
+        store = getattr(srv, "_import_store", None)
+        if store is None:
+            from integrations.michi_link.import_store import ImportStore
+            path = getattr(srv, "_import_store_path", None)
+            store = ImportStore(db_path=path)
+            srv._import_store = store
+        return store
 
     # ── GET /api/v1/* ──
 
@@ -236,6 +257,90 @@ class V1Mixin:
                 delta.setdefault("cursor", str(since))
             handler._send_json(delta)
 
+        # ── Playlists (readback for RemoteLibraryService) ──
+        elif path == "/api/v1/playlists":
+            if not cls._check_v1_permission(handler, "GET", path):
+                return
+            if srv is None or srv._db is None:
+                return _send_v1_error(handler, "LIBRARY_UNAVAILABLE", "No library", 503)
+            playlists = []
+            try:
+                for row in srv._db.get_playlists():
+                    playlists.append({
+                        "playlist_id": f"pl_{row.get('id', '')}",
+                        "name": row.get("name", ""),
+                        "track_count": int(row.get("track_count", 0) or 0),
+                    })
+            except Exception as exc:
+                logger.warning("Playlist readback failed: %s", exc)
+                return _send_v1_error(handler, "PLAYLISTS_UNAVAILABLE",
+                                      "Playlists not available", 503)
+            handler._send_json({"playlists": playlists,
+                                "total": len(playlists)})
+
+        # ── Import readback (server-side import store) ──
+        elif path == "/api/v1/import/session/status":
+            if not cls._check_v1_permission(handler, "GET", path):
+                return
+            if srv is None:
+                return _send_v1_error(handler, "SERVER_NOT_READY", "Server not ready", 503)
+            qs = urllib.parse.parse_qs(
+                handler.path.split("?")[1] if "?" in handler.path else "")
+            session_id = (qs.get("session_id") or [""])[0]
+            if not session_id:
+                return _send_v1_error(handler, "MISSING_PARAM",
+                                      "Missing session_id parameter", 400)
+            store = cls._server_import_store(srv)
+            session = store.get(session_id)
+            if session is None:
+                return _send_v1_error(handler, "SESSION_NOT_FOUND",
+                                      "No such import session", 404)
+            handler._send_json(session.to_public_dict())
+
+        elif path == "/api/v1/import/track/info":
+            if not cls._check_v1_permission(handler, "GET", path):
+                return
+            if srv is None:
+                return _send_v1_error(handler, "SERVER_NOT_READY", "Server not ready", 503)
+            qs = urllib.parse.parse_qs(
+                handler.path.split("?")[1] if "?" in handler.path else "")
+            session_id = (qs.get("session_id") or [""])[0]
+            track_id = (qs.get("track_id") or [""])[0]
+            if not track_id:
+                return _send_v1_error(handler, "MISSING_PARAM",
+                                      "Missing track_id parameter", 400)
+            store = cls._server_import_store(srv)
+            info = store.track_info(session_id, track_id)
+            if info is None:
+                return _send_v1_error(handler, "TRACK_NOT_FOUND",
+                                      "Track not in import session", 404)
+            handler._send_json(info)
+
+        elif path.startswith("/api/v1/import/track/stream"):
+            if not cls._check_v1_permission(handler, "GET", "/api/v1/import/track/stream"):
+                return
+            if srv is None:
+                return _send_v1_error(handler, "SERVER_NOT_READY", "Server not ready", 503)
+            qs = urllib.parse.parse_qs(
+                handler.path.split("?")[1] if "?" in handler.path else "")
+            session_id = (qs.get("session_id") or [""])[0]
+            track_id = (qs.get("track_id") or [""])[0]
+            if not track_id:
+                return _send_v1_error(handler, "MISSING_PARAM",
+                                      "Missing track_id parameter", 400)
+            store = cls._server_import_store(srv)
+            track = store.track_data(session_id, track_id)
+            if track is None:
+                return _send_v1_error(handler, "TRACK_NOT_FOUND",
+                                      "Track not in import session", 404)
+            handler.send_response(200)
+            handler.send_header("Content-Type", "application/octet-stream")
+            handler.send_header("Content-Length", str(track.size))
+            handler.send_header("X-Checksum", track.checksum)
+            handler.send_header("Access-Control-Allow-Origin", "*")
+            handler.end_headers()
+            handler.wfile.write(track.data)
+
         # ── Playback ──
         elif path == "/api/v1/playback/state":
             if not cls._check_v1_permission(handler, "GET", path):
@@ -348,13 +453,27 @@ class V1Mixin:
             handler: Mounted HTTP request handler.
         """
         path = handler.path.split("?")[0].rstrip("/")
-        body = handler._read_body()
+        content_type = handler.headers.get("Content-Type", "")
+        if "octet-stream" in content_type:
+            # Binary endpoints (track/artwork upload) need the raw bytes;
+            # the decoded JSON body is empty for them.
+            body = ""
+            handler._raw_body = handler._read_body_bytes()
+        else:
+            body = handler._read_body()
+            handler._raw_body = b""
         srv = handler.server_ref
 
         if path == "/api/v1/pair/start":
             cls._handle_pair_start(handler, srv)
         elif path == "/api/v1/pair/confirm":
             cls._handle_pair_confirm(handler, srv, body)
+        elif path == "/api/v1/pair/challenge":
+            cls._handle_pair_challenge(handler, srv, body)
+        elif path == "/api/v1/pair/request":
+            cls._handle_pair_request(handler, srv, body)
+        elif path == "/api/v1/pair/code":
+            cls._handle_pair_code(handler, srv, body)
         elif path == "/api/v1/sync/state":
             if not cls._check_v1_permission(handler, "POST", path):
                 return
@@ -375,6 +494,34 @@ class V1Mixin:
             if not cls._check_v1_permission(handler, "POST", path):
                 return
             cls._handle_queue_transfer(handler, body, srv)
+        elif path == "/api/v1/import/preflight":
+            if not cls._check_v1_permission(handler, "POST", path):
+                return
+            cls._handle_import_preflight(handler, srv, body)
+        elif path == "/api/v1/import/session/create":
+            if not cls._check_v1_permission(handler, "POST", path):
+                return
+            cls._handle_import_session_create(handler, srv, body)
+        elif path == "/api/v1/import/track/upload":
+            if not cls._check_v1_permission(handler, "POST", path):
+                return
+            cls._handle_import_track_upload(handler, srv)
+        elif path == "/api/v1/import/track/artwork":
+            if not cls._check_v1_permission(handler, "POST", path):
+                return
+            cls._handle_import_artwork_upload(handler, srv)
+        elif path == "/api/v1/import/playlists/upload":
+            if not cls._check_v1_permission(handler, "POST", path):
+                return
+            cls._handle_import_playlist_upload(handler, srv, body)
+        elif path == "/api/v1/import/session/commit":
+            if not cls._check_v1_permission(handler, "POST", path):
+                return
+            cls._handle_import_commit(handler, srv, body)
+        elif path == "/api/v1/import/session/rollback":
+            if not cls._check_v1_permission(handler, "POST", path):
+                return
+            cls._handle_import_rollback(handler, srv, body)
         elif path == "/api/v1/token/refresh":
             _send_v1_error(handler, "NOT_IMPLEMENTED",
                            "Token refresh is not implemented by this server.", 501)
@@ -450,7 +597,10 @@ class V1Mixin:
             "sync.read_manifest", "sync.upload_state",
             "playback.read", "playback.control",
             "queue.read", "queue.write",
+            "import.read", "import.write", "artwork.write",
         ]
+        if registry:
+            registry.update_permissions(client_id, default_perms)
         resp = V1PairConfirmResponse(
             success=True, device_id=client_id, device_token=token_str,
             permissions=default_perms, server_device_id=server_id,
@@ -459,6 +609,404 @@ class V1Mixin:
         if srv:
             srv.client_connected.emit(client_id)
         handler._send_json(json.loads(resp.to_json()))
+
+    # ── Pair via one-time code (MobileSyncService QR flow) ──
+
+    @classmethod
+    def _handle_pair_challenge(cls, handler, srv, body):
+        """Fetch the one-time nonce for a pairing session (signature flow).
+
+        The mobile app scans the QR payload, then asks for the challenge to
+        sign. The nonce is single-use: reusing it is rejected as
+        NONCE_REUSED by the server.
+        """
+        client_ip = handler.client_address[0]
+        if not handler._check_rate_limit(client_ip):
+            return _send_v1_error(handler, "RATE_LIMITED",
+                                  "Too many attempts, try later", 429)
+        try:
+            data = json.loads(body)
+        except Exception:
+            return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
+        pairing = cls._pairing_service
+        if pairing is None:
+            return _send_v1_error(handler, "PAIRING_UNAVAILABLE",
+                                  "Pairing service not mounted", 503)
+        session_id = data.get("session_id", "")
+        if not session_id:
+            return _send_v1_error(handler, "MISSING_PARAM",
+                                  "session_id is required", 400)
+        result = pairing.get_pairing_challenge(session_id)
+        if not result.get("ok"):
+            return _send_v1_error(handler, "PAIR_CHALLENGE_REJECTED",
+                                  result.get("error", "PAIRING_REJECTED"), 403)
+        handler._send_json({"ok": True, "session_id": session_id,
+                            "nonce": result.get("nonce", ""),
+                            "challenge": result.get("challenge", "")})
+
+    @classmethod
+    def _handle_pair_request(cls, handler, srv, body):
+        """Complete pairing with a real signature proof (no code needed).
+
+        The device signs ``protocol_version|session_id|nonce|fingerprint|
+        device_id`` with its private key. The server verifies the signature,
+        derives the fingerprint from the public key material, and creates the
+        device as ``awaiting_approval`` — trust requires explicit desktop
+        approval (``approve_device``).
+        """
+        client_ip = handler.client_address[0]
+        if not handler._check_rate_limit(client_ip):
+            return _send_v1_error(handler, "RATE_LIMITED",
+                                  "Too many attempts, try later", 429)
+        try:
+            data = json.loads(body)
+        except Exception:
+            return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
+        pairing = cls._pairing_service
+        if pairing is None:
+            return _send_v1_error(handler, "PAIRING_UNAVAILABLE",
+                                  "Pairing service not mounted", 503)
+        result = pairing.pair_request(
+            session_id=data.get("session_id", ""),
+            nonce=data.get("nonce", ""),
+            public_key=data.get("public_key", ""),
+            signature=data.get("signature", ""),
+            device_id=data.get("device_id", ""),
+            name=data.get("name", ""),
+            fingerprint=data.get("fingerprint", ""),
+            protocol_version=data.get("protocol_version", "1.0"),
+            ip=client_ip,
+        )
+        if not result.get("ok"):
+            return _send_v1_error(handler, "PAIR_REQUEST_REJECTED",
+                                  result.get("error", "PAIRING_REJECTED"), 403)
+        handler._send_json({"ok": True, "device_id": result.get("device_id"),
+                            "device_name": result.get("device_name"),
+                            "fingerprint": result.get("fingerprint"),
+                            "status": result.get("status", "awaiting_approval")})
+
+    @classmethod
+    def _handle_pair_code(cls, handler, srv, body):
+        """Complete a MobileSyncService pairing session over the wire.
+
+        The mobile app scans the QR payload, then POSTs the session id +
+        code (plus device identity and, when available, a real signature
+        proving possession of the device private key). Code-only pairing is
+        accepted only when the legacy code pairing mode is enabled; it never
+        auto-trusts the device. On success the server issues a persistent
+        device token like pair/confirm does.
+        """
+        client_ip = handler.client_address[0]
+        if not handler._check_rate_limit(client_ip):
+            return _send_v1_error(handler, "RATE_LIMITED",
+                                  "Too many attempts, try later", 429)
+        try:
+            data = json.loads(body)
+        except Exception:
+            return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
+        pairing = cls._pairing_service
+        if pairing is None:
+            return _send_v1_error(handler, "PAIRING_UNAVAILABLE",
+                                  "Pairing service not mounted", 503)
+        session_id = data.get("session_id", "")
+        code = data.get("code", "")
+        if not session_id or not code:
+            return _send_v1_error(handler, "MISSING_PARAM",
+                                  "session_id and code are required", 400)
+        result = pairing.verify_pairing(
+            session_id, code,
+            device_name=data.get("name", ""),
+            device_id=data.get("device_id", ""),
+            public_key=data.get("public_key", ""),
+            fingerprint=data.get("fingerprint", ""),
+            signature=data.get("signature", ""),
+            protocol_version=data.get("protocol_version", "1.0"),
+            ip=client_ip,
+        )
+        if not result.get("ok"):
+            return _send_v1_error(handler, "PAIR_CODE_REJECTED",
+                                  result.get("error", "PAIRING_REJECTED"), 403)
+        if srv is None:
+            return _send_v1_error(handler, "SERVER_NOT_READY", "Server not ready", 503)
+        client_id = result.get("device_id", "")
+        registry = srv._device_registry
+        if registry and not registry.get(client_id):
+            registry.register(
+                device_id=client_id,
+                name=result.get("device_name", client_id),
+                host=client_ip,
+                port=0,
+                device_type="mobile",
+            )
+        if result.get("status") == "awaiting_approval":
+            # No API token before explicit user approval: an unverified
+            # device must not get sync credentials.
+            handler._send_json({"ok": True, "status": "awaiting_approval",
+                                "device_id": client_id,
+                                "device_token": ""})
+            return
+        token_str = secrets.token_hex(32)
+        if registry:
+            registry.set_token(client_id, token_str)
+        session = SessionToken(
+            token=token_str, device_alias=client_id, client_device_id=client_id,
+        )
+        with srv._sessions_lock:
+            srv._sessions[token_str] = session
+        granted_perms = [
+            "library.read", "stream.read", "artwork.read",
+            "sync.read_manifest", "sync.upload_state",
+            "playback.read", "playback.control",
+            "queue.read", "queue.write",
+            "import.read", "import.write", "artwork.write",
+        ]
+        if registry:
+            registry.update_permissions(client_id, granted_perms)
+        resp = V1PairConfirmResponse(
+            success=True, device_id=client_id, device_token=token_str,
+            permissions=granted_perms,
+            server_device_id=make_device_id(),
+            server_alias=srv._alias if srv else "Michi Music Player",
+        )
+        if srv:
+            srv.client_connected.emit(client_id)
+        handler._send_json(json.loads(resp.to_json()))
+
+    # ── Import endpoints (server-side import store) ──
+
+    @staticmethod
+    def _identity_matches_server_item(identity: dict, item: Any) -> bool:
+        """Match a preflight identity against a server library item."""
+        size = int(identity.get("file_size") or 0)
+        duration_ms = float(identity.get("duration_ms") or 0)
+        title = (identity.get("title") or "").strip().lower()
+        artist = (identity.get("artist") or "").strip().lower()
+        if size and int(getattr(item, "size", 0) or 0) == size:
+            item_duration = float(getattr(item, "duration", 0) or 0) * 1000.0
+            if duration_ms and abs(item_duration - duration_ms) < 2000:
+                item_title = (getattr(item, "title", "") or "").strip().lower()
+                item_artist = (getattr(item, "artist", "") or "").strip().lower()
+                if title and artist and item_title == title and item_artist == artist:
+                    return True
+        filepath = getattr(item, "filepath", "")
+        if not filepath or not os.path.isfile(filepath):
+            return False
+        import hashlib
+        quick = identity.get("quick_hash") or ""
+        if not quick:
+            return False
+        h = hashlib.sha256()
+        try:
+            with open(filepath, "rb") as f:
+                for _ in range(64):
+                    chunk = f.read(1024)
+                    if not chunk:
+                        break
+                    h.update(chunk)
+        except OSError:
+            return False
+        return h.hexdigest()[:32] == quick
+
+    @classmethod
+    def _handle_import_preflight(cls, handler, srv, body):
+        if srv is None or srv._db is None:
+            return _send_v1_error(handler, "LIBRARY_UNAVAILABLE", "No library", 503)
+        try:
+            data = json.loads(body)
+        except Exception:
+            return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
+        identities = data.get("tracks", [])
+        items = srv._db.get_all()
+        results = []
+        for identity in identities:
+            lid = identity.get("local_track_id", "")
+            matched = any(
+                cls._identity_matches_server_item(identity, item)
+                for item in items
+            )
+            results.append({
+                "michi_track_id": lid,
+                "local_track_id": lid,
+                "content_hash": identity.get("content_hash", ""),
+                "quick_hash": identity.get("quick_hash", ""),
+                "exists": matched,
+                "status": "exists" if matched else "missing",
+                "server_track_id": "",
+            })
+        handler._send_json({"results": results, "checked": len(identities)})
+
+    @classmethod
+    def _handle_import_session_create(cls, handler, srv, body):
+        if srv is None:
+            return _send_v1_error(handler, "SERVER_NOT_READY", "Server not ready", 503)
+        try:
+            data = json.loads(body)
+        except Exception:
+            return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
+        store = cls._server_import_store(srv)
+        session = store.create_session(source=data.get("source", "michi-music-player"))
+        handler._send_json({
+            "session_id": session.session_id,
+            "created_at": session.created_at,
+            "expires_at": session.expires_at,
+            "state": session.state,
+        })
+
+    @classmethod
+    def _handle_import_track_upload(cls, handler, srv):
+        if srv is None:
+            return _send_v1_error(handler, "SERVER_NOT_READY", "Server not ready", 503)
+        session_id = handler.headers.get("X-Import-Session-Id", "")
+        track_id = handler.headers.get("X-Track-Id", "")
+        if not session_id or not track_id:
+            return _send_v1_error(handler, "MISSING_HEADERS",
+                                  "X-Import-Session-Id and X-Track-Id required", 400)
+        data = getattr(handler, "_raw_body", b"") or b""
+        if not data:
+            return _send_v1_error(handler, "EMPTY_UPLOAD", "Empty body", 400)
+        import hashlib
+        received_checksum = hashlib.sha256(data).hexdigest()
+        declared_checksum = handler.headers.get("X-Checksum", "")
+        if declared_checksum and declared_checksum != received_checksum:
+            return _send_v1_error(handler, "CHECKSUM_MISMATCH",
+                                  "X-Checksum does not match uploaded bytes", 422)
+        store = cls._server_import_store(srv)
+        stored = store.add_track(
+            session_id, track_id, data,
+            checksum=received_checksum,
+            filename=handler.headers.get("X-Filename", ""),
+        )
+        if stored is None:
+            return _send_v1_error(handler, "SESSION_NOT_FOUND",
+                                  "Session missing, expired or not pending", 404)
+        handler._send_json({
+            "server_track_id": f"{session_id}:{track_id}",
+            "michi_track_id": track_id,
+            "checksum": stored.checksum,
+            "size": stored.size,
+            "stored": True,
+        })
+
+    @classmethod
+    def _handle_import_artwork_upload(cls, handler, srv):
+        if srv is None:
+            return _send_v1_error(handler, "SERVER_NOT_READY", "Server not ready", 503)
+        session_id = handler.headers.get("X-Import-Session-Id", "")
+        cover_id = handler.headers.get("X-Cover-Id", "")
+        if not session_id or not cover_id:
+            return _send_v1_error(handler, "MISSING_HEADERS",
+                                  "X-Import-Session-Id and X-Cover-Id required", 400)
+        data = getattr(handler, "_raw_body", b"") or b""
+        if not data:
+            return _send_v1_error(handler, "EMPTY_UPLOAD", "Empty body", 400)
+        import hashlib
+        received_checksum = hashlib.sha256(data).hexdigest()
+        declared_checksum = handler.headers.get("X-Checksum", "")
+        if declared_checksum and declared_checksum != received_checksum:
+            return _send_v1_error(handler, "CHECKSUM_MISMATCH",
+                                  "X-Checksum does not match uploaded bytes", 422)
+        store = cls._server_import_store(srv)
+        stored = store.add_artwork(session_id, cover_id, data,
+                                   checksum=received_checksum)
+        if stored is None:
+            return _send_v1_error(handler, "SESSION_NOT_FOUND",
+                                  "Session missing, expired or not pending", 404)
+        handler._send_json({
+            "cover_id": cover_id, "checksum": stored.checksum,
+            "size": stored.size, "stored": True,
+        })
+
+    @classmethod
+    def _handle_import_playlist_upload(cls, handler, srv, body):
+        if srv is None:
+            return _send_v1_error(handler, "SERVER_NOT_READY", "Server not ready", 503)
+        try:
+            data = json.loads(body)
+        except Exception:
+            return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
+        session_id = data.get("session_id", "")
+        playlist_id = data.get("playlist_id", "")
+        if not session_id or not playlist_id:
+            return _send_v1_error(handler, "MISSING_PARAM",
+                                  "session_id and playlist_id are required", 400)
+        store = cls._server_import_store(srv)
+        stored = store.add_playlist(
+            session_id, playlist_id, data.get("name", ""),
+            data.get("track_ids", []),
+        )
+        if stored is None:
+            return _send_v1_error(handler, "SESSION_NOT_FOUND",
+                                  "Session missing, expired or not pending", 404)
+        handler._send_json({
+            "playlist_id": playlist_id,
+            "name": stored.name,
+            "track_count": len(stored.track_ids),
+            "stored": True,
+        })
+
+    @classmethod
+    def _handle_import_commit(cls, handler, srv, body):
+        if srv is None:
+            return _send_v1_error(handler, "SERVER_NOT_READY", "Server not ready", 503)
+        try:
+            data = json.loads(body)
+        except Exception:
+            return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
+        session_id = data.get("session_id", "")
+        if not session_id:
+            return _send_v1_error(handler, "MISSING_PARAM",
+                                  "Missing session_id parameter", 400)
+        store = cls._server_import_store(srv)
+        session = store.get(session_id)
+        if session is None:
+            return _send_v1_error(handler, "SESSION_NOT_FOUND",
+                                  "No such import session", 404)
+        if session.state == "expired":
+            return _send_v1_error(handler, "SESSION_EXPIRED",
+                                  "Import session expired", 410)
+        if session.state != "pending":
+            return _send_v1_error(handler, "SESSION_NOT_PENDING",
+                                  f"Session is {session.state}", 409)
+        if not session.tracks:
+            return _send_v1_error(handler, "NO_TRACKS",
+                                  "Cannot commit a session without tracks", 400)
+        committed = store.commit(session_id)
+        mapping = [
+            {"michi_track_id": tid, "server_track_id": f"{session_id}:{tid}"}
+            for tid in committed.tracks
+        ]
+        handler._send_json({
+            "session_id": session_id,
+            "state": "committed",
+            "mapping": mapping,
+            "uploaded": len(committed.tracks),
+            "artwork": len(committed.artwork),
+            "playlists": len(committed.playlists),
+            "committed_at": committed.committed_at,
+        })
+
+    @classmethod
+    def _handle_import_rollback(cls, handler, srv, body):
+        if srv is None:
+            return _send_v1_error(handler, "SERVER_NOT_READY", "Server not ready", 503)
+        try:
+            data = json.loads(body)
+        except Exception:
+            return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
+        session_id = data.get("session_id", "")
+        if not session_id:
+            return _send_v1_error(handler, "MISSING_PARAM",
+                                  "Missing session_id parameter", 400)
+        store = cls._server_import_store(srv)
+        session = store.get(session_id)
+        if session is None:
+            return _send_v1_error(handler, "SESSION_NOT_FOUND",
+                                  "No such import session", 404)
+        if session.state == "committed":
+            return _send_v1_error(handler, "SESSION_COMMITTED",
+                                  "Cannot roll back a committed session", 409)
+        store.rollback(session_id)
+        handler._send_json({"session_id": session_id, "state": "rolled_back"})
 
     # ── Sync state ──
 

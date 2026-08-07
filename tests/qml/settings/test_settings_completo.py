@@ -19,6 +19,19 @@ from ui_qml_bridge.theme_bridge import ThemeBridge
 pytestmark = [pytest.mark.qml_module("settings")]
 
 
+class _FakeSettings:
+    """In-memory QSettings-like backend for service persistence tests."""
+
+    def __init__(self, initial: dict | None = None):
+        self._data = dict(initial or {})
+
+    def value(self, key, default=None):
+        return self._data.get(key, default)
+
+    def setValue(self, key, value):
+        self._data[key] = value
+
+
 @pytest.fixture
 def coordinator():
     c = SettingsRuntimeCoordinator(player_service=MagicMock())
@@ -166,7 +179,8 @@ class TestValidation:
 
 class TestAdapters:
     def test_theme_adapter_applies(self):
-        bridge = ThemeBridge(coordinator=MagicMock())
+        from core.theme_service import ThemeService
+        bridge = ThemeBridge(service=ThemeService(settings=_FakeSettings()))
         a = ThemeSettingsAdapter(theme_bridge=bridge)
         r = a.apply("appearance/theme", "dark")
         assert r.ok
@@ -233,7 +247,10 @@ class TestAdapters:
         assert r.ok
 
     def test_accessibility_adapter_applies(self):
-        bridge = AccessibilityBridge(playback_service=MagicMock())
+        from core.accessibility_service import AccessibilityService
+        bridge = AccessibilityBridge(
+            service=AccessibilityService(settings=_FakeSettings()),
+            playback_service=MagicMock())
         a = AccessibilitySettingsAdapter(accessibility_bridge=bridge)
         r = a.apply("accessibility/high_contrast", True)
         assert r.ok
@@ -423,6 +440,15 @@ class TestOutputProfiles:
 
 
 class TestTheme:
+    @staticmethod
+    def _bridge():
+        from core.accessibility_service import AccessibilityService
+        from core.theme_service import ThemeService
+        return ThemeBridge(
+            service=ThemeService(settings=_FakeSettings()),
+            accessibility_service=AccessibilityService(settings=_FakeSettings()),
+        )
+
     def test_theme_bridge_has_dark_mode(self):
         from ui_qml_bridge.theme_bridge import ThemeBridge
         b = ThemeBridge()
@@ -449,89 +475,82 @@ class TestTheme:
         assert b.fontScale
 
     def test_theme_bridge_theme_setter(self):
-        from ui_qml_bridge.theme_bridge import ThemeBridge
-        b = ThemeBridge()
+        b = self._bridge()
         b.theme = "light"
         assert b.theme == "light"
         assert not b.darkMode
 
     def test_theme_bridge_dark_mode_setter(self):
-        from ui_qml_bridge.theme_bridge import ThemeBridge
-        b = ThemeBridge()
+        b = self._bridge()
         b.darkMode = True
         assert b.darkMode
 
     def test_theme_bridge_accent_color_setter(self):
-        from ui_qml_bridge.theme_bridge import ThemeBridge
-        b = ThemeBridge()
+        b = self._bridge()
         b.accentColor = "#FF0000"
         assert b.accentColor == "#FF0000"
 
     def test_theme_bridge_reduce_motion_setter(self):
-        from ui_qml_bridge.theme_bridge import ThemeBridge
-        b = ThemeBridge()
+        b = self._bridge()
         b.reducedMotion = True
         assert b.reducedMotion
 
     def test_theme_bridge_high_contrast_setter(self):
-        from ui_qml_bridge.theme_bridge import ThemeBridge
-        b = ThemeBridge()
+        b = self._bridge()
         b.highContrast = True
         assert b.highContrast
 
 
 class TestAccessibilityGlobal:
+    @staticmethod
+    def _bridge(playback=None):
+        from core.accessibility_service import AccessibilityService
+        return AccessibilityBridge(
+            service=AccessibilityService(settings=_FakeSettings()),
+            playback_service=playback or MagicMock(),
+        )
+
     def test_accessibility_bridge_font_scale(self):
-        from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
-        b = AccessibilityBridge()
+        b = self._bridge()
         assert b.fontScale
 
     def test_accessibility_bridge_high_contrast(self):
-        from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
-        b = AccessibilityBridge()
+        b = self._bridge()
         assert hasattr(b, 'highContrast')
 
     def test_accessibility_bridge_reduce_motion(self):
-        from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
-        b = AccessibilityBridge()
+        b = self._bridge()
         assert hasattr(b, 'reduceMotion')
 
     def test_accessibility_bridge_focus_indicators(self):
-        from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
-        b = AccessibilityBridge()
+        b = self._bridge()
         assert hasattr(b, 'focusIndicators')
 
     def test_accessibility_bridge_mono(self):
-        from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
-        b = AccessibilityBridge()
+        b = self._bridge()
         assert hasattr(b, 'mono')
 
     def test_accessibility_bridge_balance(self):
-        from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
-        b = AccessibilityBridge()
+        b = self._bridge()
         assert hasattr(b, 'balance')
 
     def test_accessibility_bridge_restore_on_error(self):
-        from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
-        b = AccessibilityBridge()
+        b = self._bridge()
         r = b.restoreOnError()
         assert r["ok"]
 
     def test_accessibility_bridge_score(self):
-        from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
-        b = AccessibilityBridge()
+        b = self._bridge()
         score = b.accessibilityScore()
         assert "score" in score
         assert 0 <= score["score"] <= 100
 
     def test_accessibility_bridge_mono_setter_applies(self):
-        from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
-        b = AccessibilityBridge(playback_service=MagicMock())
+        b = self._bridge()
         b.mono = True
         assert b.mono
 
     def test_accessibility_bridge_font_scale_setter(self):
-        from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
-        b = AccessibilityBridge()
+        b = self._bridge()
         b.fontScale = 1.5
         assert b.fontScale == 1.5

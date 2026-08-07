@@ -13,7 +13,8 @@ def build(container: ServiceContainer) -> None:
     db = container.get("database")
 
     from core.audio_lab.audio_lab_service import AudioLabService
-    als = AudioLabService(db=db, worker_manager=wm)
+    als = AudioLabService(db=db, worker_manager=wm,
+                          job_service=container.get("job_service"))
     if hasattr(als, 'setup') and callable(als.setup):
         try:
             als.setup()

@@ -1,8 +1,10 @@
-"""Michi Micro Server client — Player as client to a remote Micro Server.
+# LEGACY: deprecated variant — see ADR-002 single domain authority
+"""LEGACY: Michi Micro Server client — Player as client to a remote Micro Server.
 
-Phase 2 (next): Player discovers, pairs, and reads library from Micro Server.
-Phase 3 (future): Player sends tracks/playlists to Micro Server for playback.
-This module is a stub ready for Phase 2. Do not connect to UI yet.
+Deprecated by ADR-002 (single domain authority): the canonical
+``integrations/michi_link/services/micro_server_service.py`` (advanced stack,
+Result-based) is the productive implementation. This stub kept only for
+compatibility; never registered in the composition.
 """
 from __future__ import annotations
 
@@ -15,7 +17,11 @@ logger = logging.getLogger("michi.link.micro_client")
 
 
 class MicroServerClient:
-    """Client for discovering, pairing, and consuming a Michi Micro Server."""
+    """LEGACY MicroServerClient (deprecated stub) — use
+    ``integrations.michi_link.services.MicroServerService`` instead.
+
+    Deprecated since Slice 7 (ADR-002 single domain authority).
+    """
 
     def __init__(self):
         self._client = MichiLinkClient()

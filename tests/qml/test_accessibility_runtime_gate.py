@@ -1,20 +1,35 @@
 """Accessibility runtime gate tests — verifies Accessible properties, keyboard, focus, contrast, motion, scale."""
-from unittest.mock import MagicMock
 
 import pytest
 
+from core.accessibility_service import AccessibilityService
+from core.theme_service import ThemeService
 from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
 from ui_qml_bridge.theme_bridge import ThemeBridge
 
 
+class _FakeSettings:
+    def __init__(self):
+        self._data = {}
+
+    def value(self, key, default=None):
+        return self._data.get(key, default)
+
+    def setValue(self, key, value):
+        self._data[key] = value
+
+
 @pytest.fixture
 def bridge():
-    return AccessibilityBridge(service=None, coordinator=None)
+    return AccessibilityBridge(service=AccessibilityService(settings=_FakeSettings()))
 
 
 @pytest.fixture
 def theme():
-    return ThemeBridge(coordinator=MagicMock())
+    return ThemeBridge(
+        service=ThemeService(settings=_FakeSettings()),
+        accessibility_service=AccessibilityService(settings=_FakeSettings()),
+    )
 
 
 class TestAccessibilityBridgeProperties:

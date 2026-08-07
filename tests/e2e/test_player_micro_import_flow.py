@@ -114,7 +114,29 @@ def _make_continue_mock(ok: bool = True):
             m.read.return_value.decode.return_value = json.dumps({"ok": True})
         else:
             m.read.return_value.decode.return_value = json.dumps({"ok": True})
-        return MagicMock(__enter__=lambda x: m)
+        return MagicMock(__enter__=lambda x, _m=m: _m)
+    return side
+
+
+def _json_urlopen(url_map):
+    """Side effect for urllib.request.urlopen responding per URL substring.
+
+    url_map: {substring: json-payload-or-exception}. Responses are JSON dicts.
+    """
+    import json
+    from unittest.mock import MagicMock
+
+    def side(req, *args, **kwargs):
+        url = req.get_full_url() if hasattr(req, "get_full_url") else str(req)
+        for key, payload in url_map.items():
+            if key in url:
+                if isinstance(payload, Exception):
+                    raise payload
+                m = MagicMock()
+                m.status = 200
+                m.read.return_value = json.dumps(payload).encode()
+                return MagicMock(__enter__=lambda x, _m=m: _m)
+        raise AssertionError(f"Unexpected URL in import e2e mock: {url}")
     return side
 
 
@@ -124,24 +146,35 @@ class TestImportToServerService:
             ImportToServerService,
         )
         svc = ImportToServerService()
-        result = svc.create_session(_make_server(), ["t1", "t2", "t3"])
-        assert result.ok
-        assert result.data["total_tracks"] == 3
-        assert result.data["session_id"] != ""
+        with patch("urllib.request.urlopen", side_effect=_json_urlopen({
+            "import/session/create": {"session_id": "sess_01",
+                                      "expires_at": 9999999999,
+                                      "state": "pending"},
+        })):
+            result = svc.create_session(_make_server(), ["t1", "t2", "t3"])
+            assert result.ok
+            assert result.data["total_tracks"] == 3
+            assert result.data["session_id"] == "sess_01"
+            assert result.data["server_created"] is True
 
     def _upload_mock(self, body=None):
         """Create a mock response that returns JSON for upload."""
         m = MagicMock()
         m.read.return_value.decode.return_value = json.dumps(
             body or {"remote_track_id": "rt1"})
-        return MagicMock(__enter__=lambda x: m)
+        return MagicMock(__enter__=lambda x, _m=m: _m)
 
     def test_upload_track(self):
         from integrations.michi_link.services.import_to_server_service import (
             ImportToServerService,
         )
         svc = ImportToServerService()
-        r1 = svc.create_session(_make_server(), ["t1"])
+        with patch("urllib.request.urlopen", side_effect=_json_urlopen({
+            "import/session/create": {"session_id": "sess_01",
+                                      "expires_at": 9999999999,
+                                      "state": "pending"},
+        })):
+            r1 = svc.create_session(_make_server(), ["t1"])
         sid = r1.data["session_id"]
         with patch("urllib.request.urlopen", return_value=self._upload_mock()):
             r2 = svc.upload_track(sid, "t1", local_data=b"fake_audio_data")
@@ -159,7 +192,12 @@ class TestImportToServerService:
             local = f.name
         try:
             svc = ImportToServerService()
-            r1 = svc.create_session(_make_server(), ["t1"])
+            with patch("urllib.request.urlopen", side_effect=_json_urlopen({
+                "import/session/create": {"session_id": "sess_01",
+                                          "expires_at": 9999999999,
+                                          "state": "pending"},
+            })):
+                r1 = svc.create_session(_make_server(), ["t1"])
             sid = r1.data["session_id"]
             with patch("urllib.request.urlopen", return_value=self._upload_mock()):
                 r2 = svc.upload_track(sid, "t1", local_filepath=local)
@@ -187,11 +225,24 @@ class TestImportToServerService:
             f.write(b"fake_art")
             art_path = f.name
         try:
+            import hashlib
+            real_checksum = hashlib.sha256(b"fake_art").hexdigest()
             svc = ImportToServerService()
-            r1 = svc.create_session(_make_server(), ["t1"])
+            with patch("urllib.request.urlopen", side_effect=_json_urlopen({
+                "import/session/create": {"session_id": "sess_01",
+                                          "expires_at": 9999999999,
+                                          "state": "pending"},
+            })):
+                r1 = svc.create_session(_make_server(), ["t1"])
             sid = r1.data["session_id"]
-            result = svc.upload_artwork(sid, "cover_abc", artwork_path=art_path)
+            with patch("urllib.request.urlopen", side_effect=_json_urlopen({
+                "import/track/artwork": {"cover_id": "cover_abc",
+                                         "checksum": real_checksum,
+                                         "size": 8, "stored": True},
+            })):
+                result = svc.upload_artwork(sid, "cover_abc", artwork_path=art_path)
             assert result.ok
+            assert result.data["cover_id"] == "cover_abc"
         finally:
             os.unlink(art_path)
 
@@ -200,38 +251,67 @@ class TestImportToServerService:
             ImportToServerService,
         )
         svc = ImportToServerService()
-        r1 = svc.create_session(_make_server(), ["t1"])
+        with patch("urllib.request.urlopen", side_effect=_json_urlopen({
+            "import/session/create": {"session_id": "sess_01",
+                                      "expires_at": 9999999999,
+                                      "state": "pending"},
+        })):
+            r1 = svc.create_session(_make_server(), ["t1"])
         sid = r1.data["session_id"]
         playlist = {"playlist_id": "pl_1", "name": "Test", "track_ids": ["t1"]}
-        result = svc.upload_playlist(sid, playlist)
+        with patch("urllib.request.urlopen", side_effect=_json_urlopen({
+            "import/playlists/upload": {"playlist_id": "pl_1", "name": "Test",
+                                        "track_count": 1, "stored": True},
+        })):
+            result = svc.upload_playlist(sid, playlist)
         assert result.ok
+        assert result.data["track_count"] == 1
 
     def test_commit_success(self):
         from integrations.michi_link.services.import_to_server_service import (
             ImportToServerService,
         )
         svc = ImportToServerService()
-        r1 = svc.create_session(_make_server(), ["t1"])
+        with patch("urllib.request.urlopen", side_effect=_json_urlopen({
+            "import/session/create": {"session_id": "sess_01",
+                                      "expires_at": 9999999999,
+                                      "state": "pending"},
+        })):
+            r1 = svc.create_session(_make_server(), ["t1"])
         sid = r1.data["session_id"]
-        with patch("urllib.request.urlopen") as mock_urlopen:
-            mock_resp = MagicMock()
-            mock_resp.read.return_value = b"d"
-            mock_urlopen.return_value.__enter__.return_value = mock_resp
-            # upload reads response body, mock it
-            mock_resp2 = MagicMock()
-            mock_resp2.read.return_value.decode.return_value = json.dumps({"remote_track_id": "rt1"})
-            mock_urlopen.return_value.__enter__.return_value = mock_resp2
-            svc.upload_track(sid, "t1", local_data=b"d")
-        r2 = svc.commit(sid)
-        assert r2.ok
-        assert r2.data["uploaded"] == 1
+        import hashlib as _hl
+        real_track_checksum = _hl.sha256(b"test_audio").hexdigest()
+        with patch("urllib.request.urlopen", side_effect=_json_urlopen({
+            "import/track/upload": {"server_track_id": "rt1",
+                                    "checksum": real_track_checksum},
+        })):
+            up = svc.upload_track(sid, "t1", local_data=b"test_audio")
+            assert up.ok
+        with patch("urllib.request.urlopen", side_effect=_json_urlopen({
+            "import/session/commit": {"session_id": "sess_01",
+                                      "state": "committed",
+                                      "mapping": [{"michi_track_id": "t1",
+                                                   "server_track_id": "rt1"}]},
+            "import/session/status": {"session_id": "sess_01", "state": "committed",
+                                      "uploaded_tracks": 1, "artwork_count": 0,
+                                      "playlist_count": 0},
+        })):
+            r2 = svc.commit(sid)
+            assert r2.ok
+            assert r2.data["uploaded"] == 1
+            assert r2.data["readback_verified"] is True
 
     def test_commit_with_errors(self):
         from integrations.michi_link.services.import_to_server_service import (
             ImportToServerService,
         )
         svc = ImportToServerService()
-        r1 = svc.create_session(_make_server(), ["t1"])
+        with patch("urllib.request.urlopen", side_effect=_json_urlopen({
+            "import/session/create": {"session_id": "sess_01",
+                                      "expires_at": 9999999999,
+                                      "state": "pending"},
+        })):
+            r1 = svc.create_session(_make_server(), ["t1"])
         sid = r1.data["session_id"]
         svc._sessions[sid].errors.append("test error")
         result = svc.commit(sid)
@@ -243,9 +323,18 @@ class TestImportToServerService:
             ImportToServerService,
         )
         svc = ImportToServerService()
-        r1 = svc.create_session(_make_server(), ["t1"])
+        with patch("urllib.request.urlopen", side_effect=_json_urlopen({
+            "import/session/create": {"session_id": "sess_01",
+                                      "expires_at": 9999999999,
+                                      "state": "pending"},
+        })):
+            r1 = svc.create_session(_make_server(), ["t1"])
         sid = r1.data["session_id"]
-        result = svc.rollback(sid)
+        with patch("urllib.request.urlopen", side_effect=_json_urlopen({
+            "import/session/rollback": {"session_id": "sess_01",
+                                        "state": "rolled_back"},
+        })):
+            result = svc.rollback(sid)
         assert result.ok
         assert svc.get_session(sid) is None
 
@@ -254,7 +343,12 @@ class TestImportToServerService:
             ImportToServerService,
         )
         svc = ImportToServerService()
-        r1 = svc.create_session(_make_server(), ["t1"])
+        with patch("urllib.request.urlopen", side_effect=_json_urlopen({
+            "import/session/create": {"session_id": "sess_01",
+                                      "expires_at": 9999999999,
+                                      "state": "pending"},
+        })):
+            r1 = svc.create_session(_make_server(), ["t1"])
         sid = r1.data["session_id"]
         result = svc.status(sid)
         assert result.ok
@@ -412,9 +506,9 @@ class TestResult:
 class TestDiagnosticsService:
     def test_generates_report(self):
         from integrations.michi_link.services.diagnostics_service import (
-            DiagnosticsService,
+            LinkDiagnosticsService,
         )
-        svc = DiagnosticsService()
+        svc = LinkDiagnosticsService()
         report = svc.generate_report(registry=MagicMock())
         assert "player_api" in report
         assert "sync_server" in report
@@ -429,9 +523,9 @@ class TestDiagnosticsService:
 
     def test_pairing_with_devices(self):
         from integrations.michi_link.services.diagnostics_service import (
-            DiagnosticsService,
+            LinkDiagnosticsService,
         )
-        svc = DiagnosticsService()
+        svc = LinkDiagnosticsService()
         registry = MagicMock()
         dev1 = MagicMock()
         dev1.token_hash = "abc"
@@ -447,18 +541,18 @@ class TestDiagnosticsService:
 
     def test_diagnostics_remote_micro(self):
         from integrations.michi_link.services.diagnostics_service import (
-            DiagnosticsService,
+            LinkDiagnosticsService,
         )
-        svc = DiagnosticsService()
+        svc = LinkDiagnosticsService()
         with patch.object(svc._client, "discover", return_value=None):
             result = svc.check_remote_micro("10.0.0.99")
             assert result["status"] in ("unreachable", "skipped")
 
     def test_continue_readiness_no_queue(self):
         from integrations.michi_link.services.diagnostics_service import (
-            DiagnosticsService,
+            LinkDiagnosticsService,
         )
-        svc = DiagnosticsService()
+        svc = LinkDiagnosticsService()
         ps = MagicMock()
         ps.get_queue.return_value = []
         result = svc.check_continue_readiness(ps)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 from michi_ai.v2.context.context_assembler import ContextAssembler
 from michi_ai.v2.conversation.conversation_service import ConversationService
@@ -21,13 +21,15 @@ from core.assistant_gateways import (
     AssistantGateways,
     ProductionAudioLabGateway, ProductionDeviceGateway,
     ProductionDiagnosticsGateway, ProductionJobGateway,
-    ProductionLibraryGateway, ProductionMixGateway,
-    ProductionNavigationGateway, ProductionPlaybackGateway,
-    ProductionSettingsGateway, UnavailableRadioGateway,
+    ProductionLibraryGateway, ProductionLibraryDoctorGateway,
+    ProductionMixGateway, ProductionNavigationGateway,
+    ProductionPlaybackGateway, ProductionSettingsGateway,
+    UnavailableRadioGateway,
     ProductionPlaylistGateway, ProductionQueueGateway,
 )
 from core.assistant_metadata_gateway import ProductionMetadataGateway
 from core.assistant_context_providers import register_all_context_providers
+from core.assistant_runtime import AssistantRuntime
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +59,8 @@ def _make_gateway(gateway_class_name: str, service: Any) -> Any:
 
 @dataclass(frozen=True)
 class AssistantComposition:
-    core_service: Any  # AssistantCoreService or MichiAIEngine
+    core_service: Any  # MichiAIEngine facade (delegates to the runtime)
+    runtime: AssistantRuntime
     tool_registry: ToolRegistryV2
     capability_resolver: CapabilityResolver
     planner: PlanBuilderV2
@@ -67,7 +70,19 @@ class AssistantComposition:
     conversation_service: ConversationService
     confirmation_policy: ConfirmationPolicyV2
     trace_recorder: TraceRecorder
+    backend_selector: Any
     gateways: AssistantGateways
+
+
+def _s11_library_provider(context_service: Any) -> Callable[[], dict[str, Any]]:
+    """Context provider over the canonical S11 ContextService snapshot."""
+    def _provider() -> dict[str, Any]:
+        try:
+            snap = context_service.snapshot()
+            return (snap or {}).get("library", {"available": False})
+        except Exception:
+            return {"available": False}
+    return _provider
 
 
 def create_assistant_composition(
@@ -90,6 +105,13 @@ def create_assistant_composition(
     library_doctor_service: Any = None,
     track_action_service: Any = None,
     library_query_service: Any = None,
+    device_registry: Any = None,
+    global_search_service: Any = None,
+    metadata_editor_service: Any = None,
+    intent_router: Any = None,
+    confirmation_policy: ConfirmationPolicyV2 | None = None,
+    health_provider: Callable[[str], bool] | None = None,
+    context_service: Any = None,
 ) -> AssistantComposition:
     """Compose the assistant engine, gateways, tools, and context providers.
 
@@ -109,47 +131,64 @@ def create_assistant_composition(
     Returns:
         The fully wired assistant composition.
     """
-    from core.ai_engine import MichiAIEngine
     from core.ai.backend_selector import BackendSelector
     from core.ai.model_manager import ModelManager
 
-    tool_registry = ToolRegistryV2()
     # ONE CapabilityResolver instance is shared across the registry (via
-    # register_builtin_tools), the planner, and the validator. The executor
-    # shares the same tool_registry. Storing these components (instead of
-    # discarding them) keeps the productive V2 pipeline reachable for
-    # diagnostics and extension.
-    capability_resolver = CapabilityResolver()
+    # register_builtin_tools), the planner, the validator, and the executor.
+    # The ToolRegistryV2 is constructed WITH that resolver so that
+    # execution-time capability checks (ToolRegistryV2.execute) reflect
+    # gateway evidence, not merely handler existence. When a health_provider
+    # is supplied (productive container), resolution additionally consults
+    # the container health per backing service (F9).
+    capability_resolver = CapabilityResolver(health_provider=health_provider)
+    tool_registry = ToolRegistryV2(capability_resolver=capability_resolver)
     context_assembler = ContextAssembler()
     conversation_service = ConversationService()
-    confirmation_policy = ConfirmationPolicyV2()
+    confirmation_policy = confirmation_policy or ConfirmationPolicyV2()
     executor = PlanExecutorV2(tool_registry)
     validator = PlanValidator(tool_registry, capability_resolver)
     planner = PlanBuilderV2(tool_registry, capability_resolver)
     trace_recorder = TraceRecorder()
 
+    # Gateways are constructed ONLY when at least one backing service exists;
+    # an unbacked gateway is omitted so its capabilities are never advertised.
     gateways = AssistantGateways(
-        playback=ProductionPlaybackGateway(
-            player_service, queue_service, track_action_service
-        ),
-        queue=ProductionQueueGateway(queue_service, library_query_service),
-        library=ProductionLibraryGateway(library_db),
-        playlists=ProductionPlaylistGateway(playlist_service or library_db),
-        settings=ProductionSettingsGateway(settings_service),
-        audio_lab=ProductionAudioLabGateway(audio_lab_service),
-        devices=ProductionDeviceGateway(sync_manager),
-        diagnostics=ProductionDiagnosticsGateway(diagnostics_service),
-        mix=ProductionMixGateway(mix_service),
-        jobs=ProductionJobGateway(job_service),
-        navigation=ProductionNavigationGateway(navigation_service),
+        playback=(ProductionPlaybackGateway(
+            player_service, queue_service, track_action_service,
+            playlist_service, library_query_service)
+            if (player_service or queue_service or track_action_service
+                or playlist_service or library_query_service) else None),
+        queue=(ProductionQueueGateway(queue_service, library_query_service)
+               if (queue_service or library_query_service) else None),
+        library=(ProductionLibraryGateway(library_db, library_query_service,
+                                          global_search_service)
+                 if (library_db or library_query_service
+                     or global_search_service) else None),
+        playlists=(ProductionPlaylistGateway(library_db, playlist_service)
+                   if (library_db or playlist_service) else None),
+        settings=ProductionSettingsGateway(settings_service) if settings_service else None,
+        audio_lab=(ProductionAudioLabGateway(audio_lab_service, library_db)
+                   if audio_lab_service else None),
+        devices=(ProductionDeviceGateway(
+            sync_manager, connection_service, device_registry, home_audio_service)
+            if (sync_manager or connection_service) else None),
+        diagnostics=ProductionDiagnosticsGateway(diagnostics_service) if diagnostics_service else None,
+        mix=(ProductionMixGateway(mix_service, playlist_service, job_service)
+             if mix_service else None),
+        jobs=ProductionJobGateway(job_service) if job_service else None,
+        navigation=ProductionNavigationGateway(navigation_service) if navigation_service else None,
         radio=UnavailableRadioGateway(),
         metadata=ProductionMetadataGateway(
             metadata_service=metadata_service,
             confirmation_service=confirmation_service,
             job_service=job_service,
-        ) if metadata_service else None,
+            metadata_editor=metadata_editor_service,
+        ) if (metadata_service or metadata_editor_service) else None,
         lyrics=_make_gateway("LyricsGateway", lyrics_service),
-        library_doctor=_make_gateway("LibraryDoctorGateway", library_doctor_service),
+        library_doctor=(ProductionLibraryDoctorGateway(
+            library_doctor_service, job_service, library_db)
+            if library_doctor_service else None),
         connections=_make_gateway("ConnectionsGateway", connection_service),
         home_audio=_make_gateway("HomeAudioGateway", home_audio_service),
     )
@@ -158,10 +197,22 @@ def create_assistant_composition(
 
     model_manager = ModelManager()
     backend_selector = BackendSelector(model_manager=model_manager)
-    engine = MichiAIEngine(
+    runtime = AssistantRuntime(
         tool_registry=tool_registry,
+        capability_resolver=capability_resolver,
+        planner=planner,
+        validator=validator,
+        executor=executor,
+        context_assembler=context_assembler,
+        conversation_service=conversation_service,
+        confirmation_policy=confirmation_policy,
+        trace_recorder=trace_recorder,
         backend_selector=backend_selector,
+        intent_router=intent_router,
+        trace_enabled=True,
     )
+    from core.ai_engine import MichiAIEngine
+    engine = MichiAIEngine(runtime=runtime)
 
     svc_map = {
         "player_service": player_service,
@@ -174,9 +225,14 @@ def create_assistant_composition(
         "navigation_service": navigation_service,
     }
     register_all_context_providers(context_assembler, svc_map)
+    if context_service is not None:
+        # The canonical S11 ContextService snapshot is the authority for the
+        # library section (F9): real service data, never fabricated counts.
+        context_assembler.register("library", _s11_library_provider(context_service))
 
     return AssistantComposition(
         core_service=engine,
+        runtime=runtime,
         tool_registry=tool_registry,
         capability_resolver=capability_resolver,
         planner=planner,
@@ -186,5 +242,6 @@ def create_assistant_composition(
         conversation_service=conversation_service,
         confirmation_policy=confirmation_policy,
         trace_recorder=trace_recorder,
+        backend_selector=backend_selector,
         gateways=gateways,
     )

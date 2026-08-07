@@ -1,216 +1,262 @@
-"""JobBridge — QML-facing async job manager via WorkerManager TaskHandle."""
+"""JobBridge — thin QML view over DurableJobService (ADR-004).
+
+Exposes durable jobs (persisted, async, cooperative cancellation) to QML
+with the same observable vocabulary the previous in-memory bridge used
+(job_id/type/title/state/progress/message/error_code/can_cancel/can_retry/
+duration). No internal registry, no scheduling, no synchronous execution:
+every operation delegates to the injected ``job_service``. Without one the
+bridge degrades to explicit INFRASTRUCTURE_UNAVAILABLE errors.
+"""
 from __future__ import annotations
 
 import logging
 import time
 from typing import Any, Callable
 
-from PySide6.QtCore import QObject, Signal, Property, Slot
+from PySide6.QtCore import QObject, Property, Signal, Slot
 
-from core.worker_manager import WorkerManager
+from core.jobs.job_service import JobState
 
 logger = logging.getLogger("michi.jobs")
 
-STATE_QUEUED = "queued"
-STATE_RUNNING = "running"
-STATE_COMPLETED = "completed"
-STATE_COMPLETED_WITH_ERRORS = "completed_with_errors"
-STATE_CANCELLED = "cancelled"
-STATE_FAILED = "failed"
-STATE_CANCEL_REQUESTED = "cancel_requested"
+INFRASTRUCTURE_UNAVAILABLE = "INFRASTRUCTURE_UNAVAILABLE"
 
-_MAX_JOBS = 200
+QML_STATE_MAP = {
+    JobState.QUEUED: "queued",
+    JobState.RUNNING: "running",
+    JobState.PAUSING: "paused",
+    JobState.PAUSED: "paused",
+    JobState.CANCELLING: "cancel_requested",
+    JobState.CANCELLED: "cancelled",
+    JobState.SUCCEEDED: "completed",
+    JobState.PARTIAL_SUCCESS: "completed_with_errors",
+    JobState.FAILED: "failed",
+    JobState.INTERRUPTED: "failed",
+}
+
+TITLE_BY_TYPE = {
+    "library_scan": "Escaneando biblioteca",
+    "library_scan_all": "Escaneando todas las fuentes",
+    "metadata_scan": "Analizando metadatos",
+    "doctor_scan": "Revisando biblioteca",
+    "metadata_batch": "Edición de metadatos en lote",
+    "history_export": "Exportando historial",
+}
+
+_TIME_FMT = "%Y-%m-%dT%H:%M:%S"
 
 
 class JobBridge(QObject):
     jobsChanged = Signal()
 
-    def __init__(self, worker_manager: WorkerManager | None = None,
+    def __init__(self, job_service=None, worker_manager=None,
                  db=None, library_bridge=None, parent=None):
         super().__init__(parent)
-        if worker_manager is None or db is None:
-            logger.warning("JobBridge: worker_manager or db is None — running in degraded mode")
-        self._wm = worker_manager
-        self._db = db
+        del worker_manager, db  # backward-compat kwargs, superseded by job_service
+        self._js = job_service
         self._lib = library_bridge
-        self._jobs: list[dict[str, Any]] = []
-        self._counter = 0
         self._library_coordinator = None
+        if self._js is None:
+            logger.warning(
+                "JobBridge: job_service is None — degraded mode "
+                "(INFRASTRUCTURE_UNAVAILABLE)"
+            )
+            return
+        self._js.jobCreated.connect(self._emit_jobs_changed)
+        self._js.jobStarted.connect(self._emit_jobs_changed)
+        self._js.jobProgress.connect(self._emit_jobs_changed)
+        self._js.jobCancelled.connect(self._emit_jobs_changed)
+        self._js.jobCompleted.connect(self._on_job_completed)
+        self._js.jobFailed.connect(self._emit_jobs_changed)
+        self._js.queueChanged.connect(self._emit_jobs_changed)
+
+    def _emit_jobs_changed(self, *_args):
+        self.jobsChanged.emit()
 
     def attach_library_coordinator(self, coordinator: object):
         self._library_coordinator = coordinator
 
+    def set_library_bridge(self, library_bridge):
+        self._lib = library_bridge
+
+    def _on_job_completed(self, job_id: str, result: Any):
+        self.jobsChanged.emit()
+        job = self._js.get_job(job_id)
+        if (job and job.type in ("library_scan", "library_scan_all")
+                and self._lib is not None
+                and hasattr(self._lib, "refresh")):
+            try:
+                self._lib.refresh()
+            except Exception:
+                logger.debug("JobBridge: library refresh after scan failed",
+                             exc_info=True)
+
     @Property("QVariantList", notify=jobsChanged)
     def jobs(self):
-        return list(self._jobs)
+        if self._js is None:
+            return []
+        return [self._job_to_qml(d) for d in self._js.list_jobs(limit=200)]
 
     @Property(int, notify=jobsChanged)
     def activeCount(self):
-        return sum(1 for j in self._jobs if j["state"] in
-                   (STATE_QUEUED, STATE_RUNNING, STATE_CANCEL_REQUESTED))
+        if self._js is None:
+            return 0
+        active = (JobState.QUEUED, JobState.RUNNING, JobState.CANCELLING)
+        return sum(1 for d in self._js.list_jobs(limit=500)
+                   if d["state"] in {s.value for s in active})
 
     @Property(int, notify=jobsChanged)
     def failedCount(self):
-        return sum(1 for j in self._jobs if j["state"] == STATE_FAILED)
+        if self._js is None:
+            return 0
+        return sum(1 for d in self._js.list_jobs(limit=500)
+                   if d["state"] == JobState.FAILED.value)
 
-    def _add_job(self, job_type: str, title: str,
-                 callable_fn: Callable | None = None) -> int:
-        self._counter += 1
-        job_id = self._counter
-        now = time.time()
-        job = {
-            "job_id": job_id, "type": job_type, "title": title,
-            "state": STATE_QUEUED, "progress": 0.0, "processed": 0, "total": 0,
-            "message": "", "error_code": "", "can_cancel": True,
-            "can_retry": callable_fn is not None, "started_at": now, "finished_at": 0,
-            "duration": 0, "summary": "", "_fn": callable_fn,
+    def _job_to_qml(self, d: dict) -> dict:
+        state = d.get("state", JobState.QUEUED.value)
+        try:
+            qml_state = QML_STATE_MAP.get(JobState(state), "queued")
+        except ValueError:
+            qml_state = "queued"
+        errors = d.get("errors") or []
+        payload = d.get("payload") or {}
+        job_type = d.get("type", "")
+        return {
+            "job_id": d.get("id", ""),
+            "id": d.get("id", ""),
+            "type": job_type,
+            "kind": job_type,
+            "title": d.get("title")
+                     or TITLE_BY_TYPE.get(job_type, job_type or "Trabajo"),
+            "state": qml_state,
+            "status": qml_state,
+            "progress": d.get("progress", 0.0),
+            "processed": d.get("current", 0),
+            "total": d.get("total", 0),
+            "message": d.get("message", ""),
+            "error": errors[0] if errors else "",
+            "error_code": errors[0] if errors else "",
+            "can_cancel": bool(d.get("cancellable"))
+                          and qml_state in ("queued", "running",
+                                            "cancel_requested"),
+            "can_retry": bool(d.get("retryable"))
+                         and qml_state in ("failed", "cancelled"),
+            "duration": self._duration(d),
+            "path": payload.get("folder_path", "")
+                    if job_type == "library_scan" else "",
         }
-        self._jobs.insert(0, job)
-        self.jobsChanged.emit()
 
-        if callable_fn and self._wm and hasattr(self._wm, 'run_task'):
-            task_id = f"job_{job_id}"
+    @staticmethod
+    def _duration(d: dict) -> float:
+        started = d.get("startedAt") or ""
+        finished = d.get("finishedAt") or ""
+        if not started or not finished:
+            return 0.0
+        try:
+            return max(
+                0.0,
+                time.mktime(time.strptime(finished, _TIME_FMT))
+                - time.mktime(time.strptime(started, _TIME_FMT)),
+            )
+        except (ValueError, OSError):
+            return 0.0
 
-            def _run():
-                try:
-                    callable_fn()
-                    return {"ok": True}
-                except Exception as e:
-                    return {"ok": False, "error": str(e)}
-
-            def _done(result):
-                self._update_job(job_id, state=STATE_COMPLETED if result.get("ok")
-                                 else STATE_FAILED,
-                                 finished_at=time.time(),
-                                 error_code="" if result.get("ok") else "EXECUTION_FAILED",
-                                 message=result.get("error", ""))
-
-            handle = self._wm.run_task(task_id, _run, on_done=_done,
-                                       cancellable=True, owner="jobs")
-            job["_handle"] = handle
-            job["_task_id"] = task_id
-            job["state"] = STATE_RUNNING
-            self.jobsChanged.emit()
-        elif callable_fn:
-            job["state"] = STATE_RUNNING
-            self.jobsChanged.emit()
-            try:
-                callable_fn()
-                job["state"] = STATE_COMPLETED
-            except Exception as e:
-                logger.debug("Job %s failed: %s", job_type, e)
-                job["state"] = STATE_FAILED
-                job["error_code"] = "EXECUTION_FAILED"
-                job["message"] = str(e)
-            job["finished_at"] = time.time()
-            job["duration"] = job["finished_at"] - job["started_at"]
-            self.jobsChanged.emit()
-
-        self._prune()
-        return job_id
-
-    def _update_job(self, job_id: int, **kwargs):
-        for j in self._jobs:
-            if j["job_id"] == job_id:
-                for k, v in kwargs.items():
-                    if k != "_handle" and k != "_task_id":
-                        j[k] = v
-                if "finished_at" in kwargs and kwargs["finished_at"]:
-                    j["duration"] = kwargs["finished_at"] - j["started_at"]
-                self.jobsChanged.emit()
-                return
-
-    def _scan_library(self, folder_path: str):
-        from core.scanner_job_adapter import ScannerJobAdapter
-        adapter = ScannerJobAdapter(self._db, self._lib)
-        return adapter.scan(folder_path)
+    def _create_and_start(self, job_type: str, payload: dict,
+                          owner: str = "job_bridge") -> dict:
+        job_id = self._js.create_job(
+            job_type, owner=owner, payload=payload,
+            cancellable=True, pausable=True, retryable=True,
+        )
+        if not self._js.start_job(job_id):
+            return {"ok": False, "error": "JOB_START_FAILED", "job_id": job_id}
+        return {"ok": True, "job_id": job_id}
 
     @Slot(str, result=dict)
     def runJob(self, job_type: str, params: str = ""):
+        if self._js is None:
+            return {"ok": False, "error": INFRASTRUCTURE_UNAVAILABLE}
         if job_type == "library_scan":
-            self._add_job(job_type, "Escaneando biblioteca",
-                          lambda: self._scan_library(params))
-            return {"ok": True}
-        if job_type == "library_scan_all":
-            self._add_job(job_type, "Escaneando todas las fuentes",
-                          lambda: self._scan_all_sources())
-            return {"ok": True}
-        if job_type == "metadata_scan":
-            self._add_job(job_type, "Analizando metadatos",
-                          lambda: self._run_metadata_scan())
-            return {"ok": True}
-        if job_type == "doctor_scan":
-            self._add_job(job_type, "Revisando biblioteca",
-                          lambda: self._run_doctor_scan())
-            return {"ok": True}
+            return self._create_and_start(
+                job_type, {"folder_path": params})
+        if job_type in ("library_scan_all", "metadata_scan", "doctor_scan"):
+            return self._create_and_start(job_type, {})
         return {"ok": False, "error": "UNKNOWN_JOB_TYPE"}
 
-    def _run_metadata_scan(self):
-        from core.metadata_batch_adapter import MetadataBatchAdapter
-        adapter = MetadataBatchAdapter(db=self._db)
-        return adapter.scan_missing()
+    def _add_job(self, job_type: str, title: str,
+                 callable_fn: Callable | None = None,
+                 params: dict | None = None) -> dict:
+        """Create a durable job (kept for callers of the legacy bridge API).
 
-    def _run_doctor_scan(self):
-        from core.metadata_batch_adapter import LibraryDoctorAdapter
-        adapter = LibraryDoctorAdapter(db=self._db)
-        return adapter.scan()
+        The callable is deliberately ignored: durable jobs execute through
+        their registered production handler, never inline.
+        """
+        del callable_fn, title
+        if self._js is None:
+            return {"ok": False, "error": INFRASTRUCTURE_UNAVAILABLE}
+        return self._create_and_start(job_type, dict(params or {}))
 
-    def _scan_all_sources(self):
-        try:
-            svc = getattr(self, '_sources_svc', None)
-            if svc is None:
-                from core.library_sources_service import LibrarySourcesService
-                svc = LibrarySourcesService(db=self._db)
-            for source in svc.list():
-                if source.get("enabled") and source.get("available"):
-                    self._scan_library(source["path"])
-        except Exception:
-            pass
+    def exportHistoryAsync(self, filepath: str, fmt: str = "json",
+                           filters: dict | None = None) -> dict:
+        if self._js is None:
+            return {"ok": False, "error": INFRASTRUCTURE_UNAVAILABLE}
+        if not filepath:
+            return {"ok": False, "error": "EMPTY_PATH"}
+        result = self._create_and_start(
+            "history_export",
+            {"filepath": filepath, "fmt": fmt, "filters": dict(filters or {})},
+            owner="history_bridge",
+        )
+        result["async"] = True
+        return result
 
-    @Slot(int, result=dict)
-    def cancelJob(self, job_id: int):
-        for j in self._jobs:
-            if j["job_id"] == job_id:
-                handle = j.get("_handle")
-                if handle and hasattr(handle, 'cancel'):
-                    handle.cancel()
-                j["state"] = STATE_CANCELLED
-                j["finished_at"] = time.time()
-                j["duration"] = j["finished_at"] - j["started_at"]
-                self.jobsChanged.emit()
-                return {"ok": True}
-        return {"ok": False, "error": "NOT_FOUND"}
+    @Slot("QVariant", result=dict)
+    def cancelJob(self, job_id):
+        jid = str(job_id)
+        if self._js is None:
+            return {"ok": False, "error": INFRASTRUCTURE_UNAVAILABLE}
+        if self._js.get_job(jid) is None:
+            return {"ok": False, "error": "NOT_FOUND"}
+        if self._js.cancel_job(jid):
+            return {"ok": True}
+        return {"ok": False, "error": "NOT_CANCELLABLE", "job_id": jid}
 
-    @Slot(int, result=dict)
-    def retryJob(self, job_id: int):
-        for j in self._jobs:
-            if j["job_id"] == job_id and j["state"] in (STATE_FAILED, STATE_CANCELLED):
-                fn = j.get("_fn")
-                if fn:
-                    return self.runJob(j["type"])
-                return {"ok": False, "error": "NO_CALLABLE"}
-        return {"ok": False, "error": "NOT_FOUND"}
+    @Slot("QVariant", result=dict)
+    def retryJob(self, job_id):
+        """Re-queue and start a terminal job through job_service.retry_job.
+
+        Unified semantics with NotificationActionService.retry: preserves
+        the original payload, starts immediately when capacity allows and
+        returns the REAL read-back state (never a blind success).
+        """
+        jid = str(job_id)
+        if self._js is None:
+            return {"ok": False, "error": INFRASTRUCTURE_UNAVAILABLE}
+        if self._js.get_job(jid) is None:
+            return {"ok": False, "error": "NOT_FOUND"}
+        if not self._js.retry_job(jid):
+            return {"ok": False, "error": "NOT_RETRYABLE", "job_id": jid}
+        job = self._js.get_job(jid)
+        state = job.state.value if job else JobState.QUEUED.value
+        return {"ok": True, "job_id": jid, "state": state}
 
     @Slot(result=dict)
     def clearCompleted(self):
-        self._jobs = [j for j in self._jobs if j["state"]
-                      in (STATE_QUEUED, STATE_RUNNING, STATE_CANCEL_REQUESTED)]
-        self.jobsChanged.emit()
-        return {"ok": True}
+        if self._js is None:
+            return {"ok": False, "error": INFRASTRUCTURE_UNAVAILABLE}
+        removed = 0
+        terminal = {s.value for s in (JobState.SUCCEEDED, JobState.PARTIAL_SUCCESS,
+                                      JobState.CANCELLED, JobState.INTERRUPTED)}
+        for d in self._js.list_jobs(limit=500):
+            if d["state"] in terminal and self._js.delete_job(d["id"]):
+                removed += 1
+        return {"ok": True, "removed": removed}
 
     @Slot(result=dict)
     def clearFailed(self):
-        self._jobs = [j for j in self._jobs if j["state"]
-                      not in (STATE_FAILED, STATE_COMPLETED, STATE_COMPLETED_WITH_ERRORS)]
-        self.jobsChanged.emit()
-        return {"ok": True}
-
-    def _prune(self):
-        if len(self._jobs) > _MAX_JOBS:
-            completed = [(i, j) for i, j in enumerate(self._jobs)
-                         if j["state"] in (STATE_COMPLETED, STATE_FAILED,
-                                           STATE_COMPLETED_WITH_ERRORS, STATE_CANCELLED)]
-            to_remove = len(completed) - _MAX_JOBS // 2
-            for idx, _ in sorted(completed[:to_remove], key=lambda x: -x[0]):
-                if idx < len(self._jobs):
-                    self._jobs.pop(idx)
+        if self._js is None:
+            return {"ok": False, "error": INFRASTRUCTURE_UNAVAILABLE}
+        removed = 0
+        for d in self._js.list_jobs(limit=500):
+            if d["state"] == JobState.FAILED.value and self._js.delete_job(d["id"]):
+                removed += 1
+        return {"ok": True, "removed": removed}

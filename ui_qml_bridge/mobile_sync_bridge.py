@@ -1,4 +1,8 @@
-"""MobileSyncBridge — QML bridge for mobile device pairing and sync."""
+"""MobileSyncBridge — QML bridge for mobile device pairing and sync.
+
+Thin adapter: delegates to MobileSyncService (pairing, trust, health) and
+never fabricates state. Slot names and property shapes are stable for QML.
+"""
 from __future__ import annotations
 
 import logging
@@ -36,9 +40,17 @@ class MobileSyncBridge(QObject):
     def pairedDevices(self) -> list:
         if self._svc:
             return [{"id": d.device_id, "name": d.name, "paired_at": d.paired_at,
-                     "trusted": d.trusted}
+                     "trusted": d.trusted and not d.revoked,
+                     "revoked": d.revoked}
                     for d in self._svc.paired_devices]
         return list(self._paired_devices)
+
+    @Property("QVariantMap", notify=stateChanged)
+    def health(self) -> dict:
+        """Consume service health as-is; never fabricate fields."""
+        if not self._svc:
+            return {"available": False, "server_listening": False}
+        return self._svc.health()
 
     @Slot(result=dict)
     def startPairing(self):
@@ -48,7 +60,7 @@ class MobileSyncBridge(QObject):
         if result.get("ok"):
             self._session_id = result["session_id"]
             self._code = result["code"]
-            self._qr_data_url = result.get("qr_svg", result.get("qr_data", ""))
+            self._qr_data_url = result.get("qr_data_uri", "")
             self._pairing_state = "waiting"
             self.stateChanged.emit()
         return result
@@ -68,6 +80,16 @@ class MobileSyncBridge(QObject):
         if not self._svc:
             return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
         result = self._svc.unpair(device_id)
+        if result.get("ok"):
+            self.stateChanged.emit()
+        return result
+
+    @Slot(str, result=dict)
+    def approveDevice(self, device_id: str):
+        """Explicit user approval — the only path to trusted=True."""
+        if not self._svc:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        result = self._svc.approve_device(device_id)
         if result.get("ok"):
             self.stateChanged.emit()
         return result
