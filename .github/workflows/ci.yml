@@ -96,7 +96,7 @@ jobs:
             --junitxml=results-unit.xml
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: unit-results-${{ github.sha }}
           path: results-unit.xml
@@ -135,7 +135,7 @@ jobs:
             -q --timeout=120 --junitxml=results-audio.xml
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: audio-integration-results-${{ github.sha }}
           path: results-audio.xml
@@ -181,7 +181,7 @@ jobs:
             -q --timeout=120 --junitxml=results-ai-v2.xml
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ai-v2-results-${{ github.sha }}
           path: results-ai-v2.xml
@@ -223,7 +223,7 @@ jobs:
             -q --timeout=300 --junitxml=results-reintegration.xml
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: qml-runtime-results-${{ github.sha }}
           path: |
@@ -264,7 +264,7 @@ jobs:
         run: python -m build --wheel
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-${{ github.sha }}
           path: "*.xml"
@@ -297,7 +297,7 @@ jobs:
           QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest tests/ -q --timeout=300 --junitxml=results-inventory.xml
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: inventory-results-${{ github.sha }}
           path: results-inventory.xml
