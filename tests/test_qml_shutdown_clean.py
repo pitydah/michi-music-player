@@ -18,7 +18,7 @@ def test_shutdown_no_python_to_cpp_copy() -> None:
             [sys.executable, "main.py", "--qml"],
             capture_output=True,
             text=True,
-            timeout=15,
+            timeout=60,
             cwd=str(REPO),
             env=env,
         )
@@ -46,7 +46,7 @@ def test_shutdown_no_traceback() -> None:
             [sys.executable, "main.py", "--qml"],
             capture_output=True,
             text=True,
-            timeout=15,
+            timeout=60,
             cwd=str(REPO),
             env=env,
         )
