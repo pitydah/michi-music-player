@@ -323,9 +323,10 @@ class MPRISAdapter(QObject):
         try:
             bus_name = dbus.service.BusName(SERVICE_NAME, bus)
             self._object = MPRISObject(bus_name, OBJECT_PATH)
-        except dbus.exceptions.DBusException as exc:
-            # Another instance/test already owns the MPRIS name on this
-            # session bus. MPRIS is optional: degrade without breaking boot.
+        except (dbus.exceptions.DBusException, KeyError) as exc:
+            # Another instance/test already owns the MPRIS name or object
+            # path on this session bus. MPRIS is optional: degrade without
+            # breaking boot.
             logger.warning("MPRIS unavailable (bus name taken): %s", exc)
             self._object = None
             return
