@@ -62,6 +62,7 @@ Item {
         onRetryRequested: { root.pageState = AsyncStateView.READY; root.refresh() }
 
         readyContent: ScrollView {
+            id: scrollView
             anchors.fill: parent
             clip: true
 
@@ -220,6 +221,7 @@ Item {
                             }
 
                             MichiSlider {
+                                id: bufferSlider
                                 implicitWidth: 200
                                 from: 50
                                 to: 1000

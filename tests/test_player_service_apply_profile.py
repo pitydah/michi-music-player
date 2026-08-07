@@ -3,8 +3,16 @@
 Covers the prepare -> apply -> verify -> persist lifecycle, including the
 explicit profile states and rollback on verification failure.
 """
-import pytest
+from __future__ import annotations
+
+from enum import Enum
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
+
+import pytest
+
+if TYPE_CHECKING:
+    from audio.player_service import PlayerService
 
 
 @pytest.fixture(autouse=True)
@@ -108,6 +116,48 @@ class TestApplyProfileTransactional:
             service._hybrid._active_id = "gstreamer"
             service.set_audio_profile("hifi_pcm")
         assert service.get_active_profile_id() == "hifi_pcm"
+
+    def test_persistence_happens_only_after_effective_verification(
+        self, service: PlayerService
+    ) -> None:
+        with patch.object(service, "switch_backend_for_profile", return_value=True), \
+                patch.object(service._hybrid.active, "is_ready", return_value=False), \
+                patch("core.settings_manager.set_") as set_:
+            result = service.apply_profile("hifi_pcm")
+        assert result["ok"] is False
+        set_.assert_not_called()
+
+    def test_mpd_fallback_fails_effective_backend_verification(
+        self, service: PlayerService
+    ) -> None:
+        service._active_profile_id = "hifi_pcm"
+        service._hybrid._active_id = "gstreamer"
+        with patch.object(service, "switch_backend_for_profile", return_value=True):
+            result = service.apply_profile("michi_hifi_mpd")
+        assert result["ok"] is False
+        assert result["code"] == "VERIFY_FAILED"
+        assert result["effective_backend"] == "gstreamer"
+
+    def test_rollback_failure_is_reported(self, service: PlayerService) -> None:
+        service._active_profile_id = "hifi_pcm"
+        with patch.object(
+            service, "switch_backend_for_profile", side_effect=[True, False]
+        ), patch.object(service._hybrid.active, "is_ready", return_value=False):
+            result = service.apply_profile("standard")
+        assert result["ok"] is False
+        assert result["rollback"] is False
+        assert service._last_apply_result.rollback_ok is False
+
+    def test_equivalent_failed_state_from_reloaded_module_is_not_ready(
+        self, service: PlayerService
+    ) -> None:
+        class ReloadedPlaybackState(Enum):
+            """Mirror a PlaybackState member loaded from another module instance."""
+
+            FAILED = 5
+
+        service._engine.state = ReloadedPlaybackState.FAILED
+        assert service._hybrid.active.is_ready() is False
 
 
 def _clean_engine_for_bitperfect(engine):
