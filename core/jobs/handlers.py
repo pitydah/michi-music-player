@@ -25,6 +25,7 @@ JOB_TITLES = {
     "metadata_batch": "Edición de metadatos en lote",
     "history_export": "Exportando historial",
     "mix_generate": "Generando mix",
+    "playlist_import": "Importando playlist",
     "device_sync": "Sincronizando dispositivo",
     "device_transfer": "Transfiriendo archivos",
 }
@@ -232,6 +233,40 @@ def make_mix_generate_handler(port) -> callable:
         result = port.generate(strategy, seed, limit, ctx)
         ctx.token.raise_if_cancelled()
         ctx.report_progress(1.0, "Mix generado")
+        return result
+
+    return handler
+
+
+def make_playlist_import_handler(port) -> callable:
+    """Close over a PlaylistImportPort; import the playlist from the payload.
+
+    The job payload carries {path, name, policy}. The canonical service
+    outcome ({ok, status, policy, playlist_id, added, ...}) becomes the job
+    result; a FAILED import raises the job, a CANCELLED import re-raises
+    through the token so the job lands CANCELLED (never FAILED), and a
+    PARTIAL_SUCCESS import is surfaced with ``partial`` set.
+    """
+
+    def handler(job, ctx):
+        if port is None:
+            raise RuntimeError("PlaylistService unavailable")
+        payload = job.payload or {}
+        path = str(payload.get("path", "") or "")
+        name = str(payload.get("name", "") or "")
+        policy = str(payload.get("policy", "") or "SKIP_INVALID")
+        if not path:
+            raise RuntimeError("INVALID_PAYLOAD: path required")
+        ctx.report_progress(0.05, "Leyendo playlist")
+        result = port.import_playlist(path, name, policy, ctx)
+        status = str(result.get("status", "") or "")
+        if status == "CANCELLED":
+            ctx.token.raise_if_cancelled()
+        if status == "FAILED":
+            raise RuntimeError(result.get("error") or "IMPORT_FAILED")
+        if status == "PARTIAL_SUCCESS":
+            result["partial"] = True
+        ctx.report_progress(1.0, "Importación finalizada")
         return result
 
     return handler

@@ -104,6 +104,25 @@ class _DeviceSyncPort:
         return self._svc.run_transfer_file(source_path, dest_path, ctx)
 
 
+class _PlaylistImportPort:
+    """PlaylistImportPort over the composed PlaylistService (debt D1).
+
+    The service owns every policy (ATOMIC_ROLLBACK / PARTIAL_COMMIT /
+    SKIP_INVALID); the port adds no business logic, only the ctx-shaped
+    call used by the durable job handler.
+    """
+
+    def __init__(self, playlist_service):
+        self._svc = playlist_service
+
+    def import_playlist(self, path: str, name: str = "",
+                        policy: str = "SKIP_INVALID", ctx=None) -> dict:
+        if self._svc is None:
+            raise RuntimeError("PlaylistService unavailable")
+        return self._svc.import_playlist_file(
+            path, target_name=name or None, policy=policy, ctx=ctx)
+
+
 def _build_ports(container: ServiceContainer) -> dict[str, object]:
     """Assemble the port implementations from composed services."""
     from core.scanner_job_adapter import ScannerJobAdapter
@@ -127,6 +146,7 @@ def _build_ports(container: ServiceContainer) -> dict[str, object]:
     doctor_port = container.get("library_doctor_service")
     mix_port = _MixPort(container.get("mix_service"))
     device_port = _DeviceSyncPort(container.get("device_sync_service"))
+    playlist_port = _PlaylistImportPort(container.get("playlist_service"))
 
     return {
         "scan": scan_port,
@@ -135,6 +155,7 @@ def _build_ports(container: ServiceContainer) -> dict[str, object]:
         "doctor": doctor_port,
         "mix": mix_port,
         "device_sync": device_port,
+        "playlist_import": playlist_port,
     }
 
 
@@ -155,6 +176,7 @@ def register_production_job_handlers(job_service, container: ServiceContainer) -
         make_metadata_batch_handler,
         make_metadata_scan_handler,
         make_mix_generate_handler,
+        make_playlist_import_handler,
     )
 
     ports = _build_ports(container)
@@ -178,6 +200,8 @@ def register_production_job_handlers(job_service, container: ServiceContainer) -
                                  make_device_sync_handler(ports["device_sync"]))
     job_service.register_handler("device_transfer",
                                  make_device_transfer_handler(ports["device_sync"]))
+    job_service.register_handler("playlist_import",
+                                 make_playlist_import_handler(ports["playlist_import"]))
 
 
 def build(container: ServiceContainer) -> None:

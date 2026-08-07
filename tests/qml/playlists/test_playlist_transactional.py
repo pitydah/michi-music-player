@@ -167,8 +167,11 @@ def test_batch_add_partial_failure_reports_errors(svc, fake_db):
     pid = svc.list()[0]["id"]
     fake_db.set_fail_on(["add_track"])
     result = svc.batch_add(pid, [1, 2, 3])
-    assert result["ok"]
+    # Never ok=True with failures unmarked: nothing was added → FAILED.
+    assert not result["ok"]
+    assert result["status"] == "FAILED"
     assert result["count"] == 0
+    assert result["failed"] == 3
 
 
 def test_batch_remove_partial_failure(svc, fake_db):

@@ -35,9 +35,10 @@ class PlaylistsBridge(QObject):
                  capability_bridge: Any | None = None,
                  accessibility_bridge: Any | None = None,
                  notification_bridge: Any | None = None,
-                 job_bridge: Any | None = None,
-                 queue_service: Any | None = None,
-                 parent: QObject | None = None) -> None:
+                  job_bridge: Any | None = None,
+                  queue_service: Any | None = None,
+                  job_service: Any | None = None,
+                  parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._db = db
         self._sel_ctx = selection_context
@@ -52,10 +53,18 @@ class PlaylistsBridge(QObject):
         self._accessibility = accessibility_bridge
         self._notifications = notification_bridge
         self._job_bridge = job_bridge
+        self._job_service = job_service
         self._playlists: list[dict] = []
         self._import_cache: dict[str, dict] = {}
         self._pending_confirmations: dict[str, tuple[str, int, str]] = {}
         self._operation_counter = 0
+        # The only import job this bridge may cancel: its own latest
+        # submission (never other domains' jobs — P0 Fase Jobs).
+        self._active_import_job = ""
+        if self._job_service is not None:
+            self._job_service.jobCompleted.connect(self._on_import_job_completed)
+            self._job_service.jobFailed.connect(self._on_import_job_failed)
+            self._job_service.jobCancelled.connect(self._on_import_job_cancelled)
 
     def set_notification_bridge(self, notification) -> None:
         """Second-phase wiring for the NotificationBridge (Corrección 3).
@@ -417,14 +426,80 @@ class PlaylistsBridge(QObject):
         return result
 
     def _run_import_via_job(self, filepath: str, name: str = "") -> dict:
-        # JobBridge has no public API for submitting arbitrary callables.
+        # Sync import path for small files (debt D1): large imports go
+        # through importPlaylistAsync, which submits a durable job.
         return self.confirmPlaylistImport(filepath, name)
 
     @Slot(str, result=dict)
+    @Slot(str, str, result=dict)
+    @Slot(str, str, str, result=dict)
+    def importPlaylistAsync(self, filepath: str, name: str = "",
+                            policy: str = "SKIP_INVALID") -> dict:
+        """Submit a playlist import as a durable job (debt D1).
+
+        Returns ``{ok, job_id}``; the job runs through the registered
+        ``playlist_import`` handler and the bridge reflects progress and
+        completion through its job signals. Cancellation is real via
+        ``cancelPlaylistImport(job_id)``.
+        """
+        if not self._can():
+            return self._unavailable()
+        if not filepath:
+            return {"ok": False, "error": "EMPTY_PATH"}
+        if self._job_service is None:
+            return {"ok": False, "error": "NO_JOB_SERVICE"}
+        try:
+            job_id = self._job_service.create_job(
+                "playlist_import", owner="playlist",
+                payload={"path": filepath, "name": name, "policy": policy},
+                cancellable=True, pausable=True, retryable=True,
+            )
+        except Exception as e:
+            return {"ok": False, "error": f"JOB_CREATE_FAILED: {e}"}
+        self._active_import_job = job_id
+        started = self._job_service.start_job(job_id)
+        return {"ok": True, "job_id": job_id, "started": started,
+                "async": True}
+
+    def _on_import_job_completed(self, job_id: str, result: Any) -> None:
+        if job_id != self._active_import_job:
+            return
+        self._active_import_job = ""
+        result = result if isinstance(result, dict) else {}
+        self.refresh()
+        name = str(result.get("name", "") or "Importada")
+        count = int(result.get("added", 0))
+        status = str(result.get("status", "") or "")
+        if status == "PARTIAL_SUCCESS":
+            self.partialSuccess.emit(
+                f"Importación parcial: {count} de "
+                f"{result.get('requested', 0)} pistas",
+                count, int(result.get("failed", 0)))
+        elif result.get("ok"):
+            self._notify(f"Importada '{name}' ({count} pistas)", "success")
+        else:
+            self._notify(f"Importación fallida: {result.get('error', status)}",
+                         "error")
+
+    def _on_import_job_failed(self, job_id: str, error: str) -> None:
+        if job_id != self._active_import_job:
+            return
+        self._active_import_job = ""
+        self._notify(f"Importación fallida: {error}", "error")
+
+    def _on_import_job_cancelled(self, job_id: str) -> None:
+        if job_id != self._active_import_job:
+            return
+        self._active_import_job = ""
+        self._notify("Importación cancelada", "info")
+
+    @Slot(str, result=dict)
     def cancelPlaylistImport(self, import_id: str) -> dict:
-        if self._svc:
+        """Real cancellation: routes to the service, which cancels the job
+        through DurableJobService or answers NO_ACTIVE_IMPORT honestly."""
+        if self._svc is not None:
             return self._svc.cancel_import(import_id)
-        return {"ok": True, "cancelled": True}
+        return self._unavailable()
 
     def _export_m3u(self, destination_path: str, items: list[dict]) -> dict:
         try:

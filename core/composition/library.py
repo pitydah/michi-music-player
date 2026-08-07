@@ -70,7 +70,8 @@ def build(container: ServiceContainer) -> None:
         ),
     )
     container.register("library_service", LibraryService(db=db, worker_manager=wm, library_query_service=lqs))
-    playlist_service = PlaylistService(cf)
+    # Debt D1: PlaylistService cancels imports through the real job service.
+    playlist_service = PlaylistService(cf, job_service=container.get("job_service"))
     container.register("playlist_service", playlist_service)
     container.register(
         "track_action_service",

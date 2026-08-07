@@ -145,3 +145,24 @@ class MixGenerationPort(Protocol):
     ) -> dict[str, Any]:
         """Generate a mix with an explicit MixGenerationStatus outcome."""
         ...
+
+
+@runtime_checkable
+class PlaylistImportPort(Protocol):
+    """Port for the playlist_import handler (debt D1).
+
+    Implemented by PlaylistService (via ``import_playlist_file``); the
+    handler passes the payload through with the cancellation-aware ctx.
+    The port's result is the canonical policy-aware import outcome dict
+    ({ok, status, policy, playlist_id, requested, added, ...}).
+    """
+
+    def import_playlist(
+        self,
+        path: str,
+        name: str = "",
+        policy: str = "SKIP_INVALID",
+        ctx: Any | None = None,
+    ) -> dict[str, Any]:
+        """Import a playlist file honouring the batch *policy*."""
+        ...

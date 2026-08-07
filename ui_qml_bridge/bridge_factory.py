@@ -360,6 +360,7 @@ class BridgeFactory(QObject):
                 accessibility_bridge=self._bridges.get("accessibility"),
                 notification_bridge=self._bridges.get("notification"),
                 job_bridge=self._bridges.get("job_bridge"),
+                job_service=self._get("job_service"),
             )
 
     def create_history_bridge(self):
