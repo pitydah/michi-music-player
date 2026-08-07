@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtQml import QQmlComponent, QQmlEngine
-from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QGuiApplication
 
 from ui_qml_bridge.route_registry import ROUTES
 
@@ -15,7 +15,7 @@ QML_ROOT = Path(__file__).resolve().parents[3] / "ui_qml"
 
 @pytest.fixture(scope="module")
 def engine():
-    app = QApplication.instance() or QApplication([])
+    app = QGuiApplication.instance() or QGuiApplication([])
     e = QQmlEngine()
     e.addImportPath(str(QML_ROOT))
     return e

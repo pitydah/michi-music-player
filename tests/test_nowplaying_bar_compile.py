@@ -3,13 +3,13 @@ import os
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 from PySide6.QtQml import QQmlComponent, QQmlEngine
-from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QGuiApplication
 import pytest
 
 
 @pytest.fixture(scope="module")
 def engine():
-    app = QApplication.instance() or QApplication([])
+    app = QGuiApplication.instance() or QGuiApplication([])
     e = QQmlEngine()
     e.addImportPath("ui_qml")
     return e
