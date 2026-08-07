@@ -3,11 +3,12 @@
 Scan detects issues through real detectors (scan repository + genre cleanup).
 Repairs route through a registry of ``IssueType -> RepairHandler``; every
 handler implements preview/execute/readback/undo. ``repair(issue)`` looks up
-the handler (NO_REPAIR_HANDLER when absent), requires confirmation for
-destructive repairs (ConfirmationService, command-hash bound), executes
-inline or as a durable job, verifies via readback and registers a real
-compensation in UndoService. There is no nominal success: an unverified
-repair reports READBACK_FAILED and compensates.
+the handler (NO_REPAIR_HANDLER when absent), requires a ConfirmationToken
+issued by ConfirmationService for destructive repairs (self-declared sources
+are never accepted), executes inline or as a durable job, verifies via
+readback and registers a real compensation in UndoService. There is no
+nominal success: an unverified repair reports READBACK_FAILED and
+compensates.
 """
 from __future__ import annotations
 
@@ -17,6 +18,7 @@ import logging
 from dataclasses import dataclass, field as dc_field
 from typing import Any
 
+from core.confirmation_service import compute_target_hash
 from core.worker_manager import CancelledError
 
 logger = logging.getLogger("michi.library_doctor")
@@ -25,7 +27,9 @@ EVENT_REPAIR_COMPLETED = "doctor.repair.completed"
 EVENT_REPAIR_FAILED = "doctor.repair.failed"
 EVENT_SCAN_COMPLETED = "doctor.scan.completed"
 
-DECLARED_CONFIRMATION_SOURCES = frozenset({"ai_plan", "durable_job"})
+# Token TTL for destructive repairs: the user approves the preview and the
+# repair may run later as a durable job, so the window is generous.
+DOCTOR_TOKEN_TTL_S = 3600
 
 
 class Issue:
@@ -368,31 +372,16 @@ class DuplicateUidHandler(BaseRepairHandler):
         fp = issue.get("filepath", "")
         import hashlib as _hashlib
         expected = f"fp:{_hashlib.sha256(fp.encode()).hexdigest()[:16]}"
-        conn = getattr(self._repo, "_conn", None) or getattr(
-            getattr(self._repo, "_db", None), "conn", None)
-        if conn is None:
-            return False
-        row = conn.execute(
-            "SELECT track_uid FROM media_items WHERE id=?", (track_id,),
-        ).fetchone()
-        return row is not None and row[0] == expected
+        return self._repo.get_track_uid(track_id) == expected
 
     def undo(self, issue: dict, ctx=None) -> bool:
-        conn = getattr(self._repo, "_conn", None) or getattr(
-            getattr(self._repo, "_db", None), "conn", None)
+        if self._repo is None:
+            return False
         track_id = (issue.get("details") or {}).get("track_id")
         old_uid = (issue.get("details") or {}).get("_old_uid", "")
-        if conn is None or not old_uid:
+        if not track_id or not old_uid:
             return False
-        try:
-            conn.execute(
-                "UPDATE media_items SET track_uid=? WHERE id=?",
-                (old_uid, track_id),
-            )
-            conn.commit()
-            return True
-        except Exception:  # noqa: BLE001
-            return False
+        return self._repo.restore_track_uid(track_id, old_uid)
 
 
 class MissingMetadataHandler(BaseRepairHandler):
@@ -431,10 +420,20 @@ class MissingMetadataHandler(BaseRepairHandler):
         )
         if not proposal.get("ok"):
             return RepairOutcome(0, proposal.get("message", "proposal failed"), [])
+        # repair() already validated the user-approved token for this repair
+        # operation; the nested metadata edit receives its own token issued
+        # and approved through the same ConfirmationService (never a
+        # self-declared source).
+        conf = self._editor.confirm(
+            proposal["proposal_id"], selected_fields=["title"])
+        if not conf.get("ok"):
+            return RepairOutcome(0, conf.get("code", "TOKEN_REQUIRED"), [])
+        token = conf["confirmation_token"]
+        if not self._editor.approve(token).get("ok"):
+            return RepairOutcome(0, "INVALID_CONFIRMATION_TOKEN", [])
         result = self._editor.apply_batch([{
             "proposal_id": proposal["proposal_id"],
-            "confirmed": True,
-            "source": "doctor",
+            "confirmation_token": token,
         }])
         if result.get("applied", 0) != 1:
             return RepairOutcome(0, result.get("status", "APPLY_FAILED"), [])
@@ -443,11 +442,11 @@ class MissingMetadataHandler(BaseRepairHandler):
         return RepairOutcome(1, "Título completado", [{"track_id": track_id}])
 
     def readback(self, issue: dict) -> bool:
-        if self._editor is None or self._editor._db is None:
+        if self._editor is None:
             return False
         track_id = (issue.get("details") or {}).get("track_id")
         try:
-            item = self._editor._db.get_media_item_by_id(track_id)
+            item = self._editor.read_media_item(track_id)
         except Exception:  # noqa: BLE001
             return False
         return item is not None and bool(getattr(item, "title", "") or "")
@@ -492,36 +491,18 @@ class GenreFragmentationHandler(BaseRepairHandler):
         }
 
     def execute(self, issue: dict, ctx=None) -> RepairOutcome:
-        if self._cleanup is None or self._cleanup._repo is None:
+        if self._cleanup is None:
             return RepairOutcome(0, "GenreCleanupService unavailable", [])
         details = issue.get("details") or {}
         sources = list(details.get("raw_values", []))
         target = details.get("canonical", "")
         if not sources or not target:
             return RepairOutcome(0, "Missing genre variants", [])
-        conn = getattr(self._cleanup._repo, "_conn", None)
-        if conn is None:
-            return RepairOutcome(0, "Genre repository unavailable", [])
-        snapshot = self._snapshot_genres(conn, sources)
-        affected = 0
-        placeholders = ",".join("?" * len(sources))
-        try:
-            cur = conn.execute(
-                f"UPDATE media_items SET genre=? "
-                f"WHERE genre IN ({placeholders})",
-                (target, *sources),
-            )
-            affected += max(0, cur.rowcount)
-            cur = conn.execute(
-                f"UPDATE track_genres SET genre=? "
-                f"WHERE genre IN ({placeholders})",
-                (target, *sources),
-            )
-            affected += max(0, cur.rowcount)
-            conn.commit()
-        except Exception as error:  # noqa: BLE001
-            logger.warning("genre normalization failed: %s", error)
-            return RepairOutcome(0, f"Normalization failed: {error}", [])
+        result = self._cleanup.normalize_genres(sources, target)
+        snapshot = result.get("snapshot", [])
+        affected = int(result.get("affected", 0))
+        if result.get("error"):
+            return RepairOutcome(0, f"Normalization failed: {result['error']}", [])
         self._cleanup.execute_merge(sources, target)
         if affected == 0:
             return RepairOutcome(0, "No tracks affected by merge", [])
@@ -529,89 +510,24 @@ class GenreFragmentationHandler(BaseRepairHandler):
         return RepairOutcome(affected, f"{affected} valor(es) normalizados a "
                                        f"'{target}'", snapshot)
 
-    def _snapshot_genres(self, conn, sources: list[str]) -> list[dict]:
-        snapshot = []
-        placeholders = ",".join("?" * len(sources))
-        try:
-            rows = conn.execute(
-                f"SELECT id, genre FROM media_items "
-                f"WHERE genre IN ({placeholders})",
-                tuple(sources),
-            ).fetchall()
-            for row in rows:
-                snapshot.append({"kind": "media_item", "id": row[0],
-                                 "genre": row[1]})
-            rows = conn.execute(
-                f"SELECT track_id, genre, canonical_genre FROM track_genres "
-                f"WHERE genre IN ({placeholders})",
-                tuple(sources),
-            ).fetchall()
-            for row in rows:
-                snapshot.append({"kind": "track_genre", "track_id": row[0],
-                                 "genre": row[1], "canonical": row[2]})
-        except Exception:  # noqa: BLE001
-            return []
-        return snapshot
-
     def readback(self, issue: dict) -> bool:
-        if self._cleanup is None or self._cleanup._repo is None:
+        if self._cleanup is None:
             return False
         sources = (issue.get("details") or {}).get("raw_values", [])
         target = (issue.get("details") or {}).get("canonical", "")
         leftover = [s for s in sources if s != target]
         if not leftover:
             return True
-        conn = getattr(self._cleanup._repo, "_conn", None)
-        if conn is None:
-            return False
-        placeholders = ",".join("?" * len(leftover))
-        try:
-            row = conn.execute(
-                f"SELECT COUNT(*) FROM media_items "
-                f"WHERE genre IN ({placeholders})",
-                tuple(leftover),
-            ).fetchone()
-            if row is None or row[0] != 0:
-                return False
-            row = conn.execute(
-                f"SELECT COUNT(*) FROM track_genres "
-                f"WHERE genre IN ({placeholders})",
-                tuple(leftover),
-            ).fetchone()
-            return row is not None and row[0] == 0
-        except Exception:  # noqa: BLE001
-            return False
+        remaining = self._cleanup.count_genres_remaining(leftover)
+        return remaining == 0
 
     def undo(self, issue: dict, ctx=None) -> bool:
-        if self._cleanup is None or self._cleanup._repo is None:
+        if self._cleanup is None:
             return False
         snapshot = (issue.get("details") or {}).get("_snapshot", [])
         if not snapshot:
             return False
-        conn = getattr(self._cleanup._repo, "_conn", None)
-        if conn is None:
-            return False
-        restored = 0
-        for entry in snapshot:
-            try:
-                if entry.get("kind") == "media_item":
-                    conn.execute(
-                        "UPDATE media_items SET genre=? WHERE id=?",
-                        (entry["genre"], entry["id"]),
-                    )
-                else:
-                    conn.execute(
-                        "UPDATE track_genres SET genre=?, canonical_genre=? "
-                        "WHERE track_id=? AND canonical_genre=?",
-                        (entry["genre"], entry["canonical"], entry["track_id"],
-                         entry["canonical"]),
-                    )
-                restored += 1
-            except Exception:  # noqa: BLE001
-                continue
-        if restored:
-            conn.commit()
-        return restored > 0
+        return self._cleanup.restore_genres(snapshot) > 0
 
 
 class LibraryDoctorService:
@@ -769,13 +685,13 @@ class LibraryDoctorService:
         except Exception as error:  # noqa: BLE001
             return {"ok": False, "code": "PREVIEW_FAILED", "message": str(error)}
 
-    def repair(self, issue: dict, confirmation_token: str = "",
-               confirmed_source: str = "", ctx=None) -> dict:
+    def repair(self, issue: dict, confirmation_token: str = "", ctx=None) -> dict:
         """Execute a real repair for one issue.
 
-        Contract: handler lookup -> preview -> confirmation (destructive
-        repairs require an approved token or a declared confirmation source)
-        -> execute (inline or durable job) -> readback verification -> undo
+        Contract: handler lookup -> preview -> token authorization
+        (destructive repairs require an approved ConfirmationToken issued by
+        ConfirmationService; self-declared sources are never accepted) ->
+        execute (inline or durable job) -> readback verification -> undo
         registration. Never reports nominal success.
         """
         issue_type = issue.get("type", "")
@@ -795,25 +711,23 @@ class LibraryDoctorService:
 
         op_id = self._repair_operation_id(issue_type, issue)
         command_hash = self._repair_command_hash(issue_type, issue, handler)
+        target_hash = self._repair_target_hash(issue)
 
-        if handler.destructive and self._confirmation is not None:
-            if confirmed_source:
-                if confirmed_source not in DECLARED_CONFIRMATION_SOURCES:
-                    return {"ok": False, "code": "INVALID_CONFIRMATION_SOURCE",
-                            "message": f"Unrecognized confirmation source: "
-                                       f"{confirmed_source}"}
-            elif self._confirmation.is_confirmed(op_id, command_hash):
-                pass
-            elif confirmation_token:
-                request = self._confirmation.approve(confirmation_token)
-                if request is None or request.operation_id != op_id:
-                    return {"ok": False, "code": "INVALID_CONFIRMATION_TOKEN"}
-            else:
+        if handler.destructive:
+            if confirmation_token:
+                ok, code = self._confirm_repair_token(
+                    confirmation_token, op_id, command_hash, target_hash)
+                if not ok:
+                    return {"ok": False, "code": code,
+                            "message": f"Repair token rejected: {code}",
+                            "operation_id": op_id,
+                            "issue_type": issue_type}
+            elif self._confirmation is not None:
+                issue_key = self._issue_key(issue)
                 request = self._confirmation.confirm(
                     operation_id=op_id,
                     command_hash=command_hash,
-                    target=str(issue.get("filepath", "") or
-                               (issue.get("details") or {}).get("track_id")),
+                    entity_refs=(issue_key,),
                     description=handler.description,
                     risk_level="high",
                 )
@@ -822,14 +736,19 @@ class LibraryDoctorService:
                         "confirmation_token": request.token,
                         "operation_id": op_id,
                         "preview": preview}
+            else:
+                return {"ok": False, "code": "TOKEN_REQUIRED",
+                        "message": "Destructive repair requires an approved "
+                                   "ConfirmationToken; no ConfirmationService "
+                                   "is available",
+                        "operation_id": op_id, "issue_type": issue_type}
 
         if (handler.durable and self._job_service is not None
                 and self._worker_manager is not None):
             job_id = self._job_service.create_job(
                 "doctor_repair", owner="library_doctor",
                 payload={"issue": issue,
-                         "confirmation_token": confirmation_token,
-                         "confirmed_source": confirmed_source},
+                         "confirmation_token": confirmation_token},
                 total=1, cancellable=True, pausable=False, retryable=True,
             )
             if self._job_service.start_job(job_id):
@@ -838,7 +757,21 @@ class LibraryDoctorService:
                         "issue_type": issue_type}
             return {"ok": False, "code": "JOB_START_FAILED", "job_id": job_id}
 
-        return self._execute_repair_inline(handler, issue, op_id, ctx)
+        result = self._execute_repair_inline(handler, issue, op_id, ctx)
+        if result.get("ok") and confirmation_token and self._confirmation is not None:
+            self._confirmation.consume(confirmation_token)
+        return result
+
+    def _confirm_repair_token(self, confirmation_token: str, op_id: str,
+                              command_hash: str, target_hash: str):
+        """Validate an approved token against this repair operation."""
+        if self._confirmation is None:
+            return False, "TOKEN_REQUIRED"
+        return self._confirmation.validate(
+            confirmation_token,
+            command_hash=command_hash,
+            target_hash=target_hash,
+        )
 
     def _execute_repair_inline(self, handler: BaseRepairHandler, issue: dict,
                                op_id: str, ctx) -> dict:
@@ -918,6 +851,10 @@ class LibraryDoctorService:
                     "message": result.message, "operation_id": op_id}
         return {"ok": True, "status": "ROLLED_BACK",
                 "operation_id": op_id, "description": result.data.get("description")}
+
+    def _repair_target_hash(self, issue: dict) -> str:
+        """Stable target hash for the repair issue (filepath / track id)."""
+        return compute_target_hash([self._issue_key(issue)])
 
     @staticmethod
     def _issue_key(issue: dict) -> str:

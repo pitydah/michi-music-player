@@ -137,6 +137,15 @@ class DurableJobService(QObject):
         return str(uuid.uuid4())[:12]
 
     def _restore_running_jobs(self):
+        """Restore non-terminal rows from the previous process.
+
+        RUNNING -> INTERRUPTED (persisted AND visible in the live registry,
+        so a recovered job is always retryable). QUEUED/PAUSED jobs are
+        reloaded into memory (QUEUED resumes via ``resume_pending_jobs``
+        once handlers are registered; PAUSED stays paused but visible).
+        CANCELLING rows are finalized as CANCELLED without loading
+        (terminal rows are never part of the live registry).
+        """
         running = self._load_by_state(JobState.RUNNING)
         for job in running:
             job.state = JobState.INTERRUPTED
@@ -144,10 +153,45 @@ class DurableJobService(QObject):
             job.message = "Interrumpido por reinicio"
             self._save_job(job)
             logger.info("Job %s marked INTERRUPTED on restart", job.id)
-        queued = self._load_by_state(JobState.QUEUED)
-        for job in queued:
-            self._jobs[job.id] = job
-            logger.info("Job %s re-enqueued on restart", job.id)
+        pausing = self._load_by_state(JobState.PAUSING)
+        for job in pausing:
+            job.state = JobState.PAUSED
+            job.message = "En pausa (recuperado)"
+            self._save_job(job)
+            logger.info("Job %s marked PAUSED on restart", job.id)
+        for state in (JobState.QUEUED, JobState.PAUSED):
+            for job in self._load_by_state(state):
+                self._jobs[job.id] = job
+                logger.info("Job %s restored %s on restart", job.id, state.value)
+        cancelling = self._load_by_state(JobState.CANCELLING)
+        for job in cancelling:
+            job.state = JobState.CANCELLED
+            job.finishedAt = self._now()
+            job.message = "Cancelado antes del reinicio"
+            self._persist_job(job)
+            logger.info("Job %s marked CANCELLED on restart", job.id)
+
+    def resume_pending_jobs(self, max_jobs: int = 2) -> dict[str, int]:
+        """Boot recovery: process QUEUED jobs once handlers are registered.
+
+        MUST be called after ``register_handler`` for every kind the app
+        supports (composition does this at the end of boot). A QUEUED job
+        whose kind has no handler is marked FAILED with a persisted
+        ``HANDLER_UNAVAILABLE`` error so it never lingers silently. The rest
+        are started through ``process_queue`` with the given capacity limit.
+
+        Idempotent: a second call finds no QUEUED jobs left.
+        """
+        stats = {"queued": 0, "resumed": 0, "handler_unavailable": 0}
+        for job_id, job in list(self._jobs.items()):
+            if job.state != JobState.QUEUED:
+                continue
+            stats["queued"] += 1
+            if job.type not in self._handlers:
+                self._fail_job(job_id, f"HANDLER_UNAVAILABLE: {job.type}")
+                stats["handler_unavailable"] += 1
+        stats["resumed"] = self.process_queue(max_jobs=max_jobs)
+        return stats
 
     def register_handler(self, job_type: str, handler: Callable):
         self._handlers[job_type] = handler
@@ -214,12 +258,14 @@ class DurableJobService(QObject):
             self._active.discard(job.id)
             self._finalize_handler_result(job, result)
             self.queueChanged.emit(self._queue_count())
+            self._drain_queue()
 
         def on_error(code: str, message: str):
             if self._jobs.get(job.id) is not job:
                 return
             self._active.discard(job.id)
             self._fail_job(job.id, message or code)
+            self._drain_queue()
 
         def on_cancelled():
             if self._jobs.get(job.id) is not job:
@@ -233,6 +279,7 @@ class DurableJobService(QObject):
                 self._save_job(current)
                 self.jobCancelled.emit(current.id)
             self.queueChanged.emit(self._queue_count())
+            self._drain_queue()
 
         def on_progress(percent: float, message: str):
             self._apply_progress(job.id, float(percent), message or "")
@@ -332,6 +379,15 @@ class DurableJobService(QObject):
         return True
 
     def retry_job(self, job_id: str) -> bool:
+        """Re-queue a terminal job with its ORIGINAL payload and start it.
+
+        Unified retry entry point (ADR-004, Fase Jobs): JobBridge.retryJob
+        and NotificationActionService.retry both go through this method.
+        Validates the state (only FAILED/INTERRUPTED/CANCELLED are
+        retryable), preserves the payload, transitions to QUEUED, persists,
+        emits, then starts immediately when capacity allows. Callers read
+        back the real state via ``get_job``.
+        """
         job = self._jobs.get(job_id)
         if not job or not job.retryable or job.state not in (
             JobState.FAILED, JobState.INTERRUPTED, JobState.CANCELLED
@@ -343,9 +399,11 @@ class DurableJobService(QObject):
         job.errors = []
         job.warnings = []
         job.message = ""
+        job.result = {}
         job.finishedAt = ""
         self._save_job(job)
         self.queueChanged.emit(self._queue_count())
+        self.start_job(job_id)
         return True
 
     def update_progress(self, job_id: str, current: int, total: int, message: str = ""):
@@ -415,9 +473,37 @@ class DurableJobService(QObject):
                 started += 1
         return started
 
+    def _drain_queue(self):
+        """Start queued jobs when a running job frees capacity."""
+        if self._active:
+            self.process_queue()
+
     def cancel_all(self):
         for job_id in list(self._jobs.keys()):
             self.cancel_job(job_id)
+
+    def cancel_owner(self, owner: str) -> int:
+        """Cancel every job owned by *owner* (never jobs of other domains)."""
+        if not owner:
+            return 0
+        return sum(
+            1
+            for job_id in list(self._jobs)
+            if self._jobs[job_id].owner == owner
+            and self.cancel_job(job_id)
+        )
+
+    def cancel_scope(self, owner: str, kind: str) -> int:
+        """Cancel jobs of one kind owned by *owner* (never jobs of others)."""
+        if not owner or not kind:
+            return 0
+        return sum(
+            1
+            for job_id in list(self._jobs)
+            if self._jobs[job_id].owner == owner
+            and self._jobs[job_id].type == kind
+            and self.cancel_job(job_id)
+        )
 
     def delete_job(self, job_id: str) -> bool:
         """Remove a terminal job from memory and from the durable store."""

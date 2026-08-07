@@ -14,7 +14,10 @@ import pytest
 
 
 def _make_flac(path, title: str, artist: str, album: str, genre: str):
-    import soundfile as sf
+    sf = pytest.importorskip(
+        "soundfile",
+        reason="audio-analysis extra required to build FLAC fixtures",
+    )
 
     path.parent.mkdir(parents=True, exist_ok=True)
     sf.write(path, np.zeros(64, dtype=np.float32), 8000, format="FLAC")

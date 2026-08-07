@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import re
 import sqlite3
+
+import pytest
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -39,26 +41,56 @@ def test_metadata_service_is_read_authority_not_editing_stub() -> None:
     assert callable(read)
 
 
-def test_apply_batch_returns_real_counters() -> None:
+def test_apply_batch_returns_real_counters(tmp_path) -> None:
+    """apply_batch requires an approved ConfirmationToken and returns real
+    counters (P0: self-declared confirmed=True/source= is rejected)."""
+    import numpy as np
+
+    sf = pytest.importorskip(
+        "soundfile",
+        reason="audio-analysis extra required to build FLAC fixtures",
+    )
+    from core.confirmation_service import ConfirmationService
     from core.metadata_editor_service import MetadataEditorService
 
     conn = sqlite3.connect(":memory:")
     conn.execute(
         "CREATE TABLE media_items (id INTEGER PRIMARY KEY AUTOINCREMENT, "
-        "filepath TEXT UNIQUE, title TEXT)")
-    conn.execute(
-        "INSERT INTO media_items (filepath, title) VALUES "
-        "('/a.flac', 'A'), ('/b.flac', 'B')")
+        "filepath TEXT UNIQUE, title TEXT, deleted_at REAL)")
+    music = tmp_path / "music"
+    paths = []
+    for i in range(2):
+        fp = music / f"t{i}.flac"
+        fp.parent.mkdir(parents=True, exist_ok=True)
+        sf.write(fp, np.zeros(32, dtype=np.float32), 8000, format="FLAC")
+        conn.execute(
+            "INSERT INTO media_items (filepath, title) VALUES (?, ?)",
+            (str(fp), f"Old {i}"))
+        paths.append(str(fp))
     conn.commit()
-    db = type("FakeDB", (), {"conn": conn})
-    editor = MetadataEditorService(db=db)
+
+    class _Row:
+        def __init__(self, row):
+            self.id, self.filepath, self.title = row
+
+    def get_media_item_by_id(tid: int) -> _Row | None:
+        row = conn.execute(
+            "SELECT id, filepath, title FROM media_items WHERE id=?",
+            (tid,)).fetchone()
+        return _Row(row) if row else None
+
+    db = type("FakeDB", (), {"conn": conn,
+                             "get_media_item_by_id": get_media_item_by_id})
+    editor = MetadataEditorService(db=db, confirmation_service=ConfirmationService())
 
     proposal = editor.build_proposal(
-        [{"track_id": 1}, {"track_id": 2}],
+        [{"filepath": fp} for fp in paths],
         {"title": "New"})
+    token = editor.confirm(proposal["proposal_id"])["confirmation_token"]
+    assert editor.approve(token)["ok"] is True
     result = editor.apply_batch(
         [{"proposal_id": proposal["proposal_id"],
-          "confirmed": True, "source": "ui"}])
+          "confirmation_token": token}])
     for key in ("requested", "applied", "failed", "skipped", "conflicts",
                 "missing_confirmations", "rollback_performed", "per_track"):
         assert key in result, f"apply_batch must report {key}"
@@ -68,8 +100,31 @@ def test_apply_batch_returns_real_counters() -> None:
 
 
 def test_batch_adapter_is_not_the_editing_authority() -> None:
-    """The job handler routes metadata_batch through the editor service."""
-    source = (PROJECT_ROOT / "core" / "jobs" / "handlers.py").read_text(
+    """The metadata_batch job handler routes through the editor service.
+
+    Fase Jobs: handlers are pure factories over injected ports — the wiring
+    to metadata_editor_service lives in composition, not inside handlers.py.
+    P0: the handler applies with the bridge-issued ConfirmationToken and
+    rejects payloads without one (TOKEN_REQUIRED) — never self-declares.
+    """
+    handlers = (PROJECT_ROOT / "core" / "jobs" / "handlers.py").read_text(
         encoding="utf-8")
-    assert "metadata_editor_service" in source
-    assert 'source": "ui"' in source
+    assert "make_metadata_batch_handler" in handlers
+    assert '"confirmation_token"' in handlers, (
+        "the batch handler must apply with the bridge-issued token"
+    )
+    assert "TOKEN_REQUIRED" in handlers, (
+        "a batch job without a token must be rejected, not self-confirmed"
+    )
+    assert 'confirmed": True' not in handlers.replace(" ", ""), (
+        "the handler must never self-declare confirmation"
+    )
+
+    composition = (PROJECT_ROOT / "core" / "composition" / "jobs.py").read_text(
+        encoding="utf-8")
+    assert 'container.get("metadata_editor_service")' in composition, (
+        "composition must wire the metadata port to metadata_editor_service"
+    )
+    assert 'register_handler("metadata_batch"' in composition, (
+        "composition must register the metadata_batch handler"
+    )

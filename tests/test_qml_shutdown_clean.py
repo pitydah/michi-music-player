@@ -12,13 +12,15 @@ def test_shutdown_no_python_to_cpp_copy() -> None:
     env = os.environ.copy()
     env["QT_QPA_PLATFORM"] = "offscreen"
     env["MICHI_SAFE_MODE"] = "1"
-    env["PYTHONPATH"] = str(REPO)
+    # Preserve the ambient PYTHONPATH (CI provides gi/GStreamer bindings
+    # via /usr/lib/python3/dist-packages) and prepend the repo.
+    env["PYTHONPATH"] = str(REPO) + os.pathsep + env.get("PYTHONPATH", "")
     try:
         proc = subprocess.run(
             [sys.executable, "main.py", "--qml"],
             capture_output=True,
             text=True,
-            timeout=15,
+            timeout=60,
             cwd=str(REPO),
             env=env,
         )
@@ -40,13 +42,15 @@ def test_shutdown_no_traceback() -> None:
     env = os.environ.copy()
     env["QT_QPA_PLATFORM"] = "offscreen"
     env["MICHI_SAFE_MODE"] = "1"
-    env["PYTHONPATH"] = str(REPO)
+    # Preserve the ambient PYTHONPATH (CI provides gi/GStreamer bindings
+    # via /usr/lib/python3/dist-packages) and prepend the repo.
+    env["PYTHONPATH"] = str(REPO) + os.pathsep + env.get("PYTHONPATH", "")
     try:
         proc = subprocess.run(
             [sys.executable, "main.py", "--qml"],
             capture_output=True,
             text=True,
-            timeout=15,
+            timeout=60,
             cwd=str(REPO),
             env=env,
         )

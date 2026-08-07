@@ -88,43 +88,47 @@ class TestAddStation:
 
 
 class TestPlayback:
-    def test_play_station(self, bridge, mock_player):
+    def test_play_station(self, bridge, mock_radio_mgr):
         result = bridge.playStation("http://jazz.stream", "Jazz FM")
         assert result["ok"] is True
-        mock_player.play_url.assert_called_once_with("http://jazz.stream")
+        assert result["accepted"] is True
+        mock_radio_mgr.play_station.assert_called_once_with(
+            "http://jazz.stream", "Jazz FM")
 
     def test_play_station_empty_url(self, bridge):
         result = bridge.playStation("", "")
         assert result["ok"] is False
         assert result["error"] == "EMPTY_URL"
 
-    def test_play_station_no_player(self):
+    def test_play_station_no_manager(self):
         b = RadioBridge()
         result = b.playStation("http://x", "X")
         assert result["ok"] is False
-        assert result["error"] == "NO_PLAYER_SERVICE"
+        assert result["error"] == "NO_RADIO_MANAGER"
 
     def test_play_not_playing_before_confirmation(self, bridge):
         bridge.playStation("http://jazz.stream", "Jazz FM")
         assert bridge.isPlaying is False
-        assert bridge.isBuffering is True
+        assert bridge.isBuffering is False  # no optimistic state
 
-    def test_play_adds_history_on_confirmation(self, bridge):
+    def test_play_state_reflects_service_confirmation(self, bridge):
         bridge.playStation("http://jazz.stream", "Jazz FM")
-        bridge._on_station_connection_done()
-        assert len(bridge.history) == 1
-        assert bridge.history[0]["name"] == "Jazz FM"
+        assert bridge.isPlaying is False
+        bridge._on_service_state_event({"state": "playing"})
         assert bridge.isPlaying is True
+        assert bridge.isBuffering is False
+        # History comes from the service, never fabricated by the bridge.
+        assert len(bridge.history) == 0
 
-    def test_stop_stream(self, bridge, mock_player):
+    def test_stop_stream(self, bridge, mock_radio_mgr):
         result = bridge.stopStream()
         assert result["ok"] is True
-        mock_player.stop.assert_called_once()
+        mock_radio_mgr.stop.assert_called_once()
 
-    def test_cancel_stream(self, bridge, mock_player):
+    def test_cancel_stream(self, bridge, mock_radio_mgr):
         result = bridge.cancelStream()
         assert result["ok"] is True
-        mock_player.stop.assert_called_once()
+        mock_radio_mgr.stop.assert_called_once()
 
 
 class TestReconnectRetry:
@@ -257,20 +261,25 @@ class TestMetadata:
 class TestStates:
     def test_connecting_state(self, bridge):
         bridge.playStation("http://jazz.stream", "Jazz FM")
+        bridge._on_service_state_event({"state": "connecting"})
         assert bridge.isBuffering is True
+        assert bridge.isPlaying is False
 
     def test_buffering_state(self, bridge):
-        assert True
+        bridge.playStation("http://jazz.stream", "Jazz FM")
+        bridge._on_service_state_event({"state": "buffering"})
+        assert bridge.isBuffering is True
 
     def test_playing_state(self, bridge):
         bridge.playStation("http://jazz.stream", "Jazz FM")
-        bridge._on_station_connection_done()
+        bridge._on_service_state_event({"state": "playing"})
         assert bridge.isPlaying is True
 
     def test_reconnecting_state(self, bridge):
         bridge.playStation("http://jazz.stream", "Jazz FM")
-        result = bridge.reconnectLast()
-        assert result["ok"] is True
+        bridge._on_service_state_event({"state": "reconnecting"})
+        assert bridge.isBuffering is True
+        assert bridge.isPlaying is False
 
     def test_stopped_state(self, bridge):
         result = bridge.stopStream()
@@ -281,14 +290,19 @@ class TestStates:
         result = bridge.cancelStream()
         assert result["ok"] is True
 
-    def test_failed_state(self, bridge):
-        bridge._player = None
+    def test_failed_state(self, bridge, mock_radio_mgr):
+        mock_radio_mgr.play_station.return_value = {
+            "ok": False, "error": "BACKEND_UNAVAILABLE"}
         result = bridge.playStation("http://fail", "")
         assert result["ok"] is False
+        assert result["error"] == "BACKEND_UNAVAILABLE"
+        assert bridge.isPlaying is False
 
-    def test_connect_timeout_resets_playing(self, bridge):
+    def test_failure_event_resets_playing(self, bridge):
         bridge.playStation("http://jazz.stream", "Jazz FM")
-        bridge._on_connect_timeout()
+        bridge._on_service_state_event({"state": "playing"})
+        assert bridge.isPlaying is True
+        bridge._on_service_state_event({"state": "failed"})
         assert bridge.isPlaying is False
         assert bridge.isBuffering is False
 
@@ -320,10 +334,12 @@ class TestEdgeCases:
     def test_get_bitrate_default(self, bridge):
         assert bridge.getBitrate() == 0
 
-    def test_playback_error_reports(self, bridge, mock_player):
-        mock_player.play_url.side_effect = RuntimeError("Stream failed")
+    def test_playback_error_reports(self, bridge, mock_radio_mgr):
+        mock_radio_mgr.play_station.return_value = {
+            "ok": False, "error": "CONNECTION_FAILED"}
         result = bridge.playStation("http://fail", "Fail")
         assert result["ok"] is False
+        assert result["error"] == "CONNECTION_FAILED"
 
     def test_delete_error_reports(self, bridge, mock_radio_mgr):
         bridge.refresh()

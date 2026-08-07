@@ -16,10 +16,36 @@ Item {
     property var _songs: []
     property bool _generating: false
     property bool _cancelling: false
+    property bool _waiting: false
     property string _errorMsg: ""
     property string _state: "idle"
 
     signal backRequested()
+
+    Connections {
+        target: root.mx
+        function onStateChanged(state) {
+            if (!root._waiting) return
+            if (state === "COMPLETED_WITH_TRACKS" || state === "PARTIAL_RECOMMENDATION") {
+                root._waiting = false
+                root._generating = false
+                root._cancelling = false
+                root.refresh()
+            } else if (state === "CANCELLED") {
+                root._waiting = false
+                root._generating = false
+                root._cancelling = false
+                root._state = "cancelled"
+                root._errorMsg = qsTr("Generación cancelada")
+            } else {
+                root._waiting = false
+                root._generating = false
+                root._cancelling = false
+                root._state = "no_candidates"
+                root._errorMsg = root.mx.errorMessage || ""
+            }
+        }
+    }
 
     function routeEnter(route, params) {
         if (params) {
@@ -31,6 +57,21 @@ Item {
                     if (res && !res.ok) {
                         root._errorMsg = res.error || qsTr("No se pudo cargar el mix")
                         root._state = "failed"
+                        return
+                    }
+                    if (!root.mx.currentSongs || root.mx.currentSongs.length === 0) {
+                        root._generating = true
+                        root._waiting = true
+                        root._state = "generating"
+                        return
+                    }
+                } else {
+                    root.refresh()
+                    if ((!root.mx.currentSongs || root.mx.currentSongs.length === 0)
+                            && (root.mx.stateName === "QUEUED" || root.mx.stateName === "RUNNING")) {
+                        root._generating = true
+                        root._waiting = true
+                        root._state = "generating"
                         return
                     }
                 }
@@ -57,14 +98,21 @@ Item {
         root._state = "generating"
         root._generating = true
         root._cancelling = false
+        root._waiting = false
         root._errorMsg = ""
 
         var result = root.mx.refresh()
         if (result && result.ok) {
-            root.refresh()
+            if (root.mx.currentSongs && root.mx.currentSongs.length > 0) {
+                root._generating = false
+                root.refresh()
+            } else {
+                root._waiting = true
+            }
+        } else {
+            root._generating = false
+            root._state = "no_candidates"
         }
-        root._generating = false
-        root._state = root._songs.length > 0 ? "ready" : "no_candidates"
     }
 
     function cancelGeneration() {

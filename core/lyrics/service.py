@@ -43,7 +43,7 @@ class LyricsService:
         self._storage = storage_service
         self._editor = editor_service
         self._timeline = timeline or LyricsTimeline()
-        self._bus = event_bus or LyricEventBus()
+        self._bus = event_bus
         self._trace = trace or LyricsTraceRecorder()
         self._attribution = attribution or LyricsAttributionPolicy()
         self._clock = clock or (lambda: __import__("time").strftime("%Y-%m-%dT%H:%M:%SZ", __import__("time").gmtime()))

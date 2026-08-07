@@ -831,18 +831,45 @@ class GStreamerEngine(QObject):
             self._db.clear_queue_state()
 
     def play_next(self) -> bool:
-        result = self._transport.play_next()
+        """Advance to the next queue track using the engine's own queue logic.
+
+        ``GStreamerPipelineTransport`` has no ``play_next``; the queue and
+        repeat state live here (``_queue``/``_queue_index``/``_repeat``), so
+        the advance is computed internally and played through the pipeline.
+        """
+        if not (0 <= self._queue_index < len(self._queue)):
+            return False
+        if self._repeat == "one":
+            next_index = self._queue_index
+        elif self._repeat == "all" and self._queue_index >= len(self._queue) - 1:
+            next_index = 0
+        elif self._queue_index < len(self._queue) - 1:
+            next_index = self._queue_index + 1
+        else:
+            return False
+        self._queue_index = next_index
+        self.play(self._queue[next_index])
         self._sync_queue_from_backend()
-        if result and self._db:
+        if self._db:
             self._db.save_queue(self._queue, self._queue_index)
-        return result
+        return True
 
     def play_prev(self) -> bool:
-        result = self._transport.play_prev()
+        """Step back to the previous queue track (repeat 'one' stays put)."""
+        if not (0 <= self._queue_index < len(self._queue)):
+            return False
+        if self._repeat == "one":
+            prev_index = self._queue_index
+        elif self._queue_index > 0:
+            prev_index = self._queue_index - 1
+        else:
+            return False
+        self._queue_index = prev_index
+        self.play(self._queue[prev_index])
         self._sync_queue_from_backend()
-        if result and self._db:
+        if self._db:
             self._db.save_queue(self._queue, self._queue_index)
-        return result
+        return True
 
     def _sync_queue_from_backend(self):
         self.queue_changed.emit(self._queue)

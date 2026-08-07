@@ -7,12 +7,13 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.device_sync_service import (
-    DeviceSyncService,
     DeviceIdentity,
     DeviceProtocol,
     SyncDirection,
     TransferStatus,
 )
+
+from tests.helpers.device_sync_stack import make_device_sync_stack
 from ui_qml_bridge.devices_bridge import DevicesBridge
 
 pytestmark = pytest.mark.isolation
@@ -33,8 +34,8 @@ def temp_music(tmp_path):
 
 
 @pytest.fixture
-def svc():
-    return DeviceSyncService()
+def svc(tmp_path):
+    return make_device_sync_stack(tmp_path)
 
 
 @pytest.fixture
@@ -117,7 +118,8 @@ class TestDevicesWorkflow:
         src = str(temp_music / "Music" / "track.flac")
         dst = str(temp_music / "planned.flac")
         job = svc.create_transfer_job(src, dst, SyncDirection.TO_DEVICE)
-        assert job.job_id.startswith("sync_")
+        assert job is not None
+        assert job.job_id
         assert job.total_bytes > 0
         assert job.status == TransferStatus.QUEUED
 
@@ -135,8 +137,9 @@ class TestDevicesWorkflow:
         dst = str(temp_music / "progress_out.flac")
         job = svc.create_transfer_job(src, dst)
         svc.execute_job(job.job_id)
-        assert job.status == TransferStatus.COMPLETED, f"Job failed: {job.error}"
-        assert job.transferred_bytes == job.total_bytes
+        done = svc.get_job(job.job_id)
+        assert done.status == TransferStatus.COMPLETED, f"Job failed: {done.error}"
+        assert done.transferred_bytes == done.total_bytes
 
     def test_wf_cancel(self, bridge, svc, temp_music):
         src = str(temp_music / "Music" / "track.flac")

@@ -381,7 +381,8 @@ class TestImportExport:
 
     def test_cancel_import(self, bridge):
         result = bridge.cancelPlaylistImport("test_import_1")
-        assert result["ok"]
+        assert not result["ok"]
+        assert result.get("error_code") == "NO_ACTIVE_IMPORT"
 
 
 class TestSmartRulesCoverDescription:

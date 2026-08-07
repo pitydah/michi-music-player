@@ -111,11 +111,17 @@ class V1Mixin:
 
     @classmethod
     def _server_import_store(cls, srv: Any):
-        """Return the import store attached to a server instance (lazily)."""
+        """Return the import store attached to a server instance (lazily).
+
+        The store persists committed sessions to the server's ledger path
+        (``srv._import_store_path``, default: memory-only) so a restart with
+        the same path restores the committed-session records (debt D3a).
+        """
         store = getattr(srv, "_import_store", None)
         if store is None:
             from integrations.michi_link.import_store import ImportStore
-            store = ImportStore()
+            path = getattr(srv, "_import_store_path", None)
+            store = ImportStore(db_path=path)
             srv._import_store = store
         return store
 
@@ -462,6 +468,10 @@ class V1Mixin:
             cls._handle_pair_start(handler, srv)
         elif path == "/api/v1/pair/confirm":
             cls._handle_pair_confirm(handler, srv, body)
+        elif path == "/api/v1/pair/challenge":
+            cls._handle_pair_challenge(handler, srv, body)
+        elif path == "/api/v1/pair/request":
+            cls._handle_pair_request(handler, srv, body)
         elif path == "/api/v1/pair/code":
             cls._handle_pair_code(handler, srv, body)
         elif path == "/api/v1/sync/state":
@@ -603,12 +613,87 @@ class V1Mixin:
     # ── Pair via one-time code (MobileSyncService QR flow) ──
 
     @classmethod
+    def _handle_pair_challenge(cls, handler, srv, body):
+        """Fetch the one-time nonce for a pairing session (signature flow).
+
+        The mobile app scans the QR payload, then asks for the challenge to
+        sign. The nonce is single-use: reusing it is rejected as
+        NONCE_REUSED by the server.
+        """
+        client_ip = handler.client_address[0]
+        if not handler._check_rate_limit(client_ip):
+            return _send_v1_error(handler, "RATE_LIMITED",
+                                  "Too many attempts, try later", 429)
+        try:
+            data = json.loads(body)
+        except Exception:
+            return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
+        pairing = cls._pairing_service
+        if pairing is None:
+            return _send_v1_error(handler, "PAIRING_UNAVAILABLE",
+                                  "Pairing service not mounted", 503)
+        session_id = data.get("session_id", "")
+        if not session_id:
+            return _send_v1_error(handler, "MISSING_PARAM",
+                                  "session_id is required", 400)
+        result = pairing.get_pairing_challenge(session_id)
+        if not result.get("ok"):
+            return _send_v1_error(handler, "PAIR_CHALLENGE_REJECTED",
+                                  result.get("error", "PAIRING_REJECTED"), 403)
+        handler._send_json({"ok": True, "session_id": session_id,
+                            "nonce": result.get("nonce", ""),
+                            "challenge": result.get("challenge", "")})
+
+    @classmethod
+    def _handle_pair_request(cls, handler, srv, body):
+        """Complete pairing with a real signature proof (no code needed).
+
+        The device signs ``protocol_version|session_id|nonce|fingerprint|
+        device_id`` with its private key. The server verifies the signature,
+        derives the fingerprint from the public key material, and creates the
+        device as ``awaiting_approval`` — trust requires explicit desktop
+        approval (``approve_device``).
+        """
+        client_ip = handler.client_address[0]
+        if not handler._check_rate_limit(client_ip):
+            return _send_v1_error(handler, "RATE_LIMITED",
+                                  "Too many attempts, try later", 429)
+        try:
+            data = json.loads(body)
+        except Exception:
+            return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
+        pairing = cls._pairing_service
+        if pairing is None:
+            return _send_v1_error(handler, "PAIRING_UNAVAILABLE",
+                                  "Pairing service not mounted", 503)
+        result = pairing.pair_request(
+            session_id=data.get("session_id", ""),
+            nonce=data.get("nonce", ""),
+            public_key=data.get("public_key", ""),
+            signature=data.get("signature", ""),
+            device_id=data.get("device_id", ""),
+            name=data.get("name", ""),
+            fingerprint=data.get("fingerprint", ""),
+            protocol_version=data.get("protocol_version", "1.0"),
+            ip=client_ip,
+        )
+        if not result.get("ok"):
+            return _send_v1_error(handler, "PAIR_REQUEST_REJECTED",
+                                  result.get("error", "PAIRING_REJECTED"), 403)
+        handler._send_json({"ok": True, "device_id": result.get("device_id"),
+                            "device_name": result.get("device_name"),
+                            "fingerprint": result.get("fingerprint"),
+                            "status": result.get("status", "awaiting_approval")})
+
+    @classmethod
     def _handle_pair_code(cls, handler, srv, body):
         """Complete a MobileSyncService pairing session over the wire.
 
         The mobile app scans the QR payload, then POSTs the session id +
-        code (plus device identity and, when available, a proof of
-        possession of the code). On success the server issues a persistent
+        code (plus device identity and, when available, a real signature
+        proving possession of the device private key). Code-only pairing is
+        accepted only when the legacy code pairing mode is enabled; it never
+        auto-trusts the device. On success the server issues a persistent
         device token like pair/confirm does.
         """
         client_ip = handler.client_address[0]
@@ -634,7 +719,8 @@ class V1Mixin:
             device_id=data.get("device_id", ""),
             public_key=data.get("public_key", ""),
             fingerprint=data.get("fingerprint", ""),
-            proof=data.get("proof", ""),
+            signature=data.get("signature", ""),
+            protocol_version=data.get("protocol_version", "1.0"),
             ip=client_ip,
         )
         if not result.get("ok"):
@@ -652,6 +738,13 @@ class V1Mixin:
                 port=0,
                 device_type="mobile",
             )
+        if result.get("status") == "awaiting_approval":
+            # No API token before explicit user approval: an unverified
+            # device must not get sync credentials.
+            handler._send_json({"ok": True, "status": "awaiting_approval",
+                                "device_id": client_id,
+                                "device_token": ""})
+            return
         token_str = secrets.token_hex(32)
         if registry:
             registry.set_token(client_id, token_str)

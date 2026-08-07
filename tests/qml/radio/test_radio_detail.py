@@ -43,24 +43,24 @@ class TestRadioDetail:
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         result = bridge.playStation("http://jazz.stream", "Jazz FM")
         assert result["ok"]
-        assert mock_player.play_url.called
+        assert mock_radio_mgr.play_station.called
 
-    def test_play_station_adds_to_history_on_confirmation(self, mock_radio_mgr, mock_player):
+    def test_play_station_history_stays_with_service(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         bridge.refresh()
         assert len(bridge.history) == 0
         bridge.playStation("http://jazz.stream", "Jazz FM")
-        assert len(bridge.history) == 0  # not confirmed yet
-        bridge._on_station_connection_done()
-        assert len(bridge.history) == 1
-        assert bridge.history[0]["name"] == "Jazz FM"
-        assert bridge.history[0]["url"] == "http://jazz.stream"
+        assert len(bridge.history) == 0  # service owns history
+        bridge._on_service_state_event({"state": "playing"})
+        assert bridge.isPlaying is True
+        # The bridge reflects state but never fabricates history entries.
+        assert len(bridge.history) == 0
 
     def test_stop_stream(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         result = bridge.stopStream()
         assert result["ok"]
-        assert mock_player.stop.called
+        assert mock_radio_mgr.stop.called
 
     def test_reconnect_last(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)

@@ -9,7 +9,7 @@ class TestRadioBridgeCreation:
         assert rb is not None
         result = rb.playStation("http://x", "X")
         assert result.get("ok") is False
-        assert result.get("error") == "NO_PLAYER_SERVICE"
+        assert result.get("error") == "NO_RADIO_MANAGER"
 
     def test_creation(self):
         from ui_qml_bridge.radio_bridge import RadioBridge
@@ -55,27 +55,31 @@ class TestRadioOperations:
 
     def test_play_station(self):
         from ui_qml_bridge.radio_bridge import RadioBridge
-        player = MagicMock()
-        player.play_url = MagicMock()
-        rb = RadioBridge(player_service=player)
+        mgr = MagicMock()
+        mgr.play_station.return_value = {"ok": True, "accepted": True, "status": "buffering"}
+        rb = RadioBridge(player_service=MagicMock(), radio_manager=mgr)
         result = rb.playStation("http://stream.url", "Test Station")
         assert result.get("ok")
+        mgr.play_station.assert_called_once_with(
+            "http://stream.url", "Test Station")
 
     def test_stop_stream(self):
         from ui_qml_bridge.radio_bridge import RadioBridge
-        player = MagicMock()
-        player.stop = MagicMock()
-        rb = RadioBridge(player_service=player)
+        mgr = MagicMock()
+        mgr.stop.return_value = {"ok": True}
+        rb = RadioBridge(player_service=MagicMock(), radio_manager=mgr)
         result = rb.stopStream()
         assert result.get("ok")
+        mgr.stop.assert_called_once()
 
     def test_cancel_stream(self):
         from ui_qml_bridge.radio_bridge import RadioBridge
-        player = MagicMock()
-        player.stop = MagicMock()
-        rb = RadioBridge(player_service=player)
+        mgr = MagicMock()
+        mgr.stop.return_value = {"ok": True}
+        rb = RadioBridge(player_service=MagicMock(), radio_manager=mgr)
         result = rb.cancelStream()
         assert result.get("ok")
+        mgr.stop.assert_called_once()
 
     def test_delete_station(self):
         from ui_qml_bridge.radio_bridge import RadioBridge

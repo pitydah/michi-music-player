@@ -248,7 +248,7 @@ MIGRATIONS = [
         ALTER TABLE favorites ADD COLUMN entity_type TEXT DEFAULT 'track';
         ALTER TABLE favorites ADD COLUMN entity_id TEXT DEFAULT '';
         ALTER TABLE favorites ADD COLUMN public_ref TEXT DEFAULT '';
-        ALTER TABLE favorites ADD COLUMN created_at REAL DEFAULT (strftime('%s','now'));
+        ALTER TABLE favorites ADD COLUMN created_at REAL DEFAULT 0;
         ALTER TABLE favorites ADD COLUMN source TEXT DEFAULT 'ui';
         UPDATE favorites SET source = 'legacy' WHERE entity_id = '' AND source = 'ui';
         CREATE INDEX IF NOT EXISTS idx_favorites_entity ON favorites(entity_type, entity_id);
@@ -274,6 +274,38 @@ MIGRATIONS = [
         );
     """, """
         DROP TABLE IF EXISTS mobile_sync_devices;
+    """),
+    (9, "Favorite provenance and inheritance columns", """
+        ALTER TABLE favorites ADD COLUMN origin TEXT NOT NULL DEFAULT 'direct';
+        ALTER TABLE favorites ADD COLUMN parent_entity TEXT;
+        UPDATE favorites SET origin = 'migrated_legacy'
+            WHERE origin = 'direct' AND (entity_id = '' OR source = 'legacy');
+        CREATE INDEX IF NOT EXISTS idx_favorites_origin
+            ON favorites(origin, parent_entity);
+    """, """
+        DROP INDEX IF EXISTS idx_favorites_origin;
+        ALTER TABLE favorites DROP COLUMN parent_entity;
+        ALTER TABLE favorites DROP COLUMN origin;
+    """),
+    (10, "Persistent device sync history", """
+        CREATE TABLE IF NOT EXISTS device_sync_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            job_id TEXT NOT NULL DEFAULT '',
+            device_id TEXT NOT NULL DEFAULT '',
+            device_label TEXT NOT NULL DEFAULT '',
+            direction TEXT NOT NULL DEFAULT 'to_device',
+            status TEXT NOT NULL DEFAULT 'completed',
+            total_bytes INTEGER NOT NULL DEFAULT 0,
+            transferred_bytes INTEGER NOT NULL DEFAULT 0,
+            error TEXT NOT NULL DEFAULT '',
+            playlist_path TEXT NOT NULL DEFAULT '',
+            created_at REAL NOT NULL DEFAULT (strftime('%s','now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_device_sync_history_device
+            ON device_sync_history(device_id, created_at);
+    """, """
+        DROP INDEX IF EXISTS idx_device_sync_history_device;
+        DROP TABLE IF EXISTS device_sync_history;
     """),
 ]
 

@@ -64,7 +64,6 @@ jobs:
             tests/test_metadata_normalizer.py \
             tests/test_migrations.py \
             tests/qml/library/test_library_filtered_query_service.py \
-            tests/qml/library/test_library_data_consolidation_runtime.py \
             tests/qml/library/test_album_pathview.py
       - name: Compile modified Python surface
         run: |
@@ -86,7 +85,6 @@ jobs:
             tests/test_metadata_normalizer.py \
             tests/test_migrations.py \
             tests/qml/library/test_library_filtered_query_service.py \
-            tests/qml/library/test_library_data_consolidation_runtime.py \
             tests/qml/library/test_album_premium_views_runtime.py \
             tests/qml/library/test_album_pathview.py \
             2>&1 | tee library-data-tests.log

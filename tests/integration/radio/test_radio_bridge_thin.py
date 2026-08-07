@@ -80,25 +80,50 @@ class TestBridgeThin:
 
     def test_is_playing_confirmed_not_optimistic(self):
         svc = MagicMock()
+        svc.play_station.return_value = {"ok": True, "accepted": True, "status": "buffering"}
         player = MagicMock()
         bridge = RadioBridge(radio_manager=svc, player_service=player)
         result = bridge.playStation("http://jazz.stream", "Jazz FM")
         assert result["ok"] is True
+        assert result["accepted"] is True
+        svc.play_station.assert_called_once_with("http://jazz.stream", "Jazz FM")
         assert bridge.isPlaying is False  # not confirmed yet
-        assert bridge.isBuffering is True
-        # Confirmation comes from the backend signal/readback hook.
-        bridge._on_station_connection_done()
+        assert bridge.isBuffering is False  # no optimistic buffering either
+        # Confirmation comes only from the service state event (readback).
+        bridge._on_service_state_event(type("Evt", (), {"data": {"state": "playing"}})())
         assert bridge.isPlaying is True
         assert bridge.isBuffering is False
 
-    def test_play_records_history_via_service(self):
+    def test_play_delegates_and_service_owns_history(self):
         svc = MagicMock()
         svc.get_stations.return_value = [
             {"id": 3, "name": "Jazz FM", "url": "http://jazz.stream",
              "codec": "MP3", "country": "US", "tags": [], "favorite": False,
              "image_path": "", "bitrate": 0},
         ]
+        svc.play_station.return_value = {"ok": True, "accepted": True, "status": "buffering"}
         bridge = RadioBridge(radio_manager=svc, player_service=MagicMock())
-        bridge.playStation("http://jazz.stream", "Jazz FM")
-        bridge._on_station_connection_done()
-        svc.mark_played.assert_called_once_with(3)
+        result = bridge.playStation("http://jazz.stream", "Jazz FM")
+        assert result["ok"] is True
+        svc.play_station.assert_called_once_with("http://jazz.stream", "Jazz FM")
+        # The bridge never records plays: the canonical service owns history.
+        svc.mark_played.assert_not_called()
+        bridge._on_service_state_event(type("Evt", (), {"data": {"state": "playing"}})())
+        svc.mark_played.assert_not_called()
+
+    def test_play_station_failure_is_explicit(self):
+        svc = MagicMock()
+        svc.play_station.return_value = {"ok": False, "error": "BACKEND_UNAVAILABLE"}
+        bridge = RadioBridge(radio_manager=svc, player_service=MagicMock())
+        result = bridge.playStation("http://jazz.stream", "Jazz FM")
+        assert result["ok"] is False
+        assert result["error"] == "BACKEND_UNAVAILABLE"
+        assert bridge.isPlaying is False
+
+    def test_stop_stream_delegates(self):
+        svc = MagicMock()
+        svc.stop.return_value = {"ok": True}
+        bridge = RadioBridge(radio_manager=svc, player_service=MagicMock())
+        result = bridge.stopStream()
+        assert result["ok"] is True
+        svc.stop.assert_called_once()

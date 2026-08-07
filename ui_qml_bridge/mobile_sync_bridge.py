@@ -84,6 +84,16 @@ class MobileSyncBridge(QObject):
             self.stateChanged.emit()
         return result
 
+    @Slot(str, result=dict)
+    def approveDevice(self, device_id: str):
+        """Explicit user approval — the only path to trusted=True."""
+        if not self._svc:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+        result = self._svc.approve_device(device_id)
+        if result.get("ok"):
+            self.stateChanged.emit()
+        return result
+
     @Slot(result=dict)
     def cancelPairing(self):
         self._session_id = ""

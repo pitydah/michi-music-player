@@ -138,5 +138,10 @@ def context_db_path() -> str:
     return os.path.join(app_data_dir(), "context.sqlite")
 
 
+def michi_link_import_store_path() -> str:
+    """SQLite ledger for committed Michi Link import sessions."""
+    return os.path.join(app_data_dir(), "michi_link_imports.sqlite")
+
+
 def transmit_devices_path() -> str:
     return os.path.join(app_data_dir(), "transmit_devices.json")

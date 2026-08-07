@@ -21,6 +21,7 @@ from core.composition import audio_lab as audio_lab_builder
 from core.composition import ecosystem as eco_builder
 from core.composition import settings as settings_builder
 from core.composition import intelligence as intel_builder
+from core.composition import jobs as jobs_builder
 
 if TYPE_CHECKING:
     from ui_qml_bridge.context_registrar import ContextRegistrar
@@ -92,6 +93,11 @@ class ApplicationBootstrap:
             settings_svc.set_navigation_service(self.container.get("navigation_service"))
 
         intel_builder.build(self.container)
+
+        # Job handlers must be registered AFTER every service they need is
+        # composed (library/doctor/metadata/playback), and QUEUED jobs from
+        # the previous process are resumed only once handlers exist.
+        jobs_builder.build(self.container)
 
         self._has_built = True
         service_count = sum(

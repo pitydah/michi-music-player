@@ -1,10 +1,43 @@
 """Test ServiceContainer lifecycle — states, start, shutdown, health."""
 from core.service_container import ServiceContainer, ContainerState
+from core.service_manifest import SERVICE_MANIFEST, ServicePriority
+
+
+def _manifest_start_keys() -> set[str]:
+    """Every REQUIRED manifest key plus its transitive declared dependencies.
+
+    FASE 1: validation fails when a REQUIRED descriptor's dependency is
+    missing, so the fixture registers the closure (SERVICE_MANIFEST is the
+    single source of truth — no frozen name lists).
+    """
+    needed = {
+        name for name, desc in SERVICE_MANIFEST.items()
+        if desc.priority == ServicePriority.REQUIRED
+    }
+    changed = True
+    while changed:
+        changed = False
+        for name, desc in SERVICE_MANIFEST.items():
+            if name in needed:
+                for dep in desc.dependencies:
+                    if dep not in needed:
+                        needed.add(dep)
+                        changed = True
+    return needed
 
 
 def _register_all_required(sc):
-    for name in sc._required_names():
-        sc.register(name, object())
+    instances = {}
+    for name in _manifest_start_keys():
+        desc = SERVICE_MANIFEST[name]
+        if desc.alias_of is None:
+            instances[name] = object()
+    for name in _manifest_start_keys():
+        desc = SERVICE_MANIFEST[name]
+        if desc.alias_of is not None:
+            instances[name] = instances[desc.alias_of]
+    for name, svc in instances.items():
+        sc.register(name, svc)
 
 
 def test_initial_state():

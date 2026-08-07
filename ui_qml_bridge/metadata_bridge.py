@@ -24,13 +24,15 @@ class MetadataBridge(QObject):
     confirmationRequested = Signal(str, int)
 
     def __init__(self, metadata_service=None, job_service=None,
-                 metadata_editor_service=None, parent=None):
+                 metadata_editor_service=None, confirmation_service=None,
+                 parent=None):
         super().__init__(parent)
         if metadata_service is None:
             logger.warning("MetadataBridge: metadata_service is None — running in degraded mode")
         self._ms = metadata_service
         self._js = job_service
         self._editor = metadata_editor_service
+        self._cs = confirmation_service
         self._current_filepath = ""
         self._has_selection = False
         self._is_loading = False
@@ -227,6 +229,10 @@ class MetadataBridge(QObject):
                         "message": proposal.get("message", "No se pudo proponer el cambio")}
             conf = self._editor.confirm(
                 proposal["proposal_id"], selected_fields=list(changes))
+            if not conf.get("ok"):
+                return {"ok": False,
+                        "error_code": conf.get("code", "CONFIRMATION_UNAVAILABLE"),
+                        "message": conf.get("message", "No se pudo confirmar el cambio")}
             self._pending_review_id = proposal["proposal_id"]
             self._pending_token = conf.get("confirmation_token", "")
             self._set_status("AWAITING_CONFIRMATION")
@@ -274,10 +280,18 @@ class MetadataBridge(QObject):
             return {"ok": False, "error_code": "INVALID_TOKEN"}
 
         if self._editor:
+            approved = self._editor.approve(self._pending_token)
+            if not approved.get("ok"):
+                self._set_status("FAILED")
+                self.operationFailed.emit(
+                    approved.get("code", "INVALID_CONFIRMATION_TOKEN"),
+                    approved.get("message", "Token de confirmación inválido o expirado"))
+                return {"ok": False,
+                        "error_code": approved.get("code", "INVALID_CONFIRMATION_TOKEN"),
+                        "message": approved.get("message", "Token de confirmación inválido o expirado")}
             result = self._editor.apply_single(
                 review_id,
                 confirmation_token=self._pending_token,
-                source="ui",
             )
             self._pending_review_id = ""
             self._pending_token = ""
@@ -330,6 +344,8 @@ class MetadataBridge(QObject):
 
     @Slot(result=dict)
     def rejectSave(self):
+        if self._cs and self._pending_token:
+            self._cs.reject(self._pending_token)
         self._pending_review_id = ""
         self._pending_token = ""
         self._set_status("IDLE")
@@ -492,12 +508,52 @@ class MetadataBridge(QObject):
             return {"ok": False, "error": "METADATA_SERVICE_UNAVAILABLE"}
         self._set_status("QUEUED")
 
+        proposal_id = ""
+        confirmation_token = ""
+        if self._editor:
+            proposal = self._editor.build_proposal(
+                [{"filepath": fp} for fp in filepaths],
+                {key: str(value)},
+            )
+            if not proposal.get("ok"):
+                self._set_status("FAILED")
+                return {"ok": False, "error": proposal.get("code", "PROPOSAL_FAILED"),
+                        "applied": 0, "errors": len(filepaths), "details": [
+                            {"filepath": fp,
+                             "error": proposal.get("code", "PROPOSAL_FAILED")}
+                            for fp in filepaths
+                        ], "cancelled": False, "job_id": None}
+            conf = self._editor.confirm(
+                proposal["proposal_id"], selected_fields=[key], ttl=3600)
+            if not conf.get("ok"):
+                self._set_status("FAILED")
+                return {"ok": False, "error": conf.get("code", "CONFIRMATION_UNAVAILABLE"),
+                        "applied": 0, "errors": len(filepaths), "details": [
+                            {"filepath": fp,
+                             "error": conf.get("code", "CONFIRMATION_UNAVAILABLE")}
+                            for fp in filepaths
+                        ], "cancelled": False, "job_id": None}
+            proposal_id = proposal["proposal_id"]
+            confirmation_token = conf["confirmation_token"]
+            if self._cs and not self._cs.approve_token(confirmation_token):
+                self._set_status("FAILED")
+                return {"ok": False, "error": "INVALID_CONFIRMATION_TOKEN",
+                        "applied": 0, "errors": len(filepaths), "details": [
+                            {"filepath": fp, "error": "INVALID_CONFIRMATION_TOKEN"}
+                            for fp in filepaths
+                        ], "cancelled": False, "job_id": None}
+
         if self._js:
+            payload = {"filepaths": list(filepaths), "field": key,
+                       "value": str(value)}
+            if proposal_id:
+                payload["proposal_id"] = proposal_id
+            if confirmation_token:
+                payload["confirmation_token"] = confirmation_token
             job_id = self._js.create_job(
                 "metadata_batch",
                 owner="metadata_bridge",
-                payload={"filepaths": list(filepaths), "field": key,
-                         "value": str(value)},
+                payload=payload,
                 total=len(filepaths),
                 cancellable=True,
                 pausable=False,
@@ -516,33 +572,20 @@ class MetadataBridge(QObject):
                     "cancelled": False, "job_id": None}
 
         if self._editor:
-            proposal = self._editor.build_proposal(
-                [{"filepath": fp} for fp in filepaths],
-                {key: str(value)},
-            )
-            if not proposal.get("ok"):
-                results["ok"] = False
-                results["errors"] = len(filepaths)
-                results["details"] = [
-                    {"filepath": fp, "error": proposal.get("code", "PROPOSAL_FAILED")}
-                    for fp in filepaths
-                ]
-            else:
-                batch = self._editor.apply_batch([{
-                    "proposal_id": proposal["proposal_id"],
-                    "confirmed": True,
-                    "source": "ui",
-                }])
-                results["applied"] = batch.get("applied", 0)
-                results["errors"] = (
-                    batch.get("failed", 0) + batch.get("conflicts", 0))
-                results["details"] = [
-                    {"filepath": t.get("filepath", ""),
-                     "error": t.get("error", t.get("status", ""))}
-                    for t in batch.get("per_track", [])
-                    if t.get("status") in ("failed", "conflict", "skipped")
-                ]
-                results["ok"] = batch.get("ok", False)
+            batch = self._editor.apply_batch([{
+                "proposal_id": proposal_id,
+                "confirmation_token": confirmation_token,
+            }])
+            results["applied"] = batch.get("applied", 0)
+            results["errors"] = (
+                batch.get("failed", 0) + batch.get("conflicts", 0))
+            results["details"] = [
+                {"filepath": t.get("filepath", ""),
+                 "error": t.get("error", t.get("status", ""))}
+                for t in batch.get("per_track", [])
+                if t.get("status") in ("failed", "conflict", "skipped")
+            ]
+            results["ok"] = batch.get("ok", False)
             self._set_status("SUCCEEDED" if results["errors"] == 0 else "PARTIAL" if results["applied"] > 0 else "FAILED")
             self.batchProgress.emit(results["applied"], len(filepaths))
             self.dataChanged.emit()
@@ -585,8 +628,8 @@ class MetadataBridge(QObject):
     def cancelBatch(self):
         self._set_status("CANCELLED")
         if self._js:
-            for d in self._js.list_jobs(job_type="metadata_batch", limit=100):
-                self._js.cancel_job(d["id"])
+            # Owner-scoped: never touches jobs of other domains.
+            self._js.cancel_scope("metadata_bridge", "metadata_batch")
         return {"ok": True}
 
     @Slot(result=dict)

@@ -14,6 +14,7 @@ COMPOSITION_FILES = (
     PROJECT_ROOT / "core" / "composition" / "ecosystem.py",
     PROJECT_ROOT / "core" / "composition" / "settings.py",
     PROJECT_ROOT / "core" / "composition" / "intelligence.py",
+    PROJECT_ROOT / "core" / "composition" / "jobs.py",
     PROJECT_ROOT / "core" / "application_bootstrap.py",
 )
 

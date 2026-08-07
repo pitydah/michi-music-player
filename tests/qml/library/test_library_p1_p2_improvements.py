@@ -36,7 +36,9 @@ def favorite_bridge():
             entity_id TEXT DEFAULT '',
             public_ref TEXT DEFAULT '',
             created_at REAL DEFAULT (strftime('%s','now')),
-            source TEXT DEFAULT 'ui'
+            source TEXT DEFAULT 'ui',
+            origin TEXT NOT NULL DEFAULT 'direct',
+            parent_entity TEXT
         );
         INSERT INTO media_items VALUES
             (1, '/a/one.flac', 'album-a', 'Album A', 'Artist A', 'Artist A', 'uid-1', NULL),
@@ -67,13 +69,22 @@ def test_album_favorite_uses_canonical_entity_identity(favorite_bridge):
     result = bridge.setAlbumFavorite("album-a", True)
 
     assert result == {"ok": True, "favorite": True, "count": 1}
-    assert connection.execute(
-        "SELECT track_id, entity_type, entity_id FROM favorites"
-    ).fetchall() == [("album:album-a", "album", "album-a")]
+    rows = connection.execute(
+        "SELECT track_id, entity_type, entity_id, origin, parent_entity "
+        "FROM favorites ORDER BY entity_type, entity_id"
+    ).fetchall()
+    assert rows == [
+        ("album:album-a", "album", "album-a", "direct", None),
+        ("/a/one.flac", "track", "uid-1", "inherited_album", "album-a"),
+        ("/a/two.flac", "track", "uid-2", "inherited_album", "album-a"),
+    ]
 
-    connection.execute("INSERT INTO favorites(track_id) VALUES ('/a/one.flac')")
+    # A direct track favorite outside the album is preserved on unfavorite.
+    connection.execute("INSERT INTO favorites(track_id) VALUES ('/b/three.flac')")
     assert bridge.setAlbumFavorite("album-a", False)["ok"] is True
-    assert connection.execute("SELECT track_id FROM favorites").fetchall() == []
+    assert connection.execute("SELECT track_id FROM favorites").fetchall() == [
+        ("/b/three.flac",),
+    ]
 
 
 def test_artist_favorite_uses_canonical_entity_identity(favorite_bridge):
@@ -82,9 +93,15 @@ def test_artist_favorite_uses_canonical_entity_identity(favorite_bridge):
     result = bridge.setArtistFavorite("Artist A", True)
 
     assert result == {"ok": True, "favorite": True, "count": 1}
-    assert connection.execute(
-        "SELECT track_id, entity_type, entity_id FROM favorites"
-    ).fetchall() == [("artist:Artist A", "artist", "Artist A")]
+    rows = connection.execute(
+        "SELECT track_id, entity_type, entity_id, origin "
+        "FROM favorites ORDER BY entity_type, entity_id"
+    ).fetchall()
+    assert rows == [
+        ("artist:Artist A", "artist", "Artist A", "direct"),
+        ("/a/one.flac", "track", "uid-1", "inherited_artist"),
+        ("/a/two.flac", "track", "uid-2", "inherited_artist"),
+    ]
 
 
 def test_custom_collection_is_validated_and_upserted():

@@ -67,6 +67,10 @@ class ServiceDescriptor:
             to invoke; missing methods are skipped, not errors.
         optional: True when registration may be None or absent.
         description: Why this component exists / how it is used.
+        alias_of: Canonical key this descriptor is an alias of. The alias
+            shares the registered instance and lifecycle with the target:
+            aliases are never started/shutdown separately and they are not
+            graph nodes for dependency ordering.
     """
 
     name: str
@@ -82,6 +86,7 @@ class ServiceDescriptor:
     cancel_method: str = "cancel"
     optional: bool = False
     description: str = ""
+    alias_of: str | None = None
 
 
 def _d(name, service_class, lifecycle, priority, **kwargs) -> ServiceDescriptor:
@@ -117,8 +122,9 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
     "connection_factory": _d(
         "connection_factory", ServiceClass.MANAGED_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.REQUIRED,
-        dependencies=("database",),
-        description="Alias of database object for legacy consumers.",
+        alias_of="database",
+        description="Alias of database object for legacy consumers (same "
+                    "LibraryDB instance; never started/shutdown separately).",
     ),
     "read_connection_factory": _d(
         "read_connection_factory", ServiceClass.PASSIVE_REPOSITORY,
@@ -198,10 +204,12 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
     "settings_coordinator": _d(
         "settings_coordinator", ServiceClass.DOMAIN_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.REQUIRED,
-        dependencies=("settings_service",),
         capabilities=("settings",),
         consumers=("settings_service", "settings_bridge"),
-        description="SettingsRuntimeCoordinator — applies runtime settings.",
+        description="SettingsRuntimeCoordinator — applies runtime settings. "
+                    "Does NOT depend on settings_service (wiring direction: "
+                    "settings_service -> coordinator); playback/queue/worker "
+                    "are late-wired by composition, not manifest deps.",
     ),
     "settings_service": _d(
         "settings_service", ServiceClass.MANAGED_SERVICE,
@@ -296,8 +304,9 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
     "library_filtered_query_service": _d(
         "library_filtered_query_service", ServiceClass.DOMAIN_SERVICE,
         LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
-        dependencies=("library_query_service",),
-        description="Alias of library_query_service (same object).",
+        alias_of="library_query_service",
+        description="Alias of library_query_service (same object; not a "
+                    "lifecycle owner — never started/shutdown separately).",
     ),
     "collection_service": _d(
         "collection_service", ServiceClass.DOMAIN_SERVICE,
@@ -463,14 +472,20 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
     "recognition_service": _d(
         "recognition_service", ServiceClass.APPLICATION_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
-        dependencies=(),
+        dependencies=("provider_manager", "database"),
         consumers=("smart_tagging_service", "identifier_controller"),
-        description="Music identification via providers (ProviderManager injected by constructor); start() is a no-op and safe at bootstrap.",
+        description="Music identification over the canonical ADVANCED "
+                    "detection runtime (P0 FASE 10): shared ProviderManager + "
+                    "AudioCaptureService + DetectionService are composed and "
+                    "injected; construction never opens devices/sockets; "
+                    "start() is a no-op safe at bootstrap.",
     ),
     "smart_tagging_service": _d(
         "smart_tagging_service", ServiceClass.MANAGED_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
-        dependencies=("worker_manager", "library_query_service", "recognition_service"),
+        dependencies=("worker_manager", "library_query_service",
+                      "recognition_service", "metadata_editor_service",
+                      "confirmation_service"),
         optional=True,
         capabilities=("smart_tagging",),
         description="Smart tagging suggestions; may be None.",
@@ -583,7 +598,9 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         optional=True,
         capabilities=("home_audio", "snapcast", "transmit"),
         consumers=("home_audio_bridge",),
-        description="Home Audio orchestration (Snapcast + Home Assistant).",
+        description="Home Audio orchestration (Snapcast + Home Assistant); "
+                    "the HA client is composed WITHOUT starting network — it "
+                    "connects only on explicit runtime enable (P0 FASE 10).",
     ),
     "device_sync_service": _d(
         "device_sync_service", ServiceClass.MANAGED_SERVICE,
@@ -600,18 +617,22 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         dependencies=(),
         optional=True,
         capabilities=("devices_sync",),
-        consumers=("device_sync_service",),
-        description="Paired device registry.",
+        consumers=("device_sync_service", "mobile_sync_service",
+                   "devices_bridge", "assistant_runtime"),
+        description="Paired device registry (P0 FASE 10): ONE instance "
+                    "composed in ecosystem; every consumer gets it injected.",
     ),
     "mobile_sync_service": _d(
         "mobile_sync_service", ServiceClass.DOMAIN_SERVICE,
-        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
-        dependencies=("database",),
+        LifecycleKind.EXTERNAL, ServicePriority.OPTIONAL,
+        dependencies=("database", "device_registry"),
         optional=True,
         capabilities=("devices_sync",),
         consumers=("mobile_sync_bridge",),
         description="Mobile sync: persistent pairing/trust (migration 8), "
-                    "real listener lifecycle, truthful health.",
+                    "real listener lifecycle, truthful health; shares the "
+                    "single composed DeviceRegistry. Listener starts LAZY "
+                    "via start_pairing (never opened at boot).",
     ),
     "michi_link_client": _d(
         "michi_link_client", ServiceClass.EXTERNAL_RESOURCE,
@@ -684,23 +705,57 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         consumers=(),
         description="DiagnosticsService: ecosystem health report.",
     ),
+    "radio_station_repository": _d(
+        "radio_station_repository", ServiceClass.PASSIVE_REPOSITORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        optional=True,
+        dependencies=(),
+        capabilities=("radio",),
+        consumers=("radio_service",),
+        description="SqliteStationRepository: persisted radio stations (PASSIVE).",
+    ),
+    "radio_history_repository": _d(
+        "radio_history_repository", ServiceClass.PASSIVE_REPOSITORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        optional=True,
+        dependencies=(),
+        capabilities=("radio",),
+        consumers=("radio_service",),
+        description="SqliteRadioHistoryRepository: persisted radio history with event kinds (PASSIVE).",
+    ),
+    "radio_playback_adapter": _d(
+        "radio_playback_adapter", ServiceClass.EXTERNAL_RESOURCE,
+        LifecycleKind.EXTERNAL, ServicePriority.OPTIONAL,
+        optional=True,
+        dependencies=("playback_service",),
+        capabilities=("radio",),
+        consumers=("radio_service",),
+        description="RadioPlaybackAdapter: formal playback boundary over PlayerService; "
+                    "lifecycle delegated to the player backend (EXTERNAL).",
+    ),
     "radio_service": _d(
         "radio_service", ServiceClass.MANAGED_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
-        dependencies=("event_bus",),
+        dependencies=("event_bus", "playback_service", "radio_playback_adapter",
+                      "radio_station_repository", "radio_history_repository"),
         optional=True,
         capabilities=("radio",),
         consumers=("radio_bridge",),
-        description="Radio stations + persisted history.",
+        description="Canonical RadioService: stations + sessions + playback "
+                    "readback + persisted history; radio events flow through "
+                    "the canonical event_bus via a typed namespace wrapper "
+                    "(P0 FASE 10).",
     ),
     "lyrics_service": _d(
         "lyrics_service", ServiceClass.MANAGED_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
-        dependencies=("worker_manager",),
+        dependencies=("worker_manager", "event_bus"),
         optional=True,
         capabilities=("lyrics",),
         consumers=("lyrics_bridge",),
-        description="Lyrics via LRCLIB.",
+        description="Lyrics via LRCLIB; lyrics events flow through the "
+                    "canonical event_bus via ONE typed LyricEventBus wrapper "
+                    "shared by resolver and service (P0 FASE 10).",
     ),
     # ── Settings / presentation (3 registered keys) ──────────────────────
     "theme_service": _d(
@@ -708,6 +763,7 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         LifecycleKind.MANAGED, ServicePriority.REQUIRED,
         optional=True,
         capabilities=("theme",),
+        consumers=("theme_bridge",),
         description="Canonical theme authority (mode, accent, artwork background).",
     ),
     "accessibility_service": _d(
@@ -715,6 +771,7 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         LifecycleKind.MANAGED, ServicePriority.REQUIRED,
         optional=True,
         capabilities=(),
+        consumers=("accessibility_bridge",),
         description="Accessibility runtime settings (canonical owner).",
     ),
     "context_service": _d(
@@ -725,7 +782,7 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         consumers=("home_bridge", "home_dashboard_service", "michi_ai_snapshot_service"),
         description="Canonical contextual truth source (S11) — provider registry snapshot.",
     ),
-    # ── Intelligence (4 registered keys) ─────────────────────────────────
+    # ── Intelligence (5 registered keys) ─────────────────────────────────
     "action_registry": _d(
         "action_registry", ServiceClass.REGISTRY,
         LifecycleKind.MANAGED, ServicePriority.REQUIRED,
@@ -752,16 +809,25 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         consumers=("mix_bridge",),
         description="Mix creation/editing.",
     ),
+    "assistant_runtime": _d(
+        "assistant_runtime", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        consumers=("michi_ai_service",),
+        description="Single governed Michi AI runtime composition (F9): "
+                    "intent/capability/context/plan/confirmation/execution/"
+                    "tool-registry/conversation/trace/backend as one unit.",
+    ),
     "michi_ai_service": _d(
         "michi_ai_service", ServiceClass.DOMAIN_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.CAPABILITY_GATED,
         dependencies=("global_search_service", "playback_service", "queue_service",
                       "playlist_service", "diagnostics_service", "settings_service",
-                      "action_registry"),
+                      "action_registry", "assistant_runtime"),
         optional=True,
         capabilities=("michi_ai", "ai"),
         consumers=("michi_ai_bridge",),
-        description="Michi AI engine (capability-gated; S4 fixes gateways).",
+        description="Michi AI engine facade over assistant_runtime "
+                    "(capability-gated; S4 fixes gateways, F9 delegates).",
     ),
     # ── Application (1 registered key) ───────────────────────────────────
     "navigation_service": _d(
@@ -832,8 +898,18 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
     "provider_manager": _d(
         "provider_manager", ServiceClass.REGISTRY,
         LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
-        consumers=("recognition_service",),
-        description="Recognition provider registry (Shazam/AudD/AcoustID).",
+        consumers=("recognition_service", "identifier_controller"),
+        description="Recognition provider registry (Shazam/AudD/AcoustID); "
+                    "composed in library (P0 FASE 10) and shared with the "
+                    "advanced detection runtime.",
+    ),
+    "file_manager_service": _d(
+        "file_manager_service", ServiceClass.PASSIVE_REPOSITORY,
+        LifecycleKind.PASSIVE, ServicePriority.OPTIONAL,
+        consumers=("track_action_service",),
+        description="Stateless file-manager facade (static methods only); "
+                    "the class itself is the registered port (P0 FASE 10) — "
+                    "nothing constructs it ad hoc.",
     ),
     "knowledge_broker": _d(
         "knowledge_broker", ServiceClass.DOMAIN_SERVICE,

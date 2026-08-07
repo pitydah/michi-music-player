@@ -61,10 +61,15 @@ def test_bridge_crud_reaches_service_api() -> None:
     source = BRIDGE_FILE.read_text(encoding="utf-8")
     for method in ("get_stations", "add_station", "edit_station",
                    "delete_station", "favorite_station", "search_stations",
-                   "clear_history", "mark_played"):
+                   "clear_history", "play_station"):
         assert method in source, (
             f"radio_bridge must delegate through '{method}'"
         )
+    # Playback delegation goes through the service; the bridge never records
+    # plays itself (the canonical service owns history on PLAYING).
+    assert "mark_played" not in source, (
+        "radio_bridge must not record plays — the canonical service does"
+    )
 
 
 def test_remove_station_uses_injected_service() -> None:
@@ -87,4 +92,7 @@ def test_no_parallel_instantiation_in_composition() -> None:
     """ecosystem.py must construct a single radio service object."""
     source = (PROJECT_ROOT / "core" / "composition" / "ecosystem.py").read_text(
         encoding="utf-8", errors="ignore")
-    assert source.count('register("radio_service"') == 1
+    # One productive registration + one None degradation on failure (same
+    # convention as every ecosystem block); never a second construction.
+    assert source.count('register("radio_service"') == 2
+    assert source.count("CanonicalRadioService(") == 1

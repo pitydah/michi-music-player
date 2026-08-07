@@ -83,15 +83,18 @@ class NotificationActionService:
             return {"ok": False, "status": "NOT_RETRYABLE",
                     "code": "NOT_RETRYABLE",
                     "message": f"Job {job_id} is not retryable"}
+        # Unified retry entry point (ADR-004, Fase Jobs): re-queues with the
+        # ORIGINAL payload and starts immediately when capacity allows.
         if not job_service.retry_job(job_id):
             return {"ok": False, "status": "NOT_RETRYABLE",
                     "code": "NOT_RETRYABLE",
                     "message": f"Job {job_id} cannot be re-queued"}
-        started = job_service.start_job(job_id) or job_service.process_queue() > 0
-        state = "RUNNING" if started else "QUEUED"
+        refreshed = job_service.get_job(job_id)
+        state = refreshed.state.value if refreshed else "QUEUED"
         return {
             "ok": True,
             "status": state,
+            "state": state,
             "code": "RETRY_QUEUED",
             "job_id": job_id,
             "message": f"Job {job_id} re-queued with original payload",

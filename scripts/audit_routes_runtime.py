@@ -17,7 +17,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from pathlib import Path
 
 from PySide6.QtQml import QQmlComponent, QQmlEngine
-from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QGuiApplication
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from ui_qml_bridge.route_registry import ROUTES
@@ -26,7 +26,7 @@ QML_ROOT = Path("ui_qml")
 
 
 def main():
-    _app = QApplication.instance() or QApplication([])
+    _app = QGuiApplication.instance() or QGuiApplication([])
     engine = QQmlEngine()
     engine.addImportPath(str(QML_ROOT))
 

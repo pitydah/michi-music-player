@@ -58,7 +58,8 @@ def test_play_station(mock_radio_mgr, mock_player):
     bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
     result = bridge.playStation("http://stream.url")
     assert result["ok"]
-    mock_player.play_url.assert_called_once_with("http://stream.url")
+    mock_radio_mgr.play_station.assert_called_once_with(
+        "http://stream.url", "")
 
 
 def test_play_station_empty_url(mock_radio_mgr, mock_player):

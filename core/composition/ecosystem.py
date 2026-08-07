@@ -85,8 +85,10 @@ def build(container: ServiceContainer) -> None:
             ha_token,
             websocket_port=ha_ws_port,
         )
-        if ha_url and ha_token:
-            ha_client.subscribe_events()
+        # P0 FASE 10: the HA client is composed WITHOUT starting any network.
+        # The constructor only stores config; the WebSocket connects and the
+        # poll timer starts when HomeAudioService.enable_* explicitly calls
+        # configure()/subscribe_events() at runtime.
         home_audio = HomeAudioService(
             snapcast_group_manager=group_manager,
             snapcast_discovery=discovery,
@@ -104,12 +106,58 @@ def build(container: ServiceContainer) -> None:
         container.register("home_audio_service", None)
 
     try:
+        # ── Device sync (Fase Sync, single authority) ────────────────────
+        # The facade owns NO parallel system: registry, discovery adapters,
+        # resolvers, planners, job service, transfer adapter, verification
+        # and history repository are all composed HERE and injected.
+        from core.device_sync.discovery import (
+            DiscoveryComposite,
+            MscDiscoveryAdapter,
+            MtpDiscoveryAdapter,
+            NetworkDiscoveryAdapter,
+        )
+        from core.device_sync.history import SyncHistoryRepository
+        from core.device_sync.planning import DeviceSyncPlanner
+        from core.device_sync.profile_resolver import DeviceProfileResolver
+        from core.device_sync.transcode_planning import TranscodePlanner
+        from core.device_sync.transfer import TransferAdapter
+        from core.device_sync.verification import VerificationService
         from core.device_sync_service import DeviceSyncService
         from core.sync.device_registry import DeviceRegistry
 
-        container.register("device_sync_service", DeviceSyncService())
         device_registry = DeviceRegistry()
         container.register("device_registry", device_registry)
+
+        process_controller = container.get("process_controller")
+        discovery_adapters = DiscoveryComposite([
+            MscDiscoveryAdapter(),
+            MtpDiscoveryAdapter(process_controller=process_controller),
+            NetworkDiscoveryAdapter(),
+        ])
+        profile_resolver = DeviceProfileResolver()
+        transcode_planner = TranscodePlanner()
+        sync_planner = DeviceSyncPlanner(transcode_planner=transcode_planner)
+        transfer_adapter = TransferAdapter(process_controller=process_controller)
+        verification_service = VerificationService()
+
+        app_db = container.get("database")
+        history_repository = SyncHistoryRepository(app_db)
+        history_repository.initialize()
+
+        device_sync = DeviceSyncService(
+            device_registry=device_registry,
+            discovery_adapters=discovery_adapters,
+            profile_resolver=profile_resolver,
+            sync_planner=sync_planner,
+            transcode_planner=transcode_planner,
+            job_service=container.get("job_service"),
+            transfer_adapter=transfer_adapter,
+            verification_service=verification_service,
+            history_repository=history_repository,
+            event_bus=event_bus,
+            process_controller=process_controller,
+        )
+        container.register("device_sync_service", device_sync)
         search_registry = container.get("search_provider_registry")
         if search_registry is not None:
             from core.search.models import SearchDomain
@@ -125,10 +173,27 @@ def build(container: ServiceContainer) -> None:
 
     try:
         from core.mobile_sync_service import MobileSyncService
+        from core.paths import michi_link_import_store_path
+        from core.settings_manager import get_bool, get_list, get_str
 
         container.register(
             "mobile_sync_service",
-            MobileSyncService(db=container.get("database")),
+            MobileSyncService(
+                db=container.get("database"),
+                device_registry=container.get("device_registry"),
+                bind_host=get_str("mobile_sync/bind_host") or "127.0.0.1",
+                allow_lan_pairing=get_bool("mobile_sync/allow_lan_pairing"),
+                tls_mode=get_str("mobile_sync/tls_mode") or "none",
+                allowed_networks=list(
+                    get_list("mobile_sync/allowed_networks") or []),
+                legacy_code_pairing_enabled=get_bool(
+                    "mobile_sync/legacy_code_pairing_enabled"),
+                signature_pairing_enabled=get_bool(
+                    "mobile_sync/signature_pairing_enabled"),
+                # Debt D3a: committed import sessions survive restarts via the
+                # SQLite ledger path (in-memory when omitted, e.g. tests).
+                import_store_path=michi_link_import_store_path(),
+            ),
         )
     except Exception as exc:
         logger.error("Failed to create mobile_sync_service: %s", exc)
@@ -206,7 +271,11 @@ def build(container: ServiceContainer) -> None:
             "michi_link_remote_library_service",
             RemoteLibraryService(micro=server_svc),
         )
-        container.register("michi_link_diagnostics_service", LinkDiagnosticsService())
+        container.register("michi_link_diagnostics_service", LinkDiagnosticsService(
+            client=michi_link_client,
+            track_identity_service=track_identity_svc,
+            import_service=import_svc,
+        ))
     except Exception as exc:
         logger.error("Failed to create michi_link services: %s", exc)
         for key in ("michi_link_client", "michi_link_server_service",
@@ -216,9 +285,59 @@ def build(container: ServiceContainer) -> None:
                     "michi_link_diagnostics_service"):
             container.register(key, None)
 
-    from core.radio.radio_service import RadioService
+    try:
+        # ── Radio (ADR-002 single domain authority) ──────────────────────
+        # Composition registers the canonical stack directly — no facade
+        # constructs the canonical service internally:
+        #   SqliteStationRepository + SqliteRadioHistoryRepository (PASSIVE)
+        #   + RadioPlaybackAdapter (over PlayerService) + CanonicalRadioService
+        from core.paths import radio_database_path
+        from core.radio.playback_adapter import RadioPlaybackAdapter
+        from core.radio.service import RadioService as CanonicalRadioService
+        from core.radio.events import EventBus as RadioEventBus
+        from infrastructure.radio.history_repository import SqliteRadioHistoryRepository
+        from infrastructure.radio.station_repository import SqliteStationRepository
 
-    container.register("radio_service", RadioService(event_bus=event_bus))
+        radio_db = radio_database_path()
+        station_repo = SqliteStationRepository(radio_db)
+        station_repo.initialize()
+        history_repo = SqliteRadioHistoryRepository(radio_db)
+        history_repo.initialize()
+        playback_adapter = RadioPlaybackAdapter(
+            player_service=container.get("playback_service"),
+        )
+        # P0 FASE 10: radio events flow through the canonical event_bus via a
+        # typed namespace wrapper — no second pub/sub instance.
+        radio_event_bus = RadioEventBus(event_bus)
+        radio_service = CanonicalRadioService(
+            station_repo=station_repo,
+            history_repo=history_repo,
+            playback_adapter=playback_adapter,
+            event_bus=radio_event_bus,
+        )
+        container.register("radio_station_repository", station_repo)
+        container.register("radio_history_repository", history_repo)
+        container.register("radio_playback_adapter", playback_adapter)
+        container.register("radio_service", radio_service)
+        # D2: the RADIO global-search domain routes through the canonical
+        # station repository — never a radio_stations table in the library
+        # database (which does not exist in production). The provider gets
+        # the SAME composed repository instance registered above.
+        search_registry = container.get("search_provider_registry")
+        if search_registry is not None:
+            from core.search.models import SearchDomain
+            from core.search.providers import RadioStationSearchProvider
+
+            search_registry.register(
+                SearchDomain.RADIO,
+                RadioStationSearchProvider(station_repo),
+            )
+    except Exception as exc:
+        logger.error("Failed to create radio_service: %s", exc)
+        container.register("radio_station_repository", None)
+        container.register("radio_history_repository", None)
+        container.register("radio_playback_adapter", None)
+        container.register("radio_service", None)
 
     try:
         from core.lyrics.service import LyricsService
@@ -242,11 +361,15 @@ def build(container: ServiceContainer) -> None:
             sidecar_provider=sidecar_provider,
             embedded_writer=MutagenEmbeddedLyricsWriter(),
         )
+        # P0 FASE 10: ONE LyricEventBus wrapping the canonical event_bus,
+        # shared by resolver and service so lyrics events flow through the
+        # single bus (typed namespace, no second pub/sub).
+        lyric_event_bus = LyricEventBus(event_bus)
         resolver = LyricsResolver(
             provider_registry=registry,
             cache_repo=cache_repo,
             sidecar_provider=sidecar_provider,
-            event_bus=LyricEventBus(),
+            event_bus=lyric_event_bus,
         )
         lyrics_service = LyricsService(
             resolver=resolver,
@@ -254,7 +377,7 @@ def build(container: ServiceContainer) -> None:
             cache_repo=cache_repo,
             storage_service=storage_service,
             editor_service=LyricsEditorService(),
-            event_bus=LyricEventBus(),
+            event_bus=lyric_event_bus,
         )
         container.register("lyrics_service", lyrics_service)
     except Exception as exc:

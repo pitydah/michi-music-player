@@ -193,7 +193,7 @@ def test_score_zero_no_db():
 def test_cancel_import_no_service():
     bridge = PlaylistsBridge(db=None)
     result = bridge.cancelPlaylistImport("import_1")
-    assert result["ok"]
+    assert not result["ok"]
 
 
 def test_playlist_service_no_db():

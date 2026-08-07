@@ -21,7 +21,31 @@ Written in Python 3.11+ with PySide6, GStreamer 1.0, SQLite FTS5, mutagen, shaza
 | Build system | pip install . / Flatpak |
 | Tests | **~950** (pytest + pytest-qt) |
 
-## 2. Directory Structure
+## 2. Orchestrator SDD — Reglas de Precedencia
+
+Las skills son herramientas subordinadas al cambio SDD activo.
+Ninguna skill puede ampliar el alcance, modificar contratos productivos,
+crear compatibilidad artificial, debilitar tests o corregir dominios ajenos
+sin evidencia explícita y autorización del orquestador.
+
+### Precedencia de skills (orden de activación)
+
+1. **SDD** — define alcance y contrato del cambio
+2. **Python Expert** — diagnostica e implementa
+3. **TDD** — valida causa raíz y corrección
+4. **Code Quality** — revisa mantenibilidad
+5. **Code Review** — busca regresiones
+6. **Judgment Day** — gate final de aprobación
+7. **Git Commit** — prepara el commit sin cambiar código
+
+### Skills excluidas por defecto
+
+- `Impeccable`, `ui-animation`, `docs-write`, `image-generation` y todo skill de frontend/UI solo se activan con orden explícita del orquestador.
+- Skills Python no relacionadas con el diagnóstico activo (ej: `python-fastapi` para una corrección de fixtures) se omiten para evitar ruido.
+
+---
+
+## 3. Directory Structure
 
 ```
 michi-music-player/
@@ -66,7 +90,7 @@ michi-music-player/
 **Verify:** `ruff check .` · `python -m compileall -q .` · `pytest -q`
 **Note:** Do not trust handwritten test/file counts — run the commands above.
 
-## 3. Architectural Patterns — MUST FOLLOW (migration in progress)
+## 4. Architectural Patterns — MUST FOLLOW (migration in progress)
 
 ### Dependency Injection
 - Controllers use `ServiceContainer` (QML bridge) or direct service injection
@@ -122,7 +146,7 @@ UI → PlayerService → HybridAudioManager
 | `ui/window.py:110-127` | `SECTION_CONFIG` — header titles, icons, views, search visibility per section |
 | `ui/window.py:28` | `VIEW_MODE_DEFS` — view mode configs for the view switcher |
 
-## 4. Code Conventions
+## 5. Code Conventions
 
 ### Style
 - Ruff with default config — **0 violations tolerated**
@@ -157,7 +181,7 @@ UI → PlayerService → HybridAudioManager
 - NEVER use `time.sleep()` on main thread — use `QTimer`
 - `QSettings` for preferences via `core/settings_manager.py`
 
-## 5. Visual Rules — ABSOLUTE
+## 6. Visual Rules — ABSOLUTE
 
 ### Colors
 ```
@@ -227,7 +251,7 @@ widget.setStyleSheet(table_qss() + scrollbar_qss())
 widget.setStyleSheet("""QTableView { background: ... }""")  # inline QSS
 ```
 
-## 6. Testing
+## 7. Testing
 
 ### Framework & Rules
 - Framework: pytest
@@ -246,7 +270,7 @@ find . -type d -name "__pycache__" -exec rm -rf {} +   # clear stale cache
 python main.py                          # run app
 ```
 
-## 7. Dependencies
+## 8. Dependencies
 
 **System (apt):**
 ```
@@ -259,7 +283,7 @@ avahi-utils fpcalc (chromaprint) pactl (PulseAudio/PipeWire) dbus-python
 PySide6 mutagen numpy shazamio pyaudio requests
 ```
 
-## 8. What NOT to Do
+## 9. What NOT to Do
 
 ### Quality
 - No generic "helper" files without a clear owner module
@@ -298,7 +322,7 @@ PySide6 mutagen numpy shazamio pyaudio requests
 - Warm palette (`#FF7A00` naranja, fucsia, magenta) is reserved for NowPlayingBar sliders and EQ bands only. Do not use warm colors for sidebar, cards, buttons, headers or navigation.
 - Cool blue `#8FB7FF` is the primary accent for all other UI (navigation, cards, buttons, headers, selection, focus).
 
-## 9. Current State
+## 10. Current State
 
 | Metric | Value |
 |--------|-------|
@@ -328,7 +352,7 @@ PySide6 mutagen numpy shazamio pyaudio requests
 ./scripts/run_from_source.sh      # run without system install
 ```
 
-## 10. Key Data Flows
+## 11. Key Data Flows
 
 ### Playback
 ```
@@ -469,7 +493,7 @@ Snapshot built every time the user navigates to Inicio.
 - `ui/controllers/home_controller.py` — orchestration
 - `ui/hubs/home_page.py` — 7 glass cards, render_snapshot()
 
-## 11. Common Tasks
+## 12. Common Tasks
 
 ### Add a sidebar item
 1. `ui/sidebar_controller.py:rebuild()` — add `add_section()` + `add_item()` call
@@ -519,7 +543,7 @@ python -m compileall -q -x '.venv/|\.tmpl\.' .                # must be clean
 python -m pytest tests/ -q               # must pass
 ```
 
-## 12. Protected Files — Risk of Silent Regression
+## 13. Protected Files — Risk of Silent Regression
 
 These files have an **integrity guard** at the module level that raises `AssertionError` at import time if the file is reverted to an incompatible version. Do NOT remove or modify this guard without also updating all callers:
 
@@ -542,7 +566,7 @@ Commits outside the Audio Lab scope that touch `ui/audio_lab/diagnostics_page.py
 3. Keep the `# INTEGRITY GUARD` block at the end of the file
 4. If you need to add/remove constructor params, update the guard accordingly and update `AudioLabDiagnosticsPage` in `ui/audio_lab/sub_pages.py`
 
-## 13. QML Experimental Skin (for AI assistants)
+## 14. QML Experimental Skin (for AI assistants)
 
 **Status:** QML is experimental/premium — NOT the default or stable UI.
 Always run `python main.py` unless explicitly testing QML.

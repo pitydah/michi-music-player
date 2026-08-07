@@ -23,7 +23,7 @@ class TestQmlStartup:
             eco(c)
             settings_b(c)
             intel(c)
-            missing = [n for n in c.list_services() if c.get(n) is None]
+            missing = [n for n in c._services if c.get(n) is None]
             assert len(missing) <= 2, f"Too many missing services: {missing}"
 
     def test_bootstrap_creates_bridges(self):

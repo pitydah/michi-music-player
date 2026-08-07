@@ -33,6 +33,10 @@ def build(container: ServiceContainer) -> None:
 
     sources_svc = LibrarySourcesService(cf)
     container.register("library_sources_service", sources_svc)
+    # P0 FASE 10: FileManagerService is a stateless facade (static methods
+    # only). The CLASS is the registered port — one canonical object, injected
+    # everywhere; nothing constructs it ad hoc.
+    container.register("file_manager_service", FileManagerService)
     canonical_query_service = LibraryQueryService(cf, library_sources_service=sources_svc)
     lqs = LibraryFilteredQueryService(canonical_query_service)
     container.register("library_query_service", lqs)
@@ -45,6 +49,11 @@ def build(container: ServiceContainer) -> None:
         db=db, event_bus=eb, favorite_service=favorite_service,
     )
     container.register("library_mutation_service", mutation_service)
+    # UndoService restores DB values for persisted undo records via the
+    # mutation service (P0: undo survives restarts when a record persists).
+    undo_svc = container.get("undo_service")
+    if undo_svc is not None:
+        undo_svc.bind_db(db=db, mutation_service=mutation_service)
     # MetadataEditorService is THE metadata editing authority (Slice 8):
     # proposal -> preview -> confirm -> apply_batch -> readback -> undo, with
     # real DB (via LibraryMutationService), physical tag writer, EventBus,
@@ -61,7 +70,8 @@ def build(container: ServiceContainer) -> None:
         ),
     )
     container.register("library_service", LibraryService(db=db, worker_manager=wm, library_query_service=lqs))
-    playlist_service = PlaylistService(cf)
+    # Debt D1: PlaylistService cancels imports through the real job service.
+    playlist_service = PlaylistService(cf, job_service=container.get("job_service"))
     container.register("playlist_service", playlist_service)
     container.register(
         "track_action_service",
@@ -71,7 +81,7 @@ def build(container: ServiceContainer) -> None:
             playlist_service=playlist_service,
             db=db,
             favorite_service=favorite_service,
-            file_manager_service=FileManagerService,
+            file_manager_service=container.get("file_manager_service"),
         ),
     )
     container.register("history_query_service", HistoryQueryService(cf))
@@ -82,7 +92,6 @@ def build(container: ServiceContainer) -> None:
         FolderSearchRepository,
         GenreSearchRepository,
         PlaylistSearchRepository,
-        RadioSearchRepository,
         SearchProviderRegistry,
         SettingsSearchProvider,
         TrackSearchRepository,
@@ -93,7 +102,6 @@ def build(container: ServiceContainer) -> None:
     search_registry.register(SearchDomain.ALBUM, AlbumSearchRepository(cf))
     search_registry.register(SearchDomain.ARTIST, ArtistSearchRepository(cf))
     search_registry.register(SearchDomain.PLAYLIST, PlaylistSearchRepository(cf))
-    search_registry.register(SearchDomain.RADIO, RadioSearchRepository(cf))
     search_registry.register(SearchDomain.GENRE, GenreSearchRepository(cf))
     search_registry.register(SearchDomain.FOLDER, FolderSearchRepository(cf))
     settings_service = container.get("settings_service")
@@ -155,15 +163,40 @@ def build(container: ServiceContainer) -> None:
         container.register("library_doctor_service", None)
 
     try:
+        # ── Recognition (P0 FASE 10): canonical ADVANCED detection runtime ──
+        # Shared ProviderManager + AudioCaptureService + DetectionService are
+        # composed here and injected into RecognitionService. Construction is
+        # passive: no device open, no socket, no timer — the runtime starts on
+        # explicit enable (DetectionService.start()), never at bootstrap.
         from core.recognition_service import RecognitionService
         from recognition.provider_manager import ProviderManager
-        recog = RecognitionService(provider_manager=ProviderManager(None))
+        from recognition.audio_capture_service import AudioCaptureService
+        from recognition.detection_service import DetectionService
+
+        provider_manager = ProviderManager()
+        capture_service = AudioCaptureService()
+        detection_service = DetectionService(
+            db=db, provider_manager=provider_manager)
+        detection_service.set_worker_manager(wm)
+        recog = RecognitionService(
+            provider_manager=provider_manager,
+            detection_service=detection_service,
+            capture=capture_service,
+            db=db,
+        )
         container.register("recognition_service", recog)
+        container.register("provider_manager", provider_manager)
         sts = SmartTaggingService(worker_manager=wm, library_query_service=lqs,
-                                   recognition_service=recog)
+                                   recognition_service=recog,
+                                   metadata_editor=container.get(
+                                       "metadata_editor_service"),
+                                   confirmation_service=container.get(
+                                       "confirmation_service"))
         container.register("smart_tagging_service", sts)
     except Exception:
         logger.error("Failed to create smart_tagging_service", exc_info=True)
+        container.register("recognition_service", None)
+        container.register("provider_manager", None)
         container.register("smart_tagging_service", None)
 
     try:

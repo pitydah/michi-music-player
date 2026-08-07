@@ -19,6 +19,7 @@ class ProbeStatus(Enum):
 
 class SessionState(Enum):
     IDLE = "idle"
+    REQUESTED = "requested"
     CONNECTING = "connecting"
     BUFFERING = "buffering"
     PLAYING = "playing"
@@ -47,6 +48,7 @@ class RadioError(Enum):
     EXPORT_FAILED = "export_failed"
     IMPORT_FAILED = "import_failed"
     VALIDATION_ERROR = "validation_error"
+    BACKEND_UNAVAILABLE = "backend_unavailable"
     UNKNOWN = "unknown"
 
 
@@ -195,6 +197,8 @@ class RadioOperationResult:
     stations: list[Station] = field(default_factory=list)
     error: RadioError = RadioError.NONE
     details: dict[str, Any] = field(default_factory=dict)
+    accepted: bool = False
+    status: str = ""
 
 
 @dataclass

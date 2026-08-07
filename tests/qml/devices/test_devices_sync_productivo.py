@@ -7,13 +7,14 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.device_sync_service import (
-    DeviceSyncService,
     DeviceIdentity,
     DeviceProtocol,
     SyncDirection,
     TransferStatus,
 )
 from ui_qml_bridge.devices_bridge import DevicesBridge
+
+from tests.helpers.device_sync_stack import make_device_sync_stack
 
 pytestmark = pytest.mark.isolation
 
@@ -35,8 +36,8 @@ def temp_music(tmp_path):
 
 
 @pytest.fixture
-def svc():
-    return DeviceSyncService()
+def svc(tmp_path):
+    return make_device_sync_stack(tmp_path)
 
 
 @pytest.fixture
@@ -194,7 +195,8 @@ class TestDevicesBridgeProductivo:
         src = str(temp_music / "Music" / "track.flac")
         dst = str(temp_music / "dest.flac")
         job = svc.create_transfer_job(src, dst, SyncDirection.TO_DEVICE)
-        assert job.job_id.startswith("sync_")
+        assert job is not None
+        assert job.job_id
         assert job.total_bytes > 0
 
     def test_execute_job(self, svc, temp_music):
@@ -217,7 +219,8 @@ class TestDevicesBridgeProductivo:
         dst = str(temp_music / "retry.flac")
         job = svc.create_transfer_job(src, dst)
         svc.retry_job(job.job_id)
-        assert job.status in (TransferStatus.QUEUED, TransferStatus.COMPLETED)
+        status = svc.get_job(job.job_id).status
+        assert status in (TransferStatus.QUEUED, TransferStatus.COMPLETED)
 
     def test_history_after_transfer(self, svc, temp_music):
         src = str(temp_music / "Music" / "track.flac")
@@ -284,7 +287,7 @@ class TestDevicesBridgeProductivo:
         svc.set_on_progress(track)
         svc.execute_job(job.job_id)
         assert len(progress_values) > 0
-        assert progress_values[-1] == job.total_bytes
+        assert progress_values[-1] == svc.get_job(job.job_id).total_bytes
 
     def test_eject_cleanup(self, svc, temp_music):
         src = str(temp_music / "Music" / "track.flac")

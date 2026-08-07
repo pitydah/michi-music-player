@@ -19,6 +19,7 @@ Dialog {
     property int _totalEntries: 0
     property int _validEntries: 0
     property int _missingEntries: 0
+    property string _jobId: ""
 
     signal importCompleted(string name, int count)
     signal importCancelled()
@@ -42,6 +43,7 @@ Dialog {
         root._totalEntries = 0
         root._validEntries = 0
         root._missingEntries = 0
+        root._jobId = ""
         pathInput.text = ""
     }
 
@@ -199,6 +201,18 @@ Dialog {
                     root._cancelled = false
                     root._progress = 0.1
                     root._progressText = "Importando..."
+                    if (root.bridge && typeof root.bridge.importPlaylistAsync !== "undefined") {
+                        var job = root.bridge.importPlaylistAsync(root._importPath)
+                        root._importing = false
+                        if (job && job.ok && job.job_id) {
+                            root._jobId = job.job_id
+                            root._status = "Importación iniciada en segundo plano"
+                            root.close()
+                        } else {
+                            root._status = job && job.error ? "Error: " + job.error : "Error al iniciar importación"
+                        }
+                        return
+                    }
                     if (root.bridge && typeof root.bridge.confirmPlaylistImport !== "undefined") {
                         root._progress = 0.5
                         root._progressText = "Procesando canciones..."
@@ -230,7 +244,7 @@ Dialog {
                         root._cancelled = true
                         root._progressText = "Cancelando..."
                         if (root.bridge && typeof root.bridge.cancelPlaylistImport !== "undefined")
-                            root.bridge.cancelPlaylistImport(root._importPath)
+                            root.bridge.cancelPlaylistImport(root._jobId || root._importPath)
                         root._importing = false
                         root._status = "Importación cancelada"
                         root.importCancelled()
@@ -278,7 +292,7 @@ Dialog {
         if (root._importing) {
             root._cancelled = true
             if (root.bridge && typeof root.bridge.cancelPlaylistImport !== "undefined")
-                root.bridge.cancelPlaylistImport(root._importPath)
+                root.bridge.cancelPlaylistImport(root._jobId || root._importPath)
             root._importing = false
         }
     }
@@ -289,7 +303,7 @@ Dialog {
             if (root._importing) {
                 root._cancelled = true
                 if (root.bridge && typeof root.bridge.cancelPlaylistImport !== "undefined")
-                    root.bridge.cancelPlaylistImport(root._importPath)
+                    root.bridge.cancelPlaylistImport(root._jobId || root._importPath)
                 root._importing = false
                 root._status = "Importación cancelada"
                 root.importCancelled()

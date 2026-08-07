@@ -50,6 +50,7 @@ COMPOSITION_FILES = (
     HERE / "core" / "composition" / "ecosystem.py",
     HERE / "core" / "composition" / "settings.py",
     HERE / "core" / "composition" / "intelligence.py",
+    HERE / "core" / "composition" / "jobs.py",
     HERE / "core" / "application_bootstrap.py",
 )
 
@@ -72,6 +73,60 @@ EXTRA_COEXISTING_DUPLICATES: dict[str, tuple[str, ...]] = {
         "core/metadata_editor_service.py",
         "metadata/review/schemas.py",
     ),
+}
+
+# FASE 11 — service-locator allowlist: (module, function) that MAY resolve
+# services from the container at runtime. Composition builders, the bootstrap,
+# the bridge factory (wiring) and the context registrar are the declared
+# wiring layer; capability probes are evidence-gated reads (capability
+# truthfulness architecture) and the action registry dispatches declared
+# action → service_key mappings (UI command layer).
+LOCATOR_ALLOWLIST: dict[tuple[str, str], str] = {
+    ("action_registry.py", "validate_all"):
+        "UI action registry: resolves declared service_key mappings during "
+        "validation (wiring-adjacent UI command layer).",
+    ("action_registry.py", "_confirmation_service"):
+        "UI action registry: lazy confirmation-service accessor for action "
+        "execution.",
+    ("capability_bridge.py", "_container_probe"):
+        "Evidence-gated capability probe (contains+get; read-only).",
+    ("capability_bridge.py", "_check_fts5"):
+        "Evidence-gated capability probe (contains+get; read-only).",
+    ("capability_bridge.py", "_check_global_search"):
+        "Evidence-gated capability probe (contains+get; read-only).",
+    ("capability_bridge.py", "_check_snapcast"):
+        "Evidence-gated capability probe (contains+get; read-only).",
+    ("capability_bridge.py", "_check_radio"):
+        "Evidence-gated capability probe (contains+get; read-only).",
+    ("capability_bridge.py", "_check_mpd"):
+        "Evidence-gated capability probe (contains+get; read-only).",
+    ("capability_bridge.py", "_check_playback"):
+        "Evidence-gated capability probe (contains+get; read-only).",
+    ("capability_bridge.py", "_check_metadata_writer"):
+        "Evidence-gated capability probe (contains+get; read-only).",
+    ("service_capabilities.py", "_global_search_state"):
+        "Evidence-gated capability probe (contains+get; read-only).",
+}
+
+# FASE 11 — files exempt from the service-locator scan (declared wiring).
+_LOCATOR_EXEMPT_DIRS = (
+    HERE / "core" / "composition",
+)
+_LOCATOR_EXEMPT_FILES = {
+    HERE / "core" / "application_bootstrap.py",
+    HERE / "ui_qml_bridge" / "bridge_factory.py",
+    HERE / "ui_qml_bridge" / "context_registrar.py",
+    HERE / "core" / "service_container.py",
+}
+
+# FASE 11 — files where .cancel_all( is allowed: the container itself, the
+# durable-jobs/worker implementations and the app shutdown path.
+_CANCEL_ALL_ALLOW_FILES = {
+    HERE / "core" / "service_container.py",
+    HERE / "core" / "jobs" / "job_service.py",
+    HERE / "core" / "jobs" / "job_manager.py",
+    HERE / "core" / "worker_manager.py",
+    HERE / "ui_qml_bridge" / "app_bridge.py",
 }
 
 # Services that are legitimately passive/leaf and may lack explicit consumers
@@ -127,6 +182,38 @@ def _composition_ast() -> list[tuple[Path, ast.Module]]:
         except (SyntaxError, OSError):
             continue
     return trees
+
+
+def _constructed_names() -> set[str]:
+    """Class names constructed by composition or bridges (alias-aware).
+
+    Resolves ``from x import Foo as Bar`` aliases so ``Bar(...)`` counts as
+    constructing ``Foo`` (e.g. ``RadioService as CanonicalRadioService``).
+    """
+    constructed: set[str] = set()
+    sources: list[Path] = list(COMPOSITION_FILES)
+    if BRIDGE_DIR.exists():
+        sources.extend(p for p in BRIDGE_DIR.rglob("*.py"))
+    for path in sources:
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
+        except (SyntaxError, OSError):
+            continue
+        aliases: dict[str, str] = {}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                for alias in node.names:
+                    if alias.asname:
+                        aliases[alias.asname] = alias.name
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            if isinstance(func, ast.Name):
+                constructed.add(aliases.get(func.id, func.id))
+            elif isinstance(func, ast.Attribute):
+                constructed.add(func.attr)
+    return constructed
 
 
 def _register_exprs() -> dict[str, ast.expr]:
@@ -362,7 +449,8 @@ def productive_duplicates() -> dict[str, list[str]]:
     instantiated by composition or bridges (constructor call in
     core/composition/*.py, core/application_bootstrap.py, ui_qml_bridge/*.py);
     otherwise it is legacy (LEGACY marker, DeprecationWarning, or static-helper
-    namespace not registered as a service).
+    namespace not registered as a service). Aliased imports are resolved
+    (``RadioService as CanonicalRadioService`` counts as RadioService).
     """
     try:
         from tests.architecture.test_no_duplicate_service_class_names import (
@@ -387,15 +475,7 @@ def productive_duplicates() -> dict[str, list[str]]:
                 path.relative_to(HERE).as_posix()
             )
 
-    instantiation_sources: list[str] = []
-    for path in COMPOSITION_FILES:
-        instantiation_sources.append(path.read_text(encoding="utf-8", errors="ignore"))
-    if BRIDGE_DIR.exists():
-        instantiation_sources.extend(
-            p.read_text(encoding="utf-8", errors="ignore")
-            for p in BRIDGE_DIR.rglob("*.py")
-        )
-    instantiation_text = "\n".join(instantiation_sources)
+    constructed = _constructed_names()
 
     # Mirrors the legacy-designation the architecture test enforces.
     legacy_by_designation: set[str] = set()
@@ -405,7 +485,7 @@ def productive_duplicates() -> dict[str, list[str]]:
     def _is_productive(file: str, class_name: str) -> bool:
         if file in legacy_by_designation:
             return False
-        return re.search(rf"\b{re.escape(class_name)}\s*\(", instantiation_text) is not None
+        return class_name in constructed
 
     result: dict[str, dict[str, list[str]]] = {}
     for name, files in sorted(by_name.items()):
@@ -568,6 +648,9 @@ def build_report() -> dict:
         "duplicates": productive_duplicates(),
         "bridge_mismatches": bridge_method_mismatches(),
         "required_none": _required_none_check(),
+        "service_locator_violations": scan_service_locator()[0],
+        "service_locator_documented": scan_service_locator()[1],
+        "cancel_all_violations": scan_cancel_all(),
         "rows": rows,
         "status_counts": dict(Counter(r["status"] for r in rows)),
     }
@@ -586,6 +669,115 @@ def _required_none_check() -> list[str]:
     except Exception as exc:  # noqa: BLE001 — tool reports, never crashes
         problems.append(f"container validation could not run: {exc}")
     return problems
+
+
+# ── FASE 11: service locator (D) + global cancellations (F) ─────────────────
+
+def scan_service_locator() -> tuple[list[str], list[dict]]:
+    """(violations, documented) for container.get/require outside wiring.
+
+    Scans core/ (excluding composition/builders/container) and ui_qml_bridge/
+    for ``container.get(`` / ``container.require(`` calls on any receiver
+    whose name contains 'container'. core/jobs/handlers.py is re-asserted.
+    """
+    violations: list[str] = []
+    documented: list[dict] = []
+    for directory in ("core", "ui_qml_bridge"):
+        base = HERE / directory
+        if not base.exists():
+            continue
+        for path in sorted(base.rglob("*.py")):
+            if "__pycache__" in path.parts or "build" in path.parts \
+                    or "test" in path.parts:
+                continue
+            if path in _LOCATOR_EXEMPT_FILES or path.parent in _LOCATOR_EXEMPT_DIRS:
+                continue
+            try:
+                tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
+            except (SyntaxError, OSError):
+                continue
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                func = node.func
+                if not isinstance(func, ast.Attribute):
+                    continue
+                if func.attr not in ("get", "require"):
+                    continue
+                receiver = func.value
+                if not isinstance(receiver, ast.Name) or "container" not in receiver.id.lower():
+                    continue
+                fn_name, _cls = _enclosing_fn(tree, node)
+                if fn_name is None:
+                    continue  # module-level wiring statements
+                allow = LOCATOR_ALLOWLIST.get((path.name, fn_name))
+                if allow:
+                    documented.append({
+                        "file": path.name, "lineno": node.lineno,
+                        "function": fn_name, "method": func.attr,
+                        "reason": allow,
+                    })
+                else:
+                    violations.append(
+                        f"{path.name}:{node.lineno} container.{func.attr}(...) "
+                        f"inside {fn_name} — service locator outside wiring"
+                    )
+    return violations, documented
+
+
+def _enclosing_fn(tree: ast.Module, node: ast.AST) -> tuple[str | None, str | None]:
+    """(enclosing function name, enclosing class name) for a node."""
+    parent: dict[ast.AST, ast.AST] = {}
+    for ancestor in ast.walk(tree):
+        for child in ast.iter_child_nodes(ancestor):
+            parent[child] = ancestor
+    fn_name: str | None = None
+    cls_name: str | None = None
+    current = node
+    while current in parent:
+        current = parent[current]
+        if fn_name is None and isinstance(current, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            fn_name = current.name
+        if cls_name is None and isinstance(current, ast.ClassDef):
+            cls_name = current.name
+        if fn_name and cls_name:
+            break
+    return fn_name, cls_name
+
+
+def scan_cancel_all() -> list[str]:
+    """Violations: .cancel_all( calls from non-administrative domains.
+
+    Allowed: the container itself, DurableJobService/JobManager/WorkerManager
+    implementations (definitions + internal self-calls) and the app shutdown
+    path in app_bridge.py. Anything else in core/ or ui_qml_bridge/ FAILS.
+    """
+    violations: list[str] = []
+    for directory in ("core", "ui_qml_bridge"):
+        base = HERE / directory
+        if not base.exists():
+            continue
+        for path in sorted(base.rglob("*.py")):
+            if "__pycache__" in path.parts or "build" in path.parts \
+                    or "test" in path.parts:
+                continue
+            if path in _CANCEL_ALL_ALLOW_FILES:
+                continue
+            try:
+                tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
+            except (SyntaxError, OSError):
+                continue
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                func = node.func
+                if not (isinstance(func, ast.Attribute) and func.attr == "cancel_all"):
+                    continue
+                violations.append(
+                    f"{path.name}:{node.lineno} .cancel_all() called outside "
+                    f"the administrative shutdown/implementation allowlist"
+                )
+    return violations
 
 
 def render_markdown(report: dict) -> str:
@@ -652,6 +844,15 @@ def main() -> int:
         failures.append(
             f"required services bound to None: {report['required_none']}"
         )
+    if report["service_locator_violations"]:
+        failures.append(
+            f"service locator outside wiring: {report['service_locator_violations']}"
+        )
+    if report["cancel_all_violations"]:
+        failures.append(
+            f"cancel_all outside administrative domains: "
+            f"{report['cancel_all_violations']}"
+        )
 
     if args.output:
         out = Path(args.output)
@@ -662,8 +863,10 @@ def main() -> int:
     if failures:
         print("FAIL:", *failures, sep="\n  - ")
         return 1
-    print("OK: no reachability violations (orphans, duplicates, contract "
-          "mismatches, required-None bindings).")
+    if not args.json:
+        print("OK: no reachability violations (orphans, duplicates, contract "
+              "mismatches, required-None bindings, service locators outside "
+              "wiring, non-administrative cancel_all).")
     return 0
 
 

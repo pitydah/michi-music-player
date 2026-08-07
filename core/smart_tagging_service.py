@@ -26,10 +26,13 @@ class TrackSuggestion:
 
 class SmartTaggingService:
     def __init__(self, worker_manager=None, library_query_service=None,
-                 recognition_service=None):
+                 recognition_service=None, metadata_editor=None,
+                 confirmation_service=None):
         self._worker_manager = worker_manager
         self._library_query = library_query_service
         self._recognition = recognition_service
+        self._editor = metadata_editor
+        self._cs = confirmation_service
         self._cancelled = False
 
     @property
@@ -94,16 +97,35 @@ class SmartTaggingService:
                 "cancelled": self._cancelled}
 
     def accept_suggestion(self, filepath: str, field: str, value: str) -> dict:
-        from metadata.tag_reader import read_tags
-        from metadata.tag_writer import write_tags
-        tags = read_tags(filepath)
-        if not tags:
-            return {"ok": False, "error": "FILE_NOT_FOUND"}
-        tags.set_field(field, value)
-        ok = write_tags(tags)
-        if ok:
-            return {"ok": True, "field": field, "value": value}
-        return {"ok": False, "error": "WRITE_FAILED"}
+        """Apply one suggestion through the canonical editor pipeline.
+
+        Authorization (P0): the edit goes through proposal → confirmation
+        token (issued and approved via ConfirmationService) → apply with
+        readback verification. Without the canonical editor the operation is
+        disabled (LEGACY_OPERATION_DISABLED) — physical tags are never
+        written directly here.
+        """
+        if self._editor is None:
+            return {"ok": False, "error": "LEGACY_OPERATION_DISABLED",
+                    "code": "LEGACY_OPERATION_DISABLED"}
+        proposal = self._editor.build_proposal(
+            [{"filepath": filepath}], {field: str(value)})
+        if not proposal.get("ok"):
+            return {"ok": False, "error": proposal.get("code", "PROPOSAL_FAILED")}
+        conf = self._editor.confirm(
+            proposal["proposal_id"], selected_fields=[field])
+        if not conf.get("ok"):
+            return {"ok": False, "error": conf.get("code", "CONFIRMATION_UNAVAILABLE")}
+        token = conf["confirmation_token"]
+        if not self._editor.approve(token).get("ok"):
+            return {"ok": False, "error": "INVALID_CONFIRMATION_TOKEN"}
+        result = self._editor.apply_batch([{
+            "proposal_id": proposal["proposal_id"],
+            "confirmation_token": token,
+        }])
+        ok = bool(result.get("ok")) and result.get("applied", 0) == 1
+        return {"ok": ok, "field": field, "value": value,
+                "status": result.get("status", "APPLY_FAILED")}
 
     def apply_all(self, filepath: str, suggestions: list[dict]) -> dict:
         results = []

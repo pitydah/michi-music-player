@@ -1,8 +1,11 @@
-"""Test MixBridge with shared MixQueryService, async generation, cancel, typed errors."""
+"""Test MixBridge with shared MixQueryService, durable-job generation,
+scoped cancel, and honest (never empty-success) typed outcomes."""
 import pytest
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.mix_bridge import MixBridge
+
+from .mix.conftest import make_bridge, make_mix_service
 
 
 @pytest.fixture
@@ -11,29 +14,8 @@ def empty_bridge():
 
 
 @pytest.fixture
-def mock_db():
-    db = MagicMock()
-    db.conn = MagicMock()
-    return db
-
-
-@pytest.fixture
 def mock_mqs():
-    mqs = MagicMock()
-    mqs.favorites.return_value = [
-        {"track_id": 1, "title": "Fav 1", "artist": "A", "album": "Al", "duration": 200, "reason": "Favorito"},
-        {"track_id": 2, "title": "Fav 2", "artist": "B", "album": "Bl", "duration": 300, "reason": "Favorito"},
-    ]
-    mqs.recent.return_value = [
-        {"track_id": 3, "title": "Recent 1", "artist": "A", "album": "Al", "duration": 200},
-    ]
-    mqs.most_played.return_value = [
-        {"track_id": 4, "title": "Played 1", "artist": "C", "album": "Cl", "duration": 250},
-    ]
-    mqs.unplayed.return_value = [
-        {"track_id": 5, "title": "Unplayed 1", "artist": "D", "album": "Dl", "duration": 180},
-    ]
-    return mqs
+    return make_mix_service(default_track_count=2)
 
 
 @pytest.fixture
@@ -49,50 +31,50 @@ def test_bridge_creation(empty_bridge):
     assert len(empty_bridge.categories) == 12
 
 
-def test_load_favorites(mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs)
+def test_load_favorites(mock_mqs, tmp_path):
+    bridge, _svc = make_bridge(mock_mqs, tmp_path)
     result = bridge.loadMix("favorites")
     assert result["ok"]
-    assert result["count"] == 2
+    assert bridge.stateName == "COMPLETED_WITH_TRACKS"
     assert len(bridge.currentSongs) == 2
-    assert bridge.currentSongs[0]["title"] == "Fav 1"
+    assert bridge.currentSongs[0]["title"] == "favorites 1"
 
 
-def test_load_recent(mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs)
+def test_load_recent(mock_mqs, tmp_path):
+    bridge, _svc = make_bridge(mock_mqs, tmp_path)
     result = bridge.loadMix("recent")
     assert result["ok"]
-    assert result["count"] == 1
+    assert len(bridge.currentSongs) == 2
 
 
-def test_load_most_played(mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs)
+def test_load_most_played(mock_mqs, tmp_path):
+    bridge, _svc = make_bridge(mock_mqs, tmp_path)
     result = bridge.loadMix("most_played")
     assert result["ok"]
-    assert result["count"] == 1
+    assert len(bridge.currentSongs) == 2
 
 
-def test_load_unplayed(mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs)
+def test_load_unplayed(mock_mqs, tmp_path):
+    bridge, _svc = make_bridge(mock_mqs, tmp_path)
     result = bridge.loadMix("unplayed")
     assert result["ok"]
-    assert result["count"] == 1
+    assert len(bridge.currentSongs) == 2
 
 
-def test_load_daily_mix(mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs)
+def test_load_daily_mix(mock_mqs, tmp_path):
+    bridge, _svc = make_bridge(mock_mqs, tmp_path)
     result = bridge.loadMix("daily_mix")
     assert result["ok"]
 
 
-def test_load_unknown_mix(mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs)
+def test_load_unknown_mix(mock_mqs, tmp_path):
+    bridge, _svc = make_bridge(mock_mqs, tmp_path)
     result = bridge.loadMix("nonexistent")
     assert not result["ok"]
 
 
-def test_play_mix(mock_mqs, mock_qs):
-    bridge = MixBridge(query_service=mock_mqs, queue_service=mock_qs)
+def test_play_mix(mock_mqs, mock_qs, tmp_path):
+    bridge, _svc = make_bridge(mock_mqs, tmp_path, queue_service=mock_qs)
     bridge.loadMix("favorites")
     result = bridge.playMix()
     assert result["ok"]
@@ -104,63 +86,65 @@ def test_play_mix_empty():
     assert not result["ok"]
 
 
-def test_play_from_index(mock_mqs, mock_qs):
-    bridge = MixBridge(query_service=mock_mqs, queue_service=mock_qs)
+def test_play_from_index(mock_mqs, mock_qs, tmp_path):
+    bridge, _svc = make_bridge(mock_mqs, tmp_path, queue_service=mock_qs)
     bridge.loadMix("favorites")
     result = bridge.playFromIndex(1)
     assert result["ok"]
 
 
-def test_play_from_index_invalid(mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs)
+def test_play_from_index_invalid(mock_mqs, tmp_path):
+    bridge, _svc = make_bridge(mock_mqs, tmp_path)
     bridge.loadMix("favorites")
     result = bridge.playFromIndex(999)
     assert not result["ok"]
 
 
-def test_enqueue_mix(mock_mqs, mock_qs):
+def test_enqueue_mix(mock_mqs, mock_qs, tmp_path):
     mock_qs.enqueue.return_value = {"ok": True, "count": 2}
-    bridge = MixBridge(query_service=mock_mqs, queue_service=mock_qs)
+    bridge, _svc = make_bridge(mock_mqs, tmp_path, queue_service=mock_qs)
     bridge.loadMix("favorites")
     result = bridge.enqueueMix()
     assert result["ok"]
     assert result["count"] == 2
 
 
-def test_cancel_generation(mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs)
+def test_cancel_generation(mock_mqs, tmp_path):
+    bridge, _svc = make_bridge(mock_mqs, tmp_path)
     bridge.loadMix("favorites")
     result = bridge.cancelGeneration()
     assert result["ok"]
 
 
-def test_refresh(mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs)
+def test_refresh(mock_mqs, tmp_path):
+    bridge, _svc = make_bridge(mock_mqs, tmp_path)
     result = bridge.refresh()
     assert result["ok"] or not result.get("ok")
 
 
-def test_explain_current_mix(mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs)
+def test_explain_current_mix(mock_mqs, tmp_path):
+    bridge, _svc = make_bridge(mock_mqs, tmp_path)
     bridge.loadMix("favorites")
     result = bridge.explainCurrentMix()
     assert result["ok"]
-    assert "Favorito" in result["reasons"]
+    assert result["reasons"]
 
 
-def test_save_mix_as_playlist_with_rollback(mock_mqs):
-    pb = MagicMock()
-    pb.createPlaylist.return_value = {"ok": True, "id": 42}
-    pb.addTrackToPlaylist.return_value = {"ok": True}
-    bridge = MixBridge(query_service=mock_mqs, playlist_bridge=pb)
+def test_save_mix_as_playlist(mock_mqs, tmp_path):
+    bridge, _svc = make_bridge(mock_mqs, tmp_path)
+    bridge._mix_svc.save_mix_as_playlist.return_value = {
+        "ok": True, "status": "COMPLETED", "playlist_id": 42,
+        "requested": 2, "added": 2, "failed": 0, "count": 2,
+    }
     bridge.loadMix("favorites")
     result = bridge.saveMixAsPlaylist("Test Mix")
-    assert result["ok"] or not result.get("ok")
+    assert result["ok"]
 
 
-def test_partial_failure_report(mock_mqs, mock_qs):
-    mock_qs.enqueue.return_value = {"ok": False, "error_code": "PARTIAL", "errors": [{"error": "NOT_FOUND"}]}
-    bridge = MixBridge(query_service=mock_mqs, queue_service=mock_qs)
+def test_partial_failure_report(mock_mqs, mock_qs, tmp_path):
+    mock_qs.enqueue.return_value = {"ok": False, "error_code": "PARTIAL",
+                                    "errors": [{"error": "NOT_FOUND"}]}
+    bridge, _svc = make_bridge(mock_mqs, tmp_path, queue_service=mock_qs)
     bridge.loadMix("favorites")
     result = bridge.enqueueMix()
     assert "errors" in result
@@ -175,9 +159,15 @@ def test_no_queue_service():
     assert result["error_code"] == "NO_PLAYBACK"
 
 
-def test_stale_protection():
-    bridge = MixBridge()
-    bridge.loadMix("favorites")
-    bridge._generation += 1  # force stale
+def test_empty_generation_is_honest_failure(mock_mqs, tmp_path):
+    mock_mqs.generate.side_effect = lambda strategy="daily", seed=None, limit=30, ctx=None: {
+        "ok": False, "status": "EMPTY_LIBRARY",
+        "message": "La biblioteca no tiene canciones",
+        "strategy": strategy, "mix_id": f"query:{strategy}", "tracks": [],
+    }
+    bridge, _svc = make_bridge(mock_mqs, tmp_path)
     result = bridge.loadMix("favorites")
-    assert result["ok"] or not result.get("ok")
+    assert result["ok"]  # job accepted
+    assert bridge.stateName == "EMPTY_LIBRARY"
+    assert len(bridge.currentSongs) == 0
+    assert bridge.errorMessage

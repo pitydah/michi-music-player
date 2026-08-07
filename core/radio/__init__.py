@@ -6,6 +6,7 @@ from core.radio.service import RadioService
 from core.radio.events import EventBus, DomainEvent
 from core.radio.url_utils import validate_and_normalize_url, urls_are_equivalent, UrlNormalizationError
 from core.radio.icy_parser import parse_icy_headers, parse_stream_title, IcyMetadataTracker
+from core.radio.playback_adapter import RadioPlaybackAdapter
 from core.radio.reconnect import ReconnectPolicy, RadioScheduler
 from core.radio.stream_probe import StreamProbeService
 from core.radio.session import StreamSession
@@ -21,6 +22,7 @@ __all__ = [
     "RadioService", "EventBus", "DomainEvent",
     "validate_and_normalize_url", "urls_are_equivalent", "UrlNormalizationError",
     "parse_icy_headers", "parse_stream_title", "IcyMetadataTracker",
+    "RadioPlaybackAdapter",
     "ReconnectPolicy", "RadioScheduler",
     "StreamProbeService", "StreamSession",
     "RadioImportService", "RadioExportService", "detect_playlist_format",

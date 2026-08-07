@@ -87,6 +87,34 @@ class LibraryDoctorScanRepository:
                 (new_uid, track_id),
             )
 
+    def get_track_uid(self, track_id: int) -> str:
+        """Public read port: current ``track_uid`` for readback verification."""
+        conn = self._conn()
+        if conn is None:
+            return ""
+        try:
+            row = conn.execute(
+                "SELECT track_uid FROM media_items WHERE id=?", (track_id,),
+            ).fetchone()
+            return str(row[0]) if row and row[0] else ""
+        except Exception:  # noqa: BLE001
+            return ""
+
+    def restore_track_uid(self, track_id: int, uid: str) -> bool:
+        """Public port: restore a previous ``track_uid`` (undo compensation)."""
+        conn = self._conn()
+        if conn is None or not uid:
+            return False
+        try:
+            conn.execute(
+                "UPDATE media_items SET track_uid=? WHERE id=?",
+                (uid, track_id),
+            )
+            conn.commit()
+            return True
+        except Exception:  # noqa: BLE001
+            return False
+
     def begin(self):
         conn = self._conn()
         if conn:

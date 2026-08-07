@@ -642,11 +642,21 @@ class LibraryBridge(QObject):
         if not result.ok:
             return {"ok": False, "error": result.code,
                     "message": result.message}
+        data = result.data
+        payload = {"ok": True, "favorite": favorite,
+                   "count": data.get("count", 0)}
+        if data.get("not_found") or data.get("failed") or data.get("already_set"):
+            payload["results"] = {
+                str(tid): status for tid, status in data.get("results", {}).items()
+            }
+            payload["applied"] = data.get("applied", 0)
+            payload["already_set"] = data.get("already_set", 0)
+            payload["not_found"] = data.get("not_found", 0)
+            payload["failed"] = data.get("failed", 0)
         self._refresh_coordinator.refresh_tracks()
         self._sync_state()
         self.dataChanged.emit()
-        return {"ok": True, "favorite": favorite,
-                "count": result.data.get("count", 0)}
+        return payload
 
     def _tracks_for_bulk(self, track_ids_json: str) -> tuple[list[dict[str, Any]], str | None]:
         """Fetch canonical queue payloads for track IDs with one SQL query."""
@@ -720,13 +730,24 @@ class LibraryBridge(QObject):
         entity_id: str,
         favorite: bool,
     ) -> dict:
-        """Set favorite state for a canonical group entity (album/artist)."""
+        """Set favorite state for a canonical group entity (album/artist/genre).
+
+        Group favorites create inherited track rows; unfavoriting removes only
+        the inherited relations (never direct track favorites).
+        """
         if not self._fav_svc:
             return {"ok": False, "error": "NO_FAVORITE_SERVICE",
                     "code": "INFRASTRUCTURE_UNAVAILABLE"}
         try:
-            result = self._fav_svc.set_favorite(
-                entity_type, entity_id, f"{entity_type}:{entity_id}", favorite)
+            if entity_type == "album":
+                result = self._fav_svc.set_album_favorite(entity_id, favorite)
+            elif entity_type == "artist":
+                result = self._fav_svc.set_artist_favorite(entity_id, favorite)
+            elif entity_type == "genre":
+                result = self._fav_svc.set_genre_favorite(entity_id, favorite)
+            else:
+                result = self._fav_svc.set_favorite(
+                    entity_type, entity_id, f"{entity_type}:{entity_id}", favorite)
         except Exception as e:
             return {"ok": False, "error": str(e)}
         if not result.ok:

@@ -183,6 +183,10 @@ class _LegacyHistoryRepoAdapter:
                     result: str = "played", error_code: str = ""):
         self._repo.record_play(station_id)
 
+    def record_event(self, station_id, kind: str, title: str = "",
+                     error_code: str = "", duration: int = 0):
+        self._repo.record_play(station_id)
+
     def list_history(self, limit: int = 50, offset: int = 0) -> list[dict]:
         entries = self._repo.get_history(limit + offset)
         return entries[offset:offset + limit]
@@ -290,14 +294,11 @@ class RadioService:
         return [{"id": s.id, "name": s.name, "url": s.stream_url} for s in result.items]
 
     def play_station(self, url: str, name: str = "") -> bool:
-        for entry in self.get_stations():
-            if entry["url"] == url or str(entry["id"]) == url:
-                result = self._svc().start_station(entry["id"])
-                if result.ok:
-                    self._current_url = url
-                    self._current_name = name or url
-                return result.ok
-        return False
+        result = self._svc().play_station(url, name)
+        if result.ok:
+            self._current_url = url
+            self._current_name = name or url
+        return result.ok
 
     def stop(self) -> dict:
         self._current_url = ""

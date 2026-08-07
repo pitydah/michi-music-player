@@ -7,9 +7,11 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from core.device_sync_service import (
-    DeviceSyncService, DeviceIdentity, DeviceProtocol, TransferStatus,
+    DeviceIdentity, DeviceProtocol, TransferStatus,
 )
 from ui_qml_bridge.devices_bridge import DevicesBridge
+
+from tests.helpers.device_sync_stack import make_device_sync_stack
 import pytest
 pytestmark = pytest.mark.isolation
 
@@ -26,8 +28,8 @@ def temp_music(tmp_path):
 
 
 @pytest.fixture
-def dev_svc():
-    return DeviceSyncService()
+def dev_svc(tmp_path):
+    return make_device_sync_stack(tmp_path)
 
 
 @pytest.fixture

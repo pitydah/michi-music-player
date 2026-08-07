@@ -1,17 +1,38 @@
 """MobileSyncService — pairing, trust, and mobile sync with the Michi app.
 
-Slice 7 (ADR-002): the service is REAL:
+Slice 7 (ADR-002) + Phase 7 (P0 stabilization, falso éxito #9):
 
 - Paired devices persist in the library database (``mobile_sync_devices``,
   migration 8). In-memory state is only a cache loaded at construction.
+- Pairing is a REAL challenge-response protocol (Ed25519 via the
+  ``cryptography`` package when available):
+
+    1. ``start_pairing()`` issues a session with a one-time ``nonce``.
+    2. The device sends its public key.
+    3. The device signs ``protocol_version|session_id|nonce|fingerprint|
+       device_id`` with its private key.
+    4. The server verifies the signature against the presented public key.
+    5. The fingerprint is DERIVED server-side from the public key material
+       (SHA-256); a client-supplied fingerprint is only *compared*, never
+       trusted — mismatch is rejected (``FINGERPRINT_MISMATCH``).
+    6. The device is created as ``awaiting_approval`` (trusted=False).
+    7. ``approve_device()`` persists the device as trusted.
+
+- Legacy code-only pairing (6-digit code, no signature) is OFF by default.
+  When enabled (``legacy_code_pairing_enabled=True``) it is: loopback-only
+  unless ``allow_lan_pairing``; NEVER auto-trusted (manual approval);
+  TTL 5 minutes; recorded as an ``legacy_code_pairing`` audit entry; flagged
+  as insecure in ``health()``.
+- Persistence failure invalidates pairing: the device is never kept trusted
+  in memory when the DB write fails (``PERSISTENCE_FAILED``).
 - ``start()``/``stop()`` own the real listener lifecycle: the production HTTP
   handler (``SyncRequestHandler`` from ``sync/sync_server.py``) mounted with
   the Michi Link v1 routes (``MichiLinkServer``), served on a daemon thread.
-- ``health()`` is truthful: ``server_listening`` is a live socket probe,
-  never an assumption. When no listener runs, it reports ``False``.
-- Pairing sessions are one-time and in-memory by design (they expire after
-  ``_pairing_timeout``); trust/revocation are persistent. Proof of possession
-  (challenge/response) is enforced whenever the device presents a public key.
+  The handler reference is instance-held (per-request factory) — no global
+  class state — and Michi Link routes must be mounted BEFORE the listener is
+  declared operational (``ROUTES_NOT_MOUNTED`` otherwise).
+- The canonical ``DeviceRegistry`` (``core/sync/device_registry.py``) is
+  injected; the service never fabricates one.
 - Rate limiting uses in-memory per-IP counters (documented: counters reset on
   process restart; the server-side handler also rate-limits independently).
 """
@@ -19,7 +40,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import hmac
+import ipaddress
 import io
 import logging
 import secrets
@@ -32,11 +53,74 @@ from dataclasses import dataclass
 logger = logging.getLogger("michi.mobile_sync")
 
 _PAIRING_TIMEOUT = 300  # 5 minutes
+_LEGACY_TTL = 300  # legacy code-only sessions: 5 minutes
 _MAX_VERIFY_ATTEMPTS = 5
 _RATE_WINDOW_SECONDS = 300.0
 _DEFAULT_PORT = 28700
+_DEFAULT_BIND_HOST = "127.0.0.1"
+_MAX_AUDIT_ENTRIES = 200
 QR_PAYLOAD_VERSION = "1"
 
+
+def _parse_ed25519_public_key(key_material: str) -> bytes | None:
+    """Return the raw 32-byte Ed25519 public key, or None if unparseable.
+
+    Accepts either raw base64 (32 bytes) or PEM (SubjectPublicKeyInfo).
+    """
+    if not key_material:
+        return None
+    try:
+        raw = base64.b64decode(key_material, validate=True)
+        if len(raw) == 32:
+            return raw
+    except Exception:  # noqa: BLE001 - fall through to PEM
+        pass
+    try:
+        from cryptography.hazmat.primitives.serialization import (
+            Encoding,
+            PublicFormat,
+            load_pem_public_key,
+        )
+
+        pub = load_pem_public_key(key_material.encode())
+        raw = pub.public_bytes(Encoding.Raw, PublicFormat.Raw)
+        return raw if len(raw) == 32 else None
+    except Exception:  # noqa: BLE001 - invalid key material
+        return None
+
+
+def _derive_fingerprint(raw_public_key: bytes) -> str:
+    """Derive the device fingerprint server-side from public key material."""
+    return hashlib.sha256(raw_public_key).hexdigest()
+
+
+def _verify_ed25519_signature(raw_key: bytes, message: bytes,
+                              signature_b64: str) -> bool:
+    """Verify an Ed25519 signature over ``message``. Never raises."""
+    try:
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+            Ed25519PublicKey,
+        )
+
+        sig = base64.b64decode(signature_b64, validate=True)
+        Ed25519PublicKey.from_public_bytes(raw_key).verify(sig, message)
+        return True
+    except Exception:  # noqa: BLE001 - verification failure is a False
+        return False
+
+
+def _signature_payload(protocol_version: str, session_id: str, nonce: str,
+                       fingerprint: str, device_id: str) -> bytes:
+    """Canonical signed payload — both sides must build it identically."""
+    return (
+        f"{protocol_version}|{session_id}|{nonce}|{fingerprint}|{device_id}"
+    ).encode()
+
+
+
+
+class _DeviceIdConflict:
+    """Sentinel returned by _create_pending_device on key-swap conflict."""
 
 @dataclass
 class PairedDevice:
@@ -56,10 +140,12 @@ class PairingSession:
     session_id: str
     code: str
     challenge: str = ""
+    nonce: str = ""
     created_at: float = 0.0
     expires_at: float = 0.0
     verified: bool = False
     device_id: str = ""
+    nonce_used: bool = False
 
 
 class _CallbackSignal:
@@ -86,18 +172,28 @@ class _Listener:
     manifest providers) but runs on a plain daemon thread so the service can
     start/stop it without a Qt event loop. The same handler class serves
     ``/api/*`` (sync) and ``/api/v1/*`` (Michi Link) endpoints.
+
+    The handler reference is instance-held: a per-listener bound handler
+    class assigns ``server_ref`` before the request is handled — no global
+    class state (``BaseRequestHandler.__init__`` handles the request
+    internally, so the binding must happen before ``super().__init__``).
     """
 
     def __init__(self, db, port: int, alias: str = "Michi Music Player",
-                 registry=None, pairing_service=None) -> None:
+                 registry=None, pairing_service=None,
+                 bind_host: str = _DEFAULT_BIND_HOST,
+                 import_store_path: str | None = None) -> None:
         self._db = db
         self._port = port
         self._alias = alias
         self._device_registry = registry
         self._pairing_service = pairing_service
+        self._bind_host = bind_host
+        self._import_store_path = import_store_path
         self._httpd = None
         self._thread: threading.Thread | None = None
         self._running = False
+        self._routes_mounted = False
         self._sessions: dict[str, object] = {}
         self._sessions_lock = threading.Lock()
         self._track_index: dict[str, str] = {}
@@ -116,6 +212,14 @@ class _Listener:
     @property
     def port(self) -> int:
         return self._port
+
+    @property
+    def bind_host(self) -> str:
+        return self._bind_host
+
+    @property
+    def routes_mounted(self) -> bool:
+        return self._routes_mounted
 
     @property
     def sessions(self) -> dict[str, object]:
@@ -164,7 +268,6 @@ class _Listener:
         from sync.sync_server import SyncRequestHandler
         from integrations.michi_link.server import MichiLinkServer
 
-        SyncRequestHandler.server_ref = self
         try:
             MichiLinkServer.mount(
                 SyncRequestHandler,
@@ -172,8 +275,24 @@ class _Listener:
             )
         except Exception as exc:  # noqa: BLE001 - mounting must not kill start
             logger.warning("MichiLinkServer mount failed: %s", exc)
+        if not getattr(SyncRequestHandler, "_michi_link_mounted", False):
+            return False, "ROUTES_NOT_MOUNTED"
+        self._routes_mounted = True
+
+        # Instance-held reference: the request is handled INSIDE
+        # BaseRequestHandler.__init__ (it calls self.handle()), so the
+        # reference must be bound before super().__init__ — a post-init
+        # factory would be too late. No global class state.
+        listener = self
+
+        class _BoundRequestHandler(SyncRequestHandler):
+            def __init__(self, *args, **kwargs):
+                self.server_ref = listener
+                super().__init__(*args, **kwargs)
+
         try:
-            self._httpd = HTTPServer(("0.0.0.0", self._port), SyncRequestHandler)
+            self._httpd = HTTPServer(
+                (self._bind_host, self._port), _BoundRequestHandler)
         except OSError as exc:
             self._httpd = None
             return False, str(exc)
@@ -213,19 +332,43 @@ class _Listener:
 
 
 class MobileSyncService:
-    def __init__(self, db=None, event_bus=None, registry=None, port: int = _DEFAULT_PORT):
+    def __init__(self, db=None, event_bus=None, registry=None,
+                 device_registry=None, port: int = _DEFAULT_PORT,
+                 bind_host: str = _DEFAULT_BIND_HOST,
+                 allow_lan_pairing: bool = False,
+                 tls_mode: str = "none",
+                 allowed_networks: list[str] | None = None,
+                 legacy_code_pairing_enabled: bool = False,
+                 signature_pairing_enabled: bool = True,
+                 import_store_path: str | None = None):
         self._db = db
         self._event_bus = event_bus
         self._registry = registry
+        self._device_registry = device_registry or registry
         self._server_port = self._clamp_port(port)
         self._pairing_timeout = _PAIRING_TIMEOUT
+        self._legacy_ttl = _LEGACY_TTL
+        self._bind_host = bind_host or _DEFAULT_BIND_HOST
+        self._allow_lan_pairing = allow_lan_pairing
+        self._tls_mode = tls_mode or "none"
+        self._allowed_networks = list(allowed_networks or [])
+        self._legacy_code_pairing_enabled = legacy_code_pairing_enabled
+        self._signature_pairing_enabled = signature_pairing_enabled
+        self._import_store_path = import_store_path
         self._paired_devices: dict[str, PairedDevice] = {}
         self._active_sessions: dict[str, PairingSession] = {}
         self._attempt_log: dict[str, list[float]] = {}
+        self._audit_log: list[dict] = []
         self._last_error = ""
         self._last_sync = 0.0
         self._listener: _Listener | None = None
+        self._routes_mounted = False
         self._load_devices()
+
+    @property
+    def device_registry(self):
+        """Public read port: the injected DeviceRegistry (single instance)."""
+        return self._device_registry
 
     # ── Persistence ──
 
@@ -256,9 +399,10 @@ class MobileSyncService:
             self._paired_devices[device.device_id] = device
             self._last_sync = max(self._last_sync, device.last_seen)
 
-    def _persist_device(self, device: PairedDevice) -> None:
+    def _persist_device(self, device: PairedDevice) -> bool:
+        """Persist a device; True on success (or memory-only persistence)."""
         if self._db is None:
-            return
+            return True
         try:
             self._db.conn.execute(
                 "INSERT OR REPLACE INTO mobile_sync_devices "
@@ -270,9 +414,11 @@ class MobileSyncService:
                  device.paired_at, device.last_seen, device.protocol_version),
             )
             self._db.conn.commit()
+            return True
         except (sqlite3.DatabaseError, AttributeError) as exc:
             logger.warning("Failed to persist paired device %s: %s",
                            device.device_id, exc)
+            return False
 
     def _delete_device(self, device_id: str) -> None:
         if self._db is None:
@@ -294,6 +440,18 @@ class MobileSyncService:
         self._last_sync = max(self._last_sync, device.last_seen)
         self._persist_device(device)
 
+    # ── Audit ──
+
+    def _record_audit(self, kind: str, **fields) -> None:
+        entry = {"kind": kind, "ts": time.time()}
+        entry.update(fields)
+        self._audit_log.append(entry)
+        del self._audit_log[:-_MAX_AUDIT_ENTRIES]
+
+    def get_audit_entries(self) -> list[dict]:
+        """Recent pairing audit entries (newest last)."""
+        return list(self._audit_log)
+
     # ── Query API ──
 
     @property
@@ -307,16 +465,47 @@ class MobileSyncService:
         d = self._paired_devices.get(device_id)
         return d is not None and d.trusted and not d.revoked
 
+    # ── Network policy ──
+
+    def _ip_allowed(self, client_ip: str) -> bool:
+        """Pairing policy: loopback always; LAN needs allow_lan_pairing."""
+        if not client_ip:
+            return True
+        try:
+            addr = ipaddress.ip_address(client_ip.split("%")[0])
+        except ValueError:
+            return False
+        if addr.is_loopback:
+            return True
+        if not self._allow_lan_pairing:
+            return False
+        if self._allowed_networks:
+            return any(
+                addr in ipaddress.ip_network(cidr)
+                for cidr in self._allowed_networks
+            )
+        return True
+
     # ── Pairing sessions ──
 
     def start_pairing(self) -> dict:
+        # Lazy listener: pairing requires the HTTP listener to receive the
+        # device's request. Never opened at boot — only on demand. The QR is
+        # still issued when the listener cannot start (health reports it);
+        # callers surface server_listening to the UI.
+        listening = self.is_listening()
+        if not listening:
+            started = self.start()
+            listening = bool(started.get("ok") and started.get("listening"))
         session_id = secrets.token_hex(16)
         code = ''.join(secrets.choice('0123456789') for _ in range(6))
+        nonce = secrets.token_hex(32)
         now = time.time()
         session = PairingSession(
             session_id=session_id,
             code=code,
-            challenge=secrets.token_hex(16),
+            challenge=nonce,
+            nonce=nonce,
             created_at=now,
             expires_at=now + self._pairing_timeout,
         )
@@ -326,10 +515,12 @@ class MobileSyncService:
                    f"&session={session_id}&code={code}")
         qr_data_uri, mime = self._generate_qr(qr_data)
         return {"ok": True, "session_id": session_id, "code": code,
+                "nonce": nonce,
                 "qr_payload": qr_data, "qr_data_uri": qr_data_uri,
                 "qr_mime_type": mime,
                 "qr_data": qr_data,  # deprecated alias, removed in S8
                 "qr_svg": qr_data_uri,  # deprecated alias, removed in S8
+                "listening": listening,
                 "expires_at": session.expires_at}
 
     def _generate_qr(self, data: str) -> tuple[str, str]:
@@ -359,7 +550,7 @@ class MobileSyncService:
                 "qr_svg": qr_data_uri}  # deprecated alias, removed in S8
 
     def get_pairing_challenge(self, session_id: str) -> dict:
-        """Issue the proof-of-possession challenge for a pairing session."""
+        """Issue the proof-of-possession challenge (nonce) for a session."""
         session = self._active_sessions.get(session_id)
         if not session:
             return {"ok": False, "error": "SESSION_NOT_FOUND"}
@@ -367,7 +558,7 @@ class MobileSyncService:
             self._active_sessions.pop(session_id, None)
             return {"ok": False, "error": "SESSION_EXPIRED"}
         return {"ok": True, "challenge": session.challenge,
-                "session_id": session_id}
+                "nonce": session.nonce, "session_id": session_id}
 
     def _check_rate_limit(self, key: str) -> bool:
         now = time.time()
@@ -379,64 +570,249 @@ class MobileSyncService:
     def _record_attempt(self, key: str) -> None:
         self._attempt_log.setdefault(key, []).append(time.time())
 
-    def verify_pairing(self, session_id: str, code: str, device_name: str = "",
-                       device_id: str = "", public_key: str = "",
-                       fingerprint: str = "", proof: str = "",
-                       ip: str = "") -> dict:
-        """Complete a pairing session.
-
-        A device that presents a public key or fingerprint MUST prove
-        possession of the code via ``proof`` = HMAC-SHA256(code, challenge);
-        otherwise pairing is rejected. Code-only pairing is accepted for
-        legacy clients, but never yields a persistent key record.
-        """
+    def _session_state(self, session_id: str) -> tuple[PairingSession | None, str]:
+        """Resolve a session; returns (session, error_code)."""
         session = self._active_sessions.get(session_id)
         if not session:
-            return {"ok": False, "error": "SESSION_NOT_FOUND"}
+            return None, "SESSION_NOT_FOUND"
         if time.time() > session.expires_at:
             self._active_sessions.pop(session_id, None)
-            return {"ok": False, "error": "SESSION_EXPIRED"}
+            return None, "SESSION_EXPIRED"
+        return session, ""
+
+    # ── Signature challenge-response pairing ──
+
+    def pair_request(self, session_id: str, nonce: str, public_key: str,
+                     signature: str, device_id: str, name: str = "",
+                     fingerprint: str = "", protocol_version: str = "1.0",
+                     ip: str = "") -> dict:
+        """Complete a pairing session with a real signature proof.
+
+        The device signs ``protocol_version|session_id|nonce|fingerprint|
+        device_id`` with its private key; the fingerprint is derived
+        server-side from the presented public key. Success creates the
+        device as ``awaiting_approval`` — it becomes trusted only after
+        ``approve_device()`` (user approval).
+        """
+        if not self._signature_pairing_enabled:
+            return {"ok": False, "error": "SIGNATURE_DISABLED"}
+        session, error = self._session_state(session_id)
+        if session is None:
+            return {"ok": False, "error": error}
         rate_key = ip or device_id or session_id
         if not self._check_rate_limit(rate_key):
             return {"ok": False, "error": "RATE_LIMITED"}
-        if session.code != code:
+        if not self._ip_allowed(ip):
+            return {"ok": False, "error": "NETWORK_DENIED"}
+        if session.nonce_used:
+            return {"ok": False, "error": "NONCE_REUSED"}
+        if nonce != session.nonce:
+            return {"ok": False, "error": "NONCE_INVALID"}
+        session.nonce_used = True
+        if not signature:
             self._record_attempt(rate_key)
-            return {"ok": False, "error": "INVALID_CODE"}
+            return {"ok": False, "error": "SIGNATURE_REQUIRED"}
+        raw_key = _parse_ed25519_public_key(public_key)
+        if raw_key is None:
+            self._record_attempt(rate_key)
+            return {"ok": False, "error": "KEY_INVALID"}
+        derived = _derive_fingerprint(raw_key)
+        if fingerprint and fingerprint != derived:
+            self._record_attempt(rate_key)
+            return {"ok": False, "error": "FINGERPRINT_MISMATCH"}
+        payload = _signature_payload(
+            protocol_version, session_id, nonce, derived, device_id)
+        if not _verify_ed25519_signature(raw_key, payload, signature):
+            self._record_attempt(rate_key)
+            return {"ok": False, "error": "SIGNATURE_INVALID"}
 
-        if public_key or fingerprint:
-            expected = hmac.new(
-                code.encode(), session.challenge.encode(),
-                hashlib.sha256,
-            ).hexdigest()
-            if not proof or not hmac.compare_digest(proof, expected):
-                self._record_attempt(rate_key)
-                return {"ok": False, "error": "PROOF_INVALID"}
+        existing = self._existing_trusted_device(device_id, public_key)
+        if existing is not None:
+            session.verified = True
+            self._active_sessions.pop(session_id, None)
+            self._record_audit("signature_pairing", device_id=device_id,
+                               ip=ip)
+            return {"ok": True, "device_id": device_id,
+                    "device_name": existing.name,
+                    "fingerprint": existing.fingerprint,
+                    "status": "trusted"}
 
+        device = self._create_pending_device(
+            device_id=device_id, name=name, public_key=public_key,
+            fingerprint=derived, protocol_version=protocol_version)
+        if isinstance(device, _DeviceIdConflict):
+            return {"ok": False, "error": "DEVICE_ID_CONFLICT",
+                    "status": "DEVICE_ID_CONFLICT"}
+        if device is None:
+            return {"ok": False, "error": "PERSISTENCE_FAILED",
+                    "status": "PERSISTENCE_FAILED"}
         session.verified = True
-        if device_id:
-            did = device_id
-        elif fingerprint:
-            did = fingerprint[:24]
-        else:
-            did = hashlib.sha256(
-                f"{session_id}:{device_name}:{public_key}".encode()
-            ).hexdigest()[:16]
+        self._record_audit("signature_pairing", device_id=device_id,
+                           ip=ip)
+        return {"ok": True, "device_id": device.device_id,
+                "device_name": device.name, "fingerprint": device.fingerprint,
+                "status": "awaiting_approval"}
+
+    def _existing_trusted_device(self, device_id: str,
+                                 public_key: str) -> PairedDevice | None:
+        """Return the device when it is already trusted with the SAME key.
+
+        Re-pairing with the same public key keeps the existing trust; any
+        other key (or a revoked device) requires a new approval.
+        """
+        existing = self._paired_devices.get(device_id)
+        if (existing is not None and existing.trusted
+                and not existing.revoked
+                and existing.public_key == public_key):
+            return existing
+        return None
+
+    def _create_pending_device(self, device_id: str, name: str,
+                               public_key: str, fingerprint: str,
+                               protocol_version: str) -> PairedDevice | None:
+        """Create (persist-first) a device awaiting approval.
+
+        Never returns a device that failed to persist: on DB failure the
+        device is NOT added to the trusted in-memory cache.
+
+        Key-swap guard: if a pending device with the SAME device_id already
+        exists with a DIFFERENT public key, the pairing is rejected with
+        DEVICE_ID_CONFLICT — the attacker must not be able to claim a
+        victim's pending device id with their own key (INSERT OR REPLACE
+        would silently overwrite it).
+        """
+        existing = self._paired_devices.get(device_id)
+        if (existing is not None and not existing.trusted
+                and existing.public_key and public_key
+                and existing.public_key != public_key):
+            return _DeviceIdConflict()
         now = time.time()
         device = PairedDevice(
-            device_id=did,
-            name=device_name or "Mobile Device",
+            device_id=device_id,
+            name=name or "Mobile Device",
             public_key=public_key,
             fingerprint=fingerprint,
             paired_at=now,
             last_seen=now,
-            trusted=True,
-            protocol_version=QR_PAYLOAD_VERSION,
+            trusted=False,
+            protocol_version=protocol_version or QR_PAYLOAD_VERSION,
         )
-        self._paired_devices[did] = device
-        self._persist_device(device)
-        self._last_sync = now
+        if not self._persist_device(device):
+            return None
+        self._paired_devices[device.device_id] = device
+        return device
+
+    # ── Legacy code-only pairing ──
+
+    def verify_pairing(self, session_id: str, code: str, device_name: str = "",
+                       device_id: str = "", public_key: str = "",
+                       fingerprint: str = "", ip: str = "",
+                       signature: str = "", protocol_version: str = "1.0") -> dict:
+        """Complete a pairing session (code entry; optional signature).
+
+        Signature path: the device proves possession of its private key over
+        ``protocol_version|session_id|nonce|fingerprint|device_id``; the
+        fingerprint is derived server-side. Code-only path is accepted ONLY
+        when ``legacy_code_pairing_enabled`` is set; it never auto-trusts
+        (device is created ``awaiting_approval``) and is audit-flagged as
+        insecure legacy pairing.
+        """
+        session, error = self._session_state(session_id)
+        if session is None:
+            return {"ok": False, "error": error}
+        rate_key = ip or device_id or session_id
+        if not self._check_rate_limit(rate_key):
+            return {"ok": False, "error": "RATE_LIMITED"}
+        if not self._ip_allowed(ip):
+            return {"ok": False, "error": "NETWORK_DENIED"}
+        if session.code != code:
+            self._record_attempt(rate_key)
+            return {"ok": False, "error": "INVALID_CODE"}
+
+        if public_key or signature:
+            if not signature:
+                self._record_attempt(rate_key)
+                return {"ok": False, "error": "SIGNATURE_REQUIRED"}
+            if not self._signature_pairing_enabled:
+                return {"ok": False, "error": "SIGNATURE_DISABLED"}
+            raw_key = _parse_ed25519_public_key(public_key)
+            if raw_key is None:
+                self._record_attempt(rate_key)
+                return {"ok": False, "error": "KEY_INVALID"}
+            derived = _derive_fingerprint(raw_key)
+            if fingerprint and fingerprint != derived:
+                self._record_attempt(rate_key)
+                return {"ok": False, "error": "FINGERPRINT_MISMATCH"}
+            payload = _signature_payload(
+                protocol_version, session_id, session.nonce, derived,
+                device_id)
+            if not _verify_ed25519_signature(raw_key, payload, signature):
+                self._record_attempt(rate_key)
+                return {"ok": False, "error": "SIGNATURE_INVALID"}
+            session.nonce_used = True
+            existing = self._existing_trusted_device(device_id, public_key)
+            if existing is not None:
+                session.verified = True
+                self._active_sessions.pop(session_id, None)
+                self._record_audit("signature_pairing", device_id=device_id,
+                                   ip=ip)
+                return {"ok": True, "device_id": device_id,
+                        "device_name": existing.name,
+                        "fingerprint": existing.fingerprint,
+                        "status": "trusted"}
+            device = self._create_pending_device(
+                device_id=device_id, name=device_name,
+                public_key=public_key, fingerprint=derived,
+                protocol_version=protocol_version)
+            if device is None:
+                return {"ok": False, "error": "PERSISTENCE_FAILED",
+                        "status": "PERSISTENCE_FAILED"}
+            session.verified = True
+            self._active_sessions.pop(session_id, None)
+            self._record_audit("signature_pairing", device_id=device_id,
+                               ip=ip)
+            return {"ok": True, "device_id": device.device_id,
+                    "device_name": device.name,
+                    "fingerprint": device.fingerprint,
+                    "status": "awaiting_approval"}
+
+        # ── Code-only (legacy) path ──
+        if not self._legacy_code_pairing_enabled:
+            return {"ok": False, "error": "SIGNATURE_REQUIRED"}
+        did = device_id or hashlib.sha256(
+            f"{session_id}:{device_name}".encode()
+        ).hexdigest()[:16]
+        device = self._create_pending_device(
+            device_id=did, name=device_name, public_key="",
+            fingerprint="", protocol_version=protocol_version)
+        if isinstance(device, _DeviceIdConflict):
+            return {"ok": False, "error": "DEVICE_ID_CONFLICT",
+                    "status": "DEVICE_ID_CONFLICT"}
+        if device is None:
+            return {"ok": False, "error": "PERSISTENCE_FAILED",
+                    "status": "PERSISTENCE_FAILED"}
+        session.verified = True
         self._active_sessions.pop(session_id, None)
-        return {"ok": True, "device_id": did, "device_name": device.name}
+        self._record_audit("legacy_code_pairing", device_id=did, ip=ip)
+        return {"ok": True, "device_id": did, "device_name": device.name,
+                "status": "awaiting_approval"}
+
+    # ── Trust lifecycle ──
+
+    def approve_device(self, device_id: str) -> dict:
+        """User approval: persists the device as trusted (never memory-only)."""
+        d = self._paired_devices.get(device_id)
+        if not d:
+            return {"ok": False, "error": "NOT_FOUND"}
+        updated = PairedDevice(**d.__dict__)
+        updated.trusted = True
+        updated.revoked = False
+        if not self._persist_device(updated):
+            return {"ok": False, "error": "PERSISTENCE_FAILED",
+                    "status": "PERSISTENCE_FAILED"}
+        self._paired_devices[device_id] = updated
+        self._record_audit("device_approved", device_id=device_id)
+        return {"ok": True}
 
     def unpair(self, device_id: str) -> dict:
         device = self._paired_devices.get(device_id)
@@ -447,21 +823,20 @@ class MobileSyncService:
         return {"ok": True}
 
     def trust_device(self, device_id: str) -> dict:
-        d = self._paired_devices.get(device_id)
-        if not d:
-            return {"ok": False, "error": "NOT_FOUND"}
-        d.trusted = True
-        d.revoked = False
-        self._persist_device(d)
-        return {"ok": True}
+        return self.approve_device(device_id)
 
     def revoke_trust(self, device_id: str) -> dict:
         d = self._paired_devices.get(device_id)
         if not d:
             return {"ok": False, "error": "NOT_FOUND"}
-        d.trusted = False
-        d.revoked = True
-        self._persist_device(d)
+        updated = PairedDevice(**d.__dict__)
+        updated.trusted = False
+        updated.revoked = True
+        if not self._persist_device(updated):
+            return {"ok": False, "error": "PERSISTENCE_FAILED",
+                    "status": "PERSISTENCE_FAILED"}
+        self._paired_devices[device_id] = updated
+        self._record_audit("device_revoked", device_id=device_id)
         return {"ok": True}
 
     def get_pairing_info(self, device_id: str) -> dict | None:
@@ -472,7 +847,9 @@ class MobileSyncService:
                 "public_key": d.public_key, "fingerprint": d.fingerprint,
                 "paired_at": d.paired_at, "last_seen": d.last_seen,
                 "trusted": d.trusted, "revoked": d.revoked,
-                "protocol_version": d.protocol_version}
+                "protocol_version": d.protocol_version,
+                "status": "revoked" if d.revoked else (
+                    "trusted" if d.trusted else "awaiting_approval")}
 
     def get_pending_sessions(self) -> list[dict]:
         now = time.time()
@@ -485,7 +862,9 @@ class MobileSyncService:
                 active.append({"session_id": sid, "created_at": s.created_at,
                                "expires_at": s.expires_at,
                                "verified": s.verified,
-                               "has_challenge": bool(s.challenge)})
+                               "has_challenge": bool(s.challenge),
+                               "has_nonce": bool(s.nonce),
+                               "nonce_used": s.nonce_used})
         for sid in expired:
             self._active_sessions.pop(sid, None)
         return active
@@ -517,19 +896,23 @@ class MobileSyncService:
         if self._listener is not None and self._listener.is_running:
             return {"ok": True, "already_running": True,
                     "port": self._listener.port}
-        from core.sync.device_registry import DeviceRegistry
-
-        registry = self._registry or DeviceRegistry()
         listener = _Listener(
             db=self._db, port=self._server_port,
-            registry=registry, pairing_service=self,
+            registry=self._device_registry, pairing_service=self,
+            bind_host=self._bind_host,
+            import_store_path=self._import_store_path,
         )
         ok, error = listener.start()
         if not ok:
             self._last_error = error or "LISTENER_START_FAILED"
+            self._routes_mounted = False
+            if error == "ROUTES_NOT_MOUNTED":
+                return {"ok": False, "error": "ROUTES_NOT_MOUNTED",
+                        "listening": False}
             return {"ok": False, "error": "LISTENER_START_FAILED",
                     "detail": self._last_error}
         self._listener = listener
+        self._routes_mounted = listener.routes_mounted
         self._last_error = ""
         return {"ok": True, "port": listener.port, "listening": True}
 
@@ -537,6 +920,7 @@ class MobileSyncService:
         if self._listener is not None:
             self._listener.stop()
             self._listener = None
+        self._routes_mounted = False
         return {"ok": True}
 
     def shutdown(self) -> None:
@@ -548,8 +932,11 @@ class MobileSyncService:
         if self._listener is None or not self._listener.is_running:
             return False
         port = self._listener.port
+        probe_host = self._listener.bind_host
+        if probe_host in ("0.0.0.0", "", "::"):
+            probe_host = "127.0.0.1"
         try:
-            with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+            with socket.create_connection((probe_host, port), timeout=0.5):
                 return True
         except OSError:
             return False
@@ -557,11 +944,24 @@ class MobileSyncService:
     # ── Health ──
 
     def health(self) -> dict:
+        loopback_bind = self._bind_host in ("127.0.0.1", "localhost", "::1") \
+            or self._bind_host.startswith("127.")
+        bind_allowed = loopback_bind or self._allow_lan_pairing
         return {
             "protocol_supported": QR_PAYLOAD_VERSION,
             "server_configured": True,
             "server_listening": self.is_listening(),
-            "tls_available": False,
+            "tls_available": self._tls_mode != "none",
+            "tls_mode": self._tls_mode,
+            "secure_pairing_available": (
+                self._signature_pairing_enabled and bind_allowed),
+            "signature_pairing_enabled": self._signature_pairing_enabled,
+            "insecure_legacy_enabled": self._legacy_code_pairing_enabled,
+            "legacy_ttl_seconds": self._legacy_ttl,
+            "bind_host": self._bind_host,
+            "allow_lan_pairing": self._allow_lan_pairing,
+            "allowed_networks": list(self._allowed_networks),
+            "routes_mounted": self._routes_mounted,
             "port": self.listening_port or self._server_port,
             "paired_devices": len(self._paired_devices),
             "trusted_devices": sum(
@@ -579,4 +979,5 @@ class MobileSyncService:
             "active_sessions": len([
                 s for s in self._active_sessions.values()
                 if time.time() <= s.expires_at]),
+            "audit_entries": len(self._audit_log),
         }

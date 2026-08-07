@@ -4,13 +4,14 @@ from unittest.mock import MagicMock
 
 
 from core.device_sync_service import (
-    DeviceSyncService,
     DeviceIdentity,
     DeviceProtocol,
     SyncDirection,
     TransferStatus,
 )
 from ui_qml_bridge.devices_bridge import DevicesBridge
+
+from tests.helpers.device_sync_stack import make_device_sync_stack
 import pytest
 pytestmark = pytest.mark.isolation
 
@@ -32,8 +33,8 @@ def temp_music(tmp_path):
 
 
 @pytest.fixture
-def svc():
-    return DeviceSyncService()
+def svc(tmp_path):
+    return make_device_sync_stack(tmp_path)
 
 
 @pytest.fixture
@@ -319,7 +320,8 @@ class TestDeviceSyncTransfer:
         src = str(temp_music / "Music" / "track.flac")
         dst = str(temp_music / "dest.flac")
         job = svc.create_transfer_job(src, dst, SyncDirection.TO_DEVICE)
-        assert job.job_id.startswith("sync_")
+        assert job is not None
+        assert job.job_id
         assert job.source_path == src
         assert job.total_bytes > 0
 
@@ -341,7 +343,7 @@ class TestDeviceSyncTransfer:
         job = svc.create_transfer_job(src, dst)
         result = svc.cancel_job(job.job_id)
         assert result["ok"] is True
-        assert job.status == TransferStatus.CANCELLED
+        assert svc.get_job(job.job_id).status == TransferStatus.CANCELLED
 
     def test_cancel_job_not_found(self, svc):
         result = svc.cancel_job("nonexistent")
@@ -367,7 +369,7 @@ class TestDeviceSyncTransfer:
         svc.set_on_progress(track)
         svc.execute_job(job.job_id)
         assert len(progress_values) > 0
-        assert progress_values[-1] == job.total_bytes
+        assert progress_values[-1] == svc.get_job(job.job_id).total_bytes
 
     def test_list_jobs(self, svc, temp_music):
         src = str(temp_music / "Music" / "track.flac")
@@ -377,14 +379,16 @@ class TestDeviceSyncTransfer:
     def test_get_job(self, svc, temp_music):
         src = str(temp_music / "Music" / "track.flac")
         job = svc.create_transfer_job(src, str(temp_music / "get.flac"))
-        assert svc.get_job(job.job_id) is job
+        found = svc.get_job(job.job_id)
+        assert found is not None
+        assert found.job_id == job.job_id
 
     def test_retry_job(self, svc, temp_music):
         src = str(temp_music / "Music" / "track.flac")
         dst = str(temp_music / "retry.flac")
         job = svc.create_transfer_job(src, dst)
         svc.execute_job(job.job_id)
-        assert job.status == TransferStatus.COMPLETED
+        assert svc.get_job(job.job_id).status == TransferStatus.COMPLETED
 
 
 class TestDeviceSyncHistory:
