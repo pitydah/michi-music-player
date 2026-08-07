@@ -106,7 +106,9 @@ class CrashReporter(QObject):
             self._original_excepthook(exc_type, exc_value, exc_tb)
 
     def _on_thread_exception(self, args):
-        report = self._build_report(exc_type=args.exc_type.__name__ if args.exc_type else "Unknown", exc_value=str(args.exc_value) if args.exc_value else "", traceback="".join(traceback.format_tb(args.exc_tb)) if args.exc_tb else "", thread_name=args.thread.name if args.thread else "unknown")
+        # Python 3.12+ renamed exc_tb → exc_traceback on _ExceptHookArgs.
+        tb = getattr(args, "exc_traceback", None) or getattr(args, "exc_tb", None)
+        report = self._build_report(exc_type=args.exc_type.__name__ if args.exc_type else "Unknown", exc_value=str(args.exc_value) if args.exc_value else "", traceback="".join(traceback.format_tb(tb)) if tb else "", thread_name=args.thread.name if args.thread else "unknown")
         self._save_report(report)
 
     def _on_system_signal(self, signum, frame):
