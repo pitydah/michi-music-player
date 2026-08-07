@@ -162,3 +162,29 @@ tests y los mismos motivos** documentados en `P0_STABILIZATION_BASELINE.md` secc
 - Matriz de aceptación: `docs/audits/P0_STABILIZATION_ACCEPTANCE_MATRIX.md`
 - Reports previos: `docs/audits/RUNTIME_REFACTOR_COMPLETION_REPORT.md`,
   `docs/audits/REACHABILITY_REPORT.md`, `docs/audits/RUNTIME_SERVICE_AUDIT_CURRENT.md`
+
+---
+
+## Addendum — CI estabilización (PR #187, post-revisión)
+
+Tras la revisión del diff (3 MEDIUM cerrados) y la batalla de CI, se corrigieron bugs reales que el entorno CI exponía (todos pre-existentes de main, activados por GStreamer real / Python 3.12 / session bus):
+
+| Fix | Commit | Bug real corregido |
+|-----|--------|--------------------|
+| MPRIS tolerante | `4c0775d3` | KeyError "bus name taken" rompía el boot si otro handler existía en el session bus (CI) |
+| mobile_sync listener lazy | `4c0775d3` | Listener abierto en boot → LISTENER_START_FAILED en CI; ahora arranca bajo demanda vía start_pairing |
+| play_next/play_prev engine | `b470a328` | `transport.play_next()` NUNCA existió en GStreamerPipelineTransport (bug main); ahora el engine avanza su propia cola (misma lógica que _on_about_to_finish) |
+| crash_reporter 3.12 | `8e4ba021` | `args.exc_tb` no existe en Python 3.12 (`exc_traceback`) → reporter crasheaba al manejar excepciones de thread |
+| build module en CI | `69790c32` | Job unit no instalaba `build` → test_rc_wheel fallaba |
+| workflow nowplaying/ | `d4548352` | `tests/qml/nowplaying/` renombrado a `playback/` (path stale) |
+| soundfile importorskip | `6820938d` + previos | Deps del extra audio-analysis no presentes en CI → skip honesto |
+| shutdown subprocess | `a2431201` + `d1ea885b` | Timeout 15→60s (cold boot CI) + PYTHONPATH ambiente preservado (gi/GStreamer) |
+
+### Estado CI final (checks del PR #187)
+- **PASS**: lint (3.11/3.12), validate-library, validate-library-data, ai-v2, audio-integration, composition-productive
+- **unit**: 4305 passed / 1 failed (flaky `test_player_service_apply_profile` — pasa en aislamiento; documentado idéntico en baseline)
+- **qml-runtime**: 2 failed (home_audio.stream + e2e sidebar) — demostrados IDÉNTICOS en base 66245d11 (worktree limpio)
+- **functional-tests**: 38 failed — demostrados IDÉNTICOS en base (fixtures QML settings/queue)
+- **full-inventory**: corre al completarse los demás
+
+Demostración reproducible (mandato §9): los fallos restantes fueron comparados base vs head en worktrees limpios del SHA auditado → sets idénticos. Cero regresiones nuevas.
