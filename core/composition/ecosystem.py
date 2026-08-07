@@ -173,6 +173,7 @@ def build(container: ServiceContainer) -> None:
 
     try:
         from core.mobile_sync_service import MobileSyncService
+        from core.paths import michi_link_import_store_path
         from core.settings_manager import get_bool, get_list, get_str
 
         container.register(
@@ -189,6 +190,9 @@ def build(container: ServiceContainer) -> None:
                     "mobile_sync/legacy_code_pairing_enabled"),
                 signature_pairing_enabled=get_bool(
                     "mobile_sync/signature_pairing_enabled"),
+                # Debt D3a: committed import sessions survive restarts via the
+                # SQLite ledger path (in-memory when omitted, e.g. tests).
+                import_store_path=michi_link_import_store_path(),
             ),
         )
     except Exception as exc:
@@ -267,7 +271,11 @@ def build(container: ServiceContainer) -> None:
             "michi_link_remote_library_service",
             RemoteLibraryService(micro=server_svc),
         )
-        container.register("michi_link_diagnostics_service", LinkDiagnosticsService())
+        container.register("michi_link_diagnostics_service", LinkDiagnosticsService(
+            client=michi_link_client,
+            track_identity_service=track_identity_svc,
+            import_service=import_svc,
+        ))
     except Exception as exc:
         logger.error("Failed to create michi_link services: %s", exc)
         for key in ("michi_link_client", "michi_link_server_service",

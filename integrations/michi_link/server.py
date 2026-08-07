@@ -111,11 +111,17 @@ class V1Mixin:
 
     @classmethod
     def _server_import_store(cls, srv: Any):
-        """Return the import store attached to a server instance (lazily)."""
+        """Return the import store attached to a server instance (lazily).
+
+        The store persists committed sessions to the server's ledger path
+        (``srv._import_store_path``, default: memory-only) so a restart with
+        the same path restores the committed-session records (debt D3a).
+        """
         store = getattr(srv, "_import_store", None)
         if store is None:
             from integrations.michi_link.import_store import ImportStore
-            store = ImportStore()
+            path = getattr(srv, "_import_store_path", None)
+            store = ImportStore(db_path=path)
             srv._import_store = store
         return store
 

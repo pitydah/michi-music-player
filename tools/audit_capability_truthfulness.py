@@ -211,13 +211,11 @@ FALSE_SUCCESS_ALLOWLIST: dict[tuple[str, str], str] = {
     ("devices_bridge.py", "selection"):
         "Legacy shim mirroring device_sync_service.selection.",
     ("history_query_service.py", "set_history_enabled"):
-        "DEBT (documented): stub setter; settings entries exist "
-        "(privacy/history_enabled) but enforcement is not wired — flagged in "
-        "the F11 report for a later wave.",
+        "WIRED (debt D4): persists history/enabled via settings_manager; "
+        "record_play refuses new entries with HISTORY_DISABLED.",
     ("history_query_service.py", "set_history_limit"):
-        "DEBT (documented): stub setter; settings entries exist "
-        "(privacy/history_limit) but enforcement is not wired — flagged in "
-        "the F11 report for a later wave.",
+        "WIRED (debt D4): persists history/limit; fetch caps results and "
+        "record_play prunes the oldest entries.",
     ("home_audio_service.py", "start"):
         "Lifecycle no-op: network starts only via explicit enable_* methods; "
         "start() reports route count (admin/idempotent).",
@@ -225,8 +223,8 @@ FALSE_SUCCESS_ALLOWLIST: dict[tuple[str, str], str] = {
         "Lifecycle no-op counterpart of start(); routes are managed via "
         "start_route/stop_route.",
     ("playlist_service.py", "cancel_import"):
-        "DEBT (documented): claims cancellation but the playlist import flow "
-        "does not track imports — flagged in the F11 report for a later wave.",
+        "WIRED (debt D1): cancels playlist_import jobs via the real "
+        "job_service.cancel_job; honest NO_ACTIVE_IMPORT otherwise.",
     ("playlists_bridge.py", "cancelPlaylistImport"):
         "Bridge fallback when no playlist service is wired (no-op guard).",
     ("queue_service.py", "save_as_playlist"):

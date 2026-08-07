@@ -181,13 +181,15 @@ class _Listener:
 
     def __init__(self, db, port: int, alias: str = "Michi Music Player",
                  registry=None, pairing_service=None,
-                 bind_host: str = _DEFAULT_BIND_HOST) -> None:
+                 bind_host: str = _DEFAULT_BIND_HOST,
+                 import_store_path: str | None = None) -> None:
         self._db = db
         self._port = port
         self._alias = alias
         self._device_registry = registry
         self._pairing_service = pairing_service
         self._bind_host = bind_host
+        self._import_store_path = import_store_path
         self._httpd = None
         self._thread: threading.Thread | None = None
         self._running = False
@@ -337,7 +339,8 @@ class MobileSyncService:
                  tls_mode: str = "none",
                  allowed_networks: list[str] | None = None,
                  legacy_code_pairing_enabled: bool = False,
-                 signature_pairing_enabled: bool = True):
+                 signature_pairing_enabled: bool = True,
+                 import_store_path: str | None = None):
         self._db = db
         self._event_bus = event_bus
         self._registry = registry
@@ -351,6 +354,7 @@ class MobileSyncService:
         self._allowed_networks = list(allowed_networks or [])
         self._legacy_code_pairing_enabled = legacy_code_pairing_enabled
         self._signature_pairing_enabled = signature_pairing_enabled
+        self._import_store_path = import_store_path
         self._paired_devices: dict[str, PairedDevice] = {}
         self._active_sessions: dict[str, PairingSession] = {}
         self._attempt_log: dict[str, list[float]] = {}
@@ -887,6 +891,7 @@ class MobileSyncService:
             db=self._db, port=self._server_port,
             registry=self._device_registry, pairing_service=self,
             bind_host=self._bind_host,
+            import_store_path=self._import_store_path,
         )
         ok, error = listener.start()
         if not ok:

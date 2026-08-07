@@ -27,6 +27,8 @@ DEFAULTS = {
     "playback/replaygain": False,
     "playback/crossfade": 0,
     "playback/gapless": True,
+    "history/enabled": True,
+    "history/limit": 1000,
     "audio/device": "default",
     "audio/mode": "standard",
     "audio/sample_rate": 0,

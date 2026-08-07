@@ -110,13 +110,13 @@ tests y los mismos motivos** documentados en `P0_STABILIZATION_BASELINE.md` secc
 
 | Deuda | Detalle | Severidad |
 |---|---|---|
-| Import de playlists no atómico | `playlist_service` (import) puede quedar parcial ante error; `playlist_service.cancel_import` pendiente de migrar a jobs durables | Media |
-| `ImportStore` in-memory | Estado de importación vive en memoria, no restart-safe (patrón inverso a ADR-004) | Media |
+| ~~Import de playlists no atómico~~ | **RESUELTO (D1)**: import atómico con políticas explícitas + `cancel_import` real sobre jobs durables (`8196efcd`, `tests/test_playlist_atomic_import.py`) | — |
+| ~~`ImportStore` in-memory~~ | **RESUELTO (D3a)**: ledger SQLite de sesiones commiteadas (`michi_link_imports.sqlite`), restart-safe; `tests/integration/test_michi_link_import_store_persistent.py` | — |
 | Dominio de búsqueda RADIO | `search_domains` no incluye `radio`; gate `test_search_domains_not_in_text.py` lo fija como deuda consciente | Baja |
 | 38 servicios `UNTESTED_VERTICAL` | `REACHABILITY_REPORT.md`: tienen consumers/tests unit pero sin archivo vertical en `tests/integration`/`tests/architecture` | Media |
-| `LinkDiagnosticsService` construido en runtime | Construcción por demanda en `core/composition/ecosystem.py` — no en composición canónica (documentado, 1 caso) | Media |
+| ~~`LinkDiagnosticsService` construido en runtime~~ | **RESUELTO (D3b)**: dependencias inyectadas desde composición; sin `ServiceClass(...)` en métodos; `tests/architecture/test_link_diagnostics_no_runtime_construction.py` | — |
 | `DetectionService` fallback | Recognition: fallback de proveedor sin red aún por end-to-end | Baja |
-| History stubs | `set_history_enabled`/`set_history_limit` en `core/history_query_service.py` devuelven `{"ok": True}` sin efecto persistido | Baja |
+| ~~History stubs~~ | **RESUELTO (D4)**: `set_history_enabled`/`set_history_limit` con efecto real persistido (flag gatea `record_play`, límite caps fetch + prune); `tests/test_history_service_stubs.py` | — |
 | `audio_lab` ProcessController | Migración a jobs durables iniciada (port) pero ProcessController legacy coexiste | Media |
 | `SyncQueue` legacy | `core/sync/sync_queue_impl.py` mantiene cola paralela al runtime de jobs (no usada por device_sync nuevo) | Baja |
 | 165 tests nominales | `audit_nominal_tests.py` (F11-H): patrones débiles (fixed-count, text-existence) — warn-only, 0 en CI | Baja |
@@ -144,10 +144,12 @@ tests y los mismos motivos** documentados en `P0_STABILIZATION_BASELINE.md` secc
 1. Revisar y fusionar el PR de la rama `agent/runtime-refactor-p0-stabilization`
    (criterio 39: no fusionar antes de cerrar P0 — pendiente de review).
 2. Plan de cobertura vertical para los 38 servicios `UNTESTED_VERTICAL`.
-3. Migrar `playlist import` y `ImportStore` al runtime durable (ADR-004) con
-   cancelación scoped.
+3. ~~Migrar `playlist import` y `ImportStore` al runtime durable (ADR-004) con
+   cancelación scoped~~ — **cerrado**: D1 (import atómico + cancel real) y D3a
+   (ledger restart-safe) entregados.
 4. Eliminar o migrar `SyncQueue` legacy y los stubs de history
-   (`set_history_enabled/limit` con efecto real).
+   (`set_history_enabled/limit` con efecto real) — **stubs cerrado en D4**;
+   queda `SyncQueue` legacy.
 5. Adoptar la suite `tests/qml` verde como gate (hoy: fallos pre-existentes iguales a
    baseline; fuera de P0).
 6. Revisión periódica de allowlists de auditores (rotación semestral sugerida).

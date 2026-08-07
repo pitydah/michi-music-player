@@ -523,8 +523,11 @@ class PlaylistService:
         return self._add_tracks_loop(playlist_id, refs, policy, ctx)
 
     def _batch_base(self, policy: str) -> dict:
+        """Pending result envelope — ``ok`` starts False and is set by the
+        caller ONLY when the real outcome warrants it (never success before
+        the effect)."""
         return {
-            "ok": True,
+            "ok": False,
             "status": "COMPLETED",
             "policy": policy,
             "requested": 0,
@@ -611,6 +614,8 @@ class PlaylistService:
             self._insert_membership_raw(pid, resolved, self._fp_of(ref))
             existing_tids.add(resolved)
             result["added"] += 1
+        result["ok"] = True
+        result["status"] = "COMPLETED"
         return result
 
     def _add_tracks_loop(self, pid: int, refs: list[Any], policy: str,
@@ -651,6 +656,10 @@ class PlaylistService:
             result["status"] = "FAILED"
         elif result["added"] < result["requested"]:
             result["status"] = "PARTIAL_SUCCESS"
+            result["ok"] = True
+        else:
+            result["ok"] = True
+            result["status"] = "COMPLETED"
         return result
 
     # ── Ref classification helpers (debt D1) ───────────────────────────
