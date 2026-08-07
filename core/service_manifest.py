@@ -768,7 +768,7 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         consumers=("home_bridge", "home_dashboard_service", "michi_ai_snapshot_service"),
         description="Canonical contextual truth source (S11) — provider registry snapshot.",
     ),
-    # ── Intelligence (4 registered keys) ─────────────────────────────────
+    # ── Intelligence (5 registered keys) ─────────────────────────────────
     "action_registry": _d(
         "action_registry", ServiceClass.REGISTRY,
         LifecycleKind.MANAGED, ServicePriority.REQUIRED,
@@ -795,16 +795,25 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         consumers=("mix_bridge",),
         description="Mix creation/editing.",
     ),
+    "assistant_runtime": _d(
+        "assistant_runtime", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        consumers=("michi_ai_service",),
+        description="Single governed Michi AI runtime composition (F9): "
+                    "intent/capability/context/plan/confirmation/execution/"
+                    "tool-registry/conversation/trace/backend as one unit.",
+    ),
     "michi_ai_service": _d(
         "michi_ai_service", ServiceClass.DOMAIN_SERVICE,
         LifecycleKind.MANAGED, ServicePriority.CAPABILITY_GATED,
         dependencies=("global_search_service", "playback_service", "queue_service",
                       "playlist_service", "diagnostics_service", "settings_service",
-                      "action_registry"),
+                      "action_registry", "assistant_runtime"),
         optional=True,
         capabilities=("michi_ai", "ai"),
         consumers=("michi_ai_bridge",),
-        description="Michi AI engine (capability-gated; S4 fixes gateways).",
+        description="Michi AI engine facade over assistant_runtime "
+                    "(capability-gated; S4 fixes gateways, F9 delegates).",
     ),
     # ── Application (1 registered key) ───────────────────────────────────
     "navigation_service": _d(

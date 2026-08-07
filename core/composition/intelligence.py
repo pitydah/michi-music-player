@@ -45,6 +45,15 @@ def build(container: ServiceContainer) -> None:
 
     try:
         nav_svc = container.get("navigation_service")
+
+        def _health_provider(service_key: str) -> bool:
+            # Full health gate (F9): the backing service must be registered
+            # AND capable (container READY or DEGRADED with that service ok).
+            try:
+                return bool(container.contains(service_key)) and bool(container.is_capable(service_key))
+            except Exception:
+                return False
+
         from core.assistant_initializer import create_assistant_composition
         comp = create_assistant_composition(
             metadata_service=container.get("metadata_service"),
@@ -69,7 +78,14 @@ def build(container: ServiceContainer) -> None:
             device_registry=container.get("device_registry"),
             global_search_service=container.get("global_search_service"),
             metadata_editor_service=container.get("metadata_editor_service"),
+            health_provider=_health_provider,
+            context_service=container.get("context_service"),
         )
+        # F9: the SINGLE governed runtime object plus the engine facade
+        # (QML bridge compatibility) registered together. michi_ai_service
+        # declares a dependency on assistant_runtime in the manifest — the
+        # runtime owns the lifecycle, the facade does not duplicate it.
+        container.register("assistant_runtime", comp.runtime)
         container.register("michi_ai_service", comp.core_service)
 
         from michi_ai.recommender import set_library_provider

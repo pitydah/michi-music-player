@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 from michi_ai.v2.context.context_assembler import ContextAssembler
 from michi_ai.v2.conversation.conversation_service import ConversationService
@@ -29,6 +29,7 @@ from core.assistant_gateways import (
 )
 from core.assistant_metadata_gateway import ProductionMetadataGateway
 from core.assistant_context_providers import register_all_context_providers
+from core.assistant_runtime import AssistantRuntime
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,8 @@ def _make_gateway(gateway_class_name: str, service: Any) -> Any:
 
 @dataclass(frozen=True)
 class AssistantComposition:
-    core_service: Any  # AssistantCoreService or MichiAIEngine
+    core_service: Any  # MichiAIEngine facade (delegates to the runtime)
+    runtime: AssistantRuntime
     tool_registry: ToolRegistryV2
     capability_resolver: CapabilityResolver
     planner: PlanBuilderV2
@@ -68,7 +70,19 @@ class AssistantComposition:
     conversation_service: ConversationService
     confirmation_policy: ConfirmationPolicyV2
     trace_recorder: TraceRecorder
+    backend_selector: Any
     gateways: AssistantGateways
+
+
+def _s11_library_provider(context_service: Any) -> Callable[[], dict[str, Any]]:
+    """Context provider over the canonical S11 ContextService snapshot."""
+    def _provider() -> dict[str, Any]:
+        try:
+            snap = context_service.snapshot()
+            return (snap or {}).get("library", {"available": False})
+        except Exception:
+            return {"available": False}
+    return _provider
 
 
 def create_assistant_composition(
@@ -94,6 +108,10 @@ def create_assistant_composition(
     device_registry: Any = None,
     global_search_service: Any = None,
     metadata_editor_service: Any = None,
+    intent_router: Any = None,
+    confirmation_policy: ConfirmationPolicyV2 | None = None,
+    health_provider: Callable[[str], bool] | None = None,
+    context_service: Any = None,
 ) -> AssistantComposition:
     """Compose the assistant engine, gateways, tools, and context providers.
 
@@ -113,7 +131,6 @@ def create_assistant_composition(
     Returns:
         The fully wired assistant composition.
     """
-    from core.ai_engine import MichiAIEngine
     from core.ai.backend_selector import BackendSelector
     from core.ai.model_manager import ModelManager
 
@@ -121,12 +138,14 @@ def create_assistant_composition(
     # register_builtin_tools), the planner, the validator, and the executor.
     # The ToolRegistryV2 is constructed WITH that resolver so that
     # execution-time capability checks (ToolRegistryV2.execute) reflect
-    # gateway evidence, not merely handler existence.
-    capability_resolver = CapabilityResolver()
+    # gateway evidence, not merely handler existence. When a health_provider
+    # is supplied (productive container), resolution additionally consults
+    # the container health per backing service (F9).
+    capability_resolver = CapabilityResolver(health_provider=health_provider)
     tool_registry = ToolRegistryV2(capability_resolver=capability_resolver)
     context_assembler = ContextAssembler()
     conversation_service = ConversationService()
-    confirmation_policy = ConfirmationPolicyV2()
+    confirmation_policy = confirmation_policy or ConfirmationPolicyV2()
     executor = PlanExecutorV2(tool_registry)
     validator = PlanValidator(tool_registry, capability_resolver)
     planner = PlanBuilderV2(tool_registry, capability_resolver)
@@ -178,10 +197,22 @@ def create_assistant_composition(
 
     model_manager = ModelManager()
     backend_selector = BackendSelector(model_manager=model_manager)
-    engine = MichiAIEngine(
+    runtime = AssistantRuntime(
         tool_registry=tool_registry,
+        capability_resolver=capability_resolver,
+        planner=planner,
+        validator=validator,
+        executor=executor,
+        context_assembler=context_assembler,
+        conversation_service=conversation_service,
+        confirmation_policy=confirmation_policy,
+        trace_recorder=trace_recorder,
         backend_selector=backend_selector,
+        intent_router=intent_router,
+        trace_enabled=True,
     )
+    from core.ai_engine import MichiAIEngine
+    engine = MichiAIEngine(runtime=runtime)
 
     svc_map = {
         "player_service": player_service,
@@ -194,9 +225,14 @@ def create_assistant_composition(
         "navigation_service": navigation_service,
     }
     register_all_context_providers(context_assembler, svc_map)
+    if context_service is not None:
+        # The canonical S11 ContextService snapshot is the authority for the
+        # library section (F9): real service data, never fabricated counts.
+        context_assembler.register("library", _s11_library_provider(context_service))
 
     return AssistantComposition(
         core_service=engine,
+        runtime=runtime,
         tool_registry=tool_registry,
         capability_resolver=capability_resolver,
         planner=planner,
@@ -206,5 +242,6 @@ def create_assistant_composition(
         conversation_service=conversation_service,
         confirmation_policy=confirmation_policy,
         trace_recorder=trace_recorder,
+        backend_selector=backend_selector,
         gateways=gateways,
     )

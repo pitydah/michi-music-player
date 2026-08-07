@@ -14,8 +14,8 @@ def test_every_registered_key_has_descriptor() -> None:
 
 
 def test_registered_keys_match_composition() -> None:
-    assert len(registered_keys()) == 83, (
-        f"Expected 83 registered keys, found {len(registered_keys())}"
+    assert len(registered_keys()) == 84, (
+        f"Expected 84 registered keys, found {len(registered_keys())}"
     )
 
 
