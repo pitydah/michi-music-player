@@ -19,7 +19,10 @@ def env(tmp_path):
     from core.undo_service import UndoService
     from library.library_db import LibraryDB
 
-    import soundfile as sf
+    sf = pytest.importorskip(
+        "soundfile",
+        reason="audio-analysis extra required to build FLAC fixtures",
+    )
 
     db = LibraryDB(str(tmp_path / "lib.db"))
     music = tmp_path / "music"
