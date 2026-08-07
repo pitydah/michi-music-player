@@ -624,14 +624,15 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
     ),
     "mobile_sync_service": _d(
         "mobile_sync_service", ServiceClass.DOMAIN_SERVICE,
-        LifecycleKind.MANAGED, ServicePriority.OPTIONAL,
+        LifecycleKind.EXTERNAL, ServicePriority.OPTIONAL,
         dependencies=("database", "device_registry"),
         optional=True,
         capabilities=("devices_sync",),
         consumers=("mobile_sync_bridge",),
         description="Mobile sync: persistent pairing/trust (migration 8), "
                     "real listener lifecycle, truthful health; shares the "
-                    "single composed DeviceRegistry.",
+                    "single composed DeviceRegistry. Listener starts LAZY "
+                    "via start_pairing (never opened at boot).",
     ),
     "michi_link_client": _d(
         "michi_link_client", ServiceClass.EXTERNAL_RESOURCE,

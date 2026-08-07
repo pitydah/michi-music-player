@@ -489,6 +489,14 @@ class MobileSyncService:
     # ── Pairing sessions ──
 
     def start_pairing(self) -> dict:
+        # Lazy listener: pairing requires the HTTP listener to receive the
+        # device's request. Never opened at boot — only on demand. The QR is
+        # still issued when the listener cannot start (health reports it);
+        # callers surface server_listening to the UI.
+        listening = self.is_listening()
+        if not listening:
+            started = self.start()
+            listening = bool(started.get("ok") and started.get("listening"))
         session_id = secrets.token_hex(16)
         code = ''.join(secrets.choice('0123456789') for _ in range(6))
         nonce = secrets.token_hex(32)
@@ -512,6 +520,7 @@ class MobileSyncService:
                 "qr_mime_type": mime,
                 "qr_data": qr_data,  # deprecated alias, removed in S8
                 "qr_svg": qr_data_uri,  # deprecated alias, removed in S8
+                "listening": listening,
                 "expires_at": session.expires_at}
 
     def _generate_qr(self, data: str) -> tuple[str, str]:
