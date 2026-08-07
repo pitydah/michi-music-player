@@ -541,11 +541,11 @@ class PlayerService(QObject):
             if not verified.get("ok"):
                 # Rollback to the previously active profile
                 rollback_attempted = True
-                self._safe_rollback(previous)
-                rollback_ok = True
+                rollback_ok = self._safe_rollback(previous)
                 result = {"ok": False, "code": "VERIFY_FAILED", "error": "VERIFY_FAILED",
                           "message": verified.get("message", "Verificación fallida"),
-                          "rollback": True, "active_profile": previous,
+                          "rollback": rollback_ok, "active_profile": previous,
+                          "effective_backend": effective_backend,
                           "state": PROFILE_FAILED, **verified}
                 self._store_result(ProfileApplyResult(
                     ok=False, requested_profile_id=self._requested_profile_id,
@@ -555,7 +555,7 @@ class PlayerService(QObject):
                     requested_backend=requested_backend,
                     effective_backend=effective_backend,
                     verification_level=verified.get("verification_level", "not_verifiable"),
-                    rollback_attempted=True, rollback_ok=True,
+                    rollback_attempted=True, rollback_ok=rollback_ok,
                     code="VERIFY_FAILED",
                     message=verified.get("message", "Verificación fallida"),
                     effective_format=effective_format,
@@ -761,12 +761,13 @@ class PlayerService(QObject):
             pass
         return invalidators
 
-    def _safe_rollback(self, previous: str) -> None:
+    def _safe_rollback(self, previous: str) -> bool:
         """Best-effort rollback to the ``previous`` profile's backend."""
         try:
-            self.switch_backend_for_profile(previous)
+            return self.switch_backend_for_profile(previous)
         except Exception as exc:
             logger.warning("Rollback to profile '%s' failed: %s", previous, exc)
+            return False
 
     def set_profile(self, profile_id: str) -> dict:
         """Apply a profile transactionally (delegates to :meth:`apply_profile`).

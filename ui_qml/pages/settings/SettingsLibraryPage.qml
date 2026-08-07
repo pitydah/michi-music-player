@@ -89,6 +89,7 @@ Item {
         onRetryRequested: { root.pageState = AsyncStateView.READY; root.refresh() }
 
         readyContent: ScrollView {
+            id: scrollView
             anchors.fill: parent
             clip: true
 
@@ -113,6 +114,7 @@ Item {
                         spacing: MichiTheme.spacing.md
 
                         ListView {
+                            id: foldersList
                             Accessible.role: Accessible.List
 
                             Accessible.name: qsTr("Lista de carpetas de música")
@@ -373,6 +375,7 @@ Item {
     }
 
     FolderDialog {
+        id: folderDialog
         title: qsTr("Seleccionar carpeta de música")
         onAccepted: {
             var folderPath = folder.toString().replace("file://", "")

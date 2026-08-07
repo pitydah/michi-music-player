@@ -74,6 +74,7 @@ Item {
         onRetryRequested: { root.pageState = AsyncStateView.READY; root.refresh() }
 
         readyContent: ScrollView {
+            id: scrollView
             anchors.fill: parent
             clip: true
 
@@ -278,6 +279,7 @@ Item {
                             }
                         }
                     }
+                }
 
                 GlassCard {
                     Layout.fillWidth: true
@@ -377,5 +379,4 @@ Item {
     }
 
     signal closeRequested()
-}
 }

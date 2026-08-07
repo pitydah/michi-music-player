@@ -3,6 +3,8 @@
 import os
 from pathlib import Path
 
+import pytest
+
 _EXCLUDED_DIRS = {
     "__pycache__", "audio_lab", "vinyl", "sync", "michi_link",
     "e2e", "build",
@@ -31,7 +33,8 @@ def _is_excluded_path(p: Path) -> bool:
     s = str(p)
     if any(excl in s for excl in _EXCLUDED_DIRS):
         return True
-    if any(f"music_player/{pref}" in s for pref in _EXCLUDED_PREFIXES):
+    normalized = f"/{p.as_posix().strip('/')}/"
+    if any(f"/{pref.strip('/')}/" in normalized for pref in _EXCLUDED_PREFIXES):
         return True
     # Exclude all test files
     if "/tests/" in s:
@@ -42,6 +45,12 @@ def _is_excluded_path(p: Path) -> bool:
     if "/integrations/ai_assistant/" in s:
         return True
     return False
+
+
+@pytest.mark.parametrize("checkout_name", ["music_player", "michi-music-player"])
+def test_context_exclusion_is_checkout_name_independent(checkout_name: str) -> None:
+    path = Path("/workspace") / checkout_name / "core" / "context" / "events.py"
+    assert _is_excluded_path(path)
 
 
 class TestContextSemanticAudit:

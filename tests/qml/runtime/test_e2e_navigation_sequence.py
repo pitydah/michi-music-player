@@ -66,7 +66,7 @@ NAV_SEQUENCE: list[tuple[str, str]] = [
     ("playlists", "playlistsPage_control"),
     ("connections.micro_server", "connectionDiscoveryPage"),
     ("audio_lab.processing", "audioProcessingHubPage"),
-    ("home_audio.stream", "homeAudioPage"),
+    ("home_audio.stream", "michiMusicStreamPage"),
     ("michi_ai", "assistantPage"),
     ("sync.mobile", "mobilePairingPage"),
 ]
