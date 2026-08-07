@@ -258,7 +258,7 @@ jobs:
       - name: Vertical contract tests
         run: |
           QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest \
-            tests/qml/tagging/ tests/qml/disc_lab/ tests/qml/settings/ tests/qml/queue/ tests/qml/nowplaying/ \
+            tests/qml/tagging/ tests/qml/disc_lab/ tests/qml/settings/ tests/qml/queue/ tests/qml/playback/ \
             -q --timeout=300 --junitxml=results-vertical.xml
       - name: Build wheel
         run: python -m build --wheel
