@@ -6,6 +6,13 @@ set -euo pipefail
 
 PYTEST="python -m pytest"
 
+# System-installed Python bindings (e.g. python3-gi, dbus) live in the
+# dist-packages of the system interpreter. Under actions/setup-python the
+# virtual environment Python does not see them unless the path is preserved.
+# Keep it in one place so every step that needs bindings shares the same env.
+SYSTEM_DIST_PACKAGES="/usr/lib/python3/dist-packages"
+SYSTEM_PYTHONPATH="${SYSTEM_DIST_PACKAGES}${PYTHONPATH:+:${PYTHONPATH}}"
+
 echo "=== [BLOCKING] Test Authority Safety Gate ==="
 
 echo "-- ruff --"
@@ -24,9 +31,9 @@ echo "-- patch artifacts --"
 python scripts/check_patch_artifacts.py
 
 echo "-- composition smoke --"
-QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python scripts/smoke_composition.py
+QT_QPA_PLATFORM=offscreen PYTHONPATH="$SYSTEM_PYTHONPATH" python scripts/smoke_composition.py
 
 echo "-- pytest -m gate (T0 curated set) --"
-QT_QPA_PLATFORM=offscreen $PYTEST -m "gate" -q
+QT_QPA_PLATFORM=offscreen PYTHONPATH="$SYSTEM_PYTHONPATH" $PYTEST -m "gate" -q
 
 echo "=== [BLOCKING] Safety Gate PASSED ==="

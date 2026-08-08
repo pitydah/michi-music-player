@@ -56,3 +56,6 @@ docs/archive/
 tests/qml/negative/results/
 # Local AI runtime state
 .atl/
+
+# Local OpenCode project config (keep out of reviews/commits)
+.opencode/
