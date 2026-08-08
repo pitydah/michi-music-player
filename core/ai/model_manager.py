@@ -18,6 +18,8 @@ logger = logging.getLogger("michi.model_manager")
 _STORAGE_DIR = Path.home() / ".local" / "share" / "michi" / "models"
 _STATUS_FILE = "status.json"
 _AUTO_UNLOAD_MINUTES = 5
+_AUTO_UNLOAD_POLL_SECONDS = 60
+_SHUTDOWN_JOIN_TIMEOUT = 5.0
 
 _MODEL_STATUS_VALUES = {
     "not_installed", "downloading", "verifying", "installed",
@@ -35,6 +37,8 @@ class ModelManager:
         self._lock = threading.Lock()
         self._last_activity: dict[str, float] = {}
         self._auto_unload_minutes = _AUTO_UNLOAD_MINUTES
+        self._stop_event = threading.Event()
+        self._worker: threading.Thread | None = None
         self._load_status_file()
         self._start_auto_unload_timer()
 
@@ -192,6 +196,18 @@ class ModelManager:
             ram = 0
         return {"loaded": True, "ram_mb": round(ram, 1)}
 
+    def shutdown(self) -> None:
+        """Stop the auto-unload worker and join it within a bounded timeout.
+
+        Idempotent: repeated calls are no-ops. The worker wakes promptly
+        from its wait once the stop event is set, so the join is short.
+        """
+        self._stop_event.set()
+        self.unload_all()
+        worker = self._worker
+        if worker is not None:
+            worker.join(_SHUTDOWN_JOIN_TIMEOUT)
+
     # ── Internals ─────────────────────────────────────────────
 
     def _set_status(self, model_id: str, status: str) -> None:
@@ -269,15 +285,22 @@ class ModelManager:
                 pass
 
     def _start_auto_unload_timer(self) -> None:
-        def _check():
-            while True:
-                time.sleep(60)
-                now = time.time()
-                for mid in list(self._loaded_models.keys()):
-                    last = self._last_activity.get(mid, 0)
-                    if now - last > self._auto_unload_minutes * 60:
-                        logger.info("Auto-unloading %s after %d min of inactivity", mid, self._auto_unload_minutes)
-                        self._unload(mid)
+        def _check() -> None:
+            while not self._stop_event.wait(_AUTO_UNLOAD_POLL_SECONDS):
+                self._auto_unload_check()
 
-        t = threading.Thread(target=_check, daemon=True)
-        t.start()
+        self._worker = threading.Thread(
+            target=_check, name="michi-model-auto-unload", daemon=True
+        )
+        self._worker.start()
+
+    def _auto_unload_check(self) -> None:
+        """Perform one auto-unload sweep; a no-op once shutdown() ran."""
+        if self._stop_event.is_set():
+            return
+        now = time.time()
+        for mid in list(self._loaded_models.keys()):
+            last = self._last_activity.get(mid, 0)
+            if now - last > self._auto_unload_minutes * 60:
+                logger.info("Auto-unloading %s after %d min of inactivity", mid, self._auto_unload_minutes)
+                self._unload(mid)

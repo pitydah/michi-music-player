@@ -87,6 +87,10 @@ def build(container: ServiceContainer) -> None:
         # runtime owns the lifecycle, the facade does not duplicate it.
         container.register("assistant_runtime", comp.runtime)
         container.register("michi_ai_service", comp.core_service)
+        # The model manager owns a worker thread; registering it makes
+        # ServiceContainer.shutdown() stop it, so the process can exit
+        # without leaked daemon threads.
+        container.register("model_manager", comp.model_manager)
 
         from michi_ai.recommender import set_library_provider
         lqs = container.get("library_query_service")

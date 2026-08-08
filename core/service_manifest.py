@@ -829,6 +829,14 @@ SERVICE_MANIFEST: dict[str, ServiceDescriptor] = {
         description="Michi AI engine facade over assistant_runtime "
                     "(capability-gated; S4 fixes gateways, F9 delegates).",
     ),
+    "model_manager": _d(
+        "model_manager", ServiceClass.DOMAIN_SERVICE,
+        LifecycleKind.EXTERNAL, ServicePriority.OPTIONAL,
+        optional=True,
+        consumers=("assistant_runtime",),
+        description="AI model manager owning an auto-unload worker thread; "
+                    "shutdown-only (stops the worker on teardown).",
+    ),
     # ── Application (1 registered key) ───────────────────────────────────
     "navigation_service": _d(
         "navigation_service", ServiceClass.APPLICATION_SERVICE,
