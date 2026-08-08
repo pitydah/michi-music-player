@@ -1,3 +1,7 @@
+> STATUS: HISTORICAL SNAPSHOT
+> BASELINE: 6ae14b89 (head SHA recorded in this document)
+> SUPERSEDED BY: AGENTS.md §2A + docs/testing/DEVELOPMENT_CONVERGENCE_MODE.md + docs/testing/SUBSYSTEM_MATURITY.yaml
+
 # P0 Stabilization — Acceptance Matrix
 
 Los 40 criterios de aceptación del mandato P0 con su estado y evidencia ejecutada sobre

@@ -19,7 +19,7 @@ Written in Python 3.11+ with PySide6, GStreamer 1.0, SQLite FTS5, mutagen, shaza
 | Audio analysis | librosa, soundfile, numpy (feature extraction, acoustic profiling) |
 | Smart mixes | recommendation engine based on acoustic features + play counts |
 | Build system | pip install . / Flatpak |
-| Tests | **~950** (pytest + pytest-qt) |
+| Test authority | Tiered model (T0–T3, Quarantine, Legacy); see `docs/testing/DEVELOPMENT_CONVERGENCE_MODE.md`. Handwritten test counts are NEVER current truth — consult `docs/testing/TEST_AUTHORITY_MIGRATION_REPORT.md` or run the inventory. |
 
 ## 2. Orchestrator SDD — Reglas de Precedencia
 
@@ -52,7 +52,7 @@ Normativa para agentes (detalle completo en `docs/development/AI_DEVELOPMENT_POL
 - **Arquitectura primero, pasos pequeños (26A)**: nunca implementar una feature de una sola pasada. Pipeline obligatorio: spec → arquitectura → fases → baby step → conexión real → validación → checkpoint. Cambios por slices verticales, conexión temprana al runtime real y diseño para testabilidad.
 - **Estados de feature**: CODED → WIRED → PRODUCTIVE → VALIDATED → STABLE. Prohibido declarar STABLE sin evidencia verde repetida; estados honestos PASS/PARTIAL/FAIL/NOT_TESTED/BLOCKED.
 - **Tests son evidencia, no especificación**: prohibido apaciguar tests, cascadas de parches, dumps monolíticos y "mock-only" como finalización. Tests rotos se trian con KEEP/REWRITE/QUARANTINE/DELETE.
-- **Jerarquía de tests**: T0 (bloquea), T1 (regresión, bloquea), T2 (advisory), T3 (experimental/entorno/perf), Quarantine (visible, no bloquea), Legacy (contrato sin validar). Línea base auditada y madurez por subsistema en `docs/testing/` (baseline + SUBSYSTEM_MATURITY.yaml).
+- **Jerarquía de tests**: T0 (safety gate, BLOQUEA), T1 (estable, bloquea SOLO en dominios explícitamente estables; promoción exige evidencia verde repetida), T2 (development, advisory), T3 (experimental/entorno/perf, manual/nightly), Quarantine (visible, NO bloquea, triage con plazo), Legacy (contrato sin validar, no autoritativo hasta auditar), Full inventory (DIAGNÓSTICO, no bloquea). Referencias normativas: `docs/testing/DEVELOPMENT_CONVERGENCE_MODE.md`, `docs/testing/TEST_AUTHORITY_MIGRATION_REPORT.md`, `docs/testing/SUBSYSTEM_MATURITY.yaml`.
 - **Orquestación y handoff**: el orquestador divide el trabajo en work units con checkpoint propio; el handoff a Engram registra estado de feature, evidencia y próximos pasos (26A.34).
 
 ---
@@ -92,21 +92,37 @@ michi-music-player/
 ├── sync/           → Android REST API + UDP multicast discovery
 ├── lyrics/         → lrclib_client.py
 ├── metadata/       → album_info_repository.py (LRU 200 + SQLite fallback)
-├── tests/          → pytest + pytest-qt suite (run: pytest -q)
+├── tests/          → pytest suite — run the safety gate `scripts/test_gate.sh` (T0) as the ordinary validation
 ├── docs/           → architecture.md, roadmap.md
 ├── icons/          → 38+ icons (SVG + PNG, sidebar_clean/, sidebar/, nowplaying_clean/, radio/)
 └── AGENTS.md       → This file
 ```
 
 **Total:** 15 controllers · 9 audio profiles · 3 recognition providers
-**Verify:** `ruff check .` · `python -m compileall -q .` · `pytest -q`
-**Note:** Do not trust handwritten test/file counts — run the commands above.
+**Verify:** `scripts/test_gate.sh` (T0 SAFETY GATE = BLOCKING) · `ruff check .` · `python -m compileall -q .`
+**Note:** Do not trust handwritten test/file counts — consult `docs/testing/TEST_AUTHORITY_MIGRATION_REPORT.md` or run the inventory; no handwritten counts are current truth.
 
-## 4. Architectural Patterns — MUST FOLLOW (migration in progress)
+## 4. Architectural Patterns — MUST FOLLOW
+
+> **LEGACY / NON-CANONICAL NOTICE (M0.1 truth alignment, baseline fd451afb):**
+> The QtWidgets `ui/` tree (window.py, sidebar_controller.py, QStackedWidget views,
+> `ui/controllers/`, `ui/icon_registry.py`, `ui/central/`, `ui/sidebar/`) was
+> **removed from the productive runtime** (commit `5ddacff1`, "remove QtWidgets
+> legacy code — QML-only runtime"). None of those paths exist at baseline
+> `fd451afb`. They are kept below ONLY as historical references — do NOT reuse
+> them as patterns. The productive architecture is:
+>
+> **QML UI (`ui_qml/`) → bridges (`ui_qml_bridge/`) → canonical services (`core/`) → adapters/backends**
+>
+> - Composition root: `core/composition/` (builders) + `core/service_manifest.py` (`SERVICE_MANIFEST`, single source of truth for container lifecycle, ADR-001)
+> - `ServiceContainer` (`core/service_container.py`) derives start/shutdown from `SERVICE_MANIFEST`
+> - Route/sidebar truth: `ui_qml_bridge/route_registry.py` (VALID_ROUTES, `resolve_route`, `get_sidebar_sections`)
+> - Entry point: `main.py` → `michi.app_launcher.launch()` → `michi.qml_app.run_qml()` (MICHI_UI=qml is the only valid mode; `widgets` mode was retired)
 
 ### Dependency Injection
-- Controllers use `ServiceContainer` (QML bridge) or direct service injection
-- Pattern: bridges receive typed service references from `ServiceContainer`
+- Bridges receive typed service references from `ServiceContainer`
+- Pattern: bridges emit Qt `Signal` for communication — never call UI methods directly
+- `core/composition/*` builders construct services; the manifest is the source of truth
 - Migration complete: no legacy DI containers remain
 
 ### Hybrid Audio Engine Architecture
@@ -135,12 +151,12 @@ UI → PlayerService → HybridAudioManager
   switch_backend_for_profile, get_active_backend_id, start_mpd_service, etc.
 - Private engine attributes accessed only from `player_service.py`
 
-### Controllers (ui/controllers/)
+### Controllers (LEGACY / NON-CANONICAL — `ui/` was removed)
 - One controller per functional domain (14 total)
 - QML bridges receive dependencies from `ServiceContainer`
 - Emit Qt `Signal` for communication — never call UI methods directly
 - NO business logic in controllers — delegate to services
-- `window.py` is still the main orchestrator; avoid massive refactors without tests
+- `window.py` was the main orchestrator; it no longer exists at fd451afb
 
 ### Qt Signals
 - Naming: `track_changed`, `playback_started`, `library_scanned`, `navigation_requested`
@@ -150,13 +166,15 @@ UI → PlayerService → HybridAudioManager
 
 | File | Role |
 |------|------|
-| `ui/window.py:937-1212` | `_on_sidebar_navigate()` — dispatches ALL sidebar clicks to views (giant if/elif chain) |
-| `ui/sidebar_controller.py:18-69` | `rebuild()` — builds 7 sidebar sections and all items in order |
-| `core/` | Services — all services accessed via `ServiceContainer` from bridges |
-| `ui/icon_registry.py` | Source of truth for all 38+ icons (key, path, family, render_mode) |
+| `ui/window.py:937-1212` | **LEGACY** `_on_sidebar_navigate()` — dispatches ALL sidebar clicks to views (giant if/elif chain); file does not exist at fd451afb |
+| `ui/sidebar_controller.py:18-69` | **LEGACY** `rebuild()` — builds 7 sidebar sections; file does not exist at fd451afb |
+| `core/service_manifest.py` | **PRODUCTIVE** `SERVICE_MANIFEST` — single source of truth for container lifecycle (ADR-001) |
+| `core/composition/` | **PRODUCTIVE** builders — construct every service registered on the container |
+| `ui_qml_bridge/route_registry.py` | **PRODUCTIVE** `VALID_ROUTES`, `resolve_route`, `get_sidebar_sections` — route/sidebar truth |
 | `core/settings_manager.py` | QSettings wrapper — `DEFAULTS` dict has all config keys; `get()`/`set_()` API |
-| `ui/window.py:110-127` | `SECTION_CONFIG` — header titles, icons, views, search visibility per section |
-| `ui/window.py:28` | `VIEW_MODE_DEFS` — view mode configs for the view switcher |
+| `ui/icon_registry.py` | **LEGACY** source of truth for all 38+ icons; file does not exist at fd451afb (icons live in `ui_qml/theme` + `icons/`) |
+| `ui/window.py:110-127` | **LEGACY** `SECTION_CONFIG`; file does not exist at fd451afb |
+| `ui/window.py:28` | **LEGACY** `VIEW_MODE_DEFS`; file does not exist at fd451afb |
 
 ## 5. Code Conventions
 
@@ -194,6 +212,12 @@ UI → PlayerService → HybridAudioManager
 - `QSettings` for preferences via `core/settings_manager.py`
 
 ## 6. Visual Rules — ABSOLUTE
+
+> **LEGACY / NON-CANONICAL NOTICE:** the QtWidgets `ui/` paths in this section
+> (`ui.icons`, `ui.icon_loader`, `ui/central/central_styles.py`,
+> `ui/sidebar/sidebar_styles.py`) do not exist at fd451afb. The productive UI
+> is QML: theme tokens live in `ui_qml/theme/` (see `ui_qml/AGENTS.md`). The
+> rules below are retained as historical reference for any legacy maintenance.
 
 ### Colors
 ```
@@ -271,13 +295,30 @@ widget.setStyleSheet("""QTableView { background: ... }""")  # inline QSS
 - Each new module must have `tests/test_<module>.py`
 - GStreamer: mock `Gst.Pipeline`, never create real pipelines in tests
 - SQLite: use `:memory:`, never touch real DB
-- Run before commit: `python -m pytest tests/ -q`
+- Ordinary validation: `scripts/test_gate.sh` (T0) — see §2A
+- **T0 SAFETY GATE = BLOCKING**; **FULL INVENTORY = DIAGNOSTIC** (not a global pre-commit requirement, not a correctness definition, not merge authority)
+
+### Test hierarchy (normative)
+
+| Tier | Meaning | Blocks? |
+|---|---|---|
+| T0 | Safety gate (`scripts/test_gate.sh`): lint, compile, authority gates, composition smoke, curated `-m gate` set | **YES** |
+| T1 | Stable regression set | **YES** — but only for explicitly stable domains; promotion requires repeated green evidence |
+| T2 | Development | No (advisory) |
+| T3 | Environmental / performance / experimental | No (manual/nightly) |
+| Quarantine | Known-failing register | No (visible, time-bounded triage) |
+| Legacy | Unvalidated contract | No (non-authoritative until audited) |
+| Full inventory | Complete suite run | No (diagnostic only) |
+
+Normative references: `docs/testing/DEVELOPMENT_CONVERGENCE_MODE.md`,
+`docs/testing/TEST_AUTHORITY_MIGRATION_REPORT.md`,
+`docs/testing/SUBSYSTEM_MATURITY.yaml`, `docs/development/AI_DEVELOPMENT_POLICY.md`.
 
 ### Quick Commands
 ```bash
-ruff check . --output-format concise    # lint
+scripts/test_gate.sh                       # T0 SAFETY GATE — BLOCKING (ordinary validation)
+ruff check . --output-format concise       # lint
 python -m compileall -q -x '.venv/|\.tmpl\.' .               # compile check
-python -m pytest tests/ -q              # tests (pytest suite)
 find . -type d -name "__pycache__" -exec rm -rf {} +   # clear stale cache
 python main.py                          # run app
 ```
@@ -299,7 +340,7 @@ PySide6 mutagen numpy shazamio pyaudio requests
 
 ### Quality
 - No generic "helper" files without a clear owner module
-- No business logic in `window.py` — goes in controllers or services
+- No business logic in `window.py` — goes in controllers or services (**LEGACY**: `ui/window.py` was removed; productive entry is `michi/qml_app.py` → bridges)
 - No `threading.Thread` — use `QThread` or `ThreadPoolExecutor`
 - No GStreamer imports in UI layers directly
 - No breaking `PlayerService` encapsulation
@@ -339,7 +380,7 @@ PySide6 mutagen numpy shazamio pyaudio requests
 | Metric | Value |
 |--------|-------|
 | Ruff | **0** (verificar con `ruff check .`) |
-| Tests | **~950** (verificar con `pytest -q`)
+| Test counts | **No handwritten counts are truth** — consult `docs/testing/TEST_AUTHORITY_MIGRATION_REPORT.md` or run the inventory (full inventory is diagnostic only) |
 | Bugs (F-class) | **0** |
 | Stubs | **0** |
 | Dead code | **0** |
@@ -353,7 +394,7 @@ PySide6 mutagen numpy shazamio pyaudio requests
 | `sqlite3.connect(DB_PATH)` bypass removed | ✅ all via `core.paths.database_path()` |
 | Home Dashboard dataclasses | ✅ `core/home/home_status.py` (9 dataclasses) |
 | Home Dashboard service | ✅ `core/home/home_dashboard_service.py` (10 builder methods) |
-| Home 7-card design | ✅ `ui/hubs/home_page.py` (render_snapshot entry point) |
+| Home 7-card design | ✅ `ui_qml/pages/home/HomePage.qml` (**LEGACY**: `ui/hubs/home_page.py` no longer exists) |
 | Spectral FLAC support | ✅ `core/audio_analysis/spectral_authenticator.py:can_analyse()` |
 
 **Installation:**
@@ -366,9 +407,17 @@ PySide6 mutagen numpy shazamio pyaudio requests
 
 ## 11. Key Data Flows
 
+> **LEGACY / NON-CANONICAL NOTICE:** flows below that start at
+> `_on_sidebar_navigate()` / `SidebarController` / `QTableView` / `HomePage()`
+> describe the removed QtWidgets runtime (see §4). Keep them as historical
+> reference; the productive entry points are the QML bridges in
+> `ui_qml_bridge/` (e.g. `route_registry.py`, `navigation_bridge.py`).
+> The engine-side flow (PlayerService → GStreamerEngine → PipelineFactory)
+> remains current.
+
 ### Playback
 ```
-sidebar click → _on_sidebar_navigate("library")
+sidebar click → _on_sidebar_navigate("library")   [LEGACY — see §4]
   → _apply_filters() → table populated
   → table double-click → _on_table_dbl → _play_file(fp)
   → PlayerService.play(fp)
@@ -458,10 +507,10 @@ local file starts → IdentifierController.set_current_track(source_type="local_
 
 ### Home Dashboard (Centro de Situación)
 ```
-sidebar "Inicio" click → SidebarController → navigation_requested.emit("home")
+sidebar "Inicio" click → SidebarController → navigation_requested.emit("home")   [LEGACY — see §4]
   → navigationBridge.navigate("home")
     → AppShell updates header via NavigationBridge
-      → HomeController.show()
+      → HomeController.show()   [LEGACY — productive: ui_qml_bridge/home_bridge.py]
         → _ensure_page() → HomePage()
         → _ensure_service() → HomeDashboardService(db, playback, context_svc, ...)
         → refresh()
@@ -502,24 +551,29 @@ Snapshot built every time the user navigates to Inicio.
 **Key files:**
 - `core/home/home_status.py` — 9 dataclasses
 - `core/home/home_dashboard_service.py` — HomeDashboardService
-- `ui/controllers/home_controller.py` — orchestration
-- `ui/hubs/home_page.py` — 7 glass cards, render_snapshot()
+- `ui_qml_bridge/home_bridge.py` — QML orchestration (**LEGACY**: `ui/controllers/home_controller.py` / `ui/hubs/home_page.py` no longer exist)
 
 ## 12. Common Tasks
 
-### Add a sidebar item
+> **LEGACY / NON-CANONICAL NOTICE:** the tasks below reference the removed
+> QtWidgets `ui/` tree (see §4). They are kept as historical reference. The
+> productive equivalents: sidebar/route changes go through
+> `ui_qml_bridge/route_registry.py` + `ui_qml/shell/Sidebar.qml`; styles use
+> `ui_qml/theme/` tokens; icons live in `ui_qml/theme` + `icons/`.
+
+### Add a sidebar item (LEGACY — productive path: `ui_qml_bridge/route_registry.py`)
 1. `ui/sidebar_controller.py:rebuild()` — add `add_section()` + `add_item()` call
 2. Icon: register in `ui/icon_registry.py` (PNG or SVG with correct `render_mode`)
 3. Navigation: add `elif key == "my_key":` in `window.py:_on_sidebar_navigate()` (line ~937)
 4. Header config: add entry in `SECTION_CONFIG` dict (`window.py` line ~110)
 5. View: register in `window.py:_views.register("my_view", widget)` (line ~720)
 
-### Add a new QSS style
+### Add a new QSS style (LEGACY)
 1. Define function in `ui/central/central_styles.py` or `ui/sidebar/sidebar_styles.py`
 2. Return the QSS string — use the central/sidebar tokens for colors/radii
 3. Never write inline QSS in widget files — always `widget.setStyleSheet(my_qss())`
 
-### Add a new icon
+### Add a new icon (LEGACY — productive: `ui_qml/theme` tokens + `icons/`)
 1. Place file in `icons/` subdirectory (SVG or PNG at multiple sizes: 24/48/64/128px)
 2. Register in `ui/icon_registry.py`:
    ```python
@@ -533,7 +587,7 @@ Snapshot built every time the user navigates to Inicio.
 1. Add default to `core/settings_manager.py:DEFAULTS` dict (line ~10-110)
 2. Read: `from core.settings_manager import get; value = get("category/key")`
 3. Write: `from core.settings_manager import set_; set_("category/key", value)`
-4. Add UI control in `ui/settings_pages.py` — extend the appropriate `SettingsPage` subclass
+4. Add UI control in `ui/settings_pages.py` — extend the appropriate `SettingsPage` subclass (**LEGACY**; productive: `ui_qml/pages/settings/`)
 
 ### Add a new audio profile
 1. Define in `audio/output_profiles.py:PROFILES` dict
@@ -550,12 +604,21 @@ python3 main.py
 
 ### Run before every commit
 ```bash
-ruff check . --output-format concise     # must be 0
-python -m compileall -q -x '.venv/|\.tmpl\.' .                # must be clean
-python -m pytest tests/ -q               # must pass
+scripts/test_gate.sh                       # T0 SAFETY GATE — BLOCKING (ordinary validation)
+ruff check . --output-format concise       # must be 0
+python -m compileall -q -x '.venv/|\.tmpl\.' .   # must be clean
 ```
+> Full inventory (`python -m pytest tests/`) is DIAGNOSTIC ONLY — never a
+> pre-commit requirement and never a merge veto (see §2A / §7).
 
 ## 13. Protected Files — Risk of Silent Regression
+
+> **LEGACY / NON-CANONICAL NOTICE:** `ui/audio_lab/diagnostics_page.py` does
+> not exist at fd451afb (`ui/` removed, QML-only runtime). The productive
+> diagnostics surfaces are the QML pages `ui_qml/pages/DiagnosticsPage.qml` /
+> `ui_qml/pages/home_audio/DiagnosticsPage.qml` and the bridge
+> `ui_qml_bridge/audio_lab_bridge.py`. The history below documents why
+> integrity guards exist; re-apply the pattern to any protected file.
 
 These files have an **integrity guard** at the module level that raises `AssertionError` at import time if the file is reverted to an incompatible version. Do NOT remove or modify this guard without also updating all callers:
 
@@ -578,16 +641,42 @@ Commits outside the Audio Lab scope that touch `ui/audio_lab/diagnostics_page.py
 3. Keep the `# INTEGRITY GUARD` block at the end of the file
 4. If you need to add/remove constructor params, update the guard accordingly and update `AudioLabDiagnosticsPage` in `ui/audio_lab/sub_pages.py`
 
-## 14. QML Experimental Skin (for AI assistants)
+## 14. Sources of Truth — Hierarquía
 
-**Status:** QML is experimental/premium — NOT the default or stable UI.
-Always run `python main.py` unless explicitly testing QML.
+Ante cualquier duda sobre el estado real del proyecto, consultar en este orden.
+Los documentos históricos son referencias, NUNCA autoridad de estado actual.
+
+**Arquitectura / desarrollo:**
+1. Instrucción explícita del owner (orquestador humano)
+2. AGENTS.md — normativa vigente (este archivo)
+3. `docs/development/AI_DEVELOPMENT_POLICY.md` — política 26A (baby steps, estados honestos)
+4. OpenSpec activo (`openspec/changes/`, no archivado)
+5. `core/service_manifest.py` (`SERVICE_MANIFEST`) + `core/composition/` — runtime real
+6. `docs/development/PRODUCT_CATASTRO.yaml` — cuando exista (catastro de dominios)
+7. `docs/testing/SUBSYSTEM_MATURITY.yaml` — madurez por subsistema
+8. Documentos históricos (`docs/audits/`, BACKLOG, etc.) — solo referencia
+
+**Tests:**
+1. `docs/testing/DEVELOPMENT_CONVERGENCE_MODE.md` — modelo de tiers (T0–T3, Quarantine, Legacy)
+2. `docs/testing/TEST_AUTHORITY_MIGRATION_REPORT.md` — inventario y clasificación auditada
+3. Configuración y scripts T0 (`scripts/test_gate.sh`, `pyproject.toml` markers)
+4. Contratos estables explícitos (T1)
+5. Tests de desarrollo (T2)
+6. Quarantine (visible, no bloquea)
+7. Legacy (no autoritativo hasta auditar)
+8. Expectativas históricas sin validar (baselines viejos) — NUNCA autoridad
+
+## 15. QML UI — Runtime Productivo
+
+**Status:** QML es el ÚNICO runtime. La UI clásica QtWidgets (`ui/`) fue retirada
+(commit `5ddacff1`); `MICHI_UI=widgets` ya no existe. Siempre ejecutar
+`python main.py`.
 
 ### Architecture
 - QML does NOT access the database directly
 - QML emits intention; Python executes
 - Bridges (ui_qml_bridge/) are the only communication layer between QML and Python
-- Python remains the brain; QML is a premium skin
+- Python remains the brain; QML is the productive skin
 - QML (`python main.py`) is the only runtime
 
 ### Protected Files — QML
@@ -612,17 +701,15 @@ python main.py
 # Legacy QML entry (deprecated)
 # python -m ui_qml_bridge.qml_main
 
-# Classic app
-python main.py
-
 # Tests
-python -m pytest tests/qml/ -q    # 60 tests
 ruff check ./ui_qml ./ui_qml_bridge ./tests/qml
 python scripts/check_no_touch_contract.py
 ```
+> QML test counts change continuously — consult the test authority docs (§7);
+> no handwritten count is current truth.
 
 ### Current QML Status (Jul 2026)
-- **99+ tests** — bridges, structural, emoji/sidebar prohibition, Library, Michi AI, CoverBridge, MetadataBridge, Audio Lab
+- QML-only runtime; no QtWidgets surface remains
 - **0 ruff errors** in QML/bridge/tests
 - **0 compileall errors** in QML/bridge/tests
 - **Sidebar final** (10 items): Inicio, Biblioteca, Mix, Reproducción, Conexiones, Radio, Playlists, Home Audio, Michi AI, Audio Lab
@@ -657,3 +744,42 @@ ui_qml/
 │   └── library/       → Placeholder
 └── effects/     → Reserved for future effects
 ```
+
+## 16. Regla Obligatoria para Agentes (cambios sustanciales)
+
+Antes de implementar un cambio sustancial, el agente DEBE:
+
+1. Leer `docs/testing/DEVELOPMENT_CONVERGENCE_MODE.md` y `docs/testing/SUBSYSTEM_MATURITY.yaml`
+   para el/los subsistema/s afectados.
+2. NO usar fallas de la suite completa como veto automático: el inventario completo
+   es DIAGNÓSTICO; el bloqueo real es T0 (y T1 solo en dominios explícitamente estables).
+3. NO usar archivos históricos como autoridad de arquitectura actual: lo productivo
+   se determina por `SERVICE_MANIFEST` + `core/composition/` + `ui_qml_bridge/` (§4, §14).
+4. Trabajar en baby steps: CODED → WIRED → PRODUCTIVE → VALIDATED → STABLE, con
+   conexión temprana al runtime real y checkpoint con evidencia en cada fase (§2A).
+5. Recordar que una feature que solo existe en código está CODED; NO describirla
+   como implementada/completa salvo que su camino productivo haya sido verificado.
+
+## 17. Workflow de Desarrollo (default)
+
+```
+LEER POLICY (AI_DEVELOPMENT_POLICY.md) → LEER SPEC ACTIVA (openspec activo)
+→ INSPECCIONAR CÓDIGO ACTUAL (SERVICE_MANIFEST + composición + bridges)
+→ DEFINIR WORK UNIT PEQUEÑA → IMPLEMENTAR → WIRE (conectar al runtime real)
+→ VALIDAR CAMINO PRODUCTIVO → CORRER T0 (scripts/test_gate.sh)
+→ CORRER TESTS DE DOMINIO RELEVANTES → CHECKPOINT
+```
+
+Explícitamente NO es: "implementar todo → `pytest tests/` → parchear hasta verde".
+
+## 18. Política de Quarantine
+
+Los 665 ítems en Quarantine (register en
+`docs/testing/TEST_AUTHORITY_MIGRATION_REPORT.md`) son una **obligación de
+triage**, NO un backlog de "tests a hacer pasar":
+
+- Cada ítem recibe una decisión: KEEP / REWRITE / QUARANTINE (mantener)/ DELETE.
+- El triage corre en paralelo con el desarrollo y NUNCA bloquea la convergencia
+  productiva (no son parte de ningún gate).
+- Plazo normativo: 2 ciclos de release o 30 días, lo que ocurra primero
+  (propietario: maintainer/orchestrator).

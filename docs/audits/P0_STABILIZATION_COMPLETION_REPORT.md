@@ -1,3 +1,7 @@
+> STATUS: HISTORICAL SNAPSHOT
+> BASELINE: 66245d11 (baseline SHA recorded in this document)
+> SUPERSEDED BY: AGENTS.md §2A + docs/testing/DEVELOPMENT_CONVERGENCE_MODE.md + docs/testing/SUBSYSTEM_MATURITY.yaml
+
 # P0 Stabilization — Completion Report
 
 Informe de cierre de la estabilización P0 del runtime: 11 falsos éxitos del baseline

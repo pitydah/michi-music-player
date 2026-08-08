@@ -1,3 +1,7 @@
+> STATUS: HISTORICAL SNAPSHOT
+> BASELINE: b167ac95 (SHA auditado recorded in this document)
+> SUPERSEDED BY: AGENTS.md §2A + docs/testing/DEVELOPMENT_CONVERGENCE_MODE.md + docs/testing/SUBSYSTEM_MATURITY.yaml
+
 # Catastro Inicial Actualizado — Auditoría de Servicios en Tiempo de Ejecución (Runtime Service Architecture)
 
 **Deliverable:** "Catastro inicial actualizado" — primera ola del refactor de arquitectura de servicios.

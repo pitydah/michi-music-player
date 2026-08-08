@@ -1,3 +1,7 @@
+> STATUS: HISTORICAL SNAPSHOT
+> BASELINE: b167ac95 (previous audited SHA recorded in this document)
+> SUPERSEDED BY: AGENTS.md §2A + docs/testing/DEVELOPMENT_CONVERGENCE_MODE.md + docs/testing/SUBSYSTEM_MATURITY.yaml
+
 # Reporte de Completación — Refactor de Arquitectura de Servicios en Tiempo de Ejecución
 
 **Deliverable D del master prompt** · Slice 12 (final) · Branch `agent/runtime-service-architecture-refactor`
