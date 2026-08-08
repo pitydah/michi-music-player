@@ -71,15 +71,16 @@ implied a different contract. Resolution of the runners is PR-C scope.
 
 ## 2. Changes made (PR-A .. PR-C2)
 
-Four PRs reference issue #192. All are **OPEN; none are merged** at the time of
-writing.
+Four PRs referenced issue #192, plus the report PR itself. All five are now
+**MERGED** into `main` at `6c777034` (2026-08-08), in order:
 
 | PR | Branch | Delivers | Status |
 |---|---|---|---|
-| #193 PR-A | `docs/test-authority` | Authority docs: `TEST_AUTHORITY_BASELINE.md`, `DEVELOPMENT_CONVERGENCE_MODE.md`, `SUBSYSTEM_MATURITY.yaml`, testing `README.md`, `AI_DEVELOPMENT_POLICY.md` (feature states), `AGENTS.md` normative reference | OPEN / pending merge |
-| #194 PR-B | `feat/test-authority-infra` | Markers (18 registered in `pyproject.toml`), directory-level marker rules in `tests/conftest.py` (additive, never deselects), gate scripts `test_gate.sh` / `test_stable.sh` / `test_development.sh` / `test_performance.sh` / `test_quarantine.sh`, T0 gate marker set on 6 contract-critical files | OPEN / pending merge |
-| #195 PR-C1 | `ci/test-authority-runners` | Workflow split: `.github/workflows/ci.yml` blocking/advisory jobs, new `.github/workflows/nightly.yml` (daily cron, full inventory + performance + environmental) | OPEN / pending merge |
-| #196 PR-C2 | `ci/test-authority-runners-local` | Runner reconciliation: `Makefile`, `scripts/ci_canonical.sh`, `scripts/ci_local.sh` aligned to the authority model | OPEN / pending merge |
+| #193 PR-A | `docs/test-authority` | Authority docs: `TEST_AUTHORITY_BASELINE.md`, `DEVELOPMENT_CONVERGENCE_MODE.md`, `SUBSYSTEM_MATURITY.yaml`, testing `README.md`, `AI_DEVELOPMENT_POLICY.md` (feature states), `AGENTS.md` normative reference | MERGED (`58674998`) |
+| #194 PR-B | `feat/test-authority-infra` | Markers (23 registered in `pyproject.toml`), directory-level marker rules in `tests/conftest.py` (additive, never deselects), gate scripts `test_gate.sh` / `test_stable.sh` / `test_development.sh` / `test_performance.sh` / `test_quarantine.sh`, T0 gate marker set on 6 contract-critical files | MERGED (`3c75971b`) |
+| #195 PR-C1 | `ci/test-authority-runners` | Workflow split: `.github/workflows/ci.yml` blocking/advisory jobs, new `.github/workflows/nightly.yml` (daily cron, full inventory + performance + environmental) | MERGED (`afdbda88`) |
+| #196 PR-C2 | `ci/test-authority-runners-local` | Runner reconciliation: `Makefile`, `scripts/ci_canonical.sh`, `scripts/ci_local.sh` aligned to the authority model | MERGED (`34b84862`) |
+| #197 PR-D | `docs/test-authority-report` | This migration report | MERGED (`6c777034`) |
 
 Artifacts delivered by PR-A (docs): baseline snapshot, convergence mode,
 subsystem maturity YAML, testing README, development policy, AGENTS.md
@@ -235,14 +236,16 @@ signature — not in an extrapolation.
 | C | Legacy non-blocking | **PASS** | 36 legacy items excluded from gates; `-m legacy` runs them reference-only |
 | D | Perf/env out of normal gate | **PASS** | Performance (110) and environmental (109) run nightly/manual only; blocked gates contain no env-dependent test |
 | E | Quarantine category real | **PASS** | 665 items registered, visible, non-blocking; live reproduction 38+2 on this branch; time-bounded 2 cycles/30 days |
-| F | CI/runners same semantics | **PARTIAL** | Semantics are defined and reconciled in PR-C1/PR-C2, but both are OPEN — same semantics only after merge |
+| F | CI/runners same semantics | **PASS** | PR-C1/PR-C2 merged (`afdbda88`, `34b84862`); workflows and runners now share the blocking/advisory/diagnostic model |
 | G | Full inventory diagnostic | **PASS-by-design** | `full-inventory` job is explicitly diagnostic; red is expected, never a merge blocker |
 | H | No functional mass changes | **PASS** | This report changes zero tests and zero production code; PR-B touches only marker metadata |
 | I | Documented | **PASS** | Baseline, convergence mode, maturity YAML, policy, README, AGENTS.md, and this report form the FASE 0 record |
-| J | Ready for intensive development | **PARTIAL** | Blocked until PR-A .. PR-C2 merge; until then the contradictory runners remain in force |
+| J | Ready for intensive development | **PASS** | All five PRs merged into `main` at `6c777034`; the T0 gate, advisory jobs, and diagnostic inventory are now live semantics |
 
-Honest states only: no criterion is claimed PASS where CI does not yet enforce
-it (F, J).
+Honest states only: F and J were PARTIAL before the merges and are re-evaluated
+PASS here on the merged `main`. CI observation at the time of this update:
+the first run on the merged main (`6c777034`) was in progress; blocking jobs
+(T0 gate, unit, QML runtime, lint) are expected to stay green by construction.
 
 ## How to promote to stable
 
