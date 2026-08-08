@@ -45,6 +45,18 @@ sin evidencia explícita y autorización del orquestador.
 
 ---
 
+## 2A. Development Convergence Mode — Normativa
+
+Normativa para agentes (detalle completo en `docs/development/AI_DEVELOPMENT_POLICY.md` y `docs/testing/DEVELOPMENT_CONVERGENCE_MODE.md`):
+
+- **Arquitectura primero, pasos pequeños (26A)**: nunca implementar una feature de una sola pasada. Pipeline obligatorio: spec → arquitectura → fases → baby step → conexión real → validación → checkpoint. Cambios por slices verticales, conexión temprana al runtime real y diseño para testabilidad.
+- **Estados de feature**: CODED → WIRED → PRODUCTIVE → VALIDATED → STABLE. Prohibido declarar STABLE sin evidencia verde repetida; estados honestos PASS/PARTIAL/FAIL/NOT_TESTED/BLOCKED.
+- **Tests son evidencia, no especificación**: prohibido apaciguar tests, cascadas de parches, dumps monolíticos y "mock-only" como finalización. Tests rotos se trian con KEEP/REWRITE/QUARANTINE/DELETE.
+- **Jerarquía de tests**: T0 (bloquea), T1 (regresión, bloquea), T2 (advisory), T3 (experimental/entorno/perf), Quarantine (visible, no bloquea), Legacy (contrato sin validar). Línea base auditada y madurez por subsistema en `docs/testing/` (baseline + SUBSYSTEM_MATURITY.yaml).
+- **Orquestación y handoff**: el orquestador divide el trabajo en work units con checkpoint propio; el handoff a Engram registra estado de feature, evidencia y próximos pasos (26A.34).
+
+---
+
 ## 3. Directory Structure
 
 ```
