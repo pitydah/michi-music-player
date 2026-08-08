@@ -72,6 +72,7 @@ class AssistantComposition:
     trace_recorder: TraceRecorder
     backend_selector: Any
     gateways: AssistantGateways
+    model_manager: Any = None
 
 
 def _s11_library_provider(context_service: Any) -> Callable[[], dict[str, Any]]:
@@ -243,5 +244,6 @@ def create_assistant_composition(
         confirmation_policy=confirmation_policy,
         trace_recorder=trace_recorder,
         backend_selector=backend_selector,
+        model_manager=model_manager,
         gateways=gateways,
     )
