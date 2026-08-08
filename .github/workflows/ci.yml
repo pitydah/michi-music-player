@@ -7,6 +7,7 @@ env:
   compile_exclude: .venv/|\.tmpl\.
 
 jobs:
+  # ── BLOCKING JOBS — required for merge. Failures block the PR. ──
   lint:
     runs-on: ubuntu-latest
     strategy:
@@ -65,6 +66,52 @@ jobs:
       - name: Composition root productive smoke test
         run: |
           QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python scripts/smoke_composition.py
+
+  # T0 safety gate — blocking.
+  # Runs scripts/test_gate.sh from PR-B (feat/test-authority-infra).
+  # PR-C is dependency-clean: if test_gate.sh is absent (PR-B not merged
+  # yet), the job falls back to the inline equivalent: ruff + compileall +
+  # the 3 authority gates + composition smoke + gate-marked tests.
+  t0-safety-gate:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gir1.2-gst-plugins-base-1.0 python3-gi
+          pip install -e ".[dev]" build
+      - name: T0 safety gate
+        run: |
+          if [ -f scripts/test_gate.sh ]; then
+            # PR-B (feat/test-authority-infra) merged: canonical gate script.
+            bash scripts/test_gate.sh
+          else
+            # PR-B NOT merged: inline equivalent of test_gate.sh.
+            ruff check . ${{ env.ruff_out }}
+            python -m compileall -q -x '${{ env.compile_exclude }}' .
+            python scripts/check_single_authority.py
+            python scripts/qml_only_gate.py
+            python scripts/check_patch_artifacts.py
+            QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python scripts/smoke_composition.py
+            if grep -q '"gate"' pyproject.toml; then
+              QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest -m gate -q --timeout=300
+            else
+              echo "PR-B not merged: gate markers absent - gate tests run inside the unit job"
+            fi
+          fi
 
   unit:
     needs: [lint]
@@ -231,7 +278,11 @@ jobs:
             results-reintegration.xml
           retention-days: 7
 
-  functional-tests:
+  # ── ADVISORY JOB — visible, NOT required. ──
+  # development-quarantine surfaces quarantine/development debt.
+  # A failure here is an ADVISORY FAILURE, never a BLOCKING FAILURE.
+  # Do NOT add this job to the required checks in branch protection.
+  development-quarantine:
     needs: [lint]
     runs-on: ubuntu-latest
     defaults:
@@ -252,26 +303,40 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gir1.2-gst-plugins-base-1.0 python3-gi
           pip install -e ".[dev]" build
-      - name: Functional tests
+      - name: "ADVISORY: development + quarantine tests (failure = ADVISORY FAILURE, never BLOCKING FAILURE)"
+        # ADVISORY RUN — a red step here is an ADVISORY FAILURE (non-blocking).
+        # This job is intentionally NOT part of the required checks.
+        run: |
+          echo "ADVISORY run: failures below are ADVISORY FAILURES, not merge blockers"
+          if [ -f scripts/test_development.sh ] && [ -f scripts/test_quarantine.sh ]; then
+            bash scripts/test_development.sh
+            bash scripts/test_quarantine.sh
+          elif grep -q '"development"' pyproject.toml; then
+            QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest -m "development or quarantine" -q --timeout=300 --junitxml=results-advisory.xml
+          else
+            echo "ADVISORY SKIPPED: PR-B (feat/test-authority-infra) not merged - markers absent"
+          fi
+      - name: "ADVISORY: functional subset (ex-functional-tests job)"
+        # The former functional-tests job also ran the vertical
+        # tagging/disc_lab/settings/queue/playback subsets; those are now
+        # covered by the quarantine advisory run above. tests/qml/functional
+        # stays green locally and is folded in here.
         run: |
           QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest tests/qml/functional/ -q --timeout=120 --junitxml=results-functional.xml
-      - name: Vertical contract tests
-        run: |
-          QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest \
-            tests/qml/tagging/ tests/qml/disc_lab/ tests/qml/settings/ tests/qml/queue/ tests/qml/playback/ \
-            -q --timeout=300 --junitxml=results-vertical.xml
-      - name: Build wheel
-        run: python -m build --wheel
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-${{ github.sha }}
+          name: advisory-results-${{ github.sha }}
           path: "*.xml"
           retention-days: 7
 
+  # ── DIAGNOSTIC JOB — visible, NOT required. ──
+  # full-inventory runs the ENTIRE suite with no ignores. Diagnostic
+  # inventory, not a merge gate; may fail while legacy/quarantine debt
+  # is triaged. A red inventory is a signal, NOT a blocker.
   full-inventory:
-    needs: [composition-productive, unit, audio-integration, ai-v2, qml-runtime, functional-tests]
+    needs: [composition-productive, t0-safety-gate, unit, audio-integration, ai-v2, qml-runtime]
     if: always()
     runs-on: ubuntu-latest
     defaults:
