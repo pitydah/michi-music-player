@@ -2,6 +2,8 @@ import tempfile
 import os
 import sqlite3
 
+import pytest
+
 from library.library_db import LibraryDB
 
 
@@ -19,6 +21,7 @@ class TestLibraryDB:
         finally:
             os.unlink(path)
 
+    @pytest.mark.gate
     def test_fts_is_initialized_lazily_on_first_search_access(self):
         db = LibraryDB(":memory:")
 
@@ -34,6 +37,7 @@ class TestLibraryDB:
         assert connection is db._conn
         assert after == ("media_fts",)
 
+    @pytest.mark.gate
     def test_fts_triggers_incrementally_sync_insert_update_and_delete(self):
         db = LibraryDB(":memory:")
         db.search_advanced("missing")
@@ -62,6 +66,7 @@ class TestLibraryDB:
             "SELECT rowid FROM media_fts WHERE media_fts MATCH 'Second'"
         ).fetchall() == []
 
+    @pytest.mark.gate
     def test_fts_rebuild_runs_only_when_schema_changes(self):
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as file:
             path = file.name

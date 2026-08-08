@@ -131,6 +131,23 @@ markers = [
     "qml_module: QML module name for evidence V5 mapping",
     "qml_dimension: QML migration dimension for evidence V5 scoring",
     "recognition: tests requiring audio recognition services (PyAudio, etc.)",
+    "gate: contract-critical deterministic tests forming the T0 safety gate",
+    "stable: deterministic tests expected to pass on every commit",
+    "development: tests under active development (advisory only)",
+    "legacy: legacy tests kept for reference, not part of any gate",
+    "quarantine: PROPOSED classification - known-failing cluster tracked from baseline",
+    "environmental: tests depending on environment, network or external services",
+    "performance: performance tests (manual or nightly)",
+    "flaky: tests with known flakiness risk (tracked)",
+    "integration: tests spanning multiple layers of the application",
+    "qml: tests under tests/qml (QML UI layer)",
+    "audio: tests exercising the audio engine paths",
+    "security: security-sensitive tests",
+    "qml_route: QML route evidence marker",
+    "qml_workflow: QML workflow evidence marker",
+    "widget_replacement: QML widget replacement evidence marker",
+    "timeout: per-test timeout override (pytest-timeout)",
+    "asyncio: asyncio test marker (pytest-asyncio)",
 ]
 
 # ── EL: Package separation ──

@@ -49,6 +49,7 @@ class _FakeContainer(ServiceContainer):
         return set()
 
 
+@pytest.mark.gate
 def test_unit_managed_shutdown_once_in_reverse_order(monkeypatch) -> None:
     manifest = {
         name: ServiceDescriptor(
@@ -86,6 +87,7 @@ def test_unit_managed_shutdown_once_in_reverse_order(monkeypatch) -> None:
     assert len(shutdowns) == 3  # each MANAGED instance shut down exactly once
 
 
+@pytest.mark.gate
 def test_unit_stop_fallback_called_once(monkeypatch) -> None:
     manifest = {
         "only_stop": ServiceDescriptor(
@@ -125,6 +127,7 @@ def _counting(counter: Counter[str], name: str, method):
     return wrapper
 
 
+@pytest.mark.gate
 def test_real_bootstrap_managed_shutdown_once(app) -> None:
     """Real composition: every MANAGED shutdown/stop runs exactly once."""
     bootstrap = ApplicationBootstrap()
