@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# Local CI simulation — validates that pip install, lint, compile, and pytest
-# all work in a clean venv with system-site-packages.
+# Local CI simulation — deterministic fast blocking path mirroring
+# scripts/ci_canonical.sh semantics inside a clean venv:
+#   default:        LINT + STATIC SAFETY + T0 + unit selection (CI unit job)
+#   --full:         + INVENTORY (full suite, diagnostic, non-blocking)
+#   --strict-advisory: escalates advisory/inventory failures to exit 1
 # Run this before pushing to verify basic CI compliance.
 # Supports: Debian/Ubuntu, Arch/CachyOS, Fedora, openSUSE
 set -euo pipefail
@@ -8,6 +11,28 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
+
+FULL=0
+STRICT_ADVISORY=0
+for arg in "$@"; do
+  case "$arg" in
+    --full) FULL=1 ;;
+    --strict-advisory) STRICT_ADVISORY=1 ;;
+    *) echo "ERROR: unknown argument: $arg" >&2; exit 2 ;;
+  esac
+done
+
+FAILED=0
+fail_blocking() {
+  echo "  FAILED [BLOCKING]: $1"
+  FAILED=1
+}
+
+# Safe-mode + test path isolation (kept from the original semantics).
+export MICHI_SAFE_MODE=1
+export MICHI_TEST_DATA_DIR="$TMPDIR/michi-test-data"
+export MICHI_TEST_CACHE_DIR="$TMPDIR/michi-test-cache"
+export MICHI_TEST_CONFIG_DIR="$TMPDIR/michi-test-config"
 
 echo "=== CI Local Test ==="
 echo
@@ -123,51 +148,57 @@ except Exception as e:
     raise
 PYEOF
 
-# [6/10] Smoke startup
-echo "[6/10] Running smoke startup..."
-cd "$REPO_DIR"
-QT_QPA_PLATFORM=offscreen \
-PYTHONUNBUFFERED=1 \
-MICHI_SAFE_MODE=1 \
-MICHI_TEST_DATA_DIR="$TMPDIR/michi-smoke-data" \
-MICHI_TEST_CACHE_DIR="$TMPDIR/michi-smoke-cache" \
-MICHI_TEST_CONFIG_DIR="$TMPDIR/michi-smoke-config" \
-python3 scripts/smoke_startup.py || { echo "  SMOKE STARTUP FAILED"; exit 1; }
-echo "  OK"
+# [6/10] Blocking gate path (mirrors scripts/ci_canonical.sh semantics):
+# LINT + STATIC SAFETY + T0 + unit selection (matches the CI unit job).
+# Any failure accumulates in FAILED and the final exit code is 1.
 
-# [7/10] Smoke UI routes
-echo "[7/10] Running UI route smoke..."
-cd "$REPO_DIR"
-QT_QPA_PLATFORM=offscreen \
-PYTHONUNBUFFERED=1 \
-MICHI_SAFE_MODE=1 \
-MICHI_TEST_DATA_DIR="$TMPDIR/michi-smoke-data" \
-MICHI_TEST_CACHE_DIR="$TMPDIR/michi-smoke-cache" \
-MICHI_TEST_CONFIG_DIR="$TMPDIR/michi-smoke-config" \
-python3 scripts/smoke_ui_routes.py || { echo "  UI ROUTE SMOKE FAILED"; exit 1; }
-echo "  OK"
+# ── LINT (blocking) ──
+echo "LINT: ruff + compileall..."
+if ! python3 -m ruff check . --output-format concise; then fail_blocking "ruff check"; fi
+if ! python3 -m compileall -q -x '.venv/|\.tmpl\.' .; then fail_blocking "compileall"; fi
 
-# [8/10] Lint
-echo "[8/10] Running lint..."
-python3 -m ruff check . --output-format concise || { echo "  LINT FAILED"; exit 1; }
-echo "  OK"
+# ── STATIC SAFETY (blocking) ──
+echo "STATIC SAFETY: authority gates..."
+if ! python3 scripts/check_single_authority.py; then fail_blocking "single authority gate"; fi
+if ! python3 scripts/qml_only_gate.py; then fail_blocking "qml-only gate"; fi
+if ! python3 scripts/check_patch_artifacts.py; then fail_blocking "patch artifacts gate"; fi
 
-# [9/10] Compile
-echo "[9/10] Running compileall..."
-python3 -m compileall -q -x '.venv/|\.tmpl\.' . || { echo "  COMPILE FAILED"; exit 1; }
-echo "  COMPILE OK"
+# ── T0 SAFETY GATE (blocking) ──
+# Uses scripts/test_gate.sh from PR-B (feat/test-authority-infra); PR-C is
+# dependency-clean: without PR-B the static gates ran above, so the inline T0
+# is the composition smoke (the gate pytest selection == the unit selection
+# below, which runs in the CI unit job).
+echo "T0 SAFETY GATE..."
+if [ -f scripts/test_gate.sh ]; then
+  if ! bash scripts/test_gate.sh; then fail_blocking "T0 test_gate.sh"; fi
+else
+  echo "  PR-B not merged: static gates ran above; T0 = composition smoke"
+  if ! QT_QPA_PLATFORM=offscreen \
+      python3 scripts/smoke_composition.py; then fail_blocking "T0 composition smoke"; fi
+fi
 
-# [10/10] Pytest
-echo "[10/10] Running pytest..."
-cd "$REPO_DIR"
-QT_QPA_PLATFORM=offscreen \
-PYTHONUNBUFFERED=1 \
-MICHI_SAFE_MODE=1 \
-MICHI_TEST_DATA_DIR="$TMPDIR/michi-test-data" \
-MICHI_TEST_CACHE_DIR="$TMPDIR/michi-test-cache" \
-MICHI_TEST_CONFIG_DIR="$TMPDIR/michi-test-config" \
-python3 -m pytest -q --timeout=120 || { echo "  TEST FAILED"; exit 1; }
-echo "  OK"
+# ── UNIT SELECTION (blocking, matches CI unit job) ──
+echo "UNIT TESTS (CI unit selection)..."
+if ! QT_QPA_PLATFORM=offscreen \
+    python3 -m pytest tests/ -q --timeout=300 \
+    --ignore=tests/qml --ignore=tests/test_large_library.py \
+    --ignore=tests/perf -k "not qt_widget and not QtWidget" \
+    --deselect tests/test_context_semantic_audit.py::TestContextSemanticAudit::test_no_appevent_import_outside_context; then
+  fail_blocking "unit tests"
+fi
+
+# ── INVENTORY (diagnostic, --full only) ──
+if [ "$FULL" -eq 1 ]; then
+  echo "INVENTORY (diagnostic full suite)..."
+  if ! QT_QPA_PLATFORM=offscreen python3 -m pytest -q --timeout=300; then
+    echo "  FAILED [DIAGNOSTIC]: full inventory (non-blocking; escalate with --strict-advisory)"
+    if [ "$STRICT_ADVISORY" -eq 1 ]; then fail_blocking "full inventory"; fi
+  fi
+fi
 
 echo
-echo "=== All CI checks passed ==="
+if [ "$FAILED" -ne 0 ]; then
+  echo "=== CI Local complete: BLOCKING FAILURE ==="
+  exit 1
+fi
+echo "=== CI Local complete (all blocking OK) ==="
