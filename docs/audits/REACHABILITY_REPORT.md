@@ -1,3 +1,7 @@
+> STATUS: HISTORICAL SNAPSHOT
+> BASELINE: fd451afb (no SHA recorded in the document)
+> SUPERSEDED BY: AGENTS.md §2A + docs/testing/DEVELOPMENT_CONVERGENCE_MODE.md + docs/testing/SUBSYSTEM_MATURITY.yaml
+
 # Reporte de Reachabilidad de Servicios en Tiempo de Ejecución
 
 Generado por `tools/audit_runtime_reachability.py` — 93 entradas de manifest, 80 claves registradas.

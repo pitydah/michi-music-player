@@ -9,19 +9,21 @@
 #   stabilizing   — contract hardening; T1 candidates, regressions matter
 #   stable        — contract trusted; T0/T1 gates apply
 #
-# Evidence basis: AGENTS.md architectural statements and the test baseline at
-# SHA a7391335cdfb5e5c0471a37a432075d739b6e7df (docs/testing/TEST_AUTHORITY_BASELINE.md).
+# Evidence basis: AGENTS.md architectural statements and the test authority
+# baseline at SHA fd451afb388cc1e0b2933bb17c2edb5a7ecd95bd
+# (M0.1 truth alignment; previous reference a7391335, see
+# docs/testing/TEST_AUTHORITY_BASELINE.md).
 
 subsystems:
   service_container:
     state: stable
-    note: DI migration complete; no legacy containers remain (AGENTS.md §4 Dependency Injection).
+    note: "DI migration complete; ServiceContainer derives lifecycle from SERVICE_MANIFEST (ADR-001). P0/FASE 0 evidence at fd451afb: composition smoke (scripts/smoke_composition.py) green in T0."
   library_core:
     state: stabilizing
-    note: SQLite WAL + FTS5 production paths; tests/core 278 items (baseline).
+    note: SQLite WAL + FTS5 production paths; tests/core 278 items (baseline a7391335).
   audio_engine:
     state: development
-    note: "Hybrid GStreamer + MPD, 13 profiles; environment-sensitive (heuristics: subprocess 40, /proc 1)."
+    note: "Hybrid GStreamer + MPD, 13 profiles; environment-sensitive (heuristics: subprocess 40, /proc 1). #189 integrated at fd451afb: PlayerService.apply_profile false-success fixed (transactional prepare→apply→verify→rollback, b2309f2f). Not auto-promoted to stable: needs repeated green evidence."
   qml_ui:
     state: development
     note: Largest suite area (11733 items); failing clusters live in settings/tagging/queue.
@@ -30,19 +32,23 @@ subsystems:
     note: Player bar; warm-palette surface; direct engine coupling in flight.
   michi_ai:
     state: development
-    note: Assistant chat + contextual suggestions; API surface still evolving.
+    note: "Assistant chat + contextual suggestions; API surface still evolving. ModelManager shutdown lifecycle fixed (#191 integrated, e8182265 deterministic shutdown). Not declared stable: single fix is not repeated green evidence."
   sync:
     state: development
     note: Android REST + UDP discovery; network-dependent tests.
   audio_lab:
     state: experimental
-    note: Diagnostics page carries an integrity guard; feature still maturing.
+    note: "Diagnostics page carries an integrity guard; feature still maturing."
+    blocker: "AudioLabBridge (ui_qml_bridge/audio_lab_bridge.py) still owns a parallel local job/thread lifecycle (_active_jobs, _threads, threading.Thread, local retry/cancel/status/result) while DurableJobService exists."
+    next_transition: "remove parallel scheduler → canonical DurableJobService"
   device_sync:
     state: stabilizing
     note: Output-device selection heuristics hardening.
   jobs:
-    state: stabilizing
-    note: Worker/job-manager contract in use across audio_lab and sync.
+    state: development
+    note: "DurableJobService (core/jobs/job_service.py) is the canonical job contract with resume_pending_jobs; worker/job-manager contract in use across audio_lab and sync."
+    blocker: "AudioLabBridge (ui_qml_bridge/audio_lab_bridge.py) still owns a parallel local job/thread lifecycle (_active_jobs, _threads, threading.Thread, local retry/cancel/status/result) while DurableJobService exists."
+    next_transition: "remove parallel scheduler → canonical DurableJobService"
   metadata:
     state: stabilizing
     note: mutagen + MusicBrainz + album_info_repository LRU (200 entries + SQLite fallback).

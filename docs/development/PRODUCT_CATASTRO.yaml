@@ -1,0 +1,139 @@
+# Product Catastro — Structural Skeleton (M0.1 truth alignment)
+#
+# STATUS: This is a STRUCTURAL SKELETON, NOT an inventory.
+# Domain states MUST NOT be invented here. Every field is unknown/empty
+# until a real audit produces evidence (see AGENTS.md §14 sources of truth).
+#
+# Admitted fields per domain:
+#   maturity (experimental|development|stabilizing|stable — see
+#     docs/testing/SUBSYSTEM_MATURITY.yaml for state semantics)
+#   coded / wired / productive / validated / stable (feature states,
+#     docs/development/AI_DEVELOPMENT_POLICY.md §20)
+#   blockers / next_transition (evidence-backed only)
+#   evidence (command + exact result, or explicit NOT_VERIFIED)
+#   baseline_sha (SHA where the evidence was produced)
+#
+# Baseline reference: fd451afb388cc1e0b2933bb17c2edb5a7ecd95bd
+
+domains:
+  runtime:
+    maturity: unknown
+    coded: unknown
+    wired: unknown
+    productive: unknown
+    validated: unknown
+    stable: unknown
+    blockers: []
+    next_transition: null
+    evidence: NOT_VERIFIED
+    baseline_sha: null
+  service_container:
+    maturity: unknown
+    coded: unknown
+    wired: unknown
+    productive: unknown
+    validated: unknown
+    stable: unknown
+    blockers: []
+    next_transition: null
+    evidence: NOT_VERIFIED
+    baseline_sha: null
+  playback:
+    maturity: unknown
+    coded: unknown
+    wired: unknown
+    productive: unknown
+    validated: unknown
+    stable: unknown
+    blockers: []
+    next_transition: null
+    evidence: NOT_VERIFIED
+    baseline_sha: null
+  queue:
+    maturity: unknown
+    coded: unknown
+    wired: unknown
+    productive: unknown
+    validated: unknown
+    stable: unknown
+    blockers: []
+    next_transition: null
+    evidence: NOT_VERIFIED
+    baseline_sha: null
+  library:
+    maturity: unknown
+    coded: unknown
+    wired: unknown
+    productive: unknown
+    validated: unknown
+    stable: unknown
+    blockers: []
+    next_transition: null
+    evidence: NOT_VERIFIED
+    baseline_sha: null
+  jobs:
+    maturity: unknown
+    coded: unknown
+    wired: unknown
+    productive: unknown
+    validated: unknown
+    stable: unknown
+    blockers: []
+    next_transition: null
+    evidence: NOT_VERIFIED
+    baseline_sha: null
+  audio_lab:
+    maturity: unknown
+    coded: unknown
+    wired: unknown
+    productive: unknown
+    validated: unknown
+    stable: unknown
+    blockers: []
+    next_transition: null
+    evidence: NOT_VERIFIED
+    baseline_sha: null
+  device_sync:
+    maturity: unknown
+    coded: unknown
+    wired: unknown
+    productive: unknown
+    validated: unknown
+    stable: unknown
+    blockers: []
+    next_transition: null
+    evidence: NOT_VERIFIED
+    baseline_sha: null
+  home_audio:
+    maturity: unknown
+    coded: unknown
+    wired: unknown
+    productive: unknown
+    validated: unknown
+    stable: unknown
+    blockers: []
+    next_transition: null
+    evidence: NOT_VERIFIED
+    baseline_sha: null
+  michi_ai:
+    maturity: unknown
+    coded: unknown
+    wired: unknown
+    productive: unknown
+    validated: unknown
+    stable: unknown
+    blockers: []
+    next_transition: null
+    evidence: NOT_VERIFIED
+    baseline_sha: null
+  qml_ui:
+    maturity: unknown
+    coded: unknown
+    wired: unknown
+    productive: unknown
+    validated: unknown
+    stable: unknown
+    blockers: []
+    next_transition: null
+    evidence: NOT_VERIFIED
+    baseline_sha: null

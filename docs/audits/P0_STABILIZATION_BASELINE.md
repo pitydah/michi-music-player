@@ -1,3 +1,7 @@
+> STATUS: HISTORICAL SNAPSHOT
+> BASELINE: 66245d11 (SHA auditado recorded in this document)
+> SUPERSEDED BY: AGENTS.md §2A + docs/testing/DEVELOPMENT_CONVERGENCE_MODE.md + docs/testing/SUBSYSTEM_MATURITY.yaml
+
 # P0 Stabilization Baseline
 
 Documento de la Fase 0 del refactor de estabilización: línea base reproducible ANTES de cualquier cambio de código de estabilización. Cualquier PR posterior debe poder compararse contra este documento para demostrar que no se alteró el comportamiento del runtime.

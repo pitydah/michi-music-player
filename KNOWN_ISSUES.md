@@ -1,3 +1,7 @@
+> STATUS: HISTORICAL SNAPSHOT
+> BASELINE: fd451afb (no SHA recorded in the document)
+> SUPERSEDED BY: AGENTS.md §2A + docs/testing/DEVELOPMENT_CONVERGENCE_MODE.md + docs/testing/SUBSYSTEM_MATURITY.yaml
+
 # Known Issues
 
 ## Audio

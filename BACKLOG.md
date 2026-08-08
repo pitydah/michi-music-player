@@ -1,3 +1,7 @@
+> STATUS: HISTORICAL SNAPSHOT
+> BASELINE: 33a8c835 (SHA recorded in this document)
+> SUPERSEDED BY: AGENTS.md §2A + docs/testing/DEVELOPMENT_CONVERGENCE_MODE.md + docs/testing/SUBSYSTEM_MATURITY.yaml
+
 # Backlog — Michi Music Player
 
 Generado: 2026-07-28

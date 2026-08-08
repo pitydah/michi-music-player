@@ -1,3 +1,7 @@
+> STATUS: HISTORICAL SNAPSHOT
+> BASELINE: 1e5b2a02 (SHA recorded in this document)
+> SUPERSEDED BY: AGENTS.md §2A + docs/testing/DEVELOPMENT_CONVERGENCE_MODE.md + docs/testing/SUBSYSTEM_MATURITY.yaml
+
 # Global Stabilization Baseline
 
 ## Metadata
