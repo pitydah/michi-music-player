@@ -1,0 +1,64 @@
+name: Nightly
+
+on:
+  schedule:
+    # Daily at 03:00 UTC.
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+env:
+  compile_exclude: .venv/|\.tmpl\.
+
+jobs:
+  # Nightly deep validation: full inventory + performance + environmental
+  # selections. NOT a merge gate — results are diagnostic artifacts.
+  nightly-inventory:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gir1.2-gst-plugins-base-1.0 python3-gi
+          pip install -e ".[dev]" build
+      - name: Full inventory suite
+        run: |
+          QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest tests/ -q --timeout=300 --junitxml=results-nightly-inventory.xml
+      - name: Performance selection
+        # Uses scripts/test_performance.sh from PR-B (feat/test-authority-infra);
+        # falls back to the performance marker, skipping if absent.
+        run: |
+          if [ -f scripts/test_performance.sh ]; then
+            bash scripts/test_performance.sh
+          elif grep -q '"performance"' pyproject.toml; then
+            QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest -m performance -q --timeout=600 --junitxml=results-performance.xml
+          else
+            echo "SKIPPED: performance markers absent (PR-B feat/test-authority-infra not merged)"
+          fi
+      - name: Environmental tests
+        # Requires the environmental marker from PR-B (feat/test-authority-infra).
+        run: |
+          if grep -q '"environmental"' pyproject.toml; then
+            QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest -m environmental -q --timeout=300 --junitxml=results-environmental.xml
+          else
+            echo "SKIPPED: environmental markers absent (PR-B feat/test-authority-infra not merged)"
+          fi
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-results-${{ github.sha }}
+          path: "results-*.xml"
+          retention-days: 30
