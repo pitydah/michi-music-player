@@ -108,6 +108,26 @@ def _process_events(iterations: int = 1, wait_ms: int = 5) -> None:
         QTest.qWait(max(0, wait_ms))
 
 
+def _wait_for_qml_incubation(
+    engine: QQmlApplicationEngine, max_iterations: int = 100
+) -> bool:
+    """Process events until all asynchronous QML object creation is terminal."""
+    controller = engine.incubationController()
+    if controller is None:
+        _process_events(1)
+        return True
+    stable_iterations = 0
+    for _ in range(max_iterations):
+        _process_events(1)
+        if controller.incubatingObjectCount() == 0:
+            stable_iterations += 1
+            if stable_iterations == 3:
+                return True
+        else:
+            stable_iterations = 0
+    return False
+
+
 def _count_descendants(obj: QObject, max_depth: int = 6) -> int:
     """Count descendants of ``obj`` up to ``max_depth`` as an AppShell proxy."""
     count = 0
@@ -211,20 +231,27 @@ class _MessageCapture:
     inspect ``route_load_errors_since`` to detect ``PageStack`` load failures.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, engine: QQmlApplicationEngine) -> None:
+        self._engine = engine
         self.messages: list[tuple[int, str]] = []
+        self.qml_warnings: list[str] = []
         self._prev: Any = None
 
     def __enter__(self) -> "_MessageCapture":
         self._prev = qInstallMessageHandler(self._handler)
+        self._engine.warnings.connect(self._on_qml_warnings)
         return self
 
     def __exit__(self, *exc: object) -> bool:
+        self._engine.warnings.disconnect(self._on_qml_warnings)
         qInstallMessageHandler(self._prev)
         return False
 
     def _handler(self, msg_type: QtMsgType, context: Any, message: str) -> None:
         self.messages.append((int(msg_type), message))
+
+    def _on_qml_warnings(self, warnings: list[Any]) -> None:
+        self.qml_warnings.extend(error.toString() for error in warnings)
 
     def route_load_errors_since(self, start: int, source_filename: str) -> list[str]:
         """Return critical messages that look like a PageStack route failure."""
@@ -403,11 +430,12 @@ def test_navigate_functional_route_matrix(runtime: _Runtime) -> None:
     assert routes, "no functional routes found in route_registry"
 
     failures: list[str] = []
-    with _MessageCapture() as capture:
+    with _MessageCapture(runtime.engine) as capture:
         for route_key, spec in routes:
             params = _dummy_params(spec)
             source_file = _source_filename(spec)
             before = len(capture.messages)
+            warnings_before = len(capture.qml_warnings)
 
             try:
                 if params:
@@ -430,18 +458,25 @@ def test_navigate_functional_route_matrix(runtime: _Runtime) -> None:
                 )
                 continue
 
-            _process_events(3, wait_ms=5)
+            incubation_settled = _wait_for_qml_incubation(runtime.engine)
 
             # PageStack load errors are only asserted for non-parametric
             # routes — detail routes use dummy params that may legitimately
             # not instantiate (their navigation contract is still verified
             # above by the currentRoute assertion).
             if not params:
-                load_errors = capture.route_load_errors_since(before, source_file)
-                if load_errors:
+                if not incubation_settled:
                     failures.append(
                         f"route '{route_key}' ({source_file}): "
-                        f"PageStack load errors: {load_errors}"
+                        "QML object still incubating before next navigation"
+                    )
+                load_errors = capture.route_load_errors_since(before, source_file)
+                if load_errors:
+                    qml_warnings = capture.qml_warnings[warnings_before:]
+                    failures.append(
+                        f"route '{route_key}' ({source_file}): "
+                        f"PageStack load errors: {load_errors}; "
+                        f"QML component warnings: {qml_warnings}"
                     )
 
     assert not failures, (
@@ -465,7 +500,7 @@ def test_zone_detail_signals_and_route_enter(runtime: _Runtime) -> None:
     _isolate_navigation(nav)
 
     # ── App-level navigation through the real PageStack ──────────────────────
-    with _MessageCapture() as capture:
+    with _MessageCapture(runtime.engine) as capture:
         before = len(capture.messages)
         # Navigate away first so zone_detail is a route *change* (routeEnter
         # only fires on change, not on param-only updates).

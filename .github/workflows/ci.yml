@@ -139,7 +139,6 @@ jobs:
           QT_QPA_PLATFORM=offscreen PYTHONPATH=/usr/lib/python3/dist-packages python -m pytest tests/ -q --timeout=300 \
             --ignore=tests/qml --ignore=tests/test_large_library.py \
             --ignore=tests/perf -k "not qt_widget and not QtWidget" \
-            --deselect tests/test_context_semantic_audit.py::TestContextSemanticAudit::test_no_appevent_import_outside_context \
             --junitxml=results-unit.xml
       - name: Upload results
         if: always()
