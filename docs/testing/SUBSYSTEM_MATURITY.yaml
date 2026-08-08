@@ -1,0 +1,57 @@
+# Subsystem Maturity — Development Convergence Mode
+#
+# STATUS: This file is initially a documentary source of truth, NOT an
+# automatic gate. Enforcement (gating logic, CI wiring) is PR-B/PR-C scope.
+#
+# States:
+#   experimental  — proof of concept; tests advisory only (T2/T3)
+#   development   — active work; tests advisory (T2), T1 candidates when green
+#   stabilizing   — contract hardening; T1 candidates, regressions matter
+#   stable        — contract trusted; T0/T1 gates apply
+#
+# Evidence basis: AGENTS.md architectural statements and the test baseline at
+# SHA a7391335cdfb5e5c0471a37a432075d739b6e7df (docs/testing/TEST_AUTHORITY_BASELINE.md).
+
+subsystems:
+  service_container:
+    state: stable
+    note: DI migration complete; no legacy containers remain (AGENTS.md §4 Dependency Injection).
+  library_core:
+    state: stabilizing
+    note: SQLite WAL + FTS5 production paths; tests/core 278 items (baseline).
+  audio_engine:
+    state: development
+    note: "Hybrid GStreamer + MPD, 13 profiles; environment-sensitive (heuristics: subprocess 40, /proc 1)."
+  qml_ui:
+    state: development
+    note: Largest suite area (11733 items); failing clusters live in settings/tagging/queue.
+  now_playing:
+    state: development
+    note: Player bar; warm-palette surface; direct engine coupling in flight.
+  michi_ai:
+    state: development
+    note: Assistant chat + contextual suggestions; API surface still evolving.
+  sync:
+    state: development
+    note: Android REST + UDP discovery; network-dependent tests.
+  audio_lab:
+    state: experimental
+    note: Diagnostics page carries an integrity guard; feature still maturing.
+  device_sync:
+    state: stabilizing
+    note: Output-device selection heuristics hardening.
+  jobs:
+    state: stabilizing
+    note: Worker/job-manager contract in use across audio_lab and sync.
+  metadata:
+    state: stabilizing
+    note: mutagen + MusicBrainz + album_info_repository LRU (200 entries + SQLite fallback).
+  favorites:
+    state: development
+    note: toggle_favorite_by_filepath secure method; UI surface evolving.
+  radio:
+    state: development
+    note: Radio manager; streams force GStreamer; snapcast references 40 files.
+  search:
+    state: development
+    note: FTS5 SearchEngine with field filters; LIKE fallback present.
