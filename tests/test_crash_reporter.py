@@ -6,6 +6,8 @@ import json
 import os
 import tempfile
 
+import pytest
+
 from PySide6.QtWidgets import QApplication
 
 
@@ -36,6 +38,7 @@ class TestCrashReporter:
         from core.paths import logs_dir
         return logs_dir()
 
+    @pytest.mark.gate
     def test_build_report_contains_all_fields(self):
         from core.crash_reporter import CrashReporter
         reporter = CrashReporter()
@@ -67,6 +70,7 @@ class TestCrashReporter:
             data = json.load(f)
             assert data["type"] == "Error"
 
+    @pytest.mark.gate
     def test_rotation_keeps_max_reports(self):
         from core.crash_reporter import CrashReporter, MAX_REPORTS
         reporter = CrashReporter()
@@ -94,6 +98,7 @@ class TestCrashReporter:
         assert len(reporter._worker_errors) == 1
         assert reporter._worker_errors[0]["task_id"] == "task_1"
 
+    @pytest.mark.gate
     def test_on_unhandled_exception_creates_report(self):
         from core.crash_reporter import CrashReporter
         # Obtener exc_info sin que el hook se dispare

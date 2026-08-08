@@ -1,9 +1,13 @@
 """Manifest completeness: every registered key has a descriptor."""
 from __future__ import annotations
 
+import pytest
+
 from core.service_manifest import SERVICE_MANIFEST, LifecycleKind
 
 from tests.architecture._helpers import STANDALONE_MANIFEST_KEYS, registered_keys
+
+pytestmark = pytest.mark.gate
 
 
 def test_every_registered_key_has_descriptor() -> None:

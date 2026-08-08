@@ -1,6 +1,10 @@
 """Tests for core.paths centralized path resolution."""
 import os
 
+import pytest
+
+pytestmark = pytest.mark.gate
+
 
 class TestCorePaths:
     def test_database_path_default(self, monkeypatch):
