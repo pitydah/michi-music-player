@@ -760,20 +760,19 @@ class AudioLabBridge(QObject):
     @Slot(str, result=dict)
     def jobStatus(self, job_id: Any) -> dict[str, Any]:
         normalized = self._job_id(job_id)
-        if self._jobs is not None:
-            # Use the adapter's public projection when available.
-            if self._svc is not None:
-                adapter = getattr(self._svc, "jobs", None)
-                if adapter is not None:
-                    result = adapter.get(normalized)
-                    if result:
-                        return {"ok": True, **result}
-            # Fallback: use the public DurableJobService snapshot.
-            snapshot = self._jobs.get_job_snapshot(normalized)
-            if snapshot is not None:
-                return {"ok": True, **snapshot}
+        # Analysis: adapter public projection (single schema).
+        if self._svc is not None:
+            adapter = getattr(self._svc, "jobs", None)
+            if adapter is not None:
+                result = adapter.get(normalized)
+                if result:
+                    return {"ok": True, **result}
+        # Legacy / non-migrated: local _active_jobs registry.
         info = self._active_jobs.get(normalized)
-        return {"ok": True, **dict(info)} if info else self._error("JOB_NOT_FOUND")
+        if info:
+            return {"ok": True, **dict(info)}
+        # Adapter available but job not in its scope → not a known Analysis job.
+        return self._error("JOB_NOT_FOUND")
 
     @Slot(result=dict)
     def activeJobsMap(self) -> dict[str, str]:

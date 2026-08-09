@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -79,15 +80,21 @@ class FakeRipper:
 
 class FakeAnalysis:
     def analyze_file(self, filepath):
-        return {"status": "ok", "filepath": filepath, "format": "flac"}
+        return {"status": "completed", "filepath": filepath, "format": "flac"}
 
 
 class FakeAudioLabService:
-    def __init__(self):
+    def __init__(self, job_service: Any = None):
         self.adc_recorder = FakeRecorder()
         self.cd_ripper = FakeRipper()
         self.analysis = FakeAnalysis()
         self.started = 0
+        # Provide a canonical Adapter for the production Bridge → Adapter path.
+        if job_service is not None:
+            from core.audio_lab.audio_lab_job_adapter import AudioLabJobAdapter
+            self.jobs = AudioLabJobAdapter(job_service=job_service, analysis=self.analysis)
+        else:
+            self.jobs = None
 
     def start(self):
         self.started += 1
@@ -195,6 +202,7 @@ def test_capture_capabilities_are_truthful():
 
 def test_job_result_supports_qml_map_and_legacy_string_contract():
     from unittest.mock import MagicMock
+    from core.jobs.job_service import JobState
 
     fake_job_svc = MagicMock()
     fake_job_svc.create_job.return_value = "analysis_mock_01"
@@ -204,10 +212,14 @@ def test_job_result_supports_qml_map_and_legacy_string_contract():
     fake_job.id = "analysis_mock_01"
     fake_job.type = "analysis"
     fake_job.owner = "audio_lab"
+    fake_job.state = JobState.RUNNING
     fake_job_svc.get_job.return_value = fake_job
     fake_job_svc.cancel_job.return_value = True
 
-    bridge = AudioLabBridge(audio_lab_service=FakeAudioLabService(), job_service=fake_job_svc)
+    bridge = AudioLabBridge(
+        audio_lab_service=FakeAudioLabService(job_service=fake_job_svc),
+        job_service=fake_job_svc,
+    )
 
     result = bridge.startAnalysis("/tmp/example.flac")
 
@@ -220,16 +232,27 @@ def test_job_result_supports_qml_map_and_legacy_string_contract():
 
 def test_active_jobs_is_list_and_callable_for_legacy_contract():
     from unittest.mock import MagicMock
+    from core.jobs.job_service import JobState
 
     fake_job_svc = MagicMock()
     fake_job_svc.create_job.return_value = "analysis_mock_02"
     fake_job_svc.start_job.return_value = True
+
+    fake_job = MagicMock()
+    fake_job.id = "analysis_mock_02"
+    fake_job.type = "analysis"
+    fake_job.owner = "audio_lab"
+    fake_job.state = JobState.RUNNING
+    fake_job_svc.get_job.return_value = fake_job
     fake_job_svc.list_jobs.return_value = [
         {"id": "analysis_mock_02", "type": "analysis", "state": "RUNNING",
          "payload": {"request": {"filepath": "/tmp/example.flac"}}, "errors": []},
     ]
 
-    bridge = AudioLabBridge(audio_lab_service=FakeAudioLabService(), job_service=fake_job_svc)
+    bridge = AudioLabBridge(
+        audio_lab_service=FakeAudioLabService(job_service=fake_job_svc),
+        job_service=fake_job_svc,
+    )
     bridge.startAnalysis("/tmp/example.flac")
 
     jobs = bridge.activeJobs

@@ -1,5 +1,13 @@
 # Exploration: audio-lab-analysis-durable (M1.1 — converge Audio Lab Analysis on DurableJobService)
 
+> **HISTORICAL EXPLORATION SNAPSHOT**
+>
+> This document records the pre-implementation exploration.
+> It is not the current architecture authority.
+>
+> **Current normative architecture:** `design.md` + `spec.md` + production code.
+> The final architecture is: AudioLabBridge → AudioLabJobAdapter → DurableJobService → handler → _AnalysisPort → AudioAnalysisService.
+
 Baseline: 2332a45c (main). Read-only exploration; no production code/tests modified.
 
 ## Current State
