@@ -180,12 +180,11 @@ class AudioLabJobAdapter(QObject):
                 pausable=False,
                 retryable=retryable,
             )
-            if operation.value not in self._job_svc._handlers:
-                logger.warning(
-                    "Handler not registered for %s — job %s queued but not started",
-                    operation.value, job_id,
-                )
-                return job_id
+            # Attempt start; DurableJobService will set FAILED with
+            # HANDLER_UNAVAILABLE when no handler is registered, or
+            # stay QUEUED when capacity is exhausted. The bridge
+            # reads back the effective state — the adapter does NOT
+            # inspect private _handlers.
             self._job_svc.start_job(job_id)
             return job_id
         job_id = self._next_id(prefix)

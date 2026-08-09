@@ -260,7 +260,6 @@ def test_non_analysis_signals_not_reemitted(app, job_service):
 # ── 3.1: Adapter creates analysis jobs as retryable ──
 
 
-@pytest.mark.skip(reason="M1.3: adapter alignment (retryable=True, handler pre-check)")
 def test_adapter_submit_analysis_creates_retryable_job(tmp_path):
     """AudioLabJobAdapter._submit sets retryable=True for analysis operation."""
     from core.audio_lab.audio_lab_job_adapter import AudioLabJobAdapter
@@ -275,7 +274,6 @@ def test_adapter_submit_analysis_creates_retryable_job(tmp_path):
     assert durable.retryable is True
 
 
-@pytest.mark.skip(reason="M1.3: adapter alignment (retryable=True, handler pre-check)")
 def test_adapter_submit_probe_creates_non_retryable_job(tmp_path):
     """AudioLabJobAdapter._submit keeps retryable=False for non-analysis operations."""
     from core.audio_lab.audio_lab_job_adapter import AudioLabJobAdapter
@@ -290,26 +288,51 @@ def test_adapter_submit_probe_creates_non_retryable_job(tmp_path):
     assert durable.retryable is False
 
 
-@pytest.mark.skip(reason="M1.3: adapter alignment (handler pre-check)")
-def test_adapter_submit_skips_start_when_handler_missing(tmp_path):
-    """Adapter logs warning and skips start_job when handler is not registered."""
-    from unittest.mock import patch
+def test_adapter_submit_analysis_without_handler_fails_job(tmp_path):
+    """Adapter calls start_job; DurableJobService sets FAILED when handler missing.
 
+    The adapter does NOT inspect private _handlers — it delegates to
+    start_job and lets the service fail naturally.
+    """
     from core.audio_lab.audio_lab_job_adapter import AudioLabJobAdapter
     from core.jobs.job_service import DurableJobService, JobState
 
     svc = DurableJobService(db_path=str(tmp_path / "no_handler_adapter.db"))
     adapter = AudioLabJobAdapter(job_service=svc, analysis=None)
 
-    with patch("core.audio_lab.audio_lab_job_adapter.logger.warning") as mock_warn:
-        jid = adapter.submit_analysis("/tracks/foo.flac")
+    jid = adapter.submit_analysis("/tracks/foo.flac")
 
     durable = svc.get_job(jid)
     assert durable is not None
-    assert durable.state == JobState.QUEUED
-    mock_warn.assert_called_once()
-    call_args = mock_warn.call_args[0]
-    assert "handler" in str(call_args).lower() or "analysis" in str(call_args).lower()
+    assert durable.state == JobState.FAILED
+    assert any("handler" in e.lower() or "HANDLER" in e
+               for e in durable.errors), (
+        f"Expected handler-unavailable error, got {durable.errors}"
+    )
+
+
+def test_adapter_stays_queued_when_capacity_full(tmp_path):
+    """start_job returns False on capacity; job stays QUEUED (not FAILED)."""
+    from core.audio_lab.audio_lab_job_adapter import AudioLabJobAdapter
+    from core.jobs.job_service import DurableJobService, JobState
+    from core.jobs.handlers import make_analysis_handler
+    from unittest.mock import MagicMock
+
+    svc = DurableJobService(db_path=str(tmp_path / "capacity.db"))
+    port = MagicMock()
+    port.analyze.return_value = {"ok": True, "status": "completed"}
+    svc.register_handler("analysis", make_analysis_handler(port))
+    svc._max_concurrent = 0  # simulate full capacity
+
+    adapter = AudioLabJobAdapter(job_service=svc, analysis=None)
+    jid = adapter.submit_analysis("/tracks/foo.flac")
+
+    durable = svc.get_job(jid)
+    assert durable is not None
+    # start_job with capacity=0 returns False; job stays QUEUED
+    assert durable.state == JobState.QUEUED, (
+        f"Expected QUEUED (capacity full), got {durable.state}"
+    )
 
 
 # ── 4.1: Restart persistence ──
