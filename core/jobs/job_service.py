@@ -445,6 +445,11 @@ class DurableJobService(QObject):
     def get_job(self, job_id: str) -> DurableJob | None:
         return self._jobs.get(job_id)
 
+    def get_job_snapshot(self, job_id: str) -> dict[str, Any] | None:
+        """Public snapshot of a single durable job — never exposes internals."""
+        job = self._jobs.get(job_id)
+        return self._job_to_dict(job) if job else None
+
     def list_jobs(self, state: JobState | None = None,
                   job_type: str | None = None,
                   owner: str | None = None,

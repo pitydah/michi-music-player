@@ -9,6 +9,8 @@ from typing import Any, Callable
 from PySide6.QtCore import QObject, Property, Signal, Slot
 import contextlib
 
+from core.jobs.job_service import JobState, TERMINAL_STATES
+
 logger = logging.getLogger("michi.audio_lab.bridge")
 
 
@@ -424,18 +426,35 @@ class AudioLabBridge(QObject):
     @Slot(str, result=dict)
     def startAnalysis(self, filepath: str) -> _JobStartResult:
         if self._jobs is not None:
-            job_id = self._jobs.create_job(
-                "analysis", owner="audio_lab",
-                payload={"request": {"filepath": filepath}},
-                cancellable=True, pausable=False, retryable=True,
-            )
-            ok = self._jobs.start_job(job_id)
-            if not ok:
-                return _JobStartResult(
-                    {"ok": False, "error": "No handler for type: analysis",
-                     "error_code": "HANDLER_UNAVAILABLE"}
+            # Canonical: delegate to AudioLabJobAdapter when available.
+            adapter = None
+            if self._svc is not None:
+                adapter = getattr(self._svc, "jobs", None)
+            if adapter is not None:
+                job_id = adapter.submit_analysis(filepath)
+            else:
+                job_id = self._jobs.create_job(
+                    "analysis", owner="audio_lab",
+                    payload={"request": {"filepath": filepath}},
+                    cancellable=True, pausable=False, retryable=True,
                 )
-            return _JobStartResult(ok=True, job_id=job_id, status="running")
+                self._jobs.start_job(job_id)
+            # Readback: return the EFFECTIVE state, not an assumption.
+            job = self._jobs.get_job(job_id)
+            if job is None:
+                return _JobStartResult(
+                    {"ok": False, "error": "Job not found after creation",
+                     "error_code": "JOB_NOT_FOUND"}
+                )
+            state_str = job.state.value.lower()
+            if job.state == JobState.FAILED:
+                errors = job.errors
+                error_detail = errors[0] if errors else "Job failed"
+                return _JobStartResult(
+                    {"ok": False, "error": error_detail,
+                     "error_code": "HANDLER_UNAVAILABLE" if "HANDLER_UNAVAILABLE" in error_detail else "JOB_FAILED"}
+                )
+            return _JobStartResult(ok=True, job_id=job_id, status=state_str)
         return _JobStartResult(self._error("SERVICE_UNAVAILABLE"))
 
     @Slot(str, str, result=dict)
@@ -642,9 +661,13 @@ class AudioLabBridge(QObject):
             job = self._jobs.get_job(normalized)
             if job and job.owner == "audio_lab" and job.type == "analysis":
                 ok = self._jobs.cancel_job(normalized)
-                if ok:
-                    return {"ok": True, "job_id": normalized, "status": "cancelled"}
-                return self._error("JOB_NOT_FOUND")
+                if not ok:
+                    return self._error("JOB_NOT_FOUND")
+                # Readback: return the EFFECTIVE state (CANCELLING / CANCELLED).
+                job = self._jobs.get_job(normalized)
+                if job is None:
+                    return self._error("JOB_NOT_FOUND")
+                return {"ok": True, "job_id": normalized, "status": job.state.value.lower()}
         with self._lock:
             info = self._active_jobs.get(normalized)
         if not info:
@@ -673,9 +696,14 @@ class AudioLabBridge(QObject):
             job = self._jobs.get_job(normalized)
             if job and job.owner == "audio_lab" and job.type == "analysis":
                 ok = self._jobs.retry_job(normalized)
-                if ok:
-                    return {"ok": True, "job_id": normalized, "type": "analysis"}
-                return self._error("RETRY_FAILED", "Cannot retry this job")
+                if not ok:
+                    return self._error("RETRY_FAILED", "Cannot retry this job")
+                # Readback: return the EFFECTIVE state.
+                job = self._jobs.get_job(normalized)
+                if job is None:
+                    return self._error("JOB_NOT_FOUND")
+                return {"ok": True, "job_id": normalized,
+                        "type": "analysis", "status": job.state.value.lower()}
         info = self._active_jobs.get(normalized)
         if not info:
             return {"ok": False, "error": "NOT_FAILED", "error_code": "NOT_FAILED"}
@@ -699,9 +727,10 @@ class AudioLabBridge(QObject):
     def cleanupCompleted(self) -> dict[str, Any]:
         cleaned = 0
         if self._jobs is not None:
-            from core.jobs.job_service import JobState, TERMINAL_STATES
             jobs = self._jobs.list_jobs(owner="audio_lab")
             for job_dict in jobs:
+                if job_dict.get("type") != "analysis":
+                    continue  # M1.1 scope: analysis only; never touch probe/replaygain/etc.
                 state_str = job_dict.get("state", "")
                 try:
                     in_terminal = JobState(state_str) in TERMINAL_STATES
@@ -724,9 +753,17 @@ class AudioLabBridge(QObject):
     def jobStatus(self, job_id: Any) -> dict[str, Any]:
         normalized = self._job_id(job_id)
         if self._jobs is not None:
-            job = self._jobs.get_job(normalized)
-            if job and job.owner == "audio_lab" and job.type == "analysis":
-                return {"ok": True, **self._jobs._job_to_dict(job)}
+            # Use the adapter's public projection when available.
+            if self._svc is not None:
+                adapter = getattr(self._svc, "jobs", None)
+                if adapter is not None:
+                    result = adapter.get(normalized)
+                    if result:
+                        return {"ok": True, **result}
+            # Fallback: use the public DurableJobService snapshot.
+            snapshot = self._jobs.get_job_snapshot(normalized)
+            if snapshot is not None:
+                return {"ok": True, **snapshot}
         info = self._active_jobs.get(normalized)
         return {"ok": True, **dict(info)} if info else self._error("JOB_NOT_FOUND")
 
