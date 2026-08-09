@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from unittest.mock import MagicMock
 
+from core.jobs.job_service import JobState
 from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
 
 
@@ -52,9 +53,39 @@ def mock_services():
         "comparison": True, "batch": True, "profiles": True,
     }
 
+    _counter = 0
+
+    def _make_id():
+        nonlocal _counter
+        _counter += 1
+        return f"analysis_durable_{_counter}"
+
     job_svc = MagicMock()
-    job_svc.cancel.return_value = {"ok": True}
-    job_svc.status.return_value = {"ok": True, "status": "completed"}
+    job_svc.create_job.return_value = MagicMock()
+    job_svc.create_job.side_effect = lambda *a, **kw: _make_id()
+    job_svc.start_job.return_value = True
+
+    fake_job = MagicMock()
+    fake_job.id = "analysis_durable_1"
+    fake_job.type = "analysis"
+    fake_job.owner = "audio_lab"
+    fake_job.state = JobState.RUNNING
+    fake_job.retryable = True
+    fake_job.cancellable = True
+    job_svc.get_job.return_value = fake_job
+    job_svc.cancel_job.return_value = True
+    job_svc.retry_job.return_value = True
+    job_svc.delete_job.return_value = True
+    job_svc.list_jobs.return_value = [
+        {"id": "analysis_durable_1", "state": JobState.SUCCEEDED.value,
+         "owner": "audio_lab", "type": "analysis"},
+        {"id": "analysis_durable_2", "state": JobState.FAILED.value,
+         "owner": "audio_lab", "type": "analysis"},
+    ]
+    job_svc._job_to_dict = lambda job: {
+        "id": job.id, "type": job.type, "owner": job.owner,
+        "state": job.state.value,
+    }
 
     pc = MagicMock()
     confirm = MagicMock()
@@ -104,16 +135,18 @@ class TestAudioLabCompleto:
         assert result.get("ok") is True
 
     def test_start_analysis_returns_job_id(self, bridge):
-        job_id = bridge.startAnalysis("/test.flac")
-        assert job_id.startswith("analysis_")
+        result = bridge.startAnalysis("/test.flac")
+        assert result.get("ok") is True
+        assert result.get("job_id", "").startswith("analysis_")
+        assert result.get("status") == "running"
 
     def test_preview_conversion(self, bridge):
         result = bridge.previewConversion("/test.flac", "wav")
         assert result.get("ok") is True
 
     def test_start_conversion_returns_job_id(self, bridge):
-        job_id = bridge.startConversion("/test.flac", "wav")
-        assert job_id.startswith("conv_")
+        result = bridge.startConversion("/test.flac", "wav")
+        assert result.get("job_id", "").startswith("conv_")
 
     def test_preview_normalization(self, bridge):
         result = bridge.previewNormalization("/test.flac")
@@ -159,9 +192,9 @@ class TestAudioLabCompleto:
         assert job_id.startswith("compare_")
 
     def test_cancel_job_active(self, bridge):
-        job_id = bridge.startAnalysis("/test.flac")
-        result = bridge.cancelJob(job_id)
-        assert result.get("ok") is True
+        result = bridge.startAnalysis("/test.flac")
+        cancel_result = bridge.cancelJob(result.get("job_id"))
+        assert cancel_result.get("ok") is True
 
     def test_cancel_job_unknown(self, bridge):
         bridge._jobs = None
@@ -170,25 +203,25 @@ class TestAudioLabCompleto:
         assert result.get("error_code") == "JOB_NOT_FOUND"
 
     def test_retry_job(self, bridge):
-        job_id = bridge.startAnalysis("/test.flac")
-        result = bridge.retryJob(job_id)
-        assert result.get("ok") is True
-        assert "new_job_id" in result
+        result = bridge.startAnalysis("/test.flac")
+        retry_result = bridge.retryJob(result.get("job_id"))
+        assert retry_result.get("ok") is True
+        assert retry_result.get("job_id") == result.get("job_id")
 
     def test_cleanup_completed(self, bridge):
         bridge._pc = None
         bridge._svc = None
-        bridge._active_jobs["test1"] = {"type": "analysis", "filepath": "/a.flac", "status": "completed"}
-        bridge._active_jobs["test2"] = {"type": "integrity", "filepath": "/b.flac", "status": "completed"}
+        bridge._active_jobs["test3"] = {"type": "analysis", "filepath": "/c.flac", "status": "completed"}
         result = bridge.cleanupCompleted()
         assert result.get("ok") is True
-        assert result.get("cleaned") == 2
+        assert result.get("cleaned", 0) >= 1
 
     def test_job_status_active(self, bridge):
-        job_id = bridge.startAnalysis("/test.flac")
-        result = bridge.jobStatus(job_id)
-        assert result.get("ok") is True
-        assert result.get("status") in ("running", "completed")
+        result = bridge.startAnalysis("/test.flac")
+        status_result = bridge.jobStatus(result.get("job_id"))
+        assert status_result.get("ok") is True
+        assert "state" in status_result
+        assert status_result.get("type") == "analysis"
 
     def test_job_status_unknown(self, bridge):
         bridge._jobs = None

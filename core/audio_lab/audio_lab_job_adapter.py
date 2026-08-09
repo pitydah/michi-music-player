@@ -171,14 +171,21 @@ class AudioLabJobAdapter(QObject):
         operation_fn: Callable[[], Any],
     ) -> str:
         if self._job_svc is not None:
+            retryable = operation == AudioLabOperation.ANALYSIS
             job_id = self._job_svc.create_job(
                 operation.value,
                 owner="audio_lab",
                 payload={"request": dict(request), "title": title},
                 cancellable=True,
                 pausable=False,
-                retryable=False,
+                retryable=retryable,
             )
+            if operation.value not in self._job_svc._handlers:
+                logger.warning(
+                    "Handler not registered for %s — job %s queued but not started",
+                    operation.value, job_id,
+                )
+                return job_id
             self._job_svc.start_job(job_id)
             return job_id
         job_id = self._next_id(prefix)

@@ -35,6 +35,7 @@ QML_STATE_MAP = {
 }
 
 TITLE_BY_TYPE = {
+    "analysis": "Análisis técnico",
     "library_scan": "Escaneando biblioteca",
     "library_scan_all": "Escaneando todas las fuentes",
     "metadata_scan": "Analizando metadatos",

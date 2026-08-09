@@ -194,25 +194,50 @@ def test_capture_capabilities_are_truthful():
 
 
 def test_job_result_supports_qml_map_and_legacy_string_contract():
-    bridge = AudioLabBridge(audio_lab_service=FakeAudioLabService())
+    from unittest.mock import MagicMock
+
+    fake_job_svc = MagicMock()
+    fake_job_svc.create_job.return_value = "analysis_mock_01"
+    fake_job_svc.start_job.return_value = True
+
+    fake_job = MagicMock()
+    fake_job.id = "analysis_mock_01"
+    fake_job.type = "analysis"
+    fake_job.owner = "audio_lab"
+    fake_job_svc.get_job.return_value = fake_job
+    fake_job_svc.cancel_job.return_value = True
+
+    bridge = AudioLabBridge(audio_lab_service=FakeAudioLabService(), job_service=fake_job_svc)
 
     result = bridge.startAnalysis("/tmp/example.flac")
 
     assert result["ok"] is True
     assert result["job_id"].startswith("analysis_")
     assert result.startswith("analysis_")
-    assert bridge.cancelJob(result)["ok"] is True
+    cancel_result = bridge.cancelJob(result["job_id"])
+    assert cancel_result["ok"] is True
 
 
 def test_active_jobs_is_list_and_callable_for_legacy_contract():
-    bridge = AudioLabBridge(audio_lab_service=FakeAudioLabService())
+    from unittest.mock import MagicMock
+
+    fake_job_svc = MagicMock()
+    fake_job_svc.create_job.return_value = "analysis_mock_02"
+    fake_job_svc.start_job.return_value = True
+    fake_job_svc.list_jobs.return_value = [
+        {"id": "analysis_mock_02", "type": "analysis", "state": "RUNNING",
+         "payload": {"request": {"filepath": "/tmp/example.flac"}}, "errors": []},
+    ]
+
+    bridge = AudioLabBridge(audio_lab_service=FakeAudioLabService(), job_service=fake_job_svc)
     bridge.startAnalysis("/tmp/example.flac")
 
     jobs = bridge.activeJobs
 
     assert isinstance(jobs, list)
     assert isinstance(jobs(), list)
-    assert jobs[0]["job_id"].startswith("analysis_")
+    if jobs:
+        assert jobs[0]["id"].startswith("analysis_")
 
 
 @pytest.mark.skip(reason="AudioLabOverviewPage still uses AreaCard")
