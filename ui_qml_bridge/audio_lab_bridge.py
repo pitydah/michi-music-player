@@ -81,6 +81,7 @@ class AudioLabBridge(QObject):
                     logger.exception("Audio Lab service initialization failed")
                     self._errors.append({"scope": "startup", "error": str(exc)})
         self._wire_module_signals()
+        self._wire_durable_signals()
 
     @staticmethod
     def _job_id(value: Any) -> str:
@@ -122,6 +123,32 @@ class AudioLabBridge(QObject):
                 info["progress"] = value
         self.jobProgress.emit(normalized, "conversion", value)
         self.dataChanged.emit()
+
+    def _wire_durable_signals(self) -> None:
+        if self._jobs is None:
+            return
+        with contextlib.suppress(RuntimeError, TypeError):
+            self._jobs.jobProgress.connect(self._on_durable_progress)
+        with contextlib.suppress(RuntimeError, TypeError):
+            self._jobs.jobCompleted.connect(self._on_durable_completed)
+        with contextlib.suppress(RuntimeError, TypeError):
+            self._jobs.jobFailed.connect(self._on_durable_failed)
+
+    def _on_durable_progress(self, job_id: str, progress: float) -> None:
+        job = self._jobs.get_job(job_id) if self._jobs else None
+        if job and job.owner == "audio_lab" and job.type == "analysis":
+            self.jobProgress.emit(str(job_id), "analysis", float(progress))
+            self.dataChanged.emit()
+
+    def _on_durable_completed(self, job_id: str, result: object) -> None:
+        job = self._jobs.get_job(job_id) if self._jobs else None
+        if job and job.owner == "audio_lab" and job.type == "analysis":
+            self.jobCompleted.emit(str(job_id), "analysis", result)
+
+    def _on_durable_failed(self, job_id: str, error: str) -> None:
+        job = self._jobs.get_job(job_id) if self._jobs else None
+        if job and job.owner == "audio_lab" and job.type == "analysis":
+            self.jobFailed.emit(str(job_id), str(error))
 
     def _module(self, name: str):
         return getattr(self._svc, name, None) if self._svc is not None else None
@@ -259,8 +286,13 @@ class AudioLabBridge(QObject):
 
     @Property("QVariantList", notify=dataChanged)
     def activeJobs(self) -> _CallableList:
+        result: list[dict[str, Any]] = []
+        if self._jobs is not None:
+            durable = self._jobs.list_jobs(owner="audio_lab")
+            result.extend(durable)
         with self._lock:
-            return _CallableList(dict(info) for info in self._active_jobs.values())
+            result.extend(dict(info) for info in self._active_jobs.values())
+        return _CallableList(result)
 
     @Property("QVariantList", notify=dataChanged)
     def modules(self) -> _CallableList:
@@ -391,12 +423,20 @@ class AudioLabBridge(QObject):
 
     @Slot(str, result=dict)
     def startAnalysis(self, filepath: str) -> _JobStartResult:
-        module = self._module("analysis")
-        if not module:
-            return _JobStartResult(self._error("SERVICE_UNAVAILABLE"))
-        return self._start_background_job(
-            "analysis", lambda: module.analyze_file(filepath), filepath=filepath
-        )
+        if self._jobs is not None:
+            job_id = self._jobs.create_job(
+                "analysis", owner="audio_lab",
+                payload={"request": {"filepath": filepath}},
+                cancellable=True, pausable=False, retryable=True,
+            )
+            ok = self._jobs.start_job(job_id)
+            if not ok:
+                return _JobStartResult(
+                    {"ok": False, "error": "No handler for type: analysis",
+                     "error_code": "HANDLER_UNAVAILABLE"}
+                )
+            return _JobStartResult(ok=True, job_id=job_id, status="running")
+        return _JobStartResult(self._error("SERVICE_UNAVAILABLE"))
 
     @Slot(str, str, result=dict)
     def previewConversion(self, filepath: str, target_format: str = "flac") -> dict[str, Any]:
@@ -598,6 +638,13 @@ class AudioLabBridge(QObject):
     @Slot(str, result=dict)
     def cancelJob(self, job_id: Any) -> dict[str, Any]:
         normalized = self._job_id(job_id)
+        if self._jobs is not None:
+            job = self._jobs.get_job(normalized)
+            if job and job.owner == "audio_lab" and job.type == "analysis":
+                ok = self._jobs.cancel_job(normalized)
+                if ok:
+                    return {"ok": True, "job_id": normalized, "status": "cancelled"}
+                return self._error("JOB_NOT_FOUND")
         with self._lock:
             info = self._active_jobs.get(normalized)
         if not info:
@@ -609,10 +656,11 @@ class AudioLabBridge(QObject):
             cancel = getattr(self._module("conversion"), "cancel", None)
             if callable(cancel):
                 cancel(normalized)
-        cancel = getattr(self._jobs, "cancel", None)
-        if callable(cancel):
-            with contextlib.suppress(Exception):
-                cancel(normalized)
+        if self._jobs is not None:
+            cancel = getattr(self._jobs, "cancel", None)
+            if callable(cancel):
+                with contextlib.suppress(Exception):
+                    cancel(normalized)
         with self._lock:
             info["status"] = "cancelled"
         self.dataChanged.emit()
@@ -621,6 +669,13 @@ class AudioLabBridge(QObject):
     @Slot(str, result=dict)
     def retryJob(self, job_id: Any) -> dict[str, Any]:
         normalized = self._job_id(job_id)
+        if self._jobs is not None:
+            job = self._jobs.get_job(normalized)
+            if job and job.owner == "audio_lab" and job.type == "analysis":
+                ok = self._jobs.retry_job(normalized)
+                if ok:
+                    return {"ok": True, "job_id": normalized, "type": "analysis"}
+                return self._error("RETRY_FAILED", "Cannot retry this job")
         info = self._active_jobs.get(normalized)
         if not info:
             return {"ok": False, "error": "NOT_FAILED", "error_code": "NOT_FAILED"}
@@ -642,6 +697,18 @@ class AudioLabBridge(QObject):
 
     @Slot(result=dict)
     def cleanupCompleted(self) -> dict[str, Any]:
+        cleaned = 0
+        if self._jobs is not None:
+            from core.jobs.job_service import JobState, TERMINAL_STATES
+            jobs = self._jobs.list_jobs(owner="audio_lab")
+            for job_dict in jobs:
+                state_str = job_dict.get("state", "")
+                try:
+                    in_terminal = JobState(state_str) in TERMINAL_STATES
+                except ValueError:
+                    in_terminal = False
+                if in_terminal and self._jobs.delete_job(job_dict["id"]):
+                    cleaned += 1
         with self._lock:
             finished = [
                 job_id
@@ -651,11 +718,15 @@ class AudioLabBridge(QObject):
             for job_id in finished:
                 self._active_jobs.pop(job_id, None)
         self.dataChanged.emit()
-        return {"ok": True, "cleaned": len(finished)}
+        return {"ok": True, "cleaned": cleaned + len(finished)}
 
     @Slot(str, result=dict)
     def jobStatus(self, job_id: Any) -> dict[str, Any]:
         normalized = self._job_id(job_id)
+        if self._jobs is not None:
+            job = self._jobs.get_job(normalized)
+            if job and job.owner == "audio_lab" and job.type == "analysis":
+                return {"ok": True, **self._jobs._job_to_dict(job)}
         info = self._active_jobs.get(normalized)
         return {"ok": True, **dict(info)} if info else self._error("JOB_NOT_FOUND")
 
