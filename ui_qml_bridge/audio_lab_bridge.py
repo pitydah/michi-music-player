@@ -146,11 +146,13 @@ class AudioLabBridge(QObject):
         job = self._jobs.get_job(job_id) if self._jobs else None
         if job and job.owner == "audio_lab" and job.type == "analysis":
             self.jobCompleted.emit(str(job_id), "analysis", result)
+            self.dataChanged.emit()
 
     def _on_durable_failed(self, job_id: str, error: str) -> None:
         job = self._jobs.get_job(job_id) if self._jobs else None
         if job and job.owner == "audio_lab" and job.type == "analysis":
             self.jobFailed.emit(str(job_id), str(error))
+            self.dataChanged.emit()
 
     def _module(self, name: str):
         return getattr(self._svc, name, None) if self._svc is not None else None
@@ -286,12 +288,21 @@ class AudioLabBridge(QObject):
             self._selected_profile = normalized
             self.dataChanged.emit()
 
+    _ACTIVE_STATES: frozenset[str] = frozenset({
+        "QUEUED", "RUNNING", "CANCELLING",
+    })
+
     @Property("QVariantList", notify=dataChanged)
     def activeJobs(self) -> _CallableList:
         result: list[dict[str, Any]] = []
         if self._jobs is not None:
             durable = self._jobs.list_jobs(owner="audio_lab")
-            result.extend(durable)
+            for job_dict in durable:
+                if job_dict.get("type") != "analysis":
+                    continue  # M1.1 scope: only analysis via durable path
+                if job_dict.get("state", "") not in self._ACTIVE_STATES:
+                    continue  # only active states, never terminal noise
+                result.append(job_dict)
         with self._lock:
             result.extend(dict(info) for info in self._active_jobs.values())
         return _CallableList(result)
@@ -769,10 +780,20 @@ class AudioLabBridge(QObject):
 
     @Slot(result=dict)
     def activeJobsMap(self) -> dict[str, str]:
-        return {
-            job_id: str(info.get("status", "unknown"))
-            for job_id, info in self._active_jobs.items()
-        }
+        result: dict[str, str] = {}
+        # Durable analysis projection — same active-states filter as activeJobs.
+        if self._jobs is not None:
+            for job_dict in self._jobs.list_jobs(owner="audio_lab"):
+                if job_dict.get("type") != "analysis":
+                    continue
+                state = job_dict.get("state", "unknown")
+                if state in self._ACTIVE_STATES:
+                    result[job_dict["id"]] = state.lower()
+        # Legacy (non-analysis) jobs still tracked in _active_jobs.
+        with self._lock:
+            for job_id, info in self._active_jobs.items():
+                result[job_id] = str(info.get("status", "unknown"))
+        return result
 
     def _backend_snapshot(self) -> dict[str, Any]:
         if not self._player:

@@ -127,3 +127,50 @@ def test_analysis_handler_registered_before_resume_pending_jobs() -> None:
     assert job.state.value != "FAILED", (
         "QUEUED analysis job must NOT be FAILED when handler is registered"
     )
+
+
+def test_analysis_never_enters_bridge_local_active_jobs(tmp_path):
+    """startAnalysis creates a durable job, never pushes into _active_jobs."""
+    from core.jobs.job_service import DurableJobService
+    from core.jobs.handlers import make_analysis_handler
+    from unittest.mock import MagicMock
+
+    from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
+
+    svc = DurableJobService(db_path=str(tmp_path / "no_local.db"))
+    port = MagicMock()
+    port.analyze.return_value = {"ok": True, "status": "completed"}
+    svc.register_handler("analysis", make_analysis_handler(port))
+
+    bridge = AudioLabBridge(job_service=svc)
+
+    # Snapshot local registry before.
+    before_ids = set(bridge._active_jobs.keys())
+
+    bridge.startAnalysis("/tracks/foo.flac")
+
+    # No new entries in the local registry.
+    after_ids = set(bridge._active_jobs.keys())
+    assert after_ids == before_ids, (
+        "Analysis must NOT enter bridge._active_jobs — durable path only"
+    )
+
+
+def test_analysis_never_creates_local_thread(tmp_path):
+    """startAnalysis must NOT call _start_background_job or threading.Thread."""
+    from core.jobs.job_service import DurableJobService
+    from core.jobs.handlers import make_analysis_handler
+    from unittest.mock import MagicMock, patch
+
+    from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
+
+    svc = DurableJobService(db_path=str(tmp_path / "no_thread.db"))
+    port = MagicMock()
+    port.analyze.return_value = {"ok": True, "status": "completed"}
+    svc.register_handler("analysis", make_analysis_handler(port))
+
+    bridge = AudioLabBridge(job_service=svc)
+
+    with patch("threading.Thread") as mock_thread:
+        bridge.startAnalysis("/tracks/foo.flac")
+        mock_thread.assert_not_called()
