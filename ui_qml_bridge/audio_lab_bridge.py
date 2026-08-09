@@ -436,37 +436,34 @@ class AudioLabBridge(QObject):
 
     @Slot(str, result=dict)
     def startAnalysis(self, filepath: str) -> _JobStartResult:
-        if self._jobs is not None:
-            # Canonical: delegate to AudioLabJobAdapter when available.
-            adapter = None
-            if self._svc is not None:
-                adapter = getattr(self._svc, "jobs", None)
-            if adapter is not None:
-                job_id = adapter.submit_analysis(filepath)
-            else:
-                job_id = self._jobs.create_job(
-                    "analysis", owner="audio_lab",
-                    payload={"request": {"filepath": filepath}},
-                    cancellable=True, pausable=False, retryable=True,
-                )
-                self._jobs.start_job(job_id)
-            # Readback: return the EFFECTIVE state, not an assumption.
-            job = self._jobs.get_job(job_id)
-            if job is None:
-                return _JobStartResult(
-                    {"ok": False, "error": "Job not found after creation",
-                     "error_code": "JOB_NOT_FOUND"}
-                )
-            state_str = job.state.value.lower()
-            if job.state == JobState.FAILED:
-                errors = job.errors
-                error_detail = errors[0] if errors else "Job failed"
-                return _JobStartResult(
-                    {"ok": False, "error": error_detail,
-                     "error_code": "HANDLER_UNAVAILABLE" if "HANDLER_UNAVAILABLE" in error_detail else "JOB_FAILED"}
-                )
-            return _JobStartResult(ok=True, job_id=job_id, status=state_str)
-        return _JobStartResult(self._error("SERVICE_UNAVAILABLE"))
+        """Delegate to AudioLabJobAdapter — the canonical Analysis surface."""
+        if self._jobs is None:
+            return _JobStartResult(self._error("SERVICE_UNAVAILABLE"))
+        adapter = None
+        if self._svc is not None:
+            adapter = getattr(self._svc, "jobs", None)
+        if adapter is None:
+            return _JobStartResult(
+                {"ok": False, "error": "AudioLabJobAdapter unavailable",
+                 "error_code": "SERVICE_UNAVAILABLE"}
+            )
+        job_id = adapter.submit_analysis(filepath)
+        # Readback: return the EFFECTIVE state, not an assumption.
+        job = self._jobs.get_job(job_id)
+        if job is None:
+            return _JobStartResult(
+                {"ok": False, "error": "Job not found after creation",
+                 "error_code": "JOB_NOT_FOUND"}
+            )
+        state_str = job.state.value.lower()
+        if job.state == JobState.FAILED:
+            errors = job.errors
+            error_detail = errors[0] if errors else "Job failed"
+            return _JobStartResult(
+                {"ok": False, "job_id": job_id, "error": error_detail,
+                 "error_code": "HANDLER_UNAVAILABLE" if "HANDLER_UNAVAILABLE" in error_detail else "JOB_FAILED"}
+            )
+        return _JobStartResult(ok=True, job_id=job_id, status=state_str)
 
     @Slot(str, str, result=dict)
     def previewConversion(self, filepath: str, target_format: str = "flac") -> dict[str, Any]:

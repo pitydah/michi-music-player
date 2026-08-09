@@ -112,6 +112,34 @@ def test_analysis_port_normalizes_unknown_to_not_ok():
     assert result.get("ok") is False
 
 
+def test_analysis_port_fails_closed_on_empty_status():
+    """_AnalysisPort maps '' (empty) → ok=False (fail-closed)."""
+    from core.composition.jobs import _AnalysisPort
+
+    analysis = MagicMock()
+    analysis.analyze_file.return_value = {"status": ""}
+    port = _AnalysisPort(analysis)
+    result = port.analyze("/tracks/foo.flac")
+
+    assert result.get("ok") is False, (
+        "Empty status must fail-closed — only 'completed' is success"
+    )
+
+
+def test_analysis_port_fails_closed_on_unrecognized_status():
+    """_AnalysisPort maps any unrecognized status → ok=False (fail-closed)."""
+    from core.composition.jobs import _AnalysisPort
+
+    analysis = MagicMock()
+    analysis.analyze_file.return_value = {"status": "future_unknown_status"}
+    port = _AnalysisPort(analysis)
+    result = port.analyze("/tracks/foo.flac")
+
+    assert result.get("ok") is False, (
+        "Unrecognized status must fail-closed — only 'completed' is success"
+    )
+
+
 def test_analysis_port_preserves_original_status():
     """_AnalysisPort keeps the original status for UI readback."""
     from core.composition.jobs import _AnalysisPort

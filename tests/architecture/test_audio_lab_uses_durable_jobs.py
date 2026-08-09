@@ -100,7 +100,7 @@ def test_analysis_handler_registered_before_resume_pending_jobs() -> None:
 
     analysis_service = MagicMock()
     analysis_service.analysis = MagicMock()
-    analysis_service.analysis.analyze_file.return_value = {"status": "ok"}
+    analysis_service.analysis.analyze_file.return_value = {"status": "completed"}
 
     class _TestContainer:
         def get(self, name):
@@ -133,6 +133,7 @@ def test_analysis_never_enters_bridge_local_active_jobs(tmp_path):
     """startAnalysis creates a durable job, never pushes into _active_jobs."""
     from core.jobs.job_service import DurableJobService
     from core.jobs.handlers import make_analysis_handler
+    from core.audio_lab.audio_lab_job_adapter import AudioLabJobAdapter
     from unittest.mock import MagicMock
 
     from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
@@ -142,7 +143,10 @@ def test_analysis_never_enters_bridge_local_active_jobs(tmp_path):
     port.analyze.return_value = {"ok": True, "status": "completed"}
     svc.register_handler("analysis", make_analysis_handler(port))
 
-    bridge = AudioLabBridge(job_service=svc)
+    adapter = AudioLabJobAdapter(job_service=svc)
+    svc_mock = MagicMock()
+    svc_mock.jobs = adapter
+    bridge = AudioLabBridge(audio_lab_service=svc_mock, job_service=svc)
 
     # Snapshot local registry before.
     before_ids = set(bridge._active_jobs.keys())
@@ -160,6 +164,7 @@ def test_analysis_never_creates_local_thread(tmp_path):
     """startAnalysis must NOT call _start_background_job or threading.Thread."""
     from core.jobs.job_service import DurableJobService
     from core.jobs.handlers import make_analysis_handler
+    from core.audio_lab.audio_lab_job_adapter import AudioLabJobAdapter
     from unittest.mock import MagicMock, patch
 
     from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
@@ -169,7 +174,10 @@ def test_analysis_never_creates_local_thread(tmp_path):
     port.analyze.return_value = {"ok": True, "status": "completed"}
     svc.register_handler("analysis", make_analysis_handler(port))
 
-    bridge = AudioLabBridge(job_service=svc)
+    adapter = AudioLabJobAdapter(job_service=svc)
+    svc_mock = MagicMock()
+    svc_mock.jobs = adapter
+    bridge = AudioLabBridge(audio_lab_service=svc_mock, job_service=svc)
 
     with patch("threading.Thread") as mock_thread:
         bridge.startAnalysis("/tracks/foo.flac")

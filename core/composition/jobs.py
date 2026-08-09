@@ -144,10 +144,6 @@ class _AnalysisPort:
     to None and the handler raises at invocation.
     """
 
-    _FAILURE_STATUSES: frozenset[str] = frozenset({
-        "error", "unsupported", "disabled", "unknown",
-    })
-
     def __init__(self, analysis):
         self._analysis = analysis
 
@@ -156,7 +152,10 @@ class _AnalysisPort:
             raise RuntimeError("AudioAnalysisService unavailable")
         result = dict(self._analysis.analyze_file(filepath))
         status = str(result.get("status", "")).lower()
-        result["ok"] = status not in self._FAILURE_STATUSES
+        # Fail-closed: only the productive "completed" status is success.
+        # Every other value (error, unsupported, disabled, unknown, empty,
+        # or any future status string) is failure.
+        result["ok"] = status == "completed"
         return result
 
 

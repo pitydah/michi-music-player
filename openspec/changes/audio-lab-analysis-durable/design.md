@@ -5,12 +5,15 @@
 Converge only `analysis` onto the canonical durable path:
 
 ```text
-AudioAnalysisPage.qml -> AudioLabBridge -> DurableJobService
-  -> make_analysis_handler(AudioLabPort) -> _AnalysisPort
-  -> AudioAnalysisService.analyze_file()
+AudioAnalysisPage.qml
+  → AudioLabBridge
+  → AudioLabJobAdapter        ← sole Analysis job construction authority
+  → DurableJobService         ← sole execution/state/persistence authority
+  → make_analysis_handler(AudioLabPort)
+  → _AnalysisPort
+  → AudioAnalysisService.analyze_file()
 
-AudioLabJobAdapter ---------------------> DurableJobService (aligned, not delegated)
-JobBridge ------------------------------> DurableJobService (unified visibility)
+JobBridge → DurableJobService (unified visibility)
 ```
 
 Composition owns service lookup and port construction. Local execution remains for conversion, ReplayGain, integrity, comparison, CD rip, and marker splitting.
@@ -19,29 +22,32 @@ Composition owns service lookup and port construction. Local execution remains f
 
 | Choice | Rejected | Rationale |
 |---|---|---|
-| Bridge calls `DurableJobService` directly | Delegate through adapter | Avoids an orphaned mapping layer while preserving QML signals. |
+| Bridge delegates through AudioLabJobAdapter | Bridge creates durable jobs directly | Single orchestration surface; adapter owns job construction policy. |
 | Pure `make_analysis_handler(port)` | Handler service lookup | Preserves ADR-004 and stdlib-only imports. |
 | Register before `resume_pending_jobs()` | Lazy registration | Prevents recovered jobs failing `HANDLER_UNAVAILABLE`. |
 | Native `retry_job(id)` | Replacement job | Preserves ID and original payload. |
 | Cancellation checks around analysis | Mid-call interruption | `analyze_file()` is synchronous and not safely interruptible. |
+| `_AnalysisPort` fail-closed: only `completed` → ok=True | Permissive NOT-in-failure-set | Prevents unrecognized/future statuses from being treated as success. |
 
 ## Data and Signal Flow
 
 ```text
 startAnalysis(filepath)
- -> create_job("analysis", owner="audio_lab",
-      payload={"request": {"filepath": filepath}},
-      cancellable=True, pausable=False, retryable=True)
- -> start_job(id)
- -> progress .1 -> cancel check -> port.analyze
- -> cancel check -> result/error mapping -> progress 1.0
- -> persisted SUCCEEDED | FAILED | CANCELLED
+  → bridge delegates to AudioLabJobAdapter.submit_analysis(filepath)
+  → adapter creates job (owner="audio_lab", type="analysis",
+      retryable=True, cancellable=True, pausable=False)
+  → adapter calls DurableJobService.start_job(job_id)
+  → handler: validate payload → cancel checkpoint → port.analyze()
+  → validate result.ok BEFORE progress 1.0
+  → if ok=False → FAILED; otherwise → progress 1.0 → SUCCEEDED
+  → bridge reads back effective state via get_job()
+  → returns {ok, job_id, status} with real state (QUEUED/RUNNING/SUCCEEDED/FAILED)
 ```
 
 ```text
-jobProgress(id, value)  -> filter owner/type -> jobProgress(id, "analysis", value)
-jobCompleted(id, result)-> filter owner/type -> jobCompleted(id, "analysis", result)
-jobFailed(id, error)    -> filter owner/type -> jobFailed(id, error)
+jobProgress(id, value)  → filter owner/type → jobProgress(id, "analysis", value) + dataChanged
+jobCompleted(id, result)→ filter owner/type → jobCompleted(id, "analysis", result) + dataChanged
+jobFailed(id, error)    → filter owner/type → jobFailed(id, error) + dataChanged
 ```
 
 Each callback reads `get_job(id)` and accepts only `owner="audio_lab"`, `type="analysis"`; unrelated durable jobs cannot double-emit.
@@ -55,51 +61,38 @@ class AudioLabPort(Protocol):
 def make_analysis_handler(port: AudioLabPort | None) -> Callable[..., dict]: ...
 ```
 
-- Payload: `{"request": {"filepath": str}}`.
-- Success: analyzer result dict returned verbatim and persisted as `job.result`.
-- `status="error"`: raise `RuntimeError(result["error"])`; missing port: `RuntimeError("AudioLabService unavailable")`.
-- Bridge start: `{ok, job_id, status}`; QML reads string `result.job_id`.
-- Adapter states: `QUEUED->queued`, `RUNNING->running`, `CANCELLING->cancel_requested`, `CANCELLED->cancelled`, `SUCCEEDED/PARTIAL_SUCCESS->completed`, `FAILED->failed`, `INTERRUPTED->interrupted`; non-pausable Audio Lab paused states map to `queued` defensively.
-- Titles: handler `"analysis": "Análisis de audio"`; `JobBridge` `"analysis": "Análisis técnico"`.
+- Payload: `{"request": {"filepath": str}}`. Handler validates request presence and filepath non-empty.
+- Success contract: `_AnalysisPort` normalizes `AudioAnalysisService` statuses:
+  - `"completed"` → `ok=True` (the ONLY success status)
+  - `"error"`, `"unsupported"`, `"disabled"`, `"unknown"`, empty, or any unrecognized → `ok=False`
+- Handler checks `result.get("ok")` exclusively — never hardcodes `status == "ok"`.
+- Progress: `report_progress(1.0, "Analysis complete")` ONLY after successful validation.
+  Never emit 100 % for a failed result.
+- Bridge start: returns `{ok, job_id, status}` with readback state; QML reads `result.job_id`.
+- Cancel: readback after `cancel_job()` — `CANCELLING` for RUNNING jobs, `CANCELLED` for QUEUED.
+- Retry: same job_id, readback after `retry_job()`.
+- jobStatus: uses `AudioLabJobAdapter.get()` projection (single schema).
+- activeJobs: only active states (QUEUED, RUNNING, CANCELLING).
+- cleanupCompleted: `owner="audio_lab"` + `type="analysis"` + terminal only.
+- Title: `"analysis": "Análisis técnico"` (handler, adapter, JobBridge — unified).
+- Analysis NEVER enters `bridge._active_jobs` or creates local `threading.Thread`.
 
 ## Diff Surface
 
 | File | Action | Change |
 |---|---|---|
-| `core/jobs/handlers.py` | Modify | Add title and pure analysis handler. |
-| `core/jobs/ports.py` | Modify | Narrow reserved port to analysis. |
-| `core/composition/jobs.py` | Modify | Add None-safe `_AnalysisPort`; register before resume. |
-| `ui_qml_bridge/audio_lab_bridge.py` | Modify | Durable analysis start/signals/lifecycle; retain local out-of-scope execution. |
-| `core/audio_lab/audio_lab_job_adapter.py` | Modify | Analysis retryable, handler guard, state mapping. |
+| `core/jobs/handlers.py` | Modify | Add analysis handler, payload validation, progress-after-validation, JOB_TITLES. |
+| `core/jobs/ports.py` | Modify | AudioLabPort protocol. |
+| `core/composition/jobs.py` | Modify | Fail-closed `_AnalysisPort`; register before resume. |
+| `core/jobs/job_service.py` | Modify | Add public `get_job_snapshot()`. |
+| `ui_qml_bridge/audio_lab_bridge.py` | Modify | Delegate to adapter; readback; active-state projection; signals + dataChanged. |
+| `core/audio_lab/audio_lab_job_adapter.py` | Modify | Remove `_handlers` access; retryable=True for analysis; state normalization; created_at fix. |
 | `ui_qml_bridge/job_bridge.py` | Modify | Add analysis title. |
-| `ui_qml/pages/audio_lab/AudioAnalysisPage.qml` | Modify | Consume map-shaped start result. |
-| `tests/test_analysis_job_handler.py` | Add | Handler/error/progress/cancellation contracts. |
-| `tests/architecture/test_audio_lab_uses_durable_jobs.py` | Modify | Registration and adapter alignment. |
-| `tests/integration/jobs/test_audio_analysis_durable.py` | Add | Recovery, signals, retry, cancel, cleanup. |
-| `tests/qml/audio_lab/test_audio_lab_completo.py` | Modify | Durable lifecycle expectations. |
-| `tests/qml/audio_lab/test_audio_negative.py` | Modify | Degraded/not-found/start failure. |
-| `tests/test_audio_lab_capture_contracts.py` | Modify | Map result and durable visibility. |
+| `tests/test_analysis_job_handler.py` | Add | Handler/port/progress/payload/cancellation contracts. |
+| `tests/architecture/test_audio_lab_uses_durable_jobs.py` | Modify | Registration, adapter delegation, local registry/thread invariants. |
+| `tests/integration/jobs/test_audio_analysis_durable.py` | Add | Recovery, signals (positive + negative), capacity, cancel CANCELLING, retry, cleanup. |
 
 No files are deleted.
-
-## Ordering and Strict TDD Slices
-
-1. **Handler/port** — RED payload, progress, error, unavailable, and cancellation tests; GREEN factory/protocol; REFACTOR; run focused + ADR-004 tests.
-2. **Composition/recovery** — RED registration-before-resume and original-payload restart tests; GREEN port/registration; REFACTOR.
-3. **Bridge vertical slice** — RED start and filtered signal tests; GREEN durable submission/re-emission plus QML `job_id`; REFACTOR; exercise productive path.
-4. **Lifecycle** — RED cancel, same-ID retry, status, visibility, cleanup; GREEN delegation; REFACTOR without migrating other operations.
-5. **Adapter/Jobs** — RED retryable, missing-handler, state, title; GREEN alignment; REFACTOR constants.
-6. **Checkpoint** — focused tests, `scripts/test_gate.sh` (T0 blocking), relevant T2/QML tests; report PASS/PARTIAL/FAIL.
-
-Handler registration must land before bridge activation. Rollback is per slice, but registration and bridge activation revert together.
-
-## Testing Approach
-
-Use `tmp_path` SQLite, real `DurableJobService`, fake ports, and `WorkerManager` only for cancellation/restart integration. Assert exact payloads/signals, owner/type filtering, same ID and original payload on retry, and no non-analysis duplicates. Final evidence must exercise composition -> bridge -> handler -> analyzer fake -> persisted terminal job; mock-only evidence is insufficient.
-
-## Threat Matrix
-
-N/A — no routing, shell, subprocess, VCS automation, executable classification, or process-integration boundary.
 
 ## Risks
 

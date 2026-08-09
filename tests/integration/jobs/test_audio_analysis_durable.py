@@ -35,14 +35,24 @@ def job_service(tmp_path):
     return svc
 
 
+def _make_bridge(job_service, **extra):
+    """Build a bridge wired through the canonical AudioLabJobAdapter."""
+    from core.audio_lab.audio_lab_job_adapter import AudioLabJobAdapter
+    from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
+
+    adapter = AudioLabJobAdapter(job_service=job_service)
+    svc_mock = MagicMock()
+    svc_mock.jobs = adapter
+    return AudioLabBridge(audio_lab_service=svc_mock, job_service=job_service, **extra)
+
+
 # ── 2.1: startAnalysis contract ──
 
 
 def test_start_analysis_creates_and_starts_durable_job(app, job_service):
     """startAnalysis creates a durable job of type 'analysis' with owner 'audio_lab'."""
-    from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
 
-    bridge = AudioLabBridge(job_service=job_service)
+    bridge = _make_bridge(job_service)
     result = bridge.startAnalysis("/tracks/foo.flac")
 
     assert result.get("ok") is True, f"Expected ok=True, got {result}"
@@ -72,17 +82,26 @@ def test_start_analysis_returns_service_unavailable_when_job_service_is_none(app
 
 
 def test_start_analysis_fails_when_no_handler_registered(app, tmp_path):
-    """start_job returns False when no handler registered for 'analysis'."""
-    from core.jobs.job_service import DurableJobService
+    """Adapter submits; DurableJobService fails job when no handler registered."""
+    from core.jobs.job_service import DurableJobService, JobState
+    from core.audio_lab.audio_lab_job_adapter import AudioLabJobAdapter
     from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
+    from unittest.mock import MagicMock
 
     svc = DurableJobService(db_path=str(tmp_path / "no_handler.db"))
-    bridge = AudioLabBridge(job_service=svc)
+    adapter = AudioLabJobAdapter(job_service=svc)
+    svc_mock = MagicMock()
+    svc_mock.jobs = adapter
+    bridge = AudioLabBridge(audio_lab_service=svc_mock, job_service=svc)
     result = bridge.startAnalysis("/tracks/foo.flac")
 
     assert result.get("ok") is False
     error = result.get("error") or ""
     assert ("handler" in error.lower()) or ("HANDLER_UNAVAILABLE" in str(result.get("error_code", "")))
+    # Verify the job was actually created and failed with handler error.
+    job = svc.get_job(result.get("job_id", ""))
+    assert job is not None
+    assert job.state == JobState.FAILED
 
 
 # ── 2.4: cancelJob, retryJob, cleanupCompleted, jobStatus, activeJobs ──
@@ -91,9 +110,8 @@ def test_start_analysis_fails_when_no_handler_registered(app, tmp_path):
 def test_cancel_job_delegates_to_durable_service(app, job_service):
     """cancelJob calls cancel_job on the durable service for analysis jobs."""
     from core.jobs.job_service import JobState
-    from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
 
-    bridge = AudioLabBridge(job_service=job_service)
+    bridge = _make_bridge(job_service)
     result = bridge.startAnalysis("/tracks/foo.flac")
     job_id = result["job_id"]
 
@@ -111,9 +129,8 @@ def test_cancel_job_delegates_to_durable_service(app, job_service):
 
 def test_cancel_job_returns_not_found_for_unknown_id(app, job_service):
     """cancelJob returns JOB_NOT_FOUND for unknown job_id."""
-    from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
 
-    bridge = AudioLabBridge(job_service=job_service)
+    bridge = _make_bridge(job_service)
     result = bridge.cancelJob("nonexistent")
 
     assert result.get("ok") is False
@@ -123,9 +140,8 @@ def test_cancel_job_returns_not_found_for_unknown_id(app, job_service):
 def test_retry_job_reuses_same_id(app, job_service):
     """retryJob reuses the same job_id (not a new one)."""
     from core.jobs.job_service import JobState
-    from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
 
-    bridge = AudioLabBridge(job_service=job_service)
+    bridge = _make_bridge(job_service)
     start_result = bridge.startAnalysis("/tracks/foo.flac")
     original_id = start_result["job_id"]
 
@@ -145,14 +161,13 @@ def test_cleanup_completed_deletes_terminal_audio_lab_jobs(app, tmp_path):
     """cleanupCompleted deletes terminal audio_lab-owned jobs only."""
     from core.jobs.job_service import DurableJobService, JobState
     from core.jobs.handlers import make_analysis_handler
-    from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
 
     svc = DurableJobService(db_path=str(tmp_path / "cleanup.db"))
     port = MagicMock()
     port.analyze.return_value = {"ok": True, "status": "completed"}
     svc.register_handler("analysis", make_analysis_handler(port))
 
-    bridge = AudioLabBridge(job_service=svc)
+    bridge = _make_bridge(svc)
     r1 = bridge.startAnalysis("/tracks/a.flac")
     r2 = bridge.startAnalysis("/tracks/b.flac")
 
@@ -165,24 +180,23 @@ def test_cleanup_completed_deletes_terminal_audio_lab_jobs(app, tmp_path):
 
 
 def test_job_status_reads_from_durable_store(app, job_service):
-    """jobStatus reads from the durable job store."""
-    from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
+    """jobStatus reads from the durable job store via the adapter projection."""
 
-    bridge = AudioLabBridge(job_service=job_service)
+    bridge = _make_bridge(job_service)
     start_result = bridge.startAnalysis("/tracks/foo.flac")
     job_id = start_result["job_id"]
 
     status = bridge.jobStatus(job_id)
     assert status.get("ok") is True
-    assert "state" in status
+    # Adapter projection uses "status" (lowercase), not "state" from DurableJobService.
+    assert "status" in status
     assert status.get("type") == "analysis"
 
 
 def test_job_status_returns_not_found(app, job_service):
     """jobStatus returns JOB_NOT_FOUND for unknown job_id."""
-    from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
 
-    bridge = AudioLabBridge(job_service=job_service)
+    bridge = _make_bridge(job_service)
     status = bridge.jobStatus("nonexistent")
 
     assert status.get("ok") is False
@@ -192,9 +206,8 @@ def test_job_status_returns_not_found(app, job_service):
 def test_active_jobs_includes_durable_jobs(app, job_service):
     """activeJobs property includes durable analysis jobs in active states."""
     from core.jobs.job_service import JobState
-    from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
 
-    bridge = AudioLabBridge(job_service=job_service)
+    bridge = _make_bridge(job_service)
     start_result = bridge.startAnalysis("/tracks/foo.flac")
     job_id = start_result["job_id"]
 
@@ -221,9 +234,8 @@ def test_durable_signal_reemission_filtered_by_owner_and_type(app, job_service):
     """Durable signals are re-emitted only for owner='audio_lab' and type='analysis'."""
     from unittest.mock import MagicMock
 
-    from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
 
-    bridge = AudioLabBridge(job_service=job_service)
+    bridge = _make_bridge(job_service)
     spy = MagicMock()
     bridge.jobProgress.connect(spy)
 
@@ -238,9 +250,8 @@ def test_non_analysis_signals_not_reemitted(app, job_service):
     """Non-analysis job signals are NOT re-emitted through durable path."""
     from unittest.mock import MagicMock
 
-    from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
 
-    bridge = AudioLabBridge(job_service=job_service)
+    bridge = _make_bridge(job_service)
     spy_progress = MagicMock()
     spy_completed = MagicMock()
     spy_failed = MagicMock()
@@ -408,9 +419,8 @@ def test_durable_progress_signal_reemitted_for_analysis(app, job_service):
     """jobProgress from DurableJobService is re-emitted by AudioLabBridge."""
     from unittest.mock import MagicMock
 
-    from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
 
-    bridge = AudioLabBridge(job_service=job_service)
+    bridge = _make_bridge(job_service)
     start_result = bridge.startAnalysis("/tracks/foo.flac")
     job_id = start_result["job_id"]
 
@@ -426,9 +436,8 @@ def test_durable_completed_signal_reemitted_for_analysis(app, job_service):
     """jobCompleted from DurableJobService is re-emitted by AudioLabBridge."""
     from unittest.mock import MagicMock
 
-    from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
 
-    bridge = AudioLabBridge(job_service=job_service)
+    bridge = _make_bridge(job_service)
     start_result = bridge.startAnalysis("/tracks/foo.flac")
     job_id = start_result["job_id"]
 
@@ -444,9 +453,8 @@ def test_durable_failed_signal_reemitted_for_analysis(app, job_service):
     """jobFailed from DurableJobService is re-emitted by AudioLabBridge."""
     from unittest.mock import MagicMock
 
-    from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
 
-    bridge = AudioLabBridge(job_service=job_service)
+    bridge = _make_bridge(job_service)
     start_result = bridge.startAnalysis("/tracks/foo.flac")
     job_id = start_result["job_id"]
 
@@ -463,9 +471,8 @@ def test_durable_failed_signal_reemitted_for_analysis(app, job_service):
 def test_cancel_running_job_returns_cancelling(app, job_service):
     """cancelJob on a RUNNING job returns CANCELLING (not cancelled)."""
     from core.jobs.job_service import JobState
-    from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
 
-    bridge = AudioLabBridge(job_service=job_service)
+    bridge = _make_bridge(job_service)
     start_result = bridge.startAnalysis("/tracks/foo.flac")
     job_id = start_result["job_id"]
 
@@ -489,7 +496,6 @@ def test_start_analysis_queued_when_capacity_full(app, tmp_path):
     from core.jobs.handlers import make_analysis_handler
     from unittest.mock import MagicMock
 
-    from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
 
     svc = DurableJobService(db_path=str(tmp_path / "capacity_bridge.db"))
     port = MagicMock()
@@ -497,7 +503,7 @@ def test_start_analysis_queued_when_capacity_full(app, tmp_path):
     svc.register_handler("analysis", make_analysis_handler(port))
     svc._max_concurrent = 0  # simulate full capacity
 
-    bridge = AudioLabBridge(job_service=svc)
+    bridge = _make_bridge(svc)
     result = bridge.startAnalysis("/tracks/foo.flac")
 
     assert result.get("ok") is True, (
