@@ -18,6 +18,7 @@ import logging
 logger = logging.getLogger("michi.jobs.handlers")
 
 JOB_TITLES = {
+    "analysis": "Análisis técnico",
     "library_scan": "Escaneando biblioteca",
     "library_scan_all": "Escaneando todas las fuentes",
     "metadata_scan": "Analizando metadatos",
@@ -325,6 +326,44 @@ def make_device_transfer_handler(port) -> callable:
                 result.get("error_code") or result.get("error") or "TRANSFER_FAILED"
             )
         ctx.report_progress(1.0, "Transferencia completada")
+        return result
+
+    return handler
+
+
+def make_analysis_handler(port):
+    """Pure factory closing over an AudioLabPort.
+
+    *port* is None (no audio_lab_service available) or conforms to
+    ``AudioLabPort``. The returned handler (job, ctx) delegates to
+    ``port.analyze(filepath, ctx)`` with cooperative cancellation
+    checkpoints before and after the port call.
+
+    The port normalises the real-service status into an ``ok``
+    boolean (see ``_AnalysisPort``); the handler checks that flag
+    instead of matching a hard-coded status string against the
+    service contract.
+    """
+
+    def handler(job, ctx):
+        payload = job.payload or {}
+        request = payload.get("request")
+        if not isinstance(request, dict):
+            raise RuntimeError("INVALID_PAYLOAD: request required")
+        filepath = request.get("filepath")
+        if not filepath or not isinstance(filepath, str) or not filepath.strip():
+            raise RuntimeError("INVALID_PAYLOAD: filepath required")
+        if port is None:
+            raise RuntimeError("AudioLabService unavailable")
+        ctx.report_progress(0.1, "Starting analysis")
+        ctx.token.raise_if_cancelled()
+        result = port.analyze(filepath.strip(), ctx)
+        ctx.token.raise_if_cancelled()
+        # Validate BEFORE reporting completion — never emit 100 %
+        # for a result that will be rejected.
+        if not result.get("ok"):
+            raise RuntimeError(result.get("error", "Analysis failed"))
+        ctx.report_progress(1.0, "Analysis complete")
         return result
 
     return handler

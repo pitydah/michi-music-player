@@ -123,6 +123,43 @@ class _PlaylistImportPort:
             path, target_name=name or None, policy=policy, ctx=ctx)
 
 
+class _AnalysisPort:
+    """AudioLabPort wrapping AudioAnalysisService from the container.
+
+    Delegates ``analyze(filepath, ctx)`` to the composed
+    ``audio_lab_service.analysis.analyze_file(filepath)`` and
+    normalises the real-service status contract into a durable
+    ``ok`` boolean that the handler can check uniformly.
+
+    The real ``AudioAnalysisService`` returns status values:
+
+    * ``completed``  → ok=True  (productive success)
+    * ``error``       → ok=False
+    * ``unsupported`` → ok=False
+    * ``disabled``    → ok=False
+    * ``unknown``     → ok=False  (not yet attempted)
+
+    The port is None-safe: when the container returns None for
+    ``audio_lab_service``, ``_build_ports`` sets the analysis port
+    to None and the handler raises at invocation.
+    """
+
+    _FAILURE_STATUSES: frozenset[str] = frozenset({
+        "error", "unsupported", "disabled", "unknown",
+    })
+
+    def __init__(self, analysis):
+        self._analysis = analysis
+
+    def analyze(self, filepath: str, ctx=None) -> dict:
+        if self._analysis is None:
+            raise RuntimeError("AudioAnalysisService unavailable")
+        result = dict(self._analysis.analyze_file(filepath))
+        status = str(result.get("status", "")).lower()
+        result["ok"] = status not in self._FAILURE_STATUSES
+        return result
+
+
 def _build_ports(container: ServiceContainer) -> dict[str, object]:
     """Assemble the port implementations from composed services."""
     from core.scanner_job_adapter import ScannerJobAdapter
@@ -148,7 +185,14 @@ def _build_ports(container: ServiceContainer) -> dict[str, object]:
     device_port = _DeviceSyncPort(container.get("device_sync_service"))
     playlist_port = _PlaylistImportPort(container.get("playlist_service"))
 
+    audio_lab_svc = container.get("audio_lab_service")
+    analysis_port = None
+    if audio_lab_svc is not None:
+        analysis = audio_lab_svc.analysis
+        analysis_port = _AnalysisPort(analysis)
+
     return {
+        "analysis": analysis_port,
         "scan": scan_port,
         "metadata": metadata_port,
         "history": history_port,
@@ -166,6 +210,7 @@ def register_production_job_handlers(job_service, container: ServiceContainer) -
     architecture audits can verify registration happens in composition.
     """
     from core.jobs.handlers import (
+        make_analysis_handler,
         make_device_sync_handler,
         make_device_transfer_handler,
         make_doctor_repair_handler,
@@ -180,6 +225,9 @@ def register_production_job_handlers(job_service, container: ServiceContainer) -
     )
 
     ports = _build_ports(container)
+    if ports.get("analysis") is not None:
+        job_service.register_handler("analysis",
+                                     make_analysis_handler(ports["analysis"]))
     job_service.register_handler("library_scan",
                                  make_library_scan_handler(ports["scan"]))
     job_service.register_handler("library_scan_all",
@@ -210,6 +258,10 @@ def build(container: ServiceContainer) -> None:
     if job_service is None:
         logger.warning("Jobs composition: job_service unavailable — skipping")
         return
+    # CRITICAL ORDER: register handlers BEFORE resume_pending_jobs so recovered
+    # QUEUED jobs for each type have their handler available at start time.
+    # If handlers were absent, resume_pending_jobs marks those jobs FAILED
+    # with HANDLER_UNAVAILABLE. See spec: Handler is registered before resume.
     register_production_job_handlers(job_service, container)
     try:
         stats = job_service.resume_pending_jobs()

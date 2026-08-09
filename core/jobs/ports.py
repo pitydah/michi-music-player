@@ -111,16 +111,12 @@ class DeviceSyncPort(Protocol):
 
 @runtime_checkable
 class AudioLabPort(Protocol):
-    """Port for Audio Lab jobs (reserved — Fase Audio Lab).
+    """Port for Audio Lab analysis jobs.
 
-    No handler is registered in this phase; Audio Lab currently submits
-    durable jobs through AudioLabJobAdapter. The port documents the surface
-    a future handler will receive.
+    Exposes the single surface the analysis handler needs: ``analyze``.
+    The port is closed over by ``make_analysis_handler`` and built from
+    the composed ``AudioAnalysisService`` in ``core/composition/jobs.py``.
     """
-
-    def probe(self, filepath: str, ctx: Any | None = None) -> dict[str, Any]:
-        """Probe an audio file."""
-        ...
 
     def analyze(self, filepath: str, ctx: Any | None = None) -> dict[str, Any]:
         """Run a technical analysis on an audio file."""

@@ -83,3 +83,47 @@ def test_adapter_without_job_service_rejects_infrastructure_unavailable() -> Non
     assert job["status"] == "failed"
     assert job["error_code"] == AudioLabErrorCode.INFRASTRUCTURE_UNAVAILABLE.value
     probe.probe.assert_not_called()
+
+
+def test_analysis_handler_registered_before_resume_pending_jobs() -> None:
+    """Analysis handler must be in _handlers before resume_pending_jobs runs."""
+    from unittest.mock import MagicMock
+
+    from core.composition.jobs import register_production_job_handlers
+
+    svc = DurableJobService(db_path=":memory:")
+
+    job_id = svc.create_job(
+        "analysis", owner="audio_lab",
+        payload={"request": {"filepath": "/tracks/foo.flac"}},
+    )
+
+    analysis_service = MagicMock()
+    analysis_service.analysis = MagicMock()
+    analysis_service.analysis.analyze_file.return_value = {"status": "ok"}
+
+    class _TestContainer:
+        def get(self, name):
+            if name == "audio_lab_service":
+                return analysis_service
+            return None
+
+    container = _TestContainer()
+
+    register_production_job_handlers(svc, container)
+
+    assert "analysis" in svc._handlers, (
+        "analysis handler must be registered BEFORE resume_pending_jobs"
+    )
+
+    stats = svc.resume_pending_jobs()
+    assert stats["handler_unavailable"] == 0, (
+        f"QUEUED analysis job must NOT fail with HANDLER_UNAVAILABLE: {stats}"
+    )
+    assert stats["resumed"] >= 0
+
+    job = svc.get_job(job_id)
+    assert job is not None
+    assert job.state.value != "FAILED", (
+        "QUEUED analysis job must NOT be FAILED when handler is registered"
+    )
