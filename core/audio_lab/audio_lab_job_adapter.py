@@ -326,21 +326,30 @@ class AudioLabJobAdapter(QObject):
         title = payload.get("title") or _DURABLE_TITLES.get(
             _g("type", ""), _g("type", "Audio Lab")
         )
-        started_at = _g("startedAt") or ""
-        finished_at = _g("finishedAt") or ""
-        started_ts = cls._ts_to_epoch(started_at)
-        finished_ts = cls._ts_to_epoch(finished_at) if finished_at else 0.0
+        # Normalise state: JobState enum or raw string → lowercase.
+        raw_state = _g("state", "")
+        if hasattr(raw_state, "value"):
+            state = str(raw_state.value).lower()
+        else:
+            state = str(raw_state).lower()
+        # created_at MUST come from createdAt, never from startedAt.
+        created_at_raw = _g("createdAt") or ""
+        created_ts = cls._ts_to_epoch(created_at_raw)
+        started_at_raw = _g("startedAt") or ""
+        started_ts = cls._ts_to_epoch(started_at_raw) if started_at_raw else 0.0
+        finished_at_raw = _g("finishedAt") or ""
+        finished_ts = cls._ts_to_epoch(finished_at_raw) if finished_at_raw else 0.0
         job_id = _g("id", "")
         errors = _g("errors") or []
         return {
             "id": job_id,
             "type": _g("type", ""),
             "title": title,
-            "status": str(_g("state", "")).lower(),
+            "status": state,
             "progress": _g("progress", 0.0),
             "message": _g("message", ""),
             "request": dict(request),
-            "created_at": started_ts,
+            "created_at": created_ts,
             "started_at": started_ts,
             "finished_at": finished_ts,
             "task_id": f"job_{job_id}",
