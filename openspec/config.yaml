@@ -1,0 +1,35 @@
+# OpenSpec configuration — michi-music-player
+schema: spec-driven
+
+context: |
+  Product: audio-only music player, from-scratch reconstruction (M0 restart, clean workspace at HEAD b2c697b).
+  Tech stack: undecided — Qt/QML/C++ is the anticipated direction until the new design/ADR decides; host tool versions are evidence only, not selected stack.
+  Architecture: undecided — pending explore/proposal/design phases of change m0-foundation-v2.
+  Testing: no build system, test target, framework, tests, or runnable project command; strict_tdd disabled until a test runner exists.
+  Style: generated artifacts in professional English; SDD/OpenSpec conventions per sdd-init v3.0.
+  Artifact store: hybrid (OpenSpec files + Engram observations, new topics sdd-init/michi-music-player-v2 and sdd/m0-foundation-v2/*).
+
+rules:
+  proposal:
+    - State intent, scope, and non-goals for the foundation change
+    - Do not reuse old M0 artifacts or historical topics as phase inputs
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Document architecture decisions with rationale (ADR) for stack selection
+    - Qt/QML/C++ direction must be confirmed or replaced by the design decision; do not assume host versions
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    guidelines:
+      - Follow existing code patterns once the foundation exists
+    tdd: false
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas

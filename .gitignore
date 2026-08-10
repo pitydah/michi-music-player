@@ -1,0 +1,23 @@
+# OS artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# Editor artifacts
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.sublime-*
+.project
+.classpath
+.settings/
+
+# Local AI runtime state
+.atl/
+
+# Environment artifacts
+.env*
+*.log

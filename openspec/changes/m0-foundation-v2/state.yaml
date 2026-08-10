@@ -1,0 +1,25 @@
+M0_BASE: b2c697b53fd0cd9aa172efe47c967d29ec64c9f7
+M0_BASE_TREE: 4b825dc642cb6eb9a060e54bf8d69288fbee4904
+G1: DONE
+G2: DONE
+G2_TRANSITION: IN_PROGRESS→REVIEW→VERIFY→DONE
+G2_GATE:
+  status: PASS
+  evidence: authoritative content; parity; cumulative scope; 170 lines; rollback; G1 preserved; G3+ BACKLOG
+G3: DONE
+G3_TRANSITION: BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE
+G3_GATE:
+  status: PASS
+  evidence: 357 lines; M0-M8 present; all 10 fields per phase; exact phase names; ws/roadmap/all-fields/per-phase all PASS
+G4_PLUS: BACKLOG
+SDD:
+  - openspec/config.yaml
+  - openspec/changes/m0-foundation-v2/design.md
+  - openspec/changes/m0-foundation-v2/exploration.md
+  - openspec/changes/m0-foundation-v2/proposal.md
+  - openspec/changes/m0-foundation-v2/specs/architecture/spec.md
+  - openspec/changes/m0-foundation-v2/specs/governance/spec.md
+  - openspec/changes/m0-foundation-v2/specs/legacy-evidence/spec.md
+  - openspec/changes/m0-foundation-v2/tasks.md
+  - .atl/.skill-registry.cache.json
+  - .atl/skill-registry.md
