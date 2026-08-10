@@ -16,7 +16,7 @@ ApplicationWindow {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 32
-        spacing: 24
+        spacing: 20
 
         // Header
         Text {
@@ -30,13 +30,13 @@ ApplicationWindow {
         // Now Playing
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 120
+            Layout.preferredHeight: 160
             color: "#16213e"
             radius: 12
 
             ColumnLayout {
                 anchors.centerIn: parent
-                spacing: 8
+                spacing: 10
 
                 Text {
                     Layout.alignment: Qt.AlignHCenter
@@ -47,15 +47,35 @@ ApplicationWindow {
                     Layout.maximumWidth: 400
                 }
 
-                Text {
+                // Seek bar
+                RowLayout {
                     Layout.alignment: Qt.AlignHCenter
-                    text: {
-                        var pos = formatTime(playback.position)
-                        var dur = formatTime(playback.duration)
-                        return pos + " / " + dur
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Text {
+                        text: formatTime(playback.position)
+                        font.pixelSize: 12
+                        color: "#7777aa"
+                        Layout.preferredWidth: 40
                     }
-                    font.pixelSize: 13
-                    color: "#7777aa"
+
+                    Slider {
+                        id: seekSlider
+                        Layout.fillWidth: true
+                        from: 0
+                        to: Math.max(playback.duration, 1)
+                        value: playback.position
+                        enabled: playback.duration > 0
+                        onMoved: playback.seek(value)
+                    }
+
+                    Text {
+                        text: formatTime(playback.duration)
+                        font.pixelSize: 12
+                        color: "#7777aa"
+                        Layout.preferredWidth: 40
+                    }
                 }
 
                 Text {
@@ -68,10 +88,27 @@ ApplicationWindow {
             }
         }
 
+        // Error display
+        Rectangle {
+            Layout.fillWidth: true
+            visible: errorText.text !== ""
+            color: "#3d1a2e"
+            radius: 6
+            Layout.preferredHeight: 36
+
+            Text {
+                id: errorText
+                anchors.centerIn: parent
+                text: "" // populated from C++ if error exists
+                color: "#ee6666"
+                font.pixelSize: 12
+            }
+        }
+
         // Controls
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
-            spacing: 16
+            spacing: 12
 
             Button {
                 text: "▶ Play"
@@ -101,6 +138,7 @@ ApplicationWindow {
                 text: "Vol: " + playback.volume
                 font.pixelSize: 13
                 color: "#8888aa"
+                Layout.preferredWidth: 35
             }
 
             Slider {
@@ -108,7 +146,13 @@ ApplicationWindow {
                 to: 100
                 value: playback.volume
                 onValueChanged: playback.set_volume(value)
-                Layout.preferredWidth: 150
+                Layout.preferredWidth: 140
+            }
+
+            Button {
+                text: playback.muted ? "🔇" : "🔊"
+                onClicked: playback.set_muted(!playback.muted)
+                flat: true
             }
         }
 
@@ -141,7 +185,7 @@ ApplicationWindow {
 
         Text {
             Layout.alignment: Qt.AlignHCenter
-            text: "Domain → Application → AudioPort → Backend → QML"
+            text: "M3 · Seek · Volume · Error handling"
             font.pixelSize: 11
             color: "#444466"
         }

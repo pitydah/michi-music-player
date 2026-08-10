@@ -42,3 +42,12 @@ class QtMultimediaBackend(AudioPort):
 
     def set_muted(self, muted: bool) -> None:
         self._audio_output.setMuted(muted)
+
+    def seek(self, position_ms: int) -> None:
+        self._player.setPosition(position_ms)
+
+    def position(self) -> int:
+        return self._player.position()
+
+    def duration(self) -> int:
+        return self._player.duration()

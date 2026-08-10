@@ -85,9 +85,8 @@ class ApplicationContainer:
     def _sync_position(self) -> None:
         if self._backend is None or self._playback_service is None or self._bridge is None:
             return
-        player = self._backend.player
         self._playback_service.update_position(
-            position_ms=player.position(),
-            duration_ms=player.duration(),
+            position_ms=self._backend.position(),
+            duration_ms=self._backend.duration(),
         )
         self._bridge.notify_state()

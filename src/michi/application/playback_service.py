@@ -41,6 +41,20 @@ class PlaybackService:
         self._state.status = PlaybackStatus.STOPPED
         self._state.position_ms = 0
 
+    def seek(self, position_ms: int) -> None:
+        self._audio.seek(position_ms)
+        self._state.position_ms = position_ms
+
+    def switch_track(self, file_path: Path) -> None:
+        """Safe track switch: stop current, load new, play."""
+        try:
+            self._audio.stop()
+        except Exception:
+            pass  # backend may have already stopped
+        self._state.status = PlaybackStatus.STOPPED
+        self._state.error_message = None
+        self.load_and_play(file_path)
+
     def set_volume(self, value: int) -> None:
         clamped = max(0, min(100, value))
         self._state.volume = clamped

@@ -92,3 +92,13 @@ class PlaybackBridge(QObject):
     def set_muted(self, muted: bool) -> None:
         self._service.set_muted(muted)
         self.state_changed.emit()
+
+    @Slot(int)
+    def seek(self, position_ms: int) -> None:
+        self._service.seek(position_ms)
+        self.state_changed.emit()
+
+    @Slot(str)
+    def switch_track(self, file_path: str) -> None:
+        self._service.switch_track(Path(file_path))
+        self.state_changed.emit()
