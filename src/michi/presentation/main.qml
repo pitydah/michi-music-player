@@ -11,6 +11,12 @@ ApplicationWindow {
     minimumHeight: 480
     title: "Michi Music Player"
 
+    // Keyboard shortcuts
+    Shortcut { sequence: "Space"; onActivated: playback.status === "playing" ? playback.pause() : playback.play() }
+    Shortcut { sequence: "Left"; onActivated: queue.previous_track() }
+    Shortcut { sequence: "Right"; onActivated: queue.next_track() }
+    Shortcut { sequence: "Ctrl+Q"; onActivated: window.close() }
+
     color: "#1a1a2e"
 
     RowLayout {
