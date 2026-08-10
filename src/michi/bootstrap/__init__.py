@@ -6,12 +6,13 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QStandardPaths, QUrl, QTimer
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
-from PySide6.QtMultimedia import QMediaPlayer
 
 from michi.infrastructure.qt_backend import QtMultimediaBackend
 from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
+from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
 from michi.application.playback_service import PlaybackService
 from michi.application.queue_service import QueueService
+from michi.application.coordinator import PlaybackCoordinator
 from michi.presentation.playback_bridge import PlaybackBridge
 from michi.presentation.queue_bridge import QueueBridge
 from michi.presentation.library_bridge import LibraryBridge
@@ -32,8 +33,10 @@ class ApplicationContainer:
         self._engine: QQmlApplicationEngine | None = None
         self._backend: QtMultimediaBackend | None = None
         self._settings_repo: SQLiteSettingsRepository | None = None
+        self._scanner: FilesystemLibraryScanner | None = None
         self._playback_service: PlaybackService | None = None
         self._queue_service: QueueService | None = None
+        self._coordinator: PlaybackCoordinator | None = None
         self._playback_bridge: PlaybackBridge | None = None
         self._queue_bridge: QueueBridge | None = None
         self._library_bridge: LibraryBridge | None = None
@@ -48,34 +51,43 @@ class ApplicationContainer:
         self._app.setApplicationVersion("0.1.0")
         self._app.setOrganizationName("Michi")
 
-        # Infrastructure
+        # ── Infrastructure ──────────────────────────────────────────
         self._backend = QtMultimediaBackend()
         self._settings_repo = SQLiteSettingsRepository(_data_dir() / "michi.db")
+        self._scanner = FilesystemLibraryScanner()
 
-        # Load persisted settings
-        settings = self._settings_repo.load()
-        self._backend.set_volume(settings.volume)
-        self._backend.set_muted(settings.muted)
-
-        # Application — explicit injection
+        # ── Application ─────────────────────────────────────────────
         self._playback_service = PlaybackService(self._backend)
-        self._playback_service._state.volume = settings.volume
-        self._playback_service._state.muted = settings.muted
-
         self._queue_service = QueueService(self._playback_service)
-        self._backend.player.mediaStatusChanged.connect(self._on_media_status)
 
-        # Presentation bridges
+        # Restore persisted settings via public API
+        settings = self._settings_repo.load()
+        self._playback_service.restore_volume(settings.volume, settings.muted)
+
+        # Coordinator: track end → queue advance
+        self._coordinator = PlaybackCoordinator(self._backend, self._queue_service)
+
+        # ── Presentation bridges ────────────────────────────────────
         self._playback_bridge = PlaybackBridge(self._playback_service)
         self._queue_bridge = QueueBridge(self._queue_service)
-        self._library_bridge = LibraryBridge(self._queue_service)
+        self._library_bridge = LibraryBridge(self._scanner, self._queue_service)
 
-        # Position sync
+        # Wire bridge notifications through the coordinator callback
+        def _notify_bridges() -> None:
+            if self._queue_bridge:
+                self._queue_bridge.notify()
+            if self._playback_bridge:
+                self._playback_bridge.notify_state()
+
+        self._coordinator.on_state_change(_notify_bridges)
+        self._coordinator.start()
+
+        # Position sync — infrastructure concern, lives in bootstrap
         self._position_timer = QTimer()
         self._position_timer.timeout.connect(self._sync_position)
         self._position_timer.start(250)
 
-        # QML engine
+        # ── QML engine ─────────────────────────────────────────────
         self._engine = QQmlApplicationEngine()
         self._engine.quit.connect(self._app.quit)
         root_context = self._engine.rootContext()
@@ -96,25 +108,30 @@ class ApplicationContainer:
         return self._app.exec()
 
     def shutdown(self) -> None:
-        # Persist settings
-        if self._playback_service is not None and self._settings_repo is not None:
-            state = self._playback_service.state
-            from michi.domain.settings import SettingsState
-            self._settings_repo.save(SettingsState(
-                volume=state.volume,
-                muted=state.muted,
-            ))
+        if self._coordinator:
+            self._coordinator.stop()
 
         if self._position_timer is not None:
             self._position_timer.stop()
+
+        # Persist settings via public API
+        if self._playback_service is not None and self._settings_repo is not None:
+            from michi.domain.settings import SettingsState
+            s = self._playback_service.state
+            self._settings_repo.save(SettingsState(volume=s.volume, muted=s.muted))
+
         if self._backend is not None:
-            self._backend.player.stop()
+            self._backend.stop()
+
         if self._engine is not None:
             self._engine.deleteLater()
+
         self._engine = None
         self._position_timer = None
+        self._library_bridge = None
         self._queue_bridge = None
         self._playback_bridge = None
+        self._coordinator = None
         self._queue_service = None
         self._playback_service = None
         self._settings_repo = None
@@ -129,10 +146,3 @@ class ApplicationContainer:
             duration_ms=self._backend.duration(),
         )
         self._playback_bridge.notify_state()
-
-    def _on_media_status(self, status: QMediaPlayer.MediaStatus) -> None:
-        if status == QMediaPlayer.EndOfMedia:
-            if self._queue_service is not None and self._queue_service.state.has_next:
-                self._queue_service.next()
-                self._queue_bridge.notify()
-                self._playback_bridge.notify_state()

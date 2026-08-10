@@ -17,6 +17,14 @@ class PlaybackService:
     def state(self) -> PlaybackState:
         return self._state
 
+    def restore_volume(self, volume: int, muted: bool) -> None:
+        """Restore persisted settings after construction. Not a mutation path."""
+        clamped = max(0, min(100, volume))
+        self._state.volume = clamped
+        self._state.muted = muted
+        self._audio.set_volume(clamped)
+        self._audio.set_muted(muted)
+
     def load_and_play(self, file_path: Path) -> None:
         self._audio.load(file_path)
         self._audio.play()
@@ -45,16 +53,6 @@ class PlaybackService:
         self._audio.seek(position_ms)
         self._state.position_ms = position_ms
 
-    def switch_track(self, file_path: Path) -> None:
-        """Safe track switch: stop current, load new, play."""
-        try:
-            self._audio.stop()
-        except Exception:
-            pass  # backend may have already stopped
-        self._state.status = PlaybackStatus.STOPPED
-        self._state.error_message = None
-        self.load_and_play(file_path)
-
     def set_volume(self, value: int) -> None:
         clamped = max(0, min(100, value))
         self._state.volume = clamped
@@ -67,3 +65,10 @@ class PlaybackService:
     def update_position(self, position_ms: int, duration_ms: int) -> None:
         self._state.position_ms = position_ms
         self._state.duration_ms = duration_ms
+
+    def switch_track(self, file_path: Path) -> None:
+        """Safe track switch: idempotent stop, load new, play."""
+        self._audio.stop()
+        self._state.status = PlaybackStatus.STOPPED
+        self._state.error_message = None
+        self.load_and_play(file_path)

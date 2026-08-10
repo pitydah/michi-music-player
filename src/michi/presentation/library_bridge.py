@@ -4,17 +4,23 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
+from michi.application.library_port import LibraryScannerPort
 from michi.application.queue_service import QueueService
-from michi.domain.scanner import scan_directory
 
 
 class LibraryBridge(QObject):
-    """Thin adapter: QML intent → scan → QueueService."""
+    """Thin adapter: QML intent → LibraryScannerPort → QueueService."""
 
     library_changed = Signal()
 
-    def __init__(self, queue_service: QueueService, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        scanner: LibraryScannerPort,
+        queue_service: QueueService,
+        parent: QObject | None = None,
+    ) -> None:
         super().__init__(parent)
+        self._scanner = scanner
         self._queue = queue_service
         self._files: list[str] = []
         self._filtered: list[str] = []
@@ -36,7 +42,7 @@ class LibraryBridge(QObject):
 
     @Slot(str)
     def scan(self, directory: str) -> None:
-        paths = scan_directory(Path(directory))
+        paths = self._scanner.scan(Path(directory))
         self._files = [str(p) for p in paths]
         self._filtered = []
         self._current_dir = directory
