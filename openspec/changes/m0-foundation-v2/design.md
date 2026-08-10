@@ -2,74 +2,69 @@
 
 ## Technical Approach
 
-M0 is documentation-only. D1-D10 are Proposed drafts. Domain/Application use C++20 without Qt; Qt 6 stays in Infrastructure, Presentation, and bootstrap. Later milestones select tooling, audio, and persistence.
+M0 is documentation-only. D1-D10 are resolved autonomously as Proposed ADR drafts. Domain/Application use C++20 without Qt; Qt 6 stays in Infrastructure, Presentation, and bootstrap. Later milestones select tooling and backends.
 
-## Proposed ADR Drafts
+## Proposed ADRs
 
-| ID | Draft recommendation | Rationale | Status |
-|---|---|---|---|
-| D1 | C++20; Qt 6 only outside Domain/Application | Portable core without an arbitrary Qt floor | Proposed |
-| D2 | Domain, Application, Infrastructure, Presentation; inward compile dependencies | Keeps policy independent from frameworks and I/O | Proposed |
-| D3 | Playback, Queue, Library, Settings, and Application state are the five canonical authorities; UI projections are disposable | One truth per state category | Proposed |
-| D4 | Bootstrap composition root, explicit wiring, constructor injection; no globals/locator | Makes the object graph visible and replaceable | Proposed |
-| D5 | Explicit asynchronous lifecycle below | Prevents UI stalls and ambiguous teardown | Proposed |
-| D6 | Application-owned cancellable ExecutorPort; Infrastructure worker pool; Domain mutations on UI/main thread | Keeps Qt/threading out of policy and Domain lock-free | Proposed |
-| D7 | Q_PROPERTY, signals, and Q_INVOKABLE only in Presentation adapters; Application exposes plain C++ ports/results | Keeps QML replaceable and Application testable | Proposed |
-| D8 | Application-owned AudioEnginePort; backend/codecs/buffers deferred to M2 Infrastructure | Avoids premature backend coupling | Proposed |
-| D9 | Application-owned settings/cache/user-data ports; durable schema deferred to M5 | Preserves storage substitution and recovery design space | Proposed |
-| D10 | Verified command/effect transaction below | Prevents stale success and fake cross-system atomicity | Proposed |
+**D1: C++20 Domain Core, Qt 6 Infrastructure** (2026-08-10, Proposed) — Context: portable core independent of UI framework. Decision: C++20 for Domain/Application without Qt; Qt 6 only in Infrastructure/Presentation/bootstrap. Consequences: Domain compiles without Qt; build enforces boundary. Alternatives: pure Qt rejected for coupling; Rust rejected for QML interop gaps.
 
-Each ADR MUST contain exactly seven distinct fields: Title, Date, Context, Decision, Consequences, Alternatives considered, Status. Date replaces none; Status stays Proposed until acceptance.
+**D2: Four-Layer Architecture, Inward Dependencies** (2026-08-10, Proposed) — Context: protect domain purity. Decision: Presentation→Application→Domain, Infrastructure inward implementing Application ports. Compile: Presentation→Application, Infrastructure→Application ports, Application→Domain, Domain→no outward deps. Consequences: Domain unaware of I/O or UI. Alternatives: three-layer rejected for forcing orchestration into domain.
 
-## Dependency And Runtime Views
+**D3: Five Canonical State Authorities** (2026-08-10, Proposed) — Context: state duplication produces divergence. Decision: PlaybackState, QueueState, LibraryState, SettingsState, ApplicationState. UI projections are disposable read-only views. Consequences: one truth per category; mutations route through Application. Alternatives: distributed state rejected for consistency; monolithic rejected for coupling.
 
-Compile time only:
+**D4: Composition Root, Constructor Injection** (2026-08-10, Proposed) — Context: implicit wiring hides dependencies. Decision: bootstrap composition root wires full object graph via constructor injection; no locator, singleton, or God. Consequences: all deps visible; any substitutable for testing. Alternatives: singleton rejected for hidden deps; locator rejected for runtime ambiguity.
 
-```text
-Presentation -> Application
-Infrastructure -> Application ports
-Application -> Domain
-Domain -> no outward dependencies
+**D5: Asynchronous Lifecycle, Bounded Shutdown** (2026-08-10, Proposed) — Context: handle platform pause/resume and clean teardown. Decision: Bootstrap→Init→Create→Running⇄Pause→ShuttingDown→Stopped. Init async before Running. Pause cancels nonessential work, preserves state; resume reacquires. ShuttingDown cancels, persists, verifies, stops workers within deadlines; UI never blocks. Failure records diagnostics, reaches Stopped. Alternatives: sync shutdown rejected for UI stalls.
+
+**D6: Application Executor Port, Worker Pool** (2026-08-10, Proposed) — Context: async work must not block UI or leak threads into Domain. Decision: Application owns cancellable executor port; Infrastructure provides bounded worker pool; Domain mutations only on UI/main thread; workers return immutable results via main-thread callbacks. Consequences: Domain lock-free; I/O isolated. Alternatives: internal threading rejected for lock complexity.
+
+**D7: QML Intent, Read-Only State Boundary** (2026-08-10, Proposed) — Context: QML must not leak into Application. Decision: QML sends intent, receives read-only projections. Q_PROPERTY, signals, Q_INVOKABLE only in Presentation adapters. Application exposes plain C++ ports. Consequences: Application testable without QML; adapters are thin layers. Alternatives: direct QML access rejected for testability.
+
+**D8: Application-Owned IAudioEngine Port** (2026-08-10, Proposed) — Context: backend selection locks codecs and platform deps early. Decision: Application owns IAudioEngine port (play, pause, seek, stop, volume); backend, codecs, buffers deferred to M2. Consequences: M0-M1 test against port; M2 selects backend without Application changes. Alternatives: selecting now rejected for premature coupling.
+
+**D9: Application-Owned Persistence Ports, Domain Unaware** (2026-08-10, Proposed) — Context: storage constrains future upgrades. Decision: Application owns persistence ports; Domain unaware of storage. Settings use JSON key-value schema; app data uses SQLite with versioned migrations. Consequences: backends swappable; schema evolution explicit; domain not DB-coupled. Alternatives: opaque file rejected for query complexity.
+
+**D10: Verified Command/Effect Pipeline** (2026-08-10, Proposed) — Context: multi-effect ops must not claim success before effect verification. Decision: prepare→execute→verify→publish pipeline. Single-effect: prepare, execute compensable effect, verify, commit, publish. Multi-effect: prepare all, execute compensables, verify all, commit, publish once. Never publish before all-effect verification. Partial failure compensates or idempotently reconciles; publishes honest failure, never stale success. Consequences: no fake atomicity. Alternatives: two-phase commit rejected for non-transactional systems.
+
+## Dependency Views
+
+Compile time:
+
+```
+Presentation → Application
+Infrastructure → Application ports
+Application → Domain
+Domain → no outward dependencies
 ```
 
-Runtime only:
+Runtime:
 
-```text
-Presentation intent -> Application -> Domain mutation
-Application -> port -> Infrastructure effect
-Application projection -> Presentation
 ```
-
-## Lifecycle And Concurrency
-
-`Created -> Initialized -> Running <-> Backgrounded/Suspended -> Running (resume) -> ShuttingDown -> Stopped`.
-
-Initialization completes asynchronously before Running. Background/suspend cancels nonessential work, preserves state, and releases resources; resume reacquires and verifies. Shutdown asynchronously cancels, persists, verifies, and stops workers within stage/overall deadlines. The UI never joins or blocks. Failure records diagnostics and an idempotent recovery marker, reports degradation, abandons only noncritical work, and reaches Stopped; safety-critical failure forces controlled termination.
-
-Domain is not thread-safe. Workers return immutable results through main-thread callbacks; only Application mutates Domain.
-
-## Command/Effect Ordering
-
-Single-effect operations prepare, execute a compensable/idempotent effect, verify it, commit canonical state, then publish once. Multi-effect operations prepare all effects, execute compensable effects, verify all, commit canonical state, then publish once. D10 never publishes before effect verification. Partial failure compensates or idempotently reconciles completed effects and publishes only an honest failure/degraded state, never stale success.
+Presentation intent → Application → Domain mutation
+Application → port → Infrastructure effect
+Application projection → Presentation
+```
 
 ## ADR Dependency Sequence
 
-Only this selective sequence is approved: `D1 -> D3/D4 -> D2/D5/D6 -> D7/D9/D10 -> D8`.
+`D1 → D3/D4 → D2/D5/D6 → D7/D9/D10 → D8`
 
-## Measurable Fitness Checks
+## Fitness Gates
 
-Apply runs shell assertions; M1 automates the same criteria.
+| Check           | Assertion                                                                                                                             |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Boundaries      | Four compile arrows; no Qt in Domain/Application; no QML outside Presentation                                                         |
+| State/Lifecycle | Five canonical authorities; lifecycle graph complete; main-thread mutation; cancellation/shutdown deadlines                           |
+| Scope           | Exactly 11 paths; README links all governance; .gitignore stack-neutral; reject all 22 exclusions                                     |
+| Governance      | M0-M16 ten roadmap fields; Component/WP states; DoR/DoD/Golden Path; invariants; six debt fields; D1-D10 "open for autonomous Design" |
+| Legacy          | 17 ledger fields; one classification; named SPLIT children; v2-over-Legacy; WP-state binding; zero copies; ref `63914a00`             |
+| ADR/Effects     | Ten ADRs, seven fields, Proposed; selective sequence; effect verification before publish; partial failure compensation                |
+| Parity          | Byte-compare normalized `design.md` with Engram `sdd/m0-foundation-v2/design`                                                         |
 
-| Check | Executable/planned assertion |
-|---|---|
-| Boundaries | Parse diagrams/ADRs; allow exactly the four compile arrows above; reject Qt tokens in Domain/Application and QML API outside Presentation |
-| State/lifecycle | Count exactly five authorities; graph-check every listed lifecycle edge, resume edge, main-thread mutation rule, cancellation, and shutdown deadlines |
-| Scope | Assert exactly these 11 paths: `README.md`, `.gitignore`, `docs/MASTER_ROADMAP_1.0.md`, `docs/ARCHITECTURE.md`, `docs/INVARIANTS.md`, `docs/MIGRATION_LEDGER.md`, `docs/STATUS_MATRIX.md`, `docs/DEFINITION_OF_DONE.md`, `docs/TECHNICAL_DEBT_REGISTER.md`, `docs/POST_1_0_BACKLOG.md`, `docs/adr/`; require README links every governance authority and `.gitignore` contains only stack-neutral OS/editor/environment patterns; reject code/tests/build/src/qml and all 22 spec exclusions |
-| Governance | Parse M0-M16; require exact ten roadmap fields and routed test layer/scope/coverage; require exact Component/WP labels/transitions, DoR/DoD, Golden Path, invariants, six debt fields, backlog name/rationale; verify each D1-D10 says "open for autonomous Design" and architecture invariants require documentation-only M0, decisions outside deliverables, and ADR-backed closure |
-| Legacy | Parse exactly 17 ledger fields; one KEEP/ADAPT/SPLIT/REWRITE/DISCARD, named SPLIT children, exact evidence label, new-tests-only, and v2-over-Legacy conflict precedence; bind migration state exactly to BACKLOG/READY/IN_PROGRESS/REVIEW/VERIFY/BLOCKED/DONE/DEFERRED; prove zero copies by hashes/paths and bind sources to read-only Git `63914a00` |
-| ADR/effects | Require ten ADRs, the seven-field format, Status Proposed, exact selective sequence, and model-check no publish precedes all-effect verification; inject partial failures to require compensation/reconciliation and honest state |
-| Hybrid parity | Normalize line endings/trailing space, strip Engram metadata, then byte-compare `design.md` with Engram topic `sdd/m0-foundation-v2/design` |
+## Open Implementation Decisions
 
-## Migration / Threat Matrix
+Concrete executor and thread pool sizing; worker pool capacity and rejection strategy; JSON settings schema; SQLite migration framework; audio backend candidates for M2; shutdown timeout values; cancellation granularity within effects.
 
-No migration; rollback deletes the 11 paths. Routing, shell, subprocess, VCS/PR automation, executable classification, and process integration are N/A: M0 runs no product process. Path and Git assertions validate documentation only.
+## Migration / Rollout
+
+No data migration. Apply creates documentation artifacts. Revert removes all 11 paths before M1. Threat matrix: N/A — M0 runs no product process.

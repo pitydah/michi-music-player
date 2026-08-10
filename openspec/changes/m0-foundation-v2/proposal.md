@@ -2,7 +2,7 @@
 
 ## Intent
 
-Establish the documentation-only foundation for a from-scratch music player while stack and architecture remain undecided.
+Establish documentation-only foundation for from-scratch music player. Stack, architecture undecided; M0 produces no code, tests, build, QML, or runtime behaviour.
 
 ## Scope
 
@@ -12,15 +12,15 @@ Establish the documentation-only foundation for a from-scratch music player whil
 
 ### Out
 
-Exclusions (22): playback; audio engine; queue; library; database; playlists; search; metadata editor; Audio Lab; Disc Lab; Michi AI; sync; NowPlaying; functional navigation; product QML; server integrations; home audio; recognition; radio; lyrics; Michi ecosystem features; video.
+playback; audio engine; queue; library; database; playlists; search; metadata editor; Audio Lab; Disc Lab; Michi AI; sync; NowPlaying; functional navigation; product QML; server integrations; home audio; recognition; radio; lyrics; Michi ecosystem features; video.
 
 ## Capabilities
 
 ### New
 
-- `governance`: `docs/MASTER_ROADMAP_1.0.md` owns roadmap; `docs/STATUS_MATRIX.md` owns status; `docs/DEFINITION_OF_DONE.md` owns DoR, DoD, and Golden Path; `docs/INVARIANTS.md` owns freeze/reopen reasons, P0/P1 0/0 release gate, feature freeze, WIP limits, baby steps, and new-tests-only; the roadmap routes each phase’s new-test strategy.
-- `architecture`: `docs/ARCHITECTURE.md` routes D1 language/runtime, D2 layers, D3 state authorities, D4 composition, D5 lifecycle, D6 concurrency, D7 QML boundary, D8 audio port, D9 persistence, and D10 errors/effects; `docs/adr/` records decisions. All D1-D10 remain open for autonomous Design; no mechanism is selected.
-- `legacy-evidence`: `docs/MIGRATION_LEDGER.md` owns exactly: ID, capability/responsibility, Legacy source, functional description, Legacy state, Legacy dependencies, known problems, decision, justification, new destination, new contract, Legacy tests found (reference only), new tests required, migration state, risks, technical debt, frozen. Each responsibility receives exactly one KEEP, ADAPT, SPLIT, REWRITE, or DISCARD classification; SPLIT requires named children. Individual or section-scoped `LEGACY EVIDENCE` labels mark non-authoritative evidence; v2 specifications prevail. Zero-copy forbids duplicated Legacy files. Legacy tests are read-only references, never executed; new evidence requires new tests.
+- `governance`: `docs/MASTER_ROADMAP_1.0.md` routes M0-M16, each with 10 fields: objective, scope, out-of-scope, dependencies, deliverables, new-test strategy, entry/exit criteria, acceptance gate, risks. `docs/MIGRATION_LEDGER.md` routes 17-field records. `docs/STATUS_MATRIX.md` routes component states (UNKNOWN→AUDITED→FUNCTIONAL→TESTED→STABLE→FROZEN; BROKEN, PARTIAL exceptional) and WP states (BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE; BLOCKED interrupt resumes prior; DEFERRED via scope-change only). `docs/DEFINITION_OF_DONE.md` routes DoR, DoD, Golden Path. `docs/INVARIANTS.md` routes P0/P1=0, feature freeze, WIP limits, baby steps, new-tests-only, freeze/reopen reasons.
+- `architecture`: `docs/ARCHITECTURE.md` routes D1 language/runtime, D2 layers, D3 state authorities, D4 composition, D5 lifecycle, D6 concurrency, D7 QML boundary, D8 audio port, D9 persistence, D10 errors/effects. `docs/adr/` records decisions. All D1-D10 open; no mechanism preselected.
+- `legacy-evidence`: `docs/MIGRATION_LEDGER.md` routes 17 fields: ID, capability/responsibility, Legacy source, functional description, Legacy state, Legacy dependencies, known problems, decision, justification, new destination, new contract, Legacy tests found (reference only), new tests required, migration state, risks, technical debt, frozen. One KEEP, ADAPT, SPLIT, REWRITE, DISCARD per responsibility. KEEP never copies; SPLIT requires named children. `LEGACY EVIDENCE` labels (individual/section-scoped) mark non-authoritative evidence; v2 specifications prevail. Legacy tests are reference-only, never executed.
 
 ### Modified
 
@@ -28,36 +28,44 @@ None.
 
 ## Approach
 
-Use an ADR-first, contract-indexed pass to create exactly the listed documents and directory. Assign one owner per obligation and verify terminology. Produce no code, tests, build files, product QML, integrations, or runtime behavior.
+ADR-first, contract-indexed. One obligation, one owner. Documentation-verifiable; zero runtime.
 
 ## Affected Areas
 
-| Path | Impact |
-|---|---|
-| `README.md` | New identity and index |
-| `.gitignore` | New neutral exclusions |
-| `docs/MASTER_ROADMAP_1.0.md` | New roadmap authority |
-| `docs/ARCHITECTURE.md` | New boundary authority |
-| `docs/INVARIANTS.md` | New constraint authority |
-| `docs/MIGRATION_LEDGER.md` | New evidence authority |
-| `docs/STATUS_MATRIX.md` | New status authority |
-| `docs/DEFINITION_OF_DONE.md` | New readiness/completion authority |
-| `docs/TECHNICAL_DEBT_REGISTER.md` | New debt authority |
-| `docs/POST_1_0_BACKLOG.md` | New deferral authority |
-| `docs/adr/` | New decision directory |
+| Path                              | Impact                |
+| --------------------------------- | --------------------- |
+| `README.md`                       | Identity, index       |
+| `.gitignore`                      | Exclusions            |
+| `docs/MASTER_ROADMAP_1.0.md`      | Phase authority       |
+| `docs/ARCHITECTURE.md`            | Boundary authority    |
+| `docs/INVARIANTS.md`              | Invariant authority   |
+| `docs/MIGRATION_LEDGER.md`        | Evidence authority    |
+| `docs/STATUS_MATRIX.md`           | State authority       |
+| `docs/DEFINITION_OF_DONE.md`      | DoR, DoD, Golden Path |
+| `docs/TECHNICAL_DEBT_REGISTER.md` | Debt authority        |
+| `docs/POST_1_0_BACKLOG.md`        | Deferral authority    |
+| `docs/adr/`                       | Decision directory    |
 
 ## Risks
 
-Terminology drift creates competing authorities; Legacy evidence could imply inherited design; documentation could claim nonexistent behavior. Exact names, canonical ownership, classifications, and documentation-only acceptance mitigate these risks.
+| Risk                                        | Likelihood | Mitigation                             |
+| ------------------------------------------- | ---------- | -------------------------------------- |
+| Terminology drift                           | Medium     | Canonical field and state names        |
+| Legacy evidence implies design authority    | Medium     | Labels, classifications, v2 precedence |
+| Documentation claims nonexistent capability | Low        | Documentation-verifiable acceptance    |
 
 ## Rollback
 
-Remove the 11 new paths to restore the empty product workspace; no data or runtime migration exists.
+Delete 11 paths. No data or runtime state.
 
 ## Dependencies
 
-Approved exploration #664, fresh init #662/#663, and the original user contract.
+Exploration #664, init #662/#663, user contract.
 
 ## Success Criteria
 
-All routed obligations, paths, and exclusions verify exactly; Design remains open; no prohibited artifact or Legacy copy exists.
+- [ ] 11 scope-in paths exist, obligations routed
+- [ ] 22 exclusions absent
+- [ ] D1-D10 all open
+- [ ] No code, tests, build, src/, qml/, AGENTS.md, review-package
+- [ ] No Legacy file copy
