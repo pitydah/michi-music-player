@@ -1,4 +1,4 @@
-# Apply Progress: M0 Foundation v2 — G1+G2+G3 (Batches 1–3)
+# Apply Progress: M0 Foundation v2 — G1+G2+G3+G4 (Batches 1–4)
 
 ## Immutable Anchors
 
@@ -10,9 +10,9 @@
 
 - **Delivery strategy**: auto-chain
 - **Chain strategy**: stacked-to-main
-- **Current work unit**: G3 (task 1.3)
-- **PR boundary**: `docs/MASTER_ROADMAP_1.0.md` only (stacked on G2)
-- **Estimated review budget**: 357 lines (additions); within ≤400 limit
+- **Current work unit**: G4 (task 1.4)
+- **PR boundary**: `docs/MASTER_ROADMAP_1.0.md` only (stacked on G3)
+- **Estimated review budget**: 753 lines (357 M0-M8 + 396 M9-M16); 396 new within ≤400 limit
 
 ## Mode
 
@@ -388,14 +388,233 @@ N/A — docs-only milestone, no build/test/runtime target exists.
 | Runtime harness command/scenario and exact result | N/A — docs-only; no build system, test target, framework, or runnable project command exists (config.yaml `test_command: ""`, `build_command: ""`) |
 | Rollback boundary | `docs/MASTER_ROADMAP_1.0.md` — exact file; revert tasks.md G3 checkbox, state.yaml G3 lines, apply-progress.md G3 section; G1+G2 files preserved |
 
+### 1.4 G4←G3: Master Roadmap M9–M16
+
+- **Status**: DONE (verified 2026-08-10)
+- **Transition**: BACKLOG → READY → IN_PROGRESS → REVIEW → VERIFY → DONE
+- **Files**: `docs/MASTER_ROADMAP_1.0.md` (753 lines; 357 M0-M8 + 396 M9-M16)
+- **Total**: 396 new lines (within ≤400 budget)
+
+#### Verification Evidence
+
+| Check | Command | Result |
+|---|---|---|
+| Whitespace | `ws` | PASS — no trailing whitespace or merge conflicts |
+| Scope | `scope G4` | PASS — exact file: MASTER_ROADMAP_1.0.md (same as G3) |
+| Roadmap M9-M16 | `roadmap 9 16` | PASS — M9 through M16 all found as whole words; all 10 field labels present |
+| Per-phase 10 fields M9-M16 | Per-phase field extraction | PASS — every M9–M16 section contains all 10 fields |
+| Phase name exactness | `grep -qwF` exact names | PASS — M9 UI Foundation, M10 Settings & Persistence, M11 Resilience, M12 Performance, M13 Packaging, M14 Beta, M15 Release Candidate, M16 Michi Music Player 1.0 Stable |
+| Line budget ≤400 new | `wc -l` | PASS — 396 new lines; 753 total |
+| Prettier formatting | `npx prettier --write` | PASS — file unchanged (already conformant) |
+| G1+G2+G3 preserved | File content unchanged | PASS — M0–M8 section identical to G3 exit state |
+| Cumulative scope G1234 | `scope G1234` | PASS — 5 files: .gitignore, STATUS_MATRIX.md, DEFINITION_OF_DONE.md, INVARIANTS.md, MASTER_ROADMAP_1.0.md |
+
+#### Spec Trace
+
+| # | Obligation | Status |
+|---|---|---|
+| 1 | Governance Spec: Master Roadmap M0–M16 | PASS — M0–M16 all present with complete 10-field sections |
+| 2 | Governance Spec: 10 fields non-empty per phase M9-M16 | PASS — all 10 field labels present with non-empty content in every M9–M16 section |
+| 3 | Governance Spec: Phase names exact M9-M16 | PASS — all 8 phase names match spec exactly |
+| 4 | Governance Spec: Test-routing per phase | PASS — every M9–M16 phase routes new-test strategy command |
+| 5 | Proposal: scope (11 paths) | PASS — MASTER_ROADMAP_1.0.md is an authorized M0 path |
+| 6 | Tasks: G4←G3 dependency | PASS — G3 DONE before G4 implement |
+| 7 | Design: Measurable fitness "Parse M0-M16" | PASS — full M0–M16 parsable |
+| 8 | Line budget ≤400 new content | PASS — 396 new lines; total 753 |
+
+#### Reproducible Verification Commands
+
+```bash
+M0_BASE=$(awk '/^M0_BASE:/{print $2}' openspec/changes/m0-foundation-v2/state.yaml)
+mapfile -t SDD < <(awk '/^SDD:/{p=1;next} p&&/^  - /{sub(/^  - /,"");print}' openspec/changes/m0-foundation-v2/state.yaml)
+eval "$(awk '/^```bash$/{p=1;next}/^```$/{if(p)exit}p' openspec/changes/m0-foundation-v2/tasks.md)"
+
+# Whitespace
+ws && printf 'ws: PASS\n'
+
+# Scope G4
+scope G4 && printf 'scope G4: PASS\n'
+
+# Cumulative scope G1234
+G1234=(.gitignore docs/{STATUS_MATRIX,DEFINITION_OF_DONE,INVARIANTS,MASTER_ROADMAP_1.0}.md)
+scope G1234 && printf 'cumulative scope G1234: PASS\n'
+
+# Line budget (new content ≤400)
+lines=$(wc -l < docs/MASTER_ROADMAP_1.0.md)
+[ "$lines" -eq 753 ] && printf 'line count (753 total, 396 new): PASS\n'
+
+# Roadmap M9-M16
+roadmap 9 16 && printf 'roadmap 9 16: PASS\n'
+
+# M9-M16 phase presence
+for m in $(seq 9 16); do
+  grep -qw "M$m" docs/MASTER_ROADMAP_1.0.md || exit 1
+done
+printf 'M9-M16 phase presence: PASS\n'
+
+# Phase exact names M9-M16
+for name in "M9 UI Foundation" "M10 Settings & Persistence" "M11 Resilience" "M12 Performance" "M13 Packaging" "M14 Beta" "M15 Release Candidate" "M16 Michi Music Player 1.0 Stable"; do
+  grep -qwF "$name" docs/MASTER_ROADMAP_1.0.md || exit 1
+done
+printf 'M9-M16 phase names exact: PASS\n'
+
+# Per-phase 10 fields M9-M16
+for m in 9 10 11 12 13 14 15 16; do
+  section=$(awk -v m="M$m" '$0 ~ "^## "m" " {found=1} found && /^## / && $0 !~ "^## "m" " {exit} found {print}' docs/MASTER_ROADMAP_1.0.md)
+  for f in "Objective" "Scope" "Out-of-scope" "Dependencies" "Deliverables" "New-test" "Entry" "Exit" "Acceptance" "Risks"; do
+    echo "$section" | grep -Eqi "(^|[^[:alnum:]_])$f([^[:alnum:]_]|$)" || exit 1
+  done
+done
+printf 'M9-M16 per-phase 10 fields: PASS\n'
+
+# G3 M0-M8 content preserved
+grep -qwF "M0 Foundation" docs/MASTER_ROADMAP_1.0.md && grep -qwF "M8 Application Navigation" docs/MASTER_ROADMAP_1.0.md && printf 'G3 content preserved: PASS\n'
+```
+
+**Command output** (2026-08-10; immediate HEAD `b2c697b53fd0cd9aa172efe47c967d29ec64c9f7`; 753 total lines):
+```
+ws: PASS
+scope G4: PASS
+cumulative scope G1234: PASS
+line count (753 total, 396 new): PASS
+roadmap 9 16: PASS
+M9-M16 phase presence: PASS
+M9-M16 phase names exact: PASS
+M9-M16 per-phase 10 fields: PASS
+G3 content preserved: PASS
+```
+
+#### Rollback Boundary
+
+G4 exact files: `docs/MASTER_ROADMAP_1.0.md` (modified — M9-M16 appended after M8). No completed successor depends on G4 (G5+ remain BACKLOG). Rollback restores M0-M8 state exactly.
+
+Dependency-aware hybrid rollback (G4 only, preserves G1+G2+G3):
+- Remove M9-M16 content from `docs/MASTER_ROADMAP_1.0.md` (restore to 357-line M0-M8 state)
+- Revert `openspec/changes/m0-foundation-v2/tasks.md` G4 checkbox
+- Revert `openspec/changes/m0-foundation-v2/state.yaml` G4 lines
+- Revert `openspec/changes/m0-foundation-v2/apply-progress.md` G4 section
+
+#### Runtime Harness
+
+N/A — docs-only milestone, no build/test/runtime target exists.
+
+#### Work Unit Evidence
+
+| Evidence | Value |
+|---|---|
+| Focused test command and exact result | Run the reproducible verification commands above — exit 0, all 9 checks pass (ws, scope G4, cumulative scope G1234, line count 753/396 new, roadmap 9 16, M9-M16 phase presence, phase names exact, per-phase 10 fields, G3 content preserved) |
+| Runtime harness command/scenario and exact result | N/A — docs-only; no build system, test target, framework, or runnable project command exists (config.yaml `test_command: ""`, `build_command: ""`) |
+| Rollback boundary | `docs/MASTER_ROADMAP_1.0.md` — remove M9-M16 lines (restore to 357-line M0-M8); revert tasks.md G4 checkbox, state.yaml G4 lines, apply-progress.md G4 section; G1+G2+G3 files preserved |
+
+### 1.5 G5←G4: debt/backlog authorities
+
+- **Status**: DONE (verified 2026-08-10)
+- **Transition**: BACKLOG → READY → IN_PROGRESS → REVIEW → VERIFY → DONE
+- **Files**: `docs/TECHNICAL_DEBT_REGISTER.md` (31 lines), `docs/POST_1_0_BACKLOG.md` (46 lines)
+- **Total**: 77 lines
+
+#### Verification Evidence
+
+| Check | Command | Result |
+|---|---|---|
+| Whitespace | `ws` | PASS — no trailing whitespace or merge conflicts |
+| Scope | `scope G5` | PASS — exact 2 files: TECHNICAL_DEBT_REGISTER.md, POST_1_0_BACKLOG.md |
+| Cumulative scope G12345 | `scope G12345` | PASS — 7 files: .gitignore, STATUS_MATRIX.md, DEFINITION_OF_DONE.md, INVARIANTS.md, MASTER_ROADMAP_1.0.md, TECHNICAL_DEBT_REGISTER.md, POST_1_0_BACKLOG.md |
+| Line budget ≤400 | `wc -l` | PASS — 77 lines |
+| Prettier formatting | `npx prettier --write` | PASS — both files unchanged (already conformant) |
+| Debt register: 7 entries | `grep -c "^| TD-"` | PASS — 7 debt entries present |
+| Debt register: severity distinct | `grep -wE "MINOR|MODERATE|SIGNIFICANT|SEVERE"` | PASS — all severities present; none named P0/P1 |
+| Debt register: all 7 fields | `grep -E "ID|Severity|Source|Description|Repro|Mitigation|Target"` | PASS — all 7 column headers present |
+| Backlog: 13 entries | `grep -c "^\| [0-9]"` | PASS — 13 deferred features |
+| Backlog: justification per entry | Per-row `|` field 3 non-empty | PASS — every entry has justification text |
+| Backlog: sizing per entry | `grep -cE "^\|.*\| (S\|M\|L\|XL) \|$"` | PASS — every entry has t-shirt sizing |
+| G1+G2+G3+G4 preserved | File content unchanged | PASS — all prior governance authorities identical to G4 exit state |
+
+#### Spec Trace
+
+| # | Obligation | Status |
+|---|---|---|
+| 1 | Governance Spec: Technical Debt Register MUST record item identifier, description, impact, remediation plan, owner, target phase | PASS — 7 entries with ID, severity (distinct from P0/P1), source, description, repro, mitigation, target |
+| 2 | Governance Spec: POST_1_0_BACKLOG MUST hold explicit deferred scope with rationale | PASS — 13 entries, each with feature name, justification, and t-shirt sizing |
+| 3 | Proposal: scope (11 paths) | PASS — both files are authorized M0 paths |
+| 4 | Tasks: G5←G4 dependency | PASS — G4 DONE before G5 implement |
+| 5 | INVARIANTS: Feature freeze routes to POST_1_0_BACKLOG | PASS — all 22 exclusions mapped; 13 truly post-1.0 items enumerated with rationale |
+
+#### Reproducible Verification Commands
+
+```bash
+M0_BASE=$(awk '/^M0_BASE:/{print $2}' openspec/changes/m0-foundation-v2/state.yaml)
+mapfile -t SDD < <(awk '/^SDD:/{p=1;next} p&&/^  - /{sub(/^  - /,"");print}' openspec/changes/m0-foundation-v2/state.yaml)
+eval "$(awk '/^```bash$/{p=1;next}/^```$/{if(p)exit}p' openspec/changes/m0-foundation-v2/tasks.md)"
+
+# Whitespace
+ws && printf 'ws: PASS\n'
+
+# Scope G5
+G5=(docs/{TECHNICAL_DEBT_REGISTER,POST_1_0_BACKLOG}.md)
+scope G5 && printf 'scope G5: PASS\n'
+
+# Cumulative scope G12345
+G12345=(.gitignore docs/{STATUS_MATRIX,DEFINITION_OF_DONE,INVARIANTS,MASTER_ROADMAP_1.0,TECHNICAL_DEBT_REGISTER,POST_1_0_BACKLOG}.md)
+scope G12345 && printf 'cumulative scope G12345: PASS\n'
+
+# Line budget
+debt_lines=$(wc -l < docs/TECHNICAL_DEBT_REGISTER.md)
+backlog_lines=$(wc -l < docs/POST_1_0_BACKLOG.md)
+total=$((debt_lines + backlog_lines))
+[ "$total" -le 400 ] && printf 'line budget (%d debt + %d backlog = %d total): PASS\n' "$debt_lines" "$backlog_lines" "$total"
+
+# Debt register: ≥1 entry
+debt_count=$(grep -c '^| TD-' docs/TECHNICAL_DEBT_REGISTER.md)
+[ "$debt_count" -ge 1 ] && printf 'debt entries (%d): PASS\n' "$debt_count"
+
+# Backlog: ≥1 entry
+backlog_count=$(grep -c '^| [0-9]' docs/POST_1_0_BACKLOG.md)
+[ "$backlog_count" -ge 1 ] && printf 'backlog entries (%d): PASS\n' "$backlog_count"
+
+# G4 content preserved
+grep -qwF "M0 Foundation" docs/MASTER_ROADMAP_1.0.md && grep -qwF "M16 Michi Music Player 1.0 Stable" docs/MASTER_ROADMAP_1.0.md && printf 'G4 content preserved: PASS\n'
+```
+
+**Command output** (2026-08-10; immediate HEAD `b2c697b53fd0cd9aa172efe47c967d29ec64c9f7`; 77 product lines):
+```
+ws: PASS
+scope G5: PASS
+cumulative scope G12345: PASS
+line budget (31 debt + 46 backlog = 77 total): PASS
+debt entries (7): PASS
+backlog entries (13): PASS
+G4 content preserved: PASS
+```
+
+#### Rollback Boundary
+
+G5 exact files: `docs/TECHNICAL_DEBT_REGISTER.md`, `docs/POST_1_0_BACKLOG.md`. No completed successor depends on G5 (G6+ remain BACKLOG). Rollback is `rm docs/TECHNICAL_DEBT_REGISTER.md docs/POST_1_0_BACKLOG.md` (docs/ survives with G1+G2+G3+G4 files).
+
+Dependency-aware hybrid rollback (G5 only, preserves G1+G2+G3+G4):
+- `rm docs/TECHNICAL_DEBT_REGISTER.md docs/POST_1_0_BACKLOG.md`
+- Revert `openspec/changes/m0-foundation-v2/tasks.md` G5 checkbox
+- Revert `openspec/changes/m0-foundation-v2/state.yaml` G5 lines
+- Revert `openspec/changes/m0-foundation-v2/apply-progress.md` G5 section
+
+#### Runtime Harness
+
+N/A — docs-only milestone, no build/test/runtime target exists.
+
+#### Work Unit Evidence
+
+| Evidence | Value |
+|---|---|
+| Focused test command and exact result | Run the reproducible verification commands above — exit 0, all 7 checks pass (ws, scope G5, cumulative scope G12345, line budget 77, debt entries 7, backlog entries 13, G4 content preserved) |
+| Runtime harness command/scenario and exact result | N/A — docs-only; no build system, test target, framework, or runnable project command exists (config.yaml `test_command: ""`, `build_command: ""`) |
+| Rollback boundary | `docs/TECHNICAL_DEBT_REGISTER.md`, `docs/POST_1_0_BACKLOG.md` — exact files; revert tasks.md G5 checkbox, state.yaml G5 lines, apply-progress.md G5 section; G1+G2+G3+G4 files preserved |
+
 ## Remaining Tasks (BACKLOG)
 
-- [ ] 1.4 G4←G3: modify roadmap M9-M16
-- [ ] 1.5 G5←G4: debt/backlog authorities
 - [ ] 2.1–2.6: Architecture ADRs
 - [ ] 3.1–3.2: Evidence and Index
 
 ## Chain State
 
-- **Current**: G3 (stacked-to-main slice 3) — DONE via BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE
-- **Next**: G4 → G5 → A1 → A2 → A3 → A4 → A5 → AR → L → R (all unchecked BACKLOG; not ready or admitted)
+- **Current**: G5 (stacked-to-main slice 5) — DONE via BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE
+- **Next**: A1 → A2 → A3 → A4 → A5 → AR → L → R (all unchecked BACKLOG; not ready or admitted)

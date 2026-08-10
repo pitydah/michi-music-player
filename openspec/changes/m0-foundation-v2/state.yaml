@@ -11,7 +11,17 @@ G3_TRANSITION: BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE
 G3_GATE:
   status: PASS
   evidence: 357 lines; M0-M8 present; all 10 fields per phase; exact phase names; ws/roadmap/all-fields/per-phase all PASS
-G4_PLUS: BACKLOG
+G4: DONE
+G4_TRANSITION: BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE
+G4_GATE:
+  status: PASS
+  evidence: 753 lines (357 M0-M8 + 396 M9-M16); all 10 fields per phase M9-M16; ws/roadmap 9 16/scope G4/per-phase all PASS; prettier unchanged; G1+G2+G3 preserved; G5+ BACKLOG
+G5: DONE
+G5_TRANSITION: BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE
+G5_GATE:
+  status: PASS
+  evidence: 77 lines (31 debt + 46 backlog); 7 debt entries with severity distinct from P0/P1; 13 backlog entries with justification and sizing; prettier clean; G1+G2+G3+G4 preserved; G6+ BACKLOG
+G6_PLUS: BACKLOG
 SDD:
   - openspec/config.yaml
   - openspec/changes/m0-foundation-v2/design.md

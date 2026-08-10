@@ -355,3 +355,399 @@ Queue, position, volume restored. Every step has pass/fail assertion.
 **Risks**: Screen transitions causing state loss. Mitigated: state hoisted to
 Application; Presentation screens stateless. Navigation stack unbounded —
 mitigated: depth limit and back-stack pruning.
+
+---
+
+## M9 UI Foundation
+
+**Objective**: Visual identity, theming, accessibility, localization, and
+animation layer — the UI is usable, branded, and inclusive before any user
+touches it.
+
+**Scope**: Theme engine (light/dark, custom accent palette, font scale).
+Accessibility: keyboard navigation, screen-reader labels, contrast compliance
+(WCAG AA). I18n framework with en/es initial bundle. Animation: screen
+transitions, playback progress, queue interactions (respects prefers-reduced-
+motion). Onboarding wizard for first-launch (music directory, language).
+
+**Out-of-scope**: Michi AI theming; audio-reactive visuals; custom widget
+library beyond Qt Quick Controls 2; RTL layouts beyond en/es; animated
+backgrounds; streaming-service UI.
+
+**Dependencies**: M8 Application Navigation — screens must exist before they
+receive visual treatment. M7 Search — search UI is a themed screen. M3 Complete
+Playback — playback progress animation depends on position reporting.
+
+**Deliverables**: Theme manager (light/dark + system-follow). Accessibility audit
+passing WCAG AA. I18n loader with en/es strings. Animation controller with
+reduced-motion gate. Onboarding wizard (3-step). `M9_UI_FOUNDATION_TEST`.
+
+**New-test strategy**: Unit (theme token resolution, i18n key lookup, animation
+duration math), Integration (theme switch propagates to all screens,
+accessibility tree valid, onboarding flow), Acceptance (WCAG AA automated
+checklist, i18n coverage ≥95% for en/es). Command: `ctest -R M9_UI_FOUNDATION`.
+
+**Entry criteria**: M8 DONE. All five screens exist and navigate. Golden Path
+executes without UI assertions. UX spec with theme tokens, a11y targets,
+i18n string inventory approved.
+
+**Exit criteria**: Light/dark toggle applies to every screen atomically.
+Keyboard-reachable every control. Screen-reader announces screen transitions
+and control state. en/es switch reflows without truncation. Animation respects
+reduced-motion and completes within 300 ms. Onboarding completes to Golden
+Path entry. All M9 tests pass.
+
+**Acceptance gate**: Automated UI walk: launch→onboarding→complete→theme
+toggle→a11y tree dump→keyboard-navigate all screens→i18n switch en→es→en→
+play→verify animation smooth→close. WCAG AA contrast ≥4.5:1 (text),
+3:1 (large). I18n coverage ≥95%.
+
+**Risks**: Localization string drift as features evolve. Mitigated: CI i18n
+coverage check on every PR. Animation performance on low-end hardware —
+mitigated: frame-budget monitor and adaptive quality.
+
+---
+
+## M10 Settings & Persistence
+
+**Objective**: Full settings UI and durable persistence — every user preference
+is discoverable, mutable, and survives restart.
+
+**Scope**: Settings screen with sections: Audio (output device, volume, replay
+gain), Library (paths, scan interval, exclude patterns), UI (theme, language,
+font size), Playback (seek step, crossfade, gapless), Queue (default repeat,
+shuffle seed). SettingsPort write-through; on-change persistence. Reset-to-
+default per section. Export/import settings JSON.
+
+**Out-of-scope**: Cloud sync; profile switching; plugin preferences; audio
+device configuration beyond selection; MIDI mapping; shortcut customization.
+
+**Dependencies**: M9 UI Foundation — theme/language/i18n controls must exist.
+M5 Database — SettingsPort, CachePort, UserDataPort already defined. M6
+Library — library paths already scanned.
+
+**Deliverables**: Full Settings screen (5 sections, ~25 controls). SettingsPort
+backend with validation, on-change save, reset. Settings import/export
+(JSON). `M10_SETTINGS_PERSISTENCE_TEST`.
+
+**New-test strategy**: Unit (per-setting validation, default fallback, migration
+of legacy schema), Integration (UI→port→DB round-trip, export→import
+faithfulness), Acceptance (every setting survives kill→restart cycle).
+Command: `ctest -R M10_SETTINGS_PERSISTENCE`.
+
+**Entry criteria**: M9 DONE. Theme, language, a11y functional. M5 Database ports
+operational. SettingsPort contract finalized. ≥15 settings identified with
+valid ranges.
+
+**Exit criteria**: Every setting changed in UI persists across restart. Invalid
+input rejected with inline validation. Reset-to-default restores factory value.
+Export→factory-reset→import restores identical state. Schema migration
+preserves settings. All M10 tests pass.
+
+**Acceptance gate**: Set every setting to non-default→restart→verify all.
+Factory reset→verify defaults. Export→import on clean install→verify parity.
+Invalid value entry (negative volume, empty path) rejects with message.
+Settings JSON validates against schema.
+
+**Risks**: Settings explosion causing unmanageable test matrix. Mitigated:
+schema-versioned defaults; combinatorial test sampling. Import from untrusted
+JSON — mitigated: strict schema validation; no executable content.
+
+---
+
+## M11 Resilience
+
+**Objective**: The application handles failure gracefully — crash recovery,
+corruption recovery, and degraded-mode operation without data loss.
+
+**Scope**: Crash recovery: last-known-good state restoration. Database
+corruption detection and repair. Graceful degradation: missing codec shows
+diagnostic, not crash. Watchdog timer for audio pipeline stall. Error
+telemetry (opt-in, anonymous, privacy-preserving). Safe-mode launch
+(--safe-mode flag bypasses audio, cache, extensions).
+
+**Out-of-scope**: Automatic bug reporting; remote crash analytics; hardware
+failure recovery; filesystem-level recovery; network resilience (no network
+features yet).
+
+**Dependencies**: M5 Database — corruption detection builds on migration
+framework. M10 Settings — safe-mode disables cached settings. M3 Complete
+Playback — pipeline stall detector requires playback state machine.
+
+**Deliverables**: Crash recovery manager. DB integrity checker with
+auto-repair. Safe-mode launcher. Watchdog with configurable timeout. Error
+telemetry channel (opt-in). Degraded-mode state machine.
+`M11_RESILIENCE_TEST`.
+
+**New-test strategy**: Unit (corruption detection, safe-mode flag parser,
+telemetry opt-in gate), Integration (inject crash signal, verify recovery;
+corrupt DB pages, verify repair; inject pipeline stall, verify watchdog),
+Acceptance (chaos test: random kill during playback, verify full recovery
+with no data loss). Command: `ctest -R M11_RESILIENCE`.
+
+**Entry criteria**: M10 DONE. Settings persistence verified. DB migration
+framework operational. Playback state machine stable. Fuzzed-corpus of
+corrupt SQLite pages prepared.
+
+**Exit criteria**: Kill during playback→restart restores queue, position,
+volume, settings within tolerance. Corrupt DB→explicit repair message→
+recover or fresh start. Safe-mode launches without audio/cache. Watchdog
+detects pipeline stall within 5 s and restarts pipeline. Telemetry disabled
+by default; opt-in persisted. All M11 tests pass.
+
+**Acceptance gate**: Chaos sequence: populate library→play→kill -9→restart→
+verify state→corrupt DB→restart→verify repair→safe-mode launch→verify
+audio bypassed→normal launch→verify full function. Zero silent data loss.
+Every error path produces user-visible diagnostic.
+
+**Risks**: Recovery logic itself introducing data loss. Mitigated: recovery
+never mutates until integrity confirmed; write-ahead log preserved. Watchdog
+false positives — mitigated: configurable timeout; progressive escalation.
+
+---
+
+## M12 Performance
+
+**Objective**: Quantify and optimize — the application meets performance budgets
+on target hardware before entering Beta.
+
+**Scope**: Frame-time budget (≤16 ms per frame, 60 FPS target). Library scan:
+10k files <5 s. Search: 100k index <200 ms. Queue operations: <1 ms for 10k
+tracks. Startup: to-NowPlaying <2 s cold, <500 ms warm. Memory: <256 MB RSS
+with 100k library. Benchmark harness (micro + macro). CI performance gate
+(regression ≥10% fails build).
+
+**Out-of-scope**: GPU profiling; power/thermal optimization; embedded-hardware
+tuning; network-latency optimization; disk-I/O beyond SQLite pragmas.
+
+**Dependencies**: M8 Application Navigation — Golden Path must be stable to
+profile. M6 Library — scan/search benchmarks require library. M7 Search —
+search benchmarks require index. M11 Resilience — watchdog must not fire
+during normal profiles.
+
+**Deliverables**: Benchmark harness (micro: per-component; macro: Golden Path).
+Frame profiler integration. Performance test suite. CI regression gate.
+Optimization report with before/after per phase. `M12_PERFORMANCE_TEST`.
+
+**New-test strategy**: Benchmark (micro: scan, search, queue operations, startup;
+macro: Golden Path timing), Regression (CI gate at ±10%), Profiling
+(frame-time trace captured and compared to budget). Command:
+`ctest -R M12_PERFORMANCE`.
+
+**Entry criteria**: M11 DONE. Crash recovery and safe-mode verified. Golden
+Path stable end-to-end. Benchmark fixture: 10k-file synthetic library with
+varied metadata. CI hardware spec documented.
+
+**Exit criteria**: 60 FPS maintained during playback with library visible.
+Scan 10k files <5 s. Search 100k index <200 ms. Queue ops <1 ms for 10k.
+Startup cold <2 s, warm <500 ms. Memory <256 MB RSS at 100k library. CI
+gate rejects ≥10% regression. All M12 benchmarks pass.
+
+**Acceptance gate**: Benchmark run on reference hardware: every budget met.
+Three consecutive CI runs within gate. Profiling report filed with frame
+budget, memory, startup. Golden Path macro-benchmark completes within budget.
+
+**Risks**: CI hardware variance masking regressions. Mitigated: relative-to-
+baseline comparison per run; tolerance band. Optimization chasing diminishing
+returns — mitigated: budgets are ceilings, not targets.
+
+---
+
+## M13 Packaging
+
+**Objective**: Installable, distributable, signed artifacts for every target
+platform — users can install via native package manager or direct download.
+
+**Scope**: Linux: AppImage, Flatpak, deb (Ubuntu 22.04+). Windows: MSIX, portable
+zip. macOS: signed .dmg bundle. Auto-update channel (AppImage/Flatpak native,
+Sparkle on macOS). Icon asset suite (16×16 through 512×512, .ico, .icns, .svg).
+Desktop integration (MIME registration, file-association .mp3/.flac/.wav/.ogg).
+CLI entry point (`michi --play <file>`, `--version`, `--safe-mode`).
+
+**Out-of-scope**: Store submission (App Store, Play Store, Snap Store);
+enterprise deployment (MSI, GPO); container images; embedded build; portable
+build for non-desktop targets.
+
+**Dependencies**: M12 Performance — packaging requires release-mode build with
+optimizations enabled. M10 Settings — CLI flags must interact with persisted
+settings correctly.
+
+**Deliverables**: CMake packaging targets for all platforms. CI packaging
+pipeline. Icon suite. Desktop integration files. CLI entry point. Auto-update
+descriptor. `M13_PACKAGING_TEST` (install, launch, update, uninstall smoke).
+
+**New-test strategy**: Integration (install→launch→verify version→uninstall
+clean), Smoke (each package type on target OS; file-association opens app),
+CLI (every flag produces correct behavior). Command:
+`ctest -R M13_PACKAGING`.
+
+**Entry criteria**: M12 DONE. Performance budgets met. Release-mode build
+passes on all platforms. Code signing certificates provisioned. Icon assets
+from design spec rendered at all resolutions.
+
+**Exit criteria**: Each package type installs and launches on target OS.
+File-association opens audio file in Michi. CLI `--version` reports correct
+semver. `--safe-mode` bypasses audio/cache. Uninstall removes binary and
+leaves user data (opt-in clean). Auto-update channel validates against
+signed manifest. All M13 tests pass.
+
+**Acceptance gate**: Per-platform: install→launch→open .mp3 from file manager→
+play→close→update (via channel)→verify version bump→uninstall. CLI flags
+exercise every documented option. Desktop file validates against
+freedesktop.org spec.
+
+**Risks**: Code-signing revocation or expiry blocking installs. Mitigated:
+timestamped signatures; offline fallback. Flatpak sandbox restricting
+filesystem access — mitigated: portal API for directory access.
+
+---
+
+## M14 Beta
+
+**Objective**: Public beta release with telemetry, feedback loop, and
+issue triage — real-world validation before RC.
+
+**Scope**: Beta opt-in channel with signed updates. Anonymous telemetry
+(opt-in: feature usage, crash count, performance histograms; zero PII).
+In-app feedback form. Public issue tracker triage process. Beta onboarding
+flow (what's new, known issues, feedback instructions). Staged rollout
+(10%→50%→100% of beta channel).
+
+**Out-of-scope**: Marketing website; press kit; social media campaign; paid
+user acquisition; NPS survey; focus groups.
+
+**Dependencies**: M13 Packaging — beta users must install via packages.
+M11 Resilience — crash telemetry requires recovery infrastructure. M12
+Performance — performance telemetry requires benchmark baseline.
+
+**Deliverables**: Beta channel in auto-update. Telemetry pipeline (collect,
+aggregate, dashboard). In-app feedback form with screenshot attachment.
+Issue triage SLA (P0 ≤24 h, P1 ≤72 h, P2 ≤1 week). Beta release notes.
+Staged rollout toggle. `M14_BETA_TEST`.
+
+**New-test strategy**: Integration (telemetry collector verifies anonymization,
+feedback submission round-trip), E2E (beta install→opt-in telemetry→use
+app→verify dashboard shows data), Acceptance (staged rollout gates).
+Command: `ctest -R M14_BETA`.
+
+**Entry criteria**: M13 DONE. All packages signed and installable. Telemetry
+server provisioned. Issue tracker configured with beta label. Beta EULA
+and privacy notice approved.
+
+**Exit criteria**: Beta channel delivers signed updates. Telemetry dashboard
+shows feature-usage and crash-count (zero PII). Feedback form submits with
+screenshot. Staged rollout gates honor percentages. P0 triage SLA met in
+≥95% of cases over trial period. All M14 tests pass.
+
+**Acceptance gate**: End-to-end beta flow: install→opt-in telemetry→play 10
+tracks→crash simulation→restart→crash telemetry transmitted→feedback form
+submit→dashboard shows session→update to next beta→verify version bump.
+Anonymization verified: no user-identifiable data in telemetry payload.
+
+**Risks**: Telemetry data breach exposing user behavior. Mitigated: client-side
+aggregation; zero raw paths or filenames transmitted; periodic privacy audit.
+Beta quality damaging reputation — mitigated: staged rollout; instant
+rollback capability.
+
+---
+
+## M15 Release Candidate
+
+**Objective**: Final stabilization — zero known P0/P1, complete docs, migration
+from Legacy verified, RC artifacts signed and frozen.
+
+**Scope**: Bug triage: all P0/P1 resolved with verified fix. Regression test
+suite covering Golden Path, resilience, packaging. Documentation complete:
+user manual, FAQ, migration guide from Legacy. Legacy→Michi migration tool
+(import Legacy library paths, settings if compatible). RC builds signed
+across all platforms. Release notes final. License and attribution complete.
+
+**Out-of-scope**: New features; UI redesign; architecture changes; third-party
+integration beyond Legacy migration; feature requests.
+
+**Dependencies**: M14 Beta — all beta feedback triaged. M13 Packaging — RC
+builds from same pipeline. M11 Resilience — recovery from every reported
+crash path verified.
+
+**Deliverables**: P0/P1 register (empty). Regression suite ≥95% pass rate
+on all platforms. User manual. FAQ. Migration guide. Legacy migration tool.
+RC signed artifacts. Final release notes. `M15_RC_TEST`.
+
+**New-test strategy**: Regression (full test suite across platforms, ≥95%
+pass), Migration (Legacy→Michi import round-trip for settings and library),
+Acceptance (RC smoke on each platform: install, Golden Path, uninstall).
+Command: `ctest -R M15_RC`.
+
+**Entry criteria**: M14 DONE. Beta telemetry stable. All beta P0/P1 triaged
+with disposition (fix/wontfix/duplicate). No known P0. No known data-loss
+P1. Documentation drafts in review.
+
+**Exit criteria**: P0 register empty. P1 register empty (all fixed or
+classified P2 with documented workaround). Regression suite ≥95% pass.
+User manual, FAQ, migration guide published. Legacy migration tool imports
+library paths and compatible settings without data loss. RC artifacts signed
+on all platforms. Release notes approved. All M15 tests pass.
+
+**Acceptance gate**: Zero P0. Zero P1. Full regression pass on Linux,
+Windows, macOS (≥95%). Legacy migration: import library→verify tracks
+playable→verify metadata preserved→verify settings migrated (compatible
+subset). RC installs, updates, and uninstalls cleanly on all platforms.
+
+**Risks**: Late-discovered P0 from RC testing. Mitigated: RC period minimum
+2 weeks; no code changes except P0 fixes. Legacy migration edge cases —
+mitigated: dry-run mode with diff report before destructive import.
+
+---
+
+## M16 Michi Music Player 1.0 Stable
+
+**Objective**: Public stable release — 1.0 ships to all users. Golden Path
+verified, packages published, project declared FROZEN.
+
+**Scope**: Stable channel published (all platforms). Auto-update from RC→Stable
+and Beta→Stable. Version bump to 1.0.0. Public release announcement. Website
+update with download links. Project state transition to FROZEN per
+INVARIANTS.md freeze gate (stable contract, tests passed, integration
+verified, architecture verification, P0=0, P1=0). Post-1.0 planning:
+backlog grooming and 1.1 roadmap draft.
+
+**Out-of-scope**: 1.1 development; new features; post-release hotfix process
+(defined but not exercised); marketing beyond announcement; paid support.
+
+**Dependencies**: M15 Release Candidate — RC must exit with zero P0/P1.
+All preceding M1–M14 capabilities must be DONE. Hybrid parity verified
+(OpenSpec + Engram mirrors stable artifacts). Invariants freeze gate
+satisfied (P0=0, P1=0, stable contract, tests passed, integration verified,
+architecture verified).
+
+**Deliverables**: Stable release packages (all platforms). Signed auto-update
+manifests. Release announcement (changelog, download links, migration
+instructions). Project FROZEN state declaration. Post-1.0 backlog
+prioritization. `M16_STABLE_TEST`.
+
+**New-test strategy**: Acceptance (stable install→Golden Path→update from
+RC/Beta→uninstall), Smoke (per-platform, per-package-type), Integrity
+(checksum verification, signature validation on all artifacts). Command:
+`ctest -R M16_STABLE`.
+
+**Entry criteria**: M15 DONE. P0=0, P1=0. RC artifacts signed and approved.
+Website ready for stable release. Release announcement drafted and approved.
+Freeze prerequisites (INVARIANTS.md) all satisfied.
+
+**Exit criteria**: Stable packages signed and published on all platforms.
+Auto-update delivers stable from RC and Beta channels. 1.0.0 version
+reported correctly. Golden Path executes on clean install for all platforms.
+Release announcement published. Project state FROZEN recorded. Post-1.0
+backlog populated with 1.1 candidates. All M16 tests pass.
+
+**Acceptance gate**: Gold master: download stable→install→Golden Path full
+sequence→verify 1.0.0→update check confirms latest→uninstall→reinstall→
+restore from backup→verify all data. RC→Stable update path. Beta→Stable
+update path. Checksums and signatures validate on all artifacts. Release
+announcement links all resolve. Project FROZEN gate: P0=0, P1=0,
+architecture verified, integration verified, stable contract.
+
+**Risks**: Last-minute packaging issue on one platform delaying all. Mitigated:
+per-platform independent publishing; partial launch acceptable with
+documented timeline. Website outage during launch — mitigated: CDN-hosted
+downloads with direct-link fallback.

@@ -42,8 +42,8 @@ Chain: G1→G2→G3→G4→G5→A1→A2→A3→A4→A5→AR→L→R. Slice: comm
 - [x] [BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE] 1.1 G1: ignore/status; `ws&&scope G1&&states&&transitions&&stack_neutral`; `$E`; 114 lines, 5/5 PASS (2026-08-10).
 - [x] [BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE] 1.2 G2←G1: DoR/DoD/Golden Path/invariants; `ws&&scope G12`; `$E`; 170 lines; independent gate PASS (authoritative content, parity, cumulative scope, rollback, G1 preserved, G3+ BACKLOG).
 - [x] [BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE] 1.3 G3←G2: M0-M8; `ws&&roadmap 0 8`; `$E`; 357 lines; all 9 phases (M0-M8) present, 10 fields per phase, phase names exact; cumulative scope G123 PASS (uncommitted chain).
-- [ ] [BACKLOG] 1.4 G4←G3: M9-M16; `ws&&scope G4&&roadmap 9 16`; `$E`.
-- [ ] [BACKLOG] 1.5 G5←G4: debt/backlog; `ws&&scope G5`; `$E`.
+- [x] [BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE] 1.4 G4←G3: M9-M16; `ws&&scope G4&&roadmap 9 16`; `$E`; 396 new lines, 753 total; per-phase 10 fields M9-M16 all PASS; G5+ BACKLOG (2026-08-10).
+- [x] [BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE] 1.5 G5←G4: debt/backlog; `ws&&scope G5`; `$E`; 77 lines (31 debt + 46 backlog); 7 debt entries (severity distinct from P0/P1); 13 backlog entries (justification + sizing); G6+ BACKLOG (2026-08-10).
 
 ## Architecture
 
