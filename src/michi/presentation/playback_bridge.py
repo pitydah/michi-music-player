@@ -6,7 +6,7 @@ QML sends intents via invokable methods. Bridge delegates to Application.
 
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Property, Signal, Slot
+from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from michi.application.playback_service import PlaybackService
 from michi.domain.playback import PlaybackStatus

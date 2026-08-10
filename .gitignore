@@ -22,3 +22,6 @@ $RECYCLE.BIN/
 .env*
 *.log
 __pycache__/
+src/michi_music_player.egg-info/
+__pycache__/
+.pytest_cache/

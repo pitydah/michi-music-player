@@ -1,6 +1,7 @@
 """Entry point: python -m michi"""
 
 import sys
+
 from michi.bootstrap import ApplicationContainer
 
 

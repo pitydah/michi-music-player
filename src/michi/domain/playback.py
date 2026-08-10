@@ -1,6 +1,6 @@
 """Domain layer — pure business logic. No Qt, no infrastructure."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
 

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "michi-music-player"
+version = "0.1.0"
+description = "Michi Music Player — audio-only desktop music player"
+requires-python = ">=3.11"
+dependencies = ["PySide6>=6.5"]
+
+[project.scripts]
+michi = "michi.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/presentation/*bridge.py" = ["N815", "E501"]
+"**/infrastructure/sqlite_settings.py" = ["E501"]
+"**/infrastructure/qt_backend.py" = ["SIM105"]
+"**/bootstrap/__init__.py" = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"

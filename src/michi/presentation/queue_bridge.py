@@ -1,6 +1,6 @@
 """QML bridge for queue — exposes QueueState and receives user intents."""
 
-from PySide6.QtCore import QObject, Property, Signal, Slot
+from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from michi.application.queue_service import QueueService
 

@@ -3,19 +3,19 @@
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QStandardPaths, QUrl, QTimer
+from PySide6.QtCore import QStandardPaths, Qt, QTimer, QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
-from michi.infrastructure.qt_backend import QtMultimediaBackend
-from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
-from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
+from michi.application.coordinator import PlaybackCoordinator
 from michi.application.playback_service import PlaybackService
 from michi.application.queue_service import QueueService
-from michi.application.coordinator import PlaybackCoordinator
+from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
+from michi.infrastructure.qt_backend import QtMultimediaBackend
+from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
+from michi.presentation.library_bridge import LibraryBridge
 from michi.presentation.playback_bridge import PlaybackBridge
 from michi.presentation.queue_bridge import QueueBridge
-from michi.presentation.library_bridge import LibraryBridge
 
 
 def _data_dir() -> Path:
