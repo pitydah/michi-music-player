@@ -9,8 +9,8 @@ RowLayout {
     property alias volume: volSlider.value
     property alias muted: muteBtn.checked
 
-    signal volumeChanged(int value)
-    signal muteToggled(bool muted)
+    signal volumeChangeRequested(int value)
+    signal muteToggleRequested(bool muted)
 
     Text {
         text: "Vol"
@@ -22,7 +22,7 @@ RowLayout {
         id: volSlider
         from: 0; to: 100
         Layout.preferredWidth: 90
-        onValueChanged: root.volumeChanged(value)
+        onMoved: root.volumeChangeRequested(value)
     }
 
     Button {
@@ -30,6 +30,6 @@ RowLayout {
         text: checked ? "🔇" : "🔊"
         checkable: true
         flat: true
-        onClicked: root.muteToggled(checked)
+        onClicked: root.muteToggleRequested(checked)
     }
 }

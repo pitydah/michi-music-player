@@ -3,11 +3,12 @@
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QStandardPaths, Qt, QTimer, QUrl
+from PySide6.QtCore import QStandardPaths, Qt, QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
 from michi.application.coordinator import PlaybackCoordinator
+from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
 from michi.application.queue_service import QueueService
 from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
@@ -32,15 +33,7 @@ class ApplicationContainer:
         self._app: QGuiApplication | None = None
         self._engine: QQmlApplicationEngine | None = None
         self._backend: QtMultimediaBackend | None = None
-        self._settings_repo: SQLiteSettingsRepository | None = None
-        self._scanner: FilesystemLibraryScanner | None = None
-        self._playback_service: PlaybackService | None = None
-        self._queue_service: QueueService | None = None
         self._coordinator: PlaybackCoordinator | None = None
-        self._playback_bridge: PlaybackBridge | None = None
-        self._queue_bridge: QueueBridge | None = None
-        self._library_bridge: LibraryBridge | None = None
-        self._position_timer: QTimer | None = None
 
     def initialize(self) -> None:
         QGuiApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -51,49 +44,49 @@ class ApplicationContainer:
         self._app.setApplicationVersion("0.1.0")
         self._app.setOrganizationName("Michi")
 
-        # ── Infrastructure ──────────────────────────────────────────
-        self._backend = QtMultimediaBackend()
-        self._settings_repo = SQLiteSettingsRepository(_data_dir() / "michi.db")
-        self._scanner = FilesystemLibraryScanner()
+        # Infrastructure
+        backend = QtMultimediaBackend()
+        settings_repo = SQLiteSettingsRepository(_data_dir() / "michi.db")
+        scanner = FilesystemLibraryScanner()
 
-        # ── Application ─────────────────────────────────────────────
-        self._playback_service = PlaybackService(self._backend)
-        self._queue_service = QueueService(self._playback_service)
+        # Application
+        playback = PlaybackService(backend)
+        queue = QueueService(playback)
+        library = LibraryService(scanner, queue)
 
-        # Restore persisted settings via public API
-        settings = self._settings_repo.load()
-        self._playback_service.restore_volume(settings.volume, settings.muted)
+        # Restore settings
+        settings = settings_repo.load()
+        playback.restore_volume(settings.volume, settings.muted)
 
-        # Coordinator: track end → queue advance
-        self._coordinator = PlaybackCoordinator(self._backend, self._queue_service)
+        # Coordinator: audio events → application logic
+        coordinator = PlaybackCoordinator(backend, queue, playback)
 
-        # ── Presentation bridges ────────────────────────────────────
-        self._playback_bridge = PlaybackBridge(self._playback_service)
-        self._queue_bridge = QueueBridge(self._queue_service)
-        self._library_bridge = LibraryBridge(self._scanner, self._queue_service)
+        # Presentation bridges
+        pb = PlaybackBridge(playback)
+        qb = QueueBridge(queue)
+        lb = LibraryBridge(library)
 
-        # Wire bridge notifications through the coordinator callback
-        def _notify_bridges() -> None:
-            if self._queue_bridge:
-                self._queue_bridge.notify()
-            if self._playback_bridge:
-                self._playback_bridge.notify_state()
+        # Wire bridge notifications through coordinator
+        def _notify() -> None:
+            qb.notify()
+            pb.notify_state()
+            lb.notify()
 
-        self._coordinator.on_state_change(_notify_bridges)
-        self._coordinator.start()
+        coordinator.on_state_change(_notify)
+        coordinator.start()
 
-        # Position sync — infrastructure concern, lives in bootstrap
-        self._position_timer = QTimer()
-        self._position_timer.timeout.connect(self._sync_position)
-        self._position_timer.start(250)
+        # QML engine
+        engine = QQmlApplicationEngine()
+        engine.quit.connect(self._app.quit)
+        ctx = engine.rootContext()
+        ctx.setContextProperty("playback", pb)
+        ctx.setContextProperty("queue", qb)
+        ctx.setContextProperty("library", lb)
 
-        # ── QML engine ─────────────────────────────────────────────
-        self._engine = QQmlApplicationEngine()
-        self._engine.quit.connect(self._app.quit)
-        root_context = self._engine.rootContext()
-        root_context.setContextProperty("playback", self._playback_bridge)
-        root_context.setContextProperty("queue", self._queue_bridge)
-        root_context.setContextProperty("library", self._library_bridge)
+        # Keep references for shutdown
+        self._backend = backend
+        self._coordinator = coordinator
+        self._engine = engine
 
     def run(self) -> int:
         qml_dir = Path(__file__).parent.parent / "presentation"
@@ -110,39 +103,11 @@ class ApplicationContainer:
     def shutdown(self) -> None:
         if self._coordinator:
             self._coordinator.stop()
-
-        if self._position_timer is not None:
-            self._position_timer.stop()
-
-        # Persist settings via public API
-        if self._playback_service is not None and self._settings_repo is not None:
-            from michi.domain.settings import SettingsState
-            s = self._playback_service.state
-            self._settings_repo.save(SettingsState(volume=s.volume, muted=s.muted))
-
-        if self._backend is not None:
+        if self._backend:
             self._backend.stop()
-
-        if self._engine is not None:
+        if self._engine:
             self._engine.deleteLater()
-
         self._engine = None
-        self._position_timer = None
-        self._library_bridge = None
-        self._queue_bridge = None
-        self._playback_bridge = None
         self._coordinator = None
-        self._queue_service = None
-        self._playback_service = None
-        self._settings_repo = None
         self._backend = None
         self._app = None
-
-    def _sync_position(self) -> None:
-        if self._backend is None or self._playback_service is None or self._playback_bridge is None:
-            return
-        self._playback_service.update_position(
-            position_ms=self._backend.position(),
-            duration_ms=self._backend.duration(),
-        )
-        self._playback_bridge.notify_state()

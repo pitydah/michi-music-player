@@ -43,7 +43,7 @@ ApplicationWindow {
                 statusColor: playback.status === "playing" ? "#66cc88" :
                              playback.status === "paused" ? "#ccaa44" : "#8888aa"
                 seekEnabled: playback.duration > 0
-                onSeekRequested: pos => playback.seek(pos)
+                onSeekRequested: secs => playback.seek_seconds(secs)
             }
 
             PlaybackControls {
@@ -64,8 +64,8 @@ ApplicationWindow {
                 Layout.alignment: Qt.AlignHCenter
                 volume: playback.volume
                 muted: playback.muted
-                onVolumeChanged: v => playback.set_volume(v)
-                onMuteToggled: m => playback.set_muted(m)
+                onVolumeChangeRequested: v => playback.set_volume(v)
+                onMuteToggleRequested: m => playback.set_muted(m)
             }
 
             QueuePanel {
@@ -87,10 +87,7 @@ ApplicationWindow {
             fileCount: library.fileCount
             onScanRequested: dir => library.scan(dir)
             onSearchRequested: q => library.search(q)
-            onFileClicked: idx => {
-                library.add_to_queue(idx)
-                if (queue.count === 1) queue.play_index(0)
-            }
+            onTrackActivated: idx => library.activate(idx)
         }
     }
 }

@@ -56,6 +56,7 @@ class QueueBridge(QObject):
     @Slot(str)
     def add_file(self, file_path: str) -> None:
         from pathlib import Path
+
         self._service.add(Path(file_path))
         self.queue_changed.emit()
 

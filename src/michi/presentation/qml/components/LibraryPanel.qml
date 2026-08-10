@@ -14,7 +14,7 @@ Rectangle {
 
     signal scanRequested(string directory)
     signal searchRequested(string query)
-    signal fileClicked(int index)
+    signal trackActivated(int visibleIndex)
 
     ColumnLayout {
         anchors.fill: parent
@@ -71,7 +71,7 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
                     anchors.leftMargin: 8
-                    text: modelData.split("/").pop()
+                    text: modelData
                     color: "#9999aa"
                     font.pixelSize: 11
                     elide: Text.ElideRight
@@ -80,7 +80,7 @@ Rectangle {
 
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: root.fileClicked(index)
+                    onClicked: root.trackActivated(index)
                 }
             }
         }

@@ -1,6 +1,5 @@
 """Tests for SQLite settings persistence."""
 
-
 from michi.domain.settings import SettingsState
 from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
 

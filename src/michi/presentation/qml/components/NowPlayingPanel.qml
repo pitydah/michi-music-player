@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 Rectangle {
@@ -13,7 +14,7 @@ Rectangle {
     property alias statusColor: statusLabel.color
     property bool seekEnabled: true
 
-    signal seekRequested(int positionMs)
+    signal seekRequested(int seconds)
 
     implicitHeight: 130
 

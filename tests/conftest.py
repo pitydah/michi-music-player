@@ -2,17 +2,13 @@
 
 import sys
 from pathlib import Path
-from typing import Any
 
 import pytest
 
-# Ensure src is on path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
 class FakeAudioPort:
-    """Minimal fake for testing — never copied from Legacy."""
-
     def __init__(self) -> None:
         self.loaded: Path | None = None
         self.state: str = "stopped"
@@ -20,7 +16,9 @@ class FakeAudioPort:
         self.muted: bool = False
         self._position: int = 0
         self._duration: int = 0
-        self._end_callbacks: list = []
+        self._eom: list = []
+        self._pos: list = []
+        self._err: list = []
 
     def load(self, file_path: Path) -> None:
         self.loaded = file_path
@@ -55,15 +53,35 @@ class FakeAudioPort:
     def set_duration(self, ms: int) -> None:
         self._duration = ms
 
-    def on_end_of_media(self, callback: Any) -> None:
-        self._end_callbacks.append(callback)
+    def subscribe_end_of_media(self, cb) -> None:
+        self._eom.append(cb)
 
-    def remove_end_of_media_callbacks(self) -> None:
-        self._end_callbacks.clear()
+    def unsubscribe_end_of_media(self, cb) -> None:
+        self._eom.remove(cb)
+
+    def subscribe_position_changed(self, cb) -> None:
+        self._pos.append(cb)
+
+    def unsubscribe_position_changed(self, cb) -> None:
+        self._pos.remove(cb)
+
+    def subscribe_error(self, cb) -> None:
+        self._err.append(cb)
+
+    def unsubscribe_error(self, cb) -> None:
+        self._err.remove(cb)
 
     def trigger_end_of_media(self) -> None:
-        for cb in self._end_callbacks:
+        for cb in list(self._eom):
             cb()
+
+    def trigger_position(self, pos_ms: int, dur_ms: int) -> None:
+        for cb in list(self._pos):
+            cb(pos_ms, dur_ms)
+
+    def trigger_error(self, msg: str) -> None:
+        for cb in list(self._err):
+            cb(msg)
 
 
 @pytest.fixture
@@ -74,10 +92,12 @@ def fake_audio() -> FakeAudioPort:
 @pytest.fixture
 def playback_service(fake_audio: FakeAudioPort):
     from michi.application.playback_service import PlaybackService
+
     return PlaybackService(fake_audio)
 
 
 @pytest.fixture
 def queue_service(playback_service):
     from michi.application.queue_service import QueueService
+
     return QueueService(playback_service)

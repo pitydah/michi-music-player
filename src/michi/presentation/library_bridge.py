@@ -1,40 +1,33 @@
-"""QML bridge for library — scan and browse audio files."""
-
-from pathlib import Path
+"""QML bridge for library — delegates to LibraryService."""
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
-from michi.application.library_port import LibraryScannerPort
-from michi.application.queue_service import QueueService
+from michi.application.library_service import LibraryService
 
 
 class LibraryBridge(QObject):
-    """Thin adapter: QML intent → LibraryScannerPort → QueueService."""
+    """Thin adapter: QML intent → LibraryService → QML observation."""
 
     library_changed = Signal()
 
-    def __init__(
-        self,
-        scanner: LibraryScannerPort,
-        queue_service: QueueService,
-        parent: QObject | None = None,
-    ) -> None:
+    def __init__(self, service: LibraryService, parent: QObject | None = None) -> None:
         super().__init__(parent)
-        self._scanner = scanner
-        self._queue = queue_service
-        self._files: list[str] = []
-        self._filtered: list[str] = []
-        self._current_dir: str = ""
-        self._query: str = ""
+        self._service = service
 
     def _get_files(self) -> list[str]:
-        return self._filtered if self._query else self._files
+        return [t.display_name for t in self._service.state.visible_tracks]
+
+    def _get_paths(self) -> list[str]:
+        return [str(t.file_path) for t in self._service.state.visible_tracks]
 
     def _get_count(self) -> int:
-        return len(self._get_files())
+        return len(self._service.state.visible_tracks)
 
     def _get_current_dir(self) -> str:
-        return self._current_dir
+        return self._service.state.current_directory
+
+    def notify(self) -> None:
+        self.library_changed.emit()
 
     files = Property(list, _get_files, notify=library_changed)
     fileCount = Property(int, _get_count, notify=library_changed)
@@ -42,23 +35,15 @@ class LibraryBridge(QObject):
 
     @Slot(str)
     def scan(self, directory: str) -> None:
-        paths = self._scanner.scan(Path(directory))
-        self._files = [str(p) for p in paths]
-        self._filtered = []
-        self._current_dir = directory
-        self._query = ""
+        self._service.scan(directory)
         self.library_changed.emit()
 
     @Slot(str)
     def search(self, query: str) -> None:
-        self._query = query.strip().lower()
-        if self._query:
-            self._filtered = [f for f in self._files if self._query in Path(f).name.lower()]
-        else:
-            self._filtered = []
+        self._service.search(query)
         self.library_changed.emit()
 
     @Slot(int)
-    def add_to_queue(self, index: int) -> None:
-        if 0 <= index < len(self._files):
-            self._queue.add(Path(self._files[index]))
+    def activate(self, visible_index: int) -> None:
+        """User requested to play or enqueue the visible track at index."""
+        self._service.activate(visible_index)

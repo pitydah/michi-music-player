@@ -1,8 +1,4 @@
-"""QML bridge — exposes PlaybackState and receives user intents.
-
-QML observes state read-only via Qt properties.
-QML sends intents via invokable methods. Bridge delegates to Application.
-"""
+"""QML bridge — exposes PlaybackState and receives user intents."""
 
 from pathlib import Path
 
@@ -46,17 +42,19 @@ class PlaybackBridge(QObject):
     def _get_muted(self) -> bool:
         return self._service.state.muted
 
+    def _get_error(self) -> str:
+        return self._service.state.error_message or ""
+
     def notify_state(self) -> None:
-        """Call after service changes state to push to QML."""
         self.state_changed.emit()
 
-    # Qt properties — read-only from QML
     status = Property(str, _get_status, notify=state_changed)
     fileName = Property(str, _get_file_name, notify=state_changed)
     position = Property(int, _get_position, notify=state_changed)
     duration = Property(int, _get_duration, notify=state_changed)
     volume = Property(int, _get_volume, notify=state_changed)
     muted = Property(bool, _get_muted, notify=state_changed)
+    errorMessage = Property(str, _get_error, notify=state_changed)
 
     @Slot(str)
     def play_file(self, file_path: str) -> None:
@@ -84,6 +82,12 @@ class PlaybackBridge(QObject):
         self.state_changed.emit()
 
     @Slot(int)
+    def seek_seconds(self, seconds: int) -> None:
+        """Seek to position. Input: seconds (QML), internal: milliseconds."""
+        self._service.seek(seconds * 1000)
+        self.state_changed.emit()
+
+    @Slot(int)
     def set_volume(self, value: int) -> None:
         self._service.set_volume(value)
         self.state_changed.emit()
@@ -91,11 +95,6 @@ class PlaybackBridge(QObject):
     @Slot(bool)
     def set_muted(self, muted: bool) -> None:
         self._service.set_muted(muted)
-        self.state_changed.emit()
-
-    @Slot(int)
-    def seek(self, position_ms: int) -> None:
-        self._service.seek(position_ms)
         self.state_changed.emit()
 
     @Slot(str)

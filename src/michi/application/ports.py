@@ -39,11 +39,33 @@ class AudioPort(ABC):
     def duration(self) -> int: ...
 
     @abstractmethod
-    def on_end_of_media(self, callback: Callable[[], None]) -> None:
+    def subscribe_end_of_media(self, callback: Callable[[], None]) -> None:
         """Register a callback invoked when the current media finishes."""
         ...
 
     @abstractmethod
-    def remove_end_of_media_callbacks(self) -> None:
-        """Remove all end-of-media callbacks."""
+    def unsubscribe_end_of_media(self, callback: Callable[[], None]) -> None:
+        """Remove a previously registered end-of-media callback."""
+        ...
+
+    @abstractmethod
+    def subscribe_position_changed(self, callback: Callable[[int, int], None]) -> None:
+        """Register a callback invoked with (position_ms, duration_ms)."""
+        ...
+
+    @abstractmethod
+    def unsubscribe_position_changed(
+        self, callback: Callable[[int, int], None]
+    ) -> None:
+        """Remove a previously registered position-changed callback."""
+        ...
+
+    @abstractmethod
+    def subscribe_error(self, callback: Callable[[str], None]) -> None:
+        """Register a callback invoked with an error message string."""
+        ...
+
+    @abstractmethod
+    def unsubscribe_error(self, callback: Callable[[str], None]) -> None:
+        """Remove a previously registered error callback."""
         ...
