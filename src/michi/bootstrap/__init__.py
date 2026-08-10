@@ -3,16 +3,24 @@
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QUrl, QTimer
+from PySide6.QtCore import Qt, QStandardPaths, QUrl, QTimer
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtMultimedia import QMediaPlayer
 
 from michi.infrastructure.qt_backend import QtMultimediaBackend
+from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
 from michi.application.playback_service import PlaybackService
 from michi.application.queue_service import QueueService
 from michi.presentation.playback_bridge import PlaybackBridge
 from michi.presentation.queue_bridge import QueueBridge
+
+
+def _data_dir() -> Path:
+    base = QStandardPaths.writableLocation(QStandardPaths.AppLocalDataLocation)
+    path = Path(base)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 class ApplicationContainer:
@@ -22,6 +30,7 @@ class ApplicationContainer:
         self._app: QGuiApplication | None = None
         self._engine: QQmlApplicationEngine | None = None
         self._backend: QtMultimediaBackend | None = None
+        self._settings_repo: SQLiteSettingsRepository | None = None
         self._playback_service: PlaybackService | None = None
         self._queue_service: QueueService | None = None
         self._playback_bridge: PlaybackBridge | None = None
@@ -39,19 +48,26 @@ class ApplicationContainer:
 
         # Infrastructure
         self._backend = QtMultimediaBackend()
+        self._settings_repo = SQLiteSettingsRepository(_data_dir() / "michi.db")
+
+        # Load persisted settings
+        settings = self._settings_repo.load()
+        self._backend.set_volume(settings.volume)
+        self._backend.set_muted(settings.muted)
 
         # Application — explicit injection
         self._playback_service = PlaybackService(self._backend)
-        self._queue_service = QueueService(self._playback_service)
+        self._playback_service._state.volume = settings.volume
+        self._playback_service._state.muted = settings.muted
 
-        # Auto-advance: when track ends, play next in queue
+        self._queue_service = QueueService(self._playback_service)
         self._backend.player.mediaStatusChanged.connect(self._on_media_status)
 
         # Presentation bridges
         self._playback_bridge = PlaybackBridge(self._playback_service)
         self._queue_bridge = QueueBridge(self._queue_service)
 
-        # Position sync timer
+        # Position sync
         self._position_timer = QTimer()
         self._position_timer.timeout.connect(self._sync_position)
         self._position_timer.start(250)
@@ -66,20 +82,25 @@ class ApplicationContainer:
     def run(self) -> int:
         qml_dir = Path(__file__).parent.parent / "presentation"
         main_qml = qml_dir / "main.qml"
-
         if not main_qml.exists():
             print(f"FATAL: QML entry not found at {main_qml}", file=sys.stderr)
             return 1
-
         self._engine.load(QUrl.fromLocalFile(str(main_qml)))
-
         if not self._engine.rootObjects():
             print("FATAL: QML engine failed to load any root object", file=sys.stderr)
             return 1
-
         return self._app.exec()
 
     def shutdown(self) -> None:
+        # Persist settings
+        if self._playback_service is not None and self._settings_repo is not None:
+            state = self._playback_service.state
+            from michi.domain.settings import SettingsState
+            self._settings_repo.save(SettingsState(
+                volume=state.volume,
+                muted=state.muted,
+            ))
+
         if self._position_timer is not None:
             self._position_timer.stop()
         if self._backend is not None:
@@ -92,6 +113,7 @@ class ApplicationContainer:
         self._playback_bridge = None
         self._queue_service = None
         self._playback_service = None
+        self._settings_repo = None
         self._backend = None
         self._app = None
 
