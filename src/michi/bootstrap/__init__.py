@@ -14,6 +14,7 @@ from michi.application.playback_service import PlaybackService
 from michi.application.queue_service import QueueService
 from michi.presentation.playback_bridge import PlaybackBridge
 from michi.presentation.queue_bridge import QueueBridge
+from michi.presentation.library_bridge import LibraryBridge
 
 
 def _data_dir() -> Path:
@@ -35,6 +36,7 @@ class ApplicationContainer:
         self._queue_service: QueueService | None = None
         self._playback_bridge: PlaybackBridge | None = None
         self._queue_bridge: QueueBridge | None = None
+        self._library_bridge: LibraryBridge | None = None
         self._position_timer: QTimer | None = None
 
     def initialize(self) -> None:
@@ -66,6 +68,7 @@ class ApplicationContainer:
         # Presentation bridges
         self._playback_bridge = PlaybackBridge(self._playback_service)
         self._queue_bridge = QueueBridge(self._queue_service)
+        self._library_bridge = LibraryBridge(self._queue_service)
 
         # Position sync
         self._position_timer = QTimer()
@@ -78,6 +81,7 @@ class ApplicationContainer:
         root_context = self._engine.rootContext()
         root_context.setContextProperty("playback", self._playback_bridge)
         root_context.setContextProperty("queue", self._queue_bridge)
+        root_context.setContextProperty("library", self._library_bridge)
 
     def run(self) -> int:
         qml_dir = Path(__file__).parent.parent / "presentation"
