@@ -95,6 +95,13 @@ ApplicationWindow {
                     }
                     Button { text: "Scan"; onClicked: library.scan(dirInput.text || dirInput.placeholderText) }
                 }
+                TextField {
+                    id: searchInput; Layout.fillWidth: true
+                    placeholderText: "Search..."
+                    color: "#e0e0e0"
+                    background: Rectangle { color: "#16213e"; radius: 6 }
+                    onTextChanged: library.search(text)
+                }
                 ListView {
                     id: libList; Layout.fillWidth: true; Layout.fillHeight: true
                     model: library.files; clip: true

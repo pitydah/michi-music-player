@@ -17,13 +17,15 @@ class LibraryBridge(QObject):
         super().__init__(parent)
         self._queue = queue_service
         self._files: list[str] = []
+        self._filtered: list[str] = []
         self._current_dir: str = ""
+        self._query: str = ""
 
     def _get_files(self) -> list[str]:
-        return self._files
+        return self._filtered if self._query else self._files
 
     def _get_count(self) -> int:
-        return len(self._files)
+        return len(self._get_files())
 
     def _get_current_dir(self) -> str:
         return self._current_dir
@@ -36,7 +38,18 @@ class LibraryBridge(QObject):
     def scan(self, directory: str) -> None:
         paths = scan_directory(Path(directory))
         self._files = [str(p) for p in paths]
+        self._filtered = []
         self._current_dir = directory
+        self._query = ""
+        self.library_changed.emit()
+
+    @Slot(str)
+    def search(self, query: str) -> None:
+        self._query = query.strip().lower()
+        if self._query:
+            self._filtered = [f for f in self._files if self._query in Path(f).name.lower()]
+        else:
+            self._filtered = []
         self.library_changed.emit()
 
     @Slot(int)
