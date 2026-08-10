@@ -21,3 +21,4 @@ $RECYCLE.BIN/
 # Environment artifacts
 .env*
 *.log
+__pycache__/
