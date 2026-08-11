@@ -42,7 +42,11 @@ ColumnLayout {
         delegate: Rectangle {
             width: queueList.width
             height: MichiTheme.controlHeightSmall
-            color: index === root.currentIndex ? MichiTheme.surfaceSelected : "transparent"
+            color: {
+                if (index === root.currentIndex) return MichiTheme.surfaceSelected
+                if (mouseArea.containsMouse) return MichiTheme.surfaceHover
+                return "transparent"
+            }
             radius: MichiTheme.radiusSmall
             Text {
                 anchors.verticalCenter: parent.verticalCenter
@@ -54,7 +58,10 @@ ColumnLayout {
                 width: parent.width - MichiTheme.space16
             }
             MouseArea {
+                id: mouseArea
                 anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
                 onClicked: root.trackClicked(index)
             }
         }

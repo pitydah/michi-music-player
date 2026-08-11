@@ -4,7 +4,6 @@ import "../theme"
 import "../ui"
 
 MichiPanel {
-    anchors.fill: parent
 
     ColumnLayout {
         anchors.fill: parent
@@ -47,7 +46,7 @@ MichiPanel {
             delegate: Rectangle {
                 width: libList.width
                 height: MichiTheme.controlHeightSmall
-                color: "transparent"
+                color: mouseArea.containsMouse ? MichiTheme.surfaceHover : "transparent"
                 radius: MichiTheme.radiusSmall
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
@@ -57,6 +56,7 @@ MichiPanel {
                     elide: Text.ElideRight; width: parent.width - MichiTheme.space16
                 }
                 MouseArea {
+                    id: mouseArea
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor

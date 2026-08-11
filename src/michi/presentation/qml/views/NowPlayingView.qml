@@ -4,7 +4,6 @@ import "../theme"
 import "../components"
 
 ColumnLayout {
-    anchors.fill: parent
     spacing: MichiTheme.space12
 
     Text {

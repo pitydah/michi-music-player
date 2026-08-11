@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../theme"
-import "../ui"
 
 ColumnLayout {
     id: root
@@ -10,6 +9,12 @@ ColumnLayout {
 
     signal navigationRequested(string routeId)
     property string currentRoute: ""
+
+    readonly property var _routes: [
+        { id: "now_playing", label: "Now Playing" },
+        { id: "library",     label: "Library" },
+        { id: "queue",       label: "Queue" }
+    ]
 
     Rectangle {
         Layout.fillWidth: true
@@ -31,52 +36,53 @@ ColumnLayout {
         spacing: MichiTheme.space2
 
         Repeater {
-            model: [
-                { id: "now_playing", label: "Now Playing" },
-                { id: "library",     label: "Library" },
-                { id: "queue",       label: "Queue" }
-            ]
+            model: root._routes
 
-            delegate: Rectangle {
+            delegate: ItemDelegate {
+                id: itemDelegate
                 Layout.fillWidth: true
                 height: MichiTheme.controlHeightMedium
-                color: {
-                    if (root.currentRoute === modelData.id) return MichiTheme.surfaceSelected
-                    if (mouseArea.containsMouse) return MichiTheme.surfaceHover
-                    return "transparent"
-                }
-                radius: MichiTheme.radiusMedium
 
-                Rectangle {
-                    visible: root.currentRoute === modelData.id
-                    anchors.left: parent.left
-                    anchors.leftMargin: MichiTheme.space4
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 3
-                    height: parent.height - MichiTheme.space12
-                    radius: 2
-                    color: MichiTheme.accent
+                readonly property bool _active: root.currentRoute === modelData.id
+
+                focusPolicy: Qt.StrongFocus
+
+                contentItem: RowLayout {
+                    spacing: 0
+
+                    Rectangle {
+                        visible: itemDelegate._active
+                        Layout.preferredWidth: 3
+                        Layout.preferredHeight: itemDelegate.height - MichiTheme.space12
+                        radius: 2
+                        color: MichiTheme.accent
+                    }
+
+                    Text {
+                        Layout.leftMargin: itemDelegate._active
+                            ? MichiTheme.space16 : MichiTheme.space20
+                        text: modelData.label
+                        font.pixelSize: MichiTheme.fontSizeBody
+                        font.weight: itemDelegate._active
+                            ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
+                        color: itemDelegate._active
+                            ? MichiTheme.textPrimary
+                            : (itemDelegate.hovered
+                                ? MichiTheme.textPrimary : MichiTheme.textSecondary)
+                    }
                 }
 
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.left: parent.left
-                    anchors.leftMargin: MichiTheme.space20
-                    text: modelData.label
-                    font.pixelSize: MichiTheme.fontSizeBody
-                    font.weight: root.currentRoute === modelData.id
-                        ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
-                    color: root.currentRoute === modelData.id
-                        ? MichiTheme.textPrimary : MichiTheme.textSecondary
+                background: Rectangle {
+                    radius: MichiTheme.radiusMedium
+                    color: {
+                        if (itemDelegate._active) return MichiTheme.surfaceSelected
+                        if (itemDelegate.hovered) return MichiTheme.surfaceHover
+                        if (itemDelegate.visualFocus) return MichiTheme.surfaceHover
+                        return "transparent"
+                    }
                 }
 
-                MouseArea {
-                    id: mouseArea
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    hoverEnabled: true
-                    onClicked: root.navigationRequested(modelData.id)
-                }
+                onClicked: root.navigationRequested(modelData.id)
             }
         }
     }

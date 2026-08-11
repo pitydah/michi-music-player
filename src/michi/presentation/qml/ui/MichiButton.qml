@@ -6,6 +6,9 @@ Button {
     id: root
 
     property string variant: "primary"
+    readonly property bool _isPrimary: variant === "primary"
+    readonly property bool _isSecondary: variant === "secondary"
+    readonly property bool _isGhost: variant === "ghost"
 
     implicitHeight: MichiTheme.controlHeightMedium
     leftPadding: MichiTheme.space16
@@ -19,7 +22,9 @@ Button {
         font: root.font
         color: {
             if (!root.enabled) return MichiTheme.textDisabled
-            if (root.variant === "ghost") return root.hovered ? MichiTheme.accentHover : MichiTheme.textSecondary
+            if (root._isPrimary || root._isSecondary) return MichiTheme.textPrimary
+            if (root._isGhost) return root.hovered || root.checked
+                ? MichiTheme.textPrimary : MichiTheme.textSecondary
             return MichiTheme.textPrimary
         }
         horizontalAlignment: Text.AlignHCenter
@@ -28,17 +33,32 @@ Button {
 
     background: Rectangle {
         radius: MichiTheme.radiusMedium
-        color: {
+
+        readonly property color _bg: {
             if (!root.enabled) return MichiTheme.surfacePrimary
+            if (root._isGhost) {
+                if (root.pressed || root.checked) return MichiTheme.surfaceSelected
+                if (root.hovered) return MichiTheme.surfaceHover
+                return "transparent"
+            }
+            if (root._isSecondary) {
+                if (root.pressed) return MichiTheme.surfacePressed
+                if (root.hovered) return MichiTheme.surfaceHover
+                return MichiTheme.surfaceSecondary
+            }
+            // primary
             if (root.pressed) return MichiTheme.accentPressed
             if (root.hovered) return MichiTheme.accentHover
-            if (root.variant === "primary") return MichiTheme.accent
-            if (root.variant === "secondary") return MichiTheme.surfaceSecondary
-            return "transparent"
+            return MichiTheme.accent
         }
-        border.color: root.variant === "ghost"
-            ? (root.hovered ? MichiTheme.accentHover : MichiTheme.borderSubtle)
+
+        color: _bg
+
+        border.color: root.visualFocus ? MichiTheme.accent
+            : (root._isGhost && (root.hovered || root.checked))
+                ? MichiTheme.accentHover
+            : root._isGhost ? MichiTheme.borderSubtle
             : "transparent"
-        border.width: root.variant === "ghost" ? 1 : 0
+        border.width: root._isGhost || root.visualFocus ? 1 : 0
     }
 }

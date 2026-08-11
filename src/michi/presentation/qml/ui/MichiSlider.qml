@@ -31,8 +31,11 @@ Slider {
         implicitWidth: 14
         implicitHeight: 14
         radius: 7
-        color: root.pressed ? MichiTheme.accentPressed
-            : root.hovered ? MichiTheme.accentHover
-            : MichiTheme.accent
+        color: {
+            if (!root.enabled) return MichiTheme.textDisabled
+            if (root.pressed) return MichiTheme.accentPressed
+            if (root.hovered || root.visualFocus) return MichiTheme.accentHover
+            return MichiTheme.accent
+        }
     }
 }
