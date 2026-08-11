@@ -3,7 +3,6 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 Rectangle {
-    anchors.fill: parent
     color: "#111128"
     radius: 10
 

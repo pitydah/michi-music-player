@@ -4,7 +4,6 @@ import QtQuick.Layouts
 import "../components"
 
 ColumnLayout {
-    anchors.fill: parent
     spacing: 8
 
     Text {
