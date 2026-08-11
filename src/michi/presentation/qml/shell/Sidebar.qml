@@ -1,35 +1,34 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../theme"
+import "../ui"
 
 ColumnLayout {
     id: root
     spacing: 0
 
     signal navigationRequested(string routeId)
-
     property string currentRoute: ""
 
-    // Brand
     Rectangle {
         Layout.fillWidth: true
         height: 56
-        color: "#0d0d1a"
+        color: MichiTheme.backgroundRaised
 
         Text {
             anchors.centerIn: parent
             text: "Michi"
-            font.pixelSize: 18
-            font.bold: true
-            color: "#e0e0e0"
+            font.pixelSize: MichiTheme.fontSizeTitle
+            font.weight: MichiTheme.fontWeightBold
+            color: MichiTheme.textPrimary
         }
     }
 
-    // Routes
     ColumnLayout {
         Layout.fillWidth: true
-        Layout.topMargin: 12
-        spacing: 2
+        Layout.topMargin: MichiTheme.space12
+        spacing: MichiTheme.space2
 
         Repeater {
             model: [
@@ -40,23 +39,42 @@ ColumnLayout {
 
             delegate: Rectangle {
                 Layout.fillWidth: true
-                height: 40
-                color: root.currentRoute === modelData.id ? "#1e1e3a" : "transparent"
-                radius: 6
+                height: MichiTheme.controlHeightMedium
+                color: {
+                    if (root.currentRoute === modelData.id) return MichiTheme.surfaceSelected
+                    if (mouseArea.containsMouse) return MichiTheme.surfaceHover
+                    return "transparent"
+                }
+                radius: MichiTheme.radiusMedium
+
+                Rectangle {
+                    visible: root.currentRoute === modelData.id
+                    anchors.left: parent.left
+                    anchors.leftMargin: MichiTheme.space4
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 3
+                    height: parent.height - MichiTheme.space12
+                    radius: 2
+                    color: MichiTheme.accent
+                }
 
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: 20
+                    anchors.leftMargin: MichiTheme.space20
                     text: modelData.label
-                    font.pixelSize: 14
-                    font.bold: root.currentRoute === modelData.id
-                    color: root.currentRoute === modelData.id ? "#aaaaff" : "#8888aa"
+                    font.pixelSize: MichiTheme.fontSizeBody
+                    font.weight: root.currentRoute === modelData.id
+                        ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
+                    color: root.currentRoute === modelData.id
+                        ? MichiTheme.textPrimary : MichiTheme.textSecondary
                 }
 
                 MouseArea {
+                    id: mouseArea
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
+                    hoverEnabled: true
                     onClicked: root.navigationRequested(modelData.id)
                 }
             }

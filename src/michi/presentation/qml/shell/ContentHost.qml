@@ -1,10 +1,10 @@
 import QtQuick
 import QtQuick.Layouts
+import "../theme"
 import "../views"
 
 Item {
     id: root
-
     property string currentRoute: ""
 
     function routeIndex(route) {
@@ -12,18 +12,18 @@ Item {
         case "now_playing": return 0
         case "library":     return 1
         case "queue":       return 2
-        default:            return 1  // fallback: Library
+        default:            return 1
         }
     }
 
     Rectangle {
         anchors.fill: parent
-        color: "#1a1a2e"
+        color: MichiTheme.backgroundBase
     }
 
     StackLayout {
         anchors.fill: parent
-        anchors.margins: 16
+        anchors.margins: MichiTheme.space16
         currentIndex: root.routeIndex(root.currentRoute)
 
         NowPlayingView { }

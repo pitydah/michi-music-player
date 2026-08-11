@@ -1,31 +1,30 @@
 import QtQuick
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../theme"
+import "../ui"
 
-Rectangle {
-    color: "#111128"
-    radius: 10
+MichiPanel {
+    anchors.fill: parent
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 12
-        spacing: 8
+        spacing: MichiTheme.space8
 
         Text {
             text: "Library" + (library.fileCount > 0 ? " (" + library.fileCount + ")" : "")
-            font.pixelSize: 14; font.bold: true; color: "#aaaacc"
+            font.pixelSize: MichiTheme.fontSizeBodyLarge
+            font.weight: MichiTheme.fontWeightBold
+            color: MichiTheme.textSecondary
         }
 
         RowLayout {
-            Layout.fillWidth: true; spacing: 6
-            TextField {
+            Layout.fillWidth: true; spacing: MichiTheme.space6
+            MichiTextField {
                 id: dirInput; Layout.fillWidth: true
                 text: library.currentDir
                 placeholderText: "Music directory..."
-                color: "#e0e0e0"
-                background: Rectangle { color: "#16213e"; radius: 6 }
             }
-            Button {
+            MichiButton {
                 text: "Scan"
                 enabled: dirInput.text.length > 0 || library.currentDir.length > 0
                 onClicked: {
@@ -35,12 +34,10 @@ Rectangle {
             }
         }
 
-        TextField {
+        MichiTextField {
             id: searchInput; Layout.fillWidth: true
             text: library.searchQuery
             placeholderText: "Search..."
-            color: "#e0e0e0"
-            background: Rectangle { color: "#16213e"; radius: 6 }
             onTextEdited: library.search(text)
         }
 
@@ -48,15 +45,21 @@ Rectangle {
             id: libList; Layout.fillWidth: true; Layout.fillHeight: true
             model: library.files; clip: true
             delegate: Rectangle {
-                width: libList.width; height: 28; color: "transparent"; radius: 3
+                width: libList.width
+                height: MichiTheme.controlHeightSmall
+                color: "transparent"
+                radius: MichiTheme.radiusSmall
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    anchors.left: parent.left; anchors.leftMargin: 8
-                    text: modelData; color: "#9999aa"; font.pixelSize: 11
-                    elide: Text.ElideRight; width: parent.width - 16
+                    anchors.left: parent.left; anchors.leftMargin: MichiTheme.space8
+                    text: modelData; color: MichiTheme.textSecondary
+                    font.pixelSize: MichiTheme.fontSizeCaption
+                    elide: Text.ElideRight; width: parent.width - MichiTheme.space16
                 }
                 MouseArea {
                     anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
                     onClicked: library.activate(index)
                 }
             }

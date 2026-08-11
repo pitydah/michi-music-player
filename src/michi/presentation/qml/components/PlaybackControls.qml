@@ -1,6 +1,6 @@
 import QtQuick
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../ui"
 
 RowLayout {
     id: root
@@ -18,9 +18,9 @@ RowLayout {
     signal prevClicked()
     signal nextClicked()
 
-    Button { id: prevBtn; text: "⏮"; onClicked: root.prevClicked() }
-    Button { id: playBtn; text: "▶"; onClicked: root.playClicked() }
-    Button { id: pauseBtn; text: "⏸"; onClicked: root.pauseClicked() }
-    Button { id: stopBtn; text: "■"; onClicked: root.stopClicked() }
-    Button { id: nextBtn; text: "⏭"; onClicked: root.nextClicked() }
+    MichiButton { id: prevBtn; text: "⏮"; variant: "ghost"; onClicked: root.prevClicked() }
+    MichiButton { id: playBtn; text: "▶"; onClicked: root.playClicked() }
+    MichiButton { id: pauseBtn; text: "⏸"; variant: "secondary"; onClicked: root.pauseClicked() }
+    MichiButton { id: stopBtn; text: "■"; variant: "ghost"; onClicked: root.stopClicked() }
+    MichiButton { id: nextBtn; text: "⏭"; variant: "ghost"; onClicked: root.nextClicked() }
 }

@@ -1,6 +1,7 @@
 import QtQuick
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../theme"
+import "../ui"
 
 RowLayout {
     id: root
@@ -14,22 +15,22 @@ RowLayout {
 
     Text {
         text: "Vol"
-        font.pixelSize: 11
-        color: "#8888aa"
+        font.pixelSize: MichiTheme.fontSizeCaption
+        color: MichiTheme.textSecondary
     }
 
-    Slider {
+    MichiSlider {
         id: volSlider
         from: 0; to: 100
         Layout.preferredWidth: 90
         onMoved: root.volumeChangeRequested(value)
     }
 
-    Button {
+    MichiButton {
         id: muteBtn
         text: checked ? "🔇" : "🔊"
+        variant: "ghost"
         checkable: true
-        flat: true
         onClicked: root.muteToggleRequested(checked)
     }
 }

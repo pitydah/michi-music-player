@@ -7,7 +7,6 @@ RowLayout {
     spacing: 0
 
     property string currentRoute: ""
-
     signal navigationRequested(string routeId)
 
     Sidebar {

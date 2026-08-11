@@ -11,7 +11,7 @@ ApplicationWindow {
     minimumWidth: 800
     minimumHeight: 480
     title: "Michi Music Player"
-    color: "#1a1a2e"
+    color: MichiTheme.backgroundBase
 
     Shortcut { sequence: "Space"; onActivated: playback.status === "playing" ? playback.pause() : playback.play() }
     Shortcut { sequence: "Left"; onActivated: queue.previous_track() }

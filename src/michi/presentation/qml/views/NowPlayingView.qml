@@ -1,15 +1,18 @@
 import QtQuick
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../theme"
 import "../components"
 
 ColumnLayout {
-    spacing: 12
+    anchors.fill: parent
+    spacing: MichiTheme.space12
 
     Text {
         Layout.alignment: Qt.AlignHCenter
         text: "Now Playing"
-        font.pixelSize: 20; font.bold: true; color: "#e0e0e0"
+        font.pixelSize: MichiTheme.fontSizeTitle
+        font.weight: MichiTheme.fontWeightBold
+        color: MichiTheme.textPrimary
     }
 
     NowPlayingPanel {
@@ -18,8 +21,8 @@ ColumnLayout {
         position: playback.position
         duration: Math.max(playback.duration, 1)
         statusText: playback.status
-        statusColor: playback.status === "playing" ? "#66cc88" :
-                     playback.status === "paused" ? "#ccaa44" : "#8888aa"
+        statusColor: playback.status === "playing" ? MichiTheme.success :
+                     playback.status === "paused" ? MichiTheme.warning : MichiTheme.textMuted
         seekEnabled: playback.duration > 0
         onSeekRequested: secs => playback.seek_seconds(secs)
     }

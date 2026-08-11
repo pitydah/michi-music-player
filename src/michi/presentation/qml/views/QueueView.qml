@@ -1,14 +1,17 @@
 import QtQuick
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../theme"
 import "../components"
 
 ColumnLayout {
-    spacing: 8
+    anchors.fill: parent
+    spacing: MichiTheme.space8
 
     Text {
         text: "Queue"
-        font.pixelSize: 20; font.bold: true; color: "#e0e0e0"
+        font.pixelSize: MichiTheme.fontSizeTitle
+        font.weight: MichiTheme.fontWeightBold
+        color: MichiTheme.textPrimary
     }
 
     QueuePanel {
