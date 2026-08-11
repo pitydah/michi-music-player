@@ -19,6 +19,8 @@ where = ["src"]
 michi = [
     "presentation/*.qml",
     "presentation/qml/components/*.qml",
+    "presentation/qml/shell/*.qml",
+    "presentation/qml/views/*.qml",
 ]
 
 [tool.ruff]
