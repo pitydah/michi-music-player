@@ -9,12 +9,14 @@ from PySide6.QtQml import QQmlApplicationEngine
 
 from michi.application.coordinator import PlaybackCoordinator
 from michi.application.library_service import LibraryService
+from michi.application.navigation_service import NavigationService
 from michi.application.playback_service import PlaybackService
 from michi.application.queue_service import QueueService
 from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
 from michi.infrastructure.qt_backend import QtMultimediaBackend
 from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
 from michi.presentation.library_bridge import LibraryBridge
+from michi.presentation.navigation_bridge import NavigationBridge
 from michi.presentation.playback_bridge import PlaybackBridge
 from michi.presentation.queue_bridge import QueueBridge
 
@@ -41,6 +43,7 @@ class ApplicationContainer:
         self._pb: PlaybackBridge | None = None
         self._qb: QueueBridge | None = None
         self._lb: LibraryBridge | None = None
+        self._nb: NavigationBridge | None = None
 
     def initialize(self) -> None:
         QGuiApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -58,6 +61,9 @@ class ApplicationContainer:
         scanner = FilesystemLibraryScanner()
         library = LibraryService(scanner, queue)
 
+        # Navigation
+        navigation = NavigationService()
+
         s = settings_repo.load()
         playback.restore_volume(s.volume, s.muted)
 
@@ -67,6 +73,7 @@ class ApplicationContainer:
         pb = PlaybackBridge(playback)
         qb = QueueBridge(queue)
         lb = LibraryBridge(library)
+        nb = NavigationBridge(navigation)
 
         engine = QQmlApplicationEngine()
         engine.quit.connect(self._app.quit)
@@ -74,6 +81,7 @@ class ApplicationContainer:
         ctx.setContextProperty("playback", pb)
         ctx.setContextProperty("queue", qb)
         ctx.setContextProperty("library", lb)
+        ctx.setContextProperty("navigation", nb)
 
         self._backend = backend
         self._settings_repo = settings_repo
@@ -84,6 +92,7 @@ class ApplicationContainer:
         self._pb = pb
         self._qb = qb
         self._lb = lb
+        self._nb = nb
         self._engine = engine
 
     def run(self) -> int:
@@ -117,6 +126,8 @@ class ApplicationContainer:
             self._qb.dispose()
         if self._lb:
             self._lb.dispose()
+        if self._nb:
+            self._nb.dispose()
 
         if self._backend:
             self._backend.stop()
@@ -127,6 +138,7 @@ class ApplicationContainer:
         self._lb = None
         self._qb = None
         self._pb = None
+        self._nb = None
         self._coordinator = None
         self._library = None
         self._queue = None
