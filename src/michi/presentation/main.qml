@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import "qml/shell"
+import "qml/theme"
 
 ApplicationWindow {
     id: window

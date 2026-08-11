@@ -21,6 +21,8 @@ michi = [
     "presentation/qml/components/*.qml",
     "presentation/qml/shell/*.qml",
     "presentation/qml/views/*.qml",
+    "presentation/qml/theme/*.qml",
+    "presentation/qml/theme/qmldir",
 ]
 
 [tool.ruff]
