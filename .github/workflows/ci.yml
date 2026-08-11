@@ -1,0 +1,42 @@
+name: Michi CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system Qt
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq qt6-base-dev qt6-multimedia-dev libqt6multimedia6 \
+            libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev
+
+      - name: Install project
+        run: pip install -e ".[test]" 2>/dev/null || pip install -e .
+
+      - name: Lint
+        run: |
+          pip install ruff
+          ruff check src tests
+          ruff format --check src tests
+
+      - name: Test
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m pytest tests/ -q
+
+      - name: Build
+        run: |
+          pip install build
+          python -m build

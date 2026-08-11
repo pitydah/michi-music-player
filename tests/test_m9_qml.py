@@ -1,16 +1,32 @@
 """M9 QML foundation regression guards and smoke tests."""
 
+import os
 import sys
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QUrl
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQml import QQmlComponent, QQmlEngine
+
+QML_DIR = Path("src/michi/presentation/qml").resolve()
+
+
+def _load_qml(path: str, name: str) -> QQmlComponent:
+    """Load a QML file and assert it compiles + instantiates."""
+    engine = QQmlEngine()
+    engine.addImportPath(str(QML_DIR))
+    component = QQmlComponent(engine, str(QML_DIR / path))
+    errs = "; ".join(e.toString() for e in component.errors())
+    assert component.status() == QQmlComponent.Ready, f"{name}: {errs}"
+    obj = component.create()
+    assert obj is not None, f"{name}: null object"
+    obj.deleteLater()
+    return component
 
 
 @pytest.fixture(scope="module")
 def qapp():
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     app = QGuiApplication.instance()
     if app is None:
         app = QGuiApplication(sys.argv)
@@ -18,91 +34,62 @@ def qapp():
 
 
 class TestRoutedViewRootsNoAnchorsFill:
-    def test_now_playing_root_no_anchors(self):
-        content = Path(
+    @staticmethod
+    def _root_has_anchors(path: str) -> bool:
+        content = Path(path).read_text()
+        lines = content.split("\n")
+        root_depth = None
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            # Find the root element (first non-import line)
+            if stripped and not stripped.startswith("import") and root_depth is None:
+                # Count how many braces deep we are before root
+                indent = len(line) - len(line.lstrip())
+                root_depth = 0
+                # Count braces on the root line itself, then scan children
+                root_depth = lines[i].count("{") - lines[i].count("}")
+                for j in range(i + 1, len(lines)):
+                    js = lines[j]
+                    if not js.strip():
+                        continue
+                    # Track brace depth
+                    root_depth += js.count("{")
+                    root_depth -= js.count("}")
+                    if "anchors.fill" in js and root_depth <= 1:
+                        return True
+                    if root_depth < 0:
+                        break
+                return False
+        return False
+
+    def test_now_playing_root(self):
+        assert not self._root_has_anchors(
             "src/michi/presentation/qml/views/NowPlayingView.qml"
-        ).read_text()
-        lines = content.split("\n")
-        in_root = False
-        brace_depth = 0
-        for line in lines:
-            stripped = line.strip()
-            if "{ColumnLayout" in stripped or "ColumnLayout {" in stripped:
-                in_root = True
-            if in_root and "{" in stripped:
-                brace_depth += stripped.count("{")
-            if in_root and "}" in stripped:
-                brace_depth -= stripped.count("}")
-            if in_root and brace_depth <= 2 and "anchors.fill" in stripped:
-                pytest.fail(f"Root has anchors.fill: {stripped}")
-            if in_root and brace_depth == 0 and "}" in stripped:
-                break
-
-    def test_library_root_no_anchors(self):
-        content = Path("src/michi/presentation/qml/views/LibraryView.qml").read_text()
-        lines = content.split("\n")
-        in_root = False
-        brace_depth = 0
-        for line in lines:
-            stripped = line.strip()
-            if "MichiPanel {" in stripped:
-                in_root = True
-            if in_root and "{" in stripped:
-                brace_depth += stripped.count("{")
-            if in_root and "}" in stripped:
-                brace_depth -= stripped.count("}")
-            if in_root and brace_depth <= 1 and "anchors.fill" in stripped:
-                pytest.fail(f"Root has anchors.fill: {stripped}")
-            if in_root and brace_depth == 0 and "}" in stripped:
-                break
-
-    def test_queue_root_no_anchors(self):
-        content = Path("src/michi/presentation/qml/views/QueueView.qml").read_text()
-        lines = content.split("\n")
-        in_root = False
-        brace_depth = 0
-        for line in lines:
-            stripped = line.strip()
-            if "{ColumnLayout" in stripped or "ColumnLayout {" in stripped:
-                in_root = True
-            if in_root and "{" in stripped:
-                brace_depth += stripped.count("{")
-            if in_root and "}" in stripped:
-                brace_depth -= stripped.count("}")
-            if in_root and brace_depth <= 2 and "anchors.fill" in stripped:
-                pytest.fail(f"Root has anchors.fill: {stripped}")
-            if in_root and brace_depth == 0 and "}" in stripped:
-                break
-
-
-class TestQmlComponentsLoad:
-    def test_theme_singleton_imports(self, qapp):
-        engine = QQmlApplicationEngine()
-        engine.addImportPath(str(Path("src/michi/presentation/qml").resolve()))
-        # Load a minimal QML that imports the theme
-        component = (
-            'import QtQuick; import "theme"; '
-            "QtObject { property color c: MichiTheme.accent }"
         )
-        obj = None
-        engine.objectCreated.connect(lambda o, _: None)
-        engine.loadData(component.encode(), QUrl())
-        engine.clearComponentCache()
 
-    def test_primitives_smoke(self, qapp):
-        engine = QQmlApplicationEngine()
-        engine.addImportPath(str(Path("src/michi/presentation/qml").resolve()))
-        primitives = [
-            ('import QtQuick; import "ui"; MichiButton {}', "MichiButton"),
-            ('import QtQuick; import "ui"; MichiTextField {}', "MichiTextField"),
-            ('import QtQuick; import "ui"; MichiPanel {}', "MichiPanel"),
-        ]
-        for source, _name in primitives:
-            engine.loadData(source.encode(), QUrl())
-        engine.clearComponentCache()
+    def test_library_root(self):
+        assert not self._root_has_anchors(
+            "src/michi/presentation/qml/views/LibraryView.qml"
+        )
 
-    def test_shell_loads(self, qapp):
-        engine = QQmlApplicationEngine()
-        engine.addImportPath(str(Path("src/michi/presentation/qml").resolve()))
-        engine.loadData(b'import QtQuick; import "shell"; AppShell {}', QUrl())
-        engine.clearComponentCache()
+    def test_queue_root(self):
+        assert not self._root_has_anchors(
+            "src/michi/presentation/qml/views/QueueView.qml"
+        )
+
+
+class TestQmlSmoke:
+    def test_michi_button(self, qapp):
+        _load_qml("ui/MichiButton.qml", "MichiButton")
+
+    def test_michi_text_field(self, qapp):
+        _load_qml("ui/MichiTextField.qml", "MichiTextField")
+
+    def test_michi_panel(self, qapp):
+        _load_qml("ui/MichiPanel.qml", "MichiPanel")
+
+    def test_michi_slider(self, qapp):
+        _load_qml("ui/MichiSlider.qml", "MichiSlider")
+
+    def test_shell(self, qapp):
+        _load_qml("shell/AppShell.qml", "AppShell")
