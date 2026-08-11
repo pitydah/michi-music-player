@@ -317,3 +317,24 @@ class TestBridgeDispose:
         assert len(svc._subscribers) == 1
         bridge.dispose()
         assert len(svc._subscribers) == 0
+
+
+class TestLibraryBridgeSearchQuery:
+    def test_search_query_property(self, fake_audio):
+        from michi.application.library_service import LibraryService
+        from michi.application.playback_service import PlaybackService
+        from michi.application.queue_service import QueueService
+        from michi.presentation.library_bridge import LibraryBridge
+
+        svc = PlaybackService(fake_audio)
+        q = QueueService(svc)
+
+        class FakeScanner:
+            def scan(self, root):
+                return [root / "a.mp3"]
+
+        lib = LibraryService(FakeScanner(), q)
+        lib.scan("/tmp")
+        bridge = LibraryBridge(lib)
+        lib.search("depeche")
+        assert bridge.property("searchQuery") == "depeche"

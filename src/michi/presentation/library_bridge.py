@@ -30,9 +30,13 @@ class LibraryBridge(QObject):
     def _get_current_dir(self) -> str:
         return self._service.state.current_directory
 
+    def _get_search_query(self) -> str:
+        return self._service.state.query
+
     files = Property(list, _get_files, notify=library_changed)
     fileCount = Property(int, _get_count, notify=library_changed)
     currentDir = Property(str, _get_current_dir, notify=library_changed)
+    searchQuery = Property(str, _get_search_query, notify=library_changed)
 
     @Slot(str)
     def scan(self, directory: str) -> None:

@@ -18,7 +18,11 @@ ColumnLayout {
         trackNames: queue.trackNames
         currentIndex: queue.currentIndex
         count: queue.count
+        hasPrev: queue.hasPrevious
+        hasNext: queue.hasNext
         onTrackClicked: idx => queue.play_index(idx)
         onClearClicked: queue.clear_queue()
+        onPreviousRequested: queue.previous_track()
+        onNextRequested: queue.next_track()
     }
 }

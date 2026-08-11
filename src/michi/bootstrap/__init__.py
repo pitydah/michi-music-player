@@ -39,6 +39,7 @@ class ApplicationContainer:
         self._playback: PlaybackService | None = None
         self._queue: QueueService | None = None
         self._library: LibraryService | None = None
+        self._navigation: NavigationService | None = None
         self._coordinator: PlaybackCoordinator | None = None
         self._pb: PlaybackBridge | None = None
         self._qb: QueueBridge | None = None
@@ -88,6 +89,7 @@ class ApplicationContainer:
         self._playback = playback
         self._queue = queue
         self._library = library
+        self._navigation = navigation
         self._coordinator = coordinator
         self._pb = pb
         self._qb = qb
@@ -141,6 +143,7 @@ class ApplicationContainer:
         self._nb = None
         self._coordinator = None
         self._library = None
+        self._navigation = None
         self._queue = None
         self._playback = None
         self._settings_repo = None

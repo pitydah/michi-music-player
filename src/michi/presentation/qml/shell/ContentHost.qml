@@ -1,27 +1,33 @@
 import QtQuick
 import QtQuick.Layouts
+import "../views"
 
 Item {
     id: root
 
     property string currentRoute: ""
 
+    function routeIndex(route) {
+        switch (route) {
+        case "now_playing": return 0
+        case "library":     return 1
+        case "queue":       return 2
+        default:            return 1  // fallback: Library
+        }
+    }
+
     Rectangle {
         anchors.fill: parent
         color: "#1a1a2e"
     }
 
-    Loader {
-        id: contentLoader
+    StackLayout {
         anchors.fill: parent
         anchors.margins: 16
-        source: {
-            switch (root.currentRoute) {
-                case "now_playing": return "../views/NowPlayingView.qml"
-                case "library":     return "../views/LibraryView.qml"
-                case "queue":       return "../views/QueueView.qml"
-                default:            return ""
-            }
-        }
+        currentIndex: root.routeIndex(root.currentRoute)
+
+        NowPlayingView { }
+        LibraryView { }
+        QueueView { }
     }
 }

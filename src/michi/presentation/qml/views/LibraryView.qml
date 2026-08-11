@@ -21,22 +21,28 @@ Rectangle {
             Layout.fillWidth: true; spacing: 6
             TextField {
                 id: dirInput; Layout.fillWidth: true
-                placeholderText: library.currentDir || "Music directory..."
+                text: library.currentDir
+                placeholderText: "Music directory..."
                 color: "#e0e0e0"
                 background: Rectangle { color: "#16213e"; radius: 6 }
             }
             Button {
                 text: "Scan"
-                onClicked: library.scan(dirInput.text || dirInput.placeholderText)
+                enabled: dirInput.text.length > 0 || library.currentDir.length > 0
+                onClicked: {
+                    var d = dirInput.text.length > 0 ? dirInput.text : library.currentDir
+                    library.scan(d)
+                }
             }
         }
 
         TextField {
             id: searchInput; Layout.fillWidth: true
+            text: library.searchQuery
             placeholderText: "Search..."
             color: "#e0e0e0"
             background: Rectangle { color: "#16213e"; radius: 6 }
-            onTextChanged: library.search(text)
+            onTextEdited: library.search(text)
         }
 
         ListView {

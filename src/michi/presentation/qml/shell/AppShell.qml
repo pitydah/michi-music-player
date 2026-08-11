@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import "../shell"
 
 RowLayout {
     id: root
