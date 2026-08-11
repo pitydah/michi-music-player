@@ -12,6 +12,7 @@ from michi.application.library_service import LibraryService
 from michi.application.navigation_service import NavigationService
 from michi.application.playback_service import PlaybackService
 from michi.application.queue_service import QueueService
+from michi.application.settings_service import SettingsService
 from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
 from michi.infrastructure.qt_backend import QtMultimediaBackend
 from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
@@ -35,7 +36,7 @@ class ApplicationContainer:
         self._app: QGuiApplication | None = None
         self._engine: QQmlApplicationEngine | None = None
         self._backend: QtMultimediaBackend | None = None
-        self._settings_repo: SQLiteSettingsRepository | None = None
+        self._settings: SettingsService | None = None
         self._playback: PlaybackService | None = None
         self._queue: QueueService | None = None
         self._library: LibraryService | None = None
@@ -56,16 +57,17 @@ class ApplicationContainer:
         self._app.setOrganizationName("Michi")
 
         backend = QtMultimediaBackend()
-        settings_repo = SQLiteSettingsRepository(_data_dir() / "michi.db")
+        repo = SQLiteSettingsRepository(_data_dir() / "michi.db")
+        settings = SettingsService(repo)
+
         playback = PlaybackService(backend)
         queue = QueueService(playback)
         scanner = FilesystemLibraryScanner()
         library = LibraryService(scanner, queue)
-
-        # Navigation
         navigation = NavigationService()
 
-        s = settings_repo.load()
+        # Restore persisted playback preferences
+        s = settings.load()
         playback.restore_volume(s.volume, s.muted)
 
         coordinator = PlaybackCoordinator(backend, queue, playback)
@@ -85,7 +87,7 @@ class ApplicationContainer:
         ctx.setContextProperty("navigation", nb)
 
         self._backend = backend
-        self._settings_repo = settings_repo
+        self._settings = settings
         self._playback = playback
         self._queue = queue
         self._library = library
@@ -113,15 +115,13 @@ class ApplicationContainer:
         if self._coordinator:
             self._coordinator.stop()
 
-        # Preserve all settings fields, only update playback-owned ones
-        if self._playback and self._settings_repo:
-            settings = self._settings_repo.load()
+        # Capture runtime preferences → persisted state
+        if self._playback and self._settings:
             vol, muted = self._playback.snapshot_volume()
-            settings.volume = vol
-            settings.muted = muted
-            self._settings_repo.save(settings)
+            self._settings.state.volume = vol
+            self._settings.state.muted = muted
+            self._settings.save()
 
-        # Dispose bridges — unsubscribe from services
         if self._pb:
             self._pb.dispose()
         if self._qb:
@@ -142,10 +142,10 @@ class ApplicationContainer:
         self._pb = None
         self._nb = None
         self._coordinator = None
-        self._library = None
         self._navigation = None
+        self._library = None
         self._queue = None
         self._playback = None
-        self._settings_repo = None
+        self._settings = None
         self._backend = None
         self._app = None
