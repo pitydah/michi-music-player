@@ -43,8 +43,6 @@ class TestRoutedViewRootsNoAnchorsFill:
             stripped = line.strip()
             # Find the root element (first non-import line)
             if stripped and not stripped.startswith("import") and root_depth is None:
-                # Count how many braces deep we are before root
-                indent = len(line) - len(line.lstrip())
                 root_depth = 0
                 # Count braces on the root line itself, then scan children
                 root_depth = lines[i].count("{") - lines[i].count("}")

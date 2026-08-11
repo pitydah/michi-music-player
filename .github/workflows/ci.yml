@@ -19,15 +19,14 @@ jobs:
       - name: Install system Qt
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq qt6-base-dev qt6-multimedia-dev libqt6multimedia6 \
-            libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev
+          sudo apt-get install -y -qq qt6-base-dev qt6-multimedia-dev \
+            libqt6multimedia6 libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev
 
-      - name: Install project
-        run: pip install -e ".[test]" 2>/dev/null || pip install -e .
+      - name: Install project + test deps
+        run: pip install -e ".[test]"
 
       - name: Lint
         run: |
-          pip install ruff
           ruff check src tests
           ruff format --check src tests
 
@@ -37,6 +36,4 @@ jobs:
         run: python -m pytest tests/ -q
 
       - name: Build
-        run: |
-          pip install build
-          python -m build
+        run: python -m build
