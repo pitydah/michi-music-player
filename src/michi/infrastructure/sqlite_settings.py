@@ -1,11 +1,14 @@
 """SQLite persistence — implements SettingsRepository."""
 
 import json
+import logging
 import sqlite3
 from pathlib import Path
 
 from michi.application.persistence import SettingsRepository
 from michi.domain.settings import SettingsState
+
+logger = logging.getLogger(__name__)
 
 
 class SQLiteSettingsRepository(SettingsRepository):
@@ -29,11 +32,8 @@ class SQLiteSettingsRepository(SettingsRepository):
 
     def load(self) -> SettingsState:
         state = SettingsState()
-        try:
-            with sqlite3.connect(str(self._db_path)) as conn:
-                rows = conn.execute("SELECT key, value FROM settings").fetchall()
-        except sqlite3.OperationalError:
-            return state  # first launch: no table yet
+        with sqlite3.connect(str(self._db_path)) as conn:
+            rows = conn.execute("SELECT key, value FROM settings").fetchall()
 
         for key, value in rows:
             if key == "volume":
@@ -46,7 +46,8 @@ class SQLiteSettingsRepository(SettingsRepository):
                 try:
                     state.recent_files = json.loads(value)
                 except json.JSONDecodeError:
-                    state.recent_files = []  # corrupted, reset
+                    logger.warning("Corrupted recent_files JSON; resetting")
+                    state.recent_files = []
         return state
 
     def save(self, state: SettingsState) -> None:

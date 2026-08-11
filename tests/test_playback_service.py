@@ -53,9 +53,10 @@ class TestPlaybackService:
         assert playback_service.state.muted is True
         assert fake_audio.muted is True
 
-    def test_update_position(self, playback_service):
-        playback_service.update_position(5000, 200000)
+    def test_update_position_and_duration(self, playback_service):
+        playback_service.update_position(5000)
         assert playback_service.state.position_ms == 5000
+        playback_service.update_duration(200000)
         assert playback_service.state.duration_ms == 200000
 
     def test_restore_volume(self, playback_service, fake_audio):

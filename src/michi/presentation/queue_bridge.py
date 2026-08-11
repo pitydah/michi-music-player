@@ -15,6 +15,9 @@ class QueueBridge(QObject):
         self._service = service
         service.subscribe_changed(self._on_service_changed)
 
+    def dispose(self) -> None:
+        self._service.unsubscribe_changed(self._on_service_changed)
+
     def _on_service_changed(self) -> None:
         self.queue_changed.emit()
 

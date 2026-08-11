@@ -104,12 +104,22 @@ class TestSubscriptions:
     def test_position_events(self, fake_audio):
         calls = []
 
-        def cb(p, d):
-            calls.append((p, d))
+        def cb(p):
+            calls.append(p)
 
         fake_audio.subscribe_position_changed(cb)
-        fake_audio.trigger_position(5000, 200000)
-        assert calls == [(5000, 200000)]
+        fake_audio.trigger_position(5000)
+        assert calls == [5000]
+
+    def test_duration_events(self, fake_audio):
+        calls = []
+
+        def cb(d):
+            calls.append(d)
+
+        fake_audio.subscribe_duration_changed(cb)
+        fake_audio.trigger_duration(240000)
+        assert calls == [240000]
 
     def test_error_events(self, fake_audio):
         calls = []
@@ -265,5 +275,45 @@ class TestPlaybackAuthority:
         c = PlaybackCoordinator(fake_audio, q, svc)
         c.start()
         fake_audio.trigger_error("e")
-        # error flows through service.report_error, not direct mutation
         assert svc.state.error_message == "e"
+
+
+class TestSettingsPreservation:
+    def test_full_state_preserved_on_shutdown(self, tmp_path):
+        from michi.domain.settings import SettingsState
+        from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
+
+        db = tmp_path / "test.db"
+        repo = SQLiteSettingsRepository(db)
+        repo.save(
+            SettingsState(
+                volume=20,
+                muted=False,
+                last_directory="/music",
+                recent_files=["a.mp3", "b.mp3"],
+            )
+        )
+
+        # Simulate runtime change during shutdown
+        s = repo.load()
+        s.volume = 55
+        s.muted = True
+        repo.save(s)
+
+        s2 = repo.load()
+        assert s2.volume == 55
+        assert s2.muted is True
+        assert s2.last_directory == "/music"
+        assert s2.recent_files == ["a.mp3", "b.mp3"]
+
+
+class TestBridgeDispose:
+    def test_dispose_unsubscribes(self, fake_audio):
+        svc = PlaybackService(fake_audio)
+        from michi.presentation.playback_bridge import PlaybackBridge
+
+        bridge = PlaybackBridge(svc)
+        # bridge subscribed during init
+        assert len(svc._subscribers) == 1
+        bridge.dispose()
+        assert len(svc._subscribers) == 0

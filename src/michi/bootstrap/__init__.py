@@ -38,6 +38,9 @@ class ApplicationContainer:
         self._queue: QueueService | None = None
         self._library: LibraryService | None = None
         self._coordinator: PlaybackCoordinator | None = None
+        self._pb: PlaybackBridge | None = None
+        self._qb: QueueBridge | None = None
+        self._lb: LibraryBridge | None = None
 
     def initialize(self) -> None:
         QGuiApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -48,30 +51,23 @@ class ApplicationContainer:
         self._app.setApplicationVersion("0.1.0")
         self._app.setOrganizationName("Michi")
 
-        # Infrastructure
         backend = QtMultimediaBackend()
         settings_repo = SQLiteSettingsRepository(_data_dir() / "michi.db")
-
-        # Application
         playback = PlaybackService(backend)
         queue = QueueService(playback)
         scanner = FilesystemLibraryScanner()
         library = LibraryService(scanner, queue)
 
-        # Restore persisted settings
         s = settings_repo.load()
         playback.restore_volume(s.volume, s.muted)
 
-        # Coordinator: audio events → application logic
         coordinator = PlaybackCoordinator(backend, queue, playback)
         coordinator.start()
 
-        # Presentation bridges — subscribe to services automatically
         pb = PlaybackBridge(playback)
         qb = QueueBridge(queue)
         lb = LibraryBridge(library)
 
-        # QML engine
         engine = QQmlApplicationEngine()
         engine.quit.connect(self._app.quit)
         ctx = engine.rootContext()
@@ -79,13 +75,15 @@ class ApplicationContainer:
         ctx.setContextProperty("queue", qb)
         ctx.setContextProperty("library", lb)
 
-        # Explicit ownership for shutdown
         self._backend = backend
         self._settings_repo = settings_repo
         self._playback = playback
         self._queue = queue
         self._library = library
         self._coordinator = coordinator
+        self._pb = pb
+        self._qb = qb
+        self._lb = lb
         self._engine = engine
 
     def run(self) -> int:
@@ -104,12 +102,21 @@ class ApplicationContainer:
         if self._coordinator:
             self._coordinator.stop()
 
-        # Persist settings before destroying services
+        # Preserve all settings fields, only update playback-owned ones
         if self._playback and self._settings_repo:
-            from michi.domain.settings import SettingsState
-
+            settings = self._settings_repo.load()
             vol, muted = self._playback.snapshot_volume()
-            self._settings_repo.save(SettingsState(volume=vol, muted=muted))
+            settings.volume = vol
+            settings.muted = muted
+            self._settings_repo.save(settings)
+
+        # Dispose bridges — unsubscribe from services
+        if self._pb:
+            self._pb.dispose()
+        if self._qb:
+            self._qb.dispose()
+        if self._lb:
+            self._lb.dispose()
 
         if self._backend:
             self._backend.stop()
@@ -117,6 +124,9 @@ class ApplicationContainer:
             self._engine.deleteLater()
 
         self._engine = None
+        self._lb = None
+        self._qb = None
+        self._pb = None
         self._coordinator = None
         self._library = None
         self._queue = None

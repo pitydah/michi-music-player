@@ -20,6 +20,7 @@ class FakeAudioPort:
         self._duration: int = 0
         self._eom: list = []
         self._pos: list = []
+        self._dur: list = []
         self._err: list = []
 
     def load(self, p):
@@ -71,6 +72,14 @@ class FakeAudioPort:
         if cb in self._pos:
             self._pos.remove(cb)
 
+    def subscribe_duration_changed(self, cb):
+        if cb not in self._dur:
+            self._dur.append(cb)
+
+    def unsubscribe_duration_changed(self, cb):
+        if cb in self._dur:
+            self._dur.remove(cb)
+
     def subscribe_error(self, cb):
         if cb not in self._err:
             self._err.append(cb)
@@ -83,9 +92,13 @@ class FakeAudioPort:
         for cb in list(self._eom):
             cb()
 
-    def trigger_position(self, pos_ms, dur_ms):
+    def trigger_position(self, pos_ms):
         for cb in list(self._pos):
-            cb(pos_ms, dur_ms)
+            cb(pos_ms)
+
+    def trigger_duration(self, dur_ms):
+        for cb in list(self._dur):
+            cb(dur_ms)
 
     def trigger_error(self, msg):
         for cb in list(self._err):

@@ -87,14 +87,14 @@ class PlaybackService:
         self._audio.set_muted(muted)
         self._notify()
 
-    def update_position(self, position_ms: int, duration_ms: int) -> None:
-        changed = (
-            self._state.position_ms != position_ms
-            or self._state.duration_ms != duration_ms
-        )
-        self._state.position_ms = position_ms
-        self._state.duration_ms = duration_ms
-        if changed:
+    def update_position(self, position_ms: int) -> None:
+        if self._state.position_ms != position_ms:
+            self._state.position_ms = position_ms
+            self._notify()
+
+    def update_duration(self, duration_ms: int) -> None:
+        if self._state.duration_ms != duration_ms:
+            self._state.duration_ms = duration_ms
             self._notify()
 
     def snapshot_volume(self) -> tuple[int, bool]:
