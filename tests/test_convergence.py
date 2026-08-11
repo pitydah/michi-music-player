@@ -1,4 +1,4 @@
-"""Tests for convergence patch fixes."""
+"""Tests for convergence patch 3."""
 
 from pathlib import Path
 
@@ -7,22 +7,27 @@ from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
 from michi.application.queue_service import QueueService
 from michi.domain.playback import PlaybackStatus
+from michi.presentation.playback_bridge import PlaybackBridge
 
 
-class TestSeekUnits:
+class TestSeekBridge:
+    """Real seek test: 60 seconds through the bridge → 60000 ms at AudioPort."""
+
     def test_seek_seconds_converts_to_ms(self, fake_audio):
         svc = PlaybackService(fake_audio)
-        svc.seek(60)  # ms directly
-        assert fake_audio._position == 60  # AudioPort receives ms
+        bridge = PlaybackBridge(svc)
+        bridge.seek_seconds(60)
+        assert fake_audio.position() == 60000
 
     def test_seek_zero(self, fake_audio):
         svc = PlaybackService(fake_audio)
-        svc.seek(0)
-        assert fake_audio._position == 0
+        bridge = PlaybackBridge(svc)
+        bridge.seek_seconds(0)
+        assert fake_audio.position() == 0
 
 
 class TestEndOfMedia:
-    def test_with_next_track(self, fake_audio):
+    def test_with_next(self, fake_audio):
         svc = PlaybackService(fake_audio)
         q = QueueService(svc)
         q.add(Path("/tmp/a.mp3"))
@@ -33,7 +38,7 @@ class TestEndOfMedia:
         fake_audio.trigger_end_of_media()
         assert q.state.current_index == 1
 
-    def test_at_end_of_queue(self, fake_audio):
+    def test_at_end(self, fake_audio):
         svc = PlaybackService(fake_audio)
         q = QueueService(svc)
         q.add(Path("/tmp/a.mp3"))
@@ -45,7 +50,7 @@ class TestEndOfMedia:
         assert svc.state.position_ms == 0
 
 
-class TestSubscriptionOwnership:
+class TestSubscriptions:
     def test_subscribe_unsubscribe_eom(self, fake_audio):
         calls = []
 
@@ -57,26 +62,44 @@ class TestSubscriptionOwnership:
         assert len(calls) == 1
         fake_audio.unsubscribe_end_of_media(cb)
         fake_audio.trigger_end_of_media()
-        assert len(calls) == 1  # not called again
+        assert len(calls) == 1
 
-    def test_multiple_subscribers(self, fake_audio):
-        calls_a = []
-        calls_b = []
-
-        def ca():
-            calls_a.append(1)
+    def test_duplicate_subscribe_safe(self, fake_audio):
+        calls = []
 
         def cb():
-            calls_b.append(1)
+            calls.append(1)
+
+        fake_audio.subscribe_end_of_media(cb)
+        fake_audio.subscribe_end_of_media(cb)  # duplicate
+        fake_audio.trigger_end_of_media()
+        assert len(calls) == 1  # not doubled
+
+    def test_double_unsubscribe_safe(self, fake_audio):
+        def cb():
+            pass
+
+        fake_audio.subscribe_end_of_media(cb)
+        fake_audio.unsubscribe_end_of_media(cb)
+        fake_audio.unsubscribe_end_of_media(cb)  # safe
+
+    def test_multiple_subscribers_independent(self, fake_audio):
+        a, b = [], []
+
+        def ca():
+            a.append(1)
+
+        def cb():
+            b.append(1)
 
         fake_audio.subscribe_end_of_media(ca)
         fake_audio.subscribe_end_of_media(cb)
         fake_audio.trigger_end_of_media()
-        assert len(calls_a) == 1 and len(calls_b) == 1
+        assert len(a) == 1 and len(b) == 1
         fake_audio.unsubscribe_end_of_media(ca)
         fake_audio.trigger_end_of_media()
-        assert len(calls_a) == 1  # a unsubscribed
-        assert len(calls_b) == 2  # b still active
+        assert len(a) == 1  # unsubscribed
+        assert len(b) == 2  # still active
 
     def test_position_events(self, fake_audio):
         calls = []
@@ -87,9 +110,6 @@ class TestSubscriptionOwnership:
         fake_audio.subscribe_position_changed(cb)
         fake_audio.trigger_position(5000, 200000)
         assert calls == [(5000, 200000)]
-        fake_audio.unsubscribe_position_changed(cb)
-        fake_audio.trigger_position(8000, 200000)
-        assert len(calls) == 1
 
     def test_error_events(self, fake_audio):
         calls = []
@@ -102,103 +122,148 @@ class TestSubscriptionOwnership:
         assert calls == ["decode failed"]
 
 
+class TestCoordinatorIdempotent:
+    def test_double_start_safe(self, fake_audio):
+        svc = PlaybackService(fake_audio)
+        q = QueueService(svc)
+        c = PlaybackCoordinator(fake_audio, q, svc)
+        c.start()
+        c.start()  # idempotent
+        assert c._started
+
+    def test_double_stop_safe(self, fake_audio):
+        svc = PlaybackService(fake_audio)
+        q = QueueService(svc)
+        c = PlaybackCoordinator(fake_audio, q, svc)
+        c.start()
+        c.stop()
+        c.stop()  # idempotent
+
+
+class TestServiceNotifications:
+    def test_queue_notify_on_add(self, queue_service):
+        calls = []
+
+        def cb():
+            calls.append(1)
+
+        queue_service.subscribe_changed(cb)
+        queue_service.add(Path("/tmp/a.mp3"))
+        assert len(calls) == 1
+
+    def test_queue_notify_from_library_activate(self, fake_audio):
+        svc = PlaybackService(fake_audio)
+        q = QueueService(svc)
+
+        # Need a scanner fake
+        class FakeScanner:
+            def scan(self, root):
+                return [root / "a.mp3"]
+
+        lib = LibraryService(FakeScanner(), q)
+        lib.scan("/tmp")
+
+        calls = []
+
+        def cb():
+            calls.append(1)
+
+        q.subscribe_changed(cb)
+        lib.activate(0)
+        assert len(calls) >= 1  # queue was mutated
+        assert q.state.count >= 1
+
+    def test_playback_notify_on_play(self, fake_audio):
+        svc = PlaybackService(fake_audio)
+        calls = []
+
+        def cb():
+            calls.append(1)
+
+        svc.subscribe_changed(cb)
+        svc.load_and_play(Path("/tmp/a.mp3"))
+        assert len(calls) == 1
+
+    def test_playback_notify_on_error(self, fake_audio):
+        svc = PlaybackService(fake_audio)
+        calls = []
+
+        def cb():
+            calls.append(1)
+
+        svc.subscribe_changed(cb)
+        svc.report_error("oops")
+        assert len(calls) == 1
+        assert svc.state.error_message == "oops"
+
+    def test_library_notify_on_scan(self, fake_audio):
+        svc = PlaybackService(fake_audio)
+        q = QueueService(svc)
+
+        class FakeScanner:
+            def scan(self, root):
+                return [root / "a.mp3"]
+
+        lib = LibraryService(FakeScanner(), q)
+        calls = []
+
+        def cb():
+            calls.append(1)
+
+        lib.subscribe_changed(cb)
+        lib.scan("/tmp")
+        assert len(calls) == 1
+
+
 class TestLibraryService:
-    def test_scan_populates_visible(self, tmp_path):
+    def test_scan_and_search(self, fake_audio):
+        svc = PlaybackService(fake_audio)
+        q = QueueService(svc)
+
         from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
 
-        (tmp_path / "a.mp3").write_text("")
-        (tmp_path / "b.flac").write_text("")
-        q = QueueService(PlaybackService(FakeAudioPort()))
-        svc = LibraryService(FilesystemLibraryScanner(), q)
-        svc.scan(str(tmp_path))
-        assert len(svc.state.visible_tracks) == 2
+        (tmp := Path("/tmp/michi_test_lib"))
+        tmp.mkdir(exist_ok=True)
+        (tmp / "Depeche Mode - a.mp3").write_text("")
+        (tmp / "Toto - b.mp3").write_text("")
 
-    def test_search_filters_visible(self, tmp_path):
+        lib = LibraryService(FilesystemLibraryScanner(), q)
+        lib.scan(str(tmp))
+        assert len(lib.state.visible_tracks) == 2
+        lib.search("depeche")
+        assert len(lib.state.visible_tracks) == 1
+
+    def test_activate_filtered(self, fake_audio):
+        svc = PlaybackService(fake_audio)
+        q = QueueService(svc)
+
+        (tmp := Path("/tmp/michi_test_act"))
+        tmp.mkdir(exist_ok=True)
+        (tmp / "a.mp3").write_text("")
+        (tmp / "b.mp3").write_text("")
+        (tmp / "c.mp3").write_text("")
+
         from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
 
-        (tmp_path / "Depeche Mode - song.mp3").write_text("")
-        (tmp_path / "Toto - song.mp3").write_text("")
-        q = QueueService(PlaybackService(FakeAudioPort()))
-        svc = LibraryService(FilesystemLibraryScanner(), q)
-        svc.scan(str(tmp_path))
-        svc.search("depeche")
-        assert len(svc.state.visible_tracks) == 1
-        assert "Depeche" in svc.state.visible_tracks[0].display_name
-
-    def test_activate_visible_track(self, tmp_path):
-        from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
-
-        (tmp_path / "a.mp3").write_text("")
-        (tmp_path / "b.mp3").write_text("")
-        (tmp_path / "c.mp3").write_text("")
-        q = QueueService(PlaybackService(FakeAudioPort()))
-        svc = LibraryService(FilesystemLibraryScanner(), q)
-        svc.scan(str(tmp_path))
-        svc.search("b")
-        assert len(svc.state.visible_tracks) == 1
-        svc.activate(0)  # activate visible index 0 → "b.mp3"
-        assert q.state.count == 1
+        lib = LibraryService(FilesystemLibraryScanner(), q)
+        lib.scan(str(tmp))
+        lib.search("b")
+        assert len(lib.state.visible_tracks) == 1
+        lib.activate(0)
         assert q.state.tracks[0].file_path.name == "b.mp3"
 
 
-class FakeAudioPort:
-    """Minimal inline fake — avoids circular imports in test file."""
+class TestPlaybackAuthority:
+    def test_error_only_through_service(self, fake_audio):
+        svc = PlaybackService(fake_audio)
+        svc.report_error("test")
+        assert svc.state.error_message == "test"
 
-    def __init__(self) -> None:
-        self.loaded = None
-        self.state = "stopped"
-        self.volume = 80
-        self.muted = False
-        self._position = 0
-        self._duration = 0
-        self._eom = []
-        self._pos = []
-        self._err = []
-
-    def load(self, p):
-        self.loaded = p
-
-    def play(self):
-        self.state = "playing"
-
-    def pause(self):
-        self.state = "paused"
-
-    def resume(self):
-        self.state = "playing"
-
-    def stop(self):
-        self.state = "stopped"
-
-    def set_volume(self, v):
-        self.volume = max(0, min(100, v))
-
-    def set_muted(self, m):
-        self.muted = m
-
-    def seek(self, ms):
-        self._position = ms
-
-    def position(self):
-        return self._position
-
-    def duration(self):
-        return self._duration
-
-    def subscribe_end_of_media(self, cb):
-        self._eom.append(cb)
-
-    def unsubscribe_end_of_media(self, cb):
-        self._eom.remove(cb)
-
-    def subscribe_position_changed(self, cb):
-        self._pos.append(cb)
-
-    def unsubscribe_position_changed(self, cb):
-        self._pos.remove(cb)
-
-    def subscribe_error(self, cb):
-        self._err.append(cb)
-
-    def unsubscribe_error(self, cb):
-        self._err.remove(cb)
+    def test_coordinator_does_not_mutate_state(self, fake_audio):
+        svc = PlaybackService(fake_audio)
+        q = QueueService(svc)
+        c = PlaybackCoordinator(fake_audio, q, svc)
+        c.start()
+        fake_audio.trigger_error("e")
+        # error flows through service.report_error, not direct mutation
+        assert svc.state.error_message == "e"

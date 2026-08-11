@@ -1,4 +1,4 @@
-"""Test fixtures for M1-M7 core services."""
+"""Test fixtures — single canonical FakeAudioPort, never copied from Legacy."""
 
 import sys
 from pathlib import Path
@@ -9,6 +9,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
 class FakeAudioPort:
+    """Minimal fake for testing. Not copied from Legacy."""
+
     def __init__(self) -> None:
         self.loaded: Path | None = None
         self.state: str = "stopped"
@@ -20,66 +22,72 @@ class FakeAudioPort:
         self._pos: list = []
         self._err: list = []
 
-    def load(self, file_path: Path) -> None:
-        self.loaded = file_path
+    def load(self, p):
+        self.loaded = p
 
-    def play(self) -> None:
+    def play(self):
         self.state = "playing"
 
-    def pause(self) -> None:
+    def pause(self):
         self.state = "paused"
 
-    def resume(self) -> None:
+    def resume(self):
         self.state = "playing"
 
-    def stop(self) -> None:
+    def stop(self):
         self.state = "stopped"
 
-    def set_volume(self, value: int) -> None:
-        self.volume = max(0, min(100, value))
+    def set_volume(self, v):
+        self.volume = max(0, min(100, v))
 
-    def set_muted(self, muted: bool) -> None:
-        self.muted = muted
+    def set_muted(self, m):
+        self.muted = m
 
-    def seek(self, position_ms: int) -> None:
-        self._position = position_ms
+    def seek(self, ms):
+        self._position = ms
 
-    def position(self) -> int:
+    def position(self):
         return self._position
 
-    def duration(self) -> int:
+    def duration(self):
         return self._duration
 
-    def set_duration(self, ms: int) -> None:
+    def set_duration(self, ms):
         self._duration = ms
 
-    def subscribe_end_of_media(self, cb) -> None:
-        self._eom.append(cb)
+    def subscribe_end_of_media(self, cb):
+        if cb not in self._eom:
+            self._eom.append(cb)
 
-    def unsubscribe_end_of_media(self, cb) -> None:
-        self._eom.remove(cb)
+    def unsubscribe_end_of_media(self, cb):
+        if cb in self._eom:
+            self._eom.remove(cb)
 
-    def subscribe_position_changed(self, cb) -> None:
-        self._pos.append(cb)
+    def subscribe_position_changed(self, cb):
+        if cb not in self._pos:
+            self._pos.append(cb)
 
-    def unsubscribe_position_changed(self, cb) -> None:
-        self._pos.remove(cb)
+    def unsubscribe_position_changed(self, cb):
+        if cb in self._pos:
+            self._pos.remove(cb)
 
-    def subscribe_error(self, cb) -> None:
-        self._err.append(cb)
+    def subscribe_error(self, cb):
+        if cb not in self._err:
+            self._err.append(cb)
 
-    def unsubscribe_error(self, cb) -> None:
-        self._err.remove(cb)
+    def unsubscribe_error(self, cb):
+        if cb in self._err:
+            self._err.remove(cb)
 
-    def trigger_end_of_media(self) -> None:
+    def trigger_end_of_media(self):
         for cb in list(self._eom):
             cb()
 
-    def trigger_position(self, pos_ms: int, dur_ms: int) -> None:
+    def trigger_position(self, pos_ms, dur_ms):
         for cb in list(self._pos):
             cb(pos_ms, dur_ms)
 
-    def trigger_error(self, msg: str) -> None:
+    def trigger_error(self, msg):
         for cb in list(self._err):
             cb(msg)
 

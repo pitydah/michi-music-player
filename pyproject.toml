@@ -15,6 +15,12 @@ michi = "michi.__main__:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+michi = [
+    "presentation/*.qml",
+    "presentation/qml/components/*.qml",
+]
+
 [tool.ruff]
 target-version = "py311"
 
@@ -26,7 +32,6 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
 "**/infrastructure/sqlite_settings.py" = ["E501"]
 "**/infrastructure/qt_backend.py" = ["SIM105"]
 "**/bootstrap/__init__.py" = ["E501"]
-"tests/conftest.py" = ["F811"]
 
 [tool.ruff.format]
 quote-style = "double"

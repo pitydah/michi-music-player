@@ -33,6 +33,10 @@ class ApplicationContainer:
         self._app: QGuiApplication | None = None
         self._engine: QQmlApplicationEngine | None = None
         self._backend: QtMultimediaBackend | None = None
+        self._settings_repo: SQLiteSettingsRepository | None = None
+        self._playback: PlaybackService | None = None
+        self._queue: QueueService | None = None
+        self._library: LibraryService | None = None
         self._coordinator: PlaybackCoordinator | None = None
 
     def initialize(self) -> None:
@@ -47,33 +51,25 @@ class ApplicationContainer:
         # Infrastructure
         backend = QtMultimediaBackend()
         settings_repo = SQLiteSettingsRepository(_data_dir() / "michi.db")
-        scanner = FilesystemLibraryScanner()
 
         # Application
         playback = PlaybackService(backend)
         queue = QueueService(playback)
+        scanner = FilesystemLibraryScanner()
         library = LibraryService(scanner, queue)
 
-        # Restore settings
-        settings = settings_repo.load()
-        playback.restore_volume(settings.volume, settings.muted)
+        # Restore persisted settings
+        s = settings_repo.load()
+        playback.restore_volume(s.volume, s.muted)
 
         # Coordinator: audio events → application logic
         coordinator = PlaybackCoordinator(backend, queue, playback)
+        coordinator.start()
 
-        # Presentation bridges
+        # Presentation bridges — subscribe to services automatically
         pb = PlaybackBridge(playback)
         qb = QueueBridge(queue)
         lb = LibraryBridge(library)
-
-        # Wire bridge notifications through coordinator
-        def _notify() -> None:
-            qb.notify()
-            pb.notify_state()
-            lb.notify()
-
-        coordinator.on_state_change(_notify)
-        coordinator.start()
 
         # QML engine
         engine = QQmlApplicationEngine()
@@ -83,8 +79,12 @@ class ApplicationContainer:
         ctx.setContextProperty("queue", qb)
         ctx.setContextProperty("library", lb)
 
-        # Keep references for shutdown
+        # Explicit ownership for shutdown
         self._backend = backend
+        self._settings_repo = settings_repo
+        self._playback = playback
+        self._queue = queue
+        self._library = library
         self._coordinator = coordinator
         self._engine = engine
 
@@ -103,11 +103,24 @@ class ApplicationContainer:
     def shutdown(self) -> None:
         if self._coordinator:
             self._coordinator.stop()
+
+        # Persist settings before destroying services
+        if self._playback and self._settings_repo:
+            from michi.domain.settings import SettingsState
+
+            vol, muted = self._playback.snapshot_volume()
+            self._settings_repo.save(SettingsState(volume=vol, muted=muted))
+
         if self._backend:
             self._backend.stop()
         if self._engine:
             self._engine.deleteLater()
+
         self._engine = None
         self._coordinator = None
+        self._library = None
+        self._queue = None
+        self._playback = None
+        self._settings_repo = None
         self._backend = None
         self._app = None

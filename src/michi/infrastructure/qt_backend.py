@@ -10,16 +10,16 @@ from michi.application.ports import AudioPort
 
 
 class QtMultimediaBackend(AudioPort):
-    """Infrastructure adapter wrapping Qt Multimedia. Owns the player instance."""
+    """Infrastructure adapter wrapping Qt Multimedia."""
 
     def __init__(self) -> None:
         self._player = QMediaPlayer()
         self._audio_output = QAudioOutput()
         self._player.setAudioOutput(self._audio_output)
         self._audio_output.setVolume(1.0)
-        self._eom_callbacks: list[Callable[[], None]] = []
-        self._pos_callbacks: list[Callable[[int, int], None]] = []
-        self._err_callbacks: list[Callable[[str], None]] = []
+        self._eom: list[Callable[[], None]] = []
+        self._pos: list[Callable[[int, int], None]] = []
+        self._err: list[Callable[[str], None]] = []
 
     def load(self, file_path: Path) -> None:
         self._player.setSource(QUrl.fromLocalFile(str(file_path)))
@@ -52,54 +52,58 @@ class QtMultimediaBackend(AudioPort):
     def duration(self) -> int:
         return self._player.duration()
 
-    # ── end-of-media subscription ──────────────────────────────────
+    # ── end-of-media (idempotent) ────────────────────────────────
 
-    def subscribe_end_of_media(self, callback: Callable[[], None]) -> None:
-        if not self._eom_callbacks:
+    def subscribe_end_of_media(self, cb: Callable[[], None]) -> None:
+        if cb not in self._eom:
+            self._eom.append(cb)
+        if len(self._eom) == 1:
             self._player.mediaStatusChanged.connect(self._on_media_status)
-        self._eom_callbacks.append(callback)
 
-    def unsubscribe_end_of_media(self, callback: Callable[[], None]) -> None:
-        self._eom_callbacks.remove(callback)
-        if not self._eom_callbacks:
+    def unsubscribe_end_of_media(self, cb: Callable[[], None]) -> None:
+        if cb in self._eom:
+            self._eom.remove(cb)
+        if not self._eom:
             self._player.mediaStatusChanged.disconnect(self._on_media_status)
 
     def _on_media_status(self, status: QMediaPlayer.MediaStatus) -> None:
         if status == QMediaPlayer.EndOfMedia:
-            for cb in list(self._eom_callbacks):
+            for cb in list(self._eom):
                 cb()
 
-    # ── position subscription ──────────────────────────────────────
+    # ── position (idempotent) ────────────────────────────────────
 
-    def subscribe_position_changed(self, callback: Callable[[int, int], None]) -> None:
-        if not self._pos_callbacks:
+    def subscribe_position_changed(self, cb: Callable[[int, int], None]) -> None:
+        if cb not in self._pos:
+            self._pos.append(cb)
+        if len(self._pos) == 1:
             self._player.positionChanged.connect(self._on_position_changed)
-        self._pos_callbacks.append(callback)
 
-    def unsubscribe_position_changed(
-        self, callback: Callable[[int, int], None]
-    ) -> None:
-        self._pos_callbacks.remove(callback)
-        if not self._pos_callbacks:
+    def unsubscribe_position_changed(self, cb: Callable[[int, int], None]) -> None:
+        if cb in self._pos:
+            self._pos.remove(cb)
+        if not self._pos:
             self._player.positionChanged.disconnect(self._on_position_changed)
 
     def _on_position_changed(self, position_ms: int) -> None:
         dur = self._player.duration()
-        for cb in list(self._pos_callbacks):
+        for cb in list(self._pos):
             cb(position_ms, dur)
 
-    # ── error subscription ─────────────────────────────────────────
+    # ── error (idempotent) ───────────────────────────────────────
 
-    def subscribe_error(self, callback: Callable[[str], None]) -> None:
-        if not self._err_callbacks:
+    def subscribe_error(self, cb: Callable[[str], None]) -> None:
+        if cb not in self._err:
+            self._err.append(cb)
+        if len(self._err) == 1:
             self._player.errorOccurred.connect(self._on_error)
-        self._err_callbacks.append(callback)
 
-    def unsubscribe_error(self, callback: Callable[[str], None]) -> None:
-        self._err_callbacks.remove(callback)
-        if not self._err_callbacks:
+    def unsubscribe_error(self, cb: Callable[[str], None]) -> None:
+        if cb in self._err:
+            self._err.remove(cb)
+        if not self._err:
             self._player.errorOccurred.disconnect(self._on_error)
 
-    def _on_error(self, error: QMediaPlayer.Error, error_string: str) -> None:
-        for cb in list(self._err_callbacks):
+    def _on_error(self, _error: QMediaPlayer.Error, error_string: str) -> None:
+        for cb in list(self._err):
             cb(error_string)

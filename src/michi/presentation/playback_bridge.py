@@ -1,4 +1,4 @@
-"""QML bridge — exposes PlaybackState and receives user intents."""
+"""QML bridge for playback — observes PlaybackService."""
 
 from pathlib import Path
 
@@ -9,7 +9,7 @@ from michi.domain.playback import PlaybackStatus
 
 
 class PlaybackBridge(QObject):
-    """Thin adapter: QML intent → Application Service → Domain State → QML observation."""
+    """Thin adapter: PlaybackService state → QML properties, QML intent → service."""
 
     _status_map = {
         PlaybackStatus.STOPPED: "stopped",
@@ -22,13 +22,17 @@ class PlaybackBridge(QObject):
     def __init__(self, service: PlaybackService, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._service = service
+        service.subscribe_changed(self._on_service_changed)
+
+    def _on_service_changed(self) -> None:
+        self.state_changed.emit()
 
     def _get_status(self) -> str:
         return self._status_map.get(self._service.state.status, "stopped")
 
     def _get_file_name(self) -> str:
-        path = self._service.state.file_path
-        return path.name if path else ""
+        p = self._service.state.file_path
+        return p.name if p else ""
 
     def _get_position(self) -> int:
         return self._service.state.position_ms // 1000
@@ -45,9 +49,6 @@ class PlaybackBridge(QObject):
     def _get_error(self) -> str:
         return self._service.state.error_message or ""
 
-    def notify_state(self) -> None:
-        self.state_changed.emit()
-
     status = Property(str, _get_status, notify=state_changed)
     fileName = Property(str, _get_file_name, notify=state_changed)
     position = Property(int, _get_position, notify=state_changed)
@@ -59,45 +60,35 @@ class PlaybackBridge(QObject):
     @Slot(str)
     def play_file(self, file_path: str) -> None:
         self._service.load_and_play(Path(file_path))
-        self.state_changed.emit()
 
     @Slot()
     def play(self) -> None:
         self._service.play()
-        self.state_changed.emit()
 
     @Slot()
     def pause(self) -> None:
         self._service.pause()
-        self.state_changed.emit()
 
     @Slot()
     def resume(self) -> None:
         self._service.resume()
-        self.state_changed.emit()
 
     @Slot()
     def stop(self) -> None:
         self._service.stop()
-        self.state_changed.emit()
 
     @Slot(int)
     def seek_seconds(self, seconds: int) -> None:
-        """Seek to position. Input: seconds (QML), internal: milliseconds."""
         self._service.seek(seconds * 1000)
-        self.state_changed.emit()
 
     @Slot(int)
     def set_volume(self, value: int) -> None:
         self._service.set_volume(value)
-        self.state_changed.emit()
 
     @Slot(bool)
     def set_muted(self, muted: bool) -> None:
         self._service.set_muted(muted)
-        self.state_changed.emit()
 
     @Slot(str)
     def switch_track(self, file_path: str) -> None:
         self._service.switch_track(Path(file_path))
-        self.state_changed.emit()
