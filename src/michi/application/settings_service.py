@@ -26,8 +26,12 @@ class SettingsService:
         return self._state
 
     def save(self) -> None:
-        if self._state is not None:
-            self._repo.save(self._state)
+        self._repo.save(self.state)
+
+    def set_playback_preferences(self, volume: int, muted: bool) -> None:
+        s = self.state
+        s.volume = max(0, min(100, volume))
+        s.muted = muted
 
     def set_last_directory(self, path: str) -> None:
         self.state.last_directory = path

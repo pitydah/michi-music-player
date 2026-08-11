@@ -56,13 +56,14 @@ class TestSettingsService:
     def test_save_persists(self):
         repo = FakeSettingsRepo()
         svc = SettingsService(repo)
-        svc.state.volume = 99
+        svc.set_playback_preferences(99, True)
         svc.save()
         s2 = repo.load()
         assert s2.volume == 99
+        assert s2.muted is True
 
     def test_full_state_preserved_on_partial_update(self):
-        """Updating volume must not erase last_directory or recent_files."""
+        """Updating volume/muted must not erase last_directory or recent_files."""
         repo = FakeSettingsRepo()
         repo.save(
             SettingsState(
@@ -71,8 +72,7 @@ class TestSettingsService:
         )
         svc = SettingsService(repo)
         svc.load()
-        svc.state.volume = 70
-        svc.state.muted = True
+        svc.set_playback_preferences(70, True)
         svc.save()
         s = repo.load()
         assert s.volume == 70

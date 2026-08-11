@@ -118,8 +118,7 @@ class ApplicationContainer:
         # Capture runtime preferences → persisted state
         if self._playback and self._settings:
             vol, muted = self._playback.snapshot_volume()
-            self._settings.state.volume = vol
-            self._settings.state.muted = muted
+            self._settings.set_playback_preferences(vol, muted)
             self._settings.save()
 
         if self._pb:

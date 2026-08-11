@@ -360,98 +360,108 @@ mitigated: depth limit and back-stack pruning.
 
 ## M9 UI Foundation
 
-**Objective**: Visual identity, theming, accessibility, localization, and
-animation layer — the UI is usable, branded, and inclusive before any user
-touches it.
+**Objective**: Establish a reusable QML UI foundation with semantic design tokens,
+reusable primitives, interaction states, keyboard accessibility, and
+regression-protected application shell styling.
 
-**Scope**: Theme engine (light/dark, custom accent palette, font scale).
-Accessibility: keyboard navigation, screen-reader labels, contrast compliance
-(WCAG AA). I18n framework with en/es initial bundle. Animation: screen
-transitions, playback progress, queue interactions (respects prefers-reduced-
-motion). Onboarding wizard for first-launch (music directory, language).
+**Scope**: Semantic dark theme tokens (palette, spacing, radii, typography,
+control sizes, motion). Reusable primitives: MichiButton (primary/secondary/ghost,
+hover/pressed/disabled/checked/focus), MichiTextField, MichiPanel, MichiSlider.
+Interaction states on all new components. Keyboard-accessible Sidebar with
+ItemDelegate. Library/Queue row hover. QML smoke tests with QQmlComponent
+verification. Routed-layout regression guards.
 
-**Out-of-scope**: Michi AI theming; audio-reactive visuals; custom widget
-library beyond Qt Quick Controls 2; RTL layouts beyond en/es; animated
-backgrounds; streaming-service UI.
+**Out-of-scope**: Light theme; custom user accent selection; font scaling
+settings; full screen-reader audit; WCAG AA compliance audit; i18n framework;
+language packs; onboarding wizard; advanced page animations; reduced-motion
+preference; artwork pipeline.
 
-**Dependencies**: M8 Application Navigation — screens must exist before they
-receive visual treatment. M7 Search — search UI is a themed screen. M3 Complete
-Playback — playback progress animation depends on position reporting.
+**Dependencies**: M8 Application Navigation — shell structure exists. M1-M7
+core — playback/library/queue functional.
 
-**Deliverables**: Theme manager (light/dark + system-follow). Accessibility audit
-passing WCAG AA. I18n loader with en/es strings. Animation controller with
-reduced-motion gate. Onboarding wizard (3-step). `M9_UI_FOUNDATION_TEST`.
+**Deliverables**: MichiTheme.qml (singleton), MichiButton, MichiTextField,
+MichiPanel, MichiSlider. Themed Sidebar, ContentHost. Migrated NowPlayingView,
+LibraryView, QueueView, PlaybackControls, VolumeControl, NowPlayingPanel,
+QueuePanel. QML smoke tests. Routed root geometry regression guards.
 
-**New-test strategy**: Unit (theme token resolution, i18n key lookup, animation
-duration math), Integration (theme switch propagates to all screens,
-accessibility tree valid, onboarding flow), Acceptance (WCAG AA automated
-checklist, i18n coverage ≥95% for en/es). Command: `ctest -R M9_UI_FOUNDATION`.
+**New-test strategy**: QQmlComponent smoke tests for theme and all primitives.
+Structural regression guards preventing anchors.fill on StackLayout-managed roots.
+Headless CI execution via QT_QPA_PLATFORM=offscreen.
 
-**Entry criteria**: M8 DONE. All five screens exist and navigate. Golden Path
-executes without UI assertions. UX spec with theme tokens, a11y targets,
-i18n string inventory approved.
+**Entry criteria**: M8 DONE. All three routes functional.
 
-**Exit criteria**: Light/dark toggle applies to every screen atomically.
-Keyboard-reachable every control. Screen-reader announces screen transitions
-and control state. en/es switch reflows without truncation. Animation respects
-reduced-motion and completes within 300 ms. Onboarding completes to Golden
-Path entry. All M9 tests pass.
+**Exit criteria**: All primitives instantiate via QQmlComponent. Routed views
+render without geometry conflicts. Keyboard navigation functional in Sidebar.
+Hover states on interactive rows. Zero QML warnings. 83 tests pass.
 
-**Acceptance gate**: Automated UI walk: launch→onboarding→complete→theme
-toggle→a11y tree dump→keyboard-navigate all screens→i18n switch en→es→en→
-play→verify animation smooth→close. WCAG AA contrast ≥4.5:1 (text),
-3:1 (large). I18n coverage ≥95%.
+**Acceptance gate**: QML smoke suite + routed regression guards + pytest + ruff
++ build all green. GitHub Actions CI green.
 
-**Risks**: Localization string drift as features evolve. Mitigated: CI i18n
-coverage check on every PR. Animation performance on low-end hardware —
-mitigated: frame-budget monitor and adaptive quality.
+**Risks**: Theme token drift as features evolve — mitigated by single source of
+truth in MichiTheme.qml. Layout regression from anchors.fill reintroduction —
+mitigated by automated regression guard.
+
+**Deferred capabilities**: Light theme, custom accents, font scaling, WCAG AA,
+i18n, onboarding, animations, reduced-motion → future UI enhancement phase.
 
 ---
 
-## M10 Settings & Persistence
+## M10 Settings & Durable Preferences
 
-**Objective**: Full settings UI and durable persistence — every user preference
-is discoverable, mutable, and survives restart.
+**Objective**: Introduce explicit Application ownership for persisted
+preferences, integrate only preferences backed by existing runtime capabilities.
 
-**Scope**: Settings screen with sections: Audio (output device, volume, replay
-gain), Library (paths, scan interval, exclude patterns), UI (theme, language,
-font size), Playback (seek step, crossfade, gapless), Queue (default repeat,
-shuffle seed). SettingsPort write-through; on-change persistence. Reset-to-
-default per section. Export/import settings JSON.
+**Internal slices**: M10.1 Settings Ownership, M10.2 Existing Preference
+Integration, M10.3 Settings Navigation + Bridge, M10.4 Minimal Settings UI,
+M10.5 Restart / Persistence Gate.
 
-**Out-of-scope**: Cloud sync; profile switching; plugin preferences; audio
-device configuration beyond selection; MIDI mapping; shortcut customization.
+### M10.1 — Settings Ownership (CURRENT)
 
-**Dependencies**: M9 UI Foundation — theme/language/i18n controls must exist.
-M5 Database — SettingsPort, CachePort, UserDataPort already defined. M6
-Library — library paths already scanned.
+**Scope**: SettingsService as sole persisted preference owner. SettingsRepository
+port (no SQLite in Application). Public API: set_playback_preferences(),
+set_last_directory(), set_recent_files(). Deterministic save(). Full-state
+preservation on partial update. Bootstrap uses public API only, never mutates
+SettingsState directly.
 
-**Deliverables**: Full Settings screen (5 sections, ~25 controls). SettingsPort
-backend with validation, on-change save, reset. Settings import/export
-(JSON). `M10_SETTINGS_PERSISTENCE_TEST`.
+**Deliverables**: src/michi/application/settings_service.py. Lifecycle regression
+test proving volume/muted update preserves last_directory and recent_files.
+Bootstrap integration.
 
-**New-test strategy**: Unit (per-setting validation, default fallback, migration
-of legacy schema), Integration (UI→port→DB round-trip, export→import
-faithfulness), Acceptance (every setting survives kill→restart cycle).
-Command: `ctest -R M10_SETTINGS_PERSISTENCE`.
+**Entry criteria**: M5 Database/Settings operational. PlaybackService snapshot API.
 
-**Entry criteria**: M9 DONE. Theme, language, a11y functional. M5 Database ports
-operational. SettingsPort contract finalized. ≥15 settings identified with
-valid ranges.
+**Exit criteria**: SettingsService is sole SettingsState mutation authority.
+Bootstrap mutates nothing directly. Full-state preservation test passes.
 
-**Exit criteria**: Every setting changed in UI persists across restart. Invalid
-input rejected with inline validation. Reset-to-default restores factory value.
-Export→factory-reset→import restores identical state. Schema migration
-preserves settings. All M10 tests pass.
+### M10.2 — Existing Preference Integration (FUTURE)
 
-**Acceptance gate**: Set every setting to non-default→restart→verify all.
-Factory reset→verify defaults. Export→import on clean install→verify parity.
-Invalid value entry (negative volume, empty path) rejects with message.
-Settings JSON validates against schema.
+**Scope**: last_directory integration. Successful Library scan persists
+last_directory. Startup loads persisted path as default directory. NO auto-scan.
 
-**Risks**: Settings explosion causing unmanageable test matrix. Mitigated:
-schema-versioned defaults; combinatorial test sampling. Import from untrusted
-JSON — mitigated: strict schema validation; no executable content.
+### M10.3 — Settings Navigation + Bridge (FUTURE)
+
+**Scope**: SETTINGS AppRoute, SettingsBridge, Navigation integration.
+
+### M10.4 — Minimal Settings UI (FUTURE)
+
+**Scope**: UI for playback preferences (volume, muted) and library (last_directory).
+
+### M10.5 — Restart / Persistence Gate (FUTURE)
+
+**Scope**: End-to-end: set preference → save → restart → restore → assert.
+
+**Out-of-scope (deferred)**: Output device selector, replay gain, crossfade,
+gapless, default repeat, shuffle seed, theme selection, language, font size,
+JSON import/export. All require existing capability owners first.
+
+**Principle**: Settings exposes existing capabilities. Settings does not create
+missing product capabilities.
+
+**Dependencies**: M5 Database (SettingsRepository, SQLite). M9 UI Foundation
+(for M10.4). PlaybackService snapshot_volume API.
+
+**Risks**: SettingsState partial overwrite — mitigated by set_playback_preferences
+public API + full-state preservation tests. Scope creep into nonexistent features
+— mitigated by explicit deferred list and capability-owner gate.
 
 ---
 
