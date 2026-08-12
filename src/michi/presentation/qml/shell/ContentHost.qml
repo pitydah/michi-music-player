@@ -30,6 +30,6 @@ Item {
         NowPlayingView { }
         LibraryView { }
         QueueView { }
-        SettingsPlaceholder { }
+        SettingsView { }
     }
 }

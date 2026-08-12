@@ -75,10 +75,15 @@ class TestRoutedViewRootsNoAnchorsFill:
             "src/michi/presentation/qml/views/QueueView.qml"
         )
 
-    def test_settings_placeholder_root(self):
+    def test_settings_view_root(self):
         assert not self._root_has_anchors(
-            "src/michi/presentation/qml/views/SettingsPlaceholder.qml"
+            "src/michi/presentation/qml/views/SettingsView.qml"
         )
+
+    def test_settings_placeholder_removed(self):
+        assert not Path(
+            "src/michi/presentation/qml/views/SettingsPlaceholder.qml"
+        ).exists()
 
     def test_sidebar_no_hardcoded_delegate_id(self):
         content = Path("src/michi/presentation/qml/shell/Sidebar.qml").read_text()
