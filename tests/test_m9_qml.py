@@ -89,6 +89,13 @@ class TestRoutedViewRootsNoAnchorsFill:
         content = Path("src/michi/presentation/qml/shell/Sidebar.qml").read_text()
         assert "delegate: itemDelegate" not in content
 
+    def test_settings_view_ownership(self):
+        content = Path("src/michi/presentation/qml/views/SettingsView.qml").read_text()
+        assert "playback.volume" in content
+        assert "playback.set_volume" in content
+        assert "library.currentDir" in content
+        assert "settingsBridge.set" not in content
+
 
 class TestQmlSmoke:
     def test_michi_button(self, qapp):

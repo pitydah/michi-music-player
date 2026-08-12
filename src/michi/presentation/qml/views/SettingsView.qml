@@ -6,29 +6,46 @@ import "../ui"
 Item {
     Flickable {
         anchors.fill: parent
-        contentHeight: contentColumn.implicitHeight
+        contentHeight: contentColumn.implicitHeight + MichiTheme.space32
         clip: true
 
         ColumnLayout {
             id: contentColumn
-            anchors.left: parent.left
-            anchors.right: parent.right
-            spacing: MichiTheme.space20
+            width: Math.min(parent.width, 920)
+            spacing: MichiTheme.space24
 
-            Text {
-                Layout.alignment: Qt.AlignLeft
-                text: "Settings"
-                font.pixelSize: MichiTheme.fontSizeHeading
-                font.weight: MichiTheme.fontWeightBold
-                color: MichiTheme.textPrimary
+            // ── Header ──────────────────────────────────────
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: MichiTheme.space8
+
+                Text {
+                    text: "Settings"
+                    font.pixelSize: MichiTheme.fontSizeHeading
+                    font.weight: MichiTheme.fontWeightBold
+                    color: MichiTheme.textPrimary
+                }
+
+                Text {
+                    text: "Configure existing Michi capabilities."
+                    font.pixelSize: MichiTheme.fontSizeBody
+                    color: MichiTheme.textSecondary
+                }
             }
 
-            // ── Playback ──────────────────────────────────────
+            // ── Playback ────────────────────────────────────
             MichiPanel {
+                id: playbackPanel
+                objectName: "playbackSettingsPanel"
                 Layout.fillWidth: true
+                implicitHeight: playbackContent.implicitHeight
+                    + MichiTheme.space16 + MichiTheme.space16
 
                 ColumnLayout {
-                    anchors.fill: parent
+                    id: playbackContent
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
                     spacing: MichiTheme.space12
 
                     Text {
@@ -46,14 +63,12 @@ Item {
                             text: "Volume"
                             font.pixelSize: MichiTheme.fontSizeBody
                             color: MichiTheme.textSecondary
-                            Layout.preferredWidth: 60
+                            Layout.preferredWidth: 80
                         }
 
                         MichiSlider {
-                            id: volumeSlider
                             Layout.fillWidth: true
-                            from: 0
-                            to: 100
+                            from: 0; to: 100
                             value: playback.volume
                             onMoved: playback.set_volume(value)
                         }
@@ -62,7 +77,8 @@ Item {
                             text: playback.volume + "%"
                             font.pixelSize: MichiTheme.fontSizeBody
                             color: MichiTheme.textSecondary
-                            Layout.preferredWidth: 36
+                            Layout.preferredWidth: 48
+                            horizontalAlignment: Text.AlignRight
                         }
                     }
 
@@ -71,10 +87,10 @@ Item {
                         spacing: MichiTheme.space12
 
                         Text {
-                            text: "Muted"
+                            text: "Mute"
                             font.pixelSize: MichiTheme.fontSizeBody
                             color: MichiTheme.textSecondary
-                            Layout.preferredWidth: 60
+                            Layout.preferredWidth: 80
                         }
 
                         MichiButton {
@@ -82,18 +98,26 @@ Item {
                             variant: "secondary"
                             checkable: true
                             checked: playback.muted
+                            Layout.preferredWidth: 100
                             onClicked: playback.set_muted(checked)
                         }
                     }
                 }
             }
 
-            // ── Library ──────────────────────────────────────
+            // ── Library ─────────────────────────────────────
             MichiPanel {
+                id: libraryPanel
+                objectName: "librarySettingsPanel"
                 Layout.fillWidth: true
+                implicitHeight: libraryContent.implicitHeight
+                    + MichiTheme.space16 + MichiTheme.space16
 
                 ColumnLayout {
-                    anchors.fill: parent
+                    id: libraryContent
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
                     spacing: MichiTheme.space12
 
                     Text {
@@ -103,45 +127,37 @@ Item {
                         color: MichiTheme.textPrimary
                     }
 
-                    ColumnLayout {
+                    Text {
+                        text: "Music folder"
+                        font.pixelSize: MichiTheme.fontSizeBody
+                        color: MichiTheme.textSecondary
+                    }
+
+                    RowLayout {
                         Layout.fillWidth: true
                         spacing: MichiTheme.space8
 
-                        Text {
-                            text: "Music folder"
-                            font.pixelSize: MichiTheme.fontSizeBody
-                            color: MichiTheme.textSecondary
-                        }
-
-                        RowLayout {
+                        MichiTextField {
                             Layout.fillWidth: true
-                            spacing: MichiTheme.space8
-
-                            MichiTextField {
-                                id: dirField
-                                Layout.fillWidth: true
-                                text: library.currentDir
-                                placeholderText: "No folder set"
-                                readOnly: true
-                            }
-
-                            MichiButton {
-                                text: "Use from Library"
-                                variant: "secondary"
-                                onClicked: navigation.navigate("library")
-                            }
+                            text: library.currentDir
+                            placeholderText: "No folder set"
+                            readOnly: true
                         }
 
-                        Text {
-                            text: "Scan folders from the Library screen."
-                            font.pixelSize: MichiTheme.fontSizeCaption
-                            color: MichiTheme.textMuted
+                        MichiButton {
+                            text: "Open Library"
+                            variant: "secondary"
+                            onClicked: navigation.navigate("library")
                         }
+                    }
+
+                    Text {
+                        text: "Scan folders from the Library screen."
+                        font.pixelSize: MichiTheme.fontSizeCaption
+                        color: MichiTheme.textMuted
                     }
                 }
             }
-
-            Item { Layout.preferredHeight: MichiTheme.space32 }
         }
     }
 }
