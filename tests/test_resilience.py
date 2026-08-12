@@ -4,7 +4,9 @@ from pathlib import Path
 
 import pytest
 
+from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
+from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
 from michi.bootstrap import ApplicationContainer
 from michi.domain.playback import PlaybackStatus
@@ -40,7 +42,7 @@ class DeleteLaterSpy:
     def __init__(self):
         self.calls = 0
 
-    def deleteLater(self):
+    def deleteLater(self):  # noqa: N802 — Qt API name
         self.calls += 1
 
 
@@ -113,6 +115,46 @@ class TestPlaybackResilience:
         svc.stop()
         svc.stop()
         assert svc.state.status == PlaybackStatus.STOPPED
+
+
+# ── Library failure atomicity ──────────────────────────────────
+
+
+class FlakyScanner:
+    def __init__(self, files=None):
+        self._files = files or []
+        self.should_fail = False
+
+    def scan(self, root):
+        if self.should_fail:
+            raise OSError("fake scan failure")
+        return self._files
+
+
+class TestLibraryResilience:
+    def test_scan_failure_preserves_complete_known_good_library_state(self):
+        audio = FakeAudioPort()
+        scanner = FlakyScanner(files=[Path("/good/a.flac"), Path("/good/b.mp3")])
+        library = LibraryService(scanner, QueueService(PlaybackService(audio)))
+
+        library.scan("/good")
+        assert library.state.current_directory == "/good"
+        assert len(library.state.tracks) == 2
+
+        library.search("test")
+        assert library.state.query == "test"
+
+        previous_directory = library.state.current_directory
+        previous_tracks = list(library.state.tracks)
+        previous_query = library.state.query
+
+        scanner.should_fail = True
+        with pytest.raises(OSError):
+            library.scan("/broken")
+
+        assert library.state.current_directory == previous_directory
+        assert library.state.tracks == previous_tracks
+        assert library.state.query == previous_query
 
 
 # ── ApplicationContainer real shutdown ──────────────────────────
@@ -242,7 +284,7 @@ class TestApplicationContainerShutdown:
         assert pb.calls == 1
         assert backend.calls == 1
 
-    def test__sb_cleared_after_shutdown(self):
+    def test_settings_bridge_reference_cleared_after_shutdown(self):
         container = ApplicationContainer()
         container._coordinator = StopSpy()
         container._library_prefs = StopSpy()
@@ -257,3 +299,53 @@ class TestApplicationContainerShutdown:
         container._engine = DeleteLaterSpy()
         container.shutdown()
         assert container._sb is None
+
+    def test_shutdown_preserves_first_error_when_later_cleanup_also_fails(self):
+        container = ApplicationContainer()
+
+        class SaveFailingRepo(FakeSettingsRepo):
+            def __init__(self):
+                super().__init__()
+                self.fail_next = False
+
+            def save(self, state):
+                if self.fail_next:
+                    raise OSError("disk full")
+                super().save(state)
+
+        repo = SaveFailingRepo()
+        repo.save(SettingsState(volume=10, muted=False))
+        repo.fail_next = True
+        settings = SettingsService(repo)
+
+        coord = StopSpy()
+        prefs = StopSpy()
+        backend = StopSpy()
+        engine = DeleteLaterSpy()
+        pb = DisposeSpy(fail=True)  # second failure
+        qb = DisposeSpy()
+        lb = DisposeSpy()
+        nb = DisposeSpy()
+
+        container._coordinator = coord
+        container._library_prefs = prefs
+        container._playback = PlaybackService(FakeAudioPort())
+        container._settings = settings
+        container._pb = pb
+        container._qb = qb
+        container._lb = lb
+        container._nb = nb
+        container._backend = backend
+        container._engine = engine
+
+        with pytest.raises(OSError, match="disk full"):
+            container.shutdown()
+
+        # First error (OSError) wins over later RuntimeError
+        assert qb.calls == 1
+        assert lb.calls == 1
+        assert nb.calls == 1
+        assert backend.calls == 1
+        assert engine.calls == 1
+        assert container._pb is None
+        assert container._backend is None
