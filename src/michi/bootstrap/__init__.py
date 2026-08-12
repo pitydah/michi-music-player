@@ -132,38 +132,45 @@ class ApplicationContainer:
         if self._library_prefs:
             self._library_prefs.stop()
 
-        # Capture runtime preferences → persisted state
+        # Capture runtime preferences, attempt persistence
+        persistence_error: Exception | None = None
         if self._playback and self._settings:
             vol, muted = self._playback.snapshot_volume()
             self._settings.set_playback_preferences(vol, muted)
-            self._settings.save()
+            try:
+                self._settings.save()
+            except Exception as exc:
+                persistence_error = exc
 
-        if self._pb:
-            self._pb.dispose()
-        if self._qb:
-            self._qb.dispose()
-        if self._lb:
-            self._lb.dispose()
-        if self._nb:
-            self._nb.dispose()
+        try:
+            if self._pb:
+                self._pb.dispose()
+            if self._qb:
+                self._qb.dispose()
+            if self._lb:
+                self._lb.dispose()
+            if self._nb:
+                self._nb.dispose()
 
-        if self._backend:
-            self._backend.stop()
-        if self._engine:
-            self._engine.deleteLater()
+            if self._backend:
+                self._backend.stop()
+            if self._engine:
+                self._engine.deleteLater()
+        finally:
+            self._engine = None
+            self._lb = None
+            self._qb = None
+            self._pb = None
+            self._nb = None
+            self._coordinator = None
+            self._library_prefs = None
+            self._navigation = None
+            self._library = None
+            self._queue = None
+            self._playback = None
+            self._settings = None
+            self._backend = None
+            self._app = None
 
-        self._engine = None
-        self._lb = None
-        self._qb = None
-        self._pb = None
-        self._nb = None
-        self._sb = None
-        self._coordinator = None
-        self._library_prefs = None
-        self._navigation = None
-        self._library = None
-        self._queue = None
-        self._playback = None
-        self._settings = None
-        self._backend = None
-        self._app = None
+        if persistence_error is not None:
+            raise persistence_error
