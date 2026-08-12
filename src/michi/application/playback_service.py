@@ -8,12 +8,23 @@ from michi.domain.playback import PlaybackState, PlaybackStatus
 
 
 class PlaybackService:
-    """Sole canonical authority over PlaybackState. Publishes changes."""
+    """Sole canonical authority over PlaybackState. Publishes changes.
+
+    Playback acceptance is asynchronous: `load_and_play` only *requests* a
+    candidate. The candidate becomes canonical when the backend reports media
+    acceptance (`subscribe_media_accepted`); it is dropped when the backend
+    reports rejection. Until then the service owns the pending candidate
+    locally and PlaybackState reflects the last committed track as STOPPED.
+    """
 
     def __init__(self, audio_port: AudioPort) -> None:
         self._audio = audio_port
         self._state = PlaybackState()
         self._subscribers: list[Callable[[], None]] = []
+        self._pending_path: Path | None = None
+        self._pending_on_accepted: Callable[[Path], None] | None = None
+        self._audio.subscribe_media_accepted(self._on_media_accepted)
+        self._audio.subscribe_media_rejected(self._on_media_rejected)
 
     @property
     def state(self) -> PlaybackState:
@@ -42,13 +53,55 @@ class PlaybackService:
         self._state.error_message = message
         self._notify()
 
-    def load_and_play(self, file_path: Path) -> None:
-        self._audio.load(file_path)
-        self._audio.play()
-        self._state.status = PlaybackStatus.PLAYING
-        self._state.file_path = file_path
+    def load_and_play(
+        self, file_path: Path, on_accepted: Callable[[Path], None] | None = None
+    ) -> None:
+        """Request playback of a candidate. Commits nothing synchronously.
+
+        The candidate becomes canonical only when the backend reports media
+        acceptance for its path; `on_accepted` is then invoked exactly once
+        with the accepted path. A new request supersedes the previous pending
+        candidate; `stop()` invalidates it. Synchronous backend failures
+        propagate and leave no pending candidate behind.
+        """
+        self._pending_path = file_path
+        self._pending_on_accepted = on_accepted
+        try:
+            self._audio.load(file_path)
+            self._audio.play()
+        except Exception:
+            self._pending_path = None
+            self._pending_on_accepted = None
+            raise
+        self._state.status = PlaybackStatus.STOPPED
         self._state.error_message = None
         self._notify()
+
+    def _on_media_accepted(self, file_path: Path) -> None:
+        if self._pending_path is None or file_path != self._pending_path:
+            return
+        on_accepted = self._pending_on_accepted
+        self._pending_path = None
+        self._pending_on_accepted = None
+        self._state.file_path = file_path
+        self._state.status = PlaybackStatus.PLAYING
+        self._state.error_message = None
+        self._notify()
+        if on_accepted is not None:
+            on_accepted(file_path)
+
+    def _on_media_rejected(self, file_path: Path, message: str) -> None:
+        if self._pending_path is not None and file_path == self._pending_path:
+            self._pending_path = None
+            self._pending_on_accepted = None
+            self._state.status = PlaybackStatus.STOPPED
+            self._state.error_message = message
+            self._notify()
+        elif self._state.file_path is not None and file_path == self._state.file_path:
+            self._state.status = PlaybackStatus.STOPPED
+            self._state.error_message = message
+            self._notify()
+        # Anything else is a stale or unknown callback: ignored.
 
     def play(self) -> None:
         self._audio.play()
@@ -66,6 +119,8 @@ class PlaybackService:
         self._notify()
 
     def stop(self) -> None:
+        self._pending_path = None
+        self._pending_on_accepted = None
         self._audio.stop()
         self._state.status = PlaybackStatus.STOPPED
         self._state.position_ms = 0

@@ -1,9 +1,11 @@
-"""Tests for QtMultimediaBackend subscription semantics."""
+"""Tests for QtMultimediaBackend subscription semantics and media translation."""
 
 import sys
+from pathlib import Path
 
 import pytest
 from PySide6.QtGui import QGuiApplication
+from PySide6.QtMultimedia import QMediaPlayer
 
 from michi.infrastructure.qt_backend import QtMultimediaBackend
 
@@ -80,13 +82,63 @@ class TestQtBackendSubscriptions:
         b.subscribe_duration_changed(cb)
         assert len(b._dur) == 1
 
-    def test_error_duplicate_subscribe(self, qapp):
+    def test_accepted_duplicate_subscribe(self, qapp):
         b = QtMultimediaBackend()
         calls = []
 
-        def cb(msg):
-            calls.append(msg)
+        def cb(path):
+            calls.append(path)
 
-        b.subscribe_error(cb)
-        b.subscribe_error(cb)
-        assert len(b._err) == 1
+        b.subscribe_media_accepted(cb)
+        b.subscribe_media_accepted(cb)
+        assert len(b._acc) == 1
+
+    def test_rejected_duplicate_subscribe(self, qapp):
+        b = QtMultimediaBackend()
+        calls = []
+
+        def cb(path, msg):
+            calls.append((path, msg))
+
+        b.subscribe_media_rejected(cb)
+        b.subscribe_media_rejected(cb)
+        assert len(b._rej) == 1
+
+
+class TestQtBackendMediaTranslation:
+    """TD-008B: Qt media signals translate to app-level acceptance events."""
+
+    def test_loaded_media_emits_accepted_with_current_source(self, qapp):
+        b = QtMultimediaBackend()
+        accepted = []
+        b.subscribe_media_accepted(lambda p: accepted.append(p))
+        b.load(Path("/tmp/song.mp3"))
+        b._player.mediaStatusChanged.emit(QMediaPlayer.LoadedMedia)
+        assert accepted == [Path("/tmp/song.mp3")]
+
+    def test_invalid_media_emits_rejected(self, qapp):
+        b = QtMultimediaBackend()
+        rejected = []
+        b.subscribe_media_rejected(lambda p, m: rejected.append((p, m)))
+        b.load(Path("/tmp/broken.mp3"))
+        b._player.mediaStatusChanged.emit(QMediaPlayer.InvalidMedia)
+        assert rejected == [(Path("/tmp/broken.mp3"), "invalid media")]
+
+    def test_error_occurred_emits_rejected(self, qapp):
+        b = QtMultimediaBackend()
+        rejected = []
+        b.subscribe_media_rejected(lambda p, m: rejected.append((p, m)))
+        b.load(Path("/tmp/broken.mp3"))
+        b._player.errorOccurred.emit(QMediaPlayer.ResourceError, "cannot decode")
+        assert rejected == [(Path("/tmp/broken.mp3"), "cannot decode")]
+
+    def test_status_without_source_ignored(self, qapp):
+        b = QtMultimediaBackend()
+        accepted = []
+        rejected = []
+        b.subscribe_media_accepted(lambda p: accepted.append(p))
+        b.subscribe_media_rejected(lambda p, m: rejected.append(m))
+        b._player.mediaStatusChanged.emit(QMediaPlayer.LoadedMedia)
+        b._player.mediaStatusChanged.emit(QMediaPlayer.InvalidMedia)
+        assert accepted == []
+        assert rejected == []

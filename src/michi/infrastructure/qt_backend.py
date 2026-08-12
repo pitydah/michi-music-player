@@ -23,9 +23,13 @@ class QtMultimediaBackend(AudioPort):
         self._eom: list[Callable[[], None]] = []
         self._pos: list[Callable[[int], None]] = []
         self._dur: list[Callable[[int], None]] = []
-        self._err: list[Callable[[str], None]] = []
+        self._acc: list[Callable[[Path], None]] = []
+        self._rej: list[Callable[[Path, str], None]] = []
+        self._current_source: Path | None = None
+        self._media_status_connected = False
 
     def load(self, file_path: Path) -> None:
+        self._current_source = file_path
         self._player.setSource(QUrl.fromLocalFile(str(file_path)))
 
     def play(self) -> None:
@@ -56,27 +60,82 @@ class QtMultimediaBackend(AudioPort):
     def duration(self) -> int:
         return self._player.duration()
 
-    # ── end-of-media (idempotent) ────────────────────────────────
+    # ── media status wiring (shared by eom/accepted/rejected) ─────
 
-    def subscribe_end_of_media(self, cb: Callable[[], None]) -> None:
-        if cb in self._eom:
-            return
-        was_empty = not self._eom
-        self._eom.append(cb)
-        if was_empty:
+    def _ensure_media_status_wired(self) -> None:
+        if not self._media_status_connected and (self._eom or self._acc or self._rej):
             self._player.mediaStatusChanged.connect(self._on_media_status)
+            self._media_status_connected = True
 
-    def unsubscribe_end_of_media(self, cb: Callable[[], None]) -> None:
-        if cb not in self._eom:
-            return
-        self._eom.remove(cb)
-        if not self._eom:
+    def _ensure_media_status_unwired(self) -> None:
+        if self._media_status_connected and not (self._eom or self._acc or self._rej):
             self._player.mediaStatusChanged.disconnect(self._on_media_status)
+            self._media_status_connected = False
 
     def _on_media_status(self, status: QMediaPlayer.MediaStatus) -> None:
         if status == QMediaPlayer.EndOfMedia:
             for cb in list(self._eom):
                 cb()
+        elif status == QMediaPlayer.LoadedMedia and self._current_source is not None:
+            for cb in list(self._acc):
+                cb(self._current_source)
+        elif status == QMediaPlayer.InvalidMedia and self._current_source is not None:
+            for cb in list(self._rej):
+                cb(self._current_source, "invalid media")
+
+    # ── end-of-media (idempotent) ────────────────────────────────
+
+    def subscribe_end_of_media(self, cb: Callable[[], None]) -> None:
+        if cb in self._eom:
+            return
+        self._eom.append(cb)
+        self._ensure_media_status_wired()
+
+    def unsubscribe_end_of_media(self, cb: Callable[[], None]) -> None:
+        if cb not in self._eom:
+            return
+        self._eom.remove(cb)
+        self._ensure_media_status_unwired()
+
+    # ── media accepted (idempotent) ────────────────────────────────
+
+    def subscribe_media_accepted(self, cb: Callable[[Path], None]) -> None:
+        if cb in self._acc:
+            return
+        self._acc.append(cb)
+        self._ensure_media_status_wired()
+
+    def unsubscribe_media_accepted(self, cb: Callable[[Path], None]) -> None:
+        if cb not in self._acc:
+            return
+        self._acc.remove(cb)
+        self._ensure_media_status_unwired()
+
+    # ── media rejected (idempotent) ────────────────────────────────
+
+    def subscribe_media_rejected(self, cb: Callable[[Path, str], None]) -> None:
+        if cb in self._rej:
+            return
+        was_empty = not self._rej
+        self._rej.append(cb)
+        if was_empty:
+            self._player.errorOccurred.connect(self._on_error)
+        self._ensure_media_status_wired()
+
+    def unsubscribe_media_rejected(self, cb: Callable[[Path, str], None]) -> None:
+        if cb not in self._rej:
+            return
+        self._rej.remove(cb)
+        if not self._rej:
+            self._player.errorOccurred.disconnect(self._on_error)
+        self._ensure_media_status_unwired()
+
+    def _on_error(self, error: QMediaPlayer.Error, error_string: str) -> None:
+        logger.warning("Media error: %s", error_string)
+        if self._current_source is None:
+            return
+        for cb in list(self._rej):
+            cb(self._current_source, error_string)
 
     # ── position (idempotent) ────────────────────────────────────
 
@@ -119,25 +178,3 @@ class QtMultimediaBackend(AudioPort):
     def _on_duration_changed(self, duration_ms: int) -> None:
         for cb in list(self._dur):
             cb(duration_ms)
-
-    # ── error (idempotent) ───────────────────────────────────────
-
-    def subscribe_error(self, cb: Callable[[str], None]) -> None:
-        if cb in self._err:
-            return
-        was_empty = not self._err
-        self._err.append(cb)
-        if was_empty:
-            self._player.errorOccurred.connect(self._on_error)
-
-    def unsubscribe_error(self, cb: Callable[[str], None]) -> None:
-        if cb not in self._err:
-            return
-        self._err.remove(cb)
-        if not self._err:
-            self._player.errorOccurred.disconnect(self._on_error)
-
-    def _on_error(self, error: QMediaPlayer.Error, error_string: str) -> None:
-        logger.warning("Media error: %s", error_string)
-        for cb in list(self._err):
-            cb(error_string)

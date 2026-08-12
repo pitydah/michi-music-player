@@ -21,7 +21,8 @@ class FakeAudioPort:
         self._eom: list = []
         self._pos: list = []
         self._dur: list = []
-        self._err: list = []
+        self._acc: list = []
+        self._rej: list = []
 
     def load(self, p):
         self.loaded = p
@@ -80,13 +81,21 @@ class FakeAudioPort:
         if cb in self._dur:
             self._dur.remove(cb)
 
-    def subscribe_error(self, cb):
-        if cb not in self._err:
-            self._err.append(cb)
+    def subscribe_media_accepted(self, cb):
+        if cb not in self._acc:
+            self._acc.append(cb)
 
-    def unsubscribe_error(self, cb):
-        if cb in self._err:
-            self._err.remove(cb)
+    def unsubscribe_media_accepted(self, cb):
+        if cb in self._acc:
+            self._acc.remove(cb)
+
+    def subscribe_media_rejected(self, cb):
+        if cb not in self._rej:
+            self._rej.append(cb)
+
+    def unsubscribe_media_rejected(self, cb):
+        if cb in self._rej:
+            self._rej.remove(cb)
 
     def trigger_end_of_media(self):
         for cb in list(self._eom):
@@ -100,9 +109,13 @@ class FakeAudioPort:
         for cb in list(self._dur):
             cb(dur_ms)
 
-    def trigger_error(self, msg):
-        for cb in list(self._err):
-            cb(msg)
+    def trigger_media_accepted(self, path):
+        for cb in list(self._acc):
+            cb(path)
+
+    def trigger_media_rejected(self, path, msg):
+        for cb in list(self._rej):
+            cb(path, msg)
 
 
 @pytest.fixture

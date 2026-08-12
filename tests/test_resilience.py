@@ -110,8 +110,10 @@ class TestPlaybackResilience:
         assert svc.state.muted is False
 
     def test_stop_is_idempotent(self):
-        svc = PlaybackService(FakeAudioPort())
+        audio = FakeAudioPort()
+        svc = PlaybackService(audio)
         svc.load_and_play(Path("/tmp/a.mp3"))
+        audio.trigger_media_accepted(Path("/tmp/a.mp3"))
         svc.stop()
         svc.stop()
         assert svc.state.status == PlaybackStatus.STOPPED

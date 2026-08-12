@@ -26,7 +26,6 @@ class PlaybackCoordinator:
         self._audio.subscribe_end_of_media(self._on_track_ended)
         self._audio.subscribe_position_changed(self._on_position_changed)
         self._audio.subscribe_duration_changed(self._on_duration_changed)
-        self._audio.subscribe_error(self._on_error)
 
     def stop(self) -> None:
         if not self._started:
@@ -35,7 +34,6 @@ class PlaybackCoordinator:
         self._audio.unsubscribe_end_of_media(self._on_track_ended)
         self._audio.unsubscribe_position_changed(self._on_position_changed)
         self._audio.unsubscribe_duration_changed(self._on_duration_changed)
-        self._audio.unsubscribe_error(self._on_error)
 
     def _on_track_ended(self) -> None:
         if self._queue.state.has_next:
@@ -48,6 +46,3 @@ class PlaybackCoordinator:
 
     def _on_duration_changed(self, duration_ms: int) -> None:
         self._playback.update_duration(duration_ms)
-
-    def _on_error(self, message: str) -> None:
-        self._playback.report_error(message)

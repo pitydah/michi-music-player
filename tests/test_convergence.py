@@ -35,9 +35,12 @@ class TestEndOfMedia:
         q.add(Path("/tmp/a.mp3"))
         q.add(Path("/tmp/b.mp3"))
         q.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
         coord = PlaybackCoordinator(fake_audio, q, svc)
         coord.start()
         fake_audio.trigger_end_of_media()
+        assert q.state.current_index == 0  # B pending, not committed
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
         assert q.state.current_index == 1
 
     def test_auto_advance_failure_preserves_index(self, fake_audio, monkeypatch):
@@ -46,6 +49,7 @@ class TestEndOfMedia:
         q.add(Path("/tmp/a.mp3"))
         q.add(Path("/tmp/b.mp3"))
         q.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
         coord = PlaybackCoordinator(fake_audio, q, svc)
         coord.start()
 
@@ -59,11 +63,44 @@ class TestEndOfMedia:
 
         assert q.state.current_index == 0
 
+    def test_auto_advance_rejection_preserves_queue(self, fake_audio):
+        svc = PlaybackService(fake_audio)
+        q = QueueService(svc)
+        q.add(Path("/tmp/a.mp3"))
+        q.add(Path("/tmp/b.mp3"))
+        q.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        coord = PlaybackCoordinator(fake_audio, q, svc)
+        coord.start()
+        fake_audio.trigger_end_of_media()
+        fake_audio.trigger_media_rejected(Path("/tmp/b.mp3"), "cannot decode")
+        assert q.state.current_index == 0
+        assert svc.state.file_path == Path("/tmp/a.mp3")
+        assert svc.state.status == PlaybackStatus.STOPPED
+        assert svc.state.error_message == "cannot decode"
+
+    def test_auto_advance_acceptance_advances_exactly_once(self, fake_audio):
+        svc = PlaybackService(fake_audio)
+        q = QueueService(svc)
+        q.add(Path("/tmp/a.mp3"))
+        q.add(Path("/tmp/b.mp3"))
+        q.add(Path("/tmp/c.mp3"))
+        q.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        coord = PlaybackCoordinator(fake_audio, q, svc)
+        coord.start()
+        fake_audio.trigger_end_of_media()
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert q.state.current_index == 1
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))  # duplicate
+        assert q.state.current_index == 1  # no double advance
+
     def test_at_end(self, fake_audio):
         svc = PlaybackService(fake_audio)
         q = QueueService(svc)
         q.add(Path("/tmp/a.mp3"))
         q.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
         coord = PlaybackCoordinator(fake_audio, q, svc)
         coord.start()
         fake_audio.trigger_end_of_media()
@@ -142,15 +179,25 @@ class TestSubscriptions:
         fake_audio.trigger_duration(240000)
         assert calls == [240000]
 
-    def test_error_events(self, fake_audio):
+    def test_media_accepted_events(self, fake_audio):
         calls = []
 
-        def cb(m):
-            calls.append(m)
+        def cb(p):
+            calls.append(p)
 
-        fake_audio.subscribe_error(cb)
-        fake_audio.trigger_error("decode failed")
-        assert calls == ["decode failed"]
+        fake_audio.subscribe_media_accepted(cb)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        assert calls == [Path("/tmp/a.mp3")]
+
+    def test_media_rejected_events(self, fake_audio):
+        calls = []
+
+        def cb(p, m):
+            calls.append((p, m))
+
+        fake_audio.subscribe_media_rejected(cb)
+        fake_audio.trigger_media_rejected(Path("/tmp/a.mp3"), "decode failed")
+        assert calls == [(Path("/tmp/a.mp3"), "decode failed")]
 
 
 class TestCoordinatorIdempotent:
@@ -290,13 +337,26 @@ class TestPlaybackAuthority:
         svc.report_error("test")
         assert svc.state.error_message == "test"
 
-    def test_coordinator_does_not_mutate_state(self, fake_audio):
+    def test_rejection_reaches_playback_without_coordinator_wiring(self, fake_audio):
+        svc = PlaybackService(fake_audio)
+        svc.load_and_play(Path("/tmp/a.mp3"))
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        fake_audio.trigger_media_rejected(Path("/tmp/a.mp3"), "e")
+        assert svc.state.error_message == "e"
+
+    def test_coordinator_does_not_mutate_queue_state(self, fake_audio):
         svc = PlaybackService(fake_audio)
         q = QueueService(svc)
+        q.add(Path("/tmp/a.mp3"))
+        q.add(Path("/tmp/b.mp3"))
         c = PlaybackCoordinator(fake_audio, q, svc)
         c.start()
-        fake_audio.trigger_error("e")
-        assert svc.state.error_message == "e"
+        fake_audio.trigger_position(1000)
+        fake_audio.trigger_duration(2000)
+        assert q.state.count == 2
+        assert q.state.current_index == -1
+        assert svc.state.position_ms == 1000
+        assert svc.state.duration_ms == 2000
 
 
 class TestSettingsPreservation:

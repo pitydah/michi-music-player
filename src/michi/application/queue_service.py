@@ -53,8 +53,20 @@ class QueueService:
         self._notify()
 
     def play_index(self, index: int) -> None:
+        """Request playback of a track. Commits the index only on acceptance."""
         if 0 <= index < len(self._state.tracks):
-            self._playback.load_and_play(self._state.tracks[index].file_path)
+            track = self._state.tracks[index]
+            self._playback.load_and_play(
+                track.file_path,
+                on_accepted=lambda path: self._commit(index, path),
+            )
+
+    def _commit(self, index: int, path: Path) -> None:
+        """Acceptance point: commit only if the track still sits at `index`."""
+        if (
+            0 <= index < len(self._state.tracks)
+            and self._state.tracks[index].file_path == path
+        ):
             self._state.current_index = index
             self._notify()
 
@@ -65,6 +77,4 @@ class QueueService:
         self.play_index(self._state.current_index - 1)
 
     def play_current(self) -> None:
-        track = self._state.current_track
-        if track:
-            self._playback.load_and_play(track.file_path)
+        self.play_index(self._state.current_index)
