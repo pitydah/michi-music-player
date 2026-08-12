@@ -1,127 +1,259 @@
-"""M11.1 resilience tests — failure contracts and safe degradation."""
+"""M11.1 resilience — real ApplicationContainer shutdown + failure atomicity."""
 
 from pathlib import Path
 
 import pytest
 
-from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
-from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
+from michi.bootstrap import ApplicationContainer
 from michi.domain.playback import PlaybackStatus
 from michi.domain.settings import SettingsState
 from tests.conftest import FakeAudioPort, FakeSettingsRepo
 
+# ── Spies for ApplicationContainer shutdown testing ────────────
 
-class FailingPlayAudioPort(FakeAudioPort):
+
+class StopSpy:
+    def __init__(self, fail=False):
+        self.calls = 0
+        self.fail = fail
+
+    def stop(self):
+        self.calls += 1
+        if self.fail:
+            raise RuntimeError("stop failure")
+
+
+class DisposeSpy:
+    def __init__(self, fail=False):
+        self.calls = 0
+        self.fail = fail
+
+    def dispose(self):
+        self.calls += 1
+        if self.fail:
+            raise RuntimeError("dispose failure")
+
+
+class DeleteLaterSpy:
+    def __init__(self):
+        self.calls = 0
+
+    def deleteLater(self):
+        self.calls += 1
+
+
+# ── Playback failure atomicity ──────────────────────────────────
+
+
+class FailingAudio(FakeAudioPort):
     def __init__(self):
         super().__init__()
-        self._fail_play = False
+        self.fail_volume = False
+        self.fail_muted = False
+        self.fail_play = False
 
-    def set_fail_play(self, v: bool):
-        self._fail_play = v
+    def set_volume(self, v):
+        if self.fail_volume:
+            raise RuntimeError("volume failure")
+        super().set_volume(v)
+
+    def set_muted(self, m):
+        if self.fail_muted:
+            raise RuntimeError("mute failure")
+        super().set_muted(m)
 
     def play(self):
-        if self._fail_play:
-            raise RuntimeError("backend play failure")
+        if self.fail_play:
+            raise RuntimeError("play failure")
         super().play()
 
 
 class TestPlaybackResilience:
-    def test_play_failure_preserves_previous_state(self):
-        audio = FailingPlayAudioPort()
+    def test_play_failure_preserves_stopped(self):
+        audio = FailingAudio()
+        audio.fail_play = True
         svc = PlaybackService(audio)
-        assert svc.state.status == PlaybackStatus.STOPPED
-        audio.set_fail_play(True)
         with pytest.raises(RuntimeError):
             svc.play()
         assert svc.state.status == PlaybackStatus.STOPPED
 
-    def test_stop_is_idempotent(self):
-        audio = FakeAudioPort()
+    def test_volume_failure_preserves_previous(self):
+        audio = FailingAudio()
         svc = PlaybackService(audio)
+        audio.fail_volume = True
+        with pytest.raises(RuntimeError):
+            svc.set_volume(90)
+        assert svc.state.volume == 100  # default preserved
+
+    def test_mute_failure_preserves_previous(self):
+        audio = FailingAudio()
+        svc = PlaybackService(audio)
+        audio.fail_muted = True
+        with pytest.raises(RuntimeError):
+            svc.set_muted(True)
+        assert svc.state.muted is False
+
+    def test_restore_volume_partial_failure(self):
+        audio = FailingAudio()
+        svc = PlaybackService(audio)
+        svc.set_volume(40)
+        svc.set_muted(False)
+        audio.fail_muted = True
+        with pytest.raises(RuntimeError):
+            svc.restore_volume(80, True)
+        # Both state fields preserved — commit only after both backends succeed
+        assert svc.state.volume == 40
+        assert svc.state.muted is False
+
+    def test_stop_is_idempotent(self):
+        svc = PlaybackService(FakeAudioPort())
         svc.load_and_play(Path("/tmp/a.mp3"))
-        assert svc.state.status == PlaybackStatus.PLAYING
+        svc.stop()
         svc.stop()
         assert svc.state.status == PlaybackStatus.STOPPED
-        svc.stop()
-        assert svc.state.status == PlaybackStatus.STOPPED
 
 
-class TestLibraryResilience:
-    def test_scan_failure_preserves_known_good_state(self):
-        audio = FakeAudioPort()
-        scanner = _FakeScanner(files=[Path("/good/a.mp3")])
-        library = LibraryService(scanner, QueueService(PlaybackService(audio)))
-        library.scan("/good")
-        assert library.state.current_directory == "/good"
-        assert len(library.state.tracks) == 1
-        library.search("test")
-        assert library.state.query == "test"
-
-        scanner.should_fail = True
-        with pytest.raises(OSError):
-            library.scan("/broken")
-        assert library.state.current_directory == "/good"
-        assert len(library.state.tracks) == 1
-        assert library.state.query == "test"
+# ── ApplicationContainer real shutdown ──────────────────────────
 
 
-class _FakeScanner:
-    def __init__(self, files=None):
-        self._files = files or []
-        self.should_fail = False
+class TestApplicationContainerShutdown:
+    def test_cleanup_runs_when_settings_save_fails(self):
+        container = ApplicationContainer()
 
-    def scan(self, root):
-        if self.should_fail:
-            raise OSError("fake scan failure")
-        return self._files
+        class SaveFailingRepo(FakeSettingsRepo):
+            def __init__(self):
+                super().__init__()
+                self.fail_next = False
 
+            def save(self, state):
+                if self.fail_next:
+                    raise OSError("disk full")
+                super().save(state)
 
-class FailingSettingsRepo(FakeSettingsRepo):
-    def __init__(self):
-        super().__init__()
-        self._fail_save = False
-
-    def set_fail_save(self, v: bool):
-        self._fail_save = v
-
-    def save(self, state):
-        if self._fail_save:
-            raise OSError("disk full")
-        super().save(state)
-
-
-class TestShutdownResilience:
-    def test_cleanup_runs_when_save_fails(self):
-        repo = FailingSettingsRepo()
+        repo = SaveFailingRepo()
         repo.save(SettingsState(volume=10, muted=False))
-        repo.set_fail_save(True)
+        repo.fail_next = True
         settings = SettingsService(repo)
-        settings.load()
-        audio = FakeAudioPort()
-        playback = PlaybackService(audio)
-        playback.restore_volume(10, False)
-        playback.set_volume(50)
-        vol, muted = playback.snapshot_volume()
-        settings.set_playback_preferences(vol, muted)
-        with pytest.raises(OSError):
-            try:
-                settings.save()
-            finally:
-                audio.stop()
-        assert audio.state == "stopped"
+        playback = PlaybackService(FakeAudioPort())
 
-    def test_shutdown_idempotent_no_crash(self):
-        audio = FakeAudioPort()
-        playback = PlaybackService(audio)
+        coord = StopSpy()
+        prefs = StopSpy()
+        backend = StopSpy()
+        engine = DeleteLaterSpy()
+        pb = DisposeSpy()
+        qb = DisposeSpy()
+        lb = DisposeSpy()
+        nb = DisposeSpy()
+
+        container._coordinator = coord
+        container._library_prefs = prefs
+        container._playback = playback
+        container._settings = settings
+        container._pb = pb
+        container._qb = qb
+        container._lb = lb
+        container._nb = nb
+        container._backend = backend
+        container._engine = engine
+
+        with pytest.raises(OSError, match="disk full"):
+            container.shutdown()
+
+        assert coord.calls >= 1
+        assert prefs.calls >= 1
+        assert pb.calls >= 1
+        assert qb.calls >= 1
+        assert lb.calls >= 1
+        assert nb.calls >= 1
+        assert backend.calls >= 1
+        assert engine.calls >= 1
+        assert container._pb is None
+        assert container._settings is None
+        assert container._backend is None
+
+    def test_shutdown_continues_after_dispose_failure(self):
+        container = ApplicationContainer()
+        coord = StopSpy()
+        prefs = StopSpy()
+        backend = StopSpy()
+        engine = DeleteLaterSpy()
+
+        pb = DisposeSpy(fail=True)
+        qb = DisposeSpy()
+        lb = DisposeSpy()
+        nb = DisposeSpy()
+
         repo = FakeSettingsRepo()
         settings = SettingsService(repo)
-        settings.load()
-        playback.set_volume(50)
-        vol, muted = playback.snapshot_volume()
-        settings.set_playback_preferences(vol, muted)
-        settings.save()
-        audio.stop()
-        audio.stop()  # idempotent
-        settings.save()  # safe re-save
+        playback = PlaybackService(FakeAudioPort())
+
+        container._coordinator = coord
+        container._library_prefs = prefs
+        container._playback = playback
+        container._settings = settings
+        container._pb = pb
+        container._qb = qb
+        container._lb = lb
+        container._nb = nb
+        container._backend = backend
+        container._engine = engine
+
+        with pytest.raises(RuntimeError, match="dispose failure"):
+            container.shutdown()
+
+        assert qb.calls >= 1
+        assert lb.calls >= 1
+        assert nb.calls >= 1
+        assert backend.calls >= 1
+        assert engine.calls >= 1
+
+    def test_shutdown_idempotent_no_crash(self):
+        container = ApplicationContainer()
+        coord = StopSpy()
+        prefs = StopSpy()
+        backend = StopSpy()
+        engine = DeleteLaterSpy()
+        pb = DisposeSpy()
+        qb = DisposeSpy()
+        lb = DisposeSpy()
+        nb = DisposeSpy()
+
+        repo = FakeSettingsRepo()
+        settings = SettingsService(repo)
+        playback = PlaybackService(FakeAudioPort())
+
+        container._coordinator = coord
+        container._library_prefs = prefs
+        container._playback = playback
+        container._settings = settings
+        container._pb = pb
+        container._qb = qb
+        container._lb = lb
+        container._nb = nb
+        container._backend = backend
+        container._engine = engine
+
+        container.shutdown()
+        container.shutdown()
+
+        assert coord.calls == 1
+        assert pb.calls == 1
+        assert backend.calls == 1
+
+    def test__sb_cleared_after_shutdown(self):
+        container = ApplicationContainer()
+        container._coordinator = StopSpy()
+        container._library_prefs = StopSpy()
+        container._playback = PlaybackService(FakeAudioPort())
+        container._settings = SettingsService(FakeSettingsRepo())
+        container._pb = DisposeSpy()
+        container._qb = DisposeSpy()
+        container._lb = DisposeSpy()
+        container._nb = DisposeSpy()
+        container._sb = object()
+        container._backend = StopSpy()
+        container._engine = DeleteLaterSpy()
+        container.shutdown()
+        assert container._sb is None

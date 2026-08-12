@@ -33,10 +33,10 @@ class PlaybackService:
 
     def restore_volume(self, volume: int, muted: bool) -> None:
         clamped = max(0, min(100, volume))
-        self._state.volume = clamped
-        self._state.muted = muted
         self._audio.set_volume(clamped)
         self._audio.set_muted(muted)
+        self._state.volume = clamped
+        self._state.muted = muted
 
     def report_error(self, message: str) -> None:
         self._state.error_message = message
@@ -78,13 +78,13 @@ class PlaybackService:
 
     def set_volume(self, value: int) -> None:
         clamped = max(0, min(100, value))
-        self._state.volume = clamped
         self._audio.set_volume(clamped)
+        self._state.volume = clamped
         self._notify()
 
     def set_muted(self, muted: bool) -> None:
-        self._state.muted = muted
         self._audio.set_muted(muted)
+        self._state.muted = muted
         self._notify()
 
     def update_position(self, position_ms: int) -> None:

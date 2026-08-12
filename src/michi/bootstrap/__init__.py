@@ -126,51 +126,62 @@ class ApplicationContainer:
         return self._app.exec()
 
     def shutdown(self) -> None:
-        if self._coordinator:
-            self._coordinator.stop()
-
-        if self._library_prefs:
-            self._library_prefs.stop()
-
-        # Capture runtime preferences, attempt persistence
-        persistence_error: Exception | None = None
-        if self._playback and self._settings:
-            vol, muted = self._playback.snapshot_volume()
-            self._settings.set_playback_preferences(vol, muted)
-            try:
-                self._settings.save()
-            except Exception as exc:
-                persistence_error = exc
+        error: Exception | None = None
 
         try:
-            if self._pb:
-                self._pb.dispose()
-            if self._qb:
-                self._qb.dispose()
-            if self._lb:
-                self._lb.dispose()
-            if self._nb:
-                self._nb.dispose()
+            if self._coordinator:
+                self._coordinator.stop()
+        except Exception as exc:
+            error = error or exc
 
+        try:
+            if self._library_prefs:
+                self._library_prefs.stop()
+        except Exception as exc:
+            error = error or exc
+
+        try:
+            if self._playback and self._settings:
+                vol, muted = self._playback.snapshot_volume()
+                self._settings.set_playback_preferences(vol, muted)
+                self._settings.save()
+        except Exception as exc:
+            error = error or exc
+
+        for bridge in (self._pb, self._qb, self._lb, self._nb):
+            try:
+                if bridge:
+                    bridge.dispose()
+            except Exception as exc:
+                error = error or exc
+
+        try:
             if self._backend:
                 self._backend.stop()
+        except Exception as exc:
+            error = error or exc
+
+        try:
             if self._engine:
                 self._engine.deleteLater()
-        finally:
-            self._engine = None
-            self._lb = None
-            self._qb = None
-            self._pb = None
-            self._nb = None
-            self._coordinator = None
-            self._library_prefs = None
-            self._navigation = None
-            self._library = None
-            self._queue = None
-            self._playback = None
-            self._settings = None
-            self._backend = None
-            self._app = None
+        except Exception as exc:
+            error = error or exc
 
-        if persistence_error is not None:
-            raise persistence_error
+        self._engine = None
+        self._lb = None
+        self._qb = None
+        self._pb = None
+        self._nb = None
+        self._sb = None
+        self._coordinator = None
+        self._library_prefs = None
+        self._navigation = None
+        self._library = None
+        self._queue = None
+        self._playback = None
+        self._settings = None
+        self._backend = None
+        self._app = None
+
+        if error is not None:
+            raise error

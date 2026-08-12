@@ -37,6 +37,7 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/presentation/*bridge.py" = ["N815", "E501"]
+"**/test_resilience.py" = ["N802"]
 "**/test_settings_view.py" = ["N815"]
 "**/infrastructure/sqlite_settings.py" = ["E501"]
 "**/infrastructure/qt_backend.py" = ["SIM105"]
