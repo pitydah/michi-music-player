@@ -75,6 +75,15 @@ class TestRoutedViewRootsNoAnchorsFill:
             "src/michi/presentation/qml/views/QueueView.qml"
         )
 
+    def test_settings_placeholder_root(self):
+        assert not self._root_has_anchors(
+            "src/michi/presentation/qml/views/SettingsPlaceholder.qml"
+        )
+
+    def test_sidebar_no_hardcoded_delegate_id(self):
+        content = Path("src/michi/presentation/qml/shell/Sidebar.qml").read_text()
+        assert "delegate: itemDelegate" not in content
+
 
 class TestQmlSmoke:
     def test_michi_button(self, qapp):

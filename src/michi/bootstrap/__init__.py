@@ -51,6 +51,7 @@ class ApplicationContainer:
         self._qb: QueueBridge | None = None
         self._lb: LibraryBridge | None = None
         self._nb: NavigationBridge | None = None
+        self._sb: SettingsBridge | None = None
 
     def initialize(self) -> None:
         QGuiApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -109,6 +110,7 @@ class ApplicationContainer:
         self._qb = qb
         self._lb = lb
         self._nb = nb
+        self._sb = sb
         self._engine = engine
 
     def run(self) -> int:
@@ -155,6 +157,7 @@ class ApplicationContainer:
         self._qb = None
         self._pb = None
         self._nb = None
+        self._sb = None
         self._coordinator = None
         self._library_prefs = None
         self._navigation = None

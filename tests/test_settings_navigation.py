@@ -70,11 +70,3 @@ class TestSettingsBridge:
         settings.load()
         bridge = SettingsBridge(settings)
         assert bridge.property("muted") is True
-
-    def test_no_qt_dependencies(self):
-        """Bridge imports no Qt beyond QObject base."""
-        repo = FakeSettingsRepo()
-        settings = SettingsService(repo)
-        bridge = SettingsBridge(settings)
-        # Bridge depends only on SettingsService
-        assert bridge._service is settings

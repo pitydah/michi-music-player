@@ -1,7 +1,12 @@
 """QML bridge for settings — read-only persisted preference exposure.
 
 Depends on SettingsService. No SQLite, Playback, Library, or Navigation.
-M10.3: read-only. M10.4 will add mutation slots for Settings UI.
+
+M10.3 exposes persisted preferences read-only.
+Future Settings UI mutations must preserve capability ownership:
+runtime playback changes go through PlaybackService,
+library changes go through LibraryService,
+and SettingsService remains the persisted preference owner.
 """
 
 from PySide6.QtCore import Property, QObject
