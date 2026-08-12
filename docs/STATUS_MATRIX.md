@@ -117,4 +117,4 @@ Snapshot of the rebuild's components against the component state machine. Eviden
 | M11.2A Persistence Detection | TESTED     | Read-only health taxonomy verified (capability level; startup wiring pending)                  |
 | M11.2B/C/D/E Recovery        | UNKNOWN    | Not yet audited; backup/recovery/repair pending                                                |
 
-Transitions pending per the canonical 1.0 contract: M3/M4/M5/M6 must reach TESTED (their Required-1.0 gaps closed) before M15; recovery components (M11.2B-E) must be implemented per the future execution order in MASTER_ROADMAP_1.0.md.
+Transitions pending per the canonical 1.0 contract: all components with outstanding Required-1.0 gaps must reach TESTED before M15. Currently those are M4 Queue and M6 Library. Recovery components (M11.2B-E) must be implemented per the future execution order in MASTER_ROADMAP_1.0.md.

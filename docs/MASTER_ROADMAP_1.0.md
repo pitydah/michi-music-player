@@ -60,15 +60,14 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 
 The next work proceeds in this order:
 
-1. **Governance Reconciliation** (this change) — align all docs with the real stack and capability state.
-2. **Queue↔Playback Atomicity** — `QueueService.play_index/next/previous` mutate `current_index` before `PlaybackService.load_and_play`; a playback failure can leave queue and playback divergent. Next technical work package. (TD-008, SIGNIFICANT)
-3. **M11.2B/C/D/E Recovery** — backup/recovery and repair for settings persistence on top of the M11.2A taxonomy.
-4. **Filesystem Degradation** — handling for library files disappearing at runtime (TD-013).
-5. **M12 Performance** — benchmark and tune scan/startup/memory; CI performance gate.
-6. **M13 Packaging** — Linux installable artifacts (AppImage/Flatpak/deb), icon suite, desktop integration, CLI entry points. Windows and macOS are Post-1.0 per the canonical contract.
-7. **M14 Beta** — beta channel, opt-in telemetry, feedback loop, triage SLA.
-8. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
-9. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
+1. **Queue↔Playback Atomicity** — `QueueService.play_index/next/previous` mutate `current_index` before `PlaybackService.load_and_play`; a playback failure can leave queue and playback divergent. Next technical work package. (TD-008, SIGNIFICANT)
+2. **M11.2B/C/D/E Recovery** — backup/recovery and repair for settings persistence on top of the M11.2A taxonomy.
+3. **Filesystem Degradation** — handling for library files disappearing at runtime (TD-013).
+4. **M12 Performance** — benchmark and tune scan/startup/memory; CI performance gate.
+5. **M13 Packaging** — Linux installable artifacts (AppImage/Flatpak/deb), icon suite, desktop integration, CLI entry points. Windows and macOS are Post-1.0 per the canonical contract.
+6. **M14 Beta** — beta channel, opt-in telemetry, feedback loop, triage SLA.
+7. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
+8. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
 
 Required-for-1.0 gaps (shuffle, repeat, metadata extraction) are scheduled as work packages within this order before M12; they are part of the 1.0 contract and may not slip past M15.
 
