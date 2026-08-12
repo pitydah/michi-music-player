@@ -78,7 +78,7 @@ clean install            [blocked-by: packaging — M13; 1.0 artifacts are Linux
 ### Rules
 
 1. Every step MUST be executable and verifiable in sequence. Steps marked `blocked-by` are allowed to gate the corresponding release milestone; they MUST be unblocked before that milestone's acceptance.
-2. Intermediate state (library, queue, settings, playback position) MUST survive restart and recover to a valid consistent state — to the extent defined by the canonical 1.0 contract (see MASTER_ROADMAP_1.0.md). Queue and playback-position persistence are Post-1.0; settings persistence is Required and implemented.
+2. Restart recovery preserves ONLY the state explicitly marked Required 1.0 in MASTER_ROADMAP_1.0.md. Required today: settings persistence (volume, muted, last_directory, recent_files). Post-1.0 and NOT restart requirements for 1.0: queue persistence, playback position, current track.
 3. A release candidate SHALL NOT proceed if any Golden Path step fails or requires a workaround.
 4. The Golden Path is derived exclusively from the canonical 1.0 contract (MASTER_ROADMAP_1.0.md). Post-1.0 capabilities (queue persistence, playback-position persistence, gapless, crossfade, non-Linux platforms) never appear as path steps; their absence is a contract decision, not a path gap.
 5. The Golden Path is exhaustive for the core product loop. Extensions (plugins, integrations, ecosystem features) augment it post-1.0 but do not replace it.

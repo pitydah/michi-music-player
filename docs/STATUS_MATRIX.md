@@ -99,15 +99,17 @@ Snapshot of the rebuild's components against the component state machine. Eviden
 
 **Active-contract rule**: the matrix reports only components of the active 1.0 contract on the current stack. Every state below MUST be a legal state from the component state machine above — no invented labels. Superseded clean-rebuild governance draft components (the C++20-anticipation milestones) are not reported. A contract component that has not started is UNKNOWN (not yet audited), never a custom label.
 
+**Post-1.0 rule**: a component is PARTIAL only when at least one responsibility REQUIRED by the active 1.0 release contract remains incomplete. Post-1.0 responsibilities (deferred context) are NOT gaps preventing FUNCTIONAL/TESTED and MUST NOT be listed as blockers.
+
 | Component                    | State      | Notes                                                                                          |
 | ---------------------------- | ---------- | ---------------------------------------------------------------------------------------------- |
 | M1 Bootstrap                 | TESTED     | Composition root, explicit wiring, best-effort shutdown (first-error-wins)                     |
 | M2 Minimal Playback          | TESTED     | Single-file playback via QtMultimediaBackend behind AudioPort                                  |
-| M3 Complete Playback         | PARTIAL    | Basic controls done; metadata absent (Required 1.0 gap); gapless/crossfade deferred (Post-1.0) |
-| M4 Queue                     | PARTIAL    | Basic queue done; shuffle/repeat/reorder absent                                                |
-| M5 Database/Settings         | PARTIAL    | Settings persistence TESTED; full DB scope deferred                                            |
-| M6 Library                   | PARTIAL    | Scan works; metadata/index absent                                                              |
-| M7 Search                    | FUNCTIONAL | Substring filter; FTS absent                                                                   |
+| M3 Complete Playback         | TESTED     | Play/pause/resume/stop, seek, volume, mute, position/duration events all tested; metadata extraction owned by M6 Library; gapless/crossfade are Post-1.0 |
+| M4 Queue                     | PARTIAL    | Basic queue done; shuffle/repeat absent (Required 1.0); reorder is Post-1.0 (not a blocker)                                                        |
+| M5 Database/Settings         | TESTED     | Settings persistence (volume/muted/last_directory/recent_files) + restart gate verified; queue/position persistence and library index are Post-1.0  |
+| M6 Library                   | PARTIAL    | Scan works; metadata extraction absent (Required 1.0, owned by M6); library index DB is Post-1.0 (not a blocker)                                   |
+| M7 Search                    | FUNCTIONAL | Substring filter over library; FTS is Post-1.0 (not a blocker)                                                                                    |
 | M8 Navigation                | TESTED     | AppRoute navigation across all four screens                                                    |
 | M9 UI Foundation             | TESTED     | Tokens + primitives + shell; QML smoke tests                                                   |
 | M10 Settings                 | TESTED     | Persistence + restart gate verified                                                            |

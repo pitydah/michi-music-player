@@ -6,7 +6,20 @@ Governance authority for evidence-backed disposition of prior material. Two dist
 
 ### LEGACY EVIDENCE
 
-The pre-reset implementation of this repository — a Python/PySide6/GStreamer application with a much larger product scope (AI assistant, audio lab, lyrics, radio, recognition, sync). Last known commit: `63914a00f381104299fa50147220e05c04d5ad7e`, orphaned by the reset commit `b2c697b` (empty workspace). Non-authoritative, read-only reference: no Legacy file is copied, and no Legacy test is executed or adapted.
+Authority:
+
+```text
+Repository:              pitydah/michi-legacy
+Local historical checkout: /home/cristian/music_player
+Freeze branch:            feat/m1.3-adapter-restart
+Freeze commit:            63914a00f381104299fa50147220e05c04d5ad7e
+Freeze tag:               legacy-freeze-2026-08-08
+Authority:                READ-ONLY EVIDENCE
+```
+
+The historical Legacy application — a Python/PySide6/Qt/QML application with a much larger product scope (AI assistant, audio lab, lyrics, radio, recognition, sync) and historical audio architecture involving GStreamer/MPD backend concepts. It is non-authoritative, read-only reference: no Legacy file is copied, and no Legacy test is executed or adapted.
+
+Note on repository ancestry: the clean rebuild repository (`pitydah/michi-music-player`) has its own empty-root baseline commit `b2c697b53fd0cd9aa172efe47c967d29ec64c9f7`. `b2c697b` is the clean-rebuild root, not a Git continuation or descendant of the Legacy repository, and it does not "orphan" Legacy history. The two repositories are distinct; the freeze commit above is the canonical evidence point for Legacy statements.
 
 ### SUPERSEDED CLEAN-REBUILD GOVERNANCE DRAFT
 
@@ -36,19 +49,19 @@ Audit reference: `openspec/changes/m0-foundation-v2` (draft ADRs D1–D10, Propo
 
 ## Ledger — LEGACY EVIDENCE
 
-Audit reference: Legacy commit `63914a00f381104299fa50147220e05c04d5ad7e` (pre-reset tree: ~447 QML files, ~1,164 Python test files, no C++ source).
+Audit reference: Legacy commit `63914a00f381104299fa50147220e05c04d5ad7e` (Legacy tree at freeze: ~447 QML files, ~1,164 Python test files, no C++ source).
 
 | ID     | Legacy Concept                                                                  | Legacy Evidence                                                                                                                                                        | Decision                            | Where Implemented / Noted                                                                                                                                               |
 | ------ | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ML-109 | Video playback, visualizers, video library                                      | Legacy was audio-only: video was explicitly rejected in the Legacy test suite (`tests/qml/workflows_specialized/test_negative_video_rejected.py`)                      | N/A — no Legacy concept to classify | The clean rebuild independently declares video Not Applicable (canonical 1.0 contract) and lists it in POST_1_0_BACKLOG as N/A. No Legacy video scope exists to discard |
 | ML-110 | Distributed/ecosystem scope: AI assistant, sync, radio, recognition, home audio | Legacy tree contains `core/ai/`, `core/lyrics/`, `core/home_audio_service.py`, `core/context/providers/snapshot/radio.py`, `recognition.py`, Android sync (`android/`) | DISCARD                             | Local-first, audio-only 1.0; all distributed/ecosystem scope is Post-1.0 (POST_1_0_BACKLOG.md)                                                                          |
 | ML-111 | GStreamer mention in repository metadata                                        | Legacy repo description reads "Python, PySide6 and GStreamer" (still live on the remote)                                                                               | DISCARD (metadata correction)       | The rebuild uses Qt Multimedia with FFmpeg backend; metadata descriptions to be updated opportunistically (TD-014)                                                      |
-| ML-112 | Legacy tests and fixtures                                                       | Legacy test corpus: ~1,164 Python test files in the pre-reset tree                                                                                                     | DISCARD (never copied)              | New-tests-only policy (INVARIANTS.md): all 154 pytest tests written from scratch                                                                                        |
+| ML-112 | Legacy tests and fixtures                                                       | Legacy test corpus: ~1,164 Python test files in the Legacy tree at freeze                                                                                              | DISCARD (never copied)              | New-tests-only policy (INVARIANTS.md): all 154 pytest tests written from scratch                                                                                        |
 | ML-113 | Legacy governance documentation                                                 | Legacy tree contains ARCHITECTURE.md, BACKLOG.md, KNOWN_ISSUES.md, and other docs                                                                                      | DISCARD (content); evidence-only    | Current governance derives from the clean-rebuild SDD baseline, not from Legacy docs; Legacy docs are read-only evidence                                                |
 
 ## Rules
 
 - Rows above are the complete set of prior-material decisions for the clean rebuild. New prior material discovered later is admitted here first, with its evidence class, before any new-contract effect.
-- Evidence class assignment MUST be verifiable: LEGACY EVIDENCE rows cite the pre-reset tree; SUPERSEDED CLEAN-REBUILD GOVERNANCE DRAFT rows cite `openspec/changes/m0-foundation-v2`.
+- Evidence class assignment MUST be verifiable: LEGACY EVIDENCE rows cite the Legacy tree at freeze; SUPERSEDED CLEAN-REBUILD GOVERNANCE DRAFT rows cite `openspec/changes/m0-foundation-v2`.
 - A classification may change only via an approved scope change recorded in this ledger.
 - Migration states: all rows are DONE (decisions recorded and reflected in the new contract) except where a capability remains unimplemented by design (Post-1.0 or Required-1.0-gap entries, tracked in MASTER_ROADMAP_1.0.md and TECHNICAL_DEBT_REGISTER.md).

@@ -12,7 +12,7 @@ Python 3.11+ with PySide6 (Qt 6, Qt Multimedia with FFmpeg backend) and QML as t
 
 The repository was reset for a from-scratch reconstruction (commit `b2c697b`, empty workspace). Two distinct prior authorities exist and MUST NOT be conflated:
 
-- **Legacy codebase** — the pre-reset implementation of this repository (last known commit `63914a00`), a Python/PySide6/GStreamer application with a much larger product scope (AI assistant, audio lab, lyrics, radio, recognition, sync). It is read-only evidence under the LEGACY EVIDENCE policy and is never copied or adapted.
+- **Legacy repository** — pitydah/michi-legacy, frozen for evidence at commit `63914a00f381104299fa50147220e05c04d5ad7e`, a Python/PySide6/QML application with a much larger product scope (AI assistant, audio lab, lyrics, radio, recognition, sync) and historical audio architecture involving GStreamer/MPD concepts. It is read-only evidence under the LEGACY EVIDENCE policy and is never copied or adapted.
 - **Superseded clean-rebuild governance draft** — M0 Foundation v2 governance artifacts of this rebuild (Proposed ADRs D1–D10, dated 2026-08-10) that anticipated a C++20/Qt 6 architecture with a native build system, CTest, and C++ test frameworks (Catch2/doctest), imposing heavy build infrastructure before any product capability existed. That anticipated direction was never implemented; this ADR supersedes it.
 
 Python 3.11+ with PySide6 provides direct access to the same Qt 6 runtime (Qt Quick for QML, Qt Multimedia with FFmpeg backend for audio) without a compile/link cycle. The standard library (dataclasses, enums, abc) supports a clean domain layer with zero Qt dependencies, matching the original layering intent.

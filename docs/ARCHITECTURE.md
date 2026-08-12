@@ -54,7 +54,7 @@ Exactly one service owns each state model. Every mutation routes through the own
 | `LibraryState` (+ `TrackRef`)               | `LibraryService`                                                               | `domain/library.py`            |
 | `SettingsState`                             | `SettingsService`                                                              | `domain/settings.py`           |
 | `AppRoute` / `NavigationState`              | `NavigationService`                                                            | `domain/navigation.py`         |
-| `PersistenceHealth` (diagnostic, read-only) | produced by infrastructure inspection, consumed by `SettingsService`/bootstrap | `domain/persistence_health.py` |
+| `PersistenceHealth` (diagnostic, read-only) | produced by `SQLiteSettingsRepository.inspect_path()`; current production consumer: NONE; planned consumer: startup/recovery orchestration in M11.2D | `domain/persistence_health.py` |
 
 - **Ingress rule**: no subsystem writes to a state model directly; all mutations are owner method calls.
 - **Coordinator rule**: `PlaybackCoordinator` composes `PlaybackService` + `QueueService` for cross-cutting flows (auto-advance, play_index) and `LibraryPreferencesCoordinator` composes `LibraryService` + `SettingsService` (`last_directory`). Coordinators drive owners through public APIs; they never mutate state directly.
@@ -104,7 +104,7 @@ Operations: `load`, `play`, `pause`, `resume`, `stop`, `set_volume`, `set_muted`
 - **Startup (current)**: create QGuiApplication, build all components with explicit constructor wiring, load settings through `SettingsService`, register bridges as QML context properties, load `main.qml`.
 - **Startup (target)**: additionally run the read-only persistence health inspection before any write; the wiring is pending (M11.2A capability exists and is unit-tested).
 - **Runtime**: single UI thread; services mutate their state models synchronously (no worker threads in current scope).
-- **Shutdown**: best-effort; every component's shutdown is attempted, and failures are collected. First error wins the shutdown result; subsequent errors are still attempted and logged, never swallowed silently.
+- **Shutdown**: best-effort; every component's shutdown is attempted, and cleanup continues after failures. The first exception is retained and re-raised; subsequent exceptions do not replace it and are not currently accumulated or logged.
 - Explicit ownership: the container holds all long-lived objects; no global service locators or singletons.
 
 ## Error Propagation Principles
@@ -112,7 +112,7 @@ Operations: `load`, `play`, `pause`, `resume`, `stop`, `set_volume`, `set_muted`
 - **No swallowed exceptions**: failures are either propagated explicitly or classified and surfaced; silent `except: pass` is prohibited.
 - **Runtime side-effect failures use exceptions**: PlaybackService operations (play/pause/seek/load) may raise through the AudioPort boundary; state mutation occurs only after a successful side effect where atomicity is defined.
 - **Typed diagnostics for persistence**: persistence failures carry a `PersistenceHealth` value plus a human-readable message; never a bare boolean.
-- **First-error-wins at shutdown**: the first shutdown failure is reported as the dominant result; later failures are recorded but do not mask it.
+- **First-error-wins at shutdown**: the first shutdown failure is re-raised as the dominant result; later failures do not replace it and are not currently retained.
 - **Localized tolerant fallback (current)**: `load()` resets only malformed `recent_files` JSON (with a logged warning); other malformed fields propagate. Field-level recovery policy unification is pending M11.2C.
 
 ## Fitness Evidence
