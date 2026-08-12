@@ -70,13 +70,13 @@ class ApplicationContainer:
         library = LibraryService(scanner, queue)
         navigation = NavigationService()
 
+        # Load persisted preferences once
+        s = settings.load()
+        playback.restore_volume(s.volume, s.muted)
+
         # Library/settings coordination: restore last_directory, sync on scan
         lib_prefs = LibraryPreferencesCoordinator(library, settings)
         lib_prefs.start()
-
-        # Restore persisted playback preferences
-        s = settings.load()
-        playback.restore_volume(s.volume, s.muted)
 
         coordinator = PlaybackCoordinator(backend, queue, playback)
         coordinator.start()
