@@ -122,3 +122,38 @@ def queue_service(playback_service):
     from michi.application.queue_service import QueueService
 
     return QueueService(playback_service)
+
+
+class FakeSettingsRepo:
+    """Minimal fake — not copied from Legacy."""
+
+    def __init__(self) -> None:
+        self._state = None
+        from michi.domain.settings import SettingsState
+
+        self._state = SettingsState()
+
+    def load(self):
+        from michi.domain.settings import SettingsState
+
+        return SettingsState(
+            volume=self._state.volume,
+            muted=self._state.muted,
+            last_directory=self._state.last_directory,
+            recent_files=list(self._state.recent_files),
+        )
+
+    def save(self, state):
+        from michi.domain.settings import SettingsState
+
+        self._state = SettingsState(
+            volume=state.volume,
+            muted=state.muted,
+            last_directory=state.last_directory,
+            recent_files=list(state.recent_files),
+        )
+
+
+@pytest.fixture
+def fake_settings_repo():
+    return FakeSettingsRepo()

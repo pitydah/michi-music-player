@@ -392,7 +392,7 @@ Headless CI execution via QT_QPA_PLATFORM=offscreen.
 
 **Exit criteria**: All primitives instantiate via QQmlComponent. Routed views
 render without geometry conflicts. Keyboard navigation functional in Sidebar.
-Hover states on interactive rows. Zero QML warnings. 83 tests pass.
+Hover states on interactive rows. Zero QML warnings. Full automated suite passes.
 
 **Acceptance gate**: QML smoke suite + routed regression guards + pytest + ruff
 + build all green. GitHub Actions CI green.
@@ -415,7 +415,7 @@ preferences, integrate only preferences backed by existing runtime capabilities.
 Integration, M10.3 Settings Navigation + Bridge, M10.4 Minimal Settings UI,
 M10.5 Restart / Persistence Gate.
 
-### M10.1 — Settings Ownership (CURRENT)
+### M10.1 — Settings Ownership
 
 **Scope**: SettingsService as sole persisted preference owner. SettingsRepository
 port (no SQLite in Application). Public API: set_playback_preferences(),

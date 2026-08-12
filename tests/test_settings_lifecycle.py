@@ -3,60 +3,32 @@
 from michi.application.playback_service import PlaybackService
 from michi.application.settings_service import SettingsService
 from michi.domain.settings import SettingsState
-from tests.conftest import FakeAudioPort
-
-
-class FakeSettingsRepo:
-    def __init__(self) -> None:
-        self._state = SettingsState()
-
-    def load(self) -> SettingsState:
-        return SettingsState(
-            volume=self._state.volume,
-            muted=self._state.muted,
-            last_directory=self._state.last_directory,
-            recent_files=list(self._state.recent_files),
-        )
-
-    def save(self, state: SettingsState) -> None:
-        self._state = SettingsState(
-            volume=state.volume,
-            muted=state.muted,
-            last_directory=state.last_directory,
-            recent_files=list(state.recent_files),
-        )
+from tests.conftest import FakeAudioPort, FakeSettingsRepo
 
 
 class TestSettingsLifecycle:
-    """End-to-end: runtime Playback ↔ persisted Settings."""
-
     def test_full_state_preserved_after_shutdown(self):
         repo = FakeSettingsRepo()
-        repo.save(SettingsState(
-            volume=20, muted=False, last_directory="/music",
-            recent_files=["a.mp3", "b.mp3"],
-        ))
-
-        # Startup
+        repo.save(
+            SettingsState(
+                volume=20,
+                muted=False,
+                last_directory="/music",
+                recent_files=["a.mp3", "b.mp3"],
+            )
+        )
         settings = SettingsService(repo)
         s = settings.load()
         audio = FakeAudioPort()
         playback = PlaybackService(audio)
         playback.restore_volume(s.volume, s.muted)
-
-        # Runtime changes
         playback.set_volume(73)
         playback.set_muted(True)
-
-        # Shutdown capture via public API
         vol, muted = playback.snapshot_volume()
         settings.set_playback_preferences(vol, muted)
         settings.save()
-
-        # Reload — fresh service on same repo
         settings2 = SettingsService(repo)
         s2 = settings2.load()
-
         assert s2.volume == 73
         assert s2.muted is True
         assert s2.last_directory == "/music"

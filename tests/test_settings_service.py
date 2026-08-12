@@ -2,29 +2,7 @@
 
 from michi.application.settings_service import SettingsService
 from michi.domain.settings import SettingsState
-
-
-class FakeSettingsRepo:
-    """Minimal fake — not copied from Legacy."""
-
-    def __init__(self) -> None:
-        self._state = SettingsState()
-
-    def load(self) -> SettingsState:
-        return SettingsState(
-            volume=self._state.volume,
-            muted=self._state.muted,
-            last_directory=self._state.last_directory,
-            recent_files=list(self._state.recent_files),
-        )
-
-    def save(self, state: SettingsState) -> None:
-        self._state = SettingsState(
-            volume=state.volume,
-            muted=state.muted,
-            last_directory=state.last_directory,
-            recent_files=list(state.recent_files),
-        )
+from tests.conftest import FakeSettingsRepo
 
 
 class TestSettingsService:
@@ -63,11 +41,13 @@ class TestSettingsService:
         assert s2.muted is True
 
     def test_full_state_preserved_on_partial_update(self):
-        """Updating volume/muted must not erase last_directory or recent_files."""
         repo = FakeSettingsRepo()
         repo.save(
             SettingsState(
-                volume=20, muted=False, last_directory="/m", recent_files=["x.mp3"]
+                volume=20,
+                muted=False,
+                last_directory="/m",
+                recent_files=["x.mp3"],
             )
         )
         svc = SettingsService(repo)
