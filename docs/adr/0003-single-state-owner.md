@@ -30,7 +30,7 @@ Each domain model has exactly one owner at the application layer:
 - `PlaybackCoordinator` composes `PlaybackService` and `QueueService` for cross-cutting flows (queue auto-advance) but does not mutate either state directly — it drives the owners through their public APIs.
 - `LibraryPreferencesCoordinator` links `LibraryService` and `SettingsService` (persisting `last_directory` on scan) through public APIs only.
 - Bootstrap never mutates domain state directly; it configures owners via their public interfaces.
-- Owners expose read-only projections (snapshots) for the presentation bridges; projections are never written back.
+- Owners expose state for observation via `.state`; presentation bridges read it and treat it as read-only by convention. State objects are mutable references, not immutable snapshots; mutation authority remains exclusively with the owner service.
 
 ## Consequences
 

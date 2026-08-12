@@ -18,7 +18,7 @@ Settings persistence must survive restarts (volume, muted, last_directory, recen
 - Persistence is a single SQLite database in the platform app-data directory, opened with WAL mode.
 - `SettingsService` is the sole owner of `SettingsState` and the only caller of `SettingsRepository` mutations; bootstrap and coordinators use its public API only.
 - The read-only health-inspection capability (`inspect_path`, with extended-result-code normalization) is implemented and unit-tested (M11.2A), producing a `PersistenceHealth` classification: MISSING, HEALTHY, CORRUPT_DATABASE, MALFORMED_DATA, LOCKED, ACCESS_FAILURE, IO_FAILURE, UNKNOWN_FAILURE. Inspection never mutates the file. Wiring the inspection into the startup flow (before any write) is pending, scheduled with the recovery phases.
-- Health outcomes drive behavior conservatively: healthy → normal load; anything else → explicit diagnostic, no silent fallback, no destructive repair (repair is a future capability, M11.2B-E).
+- Health outcomes drive behavior conservatively: healthy → normal load; anything else → explicit diagnostic, no destructive repair (repair is a future capability, M11.2B-E). Note: current `load()` has one localized tolerant fallback — malformed `recent_files` JSON logs a warning and resets to `[]`; other malformed fields propagate. M11.2C will unify field-recovery policy.
 - Shutdown persistence is best-effort with first-error-wins reporting (see the lifecycle contract in ARCHITECTURE.md).
 
 ## Consequences

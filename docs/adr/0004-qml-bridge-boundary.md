@@ -16,7 +16,7 @@ PySide6 lets QML reach deeply into Python objects if exposed indiscriminately. W
 
 - QML components interact exclusively with bridge objects registered as context properties: `PlaybackBridge`, `QueueBridge`, `LibraryBridge`, `NavigationBridge`, `SettingsBridge`.
 - **Intents**: QML signals and calls invoke bridge methods; bridges translate them into service/coordinator calls. Bridges contain no business rules.
-- **Projections**: bridges expose read-only state projections to QML as properties or callables backed by owner snapshots (see ADR 0003). Projections are never written back into domain state.
+- **Projections**: bridges expose state to QML as properties read from owner `.state` objects. Bridges treat owner state as read-only by convention; state objects are mutable references, not immutable snapshots (see ADR 0003). Projections are never written back into domain state.
 - `SettingsBridge` is read-only; settings mutations happen only through `SettingsService` from bootstrap/coordinators (restart-gated persistence contract).
 - QML stays in `presentation/`: `main.qml`, `qml/theme/` (MichiTheme), `qml/ui/` primitives (MichiButton, MichiPanel, MichiSlider, MichiTextField), `qml/shell/` (AppShell, Sidebar, ContentHost), `qml/views/` (NowPlaying, Library, Queue, Settings).
 
