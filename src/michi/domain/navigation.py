@@ -8,6 +8,7 @@ class AppRoute(StrEnum):
     NOW_PLAYING = "now_playing"
     LIBRARY = "library"
     QUEUE = "queue"
+    SETTINGS = "settings"
 
 
 @dataclass

@@ -12,6 +12,7 @@ Item {
         case "now_playing": return 0
         case "library":     return 1
         case "queue":       return 2
+        case "settings":    return 3
         default:            return 1
         }
     }
@@ -29,5 +30,6 @@ Item {
         NowPlayingView { }
         LibraryView { }
         QueueView { }
+        SettingsPlaceholder { }
     }
 }

@@ -16,6 +16,10 @@ ColumnLayout {
         { id: "queue",       label: "Queue" }
     ]
 
+    readonly property var _bottom_routes: [
+        { id: "settings",    label: "Settings" }
+    ]
+
     Rectangle {
         Layout.fillWidth: true
         height: 56
@@ -88,4 +92,59 @@ ColumnLayout {
     }
 
     Item { Layout.fillHeight: true }
+
+    Repeater {
+        model: root._bottom_routes
+
+        delegate: ItemDelegate {
+            Layout.fillWidth: true
+            height: MichiTheme.controlHeightMedium
+
+            readonly property bool _active: root.currentRoute === modelData.id
+
+            focusPolicy: Qt.StrongFocus
+
+            contentItem: RowLayout {
+                spacing: 0
+
+                Rectangle {
+                    visible: _active
+                    Layout.preferredWidth: 3
+                    Layout.preferredHeight: parent.height - MichiTheme.space12
+                    radius: 2
+                    color: MichiTheme.accent
+                }
+
+                Text {
+                    Layout.leftMargin: _active
+                        ? MichiTheme.space16 : MichiTheme.space20
+                    text: modelData.label
+                    font.pixelSize: MichiTheme.fontSizeBody
+                    font.weight: _active
+                        ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
+                    color: _active
+                        ? MichiTheme.textPrimary
+                        : (hovered
+                            ? MichiTheme.textPrimary : MichiTheme.textSecondary)
+                }
+            }
+
+            background: Rectangle {
+                radius: MichiTheme.radiusMedium
+                color: {
+                    if (_active) return MichiTheme.surfaceSelected
+                    if (hovered) return MichiTheme.surfaceHover
+                    if (visualFocus) return MichiTheme.surfaceHover
+                    return "transparent"
+                }
+            }
+
+            onClicked: root.navigationRequested(modelData.id)
+        }
+    }
+
+    Repeater {
+        model: root._bottom_routes
+        delegate: itemDelegate
+    }
 }

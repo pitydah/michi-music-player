@@ -23,6 +23,7 @@ from michi.presentation.library_bridge import LibraryBridge
 from michi.presentation.navigation_bridge import NavigationBridge
 from michi.presentation.playback_bridge import PlaybackBridge
 from michi.presentation.queue_bridge import QueueBridge
+from michi.presentation.settings_bridge import SettingsBridge
 
 
 def _data_dir() -> Path:
@@ -85,6 +86,7 @@ class ApplicationContainer:
         qb = QueueBridge(queue)
         lb = LibraryBridge(library)
         nb = NavigationBridge(navigation)
+        sb = SettingsBridge(settings)
 
         engine = QQmlApplicationEngine()
         engine.quit.connect(self._app.quit)
@@ -93,6 +95,7 @@ class ApplicationContainer:
         ctx.setContextProperty("queue", qb)
         ctx.setContextProperty("library", lb)
         ctx.setContextProperty("navigation", nb)
+        ctx.setContextProperty("settingsBridge", sb)
 
         self._backend = backend
         self._settings = settings
