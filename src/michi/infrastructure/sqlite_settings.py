@@ -15,18 +15,29 @@ from michi.domain.settings import SettingsState
 
 logger = logging.getLogger(__name__)
 
-# SQLite primary/extended result codes
-_SQLITE_BUSY = 5
-_SQLITE_LOCKED = 6
-_SQLITE_READONLY = 8
-_SQLITE_IOERR = 10
-_SQLITE_CORRUPT = 11
-_SQLITE_CANTOPEN = 14
-_SQLITE_PERM = 3
-_SQLITE_NOTADB = 26
+# SQLite primary result codes (standard constants from sqlite3 module)
+_SQLITE_BUSY = sqlite3.SQLITE_BUSY
+_SQLITE_LOCKED = sqlite3.SQLITE_LOCKED
+_SQLITE_READONLY = sqlite3.SQLITE_READONLY
+_SQLITE_IOERR = sqlite3.SQLITE_IOERR
+_SQLITE_CORRUPT = sqlite3.SQLITE_CORRUPT
+_SQLITE_CANTOPEN = sqlite3.SQLITE_CANTOPEN
+_SQLITE_PERM = sqlite3.SQLITE_PERM
+_SQLITE_NOTADB = sqlite3.SQLITE_NOTADB
 
 _ACCESS_CODES = {_SQLITE_READONLY, _SQLITE_CANTOPEN, _SQLITE_PERM}
 _IO_CODES = {_SQLITE_IOERR}
+
+
+def _primary_sqlite_code(code: int | None) -> int | None:
+    """Normalize an extended SQLite result code to its primary code.
+
+    SQLite extended result codes preserve the primary result code in the
+    low 8 bits (e.g. SQLITE_IOERR_SHMOPEN = SQLITE_IOERR | (18 << 8)).
+    """
+    if code is None:
+        return None
+    return code & 0xFF
 
 
 def _classify_sqlite_error(exc: sqlite3.Error) -> PersistenceDiagnostic:
@@ -36,7 +47,7 @@ def _classify_sqlite_error(exc: sqlite3.Error) -> PersistenceDiagnostic:
     never CORRUPT_DATABASE. A false-negative corruption classification is
     safer than a false positive that could trigger destructive recovery.
     """
-    code = getattr(exc, "sqlite_errorcode", None)
+    code = _primary_sqlite_code(getattr(exc, "sqlite_errorcode", None))
 
     if code in (_SQLITE_CORRUPT, _SQLITE_NOTADB):
         return PersistenceDiagnostic(PersistenceHealth.CORRUPT_DATABASE, str(exc))

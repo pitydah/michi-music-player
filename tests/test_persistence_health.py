@@ -161,6 +161,41 @@ class TestUnknownFailureSafety:
         assert result.health is PersistenceHealth.IO_FAILURE
 
 
+class TestExtendedResultCodes:
+    """Extended SQLite codes preserve the primary code in the low 8 bits."""
+
+    def test_extended_ioerr_classified_as_io_failure(self):
+        exc = sqlite3.OperationalError("disk i/o error")
+        exc.sqlite_errorcode = sqlite3.SQLITE_IOERR_SHMOPEN
+        result = sqlite_settings._classify_sqlite_error(exc)
+        assert result.health is PersistenceHealth.IO_FAILURE
+
+    def test_extended_readonly_classified_as_access_failure(self):
+        exc = sqlite3.OperationalError("readonly")
+        exc.sqlite_errorcode = sqlite3.SQLITE_READONLY | (1 << 8)
+        result = sqlite_settings._classify_sqlite_error(exc)
+        assert result.health is PersistenceHealth.ACCESS_FAILURE
+
+    def test_extended_busy_classified_as_locked(self):
+        exc = sqlite3.OperationalError("busy")
+        exc.sqlite_errorcode = sqlite3.SQLITE_BUSY_SNAPSHOT
+        result = sqlite_settings._classify_sqlite_error(exc)
+        assert result.health is PersistenceHealth.LOCKED
+
+    def test_extended_corrupt_classified_as_corrupt_database(self):
+        exc = sqlite3.DatabaseError("corrupt")
+        exc.sqlite_errorcode = sqlite3.SQLITE_CORRUPT | (2 << 8)
+        result = sqlite_settings._classify_sqlite_error(exc)
+        assert result.health is PersistenceHealth.CORRUPT_DATABASE
+
+    def test_unknown_extended_primary_remains_unknown(self):
+        exc = sqlite3.OperationalError("future error")
+        # Primary code 99 is not in any known family
+        exc.sqlite_errorcode = 99 | (7 << 8)
+        result = sqlite_settings._classify_sqlite_error(exc)
+        assert result.health is PersistenceHealth.UNKNOWN_FAILURE
+
+
 class TestSchemaClassification:
     def test_missing_settings_table_is_malformed(self, tmp_path):
         db = tmp_path / "noschema.db"
