@@ -40,7 +40,7 @@ Recovery from BROKEN or PARTIAL requires: (a) remediation passes all functional 
 |---|---|
 | UNKNOWN → AUDITED | Audit report: current state, known risks, dependencies |
 | AUDITED → FUNCTIONAL | Functional criteria met; manual or automated verification |
-| FUNCTIONAL → TESTED | Automated test suite passes; coverage meets phase threshold |
+| FUNCTIONAL → TESTED | Automated test suite passes (see Evidence-Based Definition of TESTED in DEFINITION_OF_DONE.md) |
 | TESTED → STABLE | No regressions across ≥2 release cycles |
 | STABLE → FROZEN | Approved freeze decision; no open P0/P1 |
 | BROKEN → FUNCTIONAL | Remediation passes; all functional criteria re-verified |
@@ -92,3 +92,25 @@ Only these states MAY enter DEFERRED, each with a recorded rationale:
 
 `DEFERRED → BACKLOG` SHALL occur only after an approved scope change. Otherwise the item remains DEFERRED or is permanently retired.
 These rules are exhaustive for work-package interruption and deferral.
+
+## Current Capability Matrix
+
+Snapshot of the rebuild's components against the component state machine. Evidence: pytest suite (154 passing), Ruff clean, CI green. The matrix is a report, not a new state set; the state machine above is authoritative and unchanged.
+
+| Component | State | Notes |
+|---|---|---|
+| M1 Bootstrap | TESTED | Composition root, explicit wiring, best-effort shutdown (first-error-wins) |
+| M2 Minimal Playback | TESTED | Single-file playback via QtMultimediaBackend behind AudioPort |
+| M3 Complete Playback | PARTIAL | Basic controls done; gapless/crossfade/metadata absent |
+| M4 Queue | PARTIAL | Basic queue done; shuffle/repeat/reorder absent |
+| M5 Database/Settings | PARTIAL | Settings persistence TESTED; full DB scope deferred |
+| M6 Library | PARTIAL | Scan works; metadata/index absent |
+| M7 Search | FUNCTIONAL | Substring filter; FTS absent |
+| M8 Navigation | TESTED | AppRoute navigation across all four screens |
+| M9 UI Foundation | TESTED | Tokens + primitives + shell; QML smoke tests |
+| M10 Settings | TESTED | Persistence + restart gate verified |
+| M11.1 Failure Contracts | TESTED | Runtime failure contracts verified |
+| M11.2A Persistence Detection | TESTED | Read-only health taxonomy verified |
+| M11.2B/C/D/E Recovery | NOT STARTED | Backup/recovery/repair pending |
+
+Transitions pending per the canonical 1.0 contract: M3/M4/M5/M6 must reach TESTED (their Required-1.0 gaps closed) before M15; recovery components (M11.2B-E) must be implemented per the future execution order in MASTER_ROADMAP_1.0.md.

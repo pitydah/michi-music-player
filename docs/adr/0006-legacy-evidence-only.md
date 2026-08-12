@@ -1,0 +1,38 @@
+# ADR 0006: Legacy is evidence only
+
+## Title
+
+The Legacy codebase is read-only evidence; every rebuild decision is made on the new contract, not inherited from Legacy.
+
+## Date
+
+2026-08-12
+
+## Context
+
+The rebuild starts from an empty workspace. A prior codebase (Legacy, audit reference commit `63914a00`) exists and contains useful product concepts — features, UX ideas, and structural patterns — but its stack and implementation are not the target. The risk is silent inheritance: treating Legacy design choices as if they were still binding, or copying Legacy code/tests into the new repository.
+
+## Decision
+
+- Legacy content is labeled **LEGACY EVIDENCE** wherever referenced in governance documents (e.g. MIGRATION_LEDGER.md). It is non-authoritative and read-only.
+- Zero Legacy files are copied. Zero Legacy tests are executed or adapted.
+- Classification of each Legacy concept is exact: ADAPT (concept carried over, re-implemented on the new stack), REWRITE (goal retained, implementation rebuilt), DISCARD (explicitly dropped, e.g. video and distributed scope — the product is audio-only and local-first).
+- The historical superseded plan (C++20/Qt 6 with CMake/CTest) is preserved only as a "historical superseded plan" note in the roadmap; it imposes no active requirements.
+- The new contract (governance docs, ADRs, code) is the sole source of authority.
+
+## Consequences
+
+- Clear audit trail between Legacy concepts and new implementations.
+- New code and tests are written from scratch against the new contract (new-tests-only policy in INVARIANTS.md).
+- Video-related and distributed (sync/server) capabilities are consciously excluded, not accidentally forgotten.
+- Anything not classified in the ledger has no standing; unclassified Legacy material is not a dependency.
+
+## Alternatives considered
+
+- **KEEP Legacy artifacts where they still work**: preserves engineering investment, but the Legacy stack does not match the Python/PySide6 rebuild and mixing it would split the architecture. Rejected.
+- **Full re-derivation without a ledger**: no traceability; reviewers cannot distinguish informed decisions from accidental omissions. Rejected.
+- **Copy Legacy tests as regression coverage**: violates the new-tests-only policy and imports Legacy assumptions into the new contract. Rejected.
+
+## Status
+
+Accepted

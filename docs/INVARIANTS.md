@@ -52,13 +52,17 @@ The P0/P1 release gate is the mandatory quality barrier before any release candi
 | ----------------------------- | ------------------------------------------------------------------------------------------ |
 | Core broken                   | A core capability — library, playback, queue, search, settings — is partially unavailable. |
 | Severe state inconsistency    | Application state diverges from canonical truth without a recovery path.                   |
-| Incorrect queue-playback      | The queue plays the wrong track, skips tracks, or violates shuffle/repeat contract.        |
-| Incorrect primary persistence | Settings, library metadata, or queue state is lost, corrupted, or not restored on restart. |
+| Incorrect queue-playback      | The queue plays the wrong track, skips tracks, or violates the shuffle/repeat contract once those Required-1.0 capabilities exist. Until they are implemented (per the canonical 1.0 contract in MASTER_ROADMAP_1.0.md, they are required but not yet implemented), their absence is a scheduled capability gap, not a P1. |
+| Incorrect primary persistence | Settings, library metadata, or queue state is lost, corrupted, or not restored on restart — within the scope of the canonical 1.0 contract (queue/playback-position persistence are Post-1.0). |
 | Severe Golden degradation     | One or more Golden Path steps fail intermittently or require workarounds.                  |
 
 ### Gate Rule
 
 A release candidate SHALL NOT proceed to release when either P0 count > 0 or P1 count > 0. Both MUST be exactly zero: `Release: P0 = 0, P1 = 0`.
+
+### Contract Reference
+
+The canonical 1.0 contract (MASTER_ROADMAP_1.0.md) is the authority for which capabilities are Required for 1.0, Post-1.0, or Not Applicable. Shuffle and repeat are **Required for 1.0** and currently **not implemented**; they are scheduled capability gaps tracked in TECHNICAL_DEBT_REGISTER.md (TD-011), not release-blocking defects. A missing Required-1.0 capability blocks milestone acceptance per its phase contract; a broken implemented capability is judged against the P0/P1 tables above.
 
 ## Feature Freeze
 

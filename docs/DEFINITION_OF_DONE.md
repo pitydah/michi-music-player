@@ -14,7 +14,7 @@ A work package SHALL NOT transition from BACKLOG to READY until all seven DoR cr
 | 4   | Sufficiently defined contract | The deliverable contract is documented with enough precision for implementation.                                                  |
 | 5   | Applicable invariants         | All applicable invariants from INVARIANTS.md are identified and will be verified.                                                 |
 | 6   | Acceptance criteria           | Every requirement has at least one verifiable acceptance criterion stated in Given/When/Then form.                                |
-| 7   | Verification strategy         | The verification approach is named: test layer, scope, coverage, and the exact command or assertion that will prove the criteria. |
+| 7   | Verification strategy         | The verification approach is named: test layer, scope, and the exact command or assertion that will prove the criteria.           |
 
 All seven criteria MUST be met. Partial readiness SHALL NOT proceed.
 
@@ -35,19 +35,47 @@ A work package SHALL NOT transition from VERIFY to DONE until all eight DoD crit
 
 All applicable criteria MUST be met. A work package that satisfies only a subset SHALL NOT be marked DONE.
 
+## Evidence-Based Definition of TESTED
+
+The component state TESTED (see STATUS_MATRIX.md) is currently defined by evidence, not by a coverage threshold:
+
+- The automated test suite passes in full: `pytest -q` (154 tests as of this reconciliation).
+- Static quality gates pass: `ruff check src tests` and `ruff format --check src tests`.
+- CI is green (lint, test with `QT_QPA_PLATFORM=offscreen`, build via `python -m build`).
+
+Coverage tooling and an enforced threshold are **deferred** (tracked in TECHNICAL_DEBT_REGISTER.md). Until such tooling exists, TESTED means "automated suite passing as evidenced above" — there is no numeric coverage requirement, and no phase may claim TESTED solely from documentation. This section resolves the previous wording conflict that referenced a coverage threshold without tooling.
+
 ## Golden Path
 
 The Golden Path is the singular end-to-end product sequence that MUST function correctly for every release. It is the canonical acceptance walkthrough; no release SHALL proceed if any step fails.
 
-### Sequence
+### Sequence (annotated: executable today vs blocked)
 
 ```
-clean install → start app → select music directory/library → scan → browse → search → select track → play → pause/resume → seek → previous/next → manage Queue → shuffle/repeat → close → restart → recover valid consistent state
+clean install            [blocked-by: packaging — M13; today: venv + `pip install -e .`]
+→ start app              [executable]
+→ select music directory/library
+                         [executable]
+→ scan                   [executable]
+→ browse                 [executable]
+→ search                 [executable — substring filter]
+→ select track           [executable]
+→ play                   [executable]
+→ pause/resume           [executable]
+→ seek                   [executable]
+→ previous/next          [executable]
+→ manage Queue           [executable — add/remove/clear/play_index; reorder is Post-1.0]
+→ shuffle/repeat         [blocked-by: shuffle/repeat work package — Required 1.0, not implemented]
+→ close                  [executable]
+→ restart                [executable]
+→ recover valid consistent state
+                         [partial — settings (volume/muted/last_directory/recent_files) persist;
+                          queue/playback-position persistence is Post-1.0 by contract]
 ```
 
 ### Rules
 
-1. Every step MUST be executable and verifiable in sequence.
-2. Intermediate state (library, queue, settings, playback position) MUST survive restart and recover to a valid consistent state.
+1. Every step MUST be executable and verifiable in sequence. Steps marked `blocked-by` are allowed to gate the corresponding release milestone; they MUST be unblocked before that milestone's acceptance.
+2. Intermediate state (library, queue, settings, playback position) MUST survive restart and recover to a valid consistent state — to the extent defined by the canonical 1.0 contract (see MASTER_ROADMAP_1.0.md). Queue and playback-position persistence are Post-1.0; settings persistence is Required and implemented.
 3. A release candidate SHALL NOT proceed if any Golden Path step fails or requires a workaround.
 4. The Golden Path is exhaustive for the core product loop. Extensions (plugins, integrations, ecosystem features) augment it but do not replace it.
