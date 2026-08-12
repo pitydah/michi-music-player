@@ -10,14 +10,14 @@ The Legacy codebase is read-only evidence; every rebuild decision is made on the
 
 ## Context
 
-The rebuild starts from an empty workspace. A prior codebase (Legacy, audit reference commit `63914a00`) exists and contains useful product concepts — features, UX ideas, and structural patterns — but its stack and implementation are not the target. The risk is silent inheritance: treating Legacy design choices as if they were still binding, or copying Legacy code/tests into the new repository.
+The rebuild starts from an empty workspace. Two distinct prior authorities exist: the Legacy codebase (audit reference commit `63914a00`, a Python/PySide6/GStreamer application) and the superseded clean-rebuild governance draft (M0 Foundation v2 artifacts anticipating C++20/Qt 6). Both contain useful product concepts — features, UX ideas, and structural patterns — but neither is the target. The risk is silent inheritance: treating prior design choices as if they were still binding, or copying prior code/tests into the new repository.
 
 ## Decision
 
-- Legacy content is labeled **LEGACY EVIDENCE** wherever referenced in governance documents (e.g. MIGRATION_LEDGER.md). It is non-authoritative and read-only.
+- Governance documents use exactly two evidence class labels: **LEGACY EVIDENCE** for the pre-reset codebase and **SUPERSEDED CLEAN-REBUILD GOVERNANCE DRAFT** for the M0 Foundation v2 artifacts (see MIGRATION_LEDGER.md). Both are non-authoritative and read-only.
 - Zero Legacy files are copied. Zero Legacy tests are executed or adapted.
-- Classification of each Legacy concept is exact: ADAPT (concept carried over, re-implemented on the new stack), REWRITE (goal retained, implementation rebuilt), DISCARD (explicitly dropped, e.g. video and distributed scope — the product is audio-only and local-first).
-- The historical superseded plan (C++20/Qt 6 with CMake/CTest) is preserved only as a "historical superseded plan" note in the roadmap; it imposes no active requirements.
+- Classification of each prior concept is exact: ADAPT (concept carried over, re-implemented on the new stack), REWRITE (goal retained, implementation rebuilt), DISCARD (explicitly dropped, e.g. distributed scope — the product is local-first). Video was already rejected in Legacy itself (its test suite rejects video workflows); the rebuild independently declares it Not Applicable.
+- The superseded clean-rebuild governance draft (C++20/Qt 6 anticipation with CMake/CTest) is distinct from Legacy: it is a draft of this rebuild, preserved only as historical context; it imposes no active requirements.
 - The new contract (governance docs, ADRs, code) is the sole source of authority.
 
 ## Consequences

@@ -48,13 +48,13 @@ The P0/P1 release gate is the mandatory quality barrier before any release candi
 
 ### P1 — Critical
 
-| Condition                     | Definition                                                                                 |
-| ----------------------------- | ------------------------------------------------------------------------------------------ |
-| Core broken                   | A core capability — library, playback, queue, search, settings — is partially unavailable. |
-| Severe state inconsistency    | Application state diverges from canonical truth without a recovery path.                   |
+| Condition                     | Definition                                                                                                                                                                                                                                                                                                                 |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Core broken                   | A core capability — library, playback, queue, search, settings — is partially unavailable.                                                                                                                                                                                                                                 |
+| Severe state inconsistency    | Application state diverges from canonical truth without a recovery path.                                                                                                                                                                                                                                                   |
 | Incorrect queue-playback      | The queue plays the wrong track, skips tracks, or violates the shuffle/repeat contract once those Required-1.0 capabilities exist. Until they are implemented (per the canonical 1.0 contract in MASTER_ROADMAP_1.0.md, they are required but not yet implemented), their absence is a scheduled capability gap, not a P1. |
-| Incorrect primary persistence | Settings, library metadata, or queue state is lost, corrupted, or not restored on restart — within the scope of the canonical 1.0 contract (queue/playback-position persistence are Post-1.0). |
-| Severe Golden degradation     | One or more Golden Path steps fail intermittently or require workarounds.                  |
+| Incorrect primary persistence | Settings, library metadata, or queue state is lost, corrupted, or not restored on restart — within the scope of the canonical 1.0 contract (queue/playback-position persistence are Post-1.0).                                                                                                                             |
+| Severe Golden degradation     | One or more Golden Path steps fail intermittently or require workarounds.                                                                                                                                                                                                                                                  |
 
 ### Gate Rule
 

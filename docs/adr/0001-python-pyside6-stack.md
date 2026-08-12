@@ -10,7 +10,10 @@ Python 3.11+ with PySide6 (Qt 6, Qt Multimedia with FFmpeg backend) and QML as t
 
 ## Context
 
-The previous codebase (Legacy) was built on a C++20/Qt 6 architecture plan — the historical superseded plan — which required a native build system, CTest, and a C++ test framework (Catch2/doctest), imposing heavy build infrastructure before any product capability existed.
+The repository was reset for a from-scratch reconstruction (commit `b2c697b`, empty workspace). Two distinct prior authorities exist and MUST NOT be conflated:
+
+- **Legacy codebase** — the pre-reset implementation of this repository (last known commit `63914a00`), a Python/PySide6/GStreamer application with a much larger product scope (AI assistant, audio lab, lyrics, radio, recognition, sync). It is read-only evidence under the LEGACY EVIDENCE policy and is never copied or adapted.
+- **Superseded clean-rebuild governance draft** — M0 Foundation v2 governance artifacts of this rebuild (Proposed ADRs D1–D10, dated 2026-08-10) that anticipated a C++20/Qt 6 architecture with a native build system, CTest, and C++ test frameworks (Catch2/doctest), imposing heavy build infrastructure before any product capability existed. That anticipated direction was never implemented; this ADR supersedes it.
 
 Python 3.11+ with PySide6 provides direct access to the same Qt 6 runtime (Qt Quick for QML, Qt Multimedia with FFmpeg backend for audio) without a compile/link cycle. The standard library (dataclasses, enums, abc) supports a clean domain layer with zero Qt dependencies, matching the original layering intent.
 
@@ -20,7 +23,7 @@ Python 3.11+ with PySide6 provides direct access to the same Qt 6 runtime (Qt Qu
 - GUI and audio run on PySide6: Qt 6, Qt Multimedia (FFmpeg backend), QML.
 - The domain layer is pure Python with no Qt imports. The application layer depends on domain only. Infrastructure implements application ports using PySide6, SQLite, and the filesystem.
 - Build/packaging uses setuptools + `python -m build`. Tests use pytest. Linting and formatting use Ruff. CI is GitHub Actions running lint, tests (QT_QPA_PLATFORM=offscreen), and build.
-- No native-code build system, no C++ test frameworks, no Prettier, no GStreamer integration.
+- No native-code build system, no C++ test frameworks, no GStreamer integration. Prettier remains the Markdown formatter for governance docs in the SDD workflow; it is a documentation-pipeline tool, not part of the product stack.
 
 ## Consequences
 
@@ -31,7 +34,7 @@ Python 3.11+ with PySide6 provides direct access to the same Qt 6 runtime (Qt Qu
 
 ## Alternatives considered
 
-- **C++20 + Qt 6 (the historical superseded plan)**: full type safety and performance, but the build/test infrastructure cost (CMake, CTest, Catch2/doctest) dominated early milestones. Rejected for the clean rebuild.
+- **C++20 + Qt 6 (the superseded clean-rebuild governance draft)**: full type safety and performance, but the build/test infrastructure cost (CMake, CTest, Catch2/doctest) dominated early milestones. Rejected for the clean rebuild.
 - **Rust with a Qt binding**: memory safety and performance, but ecosystem maturity for QML integration was weaker and team iteration speed lower. Rejected.
 - **Electron / web UI**: large dependency footprint and poor fit for a lightweight local-first player. Rejected.
 - **PySide6 (Qt Widgets) instead of QML**: simpler bridge but less flexible theming and less declarative UI foundation. QML chosen for the token/primitives design system.

@@ -6,15 +6,15 @@ Governance authority for readiness and completion gates. Owns Definition of Read
 
 A work package SHALL NOT transition from BACKLOG to READY until all seven DoR criteria are evidenced. The readiness authority assesses each criterion before admission.
 
-| #   | Criterion                     | Requirement                                                                                                                       |
-| --- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Responsibility                | Ownership is assigned and recorded.                                                                                               |
-| 2   | Explicit scope                | The deliverable boundary is documented: what is in, what is out, and any known interactions with adjacent deliverables.           |
-| 3   | Known dependencies            | All predecessor work packages are DONE or explicitly acknowledged as non-blocking with a rationale and mitigation.                |
-| 4   | Sufficiently defined contract | The deliverable contract is documented with enough precision for implementation.                                                  |
-| 5   | Applicable invariants         | All applicable invariants from INVARIANTS.md are identified and will be verified.                                                 |
-| 6   | Acceptance criteria           | Every requirement has at least one verifiable acceptance criterion stated in Given/When/Then form.                                |
-| 7   | Verification strategy         | The verification approach is named: test layer, scope, and the exact command or assertion that will prove the criteria.           |
+| #   | Criterion                     | Requirement                                                                                                             |
+| --- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 1   | Responsibility                | Ownership is assigned and recorded.                                                                                     |
+| 2   | Explicit scope                | The deliverable boundary is documented: what is in, what is out, and any known interactions with adjacent deliverables. |
+| 3   | Known dependencies            | All predecessor work packages are DONE or explicitly acknowledged as non-blocking with a rationale and mitigation.      |
+| 4   | Sufficiently defined contract | The deliverable contract is documented with enough precision for implementation.                                        |
+| 5   | Applicable invariants         | All applicable invariants from INVARIANTS.md are identified and will be verified.                                       |
+| 6   | Acceptance criteria           | Every requirement has at least one verifiable acceptance criterion stated in Given/When/Then form.                      |
+| 7   | Verification strategy         | The verification approach is named: test layer, scope, and the exact command or assertion that will prove the criteria. |
 
 All seven criteria MUST be met. Partial readiness SHALL NOT proceed.
 
@@ -52,7 +52,8 @@ The Golden Path is the singular end-to-end product sequence that MUST function c
 ### Sequence (annotated: executable today vs blocked)
 
 ```
-clean install            [blocked-by: packaging — M13; today: venv + `pip install -e .`]
+clean install            [blocked-by: packaging — M13; 1.0 artifacts are Linux
+                          (AppImage/Flatpak/deb); today: venv + `pip install -e .`]
 → start app              [executable]
 → select music directory/library
                          [executable]
@@ -60,6 +61,7 @@ clean install            [blocked-by: packaging — M13; today: venv + `pip inst
 → browse                 [executable]
 → search                 [executable — substring filter]
 → select track           [executable]
+→ display metadata       [blocked-by: metadata work package — Required 1.0, not implemented]
 → play                   [executable]
 → pause/resume           [executable]
 → seek                   [executable]
@@ -78,4 +80,5 @@ clean install            [blocked-by: packaging — M13; today: venv + `pip inst
 1. Every step MUST be executable and verifiable in sequence. Steps marked `blocked-by` are allowed to gate the corresponding release milestone; they MUST be unblocked before that milestone's acceptance.
 2. Intermediate state (library, queue, settings, playback position) MUST survive restart and recover to a valid consistent state — to the extent defined by the canonical 1.0 contract (see MASTER_ROADMAP_1.0.md). Queue and playback-position persistence are Post-1.0; settings persistence is Required and implemented.
 3. A release candidate SHALL NOT proceed if any Golden Path step fails or requires a workaround.
-4. The Golden Path is exhaustive for the core product loop. Extensions (plugins, integrations, ecosystem features) augment it but do not replace it.
+4. The Golden Path is derived exclusively from the canonical 1.0 contract (MASTER_ROADMAP_1.0.md). Post-1.0 capabilities (queue persistence, playback-position persistence, gapless, crossfade, non-Linux platforms) never appear as path steps; their absence is a contract decision, not a path gap.
+5. The Golden Path is exhaustive for the core product loop. Extensions (plugins, integrations, ecosystem features) augment it post-1.0 but do not replace it.

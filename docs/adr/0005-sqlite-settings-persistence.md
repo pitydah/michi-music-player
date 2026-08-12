@@ -17,14 +17,14 @@ Settings persistence must survive restarts (volume, muted, last_directory, recen
 - `SettingsRepository` (application port) abstracts load/save of `SettingsState`. `SQLiteSettingsRepository` (infrastructure) is the concrete implementation.
 - Persistence is a single SQLite database in the platform app-data directory, opened with WAL mode.
 - `SettingsService` is the sole owner of `SettingsState` and the only caller of `SettingsRepository` mutations; bootstrap and coordinators use its public API only.
-- Startup performs read-only health inspection (`inspect_path`) before any write, producing a `PersistenceHealth` classification: MISSING, HEALTHY, CORRUPT_DATABASE, MALFORMED_DATA, LOCKED, ACCESS_FAILURE, IO_FAILURE, UNKNOWN_FAILURE. Inspection never mutates the file.
+- The read-only health-inspection capability (`inspect_path`, with extended-result-code normalization) is implemented and unit-tested (M11.2A), producing a `PersistenceHealth` classification: MISSING, HEALTHY, CORRUPT_DATABASE, MALFORMED_DATA, LOCKED, ACCESS_FAILURE, IO_FAILURE, UNKNOWN_FAILURE. Inspection never mutates the file. Wiring the inspection into the startup flow (before any write) is pending, scheduled with the recovery phases.
 - Health outcomes drive behavior conservatively: healthy → normal load; anything else → explicit diagnostic, no silent fallback, no destructive repair (repair is a future capability, M11.2B-E).
-- Shutdown persistence is best-effort with first-error-wins reporting (see ADR 0002 / lifecycle contract in ARCHITECTURE.md).
+- Shutdown persistence is best-effort with first-error-wins reporting (see the lifecycle contract in ARCHITECTURE.md).
 
 ## Consequences
 
 - Storage is swappable behind the port; tests use in-memory or temporary-file repositories.
-- A corrupt database can never crash startup: every failure mode has a typed diagnostic.
+- Once wired into startup, a corrupt database cannot crash startup: every failure mode has a typed diagnostic. The wiring is pending; the capability and its tests are in place (M11.2A).
 - The health taxonomy is part of the domain contract (`PersistenceHealth` in domain, no Qt, no I/O).
 - Recovery actions (backup/restore, repair, safe mode) remain unimplemented by design; the taxonomy is the contract they will implement against.
 

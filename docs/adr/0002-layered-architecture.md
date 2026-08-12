@@ -10,13 +10,13 @@ Four-layer architecture: domain, application, infrastructure, presentation, wire
 
 ## Context
 
-The rebuild needed a structure that keeps pure logic testable without Qt, isolates I/O (audio, filesystem, SQLite) behind interfaces, and gives the QML layer a thin, translation-only role. The Legacy plan already targeted this shape; the clean rebuild applies it to the Python/PySide6 stack.
+The rebuild needed a structure that keeps pure logic testable without Qt, isolates I/O (audio, filesystem, SQLite) behind interfaces, and gives the QML layer a thin, translation-only role. The superseded clean-rebuild governance draft already targeted this shape (Proposed draft ADRs D2/D3/D4); this ADR re-applies that shape to the Python/PySide6 stack.
 
 ## Decision
 
 The codebase is organized into four layers plus a composition root:
 
-- **domain/** — pure Python, no Qt, no I/O. State models and rules: `PlaybackState`, `QueueState`, `LibraryState` (+`TrackRef`), `SettingsState`, `AppRoute`/`NavigationState`, `PersistenceHealth`.
+- **domain/** — pure Python, no Qt, no I/O. State models and rules: `PlaybackState` (+`PlaybackStatus`), `QueueState`, `LibraryState` (+`TrackRef`), `SettingsState`, `AppRoute`/`NavigationState`, `PersistenceHealth`/`PersistenceDiagnostic`.
 - **application/** — use cases and ports. Ports (`AudioPort`, `SettingsRepository`, `LibraryScannerPort`) are abstract; services (`PlaybackService`, `QueueService`, `LibraryService`, `NavigationService`, `SettingsService`) and coordinators (`PlaybackCoordinator`, `LibraryPreferencesCoordinator`) implement behavior against domain state.
 - **infrastructure/** — concrete adapters implementing application ports: `QtMultimediaBackend` (AudioPort), `FilesystemLibraryScanner` (LibraryScannerPort), `SQLiteSettingsRepository` (SettingsRepository, with persistence health detection).
 - **presentation/** — QML plus bridges (`PlaybackBridge`, `QueueBridge`, `LibraryBridge`, `NavigationBridge`, `SettingsBridge`). Bridges translate intents into service calls and expose read-only state projections to QML. No business rules live here.

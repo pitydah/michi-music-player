@@ -16,15 +16,17 @@ Early implementations of a music player tend to accumulate scattered mutations: 
 
 Each domain model has exactly one owner at the application layer:
 
-| State model | Owner |
-| --- | --- |
-| `PlaybackState` | `PlaybackService` |
-| `QueueState` | `QueueService` |
-| `LibraryState` | `LibraryService` |
-| `SettingsState` | `SettingsService` |
-| `NavigationState` (`AppRoute`) | `NavigationService` |
+| State model                      | Owner                                                                         |
+| -------------------------------- | ----------------------------------------------------------------------------- |
+| `PlaybackState`                  | `PlaybackService`                                                             |
+| `QueueState`                     | `QueueService`                                                                |
+| `LibraryState`                   | `LibraryService`                                                              |
+| `SettingsState`                  | `SettingsService`                                                             |
+| `NavigationState` (`AppRoute`)   | `NavigationService`                                                           |
+| `PersistenceHealth` (diagnostic) | none — produced read-only by infrastructure inspection; no service mutates it |
 
 - The owner is the only component that mutates its model. All other components call owner methods (use cases) to request changes.
+- `PersistenceHealth` is a diagnostic value, not a mutable state model: infrastructure's read-only inspection produces it, and `SettingsService`/bootstrap consume it. It has no owner and no mutation path.
 - `PlaybackCoordinator` composes `PlaybackService` and `QueueService` for cross-cutting flows (queue auto-advance) but does not mutate either state directly — it drives the owners through their public APIs.
 - `LibraryPreferencesCoordinator` links `LibraryService` and `SettingsService` (persisting `last_directory` on scan) through public APIs only.
 - Bootstrap never mutates domain state directly; it configures owners via their public interfaces.

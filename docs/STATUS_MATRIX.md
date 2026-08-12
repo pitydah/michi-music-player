@@ -10,16 +10,16 @@ Components track implementation health through a staged lifecycle. Each componen
 
 ### States
 
-| State | Meaning |
-|---|---|
-| UNKNOWN | Not yet audited; no evidence collected |
-| AUDITED | Evidence collected; state and risks are documented |
-| BROKEN | Known defects prevent basic function |
-| PARTIAL | Subset of responsibilities is functional; known gaps remain |
-| FUNCTIONAL | All responsibilities verified as working |
-| TESTED | Automated test coverage exists for all responsibilities |
-| STABLE | No regressions across multiple release cycles |
-| FROZEN | Design closed; no further changes permitted without approved reopening exception |
+| State      | Meaning                                                                          |
+| ---------- | -------------------------------------------------------------------------------- |
+| UNKNOWN    | Not yet audited; no evidence collected                                           |
+| AUDITED    | Evidence collected; state and risks are documented                               |
+| BROKEN     | Known defects prevent basic function                                             |
+| PARTIAL    | Subset of responsibilities is functional; known gaps remain                      |
+| FUNCTIONAL | All responsibilities verified as working                                         |
+| TESTED     | Automated test coverage exists for all responsibilities                          |
+| STABLE     | No regressions across multiple release cycles                                    |
+| FROZEN     | Design closed; no further changes permitted without approved reopening exception |
 
 ### Normal Progression
 
@@ -36,15 +36,15 @@ Recovery from BROKEN or PARTIAL requires: (a) remediation passes all functional 
 
 ### Evidence Required per Transition
 
-| Transition | Evidence |
-|---|---|
-| UNKNOWN → AUDITED | Audit report: current state, known risks, dependencies |
-| AUDITED → FUNCTIONAL | Functional criteria met; manual or automated verification |
-| FUNCTIONAL → TESTED | Automated test suite passes (see Evidence-Based Definition of TESTED in DEFINITION_OF_DONE.md) |
-| TESTED → STABLE | No regressions across ≥2 release cycles |
-| STABLE → FROZEN | Approved freeze decision; no open P0/P1 |
-| BROKEN → FUNCTIONAL | Remediation passes; all functional criteria re-verified |
-| PARTIAL → FUNCTIONAL | Remaining gaps closed; all responsibilities verified |
+| Transition           | Evidence                                                                                       |
+| -------------------- | ---------------------------------------------------------------------------------------------- |
+| UNKNOWN → AUDITED    | Audit report: current state, known risks, dependencies                                         |
+| AUDITED → FUNCTIONAL | Functional criteria met; manual or automated verification                                      |
+| FUNCTIONAL → TESTED  | Automated test suite passes (see Evidence-Based Definition of TESTED in DEFINITION_OF_DONE.md) |
+| TESTED → STABLE      | No regressions across ≥2 release cycles                                                        |
+| STABLE → FROZEN      | Approved freeze decision; no open P0/P1                                                        |
+| BROKEN → FUNCTIONAL  | Remediation passes; all functional criteria re-verified                                        |
+| PARTIAL → FUNCTIONAL | Remaining gaps closed; all responsibilities verified                                           |
 
 ## Work-Package State Machine
 
@@ -52,16 +52,16 @@ Work packages (WPs) track deliverable progress through the SDD pipeline. Each WP
 
 ### States
 
-| State | Meaning |
-|---|---|
-| BACKLOG | Captured but not yet ready for execution |
-| READY | Admitted for execution by the readiness authority |
-| IN_PROGRESS | Active development |
-| REVIEW | Under review (code, design, or architecture) |
-| VERIFY | Acceptance criteria being verified |
-| BLOCKED | Cannot proceed; prior state recorded |
-| DONE | Accepted by the completion authority and delivered |
-| DEFERRED | Intentionally postponed with rationale |
+| State       | Meaning                                            |
+| ----------- | -------------------------------------------------- |
+| BACKLOG     | Captured but not yet ready for execution           |
+| READY       | Admitted for execution by the readiness authority  |
+| IN_PROGRESS | Active development                                 |
+| REVIEW      | Under review (code, design, or architecture)       |
+| VERIFY      | Acceptance criteria being verified                 |
+| BLOCKED     | Cannot proceed; prior state recorded               |
+| DONE        | Accepted by the completion authority and delivered |
+| DEFERRED    | Intentionally postponed with rationale             |
 
 ### Normal Flow
 
@@ -97,20 +97,22 @@ These rules are exhaustive for work-package interruption and deferral.
 
 Snapshot of the rebuild's components against the component state machine. Evidence: pytest suite (154 passing), Ruff clean, CI green. The matrix is a report, not a new state set; the state machine above is authoritative and unchanged.
 
-| Component | State | Notes |
-|---|---|---|
-| M1 Bootstrap | TESTED | Composition root, explicit wiring, best-effort shutdown (first-error-wins) |
-| M2 Minimal Playback | TESTED | Single-file playback via QtMultimediaBackend behind AudioPort |
-| M3 Complete Playback | PARTIAL | Basic controls done; gapless/crossfade/metadata absent |
-| M4 Queue | PARTIAL | Basic queue done; shuffle/repeat/reorder absent |
-| M5 Database/Settings | PARTIAL | Settings persistence TESTED; full DB scope deferred |
-| M6 Library | PARTIAL | Scan works; metadata/index absent |
-| M7 Search | FUNCTIONAL | Substring filter; FTS absent |
-| M8 Navigation | TESTED | AppRoute navigation across all four screens |
-| M9 UI Foundation | TESTED | Tokens + primitives + shell; QML smoke tests |
-| M10 Settings | TESTED | Persistence + restart gate verified |
-| M11.1 Failure Contracts | TESTED | Runtime failure contracts verified |
-| M11.2A Persistence Detection | TESTED | Read-only health taxonomy verified |
-| M11.2B/C/D/E Recovery | NOT STARTED | Backup/recovery/repair pending |
+**Active-contract rule**: the matrix reports only components of the active 1.0 contract on the current stack. Every state below MUST be a legal state from the component state machine above — no invented labels. Superseded clean-rebuild governance draft components (the C++20-anticipation milestones) are not reported. A contract component that has not started is UNKNOWN (not yet audited), never a custom label.
+
+| Component                    | State      | Notes                                                                                          |
+| ---------------------------- | ---------- | ---------------------------------------------------------------------------------------------- |
+| M1 Bootstrap                 | TESTED     | Composition root, explicit wiring, best-effort shutdown (first-error-wins)                     |
+| M2 Minimal Playback          | TESTED     | Single-file playback via QtMultimediaBackend behind AudioPort                                  |
+| M3 Complete Playback         | PARTIAL    | Basic controls done; metadata absent (Required 1.0 gap); gapless/crossfade deferred (Post-1.0) |
+| M4 Queue                     | PARTIAL    | Basic queue done; shuffle/repeat/reorder absent                                                |
+| M5 Database/Settings         | PARTIAL    | Settings persistence TESTED; full DB scope deferred                                            |
+| M6 Library                   | PARTIAL    | Scan works; metadata/index absent                                                              |
+| M7 Search                    | FUNCTIONAL | Substring filter; FTS absent                                                                   |
+| M8 Navigation                | TESTED     | AppRoute navigation across all four screens                                                    |
+| M9 UI Foundation             | TESTED     | Tokens + primitives + shell; QML smoke tests                                                   |
+| M10 Settings                 | TESTED     | Persistence + restart gate verified                                                            |
+| M11.1 Failure Contracts      | TESTED     | Runtime failure contracts verified                                                             |
+| M11.2A Persistence Detection | TESTED     | Read-only health taxonomy verified (capability level; startup wiring pending)                  |
+| M11.2B/C/D/E Recovery        | UNKNOWN    | Not yet audited; backup/recovery/repair pending                                                |
 
 Transitions pending per the canonical 1.0 contract: M3/M4/M5/M6 must reach TESTED (their Required-1.0 gaps closed) before M15; recovery components (M11.2B-E) must be implemented per the future execution order in MASTER_ROADMAP_1.0.md.

@@ -28,13 +28,13 @@ Python 3.11+, PySide6 (Qt 6, Qt Multimedia with FFmpeg backend), QML, SQLite (WA
         bootstrap/ — composition root, wires everything above
 ```
 
-| Layer | Contents | May import | Forbidden |
-| --- | --- | --- | --- |
-| `domain/` | `PlaybackState`, `QueueState`, `LibraryState` (+`TrackRef`), `SettingsState`, `AppRoute`/`NavigationState`, `PersistenceHealth` | Python stdlib only | Qt, I/O, application |
-| `application/` | Ports: `AudioPort`, `SettingsRepository`, `LibraryScannerPort`. Services: `PlaybackService`, `QueueService`, `LibraryService`, `NavigationService`, `SettingsService`. Coordinators: `PlaybackCoordinator`, `LibraryPreferencesCoordinator` | domain | Qt, infrastructure, presentation |
-| `infrastructure/` | `QtMultimediaBackend`, `FilesystemLibraryScanner`, `SQLiteSettingsRepository` (+ `inspect_path` health detection) | application (ports), domain, PySide6, SQLite, filesystem | presentation |
-| `presentation/` | `PlaybackBridge`, `QueueBridge`, `LibraryBridge`, `NavigationBridge`, `SettingsBridge` (read-only); QML: `main.qml`, `qml/theme/` MichiTheme, `qml/ui/` MichiButton/MichiPanel/MichiSlider/MichiTextField, `qml/shell/` AppShell/Sidebar/ContentHost, `qml/views/` NowPlaying/Library/Queue/Settings | application (services), domain (snapshots), PySide6 | infrastructure |
-| `bootstrap/` | `ApplicationContainer` composition root | everything (the only layer allowed to) | — |
+| Layer             | Contents                                                                                                                                                                                                                                                                                             | May import                                               | Forbidden                        |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------- |
+| `domain/`         | `PlaybackState` (+`PlaybackStatus`), `QueueState`, `LibraryState` (+`TrackRef`), `SettingsState`, `AppRoute`/`NavigationState`, `PersistenceHealth`/`PersistenceDiagnostic`                                                                                                                          | Python stdlib only                                       | Qt, I/O, application             |
+| `application/`    | Ports: `AudioPort`, `SettingsRepository`, `LibraryScannerPort`. Services: `PlaybackService`, `QueueService`, `LibraryService`, `NavigationService`, `SettingsService`. Coordinators: `PlaybackCoordinator`, `LibraryPreferencesCoordinator`                                                          | domain                                                   | Qt, infrastructure, presentation |
+| `infrastructure/` | `QtMultimediaBackend`, `FilesystemLibraryScanner`, `SQLiteSettingsRepository` (+ `inspect_path` health detection)                                                                                                                                                                                    | application (ports), domain, PySide6, SQLite, filesystem | presentation                     |
+| `presentation/`   | `PlaybackBridge`, `QueueBridge`, `LibraryBridge`, `NavigationBridge`, `SettingsBridge` (read-only); QML: `main.qml`, `qml/theme/` MichiTheme, `qml/ui/` MichiButton/MichiPanel/MichiSlider/MichiTextField, `qml/shell/` AppShell/Sidebar/ContentHost, `qml/views/` NowPlaying/Library/Queue/Settings | application (services), domain (snapshots), PySide6      | infrastructure                   |
+| `bootstrap/`      | `ApplicationContainer` composition root                                                                                                                                                                                                                                                              | everything (the only layer allowed to)                   | —                                |
 
 Rules:
 
@@ -47,13 +47,13 @@ Rules:
 
 Exactly one service owns each state model. Every mutation routes through the owner (ADR 0003).
 
-| State model | Owner (application layer) | Location |
-| --- | --- | --- |
-| `PlaybackState` | `PlaybackService` | `domain/playback.py` |
-| `QueueState` | `QueueService` | `domain/queue.py` |
-| `LibraryState` (+ `TrackRef`) | `LibraryService` | `domain/library.py` |
-| `SettingsState` | `SettingsService` | `domain/settings.py` |
-| `AppRoute` / `NavigationState` | `NavigationService` | `domain/navigation.py` |
+| State model                                 | Owner (application layer)                                                      | Location                       |
+| ------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------ |
+| `PlaybackState`                             | `PlaybackService`                                                              | `domain/playback.py`           |
+| `QueueState`                                | `QueueService`                                                                 | `domain/queue.py`              |
+| `LibraryState` (+ `TrackRef`)               | `LibraryService`                                                               | `domain/library.py`            |
+| `SettingsState`                             | `SettingsService`                                                              | `domain/settings.py`           |
+| `AppRoute` / `NavigationState`              | `NavigationService`                                                            | `domain/navigation.py`         |
 | `PersistenceHealth` (diagnostic, read-only) | produced by infrastructure inspection, consumed by `SettingsService`/bootstrap | `domain/persistence_health.py` |
 
 - **Ingress rule**: no subsystem writes to a state model directly; all mutations are owner method calls.
@@ -81,7 +81,7 @@ Label text           ←  bridge.title (property)       ←  PlaybackState snaps
 
 `AudioPort` (ABC in `application/ports.py`) is the audio contract. `QtMultimediaBackend` (infrastructure) implements it with Qt Multimedia (FFmpeg backend).
 
-Operations: `load`, `play`, `pause`, `resume`, `stop`, `set_volume`, `set_muted`, `seek`, `position`, `duration`, plus end-of-media and position-changed subscription callbacks.
+Operations: `load`, `play`, `pause`, `resume`, `stop`, `set_volume`, `set_muted`, `seek`, `position`, `duration`, plus end-of-media, position-changed, duration-changed, and error subscription callbacks.
 
 - Application services depend on the port only; they never import PySide6 multimedia classes.
 - The backend translates Qt signals into plain callbacks; services stay Qt-free.
@@ -92,7 +92,8 @@ Operations: `load`, `play`, `pause`, `resume`, `stop`, `set_volume`, `set_muted`
 `SettingsRepository` (ABC) is the persistence contract. `SQLiteSettingsRepository` (infrastructure) implements it against a single SQLite database (WAL) in the platform app-data directory.
 
 - `SettingsService` is the only caller of repository mutations.
-- Startup runs read-only `inspect_path` **before any write**, producing a `PersistenceHealth` classification: MISSING, HEALTHY, CORRUPT_DATABASE, MALFORMED_DATA, LOCKED, ACCESS_FAILURE, IO_FAILURE, UNKNOWN_FAILURE.
+- The read-only health-detection capability (`inspect_path`, extended-result-code normalization) is implemented and unit-tested (M11.2A), producing a `PersistenceHealth` classification: MISSING, HEALTHY, CORRUPT_DATABASE, MALFORMED_DATA, LOCKED, ACCESS_FAILURE, IO_FAILURE, UNKNOWN_FAILURE. Inspection never mutates the file.
+- Current vs target: the inspection is not yet wired into the startup flow; wiring it (before any write) is pending, scheduled with the recovery phases.
 - Conservative handling: HEALTHY/MISSING proceed to normal flow; all failure classes produce an explicit diagnostic with no silent fallback and no destructive repair. Repair/recovery (M11.2B-E) is a future capability that will build on this taxonomy.
 - Persisted fields: volume, muted, last_directory, recent_files. Restart gate: values apply only after a successful restart restore.
 
@@ -100,7 +101,8 @@ Operations: `load`, `play`, `pause`, `resume`, `stop`, `set_volume`, `set_muted`
 
 `ApplicationContainer` (bootstrap) owns the lifecycle: construct the object graph → start services → run the QML engine → shutdown.
 
-- **Startup**: create QGuiApplication, build all components with explicit constructor wiring, run read-only persistence health inspection, load settings through `SettingsService`, register bridges as QML context properties, load `main.qml`.
+- **Startup (current)**: create QGuiApplication, build all components with explicit constructor wiring, load settings through `SettingsService`, register bridges as QML context properties, load `main.qml`.
+- **Startup (target)**: additionally run the read-only persistence health inspection before any write; the wiring is pending (M11.2A capability exists and is unit-tested).
 - **Runtime**: single UI thread; services mutate their state models synchronously (no worker threads in current scope).
 - **Shutdown**: best-effort; every component's shutdown is attempted, and failures are collected. First error wins the shutdown result; subsequent errors are still attempted and logged, never swallowed silently.
 - Explicit ownership: the container holds all long-lived objects; no global service locators or singletons.
@@ -115,22 +117,22 @@ Operations: `load`, `play`, `pause`, `resume`, `stop`, `set_volume`, `set_muted`
 
 ## Fitness Evidence
 
-| Check | Assertion | Status |
-| --- | --- | --- |
-| Layering | `domain/` and `application/` import no Qt; `presentation/` never imports `infrastructure/` | Enforced by convention + tests |
-| Ownership | One owner per state model per ADR 0003 | Verified in code review |
-| Audio boundary | Services depend on `AudioPort` ABC only | Verified |
-| Persistence | Read-only inspection before write; conservative taxonomy | Tested (M11.2A) |
-| Tests | 154 pytest tests passing; CI green (lint/test/build, offscreen) | Verified |
-| QML boundary | QML → bridges → services only | Verified |
+| Check          | Assertion                                                                                  | Status                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| Layering       | `domain/` and `application/` import no Qt; `presentation/` never imports `infrastructure/` | Enforced by convention; no automated import-guard test yet (documented gap) |
+| Ownership      | One owner per state model per ADR 0003                                                     | Per-service and coordinator tests                                           |
+| Audio boundary | Services depend on `AudioPort` ABC only                                                    | Verified                                                                    |
+| Persistence    | Read-only inspection capability; conservative taxonomy                                     | Tested at unit level (M11.2A); startup wiring pending                       |
+| Tests          | 154 pytest tests passing; CI green (lint/test/build, offscreen)                            | Verified                                                                    |
+| QML boundary   | QML → bridges → services only                                                              | Verified (M9 QML tests)                                                     |
 
 ## ADR Index
 
-| ADR | Decision | File |
-| --- | --- | --- |
-| 0001 | Python 3.11+ with PySide6 / Qt 6 stack | `docs/adr/0001-python-pyside6-stack.md` |
-| 0002 | Four-layer architecture with dependency inversion | `docs/adr/0002-layered-architecture.md` |
-| 0003 | Single state owner per domain model | `docs/adr/0003-single-state-owner.md` |
-| 0004 | QML bridge boundary | `docs/adr/0004-qml-bridge-boundary.md` |
+| ADR  | Decision                                          | File                                           |
+| ---- | ------------------------------------------------- | ---------------------------------------------- |
+| 0001 | Python 3.11+ with PySide6 / Qt 6 stack            | `docs/adr/0001-python-pyside6-stack.md`        |
+| 0002 | Four-layer architecture with dependency inversion | `docs/adr/0002-layered-architecture.md`        |
+| 0003 | Single state owner per domain model               | `docs/adr/0003-single-state-owner.md`          |
+| 0004 | QML bridge boundary                               | `docs/adr/0004-qml-bridge-boundary.md`         |
 | 0005 | SQLite settings persistence with health detection | `docs/adr/0005-sqlite-settings-persistence.md` |
-| 0006 | Legacy is evidence only | `docs/adr/0006-legacy-evidence-only.md` |
+| 0006 | Legacy is evidence only                           | `docs/adr/0006-legacy-evidence-only.md`        |

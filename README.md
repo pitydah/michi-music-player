@@ -2,7 +2,9 @@
 
 Audio-only desktop music player rebuilt from scratch.
 
-**Status:** advanced pre-alpha (clean rebuild) — M1–M11.2A functional core on the Python/PySide6 stack.
+**Status:** pre-alpha clean rebuild — M1–M11.2A executed and verified (154 pytest tests, CI green). Remaining Required-1.0 gaps: shuffle, repeat, metadata. Component states: `docs/STATUS_MATRIX.md`.
+
+**Platform:** Linux is the 1.0 target (AppImage/Flatpak/deb at M13). Windows and macOS are Post-1.0 — see `docs/POST_1_0_BACKLOG.md`.
 
 ## Requirements
 
