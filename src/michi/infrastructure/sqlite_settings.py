@@ -1,5 +1,6 @@
 """SQLite persistence — implements SettingsRepository."""
 
+import errno
 import json
 import logging
 import sqlite3
@@ -14,18 +15,66 @@ from michi.domain.settings import SettingsState
 
 logger = logging.getLogger(__name__)
 
+# SQLite primary/extended result codes
+_SQLITE_BUSY = 5
+_SQLITE_LOCKED = 6
+_SQLITE_READONLY = 8
+_SQLITE_IOERR = 10
+_SQLITE_CORRUPT = 11
+_SQLITE_CANTOPEN = 14
+_SQLITE_PERM = 3
+_SQLITE_NOTADB = 26
 
-def _classify_open_error(exc: sqlite3.Error) -> PersistenceDiagnostic:
-    text = str(exc).lower()
-    if "locked" in text or "busy" in text:
-        return PersistenceDiagnostic(PersistenceHealth.LOCKED, str(exc))
-    if "not a database" in text or "malformed" in text:
+_ACCESS_CODES = {_SQLITE_READONLY, _SQLITE_CANTOPEN, _SQLITE_PERM}
+_IO_CODES = {_SQLITE_IOERR}
+
+
+def _classify_sqlite_error(exc: sqlite3.Error) -> PersistenceDiagnostic:
+    """Classify a SQLite error conservatively.
+
+    Error codes are authoritative. Unknown errors become UNKNOWN_FAILURE,
+    never CORRUPT_DATABASE. A false-negative corruption classification is
+    safer than a false positive that could trigger destructive recovery.
+    """
+    code = getattr(exc, "sqlite_errorcode", None)
+
+    if code in (_SQLITE_CORRUPT, _SQLITE_NOTADB):
         return PersistenceDiagnostic(PersistenceHealth.CORRUPT_DATABASE, str(exc))
-    if "readonly" in text or "permission" in text or "unable to open" in text:
+    if code in (_SQLITE_BUSY, _SQLITE_LOCKED):
+        return PersistenceDiagnostic(PersistenceHealth.LOCKED, str(exc))
+    if code in _ACCESS_CODES:
         return PersistenceDiagnostic(PersistenceHealth.ACCESS_FAILURE, str(exc))
-    if "i/o error" in text or "disk" in text:
+    if code in _IO_CODES:
         return PersistenceDiagnostic(PersistenceHealth.IO_FAILURE, str(exc))
-    return PersistenceDiagnostic(PersistenceHealth.CORRUPT_DATABASE, str(exc))
+
+    # Textual fallback only for environments without error codes
+    text = str(exc).lower()
+    if "not a database" in text or "disk image is malformed" in text:
+        return PersistenceDiagnostic(PersistenceHealth.CORRUPT_DATABASE, str(exc))
+    if "database is locked" in text or "database table is locked" in text:
+        return PersistenceDiagnostic(PersistenceHealth.LOCKED, str(exc))
+    if (
+        "readonly" in text
+        or "permission" in text
+        or "unable to open database file" in text
+    ):
+        return PersistenceDiagnostic(PersistenceHealth.ACCESS_FAILURE, str(exc))
+    if "disk i/o error" in text:
+        return PersistenceDiagnostic(PersistenceHealth.IO_FAILURE, str(exc))
+
+    return PersistenceDiagnostic(PersistenceHealth.UNKNOWN_FAILURE, str(exc))
+
+
+def _classify_os_error(exc: OSError) -> PersistenceDiagnostic:
+    if exc.errno in (errno.EACCES, errno.EPERM, errno.EROFS):
+        return PersistenceDiagnostic(PersistenceHealth.ACCESS_FAILURE, str(exc))
+    if exc.errno in (errno.EIO, errno.ENOSPC):
+        return PersistenceDiagnostic(PersistenceHealth.IO_FAILURE, str(exc))
+    return PersistenceDiagnostic(PersistenceHealth.UNKNOWN_FAILURE, str(exc))
+
+
+def _read_only_uri(db_path: Path) -> str:
+    return f"{db_path.resolve().as_uri()}?mode=ro"
 
 
 class SQLiteSettingsRepository(SettingsRepository):
@@ -51,13 +100,14 @@ class SQLiteSettingsRepository(SettingsRepository):
     def inspect_path(db_path: Path) -> PersistenceDiagnostic:
         """Diagnose persistence health WITHOUT side effects.
 
-        Does not create, delete, rename, or repair anything.
+        Opens read-only. Does not create, delete, rename, repair, or
+        migrate anything. Never alters journal mode.
         """
         if not db_path.exists():
             return PersistenceDiagnostic(PersistenceHealth.MISSING)
 
         try:
-            conn = sqlite3.connect(str(db_path), timeout=0.2)
+            conn = sqlite3.connect(_read_only_uri(db_path), uri=True, timeout=0.2)
             try:
                 check = conn.execute("PRAGMA quick_check").fetchone()
                 if check is None or check[0] != "ok":
@@ -65,20 +115,31 @@ class SQLiteSettingsRepository(SettingsRepository):
                         PersistenceHealth.CORRUPT_DATABASE,
                         f"quick_check: {check}",
                     )
+                schema_rows = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall()
+                table_names = {name for (name,) in schema_rows}
+                if "settings" not in table_names:
+                    return PersistenceDiagnostic(
+                        PersistenceHealth.MALFORMED_DATA,
+                        "settings table is missing",
+                    )
+                cols = conn.execute("PRAGMA table_info(settings)").fetchall()
+                col_names = {c[1] for c in cols}
+                if not {"key", "value"}.issubset(col_names):
+                    return PersistenceDiagnostic(
+                        PersistenceHealth.MALFORMED_DATA,
+                        "settings table is missing key/value columns",
+                    )
                 rows = conn.execute("SELECT key, value FROM settings").fetchall()
             finally:
                 conn.close()
         except sqlite3.OperationalError as exc:
-            return _classify_open_error(exc)
+            return _classify_sqlite_error(exc)
         except sqlite3.DatabaseError as exc:
-            text = str(exc).lower()
-            if "not a database" in text or "malformed" in text:
-                return PersistenceDiagnostic(
-                    PersistenceHealth.CORRUPT_DATABASE, str(exc)
-                )
-            return PersistenceDiagnostic(PersistenceHealth.CORRUPT_DATABASE, str(exc))
+            return _classify_sqlite_error(exc)
         except OSError as exc:
-            return PersistenceDiagnostic(PersistenceHealth.ACCESS_FAILURE, str(exc))
+            return _classify_os_error(exc)
 
         return SQLiteSettingsRepository._validate_rows(rows)
 
@@ -119,8 +180,6 @@ class SQLiteSettingsRepository(SettingsRepository):
                         PersistenceHealth.MALFORMED_DATA,
                         "recent_files is not a list of strings",
                     )
-            # Unknown keys are tolerated (forward compatible).
-            # last_directory is any string; no validation needed.
         return PersistenceDiagnostic(PersistenceHealth.HEALTHY)
 
     def load(self) -> SettingsState:

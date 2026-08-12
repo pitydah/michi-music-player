@@ -12,6 +12,7 @@ class PersistenceHealth(Enum):
     LOCKED = "locked"
     ACCESS_FAILURE = "access_failure"
     IO_FAILURE = "io_failure"
+    UNKNOWN_FAILURE = "unknown_failure"
 
 
 @dataclass(frozen=True)

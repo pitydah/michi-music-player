@@ -2,9 +2,13 @@
 
 import json
 import sqlite3
+from pathlib import Path
 
-from michi.domain.persistence_health import PersistenceHealth
+from michi.domain.persistence_health import (
+    PersistenceHealth,
+)
 from michi.domain.settings import SettingsState
+from michi.infrastructure import sqlite_settings
 from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
 
 
@@ -124,3 +128,73 @@ class TestNoSideEffects:
         before = db.read_bytes()
         SQLiteSettingsRepository.inspect_path(db)
         assert db.read_bytes() == before
+
+
+class TestUnknownFailureSafety:
+    def test_unknown_sqlite_error_is_not_corruption(self):
+        exc = sqlite3.OperationalError("some future sqlite failure")
+        result = sqlite_settings._classify_sqlite_error(exc)
+        assert result.health is PersistenceHealth.UNKNOWN_FAILURE
+        assert result.health is not PersistenceHealth.CORRUPT_DATABASE
+
+    def test_known_notadb_is_corruption(self):
+        exc = sqlite3.DatabaseError("file is not a database")
+        exc.sqlite_errorcode = sqlite_settings._SQLITE_NOTADB
+        result = sqlite_settings._classify_sqlite_error(exc)
+        assert result.health is PersistenceHealth.CORRUPT_DATABASE
+
+    def test_access_codes_classified(self):
+        for code in (
+            sqlite_settings._SQLITE_READONLY,
+            sqlite_settings._SQLITE_CANTOPEN,
+            sqlite_settings._SQLITE_PERM,
+        ):
+            exc = sqlite3.OperationalError("access denied")
+            exc.sqlite_errorcode = code
+            result = sqlite_settings._classify_sqlite_error(exc)
+            assert result.health is PersistenceHealth.ACCESS_FAILURE
+
+    def test_io_codes_classified(self):
+        exc = sqlite3.OperationalError("disk i/o error")
+        exc.sqlite_errorcode = sqlite_settings._SQLITE_IOERR
+        result = sqlite_settings._classify_sqlite_error(exc)
+        assert result.health is PersistenceHealth.IO_FAILURE
+
+
+class TestSchemaClassification:
+    def test_missing_settings_table_is_malformed(self, tmp_path):
+        db = tmp_path / "noschema.db"
+        with sqlite3.connect(str(db)) as conn:
+            conn.execute("CREATE TABLE other (x INTEGER)")
+        result = SQLiteSettingsRepository.inspect_path(db)
+        assert result.health is PersistenceHealth.MALFORMED_DATA
+
+    def test_wrong_columns_is_malformed(self, tmp_path):
+        db = tmp_path / "badcols.db"
+        with sqlite3.connect(str(db)) as conn:
+            conn.execute("CREATE TABLE settings (key TEXT PRIMARY KEY)")
+        result = SQLiteSettingsRepository.inspect_path(db)
+        assert result.health is PersistenceHealth.MALFORMED_DATA
+
+    def test_empty_valid_schema_healthy(self, tmp_path):
+        db = tmp_path / "empty.db"
+        with sqlite3.connect(str(db)) as conn:
+            conn.execute(
+                "CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+            )
+        result = SQLiteSettingsRepository.inspect_path(db)
+        assert result.health is PersistenceHealth.HEALTHY
+
+
+class TestReadOnlyInspection:
+    def test_inspection_uses_read_only_uri(self):
+        uri = sqlite_settings._read_only_uri(Path("/tmp/with space/música.db"))
+        assert uri.endswith("?mode=ro")
+        assert "file:" in uri
+
+    def test_inspection_no_wal_shm_creation(self, tmp_path):
+        db = tmp_path / "nourls.db"
+        _write_raw_rows(db, [("volume", "42")])
+        SQLiteSettingsRepository.inspect_path(db)
+        assert not db.with_name(db.name + "-wal").exists()
+        assert not db.with_name(db.name + "-shm").exists()
