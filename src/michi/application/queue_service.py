@@ -54,25 +54,15 @@ class QueueService:
 
     def play_index(self, index: int) -> None:
         if 0 <= index < len(self._state.tracks):
-            self._state.current_index = index
             self._playback.load_and_play(self._state.tracks[index].file_path)
+            self._state.current_index = index
             self._notify()
 
     def next(self) -> None:
-        if self._state.has_next:
-            self._state.current_index += 1
-            track = self._state.current_track
-            if track:
-                self._playback.load_and_play(track.file_path)
-            self._notify()
+        self.play_index(self._state.current_index + 1)
 
     def previous(self) -> None:
-        if self._state.has_previous:
-            self._state.current_index -= 1
-            track = self._state.current_track
-            if track:
-                self._playback.load_and_play(track.file_path)
-            self._notify()
+        self.play_index(self._state.current_index - 1)
 
     def play_current(self) -> None:
         track = self._state.current_track

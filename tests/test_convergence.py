@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from michi.application.coordinator import PlaybackCoordinator
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
@@ -37,6 +39,25 @@ class TestEndOfMedia:
         coord.start()
         fake_audio.trigger_end_of_media()
         assert q.state.current_index == 1
+
+    def test_auto_advance_failure_preserves_index(self, fake_audio, monkeypatch):
+        svc = PlaybackService(fake_audio)
+        q = QueueService(svc)
+        q.add(Path("/tmp/a.mp3"))
+        q.add(Path("/tmp/b.mp3"))
+        q.play_index(0)
+        coord = PlaybackCoordinator(fake_audio, q, svc)
+        coord.start()
+
+        def failing_load(p):
+            raise RuntimeError("load failed")
+
+        monkeypatch.setattr(fake_audio, "load", failing_load)
+
+        with pytest.raises(RuntimeError):
+            fake_audio.trigger_end_of_media()
+
+        assert q.state.current_index == 0
 
     def test_at_end(self, fake_audio):
         svc = PlaybackService(fake_audio)
