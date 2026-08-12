@@ -42,6 +42,15 @@ class LibraryService:
         self._state.current_directory = directory
         self._notify()
 
+    def restore_directory_hint(self, directory: str) -> None:
+        """Restore a persisted path as context. No scan. Idempotent."""
+        if not directory:
+            return
+        if self._state.current_directory == directory:
+            return
+        self._state.current_directory = directory
+        self._notify()
+
     def search(self, query: str) -> None:
         self._state.query = query.strip().lower()
         self._notify()

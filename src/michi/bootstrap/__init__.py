@@ -8,6 +8,9 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
 from michi.application.coordinator import PlaybackCoordinator
+from michi.application.library_preferences_coordinator import (
+    LibraryPreferencesCoordinator,
+)
 from michi.application.library_service import LibraryService
 from michi.application.navigation_service import NavigationService
 from michi.application.playback_service import PlaybackService
@@ -40,6 +43,7 @@ class ApplicationContainer:
         self._playback: PlaybackService | None = None
         self._queue: QueueService | None = None
         self._library: LibraryService | None = None
+        self._library_prefs: LibraryPreferencesCoordinator | None = None
         self._navigation: NavigationService | None = None
         self._coordinator: PlaybackCoordinator | None = None
         self._pb: PlaybackBridge | None = None
@@ -66,6 +70,10 @@ class ApplicationContainer:
         library = LibraryService(scanner, queue)
         navigation = NavigationService()
 
+        # Library/settings coordination: restore last_directory, sync on scan
+        lib_prefs = LibraryPreferencesCoordinator(library, settings)
+        lib_prefs.start()
+
         # Restore persisted playback preferences
         s = settings.load()
         playback.restore_volume(s.volume, s.muted)
@@ -91,6 +99,7 @@ class ApplicationContainer:
         self._playback = playback
         self._queue = queue
         self._library = library
+        self._library_prefs = lib_prefs
         self._navigation = navigation
         self._coordinator = coordinator
         self._pb = pb
@@ -114,6 +123,9 @@ class ApplicationContainer:
     def shutdown(self) -> None:
         if self._coordinator:
             self._coordinator.stop()
+
+        if self._library_prefs:
+            self._library_prefs.stop()
 
         # Capture runtime preferences → persisted state
         if self._playback and self._settings:
@@ -141,6 +153,7 @@ class ApplicationContainer:
         self._pb = None
         self._nb = None
         self._coordinator = None
+        self._library_prefs = None
         self._navigation = None
         self._library = None
         self._queue = None
