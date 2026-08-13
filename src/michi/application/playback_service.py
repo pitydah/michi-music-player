@@ -24,13 +24,19 @@ class PlaybackService:
 
     Two minimal guards keep stale lifecycle events honest:
     - `_intent`: True after a successful request (also armed by play()/
-      resume()), set False by `stop()` and rejection. PLAYING state events
-      are applied only while intent holds, so a late PlayingState cannot
+      resume()), set False by `stop()` and rejection. Active state events
+      (PLAYING, PAUSED) are applied only while intent holds; STOPPED is
+      always applied (idempotently), so a late PlayingState cannot
       resurrect playback after stop/rejection.
     - `_accepted`: True only once the current candidate has been accepted,
       reset on each new request and on rejection. PLAYING is never published
       for a track whose identity was not committed — stale PlayingState
       events from superseded candidates are ignored.
+
+    Commands express intent only: play()/pause()/resume() never mutate
+    PlaybackStatus or notify; PLAYING/PAUSED/STOPPED are published
+    exclusively from backend state events. `stop()` is the single
+    optimistic exception (safety command: STOPPED immediately).
     """
 
     def __init__(self, audio_port: AudioPort) -> None:
@@ -81,19 +87,24 @@ class PlaybackService:
         acceptance for its path; `on_accepted` is then invoked exactly once
         with the accepted path. A new request supersedes the previous pending
         candidate; `stop()` invalidates it. Synchronous backend failures
-        propagate and leave no pending candidate behind.
+        propagate, leave no pending candidate behind, and restore the
+        previous intent/acceptance flags.
         """
+        previous_intent = self._intent
+        previous_accepted = self._accepted
         self._pending_path = file_path
         self._pending_on_accepted = on_accepted
+        self._accepted = False
+        self._intent = True
         try:
             self._audio.load(file_path)
             self._audio.play()
         except Exception:
             self._pending_path = None
             self._pending_on_accepted = None
+            self._intent = previous_intent
+            self._accepted = previous_accepted
             raise
-        self._intent = True
-        self._accepted = False
         self._state.status = PlaybackStatus.STOPPED
         self._state.error_message = None
         self._notify()
@@ -136,7 +147,9 @@ class PlaybackService:
         # Anything else is a stale, unknown, or duplicate callback: ignored.
 
     def _on_playback_state_changed(self, status: PlaybackStatus) -> None:
-        if status == PlaybackStatus.PLAYING and not (self._intent and self._accepted):
+        if not self._intent and status != PlaybackStatus.STOPPED:
+            return
+        if status == PlaybackStatus.PLAYING and not self._accepted:
             return
         if self._state.status == status:
             return
@@ -144,21 +157,15 @@ class PlaybackService:
         self._notify()
 
     def play(self) -> None:
-        self._audio.play()
         self._intent = True
-        self._state.status = PlaybackStatus.PLAYING
-        self._notify()
+        self._audio.play()
 
     def pause(self) -> None:
         self._audio.pause()
-        self._state.status = PlaybackStatus.PAUSED
-        self._notify()
 
     def resume(self) -> None:
-        self._audio.resume()
         self._intent = True
-        self._state.status = PlaybackStatus.PLAYING
-        self._notify()
+        self._audio.resume()
 
     def stop(self) -> None:
         self._pending_path = None

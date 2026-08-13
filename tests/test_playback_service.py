@@ -121,9 +121,15 @@ class TestPlaybackService:
     def test_pause_resume(self, playback_service, fake_audio):
         playback_service.load_and_play(Path("/tmp/test.mp3"))
         fake_audio.trigger_media_accepted(Path("/tmp/test.mp3"))
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
         playback_service.pause()
+        # Commands express intent only: backend events carry the truth.
+        assert playback_service.state.status == PlaybackStatus.PLAYING
+        fake_audio.trigger_playback_state(PlaybackStatus.PAUSED)
         assert playback_service.state.status == PlaybackStatus.PAUSED
         playback_service.resume()
+        assert playback_service.state.status == PlaybackStatus.PAUSED
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
         assert playback_service.state.status == PlaybackStatus.PLAYING
 
     def test_stop(self, playback_service, fake_audio):
@@ -269,3 +275,166 @@ class TestTruthfulPlaybackStatus:
         assert playback_service.state.status == PlaybackStatus.STOPPED
         assert playback_service.state.error_message == "decode failed"
         assert len(calls) == 1  # no duplicate notify
+
+
+class TestCommandIntentAndLifecycleGuard:
+    """Commands express intent only; PlaybackStatus follows backend events.
+
+    play()/pause()/resume() must never mutate status or notify. PLAYING is
+    published only when the backend emits it AND the current candidate was
+    accepted. stop() blocks late active-state events (PLAYING and PAUSED).
+    """
+
+    def _play_a(self, playback_service, fake_audio):
+        a = Path("/tmp/a.mp3")
+        playback_service.load_and_play(a)
+        fake_audio.trigger_media_accepted(a)
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        return a
+
+    def test_play_command_does_not_claim_playing(self, playback_service, fake_audio):
+        self._play_a(playback_service, fake_audio)
+        playback_service.stop()
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        playback_service.play()
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        assert playback_service.state.status == PlaybackStatus.PLAYING
+
+    def test_resume_command_does_not_claim_playing(self, playback_service, fake_audio):
+        a = Path("/tmp/a.mp3")
+        playback_service.load_and_play(a)
+        fake_audio.trigger_media_accepted(a)
+        fake_audio.trigger_playback_state(PlaybackStatus.PAUSED)
+        assert playback_service.state.status == PlaybackStatus.PAUSED
+        playback_service.resume()
+        assert playback_service.state.status == PlaybackStatus.PAUSED
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        assert playback_service.state.status == PlaybackStatus.PLAYING
+
+    def test_pause_command_does_not_claim_paused(self, playback_service, fake_audio):
+        self._play_a(playback_service, fake_audio)
+        playback_service.pause()
+        assert playback_service.state.status == PlaybackStatus.PLAYING
+        fake_audio.trigger_playback_state(PlaybackStatus.PAUSED)
+        assert playback_service.state.status == PlaybackStatus.PAUSED
+
+    def test_late_playing_event_after_stop_ignored(self, playback_service, fake_audio):
+        self._play_a(playback_service, fake_audio)
+        playback_service.stop()
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+    def test_late_paused_event_after_stop_ignored(self, playback_service, fake_audio):
+        self._play_a(playback_service, fake_audio)
+        playback_service.stop()
+        fake_audio.trigger_playback_state(PlaybackStatus.PAUSED)
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+    def test_playing_event_before_acceptance_blocked(
+        self, playback_service, fake_audio
+    ):
+        b = Path("/tmp/b.mp3")
+        playback_service.load_and_play(b)
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        assert playback_service.state.status != PlaybackStatus.PLAYING
+        fake_audio.trigger_media_accepted(b)
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        assert playback_service.state.status == PlaybackStatus.PLAYING
+
+    def test_reentrant_playing_event_during_load_blocked(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        self._play_a(playback_service, fake_audio)
+        b = Path("/tmp/b.mp3")
+
+        def reentrant_load(p):
+            fake_audio.loaded = p
+            fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+
+        monkeypatch.setattr(fake_audio, "load", reentrant_load)
+        playback_service.load_and_play(b)
+        # B remains pending and uncommitted; no false PLAYING claim survives.
+        assert playback_service.state.file_path == Path("/tmp/a.mp3")
+        assert playback_service.state.status != PlaybackStatus.PLAYING
+        fake_audio.trigger_media_accepted(b)
+        assert playback_service.state.file_path == b
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        assert playback_service.state.status == PlaybackStatus.PLAYING
+
+    def test_play_command_failure_preserves_state(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        self._play_a(playback_service, fake_audio)
+
+        def failing_play():
+            raise RuntimeError("play failed")
+
+        monkeypatch.setattr(fake_audio, "play", failing_play)
+        with pytest.raises(RuntimeError, match="play failed"):
+            playback_service.play()
+        assert playback_service.state.status == PlaybackStatus.PLAYING
+
+    def test_resume_command_failure_preserves_state(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        a = Path("/tmp/a.mp3")
+        playback_service.load_and_play(a)
+        fake_audio.trigger_media_accepted(a)
+        fake_audio.trigger_playback_state(PlaybackStatus.PAUSED)
+
+        def failing_resume():
+            raise RuntimeError("resume failed")
+
+        monkeypatch.setattr(fake_audio, "resume", failing_resume)
+        with pytest.raises(RuntimeError, match="resume failed"):
+            playback_service.resume()
+        assert playback_service.state.status == PlaybackStatus.PAUSED
+
+    def test_load_failure_restores_intent_and_acceptance(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        self._play_a(playback_service, fake_audio)
+
+        def failing_load(p):
+            raise RuntimeError("load failed")
+
+        monkeypatch.setattr(fake_audio, "load", failing_load)
+        with pytest.raises(RuntimeError, match="load failed"):
+            playback_service.load_and_play(Path("/tmp/b.mp3"))
+        # Pending cleared: late acceptance for B must not commit.
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert playback_service.state.file_path == Path("/tmp/a.mp3")
+        # Previous intent/acceptance restored: A's lifecycle still applies.
+        fake_audio.trigger_playback_state(PlaybackStatus.PAUSED)
+        assert playback_service.state.status == PlaybackStatus.PAUSED
+
+    def test_play_failure_inside_load_and_play_restores_state(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        self._play_a(playback_service, fake_audio)
+
+        def failing_play():
+            raise RuntimeError("play failed")
+
+        monkeypatch.setattr(fake_audio, "play", failing_play)
+        with pytest.raises(RuntimeError, match="play failed"):
+            playback_service.load_and_play(Path("/tmp/b.mp3"))
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert playback_service.state.file_path == Path("/tmp/a.mp3")
+        assert playback_service.state.status == PlaybackStatus.PLAYING
+        fake_audio.trigger_playback_state(PlaybackStatus.PAUSED)
+        assert playback_service.state.status == PlaybackStatus.PAUSED
+
+    def test_duplicate_lifecycle_events_notify_once(self, playback_service, fake_audio):
+        self._play_a(playback_service, fake_audio)
+        calls = []
+        playback_service.subscribe_changed(lambda: calls.append(1))
+        fake_audio.trigger_playback_state(PlaybackStatus.PAUSED)
+        fake_audio.trigger_playback_state(PlaybackStatus.PAUSED)
+        fake_audio.trigger_playback_state(PlaybackStatus.STOPPED)
+        fake_audio.trigger_playback_state(PlaybackStatus.STOPPED)
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        assert len(calls) == 3
+        assert playback_service.state.status == PlaybackStatus.PLAYING
