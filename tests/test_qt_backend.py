@@ -7,6 +7,7 @@ import pytest
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtMultimedia import QMediaPlayer
 
+from michi.domain.playback import PlaybackStatus
 from michi.infrastructure.qt_backend import QtMultimediaBackend
 
 
@@ -142,3 +143,75 @@ class TestQtBackendMediaTranslation:
         b._player.mediaStatusChanged.emit(QMediaPlayer.InvalidMedia)
         assert accepted == []
         assert rejected == []
+
+
+class TestQtBackendPlaybackStateTranslation:
+    """TD-008B correction: playbackStateChanged maps to backend-neutral status.
+
+    No hardware involved: signals are emitted directly on the adapter's player.
+    """
+
+    def test_loaded_media_emits_acceptance_not_playback_state(self, qapp):
+        b = QtMultimediaBackend()
+        accepted = []
+        states = []
+        b.subscribe_media_accepted(lambda p: accepted.append(p))
+        b.subscribe_playback_state_changed(lambda s: states.append(s))
+        b.load(Path("/tmp/song.mp3"))
+        b._player.mediaStatusChanged.emit(QMediaPlayer.LoadedMedia)
+        assert accepted == [Path("/tmp/song.mp3")]
+        assert states == []
+
+    def test_invalid_media_emits_rejection_not_playback_state(self, qapp):
+        b = QtMultimediaBackend()
+        rejected = []
+        states = []
+        b.subscribe_media_rejected(lambda p, m: rejected.append(m))
+        b.subscribe_playback_state_changed(lambda s: states.append(s))
+        b.load(Path("/tmp/broken.mp3"))
+        b._player.mediaStatusChanged.emit(QMediaPlayer.InvalidMedia)
+        assert rejected == ["invalid media"]
+        assert states == []
+
+    def test_error_occurred_emits_rejection_not_playback_state(self, qapp):
+        b = QtMultimediaBackend()
+        rejected = []
+        states = []
+        b.subscribe_media_rejected(lambda p, m: rejected.append(m))
+        b.subscribe_playback_state_changed(lambda s: states.append(s))
+        b.load(Path("/tmp/broken.mp3"))
+        b._player.errorOccurred.emit(QMediaPlayer.ResourceError, "cannot decode")
+        assert rejected == ["cannot decode"]
+        assert states == []
+
+    def test_playing_state_emits_playing(self, qapp):
+        b = QtMultimediaBackend()
+        states = []
+        b.subscribe_playback_state_changed(lambda s: states.append(s))
+        b._player.playbackStateChanged.emit(QMediaPlayer.PlaybackState.PlayingState)
+        assert states == [PlaybackStatus.PLAYING]
+
+    def test_paused_state_emits_paused(self, qapp):
+        b = QtMultimediaBackend()
+        states = []
+        b.subscribe_playback_state_changed(lambda s: states.append(s))
+        b._player.playbackStateChanged.emit(QMediaPlayer.PlaybackState.PausedState)
+        assert states == [PlaybackStatus.PAUSED]
+
+    def test_stopped_state_emits_stopped(self, qapp):
+        b = QtMultimediaBackend()
+        states = []
+        b.subscribe_playback_state_changed(lambda s: states.append(s))
+        b._player.playbackStateChanged.emit(QMediaPlayer.PlaybackState.StoppedState)
+        assert states == [PlaybackStatus.STOPPED]
+
+    def test_playback_state_duplicate_subscribe(self, qapp):
+        b = QtMultimediaBackend()
+        calls = []
+
+        def cb(status):
+            calls.append(status)
+
+        b.subscribe_playback_state_changed(cb)
+        b.subscribe_playback_state_changed(cb)
+        assert len(b._pstate) == 1

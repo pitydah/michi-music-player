@@ -15,6 +15,22 @@ class PlaybackService:
     acceptance (`subscribe_media_accepted`); it is dropped when the backend
     reports rejection. Until then the service owns the pending candidate
     locally and PlaybackState reflects the last committed track as STOPPED.
+
+    Acceptance commits track identity only — never PLAYING. LoadedMedia means
+    the media is loaded while the player is in the StoppedState; actual
+    playback state follows the backend `playbackStateChanged` signal, which
+    this service self-subscribes to and maps truthfully (PlayingState →
+    PLAYING, PausedState → PAUSED, StoppedState → STOPPED, idempotently).
+
+    Two minimal guards keep stale lifecycle events honest:
+    - `_intent`: True after a successful request (also armed by play()/
+      resume()), set False by `stop()` and rejection. PLAYING state events
+      are applied only while intent holds, so a late PlayingState cannot
+      resurrect playback after stop/rejection.
+    - `_accepted`: True only once the current candidate has been accepted,
+      reset on each new request and on rejection. PLAYING is never published
+      for a track whose identity was not committed — stale PlayingState
+      events from superseded candidates are ignored.
     """
 
     def __init__(self, audio_port: AudioPort) -> None:
@@ -23,8 +39,11 @@ class PlaybackService:
         self._subscribers: list[Callable[[], None]] = []
         self._pending_path: Path | None = None
         self._pending_on_accepted: Callable[[Path], None] | None = None
+        self._intent = False
+        self._accepted = False
         self._audio.subscribe_media_accepted(self._on_media_accepted)
         self._audio.subscribe_media_rejected(self._on_media_rejected)
+        self._audio.subscribe_playback_state_changed(self._on_playback_state_changed)
 
     @property
     def state(self) -> PlaybackState:
@@ -73,6 +92,8 @@ class PlaybackService:
             self._pending_path = None
             self._pending_on_accepted = None
             raise
+        self._intent = True
+        self._accepted = False
         self._state.status = PlaybackStatus.STOPPED
         self._state.error_message = None
         self._notify()
@@ -84,8 +105,8 @@ class PlaybackService:
         self._pending_path = None
         self._pending_on_accepted = None
         self._state.file_path = file_path
-        self._state.status = PlaybackStatus.PLAYING
         self._state.error_message = None
+        self._accepted = True
         self._notify()
         if on_accepted is not None:
             on_accepted(file_path)
@@ -94,17 +115,37 @@ class PlaybackService:
         if self._pending_path is not None and file_path == self._pending_path:
             self._pending_path = None
             self._pending_on_accepted = None
+            self._intent = False
+            self._accepted = False
             self._state.status = PlaybackStatus.STOPPED
             self._state.error_message = message
             self._notify()
-        elif self._state.file_path is not None and file_path == self._state.file_path:
+        elif (
+            self._state.file_path is not None
+            and file_path == self._state.file_path
+            and (
+                self._state.status != PlaybackStatus.STOPPED
+                or self._state.error_message != message
+            )
+        ):
+            self._intent = False
+            self._accepted = False
             self._state.status = PlaybackStatus.STOPPED
             self._state.error_message = message
             self._notify()
-        # Anything else is a stale or unknown callback: ignored.
+        # Anything else is a stale, unknown, or duplicate callback: ignored.
+
+    def _on_playback_state_changed(self, status: PlaybackStatus) -> None:
+        if status == PlaybackStatus.PLAYING and not (self._intent and self._accepted):
+            return
+        if self._state.status == status:
+            return
+        self._state.status = status
+        self._notify()
 
     def play(self) -> None:
         self._audio.play()
+        self._intent = True
         self._state.status = PlaybackStatus.PLAYING
         self._notify()
 
@@ -115,12 +156,14 @@ class PlaybackService:
 
     def resume(self) -> None:
         self._audio.resume()
+        self._intent = True
         self._state.status = PlaybackStatus.PLAYING
         self._notify()
 
     def stop(self) -> None:
         self._pending_path = None
         self._pending_on_accepted = None
+        self._intent = False
         self._audio.stop()
         self._state.status = PlaybackStatus.STOPPED
         self._state.position_ms = 0

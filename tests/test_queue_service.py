@@ -275,7 +275,7 @@ class TestAsyncAcceptance:
         fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
         assert queue_service.state.current_index == 1
         assert playback_service.state.file_path == Path("/tmp/b.mp3")
-        assert playback_service.state.status == PlaybackStatus.PLAYING
+        assert playback_service.state.status != PlaybackStatus.PLAYING
         assert len(q_calls) == 1
         assert len(p_calls) == 2
 
@@ -301,7 +301,7 @@ class TestAsyncAcceptance:
         assert playback_service.state.error_message is None
         fake_audio.trigger_media_accepted(Path("/tmp/c.mp3"))
         assert queue_service.state.current_index == 2
-        assert playback_service.state.status == PlaybackStatus.PLAYING
+        assert playback_service.state.status != PlaybackStatus.PLAYING
         assert playback_service.state.error_message is None
 
     def test_duplicate_acceptance_commits_once(self, queue_service, fake_audio):
@@ -347,3 +347,57 @@ class TestAsyncAcceptance:
         assert queue_service.state.current_index == 0  # remove() semantics
         # Playback stays honest: C was genuinely accepted as the current media.
         assert playback_service.state.file_path == Path("/tmp/c.mp3")
+
+
+class TestTruthfulPlaybackStatusInQueue:
+    """TD-008B correction: acceptance commits queue/identity, never PLAYING."""
+
+    def _commit_a(self, queue_service, fake_audio):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.add(Path("/tmp/c.mp3"))
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+
+    def test_reject_before_playing_queue_stays_on_a(
+        self, queue_service, playback_service, fake_audio
+    ):
+        self._commit_a(queue_service, fake_audio)
+        queue_service.next()
+        fake_audio.trigger_media_rejected(Path("/tmp/b.mp3"), "invalid media")
+        assert queue_service.state.current_index == 0
+        assert playback_service.state.file_path == Path("/tmp/a.mp3")
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        assert playback_service.state.status != PlaybackStatus.PLAYING
+        assert playback_service.state.error_message == "invalid media"
+
+    def test_runtime_rejection_after_acceptance_keeps_commit_no_duplicate_notify(
+        self, queue_service, playback_service, fake_audio
+    ):
+        self._commit_a(queue_service, fake_audio)
+        queue_service.next()
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert queue_service.state.current_index == 1
+        calls = []
+        playback_service.subscribe_changed(lambda: calls.append(1))
+        # errorOccurred + InvalidMedia for the same source fire twice:
+        fake_audio.trigger_media_rejected(Path("/tmp/b.mp3"), "decode failed")
+        fake_audio.trigger_media_rejected(Path("/tmp/b.mp3"), "decode failed")
+        assert queue_service.state.current_index == 1  # B stays committed
+        assert playback_service.state.file_path == Path("/tmp/b.mp3")
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        assert playback_service.state.error_message == "decode failed"
+        assert len(calls) == 1  # no duplicate notify
+
+    def test_auto_advance_accepts_b_not_playing_until_playing_state(
+        self, queue_service, playback_service, fake_audio
+    ):
+        self._commit_a(queue_service, fake_audio)
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        queue_service.next()  # A ends → requests B
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert queue_service.state.current_index == 1
+        assert playback_service.state.file_path == Path("/tmp/b.mp3")
+        assert playback_service.state.status != PlaybackStatus.PLAYING
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        assert playback_service.state.status == PlaybackStatus.PLAYING

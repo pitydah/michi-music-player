@@ -8,8 +8,15 @@ from PySide6.QtCore import QUrl
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 
 from michi.application.ports import AudioPort
+from michi.domain.playback import PlaybackStatus
 
 logger = logging.getLogger(__name__)
+
+_PLAYBACK_STATE_TO_STATUS = {
+    QMediaPlayer.PlaybackState.PlayingState: PlaybackStatus.PLAYING,
+    QMediaPlayer.PlaybackState.PausedState: PlaybackStatus.PAUSED,
+    QMediaPlayer.PlaybackState.StoppedState: PlaybackStatus.STOPPED,
+}
 
 
 class QtMultimediaBackend(AudioPort):
@@ -25,8 +32,10 @@ class QtMultimediaBackend(AudioPort):
         self._dur: list[Callable[[int], None]] = []
         self._acc: list[Callable[[Path], None]] = []
         self._rej: list[Callable[[Path, str], None]] = []
+        self._pstate: list[Callable[[PlaybackStatus], None]] = []
         self._current_source: Path | None = None
         self._media_status_connected = False
+        self._playback_state_connected = False
 
     def load(self, file_path: Path) -> None:
         self._current_source = file_path
@@ -136,6 +145,48 @@ class QtMultimediaBackend(AudioPort):
             return
         for cb in list(self._rej):
             cb(self._current_source, error_string)
+
+    # ── playback state (idempotent) ───────────────────────────────
+    #
+    # playbackStateChanged carries no source identity: state events apply
+    # to the player's current source. Qt forces StoppedState on setSource
+    # and delivers signals from one player serially, so LoadedMedia
+    # (which implies StoppedState per the Qt docs) precedes PlayingState.
+
+    def _ensure_playback_state_wired(self) -> None:
+        if not self._playback_state_connected and self._pstate:
+            self._player.playbackStateChanged.connect(self._on_playback_state_changed)
+            self._playback_state_connected = True
+
+    def _ensure_playback_state_unwired(self) -> None:
+        if self._playback_state_connected and not self._pstate:
+            self._player.playbackStateChanged.disconnect(
+                self._on_playback_state_changed
+            )
+            self._playback_state_connected = False
+
+    def _on_playback_state_changed(self, state: QMediaPlayer.PlaybackState) -> None:
+        status = _PLAYBACK_STATE_TO_STATUS.get(state)
+        if status is None:
+            return
+        for cb in list(self._pstate):
+            cb(status)
+
+    def subscribe_playback_state_changed(
+        self, cb: Callable[[PlaybackStatus], None]
+    ) -> None:
+        if cb in self._pstate:
+            return
+        self._pstate.append(cb)
+        self._ensure_playback_state_wired()
+
+    def unsubscribe_playback_state_changed(
+        self, cb: Callable[[PlaybackStatus], None]
+    ) -> None:
+        if cb not in self._pstate:
+            return
+        self._pstate.remove(cb)
+        self._ensure_playback_state_unwired()
 
     # ── position (idempotent) ────────────────────────────────────
 

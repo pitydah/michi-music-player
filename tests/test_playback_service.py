@@ -26,8 +26,10 @@ class TestPlaybackService:
         assert playback_service.state.status == PlaybackStatus.STOPPED
         assert playback_service.state.file_path is None
         fake_audio.trigger_media_accepted(path)
-        assert playback_service.state.status == PlaybackStatus.PLAYING
+        assert playback_service.state.status != PlaybackStatus.PLAYING
         assert playback_service.state.file_path == path
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        assert playback_service.state.status == PlaybackStatus.PLAYING
 
     def test_acceptance_commits_state_exactly_once(self, playback_service, fake_audio):
         calls = []
@@ -44,7 +46,7 @@ class TestPlaybackService:
         fake_audio.trigger_media_accepted(path)  # duplicate signal
         assert len(calls) == 2  # no duplicate commit
         assert playback_service.state.file_path == path
-        assert playback_service.state.status == PlaybackStatus.PLAYING
+        assert playback_service.state.status != PlaybackStatus.PLAYING
 
     def test_rejection_keeps_last_committed_file_and_sets_error(
         self, playback_service, fake_audio
@@ -66,7 +68,7 @@ class TestPlaybackService:
         assert playback_service.state.file_path is None
         # Pending candidate survives an unrelated acceptance.
         fake_audio.trigger_media_accepted(b)
-        assert playback_service.state.status == PlaybackStatus.PLAYING
+        assert playback_service.state.status != PlaybackStatus.PLAYING
         assert playback_service.state.file_path == b
 
     def test_unknown_rejection_ignored(self, playback_service, fake_audio):
@@ -114,7 +116,7 @@ class TestPlaybackService:
         # Pending was cleared: a late acceptance must not resurrect the candidate.
         fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
         assert playback_service.state.file_path == a
-        assert playback_service.state.status == PlaybackStatus.PLAYING
+        assert playback_service.state.status != PlaybackStatus.PLAYING
 
     def test_pause_resume(self, playback_service, fake_audio):
         playback_service.load_and_play(Path("/tmp/test.mp3"))
@@ -172,5 +174,98 @@ class TestPlaybackService:
         assert playback_service.state.status == PlaybackStatus.STOPPED
         assert playback_service.state.file_path == first
         fake_audio.trigger_media_accepted(second)
-        assert playback_service.state.status == PlaybackStatus.PLAYING
+        assert playback_service.state.status == PlaybackStatus.STOPPED
         assert playback_service.state.file_path == second
+
+
+class TestTruthfulPlaybackStatus:
+    """TD-008B correction: LoadedMedia is acceptance, not playback start.
+
+    PlaybackStatus.PLAYING/PAUSED/STOPPED must follow the backend
+    playbackStateChanged signal; acceptance only commits track identity.
+    """
+
+    def test_accepted_is_not_playing(self, playback_service, fake_audio):
+        b = Path("/tmp/b.mp3")
+        playback_service.load_and_play(b)
+        fake_audio.trigger_media_accepted(b)
+        assert playback_service.state.file_path == b
+        assert playback_service.state.status != PlaybackStatus.PLAYING
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+    def test_playing_state_commits_playing(self, playback_service, fake_audio):
+        b = Path("/tmp/b.mp3")
+        playback_service.load_and_play(b)
+        fake_audio.trigger_media_accepted(b)
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        assert playback_service.state.status == PlaybackStatus.PLAYING
+
+    def test_no_playing_before_playing_state(self, playback_service, fake_audio):
+        b = Path("/tmp/b.mp3")
+        playback_service.load_and_play(b)
+        assert playback_service.state.status != PlaybackStatus.PLAYING
+        fake_audio.trigger_media_accepted(b)
+        assert playback_service.state.status != PlaybackStatus.PLAYING
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        assert playback_service.state.status == PlaybackStatus.PLAYING
+
+    def test_paused_state_after_actually_playing(self, playback_service, fake_audio):
+        b = Path("/tmp/b.mp3")
+        playback_service.load_and_play(b)
+        fake_audio.trigger_media_accepted(b)
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        fake_audio.trigger_playback_state(PlaybackStatus.PAUSED)
+        assert playback_service.state.status == PlaybackStatus.PAUSED
+
+    def test_stopped_state(self, playback_service, fake_audio):
+        b = Path("/tmp/b.mp3")
+        playback_service.load_and_play(b)
+        fake_audio.trigger_media_accepted(b)
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        fake_audio.trigger_playback_state(PlaybackStatus.STOPPED)
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+    def test_stop_blocks_late_playing_state(self, playback_service, fake_audio):
+        b = Path("/tmp/b.mp3")
+        playback_service.load_and_play(b)
+        fake_audio.trigger_media_accepted(b)
+        playback_service.stop()
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+    def test_superseded_stale_lifecycle_ignored(self, playback_service, fake_audio):
+        a = Path("/tmp/a.mp3")
+        b = Path("/tmp/b.mp3")
+        c = Path("/tmp/c.mp3")
+        playback_service.load_and_play(a)
+        fake_audio.trigger_media_accepted(a)
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        playback_service.load_and_play(b)
+        playback_service.load_and_play(c)  # C supersedes B
+        fake_audio.trigger_media_accepted(b)  # stale acceptance: ignored
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)  # stale B playing
+        assert playback_service.state.file_path != b
+        assert playback_service.state.status != PlaybackStatus.PLAYING
+        fake_audio.trigger_media_accepted(c)
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        assert playback_service.state.file_path == c
+        assert playback_service.state.status == PlaybackStatus.PLAYING
+
+    def test_runtime_rejection_after_acceptance_no_duplicate_notify(
+        self, playback_service, fake_audio
+    ):
+        a = Path("/tmp/a.mp3")
+        b = Path("/tmp/b.mp3")
+        playback_service.load_and_play(a)
+        fake_audio.trigger_media_accepted(a)
+        playback_service.load_and_play(b)
+        fake_audio.trigger_media_accepted(b)
+        calls = []
+        playback_service.subscribe_changed(lambda: calls.append(1))
+        # errorOccurred + InvalidMedia for the same source fire twice:
+        fake_audio.trigger_media_rejected(b, "decode failed")
+        fake_audio.trigger_media_rejected(b, "decode failed")
+        assert playback_service.state.file_path == b
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        assert playback_service.state.error_message == "decode failed"
+        assert len(calls) == 1  # no duplicate notify

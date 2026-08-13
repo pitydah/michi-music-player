@@ -23,6 +23,7 @@ class FakeAudioPort:
         self._dur: list = []
         self._acc: list = []
         self._rej: list = []
+        self._pstate: list = []
 
     def load(self, p):
         self.loaded = p
@@ -97,6 +98,14 @@ class FakeAudioPort:
         if cb in self._rej:
             self._rej.remove(cb)
 
+    def subscribe_playback_state_changed(self, cb):
+        if cb not in self._pstate:
+            self._pstate.append(cb)
+
+    def unsubscribe_playback_state_changed(self, cb):
+        if cb in self._pstate:
+            self._pstate.remove(cb)
+
     def trigger_end_of_media(self):
         for cb in list(self._eom):
             cb()
@@ -110,12 +119,18 @@ class FakeAudioPort:
             cb(dur_ms)
 
     def trigger_media_accepted(self, path):
+        # Acceptance only: never implies playing state (play() is a separate
+        # command observation; playback state is a separate event channel).
         for cb in list(self._acc):
             cb(path)
 
     def trigger_media_rejected(self, path, msg):
         for cb in list(self._rej):
             cb(path, msg)
+
+    def trigger_playback_state(self, status):
+        for cb in list(self._pstate):
+            cb(status)
 
 
 @pytest.fixture

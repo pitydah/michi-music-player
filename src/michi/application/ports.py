@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from pathlib import Path
 
+from michi.domain.playback import PlaybackStatus
+
 
 class AudioPort(ABC):
     """Abstract audio backend. Infrastructure implements this."""
@@ -70,4 +72,14 @@ class AudioPort(ABC):
     @abstractmethod
     def unsubscribe_media_rejected(
         self, callback: Callable[[Path, str], None]
+    ) -> None: ...
+
+    @abstractmethod
+    def subscribe_playback_state_changed(
+        self, callback: Callable[[PlaybackStatus], None]
+    ) -> None: ...
+
+    @abstractmethod
+    def unsubscribe_playback_state_changed(
+        self, callback: Callable[[PlaybackStatus], None]
     ) -> None: ...
