@@ -514,3 +514,86 @@ class TestCommandIntentAndLifecycleGuard:
         fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
         assert len(calls) == 3
         assert playback_service.state.status == PlaybackStatus.PLAYING
+
+
+class TestRejectionCallback:
+    """TD-015: async rejection notifies exactly once via an optional callback.
+
+    The callback is captured and cleared before invocation; acceptance never
+    invokes it; sync failures, stop(), and supersession clear it silently.
+    """
+
+    def test_rejection_invokes_callback_exactly_once(
+        self, playback_service, fake_audio
+    ):
+        b = Path("/tmp/b.mp3")
+        rejected = []
+        playback_service.load_and_play(
+            b, on_rejected=lambda p, m: rejected.append((p, m))
+        )
+        fake_audio.trigger_media_rejected(b, "bad media")
+        fake_audio.trigger_media_rejected(b, "bad media")  # duplicate signal
+        assert rejected == [(b, "bad media")]
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        assert playback_service.state.error_message == "bad media"
+
+    def test_acceptance_does_not_invoke_rejection_callback(
+        self, playback_service, fake_audio
+    ):
+        b = Path("/tmp/b.mp3")
+        accepted = []
+        rejected = []
+        playback_service.load_and_play(
+            b,
+            on_accepted=lambda p: accepted.append(p),
+            on_rejected=lambda p, m: rejected.append(m),
+        )
+        fake_audio.trigger_media_accepted(b)
+        fake_audio.trigger_media_accepted(b)  # duplicate: nothing further
+        assert accepted == [b]
+        assert rejected == []
+
+    def test_sync_failure_clears_rejection_callback_without_invoking(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        b = Path("/tmp/b.mp3")
+        rejected = []
+
+        def failing_load(p):
+            raise RuntimeError("load failed")
+
+        monkeypatch.setattr(fake_audio, "load", failing_load)
+        with pytest.raises(RuntimeError, match="load failed"):
+            playback_service.load_and_play(
+                b, on_rejected=lambda p, m: rejected.append(m)
+            )
+        assert rejected == []
+        # Slot cleared: a late rejection must not invoke it.
+        fake_audio.trigger_media_rejected(b, "late")
+        assert rejected == []
+
+    def test_stop_clears_rejection_callback_without_invoking(
+        self, playback_service, fake_audio
+    ):
+        b = Path("/tmp/b.mp3")
+        rejected = []
+        playback_service.load_and_play(b, on_rejected=lambda p, m: rejected.append(m))
+        playback_service.stop()
+        fake_audio.trigger_media_rejected(b, "late")
+        assert rejected == []
+
+    def test_superseded_candidate_rejection_invokes_no_stale_callback(
+        self, playback_service, fake_audio
+    ):
+        b = Path("/tmp/b.mp3")
+        c = Path("/tmp/c.mp3")
+        rejected_b = []
+        rejected_c = []
+        playback_service.load_and_play(b, on_rejected=lambda p, m: rejected_b.append(m))
+        playback_service.load_and_play(c, on_rejected=lambda p, m: rejected_c.append(m))
+        fake_audio.trigger_media_rejected(b, "stale")  # B superseded
+        assert rejected_b == []
+        assert rejected_c == []
+        fake_audio.trigger_media_rejected(c, "real")
+        assert rejected_b == []
+        assert rejected_c == ["real"]

@@ -45,6 +45,7 @@ class PlaybackService:
         self._subscribers: list[Callable[[], None]] = []
         self._pending_path: Path | None = None
         self._pending_on_accepted: Callable[[Path], None] | None = None
+        self._pending_on_rejected: Callable[[Path, str], None] | None = None
         self._intent = False
         self._accepted = False
         self._audio.subscribe_media_accepted(self._on_media_accepted)
@@ -79,21 +80,27 @@ class PlaybackService:
         self._notify()
 
     def load_and_play(
-        self, file_path: Path, on_accepted: Callable[[Path], None] | None = None
+        self,
+        file_path: Path,
+        on_accepted: Callable[[Path], None] | None = None,
+        on_rejected: Callable[[Path, str], None] | None = None,
     ) -> None:
         """Request playback of a candidate. Commits nothing synchronously.
 
         The candidate becomes canonical only when the backend reports media
         acceptance for its path; `on_accepted` is then invoked exactly once
-        with the accepted path. A new request supersedes the previous pending
-        candidate; `stop()` invalidates it. Synchronous backend failures
-        propagate, leave no pending candidate behind, and restore the
-        previous intent/acceptance flags.
+        with the accepted path. Rejection drops the candidate and invokes
+        `on_rejected` exactly once with the rejected path and message. A new
+        request supersedes the previous pending candidate; `stop()`
+        invalidates it. Synchronous backend failures propagate, leave no
+        pending candidate behind, and restore the previous intent/acceptance
+        flags.
         """
         previous_intent = self._intent
         previous_accepted = self._accepted
         self._pending_path = file_path
         self._pending_on_accepted = on_accepted
+        self._pending_on_rejected = on_rejected
         self._accepted = False
         self._intent = True
         try:
@@ -102,6 +109,7 @@ class PlaybackService:
         except Exception:
             self._pending_path = None
             self._pending_on_accepted = None
+            self._pending_on_rejected = None
             self._intent = previous_intent
             self._accepted = previous_accepted
             raise
@@ -115,6 +123,7 @@ class PlaybackService:
         on_accepted = self._pending_on_accepted
         self._pending_path = None
         self._pending_on_accepted = None
+        self._pending_on_rejected = None
         self._state.file_path = file_path
         self._state.error_message = None
         self._accepted = True
@@ -124,13 +133,17 @@ class PlaybackService:
 
     def _on_media_rejected(self, file_path: Path, message: str) -> None:
         if self._pending_path is not None and file_path == self._pending_path:
+            on_rejected = self._pending_on_rejected
             self._pending_path = None
             self._pending_on_accepted = None
+            self._pending_on_rejected = None
             self._intent = False
             self._accepted = False
             self._state.status = PlaybackStatus.STOPPED
             self._state.error_message = message
             self._notify()
+            if on_rejected is not None:
+                on_rejected(file_path, message)
         elif (
             self._state.file_path is not None
             and file_path == self._state.file_path
@@ -180,6 +193,7 @@ class PlaybackService:
     def stop(self) -> None:
         self._pending_path = None
         self._pending_on_accepted = None
+        self._pending_on_rejected = None
         self._intent = False
         self._audio.stop()
         self._state.status = PlaybackStatus.STOPPED

@@ -481,7 +481,7 @@ class TestPendingTrackIdentity:
         queue_service.add(Path("/tmp/c.mp3"))
         callbacks = []
 
-        def recording_load_and_play(path, on_accepted=None):
+        def recording_load_and_play(path, on_accepted=None, on_rejected=None):
             callbacks.append((path, on_accepted))
 
         monkeypatch.setattr(playback_service, "load_and_play", recording_load_and_play)
@@ -502,7 +502,7 @@ class TestPendingTrackIdentity:
         queue_service.add(Path("/tmp/b.mp3"))
         callbacks = []
 
-        def recording_load_and_play(path, on_accepted=None):
+        def recording_load_and_play(path, on_accepted=None, on_rejected=None):
             callbacks.append((path, on_accepted))
 
         monkeypatch.setattr(playback_service, "load_and_play", recording_load_and_play)
@@ -538,3 +538,87 @@ class TestPendingTrackIdentity:
         assert queue_service.state.current_index == 0
         assert queue_service.state.current_track is a_track
         assert playback_service.state.file_path == Path("/tmp/a.mp3")
+
+
+class TestRejectedRequestIsTerminal:
+    """TD-015: a rejected pending request is terminal — removing its track
+    must not trigger a spurious playback stop."""
+
+    def _commit_a(self, queue_service, fake_audio):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+
+    def test_remove_after_rejection_does_not_stop_playback(
+        self, queue_service, playback_service, fake_audio, monkeypatch
+    ):
+        self._commit_a(queue_service, fake_audio)
+        queue_service.play_index(1)  # B pending
+        fake_audio.trigger_media_rejected(Path("/tmp/b.mp3"), "rejected")
+        playback_service.update_position(30000)
+        stop_calls = []
+        real_stop = playback_service.stop
+
+        def spy_stop():
+            stop_calls.append(1)
+            real_stop()
+
+        monkeypatch.setattr(playback_service, "stop", spy_stop)
+        queue_service.remove(1)
+        assert stop_calls == []  # request already terminal: no spurious stop
+        assert queue_service.state.current_index == 0
+        assert queue_service.state.current_track.file_path == Path("/tmp/a.mp3")
+        assert playback_service.state.file_path == Path("/tmp/a.mp3")
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        assert playback_service.state.error_message == "rejected"
+        assert playback_service.state.position_ms == 30000  # no second-stop reset
+
+    def test_rejected_request_can_be_retried(self, queue_service, fake_audio):
+        self._commit_a(queue_service, fake_audio)
+        queue_service.play_index(1)
+        fake_audio.trigger_media_rejected(Path("/tmp/b.mp3"), "bad")
+        assert queue_service.state.current_index == 0
+        queue_service.play_index(1)  # retry the same index
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert queue_service.state.current_index == 1
+        assert queue_service.state.current_track.file_path == Path("/tmp/b.mp3")
+
+    def test_superseded_rejection_does_not_clear_latest_pending(
+        self, queue_service, fake_audio
+    ):
+        self._commit_a(queue_service, fake_audio)
+        queue_service.add(Path("/tmp/c.mp3"))
+        queue_service.play_index(1)  # B pending
+        queue_service.play_index(2)  # C supersedes B
+        fake_audio.trigger_media_rejected(Path("/tmp/b.mp3"), "stale")
+        assert queue_service.state.current_index == 0  # nothing cleared
+        fake_audio.trigger_media_accepted(Path("/tmp/c.mp3"))
+        assert queue_service.state.current_index == 2
+        assert queue_service.state.current_track.file_path == Path("/tmp/c.mp3")
+
+    def test_runtime_rejection_after_acceptance_does_not_roll_back_queue(
+        self, queue_service, playback_service, fake_audio
+    ):
+        self._commit_a(queue_service, fake_audio)
+        queue_service.play_index(1)
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert queue_service.state.current_index == 1
+        fake_audio.trigger_media_rejected(Path("/tmp/b.mp3"), "decode failed")
+        assert queue_service.state.current_index == 1
+        assert queue_service.state.current_track.file_path == Path("/tmp/b.mp3")
+        assert playback_service.state.file_path == Path("/tmp/b.mp3")
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        assert playback_service.state.error_message == "decode failed"
+
+    def test_stop_then_late_rejection_leaves_queue_untouched(
+        self, queue_service, playback_service, fake_audio
+    ):
+        self._commit_a(queue_service, fake_audio)
+        queue_service.play_index(1)  # B pending
+        playback_service.stop()
+        fake_audio.trigger_media_rejected(Path("/tmp/b.mp3"), "late")
+        assert queue_service.state.current_index == 0
+        assert queue_service.state.current_track.file_path == Path("/tmp/a.mp3")
+        assert playback_service.state.file_path == Path("/tmp/a.mp3")
+        assert playback_service.state.error_message is None

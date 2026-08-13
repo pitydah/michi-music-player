@@ -69,6 +69,9 @@ class QueueService:
                     on_accepted=lambda path, track=track: self._commit_pending(
                         track, path
                     ),
+                    on_rejected=lambda path, message, track=track: self._reject_pending(
+                        track, path, message
+                    ),
                 )
             except Exception:
                 if self._pending_track is track:
@@ -89,6 +92,16 @@ class QueueService:
                 self._state.current_index = current_idx
                 self._notify()
                 return
+        self._pending_track = None
+
+    def _reject_pending(self, track: Track, path: Path, message: str) -> None:
+        """Rejection point: drop the pending candidate if it is still the
+        pending request. The request is already terminal at the playback
+        layer — nothing else may mutate or notify."""
+        if self._pending_track is not track:
+            return
+        if track.file_path != path:
+            return
         self._pending_track = None
 
     def next(self) -> None:
