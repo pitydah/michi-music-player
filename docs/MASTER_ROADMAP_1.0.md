@@ -40,34 +40,33 @@ Phases M0–M16 remain the roadmap skeleton. M0 (governance foundation) through 
 
 Evidence-based; states per `docs/STATUS_MATRIX.md`.
 
-| Component                    | Status     | Implemented                                                                                                                         | Gap                                                                                           |
-| ---------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| M1 Bootstrap                 | TESTED     | ApplicationContainer composition root, explicit wiring, best-effort shutdown (first-error-wins), pytest + Ruff + build in CI        | —                                                                                             |
-| M2 Minimal Playback          | TESTED     | Single-file play/stop via `QtMultimediaBackend` behind `AudioPort`                                                                  | —                                                                                             |
-| M3 Complete Playback         | TESTED     | Play/pause/resume/stop, seek, volume, mute, position/duration events                                                                | No Required-1.0 gap; gapless/crossfade Post-1.0; metadata owned by M6                                 |
-| M4 Queue                     | PARTIAL    | Add/remove/clear, play_index, next/previous, auto-advance                                                                           | Shuffle, repeat absent (Required 1.0); reorder Post-1.0                                            |
+| Component                    | Status     | Implemented                                                                                                                         | Gap                                                                                               |
+| ---------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| M1 Bootstrap                 | TESTED     | ApplicationContainer composition root, explicit wiring, best-effort shutdown (first-error-wins), pytest + Ruff + build in CI        | —                                                                                                 |
+| M2 Minimal Playback          | TESTED     | Single-file play/stop via `QtMultimediaBackend` behind `AudioPort`                                                                  | —                                                                                                 |
+| M3 Complete Playback         | TESTED     | Play/pause/resume/stop, seek, volume, mute, position/duration events                                                                | No Required-1.0 gap; gapless/crossfade Post-1.0; metadata owned by M6                             |
+| M4 Queue                     | PARTIAL    | Add/remove/clear, play_index, next/previous, auto-advance                                                                           | Shuffle, repeat absent (Required 1.0); reorder Post-1.0                                           |
 | M5 Database/Settings         | TESTED     | Settings persistence (SQLite, WAL) through `SettingsRepository`/`SQLiteSettingsRepository`; restart gate                            | No Required-1.0 gap; corruption recovery tracked under M11.2; queue/position persistence Post-1.0 |
-| M6 Library                   | PARTIAL    | Recursive scan with extension filter; substring filter                                                                              | Metadata extraction absent (Required 1.0, owned by M6); library index DB Post-1.0                  |
-| M7 Search                    | FUNCTIONAL | Substring search filter over library                                                                                                | FTS / indexed search Post-1.0 (not a blocker)                                                       |
-| M8 Navigation                | TESTED     | AppRoute navigation across now_playing/library/queue/settings                                                                       | —                                                                                             |
-| M9 UI Foundation             | TESTED     | MichiTheme tokens; MichiButton/MichiPanel/MichiSlider/MichiTextField; AppShell/Sidebar/ContentHost; views                           | —                                                                                             |
-| M10 Settings                 | TESTED     | SettingsService sole owner; volume/muted/last_directory/recent_files persisted; restart gate                                        | —                                                                                             |
-| M11.1 Failure Contracts      | TESTED     | Runtime failure contracts; no silent exceptions                                                                                     | —                                                                                             |
-| M11.2A Persistence Detection | TESTED     | Read-only `inspect_path`; taxonomy MISSING/HEALTHY/CORRUPT_DATABASE/MALFORMED_DATA/LOCKED/ACCESS_FAILURE/IO_FAILURE/UNKNOWN_FAILURE | —                                                                                             |
-| M11.2B/C/D/E Recovery        | UNKNOWN    | —                                                                                                                                   | Not yet audited; backup/recovery, repair, safe-path handling pending                          |
+| M6 Library                   | PARTIAL    | Recursive scan with extension filter; substring filter                                                                              | Metadata extraction absent (Required 1.0, owned by M6); library index DB Post-1.0                 |
+| M7 Search                    | FUNCTIONAL | Substring search filter over library                                                                                                | FTS / indexed search Post-1.0 (not a blocker)                                                     |
+| M8 Navigation                | TESTED     | AppRoute navigation across now_playing/library/queue/settings                                                                       | —                                                                                                 |
+| M9 UI Foundation             | TESTED     | MichiTheme tokens; MichiButton/MichiPanel/MichiSlider/MichiTextField; AppShell/Sidebar/ContentHost; views                           | —                                                                                                 |
+| M10 Settings                 | TESTED     | SettingsService sole owner; volume/muted/last_directory/recent_files persisted; restart gate                                        | —                                                                                                 |
+| M11.1 Failure Contracts      | TESTED     | Runtime failure contracts; no silent exceptions                                                                                     | —                                                                                                 |
+| M11.2A Persistence Detection | TESTED     | Read-only `inspect_path`; taxonomy MISSING/HEALTHY/CORRUPT_DATABASE/MALFORMED_DATA/LOCKED/ACCESS_FAILURE/IO_FAILURE/UNKNOWN_FAILURE | —                                                                                                 |
+| M11.2B/C/D/E Recovery        | UNKNOWN    | —                                                                                                                                   | Not yet audited; backup/recovery, repair, safe-path handling pending                              |
 
 ## Future Execution Order
 
 The next work proceeds in this order:
 
-1. **Queue↔Playback Atomicity** — `QueueService.play_index/next/previous` mutate `current_index` before `PlaybackService.load_and_play`; a playback failure can leave queue and playback divergent. Next technical work package. (TD-008, SIGNIFICANT)
-2. **M11.2B/C/D/E Recovery** — backup/recovery and repair for settings persistence on top of the M11.2A taxonomy.
-3. **Filesystem Degradation** — handling for library files disappearing at runtime (TD-013).
-4. **M12 Performance** — benchmark and tune scan/startup/memory; CI performance gate.
-5. **M13 Packaging** — Linux installable artifacts (AppImage/Flatpak/deb), icon suite, desktop integration, CLI entry points. Windows and macOS are Post-1.0 per the canonical contract.
-6. **M14 Beta** — beta channel, opt-in telemetry, feedback loop, triage SLA.
-7. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
-8. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
+1. **M11.2B/C/D/E Recovery** — backup/recovery and repair for settings persistence on top of the M11.2A taxonomy. (Queue↔Playback atomicity work — TD-008A/B and TD-015 — is RESOLVED; see TECHNICAL_DEBT_REGISTER.md.)
+2. **Filesystem Degradation** — handling for library files disappearing at runtime (TD-013).
+3. **M12 Performance** — benchmark and tune scan/startup/memory; CI performance gate.
+4. **M13 Packaging** — Linux installable artifacts (AppImage/Flatpak/deb), icon suite, desktop integration, CLI entry points. Windows and macOS are Post-1.0 per the canonical contract.
+5. **M14 Beta** — beta channel, opt-in telemetry, feedback loop, triage SLA.
+6. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
+7. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
 
 Required-for-1.0 gaps (shuffle, repeat, metadata extraction) are scheduled as work packages within this order before M12; they are part of the 1.0 contract and may not slip past M15.
 
