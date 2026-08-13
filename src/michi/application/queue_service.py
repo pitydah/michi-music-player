@@ -14,6 +14,7 @@ class QueueService:
         self._playback = playback_service
         self._state = QueueState()
         self._subscribers: list[Callable[[], None]] = []
+        self._pending_track: Track | None = None
 
     @property
     def state(self) -> QueueState:
@@ -37,6 +38,10 @@ class QueueService:
 
     def remove(self, index: int) -> None:
         if 0 <= index < len(self._state.tracks):
+            removed_track = self._state.tracks[index]
+            if removed_track is self._pending_track:
+                self._pending_track = None
+                self._playback.stop()
             del self._state.tracks[index]
             if index < self._state.current_index:
                 self._state.current_index -= 1
@@ -48,27 +53,43 @@ class QueueService:
 
     def clear(self) -> None:
         self._playback.stop()
+        self._pending_track = None
         self._state.tracks.clear()
         self._state.current_index = -1
         self._notify()
 
     def play_index(self, index: int) -> None:
-        """Request playback of a track. Commits the index only on acceptance."""
+        """Request playback of a track. Commits the track only on acceptance."""
         if 0 <= index < len(self._state.tracks):
             track = self._state.tracks[index]
-            self._playback.load_and_play(
-                track.file_path,
-                on_accepted=lambda path: self._commit(index, path),
-            )
+            self._pending_track = track
+            try:
+                self._playback.load_and_play(
+                    track.file_path,
+                    on_accepted=lambda path, track=track: self._commit_pending(
+                        track, path
+                    ),
+                )
+            except Exception:
+                if self._pending_track is track:
+                    self._pending_track = None
+                raise
 
-    def _commit(self, index: int, path: Path) -> None:
-        """Acceptance point: commit only if the track still sits at `index`."""
-        if (
-            0 <= index < len(self._state.tracks)
-            and self._state.tracks[index].file_path == path
-        ):
-            self._state.current_index = index
-            self._notify()
+    def _commit_pending(self, track: Track, path: Path) -> None:
+        """Acceptance point: commit only if `track` is still the pending
+        candidate, the backend-accepted path matches, and the same object
+        still exists in the queue."""
+        if self._pending_track is not track:
+            return
+        if track.file_path != path:
+            return
+        for current_idx, candidate in enumerate(self._state.tracks):
+            if candidate is track:
+                self._pending_track = None
+                self._state.current_index = current_idx
+                self._notify()
+                return
+        self._pending_track = None
 
     def next(self) -> None:
         self.play_index(self._state.current_index + 1)
