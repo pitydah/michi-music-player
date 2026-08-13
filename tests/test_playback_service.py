@@ -426,6 +426,82 @@ class TestCommandIntentAndLifecycleGuard:
         fake_audio.trigger_playback_state(PlaybackStatus.PAUSED)
         assert playback_service.state.status == PlaybackStatus.PAUSED
 
+    def test_play_failure_from_false_intent_blocks_late_playing(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        self._play_a(playback_service, fake_audio)
+        playback_service.stop()
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+        def failing_play():
+            raise RuntimeError("play failed")
+
+        monkeypatch.setattr(fake_audio, "play", failing_play)
+        with pytest.raises(RuntimeError, match="play failed"):
+            playback_service.play()
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+    def test_resume_failure_from_false_intent_blocks_late_playing(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        self._play_a(playback_service, fake_audio)
+        playback_service.stop()
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+        def failing_resume():
+            raise RuntimeError("resume failed")
+
+        monkeypatch.setattr(fake_audio, "resume", failing_resume)
+        with pytest.raises(RuntimeError, match="resume failed"):
+            playback_service.resume()
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+    def test_play_failure_from_false_intent_blocks_late_paused(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        self._play_a(playback_service, fake_audio)
+        playback_service.stop()
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+        def failing_play():
+            raise RuntimeError("play failed")
+
+        monkeypatch.setattr(fake_audio, "play", failing_play)
+        with pytest.raises(RuntimeError, match="play failed"):
+            playback_service.play()
+        fake_audio.trigger_playback_state(PlaybackStatus.PAUSED)
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+    def test_successful_play_still_arms_intent_for_reentrant_playing(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        self._play_a(playback_service, fake_audio)
+        playback_service.stop()
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+        def reentrant_play():
+            fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+
+        monkeypatch.setattr(fake_audio, "play", reentrant_play)
+        playback_service.play()
+        assert playback_service.state.status == PlaybackStatus.PLAYING
+
+    def test_successful_resume_still_arms_intent_for_reentrant_playing(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        self._play_a(playback_service, fake_audio)
+        playback_service.stop()
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+        def reentrant_resume():
+            fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+
+        monkeypatch.setattr(fake_audio, "resume", reentrant_resume)
+        playback_service.resume()
+        assert playback_service.state.status == PlaybackStatus.PLAYING
+
     def test_duplicate_lifecycle_events_notify_once(self, playback_service, fake_audio):
         self._play_a(playback_service, fake_audio)
         calls = []

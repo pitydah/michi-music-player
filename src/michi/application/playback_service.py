@@ -157,15 +157,25 @@ class PlaybackService:
         self._notify()
 
     def play(self) -> None:
+        previous_intent = self._intent
         self._intent = True
-        self._audio.play()
+        try:
+            self._audio.play()
+        except Exception:
+            self._intent = previous_intent
+            raise
 
     def pause(self) -> None:
         self._audio.pause()
 
     def resume(self) -> None:
+        previous_intent = self._intent
         self._intent = True
-        self._audio.resume()
+        try:
+            self._audio.resume()
+        except Exception:
+            self._intent = previous_intent
+            raise
 
     def stop(self) -> None:
         self._pending_path = None
