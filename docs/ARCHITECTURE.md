@@ -33,7 +33,7 @@ Python 3.11+, PySide6 (Qt 6, Qt Multimedia with FFmpeg backend), QML, SQLite (WA
 | `domain/`         | `PlaybackState` (+`PlaybackStatus`), `QueueState`, `LibraryState` (+`TrackRef`), `SettingsState`, `AppRoute`/`NavigationState`, `PersistenceHealth`/`PersistenceDiagnostic`                                                                                                                          | Python stdlib only                                       | Qt, I/O, application             |
 | `application/`    | Ports: `AudioPort`, `SettingsRepository`, `LibraryScannerPort`. Services: `PlaybackService`, `QueueService`, `LibraryService`, `NavigationService`, `SettingsService`. Coordinators: `PlaybackCoordinator`, `LibraryPreferencesCoordinator`                                                          | domain                                                   | Qt, infrastructure, presentation |
 | `infrastructure/` | `QtMultimediaBackend`, `FilesystemLibraryScanner`, `SQLiteSettingsRepository` (+ `inspect_path` health detection)                                                                                                                                                                                    | application (ports), domain, PySide6, SQLite, filesystem | presentation                     |
-| `presentation/`   | `PlaybackBridge`, `QueueBridge`, `LibraryBridge`, `NavigationBridge`, `SettingsBridge` (read-only); QML: `main.qml`, `qml/theme/` MichiTheme, `qml/ui/` MichiButton/MichiPanel/MichiSlider/MichiTextField, `qml/shell/` AppShell/Sidebar/ContentHost, `qml/views/` NowPlaying/Library/Queue/Settings | application (services), domain (observed state), PySide6      | infrastructure                   |
+| `presentation/`   | `PlaybackBridge`, `QueueBridge`, `LibraryBridge`, `NavigationBridge`, `SettingsBridge` (read-only); QML: `main.qml`, `qml/theme/` MichiTheme, `qml/ui/` MichiButton/MichiPanel/MichiSlider/MichiTextField, `qml/shell/` AppShell/Sidebar/ContentHost, `qml/views/` NowPlaying/Library/Queue/Settings | application (services), domain (observed state), PySide6 | infrastructure                   |
 | `bootstrap/`      | `ApplicationContainer` composition root                                                                                                                                                                                                                                                              | everything (the only layer allowed to)                   | —                                |
 
 Rules:
@@ -47,13 +47,13 @@ Rules:
 
 Exactly one service owns each state model. Every mutation routes through the owner (ADR 0003).
 
-| State model                                 | Owner (application layer)                                                      | Location                       |
-| ------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------ |
-| `PlaybackState`                             | `PlaybackService`                                                              | `domain/playback.py`           |
-| `QueueState`                                | `QueueService`                                                                 | `domain/queue.py`              |
-| `LibraryState` (+ `TrackRef`)               | `LibraryService`                                                               | `domain/library.py`            |
-| `SettingsState`                             | `SettingsService`                                                              | `domain/settings.py`           |
-| `AppRoute` / `NavigationState`              | `NavigationService`                                                            | `domain/navigation.py`         |
+| State model                                 | Owner (application layer)                                                                                                                            | Location                       |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `PlaybackState`                             | `PlaybackService`                                                                                                                                    | `domain/playback.py`           |
+| `QueueState`                                | `QueueService`                                                                                                                                       | `domain/queue.py`              |
+| `LibraryState` (+ `TrackRef`)               | `LibraryService`                                                                                                                                     | `domain/library.py`            |
+| `SettingsState`                             | `SettingsService`                                                                                                                                    | `domain/settings.py`           |
+| `AppRoute` / `NavigationState`              | `NavigationService`                                                                                                                                  | `domain/navigation.py`         |
 | `PersistenceHealth` (diagnostic, read-only) | produced by `SQLiteSettingsRepository.inspect_path()`; current production consumer: NONE; planned consumer: startup/recovery orchestration in M11.2D | `domain/persistence_health.py` |
 
 - **Ingress rule**: no subsystem writes to a state model directly; all mutations are owner method calls.
@@ -94,7 +94,8 @@ Operations: `load`, `play`, `pause`, `resume`, `stop`, `set_volume`, `set_muted`
 - `SettingsService` is the only caller of repository mutations.
 - The read-only health-detection capability (`inspect_path`, extended-result-code normalization) is implemented and unit-tested (M11.2A), producing a `PersistenceHealth` classification: MISSING, HEALTHY, CORRUPT_DATABASE, MALFORMED_DATA, LOCKED, ACCESS_FAILURE, IO_FAILURE, UNKNOWN_FAILURE. Inspection never mutates the file.
 - Current vs target: the inspection is not yet wired into the startup flow; wiring it (before any write) is pending, scheduled with the recovery phases.
-- Conservative handling: HEALTHY/MISSING proceed to normal flow; all failure classes produce an explicit diagnostic with no silent fallback and no destructive repair. Repair/recovery (M11.2B-E) is a future capability that will build on this taxonomy.
+- M11.2B (TESTED, capability only): `SQLiteSettingsRepository` exposes `last_known_good_path` (`<db>.lkg`), `refresh_last_known_good` (only a HEALTHY primary may refresh; SQLite backup API from a read-only source; unique sibling temp candidate validated before atomic `os.replace` promotion; existing LKG preserved on every failure) and `stage_recovery_from_last_known_good` (healthy-LKG-only source; SQLite backup API into a new, validated, caller-supplied destination; `FileExistsError` on existing destinations; `ValueError` on primary/LKG aliases; primary and LKG never mutated). Production consumer: NONE. Automatic startup recovery: NOT IMPLEMENTED. Startup preflight: NOT IMPLEMENTED. Field-level malformed-data policy: M11.2C pending. Startup/recovery orchestration: M11.2D pending.
+- Conservative handling: HEALTHY/MISSING proceed to normal flow; all failure classes produce an explicit diagnostic with no silent fallback and no destructive repair. Repair/recovery beyond M11.2B (field repair, automatic restore, quarantine) is a future capability (M11.2C-E) that will build on this taxonomy.
 - Persisted fields: volume, muted, last_directory, recent_files. Restart gate: values apply only after a successful restart restore.
 
 ## Lifecycle

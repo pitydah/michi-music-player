@@ -26,7 +26,9 @@ Settings persistence must survive restarts (volume, muted, last_directory, recen
 - Storage is swappable behind the port; tests use in-memory or temporary-file repositories.
 - Once wired into startup, a corrupt database cannot crash startup: every failure mode has a typed diagnostic. The wiring is pending; the capability and its tests are in place (M11.2A).
 - The health taxonomy is part of the domain contract (`PersistenceHealth` in domain, no Qt, no I/O).
-- Recovery actions (backup/restore, repair, safe mode) remain unimplemented by design; the taxonomy is the contract they will implement against.
+- M11.2B (TESTED, capability only, no production consumer): the Last-Known-Good snapshot lives at `<db>.lkg`; only a HEALTHY primary may refresh it; the SQLite backup API is used (read-only source) so WAL-committed content is captured; the candidate is validated before atomic promotion and an existing LKG survives every failed refresh; recovery is STAGED into a new caller-supplied destination (never installed over the primary; the primary is never replaced, renamed, or repaired automatically); staging refuses to overwrite an existing destination (`FileExistsError`) and rejects primary/LKG aliases (`ValueError`); failed candidates are removed.
+- Automatic startup recovery is NOT implemented; startup preflight is NOT implemented. Field-level malformed-data recovery policy (M11.2C) and startup/recovery orchestration (M11.2D) remain pending and will consume this capability.
+- Repair actions (field repair, quarantine, safe mode) remain unimplemented by design; the taxonomy and the M11.2B capabilities are the contract they will build against.
 
 ## Alternatives considered
 

@@ -60,13 +60,15 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 
 The next work proceeds in this order:
 
-1. **M11.2B/C/D/E Recovery** — backup/recovery and repair for settings persistence on top of the M11.2A taxonomy. (Queue↔Playback atomicity work — TD-008A/B and TD-015 — is RESOLVED; see TECHNICAL_DEBT_REGISTER.md.)
+1. **M11.2C/D/E Recovery (remaining)** — field-level malformed settings recovery policy (C), startup preflight + recovery orchestration (D), and remaining recovery work. NEXT IMMEDIATE WP: M11.2C. (M11.2B LKG backup + recovery staging is TESTED; see STATUS_MATRIX.)
 2. **Filesystem Degradation** — handling for library files disappearing at runtime (TD-013).
-3. **M12 Performance** — benchmark and tune scan/startup/memory; CI performance gate.
-4. **M13 Packaging** — Linux installable artifacts (AppImage/Flatpak/deb), icon suite, desktop integration, CLI entry points. Windows and macOS are Post-1.0 per the canonical contract.
-5. **M14 Beta** — beta channel, opt-in telemetry, feedback loop, triage SLA.
-6. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
-7. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
+3. **M4 Required-1.0 Queue capability closeout** — shuffle + repeat.
+4. **M6 Required-1.0 metadata extraction** — title/artist/album/duration.
+5. **M12 Performance** — benchmark and tune scan/startup/memory; CI performance gate.
+6. **M13 Packaging** — Linux installable artifacts (AppImage/Flatpak/deb), icon suite, desktop integration, CLI entry points. Windows and macOS are Post-1.0 per the canonical contract.
+7. **M14 Beta** — beta channel, opt-in telemetry, feedback loop, triage SLA.
+8. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
+9. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
 
 Required-for-1.0 gaps (shuffle, repeat, metadata extraction) are scheduled as work packages within this order before M12; they are part of the 1.0 contract and may not slip past M15.
 

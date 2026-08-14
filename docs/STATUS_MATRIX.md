@@ -95,7 +95,7 @@ These rules are exhaustive for work-package interruption and deferral.
 
 ## Current Capability Matrix
 
-Snapshot of the rebuild's components against the component state machine. Evidence: pytest suite (240 passing), Ruff clean, CI green. The matrix is a report, not a new state set; the state machine above is authoritative and unchanged.
+Snapshot of the rebuild's components against the component state machine. Evidence: pytest suite (258 passing), Ruff clean, CI green. The matrix is a report, not a new state set; the state machine above is authoritative and unchanged.
 
 **Active-contract rule**: the matrix reports only components of the active 1.0 contract on the current stack. Every state below MUST be a legal state from the component state machine above — no invented labels. Superseded clean-rebuild governance draft components (the C++20-anticipation milestones) are not reported. A contract component that has not started is UNKNOWN (not yet audited), never a custom label.
 
@@ -115,6 +115,7 @@ Snapshot of the rebuild's components against the component state machine. Eviden
 | M10 Settings                 | TESTED     | Persistence + restart gate verified                                                                                                                      |
 | M11.1 Failure Contracts      | TESTED     | Runtime failure contracts verified                                                                                                                       |
 | M11.2A Persistence Detection | TESTED     | Read-only health taxonomy verified (capability level; startup wiring pending)                                                                            |
-| M11.2B/C/D/E Recovery        | UNKNOWN    | Not yet audited; backup/recovery/repair pending                                                                                                          |
+| M11.2B LKG Backup/Recovery   | TESTED     | Last-known-good backup (`<db>.lkg`) + non-destructive recovery staging verified (capability only; no startup wiring)                                     |
+| M11.2C/D/E Recovery          | UNKNOWN    | Field-level malformed-data policy (C), startup preflight/orchestration (D), and remaining recovery work pending                                          |
 
-Transitions pending per the canonical 1.0 contract: all components with outstanding Required-1.0 gaps must reach TESTED before M15. Currently those are M4 Queue and M6 Library. Recovery components (M11.2B-E) must be implemented per the future execution order in MASTER_ROADMAP_1.0.md.
+Transitions pending per the canonical 1.0 contract: all components with outstanding Required-1.0 gaps must reach TESTED before M15. Currently those are M4 Queue and M6 Library. Remaining recovery components (M11.2C-E) must be implemented per the future execution order in MASTER_ROADMAP_1.0.md.
