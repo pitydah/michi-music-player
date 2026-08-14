@@ -95,7 +95,7 @@ These rules are exhaustive for work-package interruption and deferral.
 
 ## Current Capability Matrix
 
-Snapshot of the rebuild's components against the component state machine. Evidence: pytest suite (297 passing), Ruff clean, CI green. The matrix is a report, not a new state set; the state machine above is authoritative and unchanged.
+Snapshot of the rebuild's components against the component state machine. Evidence: pytest suite (306 passing), Ruff clean, CI green. The matrix is a report, not a new state set; the state machine above is authoritative and unchanged.
 
 **Active-contract rule**: the matrix reports only components of the active 1.0 contract on the current stack. Every state below MUST be a legal state from the component state machine above — no invented labels. Superseded clean-rebuild governance draft components (the C++20-anticipation milestones) are not reported. A contract component that has not started is UNKNOWN (not yet audited), never a custom label.
 
