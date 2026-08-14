@@ -39,7 +39,7 @@ All applicable criteria MUST be met. A work package that satisfies only a subset
 
 The component state TESTED (see STATUS_MATRIX.md) is currently defined by evidence, not by a coverage threshold:
 
-- The automated test suite passes in full: `pytest -q` (154 tests as of this reconciliation).
+- The automated test suite passes in full: `pytest -q` (current count per STATUS_MATRIX evidence and the latest green Michi CI run; no hardcoded count).
 - Static quality gates pass: `ruff check src tests` and `ruff format --check src tests`.
 - CI is green (lint, test with `QT_QPA_PLATFORM=offscreen`, build via `python -m build`).
 
