@@ -122,6 +122,71 @@ def _remove_sqlite_sidecars(db_path: Path) -> None:
         _remove_best_effort(Path(str(db_path) + suffix))
 
 
+def _decode_volume(raw: object) -> tuple[int, bool]:
+    """Decode a persisted volume value into (value, malformed).
+
+    Valid values are integer textual representations within 0..100. No
+    clamping and no float parsing; anything else is malformed and falls
+    back to the domain default (80).
+    """
+    if not isinstance(raw, str):
+        return 80, True
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return 80, True
+    if not 0 <= value <= 100:
+        return 80, True
+    return value, False
+
+
+def _decode_muted(raw: object) -> tuple[bool, bool]:
+    """Decode a persisted muted value into (value, malformed).
+
+    Valid values are "0" -> False and "1" -> True, plus the "true"/"false"
+    representation written by save() (pinned by the M11.2B recovery tests
+    that assert the raw on-disk format). Everything else is malformed and
+    falls back to the domain default (False).
+    """
+    if raw == "1" or raw == "true":
+        return True, False
+    if raw == "0" or raw == "false":
+        return False, False
+    return False, True
+
+
+def _decode_last_directory(raw: object) -> tuple[str, bool]:
+    """Decode a persisted last_directory value into (value, malformed).
+
+    Text is preserved exactly (no resolve/expanduser/strip/fs checks).
+    Non-text (e.g. a BLOB inserted directly) is malformed.
+    """
+    if isinstance(raw, str):
+        return raw, False
+    return "", True
+
+
+def _decode_recent_files(raw: object) -> tuple[list[str], bool]:
+    """Decode a persisted recent_files value into (value, malformed).
+
+    Valid values are JSON arrays whose members are all strings. Any
+    invalid case (bad JSON, object, scalar, mixed array) is malformed and
+    falls back to the domain default ([]) — no member coercion, no
+    partial salvage.
+    """
+    if not isinstance(raw, str):
+        return [], True
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, ValueError):
+        return [], True
+    if not isinstance(parsed, list) or not all(
+        isinstance(item, str) for item in parsed
+    ):
+        return [], True
+    return parsed, False
+
+
 class SQLiteSettingsRepository(SettingsRepository):
     """Infrastructure adapter: persists settings to SQLite."""
 
@@ -332,17 +397,29 @@ class SQLiteSettingsRepository(SettingsRepository):
 
         for key, value in rows:
             if key == "volume":
-                state.volume = int(value)
+                state.volume, malformed = _decode_volume(value)
+                if malformed:
+                    logger.warning(
+                        "invalid persisted setting 'volume'; using default 80"
+                    )
             elif key == "muted":
-                state.muted = value == "true"
+                state.muted, malformed = _decode_muted(value)
+                if malformed:
+                    logger.warning(
+                        "invalid persisted setting 'muted'; using default False"
+                    )
             elif key == "last_directory":
-                state.last_directory = value
+                state.last_directory, malformed = _decode_last_directory(value)
+                if malformed:
+                    logger.warning(
+                        "invalid persisted setting 'last_directory'; using default ''"
+                    )
             elif key == "recent_files":
-                try:
-                    state.recent_files = json.loads(value)
-                except json.JSONDecodeError:
-                    logger.warning("Corrupted recent_files JSON; resetting")
-                    state.recent_files = []
+                state.recent_files, malformed = _decode_recent_files(value)
+                if malformed:
+                    logger.warning(
+                        "invalid persisted setting 'recent_files'; using default []"
+                    )
         return state
 
     def save(self, state: SettingsState) -> None:
