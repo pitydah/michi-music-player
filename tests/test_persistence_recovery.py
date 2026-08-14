@@ -14,6 +14,13 @@ from michi.infrastructure import sqlite_settings
 from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
 
 
+def _checkpoint_wal(db_path: Path) -> None:
+    """Flush WAL frames into the main file so byte-level snapshots are stable."""
+
+    with sqlite3.connect(db_path) as conn:
+        conn.execute("PRAGMA wal_checkpoint(FULL)")
+
+
 def _write_raw_rows(db_path: Path, rows) -> None:
     """Fabricate DB state using controlled raw SQL (test-only)."""
     with sqlite3.connect(str(db_path)) as conn:
@@ -185,6 +192,7 @@ class TestStageRecovery:
         )
         lkg = SQLiteSettingsRepository.last_known_good_path(db)
         lkg_before = lkg.read_bytes()
+        _checkpoint_wal(db)
         primary_before = db.read_bytes()
         destination = tmp_path / "recovered.db"
         result = SQLiteSettingsRepository.stage_recovery_from_last_known_good(
@@ -232,6 +240,7 @@ class TestStageRecovery:
         db = tmp_path / "settings.db"
         repo = SQLiteSettingsRepository(db)
         repo.save(_healthy_state())
+        _checkpoint_wal(db)
         primary_before = db.read_bytes()
         destination = tmp_path / "recovered.db"
         result = SQLiteSettingsRepository.stage_recovery_from_last_known_good(
@@ -253,6 +262,7 @@ class TestStageRecovery:
         _remove_wal_sidecars(lkg)
         lkg.write_bytes(b"THIS IS NOT SQLITE")
         lkg_bytes = lkg.read_bytes()
+        _checkpoint_wal(db)
         primary_before = db.read_bytes()
         destination = tmp_path / "recovered.db"
         result = SQLiteSettingsRepository.stage_recovery_from_last_known_good(
@@ -294,6 +304,7 @@ class TestStageRecovery:
         destination = tmp_path / "recovered.db"
         destination.write_bytes(b"existing content")
         destination_before = destination.read_bytes()
+        _checkpoint_wal(db)
         primary_before = db.read_bytes()
         lkg_before = lkg.read_bytes()
         with pytest.raises(FileExistsError):
@@ -308,6 +319,7 @@ class TestStageRecovery:
         db = tmp_path / "settings.db"
         repo = SQLiteSettingsRepository(db)
         repo.save(_healthy_state())
+        _checkpoint_wal(db)
         primary_before = db.read_bytes()
         with pytest.raises(ValueError):
             SQLiteSettingsRepository.stage_recovery_from_last_known_good(db, db)
@@ -332,6 +344,7 @@ class TestStageRecovery:
         repo = SQLiteSettingsRepository(db)
         repo.save(_healthy_state())
         aliased = db.parent / "." / db.name
+        _checkpoint_wal(db)
         primary_before = db.read_bytes()
         with pytest.raises(ValueError):
             SQLiteSettingsRepository.stage_recovery_from_last_known_good(db, aliased)
@@ -347,6 +360,7 @@ class TestStageRecovery:
         )
         lkg = SQLiteSettingsRepository.last_known_good_path(db)
         lkg_before = lkg.read_bytes()
+        _checkpoint_wal(db)
         primary_before = db.read_bytes()
 
         def _fail_backup(source_path, dest_path, *_args, **_kwargs):
@@ -375,6 +389,7 @@ class TestStageRecovery:
             is PersistenceHealth.HEALTHY
         )
         lkg = SQLiteSettingsRepository.last_known_good_path(db)
+        _checkpoint_wal(db)
         primary_before = db.read_bytes()
         lkg_before = lkg.read_bytes()
         destination = tmp_path / "recovered.db"
@@ -409,6 +424,7 @@ class TestStageRecovery:
             is PersistenceHealth.HEALTHY
         )
         lkg = SQLiteSettingsRepository.last_known_good_path(db)
+        _checkpoint_wal(db)
         primary_before = db.read_bytes()
         lkg_before = lkg.read_bytes()
 
