@@ -1,6 +1,8 @@
 """M11.2B last-known-good backup and non-destructive recovery staging tests."""
 
+import errno
 import json
+import os
 import sqlite3
 from pathlib import Path
 
@@ -348,8 +350,9 @@ class TestStageRecovery:
         primary_before = db.read_bytes()
 
         def _fail_backup(source_path, dest_path, *_args, **_kwargs):
-            # Create a PARTIAL destination artifact first, then fail, so the
-            # cleanup path must remove a real partial candidate.
+            # The reservation must already have happened: the destination
+            # exists (reserved) before the backup runs.
+            assert dest_path.exists(), "destination must be reserved before backup"
             dest_path.write_bytes(b"partial sqlite bytes")
             raise sqlite3.OperationalError("forced backup failure")
 
@@ -362,3 +365,62 @@ class TestStageRecovery:
         assert not destination.exists()
         assert lkg.read_bytes() == lkg_before
         assert db.read_bytes() == primary_before
+
+    def test_foreign_writer_wins_reservation(self, tmp_path, monkeypatch):
+        db = tmp_path / "settings.db"
+        repo = SQLiteSettingsRepository(db)
+        repo.save(_healthy_state())
+        assert (
+            SQLiteSettingsRepository.refresh_last_known_good(db).health
+            is PersistenceHealth.HEALTHY
+        )
+        lkg = SQLiteSettingsRepository.last_known_good_path(db)
+        primary_before = db.read_bytes()
+        lkg_before = lkg.read_bytes()
+        destination = tmp_path / "recovered.db"
+        backup_calls: list[tuple] = []
+
+        def _other_wins(path):
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(fd, b"foreign data")
+            os.close(fd)
+            raise FileExistsError(f"another actor created {path}")
+
+        def _spy_backup(source_path, dest_path, *_args, **_kwargs):
+            backup_calls.append((source_path, dest_path))
+
+        monkeypatch.setattr(sqlite_settings, "_reserve_new_file", _other_wins)
+        monkeypatch.setattr(sqlite_settings, "_sqlite_backup_to_new", _spy_backup)
+        with pytest.raises(FileExistsError):
+            SQLiteSettingsRepository.stage_recovery_from_last_known_good(
+                db, destination
+            )
+        assert destination.read_bytes() == b"foreign data"
+        assert backup_calls == []
+        assert db.read_bytes() == primary_before
+        assert lkg.read_bytes() == lkg_before
+
+    def test_reservation_access_failure_returns_diagnostic(self, tmp_path, monkeypatch):
+        db = tmp_path / "settings.db"
+        repo = SQLiteSettingsRepository(db)
+        repo.save(_healthy_state())
+        assert (
+            SQLiteSettingsRepository.refresh_last_known_good(db).health
+            is PersistenceHealth.HEALTHY
+        )
+        lkg = SQLiteSettingsRepository.last_known_good_path(db)
+        primary_before = db.read_bytes()
+        lkg_before = lkg.read_bytes()
+
+        def _deny_reservation(path):
+            raise PermissionError(errno.EACCES, "permission denied")
+
+        monkeypatch.setattr(sqlite_settings, "_reserve_new_file", _deny_reservation)
+        destination = tmp_path / "recovered.db"
+        result = SQLiteSettingsRepository.stage_recovery_from_last_known_good(
+            db, destination
+        )
+        assert result.health is PersistenceHealth.ACCESS_FAILURE
+        assert not destination.exists()
+        assert db.read_bytes() == primary_before
+        assert lkg.read_bytes() == lkg_before

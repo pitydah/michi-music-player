@@ -106,6 +106,11 @@ def _sqlite_backup_to_new(source_path: Path, dest_path: Path) -> None:
         source_conn.close()
 
 
+def _reserve_new_file(path: Path) -> None:
+    fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    os.close(fd)
+
+
 def _remove_best_effort(path: Path) -> None:
     with suppress(OSError):
         path.unlink(missing_ok=True)
@@ -289,21 +294,33 @@ class SQLiteSettingsRepository(SettingsRepository):
         if diag.health is not PersistenceHealth.HEALTHY:
             return diag
 
+        owns_destination = False
+        try:
+            _reserve_new_file(destination_path)
+            owns_destination = True
+        except FileExistsError:
+            raise
+        except OSError as exc:
+            return _classify_os_error(exc)
+
         try:
             _sqlite_backup_to_new(lkg_path, destination_path)
         except sqlite3.Error as exc:
-            _remove_best_effort(destination_path)
-            _remove_sqlite_sidecars(destination_path)
+            if owns_destination:
+                _remove_best_effort(destination_path)
+                _remove_sqlite_sidecars(destination_path)
             return _classify_sqlite_error(exc)
         except OSError as exc:
-            _remove_best_effort(destination_path)
-            _remove_sqlite_sidecars(destination_path)
+            if owns_destination:
+                _remove_best_effort(destination_path)
+                _remove_sqlite_sidecars(destination_path)
             return _classify_os_error(exc)
 
         final_diag = SQLiteSettingsRepository.inspect_path(destination_path)
         if final_diag.health is not PersistenceHealth.HEALTHY:
-            _remove_best_effort(destination_path)
-            _remove_sqlite_sidecars(destination_path)
+            if owns_destination:
+                _remove_best_effort(destination_path)
+                _remove_sqlite_sidecars(destination_path)
             return final_diag
         _remove_sqlite_sidecars(destination_path)
         return final_diag
