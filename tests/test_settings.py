@@ -73,7 +73,7 @@ class TestMalformedFieldRecovery:
             db,
             [
                 ("volume", "not-an-int"),
-                ("muted", "1"),
+                ("muted", "true"),
                 ("last_directory", "/music"),
                 ("recent_files", json.dumps(["a.flac"])),
             ],
@@ -119,7 +119,7 @@ class TestMalformedFieldRecovery:
         assert state.volume == expected
         assert _warnings(caplog, "volume") == []
 
-    @pytest.mark.parametrize("raw", ["", "2", "-1", "yes", "no"])
+    @pytest.mark.parametrize("raw", ["", "1", "0", "2", "-1", "yes", "no"])
     def test_muted_invalid_falls_back_with_warning(self, tmp_path, caplog, raw):
         db = tmp_path / "e.db"
         _write_raw_rows(
@@ -143,7 +143,7 @@ class TestMalformedFieldRecovery:
 
     @pytest.mark.parametrize(
         "raw,expected",
-        [("0", False), ("1", True), ("true", True), ("false", False)],
+        [("true", True), ("false", False)],
     )
     def test_muted_valid_values_load(self, tmp_path, caplog, raw, expected):
         db = tmp_path / "f.db"
@@ -229,7 +229,7 @@ class TestMalformedFieldRecovery:
         }
         raws = {
             "volume": "42",
-            "muted": "1",
+            "muted": "true",
             "last_directory": "/x",
             "recent_files": json.dumps(["a"]),
         }
@@ -277,7 +277,7 @@ class TestMalformedFieldRecovery:
             db,
             [
                 ("volume", "abc"),
-                ("muted", "1"),
+                ("muted", "true"),
                 ("recent_files", json.dumps(["x.flac"])),
             ],
         )
@@ -310,8 +310,10 @@ class TestMalformedFieldRecovery:
         before = _read_raw_rows(db)
         state = repo.load()
         assert state.volume == 80
+        assert state.muted is False
         assert _read_raw_rows(db) == before
         assert dict(before)["volume"] == "broken"
+        assert dict(before)["muted"] == "1"
 
     @pytest.mark.parametrize(
         "rows",
@@ -334,3 +336,90 @@ class TestMalformedFieldRecovery:
             conn.execute("DROP TABLE settings")
         with pytest.raises(sqlite3.OperationalError):
             repo.load()
+
+
+class TestMutedCanonicalContract:
+    """M11.2C final — load() and inspect_path() agree on canonical muted."""
+
+    _VALID_SIBLINGS = [
+        ("volume", "55"),
+        ("last_directory", "/music"),
+        ("recent_files", json.dumps(["a.flac"])),
+    ]
+
+    @pytest.mark.parametrize("raw", ["1", "0"])
+    def test_non_canonical_muted_disagrees_load_health(self, tmp_path, caplog, raw):
+        db = tmp_path / "u1.db"
+        _write_raw_rows(db, [("muted", raw)] + self._VALID_SIBLINGS)
+        _expect_warning_logging(caplog)
+        repo = SQLiteSettingsRepository(db)
+        state = repo.load()
+        assert state.muted is False
+        assert state.volume == 55
+        assert state.last_directory == "/music"
+        assert state.recent_files == ["a.flac"]
+        msgs = _warnings(caplog, "muted")
+        assert len(msgs) == 1
+        assert "False" in msgs[0]
+        diag = SQLiteSettingsRepository.inspect_path(db)
+        assert diag.health is PersistenceHealth.MALFORMED_DATA
+        assert dict(_read_raw_rows(db))["muted"] == raw
+
+    def test_canonical_true_roundtrip(self, tmp_path, caplog):
+        db = tmp_path / "u2.db"
+        repo = SQLiteSettingsRepository(db)
+        repo.save(SettingsState(muted=True))
+        assert dict(_read_raw_rows(db))["muted"] == "true"
+        _expect_warning_logging(caplog)
+        state = repo.load()
+        assert state.muted is True
+        assert _warnings(caplog, "muted") == []
+        diag = SQLiteSettingsRepository.inspect_path(db)
+        assert diag.health is PersistenceHealth.HEALTHY
+
+    def test_canonical_false_roundtrip(self, tmp_path, caplog):
+        db = tmp_path / "u3.db"
+        repo = SQLiteSettingsRepository(db)
+        repo.save(SettingsState(muted=False))
+        assert dict(_read_raw_rows(db))["muted"] == "false"
+        _expect_warning_logging(caplog)
+        state = repo.load()
+        assert state.muted is False
+        assert _warnings(caplog, "muted") == []
+        diag = SQLiteSettingsRepository.inspect_path(db)
+        assert diag.health is PersistenceHealth.HEALTHY
+
+    @pytest.mark.parametrize(
+        "raw,expected,healthy",
+        [
+            ("true", True, True),
+            ("false", False, True),
+            ("1", False, False),
+            ("0", False, False),
+        ],
+    )
+    def test_load_health_four_way_matrix(
+        self, tmp_path, caplog, raw, expected, healthy
+    ):
+        db = tmp_path / "u4.db"
+        _write_raw_rows(db, [("muted", raw)])
+        _expect_warning_logging(caplog)
+        repo = SQLiteSettingsRepository(db)
+        state = repo.load()
+        assert state.muted is expected
+        assert len(_warnings(caplog, "muted")) == (0 if healthy else 1)
+        diag = SQLiteSettingsRepository.inspect_path(db)
+        expected_health = (
+            PersistenceHealth.HEALTHY if healthy else PersistenceHealth.MALFORMED_DATA
+        )
+        assert diag.health is expected_health
+
+    def test_zero_writeback_for_muted_raw_one(self, tmp_path):
+        db = tmp_path / "u5.db"
+        _write_raw_rows(db, [("muted", "1")] + self._VALID_SIBLINGS)
+        repo = SQLiteSettingsRepository(db)
+        before = _read_raw_rows(db)
+        state = repo.load()
+        assert state.muted is False
+        assert _read_raw_rows(db) == before
+        assert dict(before)["muted"] == "1"

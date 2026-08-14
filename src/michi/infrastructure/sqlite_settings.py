@@ -143,14 +143,15 @@ def _decode_volume(raw: object) -> tuple[int, bool]:
 def _decode_muted(raw: object) -> tuple[bool, bool]:
     """Decode a persisted muted value into (value, malformed).
 
-    Valid values are "0" -> False and "1" -> True, plus the "true"/"false"
-    representation written by save() (pinned by the M11.2B recovery tests
-    that assert the raw on-disk format). Everything else is malformed and
-    falls back to the domain default (False).
+    The canonical persisted representation is the boolean string "true" or
+    "false" as written by save(), matching the strict contract enforced by
+    _validate_rows(). Anything else — including the legacy "1"/"0" forms,
+    BLOBs, and booleans — is malformed and falls back to the domain
+    default (False).
     """
-    if raw == "1" or raw == "true":
+    if raw == "true":
         return True, False
-    if raw == "0" or raw == "false":
+    if raw == "false":
         return False, False
     return False, True
 
