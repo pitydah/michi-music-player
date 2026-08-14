@@ -62,8 +62,9 @@ class ApplicationContainer:
         self._app.setApplicationVersion("0.1.0")
         self._app.setOrganizationName("Michi")
 
+        db_path = _data_dir() / "michi.db"
+        repo = SQLiteSettingsRepository.open_for_startup(db_path)
         backend = QtMultimediaBackend()
-        repo = SQLiteSettingsRepository(_data_dir() / "michi.db")
         settings = SettingsService(repo)
 
         playback = PlaybackService(backend)

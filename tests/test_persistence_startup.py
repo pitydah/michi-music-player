@@ -1,0 +1,703 @@
+"""M11.2D startup preflight + recovery routing tests — real SQLite + tmp files."""
+
+import logging
+import sqlite3
+from pathlib import Path
+
+import pytest
+
+import michi.bootstrap as bootstrap
+from michi.bootstrap import ApplicationContainer
+from michi.domain.persistence_health import (
+    PersistenceDiagnostic,
+    PersistenceHealth,
+)
+from michi.domain.settings import SettingsState
+from michi.infrastructure.sqlite_settings import (
+    PersistenceStartupError,
+    SQLiteSettingsRepository,
+)
+from tests.conftest import FakeSettingsRepo
+
+
+def _write_raw_rows(db_path, rows):
+    """Fabricate DB state using controlled raw SQL (test-only)."""
+    with sqlite3.connect(str(db_path)) as conn:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS settings ("
+            "key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+        )
+        conn.executemany("INSERT OR REPLACE INTO settings VALUES (?, ?)", rows)
+
+
+def _read_raw_settings(db_path):
+    """Read settings rows read-only without mutating the database."""
+    uri = f"{db_path.resolve().as_uri()}?mode=ro"
+    with sqlite3.connect(uri, uri=True) as conn:
+        return dict(conn.execute("SELECT key, value FROM settings").fetchall())
+
+
+def _remove_wal_sidecars(db_path):
+    for suffix in ("-wal", "-shm"):
+        sidecar = Path(str(db_path) + suffix)
+        if sidecar.exists():
+            sidecar.unlink()
+
+
+def _healthy_state(**overrides):
+    fields = {
+        "volume": 42,
+        "muted": True,
+        "last_directory": "/m",
+        "recent_files": ["a.mp3", "b.mp3"],
+    }
+    fields.update(overrides)
+    return SettingsState(**fields)
+
+
+def _make_healthy_with_lkg(db_path):
+    repo = SQLiteSettingsRepository(db_path)
+    repo.save(_healthy_state())
+    diag = SQLiteSettingsRepository.refresh_last_known_good(db_path)
+    assert diag.health is PersistenceHealth.HEALTHY
+    return repo
+
+
+class CallSpy:
+    def __init__(self, result=None):
+        self.calls = []
+        self.result = result
+
+    def __call__(self, *args, **kwargs):
+        self.calls.append((args, kwargs))
+        return self.result
+
+
+class TestHealthyStartup:
+    def test_healthy_primary_startup_order_and_settings(self, tmp_path, monkeypatch):
+        db = tmp_path / "michi.db"
+        SQLiteSettingsRepository(db).save(_healthy_state(volume=73, muted=False))
+        events = []
+
+        orig_init = SQLiteSettingsRepository.__init__
+
+        def spy_init(self, path):
+            events.append("writable-init")
+            orig_init(self, path)
+
+        monkeypatch.setattr(SQLiteSettingsRepository, "__init__", spy_init)
+
+        orig_refresh = SQLiteSettingsRepository.refresh_last_known_good
+
+        def spy_refresh(path):
+            events.append("refresh")
+            return orig_refresh(path)
+
+        monkeypatch.setattr(
+            SQLiteSettingsRepository, "refresh_last_known_good", spy_refresh
+        )
+
+        orig_inspect = SQLiteSettingsRepository.inspect_path
+
+        def spy_inspect(path):
+            events.append("inspect")
+            return orig_inspect(path)
+
+        monkeypatch.setattr(SQLiteSettingsRepository, "inspect_path", spy_inspect)
+
+        repo = SQLiteSettingsRepository.open_for_startup(db)
+
+        assert isinstance(repo, SQLiteSettingsRepository)
+        state = repo.load()
+        assert state.volume == 73
+        assert state.muted is False
+        assert events[0] == "inspect"
+        assert events[-1] == "writable-init"
+        assert events.index("refresh") < events.index("writable-init")
+        lkg = SQLiteSettingsRepository.last_known_good_path(db)
+        assert lkg.exists()
+        assert (
+            SQLiteSettingsRepository.inspect_path(lkg).health
+            is PersistenceHealth.HEALTHY
+        )
+
+    def test_refresh_failure_warns_and_continues(self, tmp_path, monkeypatch, caplog):
+        db = tmp_path / "michi.db"
+        SQLiteSettingsRepository(db).save(_healthy_state(volume=55, muted=False))
+        assert (
+            SQLiteSettingsRepository.refresh_last_known_good(db).health
+            is PersistenceHealth.HEALTHY
+        )
+        lkg = SQLiteSettingsRepository.last_known_good_path(db)
+        lkg_before = lkg.read_bytes()
+
+        def fail_refresh(path):
+            return PersistenceDiagnostic(
+                PersistenceHealth.IO_FAILURE, "forced refresh failure"
+            )
+
+        monkeypatch.setattr(
+            SQLiteSettingsRepository, "refresh_last_known_good", fail_refresh
+        )
+        with caplog.at_level(logging.WARNING):
+            repo = SQLiteSettingsRepository.open_for_startup(db)
+
+        assert repo.load().volume == 55
+        assert lkg.read_bytes() == lkg_before
+        assert any("last-known-good" in r.message for r in caplog.records)
+
+
+class TestTrueFirstRun:
+    def test_missing_everything_creates_primary(self, tmp_path):
+        db = tmp_path / "michi.db"
+        repo = SQLiteSettingsRepository.open_for_startup(db)
+
+        assert isinstance(repo, SQLiteSettingsRepository)
+        assert db.exists()
+        assert (
+            SQLiteSettingsRepository.inspect_path(db).health
+            is PersistenceHealth.HEALTHY
+        )
+        lkg = SQLiteSettingsRepository.last_known_good_path(db)
+        assert lkg.exists()
+        assert (
+            SQLiteSettingsRepository.inspect_path(lkg).health
+            is PersistenceHealth.HEALTHY
+        )
+        assert not SQLiteSettingsRepository.recovery_candidate_path(db).exists()
+        state = repo.load()
+        assert state.volume == 80
+        assert state.muted is False
+
+
+class TestMissingPrimaryRecovery:
+    def test_missing_with_healthy_lkg_stages_candidate(self, tmp_path):
+        db = tmp_path / "michi.db"
+        _make_healthy_with_lkg(db)
+        lkg = SQLiteSettingsRepository.last_known_good_path(db)
+        lkg_rows = _read_raw_settings(lkg)
+        _remove_wal_sidecars(db)
+        db.unlink()
+
+        with pytest.raises(PersistenceStartupError) as exc_info:
+            SQLiteSettingsRepository.open_for_startup(db)
+
+        err = exc_info.value
+        assert err.primary_diagnostic.health is PersistenceHealth.MISSING
+        candidate = SQLiteSettingsRepository.recovery_candidate_path(db)
+        assert candidate == tmp_path / "michi.db.recovery"
+        assert err.recovery_candidate == candidate
+        assert err.recovery_diagnostic.health is PersistenceHealth.HEALTHY
+        assert candidate.exists()
+        assert (
+            SQLiteSettingsRepository.inspect_path(candidate).health
+            is PersistenceHealth.HEALTHY
+        )
+        assert _read_raw_settings(candidate) == lkg_rows
+        assert db.exists() is False
+
+    def test_missing_with_existing_healthy_candidate_preserved(
+        self, tmp_path, monkeypatch
+    ):
+        db = tmp_path / "michi.db"
+        _make_healthy_with_lkg(db)
+        candidate = SQLiteSettingsRepository.recovery_candidate_path(db)
+        diag = SQLiteSettingsRepository.stage_recovery_from_last_known_good(
+            db, candidate
+        )
+        assert diag.health is PersistenceHealth.HEALTHY
+        candidate_before = candidate.read_bytes()
+        _remove_wal_sidecars(db)
+        db.unlink()
+
+        stage_spy = CallSpy(
+            result=PersistenceDiagnostic(PersistenceHealth.HEALTHY, "spy")
+        )
+        monkeypatch.setattr(
+            SQLiteSettingsRepository,
+            "stage_recovery_from_last_known_good",
+            stage_spy,
+        )
+        with pytest.raises(PersistenceStartupError) as exc_info:
+            SQLiteSettingsRepository.open_for_startup(db)
+
+        err = exc_info.value
+        assert err.recovery_candidate == candidate
+        assert candidate.read_bytes() == candidate_before
+        assert stage_spy.calls == []
+        assert db.exists() is False
+
+    def test_missing_with_foreign_candidate_preserved(self, tmp_path, monkeypatch):
+        db = tmp_path / "michi.db"
+        _make_healthy_with_lkg(db)
+        candidate = SQLiteSettingsRepository.recovery_candidate_path(db)
+        candidate.write_bytes(b"FOREIGN NOT SQLITE")
+        candidate_before = candidate.read_bytes()
+        _remove_wal_sidecars(db)
+        db.unlink()
+
+        stage_spy = CallSpy(
+            result=PersistenceDiagnostic(PersistenceHealth.HEALTHY, "spy")
+        )
+        monkeypatch.setattr(
+            SQLiteSettingsRepository,
+            "stage_recovery_from_last_known_good",
+            stage_spy,
+        )
+        with pytest.raises(PersistenceStartupError) as exc_info:
+            SQLiteSettingsRepository.open_for_startup(db)
+
+        assert exc_info.value.recovery_candidate == candidate
+        assert candidate.read_bytes() == candidate_before
+        assert stage_spy.calls == []
+        assert db.exists() is False
+
+
+class TestFieldMalformedStartup:
+    def test_field_malformed_volume_probe_passes(self, tmp_path, monkeypatch):
+        db = tmp_path / "michi.db"
+        _write_raw_rows(db, [("volume", "broken"), ("muted", "true")])
+        assert (
+            SQLiteSettingsRepository.inspect_path(db).health
+            is PersistenceHealth.MALFORMED_DATA
+        )
+
+        refresh_spy = CallSpy()
+        monkeypatch.setattr(
+            SQLiteSettingsRepository, "refresh_last_known_good", refresh_spy
+        )
+
+        repo = SQLiteSettingsRepository.open_for_startup(db)
+        assert refresh_spy.calls == []
+        state = repo.load()
+        assert state.volume == 80
+        assert state.muted is True
+        raw = _read_raw_settings(db)
+        assert raw["volume"] == "broken"
+
+    def test_field_malformed_muted_probe_passes(self, tmp_path, caplog):
+        db = tmp_path / "michi.db"
+        _write_raw_rows(db, [("muted", "1")])
+        assert (
+            SQLiteSettingsRepository.inspect_path(db).health
+            is PersistenceHealth.MALFORMED_DATA
+        )
+
+        with caplog.at_level(logging.WARNING):
+            repo = SQLiteSettingsRepository.open_for_startup(db)
+            state = repo.load()
+        assert state.muted is False
+        assert _read_raw_settings(db)["muted"] == "1"
+        assert any("muted" in r.message for r in caplog.records)
+
+
+class TestStructuralMalformedRouting:
+    def test_missing_settings_table_no_lkg_errors(self, tmp_path, monkeypatch):
+        db = tmp_path / "michi.db"
+        with sqlite3.connect(str(db)) as conn:
+            conn.execute("CREATE TABLE other (x INTEGER)")
+        primary_before = db.read_bytes()
+
+        init_spy = CallSpy()
+        refresh_spy = CallSpy()
+        monkeypatch.setattr(SQLiteSettingsRepository, "__init__", init_spy)
+        monkeypatch.setattr(
+            SQLiteSettingsRepository, "refresh_last_known_good", refresh_spy
+        )
+
+        with pytest.raises(PersistenceStartupError) as exc_info:
+            SQLiteSettingsRepository.open_for_startup(db)
+
+        assert (
+            exc_info.value.primary_diagnostic.health is PersistenceHealth.MALFORMED_DATA
+        )
+        assert db.read_bytes() == primary_before
+        assert init_spy.calls == []
+        assert refresh_spy.calls == []
+        assert not SQLiteSettingsRepository.recovery_candidate_path(db).exists()
+
+    def test_missing_settings_table_with_lkg_stages(self, tmp_path, monkeypatch):
+        db = tmp_path / "michi.db"
+        _make_healthy_with_lkg(db)
+        lkg = SQLiteSettingsRepository.last_known_good_path(db)
+        lkg_before = lkg.read_bytes()
+        lkg_rows = _read_raw_settings(lkg)
+        _remove_wal_sidecars(db)
+        db.unlink()
+        with sqlite3.connect(str(db)) as conn:
+            conn.execute("CREATE TABLE other (x INTEGER)")
+        primary_before = db.read_bytes()
+
+        init_spy = CallSpy()
+        monkeypatch.setattr(SQLiteSettingsRepository, "__init__", init_spy)
+
+        with pytest.raises(PersistenceStartupError) as exc_info:
+            SQLiteSettingsRepository.open_for_startup(db)
+
+        err = exc_info.value
+        assert err.primary_diagnostic.health is PersistenceHealth.MALFORMED_DATA
+        candidate = SQLiteSettingsRepository.recovery_candidate_path(db)
+        assert err.recovery_candidate == candidate
+        assert err.recovery_diagnostic.health is PersistenceHealth.HEALTHY
+        assert _read_raw_settings(candidate) == lkg_rows
+        assert db.read_bytes() == primary_before
+        assert lkg.read_bytes() == lkg_before
+        assert init_spy.calls == []
+
+    def test_wrong_columns_no_lkg_errors(self, tmp_path, monkeypatch):
+        db = tmp_path / "michi.db"
+        with sqlite3.connect(str(db)) as conn:
+            conn.execute("CREATE TABLE settings (key TEXT PRIMARY KEY)")
+        primary_before = db.read_bytes()
+
+        init_spy = CallSpy()
+        monkeypatch.setattr(SQLiteSettingsRepository, "__init__", init_spy)
+
+        with pytest.raises(PersistenceStartupError) as exc_info:
+            SQLiteSettingsRepository.open_for_startup(db)
+
+        assert (
+            exc_info.value.primary_diagnostic.health is PersistenceHealth.MALFORMED_DATA
+        )
+        assert db.read_bytes() == primary_before
+        assert init_spy.calls == []
+        assert not SQLiteSettingsRepository.recovery_candidate_path(db).exists()
+
+    def test_wrong_columns_with_lkg_stages(self, tmp_path, monkeypatch):
+        db = tmp_path / "michi.db"
+        _make_healthy_with_lkg(db)
+        lkg = SQLiteSettingsRepository.last_known_good_path(db)
+        lkg_before = lkg.read_bytes()
+        lkg_rows = _read_raw_settings(lkg)
+        _remove_wal_sidecars(db)
+        db.unlink()
+        with sqlite3.connect(str(db)) as conn:
+            conn.execute("CREATE TABLE settings (key TEXT PRIMARY KEY)")
+        primary_before = db.read_bytes()
+
+        init_spy = CallSpy()
+        monkeypatch.setattr(SQLiteSettingsRepository, "__init__", init_spy)
+
+        with pytest.raises(PersistenceStartupError) as exc_info:
+            SQLiteSettingsRepository.open_for_startup(db)
+
+        err = exc_info.value
+        assert err.primary_diagnostic.health is PersistenceHealth.MALFORMED_DATA
+        candidate = SQLiteSettingsRepository.recovery_candidate_path(db)
+        assert err.recovery_candidate == candidate
+        assert err.recovery_diagnostic.health is PersistenceHealth.HEALTHY
+        assert _read_raw_settings(candidate) == lkg_rows
+        assert db.read_bytes() == primary_before
+        assert lkg.read_bytes() == lkg_before
+        assert init_spy.calls == []
+
+
+class TestCorruptRouting:
+    def test_corrupt_with_lkg_stages_and_preserves_all(self, tmp_path, monkeypatch):
+        db = tmp_path / "michi.db"
+        _make_healthy_with_lkg(db)
+        lkg = SQLiteSettingsRepository.last_known_good_path(db)
+        lkg_before = lkg.read_bytes()
+        lkg_rows = _read_raw_settings(lkg)
+        _remove_wal_sidecars(db)
+        db.write_bytes(b"THIS IS NOT SQLITE")
+        primary_before = db.read_bytes()
+
+        init_spy = CallSpy()
+        monkeypatch.setattr(SQLiteSettingsRepository, "__init__", init_spy)
+        orig_stage = SQLiteSettingsRepository.stage_recovery_from_last_known_good
+        stage_calls = []
+
+        def spy_stage(path, dest):
+            stage_calls.append((path, dest))
+            return orig_stage(path, dest)
+
+        monkeypatch.setattr(
+            SQLiteSettingsRepository, "stage_recovery_from_last_known_good", spy_stage
+        )
+
+        with pytest.raises(PersistenceStartupError) as exc_info:
+            SQLiteSettingsRepository.open_for_startup(db)
+
+        err = exc_info.value
+        assert err.primary_diagnostic.health is PersistenceHealth.CORRUPT_DATABASE
+        candidate = SQLiteSettingsRepository.recovery_candidate_path(db)
+        assert err.recovery_candidate == candidate
+        assert err.recovery_diagnostic.health is PersistenceHealth.HEALTHY
+        assert _read_raw_settings(candidate) == lkg_rows
+        assert db.read_bytes() == primary_before
+        assert lkg.read_bytes() == lkg_before
+        assert stage_calls == [(db, candidate)]
+        assert init_spy.calls == []
+
+    def test_corrupt_no_lkg_errors(self, tmp_path, monkeypatch):
+        db = tmp_path / "michi.db"
+        db.write_bytes(b"THIS IS NOT SQLITE")
+        primary_before = db.read_bytes()
+
+        init_spy = CallSpy()
+        stage_spy = CallSpy(
+            result=PersistenceDiagnostic(PersistenceHealth.HEALTHY, "spy")
+        )
+        monkeypatch.setattr(SQLiteSettingsRepository, "__init__", init_spy)
+        monkeypatch.setattr(
+            SQLiteSettingsRepository,
+            "stage_recovery_from_last_known_good",
+            stage_spy,
+        )
+
+        with pytest.raises(PersistenceStartupError) as exc_info:
+            SQLiteSettingsRepository.open_for_startup(db)
+
+        assert (
+            exc_info.value.primary_diagnostic.health
+            is PersistenceHealth.CORRUPT_DATABASE
+        )
+        assert db.read_bytes() == primary_before
+        assert init_spy.calls == []
+        assert stage_spy.calls == []
+        assert not SQLiteSettingsRepository.recovery_candidate_path(db).exists()
+
+    def test_corrupt_with_existing_healthy_candidate(self, tmp_path, monkeypatch):
+        db = tmp_path / "michi.db"
+        _make_healthy_with_lkg(db)
+        candidate = SQLiteSettingsRepository.recovery_candidate_path(db)
+        assert (
+            SQLiteSettingsRepository.stage_recovery_from_last_known_good(
+                db, candidate
+            ).health
+            is PersistenceHealth.HEALTHY
+        )
+        candidate_before = candidate.read_bytes()
+        _remove_wal_sidecars(db)
+        db.write_bytes(b"THIS IS NOT SQLITE")
+        primary_before = db.read_bytes()
+
+        stage_spy = CallSpy(
+            result=PersistenceDiagnostic(PersistenceHealth.HEALTHY, "spy")
+        )
+        monkeypatch.setattr(
+            SQLiteSettingsRepository,
+            "stage_recovery_from_last_known_good",
+            stage_spy,
+        )
+
+        with pytest.raises(PersistenceStartupError) as exc_info:
+            SQLiteSettingsRepository.open_for_startup(db)
+
+        err = exc_info.value
+        assert err.recovery_candidate == candidate
+        assert candidate.read_bytes() == candidate_before
+        assert stage_spy.calls == []
+        assert db.read_bytes() == primary_before
+
+
+@pytest.mark.parametrize(
+    "health",
+    [
+        PersistenceHealth.LOCKED,
+        PersistenceHealth.ACCESS_FAILURE,
+        PersistenceHealth.IO_FAILURE,
+        PersistenceHealth.UNKNOWN_FAILURE,
+    ],
+    ids=["locked", "access", "io", "unknown"],
+)
+def test_terminal_health_never_falls_back(tmp_path, monkeypatch, health):
+    db = tmp_path / "michi.db"
+    db.write_text("placeholder")
+
+    def forced_inspect(path):
+        return PersistenceDiagnostic(health, "forced")
+
+    monkeypatch.setattr(SQLiteSettingsRepository, "inspect_path", forced_inspect)
+    refresh_spy = CallSpy()
+    stage_spy = CallSpy()
+    init_spy = CallSpy()
+    monkeypatch.setattr(
+        SQLiteSettingsRepository, "refresh_last_known_good", refresh_spy
+    )
+    monkeypatch.setattr(
+        SQLiteSettingsRepository, "stage_recovery_from_last_known_good", stage_spy
+    )
+    monkeypatch.setattr(SQLiteSettingsRepository, "__init__", init_spy)
+
+    with pytest.raises(PersistenceStartupError) as exc_info:
+        SQLiteSettingsRepository.open_for_startup(db)
+
+    assert exc_info.value.primary_diagnostic.health is health
+    assert refresh_spy.calls == []
+    assert stage_spy.calls == []
+    assert init_spy.calls == []
+    assert not SQLiteSettingsRepository.recovery_candidate_path(db).exists()
+
+
+class TestWriteOrder:
+    def test_healthy_order_inspect_refresh_writable(self, tmp_path, monkeypatch):
+        db = tmp_path / "michi.db"
+        SQLiteSettingsRepository(db).save(_healthy_state())
+        events = []
+
+        orig_init = SQLiteSettingsRepository.__init__
+
+        def spy_init(self, path):
+            events.append("writable-init")
+            orig_init(self, path)
+
+        monkeypatch.setattr(SQLiteSettingsRepository, "__init__", spy_init)
+
+        orig_refresh = SQLiteSettingsRepository.refresh_last_known_good
+
+        def spy_refresh(path):
+            events.append("refresh")
+            return orig_refresh(path)
+
+        monkeypatch.setattr(
+            SQLiteSettingsRepository, "refresh_last_known_good", spy_refresh
+        )
+
+        orig_inspect = SQLiteSettingsRepository.inspect_path
+
+        def spy_inspect(path):
+            events.append("inspect")
+            return orig_inspect(path)
+
+        monkeypatch.setattr(SQLiteSettingsRepository, "inspect_path", spy_inspect)
+
+        SQLiteSettingsRepository.open_for_startup(db)
+
+        assert events[0] == "inspect"
+        assert events[-1] == "writable-init"
+        assert events.index("refresh") < events.index("writable-init")
+
+    def test_corrupt_order_never_writable(self, tmp_path, monkeypatch):
+        db = tmp_path / "michi.db"
+        _make_healthy_with_lkg(db)
+        _remove_wal_sidecars(db)
+        db.write_bytes(b"THIS IS NOT SQLITE")
+        events = []
+
+        init_spy = CallSpy()
+        monkeypatch.setattr(SQLiteSettingsRepository, "__init__", init_spy)
+        orig_stage = SQLiteSettingsRepository.stage_recovery_from_last_known_good
+
+        def spy_stage(path, dest):
+            events.append("stage")
+            return orig_stage(path, dest)
+
+        monkeypatch.setattr(
+            SQLiteSettingsRepository, "stage_recovery_from_last_known_good", spy_stage
+        )
+        orig_inspect = SQLiteSettingsRepository.inspect_path
+
+        def spy_inspect(path):
+            events.append("inspect")
+            return orig_inspect(path)
+
+        monkeypatch.setattr(SQLiteSettingsRepository, "inspect_path", spy_inspect)
+
+        with pytest.raises(PersistenceStartupError):
+            SQLiteSettingsRepository.open_for_startup(db)
+
+        assert events[0] == "inspect"
+        assert "stage" in events
+        assert init_spy.calls == []
+
+    def test_corrupt_no_lkg_order_never_writable(self, tmp_path, monkeypatch):
+        db = tmp_path / "michi.db"
+        db.write_bytes(b"THIS IS NOT SQLITE")
+        events = []
+
+        init_spy = CallSpy()
+        stage_spy = CallSpy()
+        monkeypatch.setattr(SQLiteSettingsRepository, "__init__", init_spy)
+        monkeypatch.setattr(
+            SQLiteSettingsRepository, "stage_recovery_from_last_known_good", stage_spy
+        )
+        orig_inspect = SQLiteSettingsRepository.inspect_path
+
+        def spy_inspect(path):
+            events.append("inspect")
+            return orig_inspect(path)
+
+        monkeypatch.setattr(SQLiteSettingsRepository, "inspect_path", spy_inspect)
+
+        with pytest.raises(PersistenceStartupError):
+            SQLiteSettingsRepository.open_for_startup(db)
+
+        assert events == ["inspect"]
+        assert init_spy.calls == []
+        assert stage_spy.calls == []
+
+
+class FakeQGuiApplication:
+    """Minimal QGuiApplication fake for bootstrap startup order tests."""
+
+    @staticmethod
+    def setAttribute(*_args, **_kwargs):  # noqa: N802 — Qt API name
+        pass
+
+    def __init__(self, _argv):
+        pass
+
+    def setApplicationName(self, _name):  # noqa: N802 — Qt API name
+        pass
+
+    def setApplicationVersion(self, _version):  # noqa: N802 — Qt API name
+        pass
+
+    def setOrganizationName(self, _name):  # noqa: N802 — Qt API name
+        pass
+
+
+class TestBootstrapStartup:
+    def test_initialize_uses_open_for_startup_before_backend(
+        self, tmp_path, monkeypatch
+    ):
+        events = []
+        monkeypatch.setattr(bootstrap, "_data_dir", lambda: tmp_path)
+        monkeypatch.setattr(bootstrap, "QGuiApplication", FakeQGuiApplication)
+
+        def fake_open(db_path):
+            events.append("open_for_startup")
+            assert db_path == tmp_path / "michi.db"
+            return FakeSettingsRepo()
+
+        monkeypatch.setattr(SQLiteSettingsRepository, "open_for_startup", fake_open)
+
+        class BackendBoomError(RuntimeError):
+            pass
+
+        def fake_backend():
+            events.append("backend")
+            raise BackendBoomError("stop here")
+
+        monkeypatch.setattr(bootstrap, "QtMultimediaBackend", fake_backend)
+
+        container = ApplicationContainer()
+        with pytest.raises(BackendBoomError):
+            container.initialize()
+        assert events == ["open_for_startup", "backend"]
+
+    def test_backend_not_constructed_when_preflight_fails(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(bootstrap, "_data_dir", lambda: tmp_path)
+        monkeypatch.setattr(bootstrap, "QGuiApplication", FakeQGuiApplication)
+
+        def failing_open(db_path):
+            raise PersistenceStartupError(
+                PersistenceDiagnostic(PersistenceHealth.LOCKED, "locked")
+            )
+
+        monkeypatch.setattr(SQLiteSettingsRepository, "open_for_startup", failing_open)
+
+        backend_calls = []
+
+        def fake_backend():
+            backend_calls.append(1)
+            return object()
+
+        monkeypatch.setattr(bootstrap, "QtMultimediaBackend", fake_backend)
+
+        container = ApplicationContainer()
+        with pytest.raises(PersistenceStartupError):
+            container.initialize()
+        assert backend_calls == []

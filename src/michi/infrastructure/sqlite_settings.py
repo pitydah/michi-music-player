@@ -87,6 +87,21 @@ def _classify_os_error(exc: OSError) -> PersistenceDiagnostic:
     return PersistenceDiagnostic(PersistenceHealth.UNKNOWN_FAILURE, str(exc))
 
 
+class PersistenceStartupError(RuntimeError):
+    """Policy-level startup failure; may transport diagnostics + candidate."""
+
+    def __init__(
+        self,
+        primary_diagnostic: PersistenceDiagnostic,
+        recovery_diagnostic: PersistenceDiagnostic | None = None,
+        recovery_candidate: Path | None = None,
+    ) -> None:
+        super().__init__(primary_diagnostic.message)
+        self.primary_diagnostic = primary_diagnostic
+        self.recovery_diagnostic = recovery_diagnostic
+        self.recovery_candidate = recovery_candidate
+
+
 def _read_only_uri(db_path: Path) -> str:
     return f"{db_path.resolve().as_uri()}?mode=ro"
 
@@ -390,6 +405,117 @@ class SQLiteSettingsRepository(SettingsRepository):
             return final_diag
         _remove_sqlite_sidecars(destination_path)
         return final_diag
+
+    @staticmethod
+    def recovery_candidate_path(db_path: Path) -> Path:
+        """Deterministic sibling path for the staged recovery candidate."""
+        return Path(str(db_path) + ".recovery")
+
+    @staticmethod
+    def _structural_probe(db_path: Path) -> bool:
+        """Read-only probe: can settings rows be selected at all?
+
+        Field-level malformed data still satisfies this probe; structural
+        malformations (missing table, wrong columns) do not.
+        """
+        try:
+            conn = sqlite3.connect(_read_only_uri(db_path), uri=True, timeout=0.2)
+            try:
+                conn.execute("SELECT key, value FROM settings LIMIT 1")
+                return True
+            finally:
+                conn.close()
+        except (sqlite3.Error, OSError):
+            return False
+
+    @classmethod
+    def _refresh_lkg_best_effort(cls, db_path: Path) -> None:
+        """Refresh the LKG snapshot at startup; failure is a warning only."""
+        refresh_diag = cls.refresh_last_known_good(db_path)
+        if refresh_diag.health is not PersistenceHealth.HEALTHY:
+            logger.warning(
+                "last-known-good refresh failed at startup; "
+                "keeping existing snapshot and continuing: %s",
+                refresh_diag.message,
+            )
+
+    @classmethod
+    def _recovery_failure(
+        cls, db_path: Path, primary_diag: PersistenceDiagnostic
+    ) -> PersistenceStartupError:
+        """Build the startup failure for unrecoverable primaries.
+
+        Never installs: an existing candidate is preserved as-is; otherwise a
+        candidate is staged from a healthy LKG (if present) and reported.
+        """
+        candidate = cls.recovery_candidate_path(db_path)
+        if candidate.exists():
+            candidate_diag = cls.inspect_path(candidate)
+            return PersistenceStartupError(
+                primary_diag,
+                recovery_diagnostic=candidate_diag,
+                recovery_candidate=candidate,
+            )
+        lkg = cls.last_known_good_path(db_path)
+        if not lkg.exists():
+            return PersistenceStartupError(primary_diag)
+        lkg_diag = cls.inspect_path(lkg)
+        if lkg_diag.health is not PersistenceHealth.HEALTHY:
+            return PersistenceStartupError(primary_diag)
+        stage_diag = cls.stage_recovery_from_last_known_good(db_path, candidate)
+        if stage_diag.health is PersistenceHealth.HEALTHY:
+            return PersistenceStartupError(
+                primary_diag,
+                recovery_diagnostic=stage_diag,
+                recovery_candidate=candidate,
+            )
+        return PersistenceStartupError(primary_diag, recovery_diagnostic=stage_diag)
+
+    @classmethod
+    def _open_missing(
+        cls, db_path: Path, primary_diag: PersistenceDiagnostic
+    ) -> "SQLiteSettingsRepository":
+        """Handle a missing primary: first run, or recovery routing."""
+        candidate = cls.recovery_candidate_path(db_path)
+        if candidate.exists():
+            raise cls._recovery_failure(db_path, primary_diag)
+        if not cls.last_known_good_path(db_path).exists():
+            repo = cls(db_path)
+            verify = cls.inspect_path(db_path)
+            if verify.health is not PersistenceHealth.HEALTHY:
+                raise PersistenceStartupError(verify)
+            cls._refresh_lkg_best_effort(db_path)
+            return repo
+        raise cls._recovery_failure(db_path, primary_diag)
+
+    @classmethod
+    def open_for_startup(cls, db_path: Path) -> "SQLiteSettingsRepository":
+        """Open the settings repository with a startup preflight.
+
+        Read-only inspection decides the route before any writable open.
+        Recovery material is staged — never installed.
+        """
+        diag = cls.inspect_path(db_path)
+        health = diag.health
+
+        if health is PersistenceHealth.HEALTHY:
+            cls._refresh_lkg_best_effort(db_path)
+            return cls(db_path)
+
+        if health is PersistenceHealth.MISSING:
+            return cls._open_missing(db_path, diag)
+
+        if health is PersistenceHealth.MALFORMED_DATA:
+            if cls._structural_probe(db_path):
+                return cls(db_path)
+            raise cls._recovery_failure(db_path, diag)
+
+        if health is PersistenceHealth.CORRUPT_DATABASE:
+            raise cls._recovery_failure(db_path, diag)
+
+        # LOCKED / ACCESS_FAILURE / IO_FAILURE / UNKNOWN_FAILURE:
+        # no fallback, no staging, no writable open.
+        raise PersistenceStartupError(diag)
 
     def load(self) -> SettingsState:
         state = SettingsState()
