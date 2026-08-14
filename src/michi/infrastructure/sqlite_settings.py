@@ -3,7 +3,10 @@
 import errno
 import json
 import logging
+import os
 import sqlite3
+import tempfile
+from contextlib import suppress
 from pathlib import Path
 
 from michi.application.persistence import SettingsRepository
@@ -86,6 +89,32 @@ def _classify_os_error(exc: OSError) -> PersistenceDiagnostic:
 
 def _read_only_uri(db_path: Path) -> str:
     return f"{db_path.resolve().as_uri()}?mode=ro"
+
+
+def _sqlite_backup_to_new(source_path: Path, dest_path: Path) -> None:
+    """Copy a database into a fresh destination using the SQLite backup API.
+
+    The backup API reads through WAL frames, so committed-but-uncheckpointed
+    changes are included — unlike a raw copy of the main database file.
+    """
+    source_conn = sqlite3.connect(_read_only_uri(source_path), uri=True, timeout=0.2)
+    dest_conn = sqlite3.connect(str(dest_path))
+    try:
+        source_conn.backup(dest_conn)
+    finally:
+        dest_conn.close()
+        source_conn.close()
+
+
+def _remove_best_effort(path: Path) -> None:
+    with suppress(OSError):
+        path.unlink(missing_ok=True)
+
+
+def _remove_sqlite_sidecars(db_path: Path) -> None:
+    """Best-effort removal of -wal/-shm sidecars of a closed database file."""
+    for suffix in ("-wal", "-shm"):
+        _remove_best_effort(Path(str(db_path) + suffix))
 
 
 class SQLiteSettingsRepository(SettingsRepository):
@@ -192,6 +221,92 @@ class SQLiteSettingsRepository(SettingsRepository):
                         "recent_files is not a list of strings",
                     )
         return PersistenceDiagnostic(PersistenceHealth.HEALTHY)
+
+    @staticmethod
+    def last_known_good_path(db_path: Path) -> Path:
+        """Deterministic sibling path for the single last-known-good snapshot."""
+        return Path(str(db_path) + ".lkg")
+
+    @staticmethod
+    def refresh_last_known_good(db_path: Path) -> PersistenceDiagnostic:
+        """Atomically refresh the last-known-good snapshot from a healthy primary.
+
+        Only a fully validated candidate is promoted via os.replace. The
+        existing snapshot is never deleted first and survives every failure.
+        """
+        diag = SQLiteSettingsRepository.inspect_path(db_path)
+        if diag.health is not PersistenceHealth.HEALTHY:
+            return diag
+
+        lkg_path = SQLiteSettingsRepository.last_known_good_path(db_path)
+        temp_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                dir=db_path.parent, delete=False
+            ) as candidate:
+                temp_path = Path(candidate.name)
+            _sqlite_backup_to_new(db_path, temp_path)
+            candidate_diag = SQLiteSettingsRepository.inspect_path(temp_path)
+            if candidate_diag.health is not PersistenceHealth.HEALTHY:
+                return candidate_diag
+            _remove_sqlite_sidecars(temp_path)
+            os.replace(temp_path, lkg_path)
+            temp_path = None
+        except sqlite3.Error as exc:
+            return _classify_sqlite_error(exc)
+        except OSError as exc:
+            return _classify_os_error(exc)
+        finally:
+            if temp_path is not None:
+                _remove_best_effort(temp_path)
+                _remove_sqlite_sidecars(temp_path)
+
+        final_diag = SQLiteSettingsRepository.inspect_path(lkg_path)
+        _remove_sqlite_sidecars(lkg_path)
+        return final_diag
+
+    @staticmethod
+    def stage_recovery_from_last_known_good(
+        db_path: Path, destination_path: Path
+    ) -> PersistenceDiagnostic:
+        """Stage a recovery candidate from the LKG snapshot, non-destructively.
+
+        The primary database is never opened for writing — it is only used to
+        derive the LKG path. Programming misuse raises ValueError/FileExistsError.
+        """
+        resolved_db = db_path.resolve()
+        resolved_destination = destination_path.resolve()
+        resolved_lkg = SQLiteSettingsRepository.last_known_good_path(db_path).resolve()
+        if resolved_destination == resolved_db:
+            raise ValueError("destination resolves to the primary database")
+        if resolved_destination == resolved_lkg:
+            raise ValueError("destination resolves to the last-known-good file")
+        if destination_path.exists():
+            raise FileExistsError(f"destination already exists: {destination_path}")
+
+        lkg_path = SQLiteSettingsRepository.last_known_good_path(db_path)
+        diag = SQLiteSettingsRepository.inspect_path(lkg_path)
+        if diag.health is not PersistenceHealth.HEALTHY:
+            return diag
+
+        try:
+            _sqlite_backup_to_new(lkg_path, destination_path)
+        except sqlite3.Error as exc:
+            _remove_best_effort(destination_path)
+            _remove_sqlite_sidecars(destination_path)
+            return _classify_sqlite_error(exc)
+        except OSError as exc:
+            _remove_best_effort(destination_path)
+            _remove_sqlite_sidecars(destination_path)
+            return _classify_os_error(exc)
+
+        final_diag = SQLiteSettingsRepository.inspect_path(destination_path)
+        if final_diag.health is not PersistenceHealth.HEALTHY:
+            _remove_best_effort(destination_path)
+            _remove_sqlite_sidecars(destination_path)
+            return final_diag
+        _remove_sqlite_sidecars(destination_path)
+        return final_diag
 
     def load(self) -> SettingsState:
         state = SettingsState()
