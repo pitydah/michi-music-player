@@ -95,7 +95,7 @@ These rules are exhaustive for work-package interruption and deferral.
 
 ## Current Capability Matrix
 
-Snapshot of the rebuild's components against the component state machine. Evidence: pytest suite (330 passing), Ruff clean, CI green. The matrix is a report, not a new state set; the state machine above is authoritative and unchanged.
+Snapshot of the rebuild's components against the component state machine. Evidence: pytest suite (334 passing), Ruff clean, CI green. The matrix is a report, not a new state set; the state machine above is authoritative and unchanged.
 
 **Active-contract rule**: the matrix reports only components of the active 1.0 contract on the current stack. Every state below MUST be a legal state from the component state machine above — no invented labels. Superseded clean-rebuild governance draft components (the C++20-anticipation milestones) are not reported. A contract component that has not started is UNKNOWN (not yet audited), never a custom label.
 
@@ -114,7 +114,7 @@ Snapshot of the rebuild's components against the component state machine. Eviden
 | M9 UI Foundation             | TESTED     | Tokens + primitives + shell; QML smoke tests                                                                                                             |
 | M10 Settings                 | TESTED     | Persistence + restart gate verified                                                                                                                      |
 | M11.1 Failure Contracts      | TESTED     | Runtime failure contracts verified                                                                                                                       |
-| M11.2A Persistence Detection | TESTED     | Read-only health taxonomy verified (capability level; startup wiring pending)                                                                            |
+| M11.2A Persistence Detection | TESTED     | Read-only health taxonomy verified; consumed by the M11.2D startup preflight (TESTED)                                                                      |
 | M11.2B LKG Backup/Recovery   | TESTED     | Last-known-good backup (`<db>.lkg`) + non-destructive recovery staging verified (capability only; no startup wiring)                                     |
 | M11.2C Field-Level Recovery  | TESTED     | Per-field malformed-data fallback with warnings (safe read fallback, no writeback); health classification remains strict (MALFORMED_DATA)                |
 | M11.2D Startup Preflight     | TESTED     | Read-only preflight before any writable open; deterministic health routing; recovery staged, never installed                                             |
