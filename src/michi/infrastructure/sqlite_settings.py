@@ -412,21 +412,33 @@ class SQLiteSettingsRepository(SettingsRepository):
         return Path(str(db_path) + ".recovery")
 
     @staticmethod
-    def _structural_probe(db_path: Path) -> bool:
-        """Read-only probe: can settings rows be selected at all?
+    def _structural_probe(db_path: Path) -> bool | PersistenceDiagnostic:
+        """Read-only probe: structural readability of settings rows.
 
-        Field-level malformed data still satisfies this probe; structural
-        malformations (missing table, wrong columns) do not.
+        Returns:
+            True: the settings table and key/value columns are readable
+                (field-level malformed data still satisfies this).
+            False: genuinely structural malformation (missing settings table,
+                missing key/value columns).
+            PersistenceDiagnostic: an operational/environmental failure during
+                the probe, classified through the existing taxonomy.
         """
         try:
             conn = sqlite3.connect(_read_only_uri(db_path), uri=True, timeout=0.2)
             try:
                 conn.execute("SELECT key, value FROM settings LIMIT 1")
-                return True
             finally:
                 conn.close()
-        except (sqlite3.Error, OSError):
-            return False
+        except sqlite3.Error as exc:
+            # SQLite schema-shape errors are STRUCTURAL (False); everything
+            # else is operational and reclassified through the taxonomy.
+            text = str(exc).lower()
+            if "no such table" in text or "no such column" in text:
+                return False
+            return _classify_sqlite_error(exc)
+        except OSError as exc:
+            return _classify_os_error(exc)
+        return True
 
     @classmethod
     def _refresh_lkg_best_effort(cls, db_path: Path) -> None:
@@ -434,8 +446,9 @@ class SQLiteSettingsRepository(SettingsRepository):
         refresh_diag = cls.refresh_last_known_good(db_path)
         if refresh_diag.health is not PersistenceHealth.HEALTHY:
             logger.warning(
-                "last-known-good refresh failed at startup; "
+                "last-known-good refresh failed at startup (%s); "
                 "keeping existing snapshot and continuing: %s",
+                refresh_diag.health.name,
                 refresh_diag.message,
             )
 
@@ -506,9 +519,12 @@ class SQLiteSettingsRepository(SettingsRepository):
             return cls._open_missing(db_path, diag)
 
         if health is PersistenceHealth.MALFORMED_DATA:
-            if cls._structural_probe(db_path):
+            probe = cls._structural_probe(db_path)
+            if probe is True:
                 return cls(db_path)
-            raise cls._recovery_failure(db_path, diag)
+            if probe is False:
+                raise cls._recovery_failure(db_path, diag)
+            raise PersistenceStartupError(probe)
 
         if health is PersistenceHealth.CORRUPT_DATABASE:
             raise cls._recovery_failure(db_path, diag)

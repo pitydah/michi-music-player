@@ -1,5 +1,6 @@
 """M11.2D startup preflight + recovery routing tests — real SQLite + tmp files."""
 
+import errno
 import logging
 import sqlite3
 from pathlib import Path
@@ -13,6 +14,7 @@ from michi.domain.persistence_health import (
     PersistenceHealth,
 )
 from michi.domain.settings import SettingsState
+from michi.infrastructure import sqlite_settings as sqlite_settings_mod
 from michi.infrastructure.sqlite_settings import (
     PersistenceStartupError,
     SQLiteSettingsRepository,
@@ -133,7 +135,7 @@ class TestHealthyStartup:
 
         def fail_refresh(path):
             return PersistenceDiagnostic(
-                PersistenceHealth.IO_FAILURE, "forced refresh failure"
+                PersistenceHealth.IO_FAILURE, "forced I/O failure"
             )
 
         monkeypatch.setattr(
@@ -144,7 +146,12 @@ class TestHealthyStartup:
 
         assert repo.load().volume == 55
         assert lkg.read_bytes() == lkg_before
-        assert any("last-known-good" in r.message for r in caplog.records)
+        warning_messages = [
+            r.message for r in caplog.records if "last-known-good" in r.message
+        ]
+        assert warning_messages
+        assert "IO_FAILURE" in warning_messages[0]
+        assert "forced I/O failure" in warning_messages[0]
 
 
 class TestTrueFirstRun:
@@ -390,6 +397,159 @@ class TestStructuralMalformedRouting:
         assert db.read_bytes() == primary_before
         assert lkg.read_bytes() == lkg_before
         assert init_spy.calls == []
+
+
+class TestMalformedProbeOperationalFailure:
+    """MALFORMED_DATA primary whose structural probe hits an operational failure.
+
+    The probe failure must be reclassified through the taxonomy (LOCKED /
+    ACCESS_FAILURE / IO_FAILURE / UNKNOWN_FAILURE) and must NOT fall back to
+    recovery routing or a writable open.
+    """
+
+    def test_probe_lock_routes_locked(self, tmp_path, monkeypatch):
+        db = tmp_path / "michi.db"
+        _write_raw_rows(db, [("volume", "ok")])
+        holder = sqlite3.connect(str(db))
+        holder.execute("BEGIN EXCLUSIVE")
+        try:
+
+            def forced_inspect(path):
+                return PersistenceDiagnostic(PersistenceHealth.MALFORMED_DATA, "forced")
+
+            monkeypatch.setattr(
+                SQLiteSettingsRepository, "inspect_path", forced_inspect
+            )
+            refresh_spy = CallSpy()
+            stage_spy = CallSpy()
+            init_spy = CallSpy()
+            monkeypatch.setattr(
+                SQLiteSettingsRepository, "refresh_last_known_good", refresh_spy
+            )
+            monkeypatch.setattr(
+                SQLiteSettingsRepository,
+                "stage_recovery_from_last_known_good",
+                stage_spy,
+            )
+            monkeypatch.setattr(SQLiteSettingsRepository, "__init__", init_spy)
+
+            with pytest.raises(PersistenceStartupError) as exc_info:
+                SQLiteSettingsRepository.open_for_startup(db)
+
+            assert exc_info.value.primary_diagnostic.health is PersistenceHealth.LOCKED
+            assert refresh_spy.calls == []
+            assert stage_spy.calls == []
+            assert init_spy.calls == []
+            assert not SQLiteSettingsRepository.recovery_candidate_path(db).exists()
+        finally:
+            holder.close()
+
+    def test_probe_missing_file_routes_access_failure(self, tmp_path, monkeypatch):
+        db = tmp_path / "does-not-exist.db"
+
+        def forced_inspect(path):
+            return PersistenceDiagnostic(PersistenceHealth.MALFORMED_DATA, "forced")
+
+        monkeypatch.setattr(SQLiteSettingsRepository, "inspect_path", forced_inspect)
+        refresh_spy = CallSpy()
+        stage_spy = CallSpy()
+        init_spy = CallSpy()
+        monkeypatch.setattr(
+            SQLiteSettingsRepository, "refresh_last_known_good", refresh_spy
+        )
+        monkeypatch.setattr(
+            SQLiteSettingsRepository,
+            "stage_recovery_from_last_known_good",
+            stage_spy,
+        )
+        monkeypatch.setattr(SQLiteSettingsRepository, "__init__", init_spy)
+
+        with pytest.raises(PersistenceStartupError) as exc_info:
+            SQLiteSettingsRepository.open_for_startup(db)
+
+        assert (
+            exc_info.value.primary_diagnostic.health is PersistenceHealth.ACCESS_FAILURE
+        )
+        assert refresh_spy.calls == []
+        assert stage_spy.calls == []
+        assert init_spy.calls == []
+        assert not SQLiteSettingsRepository.recovery_candidate_path(db).exists()
+
+    def test_probe_os_error_routes_io_failure(self, tmp_path, monkeypatch):
+        db = tmp_path / "michi.db"
+        _write_raw_rows(db, [("volume", "ok")])
+
+        def forced_inspect(path):
+            return PersistenceDiagnostic(PersistenceHealth.MALFORMED_DATA, "forced")
+
+        monkeypatch.setattr(SQLiteSettingsRepository, "inspect_path", forced_inspect)
+
+        def fail_uri(path):
+            raise OSError(errno.EIO, "forced I/O failure")
+
+        monkeypatch.setattr(sqlite_settings_mod, "_read_only_uri", fail_uri)
+        refresh_spy = CallSpy()
+        stage_spy = CallSpy()
+        init_spy = CallSpy()
+        monkeypatch.setattr(
+            SQLiteSettingsRepository, "refresh_last_known_good", refresh_spy
+        )
+        monkeypatch.setattr(
+            SQLiteSettingsRepository,
+            "stage_recovery_from_last_known_good",
+            stage_spy,
+        )
+        monkeypatch.setattr(SQLiteSettingsRepository, "__init__", init_spy)
+
+        with pytest.raises(PersistenceStartupError) as exc_info:
+            SQLiteSettingsRepository.open_for_startup(db)
+
+        assert exc_info.value.primary_diagnostic.health is PersistenceHealth.IO_FAILURE
+        assert refresh_spy.calls == []
+        assert stage_spy.calls == []
+        assert init_spy.calls == []
+        assert not SQLiteSettingsRepository.recovery_candidate_path(db).exists()
+
+    def test_probe_symlink_loop_routes_unknown_failure(self, tmp_path, monkeypatch):
+        # NOTE: on Python 3.11, Path.resolve() turns a symlink loop into a
+        # RuntimeError (not OSError ELOOP), so the real loop would escape the
+        # probe's `except OSError`. Per the M11.2D design fallback, force the
+        # same real OSError(ELOOP) that the loop would produce.
+        db = tmp_path / "loop.db"
+
+        def forced_inspect(path):
+            return PersistenceDiagnostic(PersistenceHealth.MALFORMED_DATA, "forced")
+
+        monkeypatch.setattr(SQLiteSettingsRepository, "inspect_path", forced_inspect)
+
+        def fail_uri(path):
+            raise OSError(errno.ELOOP, "Too many levels of symbolic links")
+
+        monkeypatch.setattr(sqlite_settings_mod, "_read_only_uri", fail_uri)
+        refresh_spy = CallSpy()
+        stage_spy = CallSpy()
+        init_spy = CallSpy()
+        monkeypatch.setattr(
+            SQLiteSettingsRepository, "refresh_last_known_good", refresh_spy
+        )
+        monkeypatch.setattr(
+            SQLiteSettingsRepository,
+            "stage_recovery_from_last_known_good",
+            stage_spy,
+        )
+        monkeypatch.setattr(SQLiteSettingsRepository, "__init__", init_spy)
+
+        with pytest.raises(PersistenceStartupError) as exc_info:
+            SQLiteSettingsRepository.open_for_startup(db)
+
+        assert (
+            exc_info.value.primary_diagnostic.health
+            is PersistenceHealth.UNKNOWN_FAILURE
+        )
+        assert refresh_spy.calls == []
+        assert stage_spy.calls == []
+        assert init_spy.calls == []
+        assert not SQLiteSettingsRepository.recovery_candidate_path(db).exists()
 
 
 class TestCorruptRouting:
