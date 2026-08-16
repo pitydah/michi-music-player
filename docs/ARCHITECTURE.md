@@ -2,6 +2,8 @@
 
 Authority for system boundaries, layer contracts, state ownership, lifecycle, and error semantics. All architectural decisions are recorded as Accepted ADRs in `docs/adr/`. This document aggregates them into one read-optimized reference.
 
+Product scope note: Michi AI and ecosystem integrations (Audio Lab, Streaming, Radio, Sync, Michi Link/Mobile/Micro Server/Big Server/Music Stream, Home Audio) are RETAINED product capabilities implemented AFTER PLAYER STABLE — this codebase carries no AI, streaming, or ecosystem code. CoverFlow is RETIRED; its successor PathView is pre-Stable local work. See MASTER_ROADMAP_1.0.md Product Scope.
+
 ## Stack
 
 Python 3.11+, PySide6 (Qt 6, Qt Multimedia with FFmpeg backend), QML, SQLite (WAL). Build with setuptools (`python -m build`); tests with pytest; lint/format with Ruff; CI on GitHub Actions (lint, tests with `QT_QPA_PLATFORM=offscreen`, build). No C++ anywhere, no native-code build system, no GStreamer integration. (ADR 0001)
@@ -131,7 +133,7 @@ Operations: `load`, `play`, `pause`, `resume`, `stop`, `set_volume`, `set_muted`
 | Ownership      | One owner per state model per ADR 0003                                                     | Per-service and coordinator tests                                           |
 | Audio boundary | Services depend on `AudioPort` ABC only                                                    | Verified                                                                    |
 | Persistence    | M11.2A read-only health inspection + M11.2B validated LKG backup / staged recovery         | M11.2A + M11.2B capability tested; M11.2D startup preflight TESTED and wired in production (terminal states block, never LKG fallback); M11.2E automatic restore + quarantine TESTED |
-| Tests          | 363 pytest tests passing; CI green (lint/test/build, offscreen)                            | Verified                                                                    |
+| Tests          | Full suite passes; CI green (lint/test/build, offscreen) — test counts are derived evidence and are not copied into secondary documents | Verified                                                                    |
 | QML boundary   | QML → bridges → services only                                                              | Verified (M9 QML tests)                                                     |
 
 ## ADR Index

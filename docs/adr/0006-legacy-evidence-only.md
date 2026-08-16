@@ -16,7 +16,7 @@ The rebuild starts from an empty workspace. Two distinct prior authorities exist
 
 - Governance documents use exactly two evidence class labels: **LEGACY EVIDENCE** for the historical Legacy repository (pitydah/michi-legacy @ `63914a00...`) and **SUPERSEDED CLEAN-REBUILD GOVERNANCE DRAFT** for the M0 Foundation v2 artifacts (see MIGRATION_LEDGER.md). Both are non-authoritative and read-only.
 - Zero Legacy files are copied. Zero Legacy tests are executed or adapted.
-- Classification of each prior concept is exact: ADAPT (concept carried over, re-implemented on the new stack), REWRITE (goal retained, implementation rebuilt), DISCARD (explicitly dropped, e.g. distributed scope — the product is local-first). Video was already rejected in Legacy itself (its test suite rejects video workflows); the rebuild independently declares it Not Applicable.
+- Classification of each prior concept is exact: ADAPT (concept carried over, re-implemented on the new stack), REWRITE (goal retained, implementation rebuilt), DISCARD (explicitly dropped, e.g. the retired CoverFlow successor — never to be restored or ported from Legacy). Distributed/ecosystem scope is NOT DISCARD: it is RETAINED as a future product capability, AFTER PLAYER STABLE, per MASTER_ROADMAP_1.0.md Product Scope and MIGRATION_LEDGER ML-110. Video was already rejected in Legacy itself (its test suite rejects video workflows); the rebuild independently declares it Not Applicable.
 - The superseded clean-rebuild governance draft (C++20/Qt 6 anticipation with CMake/CTest) is distinct from Legacy: it is a draft of this rebuild, preserved only as historical context; it imposes no active requirements.
 - The new contract (governance docs, ADRs, code) is the sole source of authority.
 

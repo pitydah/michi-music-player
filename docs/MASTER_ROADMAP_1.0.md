@@ -36,6 +36,18 @@ Phases M0–M16 remain the roadmap skeleton. M0 (governance foundation) through 
 | Platform — Windows                                                                       | Post-1.0       | Deferred                                                                                                                          |
 | Platform — macOS                                                                         | Post-1.0       | Deferred                                                                                                                          |
 
+## Product Scope
+
+- **Michi AI** — PRODUCT CAPABILITY: RETAINED. CURRENT REFACTOR: OUT OF SCOPE. IMPLEMENTATION: AFTER PLAYER STABLE, in the separate repository `pitydah/michi-ai`. Not embedded in the Player: no AI engine, models, providers, bridges, or runtime dependencies in this repository.
+- **Audio Lab** — RETAINED. OUT OF SCOPE. AFTER PLAYER STABLE.
+- **Streaming / Radio** — RETAINED. OUT OF SCOPE. AFTER PLAYER STABLE.
+- **Sync** — RETAINED. OUT OF SCOPE. AFTER PLAYER STABLE.
+- **Ecosystem integrations (Michi Link, Michi Mobile, Michi Micro Server, Michi Big Server, Michi Music Stream, Home Audio)** — RETAINED. OUT OF SCOPE. AFTER PLAYER STABLE.
+- **Mix** — two distinct capabilities: MIX LOCAL (deterministic, local data, part of the Player, pre-Stable local work) and MIX INTELIGENTE (recommendations/models, Michi AI, AFTER PLAYER STABLE). The roadmap preserves both.
+- **Playlists** — distinct from Queue (current session) and Mix (dynamically generated selection): a persistent user-curated collection, developed during Local Player Completion (pre-Beta).
+- **CoverFlow** — RETIRED: DO NOT implement, restore, or port from Legacy. Successor: PathView (ACTIVE PRODUCT CAPABILITY, pre-Stable local album experience, built after metadata → canonical album model → artwork → QML album model → PathView).
+- **Note**: "RETAINED" means the product concept remains; it is not part of the current refactor and must not be implemented as placeholder/gateway/empty service.
+
 ## Component Statuses
 
 Evidence-based; states per `docs/STATUS_MATRIX.md`.
@@ -61,16 +73,29 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 
 ## Future Execution Order
 
-**M11.2A-E persistence recovery — COMPLETE for Required 1.0** (M11.2E validated automatic restore + quarantine TESTED). **TD-013 filesystem degradation — RESOLVED / TESTED.** NEXT AUTHORIZED WP: **TD-016 — Queue/Playback cancellation-terminal synchronization**.
+**M11.2A-E persistence recovery — COMPLETE for Required 1.0** (M11.2E validated automatic restore + quarantine TESTED). **TD-013 filesystem degradation — RESOLVED / TESTED.** **TD-016 cancellation-terminal synchronization — RESOLVED / TESTED.** NEXT AUTHORIZED WP: **M4 Repeat**.
 
-1. **Queue/Playback cancellation-terminal synchronization** — TD-016, explicitly before M4 Required-1.0 closeout and before M12 (per TECHNICAL_DEBT_REGISTER).
-2. **M4 Required-1.0 Queue capability closeout** — shuffle + repeat.
-3. **M6 Required-1.0 metadata extraction** — title/artist/album/duration.
-4. **M12 Performance** — benchmark and tune scan/startup/memory; CI performance gate.
-5. **M13 Packaging** — Linux installable artifacts (AppImage/Flatpak/deb), icon suite, desktop integration, CLI entry points. Windows and macOS are Post-1.0 per the canonical contract.
-6. **M14 Beta** — beta channel, opt-in telemetry, feedback loop, triage SLA.
-7. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
-8. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
+1. ~~**TD-016 — Queue/Playback cancellation-terminal synchronization**~~ — DONE (216f5a1).
+2. **M4 Repeat** — repeat modes none/one/all.
+3. **M4 Shuffle** — deterministic shuffle navigation (shuffle order/remaining pool + navigation history; never `next = random.choice`).
+4. **M4 Queue → TESTED closeout**.
+5. **M6 Metadata** — real title/artist/album/duration extraction behind a clean port boundary.
+6. **M6 Library → TESTED closeout**.
+7. **LOCAL-01 Canonical Music Model**.
+8. **LOCAL-02 Artwork Pipeline**.
+9. **LOCAL-03 Rich Library Views**.
+10. **LOCAL-04 PathView** (successor of the retired CoverFlow).
+11. **LOCAL-05 Favorites / History**.
+12. **LOCAL-06 Playlists**.
+13. **LOCAL-07 Mix Local**.
+14. **LOCAL-08 Premium Player UI Completion**.
+15. **M12 Performance** — benchmark and tune scan/startup/memory; CI performance gate; resolves TD-009 (async/incremental scan with progress in LibraryState), TD-004 (markdown link validation), TD-012 (coverage tooling).
+16. **M13 Packaging** — Linux installable artifacts (AppImage/Flatpak/deb), icon suite, desktop integration, CLI entry points. Windows and macOS are Post-1.0 per the canonical contract.
+17. **M14 Beta** — beta channel, opt-in telemetry, feedback loop, triage SLA.
+18. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
+19. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
+
+LOCAL-01 through LOCAL-08 are the Local Player Completion work packages: after M6, the local product experience (canonical music model, artwork, albums/artists/genres/folders, PathView, favorites, history, playlists, local mix, final player UI) is developed BEFORE Beta — M6 closure does not jump directly to M12.
 
 Required-for-1.0 gaps (shuffle, repeat, metadata extraction) are scheduled as work packages within this order before M12; they are part of the 1.0 contract and may not slip past M15.
 

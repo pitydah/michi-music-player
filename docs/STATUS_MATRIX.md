@@ -95,7 +95,7 @@ These rules are exhaustive for work-package interruption and deferral.
 
 ## Current Capability Matrix
 
-Snapshot of the rebuild's components against the component state machine. Evidence: pytest suite (394 passing), Ruff clean, CI green. The matrix is a report, not a new state set; the state machine above is authoritative and unchanged.
+Snapshot of the rebuild's components against the component state machine. Evidence: pytest suite (394 passing, snapshot 2026-08-16), Ruff clean, CI green. The count is a dated snapshot; authoritative evidence is the passing full suite in CI. The matrix is a report, not a new state set; the state machine above is authoritative and unchanged.
 
 **Active-contract rule**: the matrix reports only components of the active 1.0 contract on the current stack. Every state below MUST be a legal state from the component state machine above — no invented labels. Superseded clean-rebuild governance draft components (the C++20-anticipation milestones) are not reported. A contract component that has not started is UNKNOWN (not yet audited), never a custom label.
 
@@ -120,4 +120,4 @@ Snapshot of the rebuild's components against the component state machine. Eviden
 | M11.2D Startup Preflight     | TESTED     | Read-only preflight before any writable open; deterministic health routing; staged candidates are installed by M11.2E only after validation for recoverable states                    |
 | M11.2E Recovery              | TESTED     | Validated automatic restore + quarantine: healthy-LKG-authorized trusted candidate installed atomically after byte-exact quarantine evidence; terminal states non-recovering; LKG preserved; field malformed stays on M11.2C. LKG committed WAL-visible state preserved; LKG sidecars are never recovery cleanup targets. |
 
-Transitions pending per the canonical 1.0 contract: all components with outstanding Required-1.0 gaps must reach TESTED before M15. Currently those are M4 Queue and M6 Library. M11.2A-E persistence recovery is COMPLETE for Required 1.0; next authorized work package is TD-016 (Queue/Playback cancellation-terminal synchronization) per MASTER_ROADMAP_1.0.md.
+Transitions pending per the canonical 1.0 contract: all components with outstanding Required-1.0 gaps must reach TESTED before M15. Currently those are M4 Queue and M6 Library. M11.2A-E persistence recovery is COMPLETE for Required 1.0; TD-016 (Queue/Playback cancellation-terminal synchronization) is RESOLVED; the next authorized work package is M4 Repeat per MASTER_ROADMAP_1.0.md.
