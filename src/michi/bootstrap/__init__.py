@@ -17,6 +17,7 @@ from michi.application.playback_service import PlaybackService
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
 from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
+from michi.infrastructure.metadata_extractor import InfrastructureMetadataExtractor
 from michi.infrastructure.qt_backend import QtMultimediaBackend
 from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
 from michi.presentation.library_bridge import LibraryBridge
@@ -70,7 +71,8 @@ class ApplicationContainer:
         playback = PlaybackService(backend)
         queue = QueueService(playback)
         scanner = FilesystemLibraryScanner()
-        library = LibraryService(scanner, queue)
+        metadata_extractor = InfrastructureMetadataExtractor()
+        library = LibraryService(scanner, queue, metadata_extractor)
         navigation = NavigationService()
 
         # Load persisted preferences once

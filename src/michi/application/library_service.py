@@ -1,5 +1,6 @@
 """Library use case — owns LibraryState, coordinates scan and search."""
 
+import logging
 from collections.abc import Callable
 from pathlib import Path
 
@@ -7,13 +8,20 @@ from michi.application.library_port import (
     LibraryFilesystemError,
     LibraryScannerPort,
 )
+from michi.application.ports import (
+    MetadataExtractionError,
+    MetadataExtractorPort,
+)
 from michi.application.queue_service import QueueService
 from michi.domain.library import (
     LibraryDiagnostic,
     LibraryDiagnosticCode,
     LibraryState,
+    TrackMetadata,
     TrackRef,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _user_message(code, path=None, affected_count=0) -> str:
@@ -37,10 +45,14 @@ class LibraryService:
     """Sole authority over LibraryState. Publishes changes."""
 
     def __init__(
-        self, scanner: LibraryScannerPort, queue_service: QueueService
+        self,
+        scanner: LibraryScannerPort,
+        queue_service: QueueService,
+        metadata_extractor: MetadataExtractorPort | None = None,
     ) -> None:
         self._scanner = scanner
         self._queue = queue_service
+        self._metadata_extractor = metadata_extractor
         self._state = LibraryState()
         self._subscribers: list[Callable[[], None]] = []
 
@@ -74,7 +86,10 @@ class LibraryService:
         old_paths = {t.file_path for t in self._state.tracks}
         removed = old_paths - {p for p in paths}
         same_dir = self._state.current_directory == directory
-        self._state.tracks = [TrackRef(file_path=p) for p in paths]
+        new_tracks = []
+        for p in paths:
+            new_tracks.append(self._make_trackref(p))
+        self._state.tracks = new_tracks
         self._state.query = ""
         self._state.current_directory = directory
         if same_dir and removed:
@@ -89,6 +104,23 @@ class LibraryService:
         else:
             self._state.diagnostic = None
         self._notify()
+
+    def _make_trackref(self, file_path: Path) -> TrackRef:
+        if self._metadata_extractor is None:
+            return TrackRef(file_path=file_path)
+        try:
+            meta: TrackMetadata = self._metadata_extractor.extract(file_path)
+        except MetadataExtractionError as exc:
+            logger.warning("Metadata extraction failed for %s: %s", file_path, exc)
+            return TrackRef(file_path=file_path)
+        return TrackRef(
+            file_path=file_path,
+            display_name=meta.title or file_path.stem,
+            title=meta.title,
+            artist=meta.artist,
+            album=meta.album,
+            duration_ms=meta.duration_ms,
+        )
 
     def restore_directory_hint(self, directory: str) -> None:
         """Restore a persisted path as context. No scan. Idempotent."""
@@ -129,6 +161,6 @@ class LibraryService:
             self._notify()
             return
         was_empty = self._queue.state.count == 0
-        self._queue.add(ref.file_path)
+        self._queue.add(ref.file_path, title=ref.title or "")
         if was_empty:
             self._queue.play_index(0)

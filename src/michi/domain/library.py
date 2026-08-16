@@ -6,9 +6,23 @@ from pathlib import Path
 
 
 @dataclass(frozen=True)
+class TrackMetadata:
+    """Extracted metadata for a library entry (canonical minimal model)."""
+
+    title: str = ""
+    artist: str = ""
+    album: str = ""
+    duration_ms: int = 0
+
+
+@dataclass(frozen=True)
 class TrackRef:
     file_path: Path
     display_name: str = ""
+    title: str = ""
+    artist: str = ""
+    album: str = ""
+    duration_ms: int = 0
 
     def __post_init__(self) -> None:
         if not self.display_name:

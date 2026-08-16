@@ -36,8 +36,8 @@ class QueueService:
         for cb in self._subscribers:
             cb()
 
-    def add(self, file_path: Path) -> None:
-        track = Track(file_path=file_path)
+    def add(self, file_path: Path, title: str = "") -> None:
+        track = Track(file_path=file_path, title=title)
         self._state.tracks.append(track)
         if self._state.shuffle_enabled:
             self._navigator.add(track)

@@ -4,7 +4,23 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from pathlib import Path
 
+from michi.domain.library import TrackMetadata
 from michi.domain.playback import PlaybackStatus
+
+
+class MetadataExtractionError(RuntimeError):
+    """A media file could not be read for metadata extraction (filesystem-
+    level failure: missing, unreadable, vanished mid-read)."""
+
+    def __init__(self, path: Path, detail: str = "") -> None:
+        super().__init__(detail or str(path))
+        self.path = path
+        self.detail = detail
+
+
+class MetadataExtractorPort(ABC):
+    @abstractmethod
+    def extract(self, file_path: Path) -> TrackMetadata: ...
 
 
 class AudioPort(ABC):
