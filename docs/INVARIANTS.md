@@ -62,7 +62,7 @@ A release candidate SHALL NOT proceed to release when either P0 count > 0 or P1 
 
 ### Contract Reference
 
-The canonical 1.0 contract (MASTER_ROADMAP_1.0.md) is the authority for which capabilities are Required for 1.0, Post-1.0, or Not Applicable. Shuffle and repeat are **Required for 1.0** and currently **not implemented**; they are scheduled capability gaps tracked in TECHNICAL_DEBT_REGISTER.md (TD-011), not release-blocking defects. A missing Required-1.0 capability blocks milestone acceptance per its phase contract; a broken implemented capability is judged against the P0/P1 tables above.
+The canonical 1.0 contract (MASTER_ROADMAP_1.0.md) is the authority for which capabilities are Required for 1.0, Post-1.0, or Not Applicable. Shuffle and repeat are Required for 1.0 and are implemented and TESTED (M4 Queue TESTED; TD-011 resolved). Queue navigation, repeat modes (none/one/all) and deterministic shuffle are governed by QueueService. A missing Required-1.0 capability blocks milestone acceptance per its phase contract; a broken implemented capability is judged against the P0/P1 tables above.
 
 ## Feature Freeze
 

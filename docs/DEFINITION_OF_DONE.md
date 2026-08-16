@@ -67,7 +67,7 @@ clean install            [blocked-by: packaging — M13; 1.0 artifacts are Linux
 → seek                   [executable]
 → previous/next          [executable]
 → manage Queue           [executable — add/remove/clear/play_index; reorder is Post-1.0]
-→ shuffle/repeat         [blocked-by: shuffle/repeat work package — Required 1.0, not implemented]
+→ shuffle/repeat         [executable]
 → close                  [executable]
 → restart                [executable]
 → recover valid consistent state
