@@ -57,6 +57,18 @@ ColumnLayout {
                 onClicked: queue.set_repeat_mode("ALL")
             }
         }
+
+        Text {
+            text: "Shuffle"
+            font.pixelSize: MichiTheme.fontSizeBody
+            font.weight: queue.shuffleEnabled ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
+            color: queue.shuffleEnabled ? MichiTheme.warning : MichiTheme.textSecondary
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: queue.set_shuffle_enabled(!queue.shuffleEnabled)
+            }
+        }
     }
 
     QueuePanel {

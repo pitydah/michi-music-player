@@ -1,17 +1,20 @@
 """Queue use case — sole mutation authority for QueueState. Publishes changes."""
 
+import random
 from collections.abc import Callable
 from pathlib import Path
 
 from michi.application.playback_service import PlaybackService
-from michi.domain.queue import QueueState, RepeatMode, Track
+from michi.domain.queue import QueueState, RepeatMode, ShuffleNavigator, Track
 
 
 class QueueService:
     """Owns QueueState. Coordinates with PlaybackService for actual playback."""
 
-    def __init__(self, playback_service: PlaybackService) -> None:
+    def __init__(self, playback_service: PlaybackService, rng=None) -> None:
         self._playback = playback_service
+        self._rng = rng if rng is not None else random.Random()
+        self._navigator = ShuffleNavigator()
         self._state = QueueState()
         self._subscribers: list[Callable[[], None]] = []
         self._pending_track: Track | None = None
@@ -34,7 +37,10 @@ class QueueService:
             cb()
 
     def add(self, file_path: Path) -> None:
-        self._state.tracks.append(Track(file_path=file_path))
+        track = Track(file_path=file_path)
+        self._state.tracks.append(track)
+        if self._state.shuffle_enabled:
+            self._navigator.add(track)
         self._notify()
 
     def remove(self, index: int) -> None:
@@ -50,11 +56,14 @@ class QueueService:
                 self._state.current_index = min(
                     self._state.current_index, len(self._state.tracks) - 1
                 )
+            if self._state.shuffle_enabled:
+                self._navigator.remove(removed_track)
             self._notify()
 
     def clear(self) -> None:
         self._playback.stop()
         self._pending_track = None
+        self._navigator.clear()
         self._state.tracks.clear()
         self._state.current_index = -1
         self._notify()
@@ -90,6 +99,29 @@ class QueueService:
         self._state.repeat_mode = mode
         self._notify()
 
+    def set_shuffle_enabled(self, enabled: bool) -> None:
+        if not isinstance(enabled, bool):
+            raise ValueError(f"invalid shuffle flag: {enabled!r}")
+        if self._state.shuffle_enabled is enabled:
+            return
+        self._state.shuffle_enabled = enabled
+        if enabled:
+            self._navigator.reset(
+                self._state.tracks, self._state.current_track, self._rng
+            )
+        else:
+            self._navigator.clear()
+        self._notify()
+
+    def _index_of(self, track: Track) -> int:
+        for i, t in enumerate(self._state.tracks):
+            if t is track:
+                return i
+        return -1
+
+    def _shuffle_pick(self) -> Track | None:
+        return self._navigator.pop_next(self._rng)
+
     def _on_end_of_media(self) -> None:
         """Natural end of the committed track. Applies the repeat mode.
 
@@ -103,17 +135,34 @@ class QueueService:
             return
         if not self._state.tracks or self._state.current_index < 0:
             return
-        index = self._state.current_index
-        mode = self._state.repeat_mode
-        if mode is RepeatMode.NONE:
-            if index + 1 < len(self._state.tracks):
-                self.play_index(index + 1)
-            else:
-                self._playback.stop()
-        elif mode is RepeatMode.ONE:
-            self.play_index(index)
-        else:  # RepeatMode.ALL
-            self.play_index((index + 1) % len(self._state.tracks))
+        if self._state.shuffle_enabled:
+            target = self._shuffle_pick()
+            if target is None:
+                if self._state.repeat_mode is RepeatMode.ALL:
+                    self._navigator.regenerate(
+                        self._state.tracks, self._state.current_track, self._rng
+                    )
+                    target = self._shuffle_pick()
+                    if target is None:  # single-track edge
+                        self.play_index(self._state.current_index)
+                        return
+                elif self._state.repeat_mode is RepeatMode.NONE:
+                    self._playback.stop()
+                    return
+                else:  # RepeatMode.ONE
+                    self.play_index(self._state.current_index)
+                    return
+            self.play_index(self._index_of(target))
+            return
+        if self._state.repeat_mode is RepeatMode.ONE:
+            self.play_index(self._state.current_index)
+            return
+        if self._state.repeat_mode is RepeatMode.ALL:
+            self.play_index((self._state.current_index + 1) % len(self._state.tracks))
+        elif self._state.current_index + 1 < len(self._state.tracks):
+            self.play_index(self._state.current_index + 1)
+        else:
+            self._playback.stop()
 
     def _commit_pending(self, track: Track, path: Path) -> None:
         """Acceptance point: commit only if `track` is still the pending
@@ -127,6 +176,8 @@ class QueueService:
             if candidate is track:
                 self._pending_track = None
                 self._state.current_index = current_idx
+                if self._state.shuffle_enabled:
+                    self._navigator.record_commit(track)
                 self._notify()
                 return
         self._pending_track = None
@@ -134,12 +185,15 @@ class QueueService:
     def _reject_pending(self, track: Track, path: Path, message: str) -> None:
         """Rejection point: drop the pending candidate if it is still the
         pending request. The request is already terminal at the playback
-        layer — nothing else may mutate or notify."""
+        layer — nothing else may mutate or notify. A rejected shuffled
+        candidate is dropped from the cycle, so playback is stopped."""
         if self._pending_track is not track:
             return
         if track.file_path != path:
             return
         self._pending_track = None
+        if self._state.shuffle_enabled:
+            self._playback.stop()
 
     def _cancel_pending(self, track: Track, path: Path) -> None:
         """Cancellation terminal: the requestor (PlaybackService.stop) reported
@@ -155,10 +209,44 @@ class QueueService:
         self._pending_track = None
 
     def next(self) -> None:
+        if self._state.shuffle_enabled:
+            target = self._shuffle_pick()
+            if target is None:
+                mode = self._state.repeat_mode
+                if mode is RepeatMode.ALL:
+                    self._navigator.regenerate(
+                        self._state.tracks, self._state.current_track, self._rng
+                    )
+                    target = self._shuffle_pick()
+                    if target is None:
+                        self.play_index(self._state.current_index)
+                        return
+                elif mode is RepeatMode.NONE:
+                    self._playback.stop()
+                    return
+                else:  # RepeatMode.ONE
+                    self.play_index(self._state.current_index)
+                    return
+            self.play_index(self._index_of(target))
+            return
         self.play_index(self._state.current_index + 1)
 
     def previous(self) -> None:
+        if self._state.shuffle_enabled:
+            target = self._navigator.previous_pick()
+            if target is None:
+                return
+            self.play_index(self._index_of(target))
+            return
         self.play_index(self._state.current_index - 1)
+
+    @property
+    def has_next(self) -> bool:
+        if self._state.shuffle_enabled:
+            if self._navigator.pool:
+                return True
+            return self._state.repeat_mode is not RepeatMode.NONE
+        return self._state.has_next
 
     def play_current(self) -> None:
         self.play_index(self._state.current_index)

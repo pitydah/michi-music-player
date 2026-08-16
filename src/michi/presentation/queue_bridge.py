@@ -31,7 +31,7 @@ class QueueBridge(QObject):
         return self._service.state.count
 
     def _get_has_next(self) -> bool:
-        return self._service.state.has_next
+        return self._service.has_next
 
     def _get_has_previous(self) -> bool:
         return self._service.state.has_previous
@@ -39,12 +39,16 @@ class QueueBridge(QObject):
     def _get_repeat_mode(self) -> str:
         return self._service.state.repeat_mode.name
 
+    def _get_shuffle_enabled(self) -> bool:
+        return self._service.state.shuffle_enabled
+
     trackNames = Property(list, _get_track_names, notify=queue_changed)
     currentIndex = Property(int, _get_current_index, notify=queue_changed)
     count = Property(int, _get_count, notify=queue_changed)
     hasNext = Property(bool, _get_has_next, notify=queue_changed)
     hasPrevious = Property(bool, _get_has_previous, notify=queue_changed)
     repeatMode = Property(str, _get_repeat_mode, notify=queue_changed)
+    shuffleEnabled = Property(bool, _get_shuffle_enabled, notify=queue_changed)
 
     @Slot(int)
     def play_index(self, index: int) -> None:
@@ -73,6 +77,10 @@ class QueueBridge(QObject):
         except KeyError:
             return
         self._service.set_repeat_mode(mode)
+
+    @Slot(bool)
+    def set_shuffle_enabled(self, enabled: bool) -> None:
+        self._service.set_shuffle_enabled(enabled)
 
     @Slot()
     def clear_queue(self) -> None:

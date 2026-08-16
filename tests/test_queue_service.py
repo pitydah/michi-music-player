@@ -1,5 +1,6 @@
 """Tests for QueueService — sole authority over QueueState."""
 
+import random
 from pathlib import Path
 
 import pytest
@@ -1184,3 +1185,473 @@ class TestRepeatModes:
         assert queue_service.state.current_index == 1  # candidate pending
         fake_audio.trigger_media_accepted(Path("/tmp/c.mp3"))
         assert queue_service.state.current_index == 2
+
+
+class TestShuffleNavigation:
+    """M4: shuffle navigation — deterministic via an injected, seeded RNG.
+
+    Contract under test (NOT yet implemented in production):
+    - `QueueState.shuffle_enabled: bool = False`;
+    - `QueueService.__init__(playback_service, rng=None)` defaults to a
+      fresh `random.Random`; tests inject a seeded RNG via `_shuffle_queue`;
+    - `set_shuffle_enabled(True)` sets the flag (with notify), builds
+      `pool = shuffled(tracks except current)` and `history = [current]`;
+      disabling clears pool and history;
+    - NEXT pops the pool (no repetition within a cycle); PREVIOUS walks real
+      history and returns the current track to the pool; pool exhausted →
+      repeat NONE stops, repeat ALL regenerates a cycle avoiding the track
+      that just played, repeat ONE replays the current track untouched;
+    - add enters the pool; remove drops the exact Track identity from both
+      pool and history; clear wipes navigation;
+    - an explicit play_index commit integrates (removed from pool, recorded
+      in history); a rejected shuffled candidate is terminal and is dropped
+      from the cycle.
+
+    Determinism strategy: the exact pick order depends on the injected
+    picker, so assertions pin the CONTRACT — cycle set-membership, identity
+    resolution, and cross-service reproducibility for equal seeds — instead
+    of hardcoding `random` output sequences.
+    """
+
+    def _shuffle_queue(self, playback_service, seed: int = 42):
+        """QueueService with an injected seeded RNG for deterministic picks."""
+        from michi.application.queue_service import QueueService
+
+        return QueueService(playback_service, rng=random.Random(seed))
+
+    def _populate(self, service, *paths: Path) -> None:
+        for p in paths:
+            service.add(p)
+
+    def _commit_first(self, service, fake_audio, path: Path) -> None:
+        service.play_index(0)
+        fake_audio.trigger_media_accepted(path)
+
+    def _track_index(self, service, path: Path) -> int:
+        return [t.file_path for t in service.state.tracks].index(path)
+
+    def test_shuffle_enabled_toggle_defaults_off(self, queue_service):
+        assert queue_service.state.shuffle_enabled is False
+
+    def test_enable_shuffle_keeps_committed_current(self, playback_service, fake_audio):
+        service = self._shuffle_queue(playback_service)
+        self._populate(
+            service, Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        )
+        self._commit_first(service, fake_audio, Path("/tmp/a.mp3"))
+        assert service.state.current_index == 0
+
+        calls = []
+        service.subscribe_changed(lambda: calls.append(1))
+        service.set_shuffle_enabled(True)
+
+        assert service.state.shuffle_enabled is True
+        assert service.state.current_index == 0
+        assert service.state.current_track.file_path == Path("/tmp/a.mp3")
+        assert calls == [1]  # the toggle notifies
+
+    def test_shuffle_next_picks_without_repetition_until_cycle_done(
+        self, playback_service, fake_audio
+    ):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        self._populate(service, a, b, c)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)
+
+        picked = []
+        for _ in range(2):  # two remaining pool entries
+            service.next()
+            path = fake_audio.loaded
+            picked.append(path)
+            fake_audio.trigger_media_accepted(path)
+
+        # The cycle covered b and c exactly once each, never repeating a.
+        assert set(picked) == {b, c}
+        assert len(picked) == 2
+        assert service.state.current_index in (1, 2)
+
+        # Pool exhausted → repeat NONE → end-of-media stops playback.
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.state == "stopped"
+        assert service.state.current_index in (1, 2)  # last commit kept
+
+    def test_shuffle_seeded_rng_deterministic_sequence(
+        self, playback_service, fake_audio
+    ):
+        def sequence(seed: int):
+            service = self._shuffle_queue(playback_service, seed=seed)
+            self._populate(
+                service,
+                Path("/tmp/a.mp3"),
+                Path("/tmp/b.mp3"),
+                Path("/tmp/c.mp3"),
+            )
+            self._commit_first(service, fake_audio, Path("/tmp/a.mp3"))
+            service.set_shuffle_enabled(True)
+            seq = []
+            for _ in range(2):
+                service.next()
+                path = fake_audio.loaded
+                seq.append(path)
+                fake_audio.trigger_media_accepted(path)
+            return seq
+
+        first = sequence(7)
+        second = sequence(7)
+
+        # Two independent services with equal seeds draw identical sequences.
+        assert first == second
+        assert set(first) == {Path("/tmp/b.mp3"), Path("/tmp/c.mp3")}
+
+    def test_shuffle_previous_walks_history(self, playback_service, fake_audio):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        self._populate(service, a, b, c)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)
+
+        service.next()
+        first_pick = fake_audio.loaded
+        fake_audio.trigger_media_accepted(first_pick)
+        service.next()
+        second_pick = fake_audio.loaded
+        fake_audio.trigger_media_accepted(second_pick)
+        assert first_pick != second_pick  # no repetition within the cycle
+
+        # PREVIOUS walks real history → target is the previous committed
+        # pick, never a fresh random draw.
+        service.previous()
+        assert fake_audio.loaded == first_pick
+        fake_audio.trigger_media_accepted(first_pick)
+        assert service.state.current_index == self._track_index(service, first_pick)
+
+        # The track left behind returned to the pool: a later next() may
+        # select it again.
+        service.next()
+        assert fake_audio.loaded == second_pick
+        fake_audio.trigger_media_accepted(second_pick)
+        assert service.state.current_index == self._track_index(service, second_pick)
+
+    def test_shuffle_pool_exhausted_repeat_all_new_cycle(
+        self, playback_service, fake_audio
+    ):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        self._populate(service, a, b, c)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)
+        service.set_repeat_mode(RepeatMode.ALL)
+
+        # Consume the two pool entries via end-of-media auto-advance.
+        for _ in range(2):
+            fake_audio.trigger_end_of_media()
+            picked = fake_audio.loaded
+            assert picked in (b, c)
+            fake_audio.trigger_media_accepted(picked)
+        last_played = fake_audio.loaded
+        assert last_played in (b, c)
+
+        # Pool exhausted → repeat ALL regenerates a cycle that avoids the
+        # track that just played: a fresh pick happens, never a repetition.
+        fake_audio.trigger_end_of_media()
+        new_pick = fake_audio.loaded
+        assert new_pick != last_played
+        assert new_pick in (a, b, c)
+        fake_audio.trigger_media_accepted(new_pick)
+        assert service.state.current_index == self._track_index(service, new_pick)
+
+    def test_shuffle_pool_exhausted_repeat_one_replays_current(
+        self, playback_service, fake_audio
+    ):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        self._populate(service, a, b, c)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)
+        service.set_repeat_mode(RepeatMode.ONE)
+
+        # While the pool has entries, EVERY mode still pops the pool.
+        for _ in range(2):
+            fake_audio.trigger_end_of_media()
+            picked = fake_audio.loaded
+            assert picked in (b, c)
+            fake_audio.trigger_media_accepted(picked)
+        current = fake_audio.loaded  # committed second pick
+
+        # Pool exhausted → repeat ONE replays the current track.
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.loaded == current
+        fake_audio.trigger_media_accepted(current)
+        assert service.state.current_index == self._track_index(service, current)
+
+        # Pool/history untouched: a further EOM replays current again.
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.loaded == current
+
+    def test_shuffle_pool_exhausted_repeat_none_stops(
+        self, playback_service, fake_audio
+    ):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        self._populate(service, a, b, c)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)
+
+        for _ in range(2):
+            fake_audio.trigger_end_of_media()
+            picked = fake_audio.loaded
+            assert picked in (b, c)
+            fake_audio.trigger_media_accepted(picked)
+        last_index = service.state.current_index
+
+        # Pool exhausted → repeat NONE → end-of-media stops playback.
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.state == "stopped"
+        assert service.state.current_index == last_index
+
+    def test_shuffle_single_track_queue(self, playback_service, fake_audio):
+        service = self._shuffle_queue(playback_service)
+        a = Path("/tmp/a.mp3")
+        service.add(a)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)  # pool is empty immediately
+
+        # Repeat ALL with a single track: the empty pool regenerates to the
+        # only track (single-track edge) and replays it.
+        service.set_repeat_mode(RepeatMode.ALL)
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.loaded == a
+        fake_audio.trigger_media_accepted(a)
+        assert service.state.current_index == 0
+
+        # Repeat NONE with an empty pool stops.
+        service.set_repeat_mode(RepeatMode.NONE)
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.state == "stopped"
+        assert service.state.current_index == 0
+
+    def test_shuffle_add_enters_pool(self, playback_service, fake_audio):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        self._populate(service, a, b)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)
+
+        service.add(c)  # pool was {b}; now {b, c}
+
+        picked = []
+        for _ in range(2):
+            service.next()
+            path = fake_audio.loaded
+            picked.append(path)
+            fake_audio.trigger_media_accepted(path)
+        assert set(picked) == {b, c}  # c entered the pool and was selectable
+
+    def test_shuffle_remove_identity_from_pool_and_history(
+        self, playback_service, fake_audio
+    ):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        self._populate(service, a, b, c)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)
+
+        service.next()
+        first_pick = fake_audio.loaded
+        fake_audio.trigger_media_accepted(first_pick)
+        remaining = next(p for p in (b, c) if p != first_pick)
+
+        # Remove the track still sitting in the pool: exact identity leaves
+        # both the queue and the pool.
+        service.remove(self._track_index(service, remaining))
+        assert remaining not in [t.file_path for t in service.state.tracks]
+
+        # The dropped track is never re-picked: repeat ALL regenerates from
+        # the current tracks, which no longer contain the removed object.
+        service.set_repeat_mode(RepeatMode.ALL)
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.loaded != remaining
+        assert fake_audio.loaded == a  # the only track left for the cycle
+        fake_audio.trigger_media_accepted(a)
+        assert service.state.current_index == 0
+
+    def test_shuffle_clear_resets_navigation(self, playback_service, fake_audio):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        self._populate(service, a, b, c)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)
+        service.next()
+        picked = fake_audio.loaded
+        fake_audio.trigger_media_accepted(picked)
+
+        service.clear()
+        assert service.state.count == 0
+        assert service.state.current_index == -1
+        assert fake_audio.state == "stopped"
+
+        # Fresh queue state: stale end-of-media events are inert — nothing
+        # advances from the wiped navigation.
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.loaded == picked
+        assert service.state.current_index == -1
+
+        # Re-enabling rebuilds navigation from the new tracks: the pool
+        # excludes the committed current track.
+        d, e = Path("/tmp/d.mp3"), Path("/tmp/e.mp3")
+        service.add(d)
+        service.add(e)
+        self._commit_first(service, fake_audio, d)
+        service.set_shuffle_enabled(False)
+        service.set_shuffle_enabled(True)
+        service.next()
+        assert fake_audio.loaded == e  # current (d) excluded from the pool
+
+    def test_shuffle_explicit_play_index_integrates(self, playback_service, fake_audio):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        self._populate(service, a, b, c)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)
+
+        service.play_index(2)  # explicit user choice: c
+        fake_audio.trigger_media_accepted(c)
+        assert service.state.current_index == 2
+        assert service.state.current_track.file_path == c
+
+        # The explicitly committed track was removed from the pool and
+        # recorded in history: next() must not re-pick c.
+        service.next()
+        assert fake_audio.loaded == b  # only b remained in the pool
+        fake_audio.trigger_media_accepted(b)
+        assert service.state.current_index == 1
+
+    def test_shuffle_duplicates_navigate_by_identity(
+        self, playback_service, fake_audio
+    ):
+        service = self._shuffle_queue(playback_service)
+        x, y = Path("/tmp/x.mp3"), Path("/tmp/y.mp3")
+        service.add(x)  # index 0 — x1, committed first
+        service.add(x)  # index 1 — x2, distinct object, same path
+        service.add(y)  # index 2
+        self._commit_first(service, fake_audio, x)
+        service.set_shuffle_enabled(True)
+
+        picked_indices = []
+        for _ in range(2):  # pool = {x2, y}: each picked exactly once
+            service.next()
+            path = fake_audio.loaded
+            fake_audio.trigger_media_accepted(path)
+            idx = service.state.current_index
+            picked_indices.append(idx)
+            # Exact identity: the commit lands on the picked object's index.
+            assert service.state.tracks[idx].file_path == path
+
+        # Both distinct pool objects were consumed — never the committed x1
+        # at index 0, and never a path-confused resolution.
+        assert sorted(picked_indices) == [1, 2]
+
+    def test_shuffle_previous_then_next_coherence(self, playback_service, fake_audio):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        self._populate(service, a, b, c)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)
+
+        service.next()
+        first_pick = fake_audio.loaded
+        fake_audio.trigger_media_accepted(first_pick)
+        assert service.state.current_index == self._track_index(service, first_pick)
+
+        # PREVIOUS is deterministic: it walks history back to a — never a
+        # random draw from the pool.
+        service.previous()
+        assert fake_audio.loaded == a
+        fake_audio.trigger_media_accepted(a)
+        assert service.state.current_index == 0
+
+        # The returned track joined the untouched third track in the pool:
+        # next() may select either, but never the committed current (a).
+        service.next()
+        second_pick = fake_audio.loaded
+        assert second_pick in (b, c)
+        fake_audio.trigger_media_accepted(second_pick)
+        assert service.state.current_index == self._track_index(service, second_pick)
+
+    def test_shuffle_rejected_candidate_dropped_from_cycle(
+        self, playback_service, fake_audio
+    ):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        self._populate(service, a, b, c)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)
+
+        fake_audio.trigger_end_of_media()  # auto-advance pops a pool candidate
+        rejected = fake_audio.loaded
+        assert rejected in (b, c)
+        assert service.state.current_index == 0  # pending, not committed
+
+        fake_audio.trigger_media_rejected(rejected, "broken")
+        assert service.state.current_index == 0  # rejection is terminal
+        assert service.state.current_track.file_path == a
+        assert fake_audio.state == "stopped"
+        assert fake_audio.loaded == rejected  # no immediate retry
+
+        # Stale EOMs after rejection stay inert (TD-008B intent guard) — the
+        # dropped candidate is never re-picked automatically.
+        fake_audio.trigger_end_of_media()
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.loaded == rejected
+
+        # The rejected candidate is dropped from the cycle: the next pick
+        # comes from the remaining pool only.
+        service.next()
+        assert fake_audio.loaded != rejected
+        assert fake_audio.loaded in (b, c)
+        fake_audio.trigger_media_accepted(fake_audio.loaded)
+        assert service.state.current_index == self._track_index(
+            service, fake_audio.loaded
+        )
+
+    def test_shuffle_disable_restores_natural_order(self, playback_service, fake_audio):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        self._populate(service, a, b, c)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)
+
+        service.set_shuffle_enabled(False)
+        assert service.state.shuffle_enabled is False
+
+        # Natural order resumes: next() is index+1 again.
+        service.next()
+        assert fake_audio.loaded == b
+        fake_audio.trigger_media_accepted(b)
+        assert service.state.current_index == 1
+
+    def test_shuffle_toggle_off_on_fresh_cycle(self, playback_service, fake_audio):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        self._populate(service, a, b, c)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)
+        service.next()
+        first_pick = fake_audio.loaded
+        fake_audio.trigger_media_accepted(first_pick)
+
+        service.set_shuffle_enabled(False)
+        assert service.state.shuffle_enabled is False
+        service.set_shuffle_enabled(True)  # rebuilds a fresh cycle
+        assert service.state.shuffle_enabled is True
+
+        # A pick occurs from the rebuilt pool; the committed current track is
+        # excluded, but previously played tracks may re-enter.
+        service.next()
+        assert fake_audio.loaded in (a, b, c)
+        assert fake_audio.loaded != first_pick  # current excluded from pool
+        fake_audio.trigger_media_accepted(fake_audio.loaded)
+        assert service.state.current_index == self._track_index(
+            service, fake_audio.loaded
+        )
