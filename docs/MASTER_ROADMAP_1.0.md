@@ -59,7 +59,7 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 | M3 Complete Playback         | TESTED     | Play/pause/resume/stop, seek, volume, mute, position/duration events                                                                                  | No Required-1.0 gap; gapless/crossfade Post-1.0; metadata owned by M6                             |
 | M4 Queue                     | PARTIAL    | Add/remove/clear, play_index, next/previous, auto-advance                                                                                             | Shuffle, repeat absent (Required 1.0); reorder Post-1.0                                           |
 | M5 Database/Settings         | TESTED     | Settings persistence (SQLite, WAL) through `SettingsRepository`/`SQLiteSettingsRepository`; restart gate                                              | No Required-1.0 gap; corruption recovery tracked under M11.2; queue/position persistence Post-1.0 |
-| M6 Library                   | PARTIAL    | Recursive scan with extension filter; substring filter; filesystem degradation diagnostics (TD-013, RESOLVED/TESTED)                                  | Metadata extraction absent (Required 1.0, owned by M6); library index DB Post-1.0                 |
+| M6 Library                   | TESTED     | Recursive scan with extension filter; substring filter; filesystem degradation diagnostics (TD-013, RESOLVED/TESTED); canonical basic metadata extraction (title/artist/album/duration via Mutagen, per-file fallbacks, failure-safe)                                  | Local product experience (canonical music model, artwork, albums/artists/genres/folders, PathView, favorites, history, playlists, local mix, final player UI) is scheduled as LOCAL-01..08 pre-Beta                 |
 | M7 Search                    | FUNCTIONAL | Substring search filter over library                                                                                                                  | FTS / indexed search Post-1.0 (not a blocker)                                                     |
 | M8 Navigation                | TESTED     | AppRoute navigation across now_playing/library/queue/settings                                                                                         | —                                                                                                 |
 | M9 UI Foundation             | TESTED     | MichiTheme tokens; MichiButton/MichiPanel/MichiSlider/MichiTextField; AppShell/Sidebar/ContentHost; views                                             | —                                                                                                 |
@@ -73,14 +73,14 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 
 ## Future Execution Order
 
-**M11.2A-E persistence recovery — COMPLETE for Required 1.0** (M11.2E validated automatic restore + quarantine TESTED). **TD-013 filesystem degradation — RESOLVED / TESTED.** **TD-016 cancellation-terminal synchronization — RESOLVED / TESTED.** **M4 Queue — TESTED (repeat a977378 + shuffle f93a6a8).** NEXT AUTHORIZED WP: **M6 Metadata**.
+**M11.2A-E persistence recovery — COMPLETE for Required 1.0** (M11.2E validated automatic restore + quarantine TESTED). **TD-013 filesystem degradation — RESOLVED / TESTED.** **TD-016 cancellation-terminal synchronization — RESOLVED / TESTED.** **M4 Queue — TESTED (repeat a977378 + shuffle f93a6a8).** **M6 Library — TESTED (canonical basic metadata 5fd8ec3).** NEXT AUTHORIZED WP: **LOCAL-01 — Canonical Music Model**.
 
 1. ~~**TD-016 — Queue/Playback cancellation-terminal synchronization**~~ — DONE (216f5a1).
 2. ~~**M4 Repeat**~~ — repeat modes none/one/all — DONE (a977378).
 3. ~~**M4 Shuffle**~~ — deterministic shuffle navigation (shuffle order/remaining pool + navigation history; never `next = random.choice`) — DONE (f93a6a8).
 4. ~~**M4 Queue → TESTED closeout**~~ — DONE (441-pass suite).
-5. **M6 Metadata** — real title/artist/album/duration extraction behind a clean port boundary.
-6. **M6 Library → TESTED closeout**.
+5. ~~**M6 Metadata**~~ — real title/artist/album/duration extraction behind a clean port boundary (Mutagen) — DONE (5fd8ec3).
+6. ~~**M6 Library → TESTED closeout**~~ — DONE (460-pass suite).
 7. **LOCAL-01 Canonical Music Model**.
 8. **LOCAL-02 Artwork Pipeline**.
 9. **LOCAL-03 Rich Library Views**.
