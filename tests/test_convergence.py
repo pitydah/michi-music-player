@@ -238,6 +238,9 @@ class TestServiceNotifications:
             def scan(self, root):
                 return [root / "a.mp3"]
 
+            def validate_file(self, path):
+                return None
+
         lib = LibraryService(FakeScanner(), q)
         lib.scan("/tmp")
 
@@ -281,6 +284,9 @@ class TestServiceNotifications:
         class FakeScanner:
             def scan(self, root):
                 return [root / "a.mp3"]
+
+            def validate_file(self, path):
+                return None
 
         lib = LibraryService(FakeScanner(), q)
         calls = []
@@ -413,6 +419,9 @@ class TestLibraryBridgeSearchQuery:
         class FakeScanner:
             def scan(self, root):
                 return [root / "a.mp3"]
+
+            def validate_file(self, path):
+                return None
 
         lib = LibraryService(FakeScanner(), q)
         lib.scan("/tmp")

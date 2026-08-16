@@ -4,11 +4,13 @@ from pathlib import Path
 
 import pytest
 
+from michi.application.library_port import LibraryFilesystemError
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
 from michi.bootstrap import ApplicationContainer
+from michi.domain.library import LibraryDiagnosticCode
 from michi.domain.playback import PlaybackStatus
 from michi.domain.settings import SettingsState
 from tests.conftest import FakeAudioPort, FakeSettingsRepo
@@ -129,8 +131,13 @@ class FlakyScanner:
 
     def scan(self, root):
         if self.should_fail:
-            raise OSError("fake scan failure")
+            raise LibraryFilesystemError(
+                LibraryDiagnosticCode.DIRECTORY_MISSING, Path("/broken")
+            )
         return self._files
+
+    def validate_file(self, path):
+        return None
 
 
 class TestLibraryResilience:
@@ -151,12 +158,13 @@ class TestLibraryResilience:
         previous_query = library.state.query
 
         scanner.should_fail = True
-        with pytest.raises(OSError):
-            library.scan("/broken")
+        library.scan("/broken")  # must NOT raise
 
         assert library.state.current_directory == previous_directory
         assert library.state.tracks == previous_tracks
         assert library.state.query == previous_query
+        assert library.state.diagnostic is not None
+        assert library.state.diagnostic.code is LibraryDiagnosticCode.DIRECTORY_MISSING
 
 
 # ── ApplicationContainer real shutdown ──────────────────────────

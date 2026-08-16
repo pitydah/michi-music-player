@@ -2,8 +2,7 @@
 
 from pathlib import Path
 
-import pytest
-
+from michi.application.library_port import LibraryFilesystemError
 from michi.application.library_preferences_coordinator import (
     LibraryPreferencesCoordinator,
 )
@@ -11,6 +10,7 @@ from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
+from michi.domain.library import LibraryDiagnosticCode
 from michi.domain.settings import SettingsState
 from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
 from tests.conftest import FakeAudioPort
@@ -25,8 +25,13 @@ class FakeScanner:
     def scan(self, root):
         self.scan_calls += 1
         if self.should_fail:
-            raise OSError("fake scan failure")
+            raise LibraryFilesystemError(
+                LibraryDiagnosticCode.DIRECTORY_MISSING, Path("/broken")
+            )
         return self._files
+
+    def validate_file(self, path):
+        return None
 
 
 def _build_session(db_path: Path, scanner: FakeScanner):
@@ -129,10 +134,11 @@ class TestRestartGate:
         _startup(settings1, playback1, prefs1)
         assert library1.state.current_directory == "/known-good"
 
-        with pytest.raises(OSError):
-            library1.scan("/broken")
+        library1.scan("/broken")  # must NOT raise
         assert settings1.state.last_directory == "/known-good"
         assert library1.state.current_directory == "/known-good"
+        assert library1.state.diagnostic is not None
+        assert library1.state.diagnostic.code is LibraryDiagnosticCode.DIRECTORY_MISSING
 
         _shutdown(playback1, settings1, prefs1)
 

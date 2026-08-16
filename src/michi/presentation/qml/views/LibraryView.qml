@@ -40,6 +40,14 @@ MichiPanel {
             onTextEdited: library.search(text)
         }
 
+        Text {
+            visible: library.hasDiagnostic
+            text: library.diagnosticMessage
+            color: MichiTheme.warning
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
+        }
+
         ListView {
             id: libList; Layout.fillWidth: true; Layout.fillHeight: true
             model: library.files; clip: true

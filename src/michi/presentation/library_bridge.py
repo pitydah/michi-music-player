@@ -33,10 +33,24 @@ class LibraryBridge(QObject):
     def _get_search_query(self) -> str:
         return self._service.state.query
 
+    def _get_diagnostic_code(self) -> str:
+        diagnostic = self._service.state.diagnostic
+        return diagnostic.code.value if diagnostic else ""
+
+    def _get_diagnostic_message(self) -> str:
+        diag = self._service.state.diagnostic
+        return (diag.message or "") if diag else ""
+
+    def _get_has_diagnostic(self) -> bool:
+        return self._service.state.diagnostic is not None
+
     files = Property(list, _get_files, notify=library_changed)
     fileCount = Property(int, _get_count, notify=library_changed)
     currentDir = Property(str, _get_current_dir, notify=library_changed)
     searchQuery = Property(str, _get_search_query, notify=library_changed)
+    diagnosticCode = Property(str, _get_diagnostic_code, notify=library_changed)
+    diagnosticMessage = Property(str, _get_diagnostic_message, notify=library_changed)
+    hasDiagnostic = Property(bool, _get_has_diagnostic, notify=library_changed)
 
     @Slot(str)
     def scan(self, directory: str) -> None:

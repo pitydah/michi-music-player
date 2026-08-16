@@ -2,6 +2,10 @@
 
 from pathlib import Path
 
+import pytest
+
+from michi.application.library_port import LibraryFilesystemError
+from michi.domain.library import LibraryDiagnosticCode
 from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
 
 
@@ -34,8 +38,9 @@ class TestFilesystemScanner:
 
     def test_nonexistent_directory(self):
         scanner = FilesystemLibraryScanner()
-        result = scanner.scan(Path("/nonexistent/path/xyz"))
-        assert result == []
+        with pytest.raises(LibraryFilesystemError) as exc_info:
+            scanner.scan(Path("/nonexistent/path/xyz"))
+        assert exc_info.value.code is LibraryDiagnosticCode.DIRECTORY_MISSING
 
     def test_empty_directory(self, tmp_path):
         scanner = FilesystemLibraryScanner()

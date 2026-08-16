@@ -2,8 +2,7 @@
 
 from pathlib import Path
 
-import pytest
-
+from michi.application.library_port import LibraryFilesystemError
 from michi.application.library_preferences_coordinator import (
     LibraryPreferencesCoordinator,
 )
@@ -11,6 +10,7 @@ from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
+from michi.domain.library import LibraryDiagnosticCode
 from michi.domain.settings import SettingsState
 from michi.presentation.library_bridge import LibraryBridge
 from tests.conftest import FakeAudioPort, FakeSettingsRepo
@@ -25,8 +25,13 @@ class FakeScanner:
     def scan(self, root):
         self.scan_calls += 1
         if self.should_fail:
-            raise OSError("fake scan failure")
+            raise LibraryFilesystemError(
+                LibraryDiagnosticCode.DIRECTORY_MISSING, Path("/broken")
+            )
         return self._files
+
+    def validate_file(self, path):
+        return None
 
 
 class CountingSettingsRepo(FakeSettingsRepo):
@@ -85,9 +90,11 @@ class TestLibraryPreferencesCoordinator:
         library = LibraryService(scanner, QueueService(svc))
         coordinator = LibraryPreferencesCoordinator(library, settings)
         coordinator.start()
-        with pytest.raises(OSError):
-            library.scan("/broken")
+        library.scan("/broken")  # must NOT raise
         assert settings.state.last_directory == "/old"
+        assert library.state.current_directory == "/old"
+        assert library.state.diagnostic is not None
+        assert library.state.diagnostic.code is LibraryDiagnosticCode.DIRECTORY_MISSING
 
     def test_search_does_not_alter_directory(self):
         repo = FakeSettingsRepo()
