@@ -13,8 +13,12 @@ class PlaybackService:
     Playback acceptance is asynchronous: `load_and_play` only *requests* a
     candidate. The candidate becomes canonical when the backend reports media
     acceptance (`subscribe_media_accepted`); it is dropped when the backend
-    reports rejection. Until then the service owns the pending candidate
-    locally and PlaybackState reflects the last committed track as STOPPED.
+    reports rejection or when `stop()` cancels the request. A pending request
+    terminates in exactly one of ACCEPTED / REJECTED / CANCELLED /
+    SUPERSEDED; `stop()` notifies the requestor via `on_cancelled` at most
+    once with the exact pending path. Until a terminal outcome, the service
+    owns the pending candidate locally and PlaybackState reflects the last
+    committed track as STOPPED.
 
     Acceptance commits track identity only — never PLAYING. LoadedMedia means
     the media is loaded while the player is in the StoppedState; actual
@@ -46,6 +50,7 @@ class PlaybackService:
         self._pending_path: Path | None = None
         self._pending_on_accepted: Callable[[Path], None] | None = None
         self._pending_on_rejected: Callable[[Path, str], None] | None = None
+        self._pending_on_cancelled: Callable[[Path], None] | None = None
         self._intent = False
         self._accepted = False
         self._audio.subscribe_media_accepted(self._on_media_accepted)
@@ -84,23 +89,27 @@ class PlaybackService:
         file_path: Path,
         on_accepted: Callable[[Path], None] | None = None,
         on_rejected: Callable[[Path, str], None] | None = None,
+        on_cancelled: Callable[[Path], None] | None = None,
     ) -> None:
         """Request playback of a candidate. Commits nothing synchronously.
 
-        The candidate becomes canonical only when the backend reports media
-        acceptance for its path; `on_accepted` is then invoked exactly once
-        with the accepted path. Rejection drops the candidate and invokes
-        `on_rejected` exactly once with the rejected path and message. A new
-        request supersedes the previous pending candidate; `stop()`
-        invalidates it. Synchronous backend failures propagate, leave no
-        pending candidate behind, and restore the previous intent/acceptance
-        flags.
+        The candidate terminates in exactly one of ACCEPTED / REJECTED /
+        CANCELLED / SUPERSEDED. Acceptance, reported by the backend for its
+        path, invokes `on_accepted` exactly once with the accepted path.
+        Rejection drops the candidate and invokes `on_rejected` exactly once
+        with the rejected path and message. A new request supersedes the
+        previous pending candidate without invoking any callback for it.
+        `stop()` cancels the pending request and invokes `on_cancelled` at
+        most once with the pending path. Synchronous backend failures
+        propagate, leave no pending candidate behind, and restore the
+        previous intent/acceptance flags.
         """
         previous_intent = self._intent
         previous_accepted = self._accepted
         self._pending_path = file_path
         self._pending_on_accepted = on_accepted
         self._pending_on_rejected = on_rejected
+        self._pending_on_cancelled = on_cancelled
         self._accepted = False
         self._intent = True
         try:
@@ -110,6 +119,7 @@ class PlaybackService:
             self._pending_path = None
             self._pending_on_accepted = None
             self._pending_on_rejected = None
+            self._pending_on_cancelled = None
             self._intent = previous_intent
             self._accepted = previous_accepted
             raise
@@ -124,6 +134,7 @@ class PlaybackService:
         self._pending_path = None
         self._pending_on_accepted = None
         self._pending_on_rejected = None
+        self._pending_on_cancelled = None
         self._state.file_path = file_path
         self._state.error_message = None
         self._accepted = True
@@ -137,6 +148,7 @@ class PlaybackService:
             self._pending_path = None
             self._pending_on_accepted = None
             self._pending_on_rejected = None
+            self._pending_on_cancelled = None
             self._intent = False
             self._accepted = False
             self._state.status = PlaybackStatus.STOPPED
@@ -191,14 +203,27 @@ class PlaybackService:
             raise
 
     def stop(self) -> None:
+        on_cancelled = self._pending_on_cancelled
+        cancelled_path = self._pending_path
         self._pending_path = None
         self._pending_on_accepted = None
         self._pending_on_rejected = None
+        self._pending_on_cancelled = None
         self._intent = False
         self._audio.stop()
         self._state.status = PlaybackStatus.STOPPED
         self._state.position_ms = 0
         self._notify()
+        # Reentrancy guard: a subscriber may re-request playback during the
+        # notify above, re-arming the pending request; the stale cancellation
+        # captured before it must not clear that new pending, so fire it only
+        # when nothing is pending again.
+        if (
+            cancelled_path is not None
+            and on_cancelled is not None
+            and self._pending_path is None
+        ):
+            on_cancelled(cancelled_path)
 
     def seek(self, position_ms: int) -> None:
         self._audio.seek(position_ms)

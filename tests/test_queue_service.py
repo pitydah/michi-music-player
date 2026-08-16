@@ -481,7 +481,9 @@ class TestPendingTrackIdentity:
         queue_service.add(Path("/tmp/c.mp3"))
         callbacks = []
 
-        def recording_load_and_play(path, on_accepted=None, on_rejected=None):
+        def recording_load_and_play(
+            path, on_accepted=None, on_rejected=None, on_cancelled=None
+        ):
             callbacks.append((path, on_accepted))
 
         monkeypatch.setattr(playback_service, "load_and_play", recording_load_and_play)
@@ -502,7 +504,9 @@ class TestPendingTrackIdentity:
         queue_service.add(Path("/tmp/b.mp3"))
         callbacks = []
 
-        def recording_load_and_play(path, on_accepted=None, on_rejected=None):
+        def recording_load_and_play(
+            path, on_accepted=None, on_rejected=None, on_cancelled=None
+        ):
             callbacks.append((path, on_accepted))
 
         monkeypatch.setattr(playback_service, "load_and_play", recording_load_and_play)
@@ -622,3 +626,270 @@ class TestRejectedRequestIsTerminal:
         assert queue_service.state.current_track.file_path == Path("/tmp/a.mp3")
         assert playback_service.state.file_path == Path("/tmp/a.mp3")
         assert playback_service.state.error_message is None
+
+
+class TestCancellationTerminal:
+    """TD-016: a stopped request is terminal for the queue.
+
+    `PlaybackService.stop()` clears its own pending request but never
+    notifies the requestor, so `QueueService._pending_track` keeps pointing
+    at the track that was pending — and a later `remove()` of that track
+    issues a REDUNDANT second `stop()`. The target contract: a pending
+    request terminates in exactly one of ACCEPTED / REJECTED / CANCELLED /
+    SUPERSEDED; `load_and_play` gains an `on_cancelled` callback that
+    `stop()` invokes at most once for the exact pending path; `QueueService`
+    passes it and clears `_pending_track` only when the cancelled Track IS
+    the pending one (exact identity + file_path match), without mutating
+    state, changing current_index, removing the track, issuing another stop,
+    or notifying when public state is unchanged."""
+
+    def _pending_b(self, queue_service, playback_service, fake_audio):
+        """Commit A at index 0, then leave B pending at index 1."""
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        queue_service.play_index(1)
+
+    def _stop_spy(self, playback_service, monkeypatch):
+        calls = []
+        real_stop = playback_service.stop
+
+        def spy():
+            calls.append(1)
+            real_stop()
+
+        monkeypatch.setattr(playback_service, "stop", spy)
+        return calls
+
+    def _load_and_play_spy(self, playback_service, monkeypatch):
+        """Record kwargs of every load_and_play call and forward them."""
+        captured = []
+        orig = playback_service.load_and_play
+
+        def spy(path, **kwargs):
+            captured.append(kwargs)
+            orig(path, **kwargs)
+
+        monkeypatch.setattr(playback_service, "load_and_play", spy)
+        return captured
+
+    def _cancel_counting_spy(self, playback_service, monkeypatch):
+        """Spy on load_and_play; wrap on_cancelled so invocations are counted
+        while the queue's real callback still runs."""
+        captured = []
+        cancellations = []
+        orig = playback_service.load_and_play
+
+        def spy(path, **kwargs):
+            on_cancelled = kwargs.get("on_cancelled")
+            if on_cancelled is not None:
+
+                def wrapped(p):
+                    cancellations.append(p)
+                    on_cancelled(p)
+
+                kwargs["on_cancelled"] = wrapped
+            captured.append(kwargs)
+            orig(path, **kwargs)
+
+        monkeypatch.setattr(playback_service, "load_and_play", spy)
+        return captured, cancellations
+
+    def test_stop_clears_queue_pending(
+        self, queue_service, playback_service, fake_audio, monkeypatch
+    ):
+        """External stop cancels the request; removing the pending track
+        afterwards must NOT issue a redundant second stop."""
+        self._pending_b(queue_service, playback_service, fake_audio)
+        stop_calls = self._stop_spy(playback_service, monkeypatch)
+        playback_service.stop()  # the external cancellation route
+        queue_service.remove(1)  # remove the track that was pending
+        assert len(stop_calls) == 1  # only the cancel — remove adds no second
+        assert [t.file_path for t in queue_service.state.tracks] == [Path("/tmp/a.mp3")]
+        assert queue_service.state.current_index == 0
+
+    def test_remove_after_cancel_no_redundant_stop(
+        self, queue_service, playback_service, fake_audio, monkeypatch
+    ):
+        """Same scenario: the remove itself must succeed and stay silent."""
+        self._pending_b(queue_service, playback_service, fake_audio)
+        stop_calls = self._stop_spy(playback_service, monkeypatch)
+        playback_service.stop()
+        queue_service.remove(1)
+        assert len(stop_calls) == 1  # no redundant second stop
+        assert [t.file_path for t in queue_service.state.tracks] == [Path("/tmp/a.mp3")]
+
+    def test_accepted_path_still_commits(
+        self, queue_service, playback_service, fake_audio, monkeypatch
+    ):
+        """Regression guard: acceptance still commits and clears pending."""
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.add(Path("/tmp/c.mp3"))
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        queue_service.play_index(1)  # B pending
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert queue_service.state.current_index == 1
+        stop_calls = self._stop_spy(playback_service, monkeypatch)
+        queue_service.remove(2)  # unrelated, non-pending
+        assert stop_calls == []
+
+    def test_rejected_still_clears_pending(
+        self, queue_service, playback_service, fake_audio, monkeypatch
+    ):
+        """Regression guard: rejection is terminal and clears pending."""
+        self._pending_b(queue_service, playback_service, fake_audio)
+        fake_audio.trigger_media_rejected(Path("/tmp/b.mp3"), "err")
+        stop_calls = self._stop_spy(playback_service, monkeypatch)
+        queue_service.remove(1)
+        assert stop_calls == []
+
+    def test_late_cancel_does_not_clear_superseding_candidate(
+        self, queue_service, playback_service, fake_audio, monkeypatch
+    ):
+        """A late cancellation of a superseded candidate must not clear the
+        current pending one."""
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.add(Path("/tmp/c.mp3"))
+        captured = self._load_and_play_spy(playback_service, monkeypatch)
+        stop_calls = self._stop_spy(playback_service, monkeypatch)
+        queue_service.play_index(1)  # B pending
+        queue_service.play_index(2)  # C supersedes B
+        assert captured[0].get("on_cancelled") is not None  # TD-016 API
+        # Late cancellation of the superseded B: C must stay pending.
+        captured[0]["on_cancelled"](Path("/tmp/b.mp3"))
+        queue_service.remove(2)  # C is still pending → remove still stops
+        assert len(stop_calls) == 1
+
+    def test_duplicate_paths_cancel_resolves_exact_identity(
+        self, queue_service, playback_service, fake_audio, monkeypatch
+    ):
+        """Cancellation resolves by exact Track identity, never by path:
+        a callback captured from a different (same-path) object must not
+        clear the current pending one."""
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/same.mp3"))  # B1 — distinct object
+        queue_service.add(Path("/tmp/same.mp3"))  # B2 — distinct object
+        captured = self._load_and_play_spy(playback_service, monkeypatch)
+        stop_calls = self._stop_spy(playback_service, monkeypatch)
+        queue_service.play_index(1)  # B1 pending
+        queue_service.play_index(2)  # B2 supersedes B1
+        assert captured[0].get("on_cancelled") is not None  # TD-016 API
+        # Cancel carrying B1's callback and B1's path: B2 must stay pending.
+        captured[0]["on_cancelled"](Path("/tmp/same.mp3"))
+        queue_service.remove(2)  # B2 still pending → remove still stops
+        assert len(stop_calls) == 1
+        # A correct cancel for the exact pending B2 clears it.
+        queue_service.add(Path("/tmp/same.mp3"))  # B2' at index 2
+        queue_service.play_index(2)
+        captured[2]["on_cancelled"](Path("/tmp/same.mp3"))
+        queue_service.remove(2)  # pending already cleared → no stop
+        assert len(stop_calls) == 1
+        assert [t.file_path for t in queue_service.state.tracks] == [
+            Path("/tmp/a.mp3"),
+            Path("/tmp/same.mp3"),
+        ]
+
+    def test_stop_without_pending_no_false_cancel(
+        self, queue_service, playback_service, fake_audio, monkeypatch
+    ):
+        """stop() with nothing pending must never invoke on_cancelled and
+        must leave queue public state and notifications untouched."""
+        queue_service.add(Path("/tmp/a.mp3"))
+        captured, cancellations = self._cancel_counting_spy(
+            playback_service, monkeypatch
+        )
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        # Request accepted: nothing is pending, callbacks dropped.
+        notify = []
+        queue_service.subscribe_changed(lambda: notify.append(1))
+        playback_service.stop()
+        assert cancellations == []  # no pending → on_cancelled never invoked
+        assert queue_service.state.current_index == 0
+        assert [t.file_path for t in queue_service.state.tracks] == [Path("/tmp/a.mp3")]
+        assert notify == []  # public state unchanged → no queue notification
+
+    def test_repeated_stop_cancels_at_most_once(
+        self, queue_service, playback_service, fake_audio, monkeypatch
+    ):
+        """Two external stops must invoke on_cancelled at most once and must
+        not leave a phantom pending that a later remove() re-stops."""
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        captured, cancellations = self._cancel_counting_spy(
+            playback_service, monkeypatch
+        )
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        queue_service.play_index(1)  # B pending
+        assert captured[1].get("on_cancelled") is not None  # TD-016 API
+        stop_calls = self._stop_spy(playback_service, monkeypatch)
+        notify = []
+        queue_service.subscribe_changed(lambda: notify.append(1))
+        p_notify = []
+        playback_service.subscribe_changed(lambda: p_notify.append(1))
+        playback_service.stop()
+        playback_service.stop()
+        assert len(cancellations) == 1  # at-most-once: second stop re-fires nothing
+        assert notify == []  # cancellation mutated no public queue state
+        assert len(p_notify) == 2  # one playback notify per external stop
+        queue_service.remove(1)  # pending already cleared → no third stop
+        assert len(stop_calls) == 2
+
+    def test_late_media_accepted_after_stop_no_resurrection(
+        self, queue_service, playback_service, fake_audio
+    ):
+        """Regression guard: late acceptance after stop() must not resurrect
+        the cancelled candidate anywhere."""
+        self._pending_b(queue_service, playback_service, fake_audio)
+        playback_service.stop()
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert queue_service.state.current_index == 0
+        assert queue_service.state.current_track.file_path == Path("/tmp/a.mp3")
+        assert [t.file_path for t in queue_service.state.tracks] == [
+            Path("/tmp/a.mp3"),
+            Path("/tmp/b.mp3"),
+        ]
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+    def test_late_playing_state_after_stop_blocked(
+        self, queue_service, playback_service, fake_audio
+    ):
+        """Regression guard: a late PLAYING state after stop() is blocked by
+        the intent guard."""
+        self._pending_b(queue_service, playback_service, fake_audio)
+        playback_service.stop()
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+    def test_reentrant_same_object_rerrequest_survives_stop(
+        self, queue_service, playback_service, fake_audio
+    ):
+        """A subscriber that synchronously re-requests the SAME Track during
+        stop()'s notify installs a new pending; the stale cancellation from
+        the outer stop must not clear it, so the re-requested track still
+        commits (no queue/playback divergence)."""
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        queue_service.play_index(1)  # B pending (same object re-requested below)
+        re_requested = []
+
+        def _re_request() -> None:
+            # Fire at most once: the nested load_and_play in stop()'s notify
+            # would otherwise re-trigger this subscriber endlessly.
+            if re_requested:
+                return
+            re_requested.append(1)
+            queue_service.play_index(1)
+
+        playback_service.subscribe_changed(_re_request)
+        playback_service.stop()  # notify re-requests B; stale cancel must not clear it
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert queue_service.state.current_index == 1
+        assert playback_service.state.file_path == Path("/tmp/b.mp3")

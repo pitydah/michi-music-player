@@ -72,6 +72,9 @@ class QueueService:
                     on_rejected=lambda path, message, track=track: self._reject_pending(
                         track, path, message
                     ),
+                    on_cancelled=lambda path, track=track: self._cancel_pending(
+                        track, path
+                    ),
                 )
             except Exception:
                 if self._pending_track is track:
@@ -98,6 +101,19 @@ class QueueService:
         """Rejection point: drop the pending candidate if it is still the
         pending request. The request is already terminal at the playback
         layer — nothing else may mutate or notify."""
+        if self._pending_track is not track:
+            return
+        if track.file_path != path:
+            return
+        self._pending_track = None
+
+    def _cancel_pending(self, track: Track, path: Path) -> None:
+        """Cancellation terminal: the requestor (PlaybackService.stop) reported
+        the pending request cancelled. Clear the pending candidate only when
+        `track` is still the exact pending object and the path matches;
+        QueueState is not mutated, current_index is untouched, no track is
+        removed, no stop is issued, and no notification fires (public state
+        did not change)."""
         if self._pending_track is not track:
             return
         if track.file_path != path:
