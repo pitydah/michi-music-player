@@ -28,7 +28,7 @@ Phases M0–M16 remain the roadmap skeleton. M0 (governance foundation) through 
 | Cover art                                                                                | Post-1.0       | Deferred                                                                                                                          |
 | Search — simple substring filter                                                         | Required 1.0   | Implemented                                                                                                                       |
 | Search — full-text indexed                                                               | Post-1.0       | Deferred                                                                                                                          |
-| Settings persistence + corruption recovery                                               | Required 1.0   | M11.2A detection TESTED; M11.2B LKG/staging TESTED; M11.2C field recovery TESTED; M11.2D startup preflight TESTED; M11.2E pending |
+| Settings persistence + corruption recovery                                               | Required 1.0   | M11.2A detection TESTED; M11.2B LKG/staging TESTED; M11.2C field recovery TESTED; M11.2D startup preflight TESTED; M11.2E automatic restore + quarantine TESTED — Required-1.0 persistence corruption recovery COMPLETE |
 | Safe mode                                                                                | Post-1.0       | Deferred                                                                                                                          |
 | Watchdog                                                                                 | Post-1.0       | Deferred                                                                                                                          |
 | Video                                                                                    | Not applicable | Audio-only product                                                                                                                |
@@ -56,22 +56,23 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 | M11.2A Persistence Detection | TESTED     | Read-only `inspect_path`; taxonomy MISSING/HEALTHY/CORRUPT_DATABASE/MALFORMED_DATA/LOCKED/ACCESS_FAILURE/IO_FAILURE/UNKNOWN_FAILURE                   | —                                                                                                 |
 | M11.2B LKG Backup/Recovery   | TESTED     | Last-known-good backup (`<db>.lkg`) + non-destructive recovery staging with exclusive destination reservation (capability only; no startup wiring)    |
 | M11.2C Field-Level Recovery  | TESTED     | Malformed persisted fields fall back to defaults independently with warnings; no writeback; health classification stays strict (safe read fallback)   |
-| M11.2D Startup Preflight     | TESTED     | Read-only preflight before any writable open; deterministic health routing; recovery staged never installed; backend constructed only after preflight |
-| M11.2E Recovery              | UNKNOWN    | Remaining persistence recovery work pending                                                                                                           |
+| M11.2D Startup Preflight     | TESTED     | Read-only preflight before any writable open; deterministic health routing; recovery staged (M11.2E installs for recoverable states); backend constructed only after preflight |
+| M11.2E Recovery              | TESTED     | Validated automatic restore + quarantine: healthy-LKG-authorized trusted candidate installed atomically after byte-exact quarantine of original artifacts; terminal states non-recovering; LKG preserved; field malformed stays on M11.2C | — (safe mode remains Post-1.0) |
 
 ## Future Execution Order
 
 The next work proceeds in this order:
 
-1. **M11.2E Recovery (remaining)** — remaining persistence recovery work. NEXT IMMEDIATE WP: M11.2E. (M11.2B LKG/staging, M11.2C field recovery, and M11.2D startup preflight are TESTED; see STATUS_MATRIX.)
-2. **Filesystem Degradation** — handling for library files disappearing at runtime (TD-013).
-3. **M4 Required-1.0 Queue capability closeout** — shuffle + repeat.
-4. **M6 Required-1.0 metadata extraction** — title/artist/album/duration.
-5. **M12 Performance** — benchmark and tune scan/startup/memory; CI performance gate.
-6. **M13 Packaging** — Linux installable artifacts (AppImage/Flatpak/deb), icon suite, desktop integration, CLI entry points. Windows and macOS are Post-1.0 per the canonical contract.
-7. **M14 Beta** — beta channel, opt-in telemetry, feedback loop, triage SLA.
-8. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
-9. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
+**M11.2A-E persistence recovery — COMPLETE for Required 1.0** (M11.2E validated automatic restore + quarantine TESTED). NEXT AUTHORIZED WP: **TD-013 — Filesystem Degradation**.
+
+1. **Filesystem Degradation** — handling for library files disappearing at runtime (TD-013).
+2. **M4 Required-1.0 Queue capability closeout** — shuffle + repeat.
+3. **M6 Required-1.0 metadata extraction** — title/artist/album/duration.
+4. **M12 Performance** — benchmark and tune scan/startup/memory; CI performance gate.
+5. **M13 Packaging** — Linux installable artifacts (AppImage/Flatpak/deb), icon suite, desktop integration, CLI entry points. Windows and macOS are Post-1.0 per the canonical contract.
+6. **M14 Beta** — beta channel, opt-in telemetry, feedback loop, triage SLA.
+7. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
+8. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
 
 Required-for-1.0 gaps (shuffle, repeat, metadata extraction) are scheduled as work packages within this order before M12; they are part of the 1.0 contract and may not slip past M15.
 
