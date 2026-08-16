@@ -57,7 +57,7 @@ These entries are scheduled capability gaps of the canonical 1.0 contract, not t
 | ID     | Gap                                                                                                    | Contract status               | Work package              |
 | ------ | ------------------------------------------------------------------------------------------------------ | ----------------------------- | ------------------------- |
 | TD-010 | Metadata extraction (title/artist/album/duration) is not implemented; only the filename stem is shown. | Required 1.0, not implemented | Before M12 (Required 1.0) |
-| TD-011 | Shuffle and repeat (none/one/all) are not implemented.                                                 | Required 1.0, not implemented | Before M12 (Required 1.0) |
+| TD-011 | Repeat modes (none/one/all) are IMPLEMENTED and TESTED (a977378, 423-pass suite); deterministic shuffle navigation remains pending (owns this entry — stays ACTIVE). | Required 1.0, not implemented | Before M12 (Required 1.0) |
 
 ## Rules
 

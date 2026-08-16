@@ -73,10 +73,10 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 
 ## Future Execution Order
 
-**M11.2A-E persistence recovery — COMPLETE for Required 1.0** (M11.2E validated automatic restore + quarantine TESTED). **TD-013 filesystem degradation — RESOLVED / TESTED.** **TD-016 cancellation-terminal synchronization — RESOLVED / TESTED.** NEXT AUTHORIZED WP: **M4 Repeat**.
+**M11.2A-E persistence recovery — COMPLETE for Required 1.0** (M11.2E validated automatic restore + quarantine TESTED). **TD-013 filesystem degradation — RESOLVED / TESTED.** **TD-016 cancellation-terminal synchronization — RESOLVED / TESTED.** **M4 Repeat — DONE (a977378).** NEXT AUTHORIZED WP: **M4 Shuffle**.
 
 1. ~~**TD-016 — Queue/Playback cancellation-terminal synchronization**~~ — DONE (216f5a1).
-2. **M4 Repeat** — repeat modes none/one/all.
+2. ~~**M4 Repeat**~~ — repeat modes none/one/all — DONE (a977378).
 3. **M4 Shuffle** — deterministic shuffle navigation (shuffle order/remaining pool + navigation history; never `next = random.choice`).
 4. **M4 Queue → TESTED closeout**.
 5. **M6 Metadata** — real title/artist/album/duration extraction behind a clean port boundary.
