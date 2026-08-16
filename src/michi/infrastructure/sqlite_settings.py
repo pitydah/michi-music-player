@@ -1,9 +1,11 @@
 """SQLite persistence — implements SettingsRepository."""
 
 import errno
+import hashlib
 import json
 import logging
 import os
+import shutil
 import sqlite3
 import tempfile
 from contextlib import suppress
@@ -30,6 +32,7 @@ _SQLITE_NOTADB = sqlite3.SQLITE_NOTADB
 
 _ACCESS_CODES = {_SQLITE_READONLY, _SQLITE_CANTOPEN, _SQLITE_PERM}
 _IO_CODES = {_SQLITE_IOERR}
+_SIDECAR_SUFFIXES = ("-wal", "-shm")
 
 
 def _primary_sqlite_code(code: int | None) -> int | None:
@@ -95,11 +98,13 @@ class PersistenceStartupError(RuntimeError):
         primary_diagnostic: PersistenceDiagnostic,
         recovery_diagnostic: PersistenceDiagnostic | None = None,
         recovery_candidate: Path | None = None,
+        quarantine_path: Path | None = None,
     ) -> None:
         super().__init__(primary_diagnostic.message)
         self.primary_diagnostic = primary_diagnostic
         self.recovery_diagnostic = recovery_diagnostic
         self.recovery_candidate = recovery_candidate
+        self.quarantine_path = quarantine_path
 
 
 def _read_only_uri(db_path: Path) -> str:
@@ -133,8 +138,80 @@ def _remove_best_effort(path: Path) -> None:
 
 def _remove_sqlite_sidecars(db_path: Path) -> None:
     """Best-effort removal of -wal/-shm sidecars of a closed database file."""
-    for suffix in ("-wal", "-shm"):
+    for suffix in _SIDECAR_SUFFIXES:
         _remove_best_effort(Path(str(db_path) + suffix))
+
+
+def _primary_sidecar_paths(db_path: Path) -> list[Path]:
+    """Deterministic -wal/-shm sibling paths of a primary database file."""
+    return [Path(str(db_path) + suffix) for suffix in _SIDECAR_SUFFIXES]
+
+
+def _hash_file(path: Path) -> str:
+    """Streaming SHA-256 of a file (64 KiB chunks, never a full read)."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as fh:
+        while True:
+            chunk = fh.read(64 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _copy_file_exclusive(src: Path, dst: Path) -> None:
+    """Copy a file into a brand-new destination via O_EXCL (mode 0o600).
+
+    The destination must not pre-exist; a stale or foreign file at the
+    destination aborts with FileExistsError instead of being overwritten.
+    """
+    fd = os.open(dst, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    with os.fdopen(fd, "wb") as out, open(src, "rb") as inp:
+        while True:
+            chunk = inp.read(64 * 1024)
+            if not chunk:
+                break
+            out.write(chunk)
+
+
+def _remove_sqlite_sidecars_strict(db_path: Path) -> None:
+    """Strict -wal/-shm removal: FileNotFoundError is fine, all else raises."""
+    for suffix in _SIDECAR_SUFFIXES:
+        with suppress(FileNotFoundError):
+            Path(str(db_path) + suffix).unlink()
+
+
+def _read_raw_settings_rows(path: Path) -> list[tuple[str, str]]:
+    """Raw settings rows (key, value) ordered by key, read-only.
+
+    sqlite3/OSError propagate to the caller; nothing is decoded or
+    normalized here — the raw tuples are compared as-is.
+    """
+    conn = sqlite3.connect(_read_only_uri(path), uri=True, timeout=0.2)
+    try:
+        return conn.execute("SELECT key, value FROM settings ORDER BY key").fetchall()
+    finally:
+        conn.close()
+
+
+def _candidate_matches_lkg(candidate_path: Path, lkg_path: Path) -> bool:
+    """Logical (row-level) equality between candidate and LKG; fail closed."""
+    try:
+        return _read_raw_settings_rows(candidate_path) == _read_raw_settings_rows(
+            lkg_path
+        )
+    except (sqlite3.Error, OSError):
+        return False
+
+
+def _install_recovery_candidate(candidate_path: Path, db_path: Path) -> None:
+    """Atomically install a validated recovery candidate over the primary.
+
+    os.replace is the single install boundary — never copy, truncate, or
+    SQL-restore. The candidate path ceases to exist; the primary is
+    replaced in one atomic rename.
+    """
+    os.replace(candidate_path, db_path)
 
 
 def _decode_volume(raw: object) -> tuple[int, bool]:
@@ -412,6 +489,11 @@ class SQLiteSettingsRepository(SettingsRepository):
         return Path(str(db_path) + ".recovery")
 
     @staticmethod
+    def quarantine_root_path(db_path: Path) -> Path:
+        """Deterministic sibling directory holding quarantine generations."""
+        return Path(str(db_path) + ".quarantine")
+
+    @staticmethod
     def _structural_probe(db_path: Path) -> bool | PersistenceDiagnostic:
         """Read-only probe: structural readability of settings rows.
 
@@ -454,59 +536,191 @@ class SQLiteSettingsRepository(SettingsRepository):
 
     @classmethod
     def _recovery_failure(
-        cls, db_path: Path, primary_diag: PersistenceDiagnostic
+        cls,
+        db_path: Path,
+        primary_diag: PersistenceDiagnostic,
+        recovery_diagnostic: PersistenceDiagnostic | None = None,
+        quarantine_path: Path | None = None,
     ) -> PersistenceStartupError:
         """Build the startup failure for unrecoverable primaries.
 
-        Never installs: an existing candidate is preserved as-is; otherwise a
-        candidate is staged from a healthy LKG (if present) and reported.
+        Never stages and never installs. An existing candidate is preserved
+        and reported as-is (its diagnostic is inspected lazily); quarantine
+        material is reported verbatim.
         """
         candidate = cls.recovery_candidate_path(db_path)
-        if candidate.exists():
-            candidate_diag = cls.inspect_path(candidate)
-            return PersistenceStartupError(
-                primary_diag,
-                recovery_diagnostic=candidate_diag,
-                recovery_candidate=candidate,
-            )
+        if recovery_diagnostic is None and candidate.exists():
+            recovery_diagnostic = cls.inspect_path(candidate)
+        return PersistenceStartupError(
+            primary_diag,
+            recovery_diagnostic=recovery_diagnostic,
+            recovery_candidate=candidate if candidate.exists() else None,
+            quarantine_path=quarantine_path,
+        )
+
+    @classmethod
+    def _recover_or_raise(
+        cls, db_path: Path, primary_diag: PersistenceDiagnostic
+    ) -> "SQLiteSettingsRepository":
+        """Validate a trusted candidate, quarantine originals, install safely.
+
+        Every abort path raises PersistenceStartupError; there are no retry
+        loops. The LKG snapshot is preserved (never deleted or refreshed)
+        through the whole recovery. Owned staged candidates are discarded on
+        provenance/quarantine-phase aborts (no primary mutation occurred), but
+        preserved on strict-removal/install aborts (trusted resume material);
+        pre-existing candidates are never deleted.
+        """
+        candidate = cls.recovery_candidate_path(db_path)
         lkg = cls.last_known_good_path(db_path)
+        owns_candidate = False
+        quarantine_path: Path | None = None
+
+        # 1. LKG authorization: recovery requires a healthy LKG.
         if not lkg.exists():
-            return PersistenceStartupError(primary_diag)
+            raise cls._recovery_failure(db_path, primary_diag)
         lkg_diag = cls.inspect_path(lkg)
         if lkg_diag.health is not PersistenceHealth.HEALTHY:
-            return PersistenceStartupError(primary_diag)
-        stage_diag = cls.stage_recovery_from_last_known_good(db_path, candidate)
-        if stage_diag.health is PersistenceHealth.HEALTHY:
-            return PersistenceStartupError(
-                primary_diag,
-                recovery_diagnostic=stage_diag,
-                recovery_candidate=candidate,
+            raise cls._recovery_failure(
+                db_path, primary_diag, recovery_diagnostic=lkg_diag
             )
-        return PersistenceStartupError(primary_diag, recovery_diagnostic=stage_diag)
+        _remove_sqlite_sidecars(lkg)
+
+        # 2. Candidate trust/staging.
+        if candidate.exists():
+            if candidate.is_symlink():
+                raise cls._recovery_failure(db_path, primary_diag)
+            if any(
+                Path(str(candidate) + suffix).exists() for suffix in _SIDECAR_SUFFIXES
+            ):
+                raise cls._recovery_failure(db_path, primary_diag)
+            cand_diag = cls.inspect_path(candidate)
+            if cand_diag.health is not PersistenceHealth.HEALTHY:
+                raise cls._recovery_failure(
+                    db_path, primary_diag, recovery_diagnostic=cand_diag
+                )
+        else:
+            stage_diag = cls.stage_recovery_from_last_known_good(db_path, candidate)
+            if stage_diag.health is not PersistenceHealth.HEALTHY:
+                raise PersistenceStartupError(
+                    primary_diag, recovery_diagnostic=stage_diag
+                )
+            owns_candidate = True
+
+        # 3. Provenance: candidate rows must equal LKG rows (fail closed).
+        if not _candidate_matches_lkg(candidate, lkg):
+            if owns_candidate:
+                _remove_best_effort(candidate)
+                _remove_sqlite_sidecars(candidate)
+            raise cls._recovery_failure(db_path, primary_diag)
+        _remove_sqlite_sidecars(candidate)
+
+        # 4. Quarantine original primary artifacts (byte-exact evidence).
+        artifacts = [db_path] + _primary_sidecar_paths(db_path)
+        if any(artifact.exists() for artifact in artifacts):
+            try:
+                quarantine_path = _quarantine_primary_artifacts(db_path)
+            except OSError as exc:
+                if owns_candidate:
+                    _remove_best_effort(candidate)
+                    _remove_sqlite_sidecars(candidate)
+                raise PersistenceStartupError(
+                    primary_diag,
+                    recovery_diagnostic=_classify_os_error(exc),
+                ) from exc
+
+        # 5. Strict removal of original sidecars (any failure aborts).
+        try:
+            _remove_sqlite_sidecars_strict(db_path)
+        except OSError as exc:
+            raise PersistenceStartupError(
+                primary_diag,
+                recovery_diagnostic=_classify_os_error(exc),
+                quarantine_path=quarantine_path,
+            ) from exc
+
+        # 6. Atomic install of the trusted candidate.
+        try:
+            _install_recovery_candidate(candidate, db_path)
+        except OSError as exc:
+            raise PersistenceStartupError(
+                primary_diag,
+                recovery_diagnostic=_classify_os_error(exc),
+                quarantine_path=quarantine_path,
+            ) from exc
+
+        # 7. Post-install hygiene (candidate path no longer exists).
+        _remove_sqlite_sidecars(candidate)
+
+        # 8. Post-install verification; no rollback to quarantined corrupt data.
+        final_diag = cls.inspect_path(db_path)
+        if final_diag.health is not PersistenceHealth.HEALTHY:
+            raise PersistenceStartupError(final_diag, quarantine_path=quarantine_path)
+
+        # 9. Only now open writable; construction failures surface as
+        #    PersistenceStartupError rather than leaking raw exceptions.
+        try:
+            repo = cls(db_path)
+        except sqlite3.Error as exc:
+            raise PersistenceStartupError(
+                primary_diag,
+                recovery_diagnostic=_classify_sqlite_error(exc),
+                quarantine_path=quarantine_path,
+            ) from exc
+        except OSError as exc:
+            raise PersistenceStartupError(
+                primary_diag,
+                recovery_diagnostic=_classify_os_error(exc),
+                quarantine_path=quarantine_path,
+            ) from exc
+
+        # 10. Observability: exactly one warning, never setting values.
+        if quarantine_path is not None:
+            logger.warning(
+                "settings persistence recovered automatically from LKG "
+                "after %s; original artifacts quarantined at %s",
+                primary_diag.health.name,
+                quarantine_path,
+            )
+        else:
+            logger.warning(
+                "settings persistence recovered automatically from LKG "
+                "after %s; no original artifacts to quarantine",
+                primary_diag.health.name,
+            )
+
+        return repo
 
     @classmethod
     def _open_missing(
         cls, db_path: Path, primary_diag: PersistenceDiagnostic
     ) -> "SQLiteSettingsRepository":
-        """Handle a missing primary: first run, or recovery routing."""
+        """Handle a missing primary: true first run, or recovery routing."""
         candidate = cls.recovery_candidate_path(db_path)
-        if candidate.exists():
-            raise cls._recovery_failure(db_path, primary_diag)
-        if not cls.last_known_good_path(db_path).exists():
+        lkg = cls.last_known_good_path(db_path)
+        has_sidecars = any(p.exists() for p in _primary_sidecar_paths(db_path))
+        if not candidate.exists() and not lkg.exists() and not has_sidecars:
+            # True first run: create the primary, verify, seed the LKG.
             repo = cls(db_path)
             verify = cls.inspect_path(db_path)
             if verify.health is not PersistenceHealth.HEALTHY:
                 raise PersistenceStartupError(verify)
             cls._refresh_lkg_best_effort(db_path)
             return repo
-        raise cls._recovery_failure(db_path, primary_diag)
+        if not lkg.exists():
+            # Orphan sidecars or a candidate without LKG: preserve everything,
+            # never create a blank database over evidence.
+            raise cls._recovery_failure(db_path, primary_diag)
+        return cls._recover_or_raise(db_path, primary_diag)
 
     @classmethod
     def open_for_startup(cls, db_path: Path) -> "SQLiteSettingsRepository":
         """Open the settings repository with a startup preflight.
 
         Read-only inspection decides the route before any writable open.
-        Recovery material is staged — never installed.
+        Recoverable primaries (MISSING / CORRUPT_DATABASE / structural
+        MALFORMED_DATA with a healthy LKG) are auto-restored from a trusted
+        candidate; terminal states raise PersistenceStartupError.
         """
         diag = cls.inspect_path(db_path)
         health = diag.health
@@ -523,11 +737,11 @@ class SQLiteSettingsRepository(SettingsRepository):
             if probe is True:
                 return cls(db_path)
             if probe is False:
-                raise cls._recovery_failure(db_path, diag)
+                return cls._recover_or_raise(db_path, diag)
             raise PersistenceStartupError(probe)
 
         if health is PersistenceHealth.CORRUPT_DATABASE:
-            raise cls._recovery_failure(db_path, diag)
+            return cls._recover_or_raise(db_path, diag)
 
         # LOCKED / ACCESS_FAILURE / IO_FAILURE / UNKNOWN_FAILURE:
         # no fallback, no staging, no writable open.
@@ -574,3 +788,37 @@ class SQLiteSettingsRepository(SettingsRepository):
         ]
         with sqlite3.connect(str(self._db_path)) as conn:
             conn.executemany("INSERT OR REPLACE INTO settings VALUES (?, ?)", rows)
+
+
+def _quarantine_primary_artifacts(db_path: Path) -> Path:
+    """Quarantine the original primary + -wal/-shm artifacts byte-exact.
+
+    Each run creates a fresh `recovery-*` generation under
+    ``<db>.quarantine`` (0700). Copies are made O_EXCL (0600) and verified
+    by size + SHA-256 before the generation is considered complete. The
+    quarantine is evidence only — never a recovery source. On any OSError
+    the owned incomplete generation is removed and the error re-raised;
+    the primary, candidate, and LKG are never touched.
+    """
+    root = SQLiteSettingsRepository.quarantine_root_path(db_path)
+    if root.is_symlink() or (root.exists() and not root.is_dir()):
+        raise OSError(errno.ENOTDIR, f"quarantine root is not a directory: {root}")
+    if not root.exists():
+        root.mkdir(mode=0o700)
+    generation = Path(tempfile.mkdtemp(prefix="recovery-", dir=root))
+    try:
+        for artifact in [db_path] + _primary_sidecar_paths(db_path):
+            if not artifact.exists():
+                continue
+            dest = generation / artifact.name
+            _copy_file_exclusive(artifact, dest)
+            if artifact.stat().st_size != dest.stat().st_size or _hash_file(
+                artifact
+            ) != _hash_file(dest):
+                raise OSError(
+                    errno.EIO, f"quarantine verification failed: {artifact.name}"
+                )
+    except OSError:
+        shutil.rmtree(generation, ignore_errors=True)
+        raise
+    return generation
