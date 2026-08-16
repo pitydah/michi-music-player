@@ -4,7 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from michi.application.playback_service import PlaybackService
-from michi.domain.queue import QueueState, Track
+from michi.domain.queue import QueueState, RepeatMode, Track
 
 
 class QueueService:
@@ -15,6 +15,7 @@ class QueueService:
         self._state = QueueState()
         self._subscribers: list[Callable[[], None]] = []
         self._pending_track: Track | None = None
+        self._playback.subscribe_end_of_media(self._on_end_of_media)
 
     @property
     def state(self) -> QueueState:
@@ -80,6 +81,39 @@ class QueueService:
                 if self._pending_track is track:
                     self._pending_track = None
                 raise
+
+    def set_repeat_mode(self, mode: RepeatMode) -> None:
+        if not isinstance(mode, RepeatMode):
+            raise ValueError(f"invalid repeat mode: {mode!r}")
+        if self._state.repeat_mode is mode:
+            return
+        self._state.repeat_mode = mode
+        self._notify()
+
+    def _on_end_of_media(self) -> None:
+        """Natural end of the committed track. Applies the repeat mode.
+
+        A pending request means a new candidate is already in flight (manual
+        navigation or a previous auto-advance): the EOM is stale and is
+        ignored. Auto-advance goes through play_index so the pending/
+        acceptance/rejection/cancellation machinery (TD-015/TD-016) applies
+        unchanged.
+        """
+        if self._pending_track is not None:
+            return
+        if not self._state.tracks or self._state.current_index < 0:
+            return
+        index = self._state.current_index
+        mode = self._state.repeat_mode
+        if mode is RepeatMode.NONE:
+            if index + 1 < len(self._state.tracks):
+                self.play_index(index + 1)
+            else:
+                self._playback.stop()
+        elif mode is RepeatMode.ONE:
+            self.play_index(index)
+        else:  # RepeatMode.ALL
+            self.play_index((index + 1) % len(self._state.tracks))
 
     def _commit_pending(self, track: Track, path: Path) -> None:
         """Acceptance point: commit only if `track` is still the pending

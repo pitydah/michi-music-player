@@ -36,11 +36,15 @@ class QueueBridge(QObject):
     def _get_has_previous(self) -> bool:
         return self._service.state.has_previous
 
+    def _get_repeat_mode(self) -> str:
+        return self._service.state.repeat_mode.name
+
     trackNames = Property(list, _get_track_names, notify=queue_changed)
     currentIndex = Property(int, _get_current_index, notify=queue_changed)
     count = Property(int, _get_count, notify=queue_changed)
     hasNext = Property(bool, _get_has_next, notify=queue_changed)
     hasPrevious = Property(bool, _get_has_previous, notify=queue_changed)
+    repeatMode = Property(str, _get_repeat_mode, notify=queue_changed)
 
     @Slot(int)
     def play_index(self, index: int) -> None:
@@ -59,6 +63,16 @@ class QueueBridge(QObject):
         from pathlib import Path
 
         self._service.add(Path(file_path))
+
+    @Slot(str)
+    def set_repeat_mode(self, mode_name: str) -> None:
+        from michi.domain.queue import RepeatMode
+
+        try:
+            mode = RepeatMode[mode_name.upper()]
+        except KeyError:
+            return
+        self._service.set_repeat_mode(mode)
 
     @Slot()
     def clear_queue(self) -> None:

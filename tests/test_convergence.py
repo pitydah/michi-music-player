@@ -9,6 +9,7 @@ from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
 from michi.application.queue_service import QueueService
 from michi.domain.playback import PlaybackStatus
+from michi.domain.queue import RepeatMode
 from michi.presentation.playback_bridge import PlaybackBridge
 
 
@@ -106,6 +107,102 @@ class TestEndOfMedia:
         fake_audio.trigger_end_of_media()
         assert svc.state.status == PlaybackStatus.STOPPED
         assert svc.state.position_ms == 0
+
+
+class TestRepeatWithCoordinator:
+    """M4 integration: with PlaybackCoordinator started, end-of-media drives
+    exactly ONE repeat-aware auto-advance via QueueService — the coordinator
+    must not double-load, replay-stop, or cancel wraps."""
+
+    def _build(self, fake_audio):
+        svc = PlaybackService(fake_audio)
+        q = QueueService(svc)
+        coord = PlaybackCoordinator(fake_audio, q, svc)
+        coord.start()
+        return svc, q
+
+    def test_coordinator_repeat_none_single_advance(self, fake_audio, monkeypatch):
+        svc, q = self._build(fake_audio)
+        q.add(Path("/tmp/a.mp3"))
+        q.add(Path("/tmp/b.mp3"))
+        q.add(Path("/tmp/c.mp3"))
+        loads = []
+        real_load = fake_audio.load
+
+        def spy_load(p):
+            loads.append(p)
+            real_load(p)
+
+        monkeypatch.setattr(fake_audio, "load", spy_load)
+        q.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        assert q.state.current_index == 0
+        loads.clear()
+
+        fake_audio.trigger_end_of_media()  # NONE → exactly one advance to B
+        assert loads == [Path("/tmp/b.mp3")]  # coordinator must not double-load
+        assert fake_audio.loaded == Path("/tmp/b.mp3")
+        assert q.state.current_index == 0  # pending, not committed
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert q.state.current_index == 1
+
+    def test_coordinator_repeat_one_replays_once(self, fake_audio, monkeypatch):
+        svc, q = self._build(fake_audio)
+        q.add(Path("/tmp/a.mp3"))
+        q.add(Path("/tmp/b.mp3"))
+        q.add(Path("/tmp/c.mp3"))
+        loads = []
+        real_load = fake_audio.load
+
+        def spy_load(p):
+            loads.append(p)
+            real_load(p)
+
+        monkeypatch.setattr(fake_audio, "load", spy_load)
+        q.set_repeat_mode(RepeatMode.ONE)
+        q.play_index(1)
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert q.state.current_index == 1
+        loads.clear()
+
+        fake_audio.trigger_end_of_media()  # ONE → replay B exactly once
+        assert loads == [Path("/tmp/b.mp3")]
+        assert fake_audio.loaded == Path("/tmp/b.mp3")
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert q.state.current_index == 1
+
+    def test_coordinator_repeat_all_wraps_at_last(self, fake_audio, monkeypatch):
+        svc, q = self._build(fake_audio)
+        q.add(Path("/tmp/a.mp3"))
+        q.add(Path("/tmp/b.mp3"))
+        q.add(Path("/tmp/c.mp3"))
+        loads = []
+        real_load = fake_audio.load
+
+        def spy_load(p):
+            loads.append(p)
+            real_load(p)
+
+        monkeypatch.setattr(fake_audio, "load", spy_load)
+        q.set_repeat_mode(RepeatMode.ALL)
+        q.play_index(2)
+        fake_audio.trigger_media_accepted(Path("/tmp/c.mp3"))
+        assert q.state.current_index == 2
+        loads.clear()
+
+        fake_audio.trigger_end_of_media()  # ALL at last → wrap to index 0
+        assert loads == [Path("/tmp/a.mp3")]  # wrap, not stop() cancelling it
+        assert fake_audio.loaded == Path("/tmp/a.mp3")
+        assert fake_audio.state == "playing"  # coordinator must not stop()
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        assert q.state.current_index == 0
+
+    def test_coordinator_keeps_position_and_duration(self, fake_audio):
+        svc, q = self._build(fake_audio)
+        fake_audio.trigger_position(5000)
+        fake_audio.trigger_duration(200000)
+        assert svc.state.position_ms == 5000
+        assert svc.state.duration_ms == 200000
 
 
 class TestSubscriptions:

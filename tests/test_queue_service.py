@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from michi.domain.playback import PlaybackStatus
+from michi.domain.queue import RepeatMode
 
 
 class TestQueueService:
@@ -893,3 +894,293 @@ class TestCancellationTerminal:
         fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
         assert queue_service.state.current_index == 1
         assert playback_service.state.file_path == Path("/tmp/b.mp3")
+
+
+class TestRepeatModes:
+    """M4 §18: end-of-media auto-advance driven by `RepeatMode`.
+
+    Contract under test (NOT yet implemented in production):
+    - `RepeatMode` (NONE/ONE/ALL) lives in `michi.domain.queue`;
+    - `QueueState.repeat_mode: RepeatMode = RepeatMode.NONE`;
+    - `PlaybackService` subscribes to the audio port's `subscribe_end_of_media`
+      and re-exposes it as a service-level `subscribe_end_of_media(cb)`,
+      forwarding only when a track is committed;
+    - `QueueService` subscribes in __init__ and on end-of-media: ignores the
+      event while a pending request exists (stale EOM); no-ops when the queue
+      is empty or current_index < 0; otherwise by mode — NONE:
+      play_index(current+1) if it exists else playback.stop(); ONE:
+      play_index(current); ALL: play_index((current+1) % len).
+
+    Tracks are committed via `play_index(i)` + `trigger_media_accepted`;
+    end-of-track is driven via `trigger_end_of_media()`; an auto-advance
+    candidate commits only after ITS acceptance trigger. "No advance
+    happened" is asserted via `fake_audio.loaded` and load-count spying.
+    """
+
+    def test_repeat_none_middle_advances_to_next(self, queue_service, fake_audio):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.add(Path("/tmp/c.mp3"))
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        assert queue_service.state.current_index == 0
+
+        fake_audio.trigger_end_of_media()  # NONE → auto-advance to index 1
+        assert fake_audio.loaded == Path("/tmp/b.mp3")
+        assert queue_service.state.current_index == 0  # pending, not committed
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert queue_service.state.current_index == 1
+
+    def test_repeat_none_last_stops(self, queue_service, playback_service, fake_audio):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.play_index(1)
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert queue_service.state.current_index == 1
+
+        fake_audio.trigger_end_of_media()  # NONE at last index → stop
+        assert fake_audio.state == "stopped"
+        assert queue_service.state.current_index == 1
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+    def test_repeat_one_middle_replays_same_entry(
+        self, queue_service, fake_audio, monkeypatch
+    ):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.add(Path("/tmp/c.mp3"))
+        loads = []
+
+        def recording_load(p):
+            loads.append(p)
+            fake_audio.loaded = p
+
+        monkeypatch.setattr(fake_audio, "load", recording_load)
+        queue_service.play_index(1)
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert loads == [Path("/tmp/b.mp3")]
+
+        queue_service.set_repeat_mode(RepeatMode.ONE)
+        fake_audio.trigger_end_of_media()  # ONE → replay the same entry
+        assert loads == [Path("/tmp/b.mp3"), Path("/tmp/b.mp3")]
+        assert fake_audio.loaded == Path("/tmp/b.mp3")
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert queue_service.state.current_index == 1
+
+    def test_repeat_one_last_replays(self, queue_service, fake_audio, monkeypatch):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        loads = []
+
+        def recording_load(p):
+            loads.append(p)
+            fake_audio.loaded = p
+
+        monkeypatch.setattr(fake_audio, "load", recording_load)
+        queue_service.play_index(1)
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert loads == [Path("/tmp/b.mp3")]
+
+        queue_service.set_repeat_mode(RepeatMode.ONE)
+        fake_audio.trigger_end_of_media()  # ONE → replay the last entry
+        assert loads == [Path("/tmp/b.mp3"), Path("/tmp/b.mp3")]
+        assert fake_audio.loaded == Path("/tmp/b.mp3")
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert queue_service.state.current_index == 1
+
+    def test_repeat_all_middle_advances(self, queue_service, fake_audio):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.add(Path("/tmp/c.mp3"))
+        queue_service.play_index(1)
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+
+        queue_service.set_repeat_mode(RepeatMode.ALL)
+        fake_audio.trigger_end_of_media()  # ALL → advance to index 2
+        assert fake_audio.loaded == Path("/tmp/c.mp3")
+        assert queue_service.state.current_index == 1  # pending, not committed
+        fake_audio.trigger_media_accepted(Path("/tmp/c.mp3"))
+        assert queue_service.state.current_index == 2
+
+    def test_repeat_all_last_wraps_to_first(self, queue_service, fake_audio):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.add(Path("/tmp/c.mp3"))
+        queue_service.play_index(2)
+        fake_audio.trigger_media_accepted(Path("/tmp/c.mp3"))
+        assert queue_service.state.current_index == 2
+
+        queue_service.set_repeat_mode(RepeatMode.ALL)
+        fake_audio.trigger_end_of_media()  # (2+1) % 3 == 0 → wrap to first
+        assert fake_audio.loaded == Path("/tmp/a.mp3")
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        assert queue_service.state.current_index == 0
+
+    def test_repeat_end_of_media_empty_queue_noop(self, queue_service, fake_audio):
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.loaded is None
+        assert queue_service.state.current_index == -1
+        assert fake_audio.state == "stopped"  # nothing started, nothing stopped
+
+    def test_repeat_single_track_queue(self, queue_service, fake_audio):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        assert queue_service.state.current_index == 0
+
+        # NONE: no next entry → stop happens on EOM (terminal, no acceptance).
+        queue_service.set_repeat_mode(RepeatMode.NONE)
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.state == "stopped"
+        assert queue_service.state.current_index == 0
+
+        # Reset: play A again and commit.
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        assert queue_service.state.current_index == 0
+
+        # ONE: replay the only track.
+        queue_service.set_repeat_mode(RepeatMode.ONE)
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.loaded == Path("/tmp/a.mp3")
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        assert queue_service.state.current_index == 0
+
+        # Reset again.
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        assert queue_service.state.current_index == 0
+
+        # ALL: (0 + 1) % 1 == 0 → replays the only track.
+        queue_service.set_repeat_mode(RepeatMode.ALL)
+        fake_audio.trigger_end_of_media()
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        assert queue_service.state.current_index == 0
+
+    def test_repeat_rejected_auto_advance_stops_no_loop(
+        self, queue_service, fake_audio, monkeypatch
+    ):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        loads = []
+
+        def recording_load(p):
+            loads.append(p)
+            fake_audio.loaded = p
+
+        monkeypatch.setattr(fake_audio, "load", recording_load)
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        assert queue_service.state.current_index == 0
+
+        fake_audio.trigger_end_of_media()  # NONE → auto-advance to B
+        assert loads == [Path("/tmp/a.mp3"), Path("/tmp/b.mp3")]
+        assert queue_service.state.current_index == 0  # pending, not committed
+
+        fake_audio.trigger_media_rejected(Path("/tmp/b.mp3"), "broken")
+        assert queue_service.state.current_index == 0  # rejection is terminal
+
+        # Pending cleared: further EOMs must not re-advance or loop.
+        fake_audio.trigger_end_of_media()
+        fake_audio.trigger_end_of_media()
+        assert loads == [Path("/tmp/a.mp3"), Path("/tmp/b.mp3")]
+        assert fake_audio.loaded == Path("/tmp/b.mp3")
+        assert queue_service.state.current_index == 0
+
+    def test_repeat_stale_end_of_media_with_pending_ignored(
+        self, queue_service, fake_audio
+    ):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.add(Path("/tmp/c.mp3"))
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        assert queue_service.state.current_index == 0
+
+        queue_service.play_index(2)  # manual navigation → C pending at index 2
+        assert queue_service.state.current_index == 0
+        assert fake_audio.loaded == Path("/tmp/c.mp3")
+
+        # Stale EOM while a manual request is in flight: must be ignored.
+        # WITHOUT the pending guard, the auto-advance target (index 1, B)
+        # differs from the pending one (index 2, C): play_index(1) would
+        # supersede C and observable `fake_audio.loaded` would become b.
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.loaded == Path("/tmp/c.mp3")  # C stays pending
+        assert queue_service.state.current_index == 0  # no auto-advance to 1
+
+        fake_audio.trigger_media_accepted(Path("/tmp/c.mp3"))
+        assert queue_service.state.current_index == 2
+
+    def test_repeat_stop_during_auto_advance_cancels_pending(
+        self, queue_service, playback_service, fake_audio
+    ):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+
+        fake_audio.trigger_end_of_media()  # auto-advance → B pending
+        assert fake_audio.loaded == Path("/tmp/b.mp3")
+        playback_service.stop()  # external cancel (TD-016 terminal)
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert (
+            queue_service.state.current_index == 0
+        )  # cancelled candidate never commits
+        assert queue_service.state.current_track.file_path == Path("/tmp/a.mp3")
+
+    def test_repeat_all_duplicate_paths_wrap_by_index(self, queue_service, fake_audio):
+        queue_service.add(Path("/tmp/x.mp3"))
+        queue_service.add(Path("/tmp/x.mp3"))  # distinct Track, same path
+        queue_service.add(Path("/tmp/y.mp3"))
+        queue_service.play_index(2)
+        fake_audio.trigger_media_accepted(Path("/tmp/y.mp3"))
+        assert queue_service.state.current_index == 2
+
+        queue_service.set_repeat_mode(RepeatMode.ALL)
+        fake_audio.trigger_end_of_media()  # (2+1) % 3 == 0 → first entry
+        assert fake_audio.loaded == Path("/tmp/x.mp3")
+        fake_audio.trigger_media_accepted(Path("/tmp/x.mp3"))
+        # By index (identity), not by path: index 0, not the duplicate at 1.
+        assert queue_service.state.current_index == 0
+
+    def test_repeat_rapid_mode_change_between_eom_and_acceptance(
+        self, queue_service, fake_audio
+    ):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+
+        queue_service.set_repeat_mode(RepeatMode.NONE)
+        fake_audio.trigger_end_of_media()  # auto-advance to B (NONE)
+        assert fake_audio.loaded == Path("/tmp/b.mp3")
+        queue_service.set_repeat_mode(RepeatMode.ONE)  # mid-flight mode change
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert queue_service.state.current_index == 1  # in-flight request intact
+
+        fake_audio.trigger_end_of_media()  # ONE now applies → replay B
+        assert fake_audio.loaded == Path("/tmp/b.mp3")
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert queue_service.state.current_index == 1
+
+    def test_repeat_duplicate_end_of_media_no_double_advance(
+        self, queue_service, fake_audio
+    ):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.add(Path("/tmp/c.mp3"))
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+
+        fake_audio.trigger_end_of_media()
+        fake_audio.trigger_end_of_media()  # late duplicate — must not double-advance
+        assert fake_audio.loaded == Path("/tmp/b.mp3")  # exactly ONE advance
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert queue_service.state.current_index == 1
+
+        # A fresh EOM (not a duplicate) may advance again — only on acceptance.
+        fake_audio.trigger_end_of_media()
+        assert queue_service.state.current_index == 1  # candidate pending
+        fake_audio.trigger_media_accepted(Path("/tmp/c.mp3"))
+        assert queue_service.state.current_index == 2

@@ -1,6 +1,7 @@
 """Domain layer — Queue state. Pure business logic, no Qt/infrastructure."""
 
 from dataclasses import dataclass, field
+from enum import Enum, auto
 from pathlib import Path
 
 
@@ -14,12 +15,19 @@ class Track:
             self.title = self.file_path.stem
 
 
+class RepeatMode(Enum):
+    NONE = auto()
+    ONE = auto()
+    ALL = auto()
+
+
 @dataclass
 class QueueState:
     """Single canonical authority for the playback queue."""
 
     tracks: list[Track] = field(default_factory=list)
     current_index: int = -1
+    repeat_mode: RepeatMode = RepeatMode.NONE
 
     @property
     def current_track(self) -> Track | None:

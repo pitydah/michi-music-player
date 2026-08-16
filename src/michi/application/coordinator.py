@@ -6,7 +6,9 @@ from michi.application.queue_service import QueueService
 
 
 class PlaybackCoordinator:
-    """Wires audio-port events to application services. Idempotent start/stop."""
+    """Wires audio-port events to application services (position/duration
+    projection). Auto-advance on end-of-media is owned by QueueService
+    (repeat-aware); PlaybackCoordinator no longer subscribes to end-of-media."""
 
     def __init__(
         self,
@@ -23,7 +25,6 @@ class PlaybackCoordinator:
         if self._started:
             return
         self._started = True
-        self._audio.subscribe_end_of_media(self._on_track_ended)
         self._audio.subscribe_position_changed(self._on_position_changed)
         self._audio.subscribe_duration_changed(self._on_duration_changed)
 
@@ -31,15 +32,8 @@ class PlaybackCoordinator:
         if not self._started:
             return
         self._started = False
-        self._audio.unsubscribe_end_of_media(self._on_track_ended)
         self._audio.unsubscribe_position_changed(self._on_position_changed)
         self._audio.unsubscribe_duration_changed(self._on_duration_changed)
-
-    def _on_track_ended(self) -> None:
-        if self._queue.state.has_next:
-            self._queue.next()
-        else:
-            self._playback.stop()
 
     def _on_position_changed(self, position_ms: int) -> None:
         self._playback.update_position(position_ms)

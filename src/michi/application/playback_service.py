@@ -47,6 +47,7 @@ class PlaybackService:
         self._audio = audio_port
         self._state = PlaybackState()
         self._subscribers: list[Callable[[], None]] = []
+        self._eom_subscribers: list[Callable[[], None]] = []
         self._pending_path: Path | None = None
         self._pending_on_accepted: Callable[[Path], None] | None = None
         self._pending_on_rejected: Callable[[Path, str], None] | None = None
@@ -56,6 +57,7 @@ class PlaybackService:
         self._audio.subscribe_media_accepted(self._on_media_accepted)
         self._audio.subscribe_media_rejected(self._on_media_rejected)
         self._audio.subscribe_playback_state_changed(self._on_playback_state_changed)
+        self._audio.subscribe_end_of_media(self._on_end_of_media)
 
     @property
     def state(self) -> PlaybackState:
@@ -71,6 +73,26 @@ class PlaybackService:
 
     def _notify(self) -> None:
         for cb in self._subscribers:
+            cb()
+
+    def subscribe_end_of_media(self, callback: Callable[[], None]) -> None:
+        if callback not in self._eom_subscribers:
+            self._eom_subscribers.append(callback)
+
+    def unsubscribe_end_of_media(self, callback: Callable[[], None]) -> None:
+        if callback in self._eom_subscribers:
+            self._eom_subscribers.remove(callback)
+
+    def _on_end_of_media(self) -> None:
+        # Forward only for a committed track: a natural end of the current
+        # source. Stale/early EOM signals with nothing committed are ignored,
+        # as are EOMs arriving after intent has lapsed (e.g. a rejection that
+        # already terminated the request) — those must not re-arm auto-advance.
+        if self._state.file_path is None:
+            return
+        if not self._intent:
+            return
+        for cb in list(self._eom_subscribers):
             cb()
 
     def restore_volume(self, volume: int, muted: bool) -> None:
