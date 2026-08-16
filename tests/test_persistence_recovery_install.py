@@ -855,6 +855,71 @@ class TestRecoveryWarningsAndPreservation:
         assert lkg.read_bytes() == lkg_before
 
 
+class TestLkgWalPreservation:
+    def test_recovery_preserves_committed_uncheckpointed_lkg_wal_state(self, tmp_path):
+        db = tmp_path / "michi.db"
+        repo = SQLiteSettingsRepository(db)
+        repo.save(_healthy_state(volume=20))
+        assert (
+            SQLiteSettingsRepository.refresh_last_known_good(db).health
+            is PersistenceHealth.HEALTHY
+        )
+        lkg = SQLiteSettingsRepository.last_known_good_path(db)
+        assert _read_raw_settings(lkg)["volume"] == "20"
+
+        # Commit a NEWER LKG state into its WAL, held uncheckpointed. The
+        # holder stays open through the whole recovery (established pattern:
+        # see test_quarantine_wal_shm_byte_exact), so the committed view never
+        # checkpoints into the LKG main file.
+        holder = sqlite3.connect(str(lkg))
+        try:
+            holder.execute("PRAGMA journal_mode=WAL")
+            holder.execute("PRAGMA wal_autocheckpoint=0")
+            holder.execute("UPDATE settings SET value='80' WHERE key='volume'")
+            holder.commit()
+            wal = Path(str(lkg) + "-wal")
+            assert wal.exists()
+            assert wal.stat().st_size > 0
+            assert (
+                holder.execute(
+                    "SELECT value FROM settings WHERE key='volume'"
+                ).fetchone()[0]
+                == "80"
+            )
+            # Read-only connections see the WAL view; the LKG is still healthy.
+            assert _read_raw_settings(lkg)["volume"] == "80"
+            assert (
+                SQLiteSettingsRepository.inspect_path(lkg).health
+                is PersistenceHealth.HEALTHY
+            )
+
+            # Make the primary recoverable (CORRUPT_DATABASE).
+            _remove_wal_sidecars(db)
+            db.write_bytes(b"THIS IS NOT SQLITE")
+
+            recovered = SQLiteSettingsRepository.open_for_startup(db)
+
+            assert (
+                SQLiteSettingsRepository.inspect_path(db).health
+                is PersistenceHealth.HEALTHY
+            )
+            # KEY ASSERTION: recovery must restore the WAL-visible LKG state
+            # (80), NOT the stale LKG main-file state (20).
+            assert recovered.load().volume == 80
+            assert _read_raw_settings(db)["volume"] == "80"
+            # Candidate consumed on success.
+            assert not SQLiteSettingsRepository.recovery_candidate_path(db).exists()
+            # LKG logical state survives recovery (WAL never deleted).
+            assert _read_raw_settings(lkg)["volume"] == "80"
+            # NOTE: pre-fix SQLite may RECREATE an empty wal file here, so the
+            # state asserts above are the discriminators; this existence assert
+            # documents that recovery must not delete the LKG WAL as
+            # housekeeping.
+            assert wal.exists()
+        finally:
+            holder.close()
+
+
 class TestQuarantineRootContract:
     def test_quarantine_root_regular_file_blocks(self, tmp_path, monkeypatch):
         db = tmp_path / "michi.db"

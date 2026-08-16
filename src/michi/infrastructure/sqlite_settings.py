@@ -584,7 +584,6 @@ class SQLiteSettingsRepository(SettingsRepository):
             raise cls._recovery_failure(
                 db_path, primary_diag, recovery_diagnostic=lkg_diag
             )
-        _remove_sqlite_sidecars(lkg)
 
         # 2. Candidate trust/staging.
         if candidate.exists():
