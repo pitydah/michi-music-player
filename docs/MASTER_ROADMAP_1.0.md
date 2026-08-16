@@ -54,7 +54,7 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 | M10 Settings                 | TESTED     | SettingsService sole owner; volume/muted/last_directory/recent_files persisted; restart gate                                                          | —                                                                                                 |
 | M11.1 Failure Contracts      | TESTED     | Runtime failure contracts; no silent exceptions                                                                                                       | —                                                                                                 |
 | M11.2A Persistence Detection | TESTED     | Read-only `inspect_path`; taxonomy MISSING/HEALTHY/CORRUPT_DATABASE/MALFORMED_DATA/LOCKED/ACCESS_FAILURE/IO_FAILURE/UNKNOWN_FAILURE                   | —                                                                                                 |
-| M11.2B LKG Backup/Recovery   | TESTED     | Last-known-good backup (`<db>.lkg`) + non-destructive recovery staging with exclusive destination reservation (capability only; no startup wiring)    |
+| M11.2B LKG Backup/Recovery   | TESTED     | Last-known-good backup (`<db>.lkg`) + non-destructive recovery staging with exclusive destination reservation (primitives consumed by M11.2E automatic recovery)    |
 | M11.2C Field-Level Recovery  | TESTED     | Malformed persisted fields fall back to defaults independently with warnings; no writeback; health classification stays strict (safe read fallback)   |
 | M11.2D Startup Preflight     | TESTED     | Read-only preflight before any writable open; deterministic health routing; recovery staged (M11.2E installs for recoverable states); backend constructed only after preflight |
 | M11.2E Recovery              | TESTED     | Validated automatic restore + quarantine: healthy-LKG-authorized trusted candidate installed atomically after byte-exact quarantine of original artifacts; terminal states non-recovering; LKG preserved; field malformed stays on M11.2C | — (safe mode remains Post-1.0) |
@@ -66,13 +66,14 @@ The next work proceeds in this order:
 **M11.2A-E persistence recovery — COMPLETE for Required 1.0** (M11.2E validated automatic restore + quarantine TESTED). NEXT AUTHORIZED WP: **TD-013 — Filesystem Degradation**.
 
 1. **Filesystem Degradation** — handling for library files disappearing at runtime (TD-013).
-2. **M4 Required-1.0 Queue capability closeout** — shuffle + repeat.
-3. **M6 Required-1.0 metadata extraction** — title/artist/album/duration.
-4. **M12 Performance** — benchmark and tune scan/startup/memory; CI performance gate.
-5. **M13 Packaging** — Linux installable artifacts (AppImage/Flatpak/deb), icon suite, desktop integration, CLI entry points. Windows and macOS are Post-1.0 per the canonical contract.
-6. **M14 Beta** — beta channel, opt-in telemetry, feedback loop, triage SLA.
-7. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
-8. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
+2. **Queue/Playback cancellation-terminal synchronization** — TD-016, explicitly before M4 Required-1.0 closeout and before M12 (per TECHNICAL_DEBT_REGISTER).
+3. **M4 Required-1.0 Queue capability closeout** — shuffle + repeat.
+4. **M6 Required-1.0 metadata extraction** — title/artist/album/duration.
+5. **M12 Performance** — benchmark and tune scan/startup/memory; CI performance gate.
+6. **M13 Packaging** — Linux installable artifacts (AppImage/Flatpak/deb), icon suite, desktop integration, CLI entry points. Windows and macOS are Post-1.0 per the canonical contract.
+7. **M14 Beta** — beta channel, opt-in telemetry, feedback loop, triage SLA.
+8. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
+9. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
 
 Required-for-1.0 gaps (shuffle, repeat, metadata extraction) are scheduled as work packages within this order before M12; they are part of the 1.0 contract and may not slip past M15.
 
