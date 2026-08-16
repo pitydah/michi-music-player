@@ -24,7 +24,7 @@ The rebuild starts from an empty workspace. Two distinct prior authorities exist
 
 - Clear audit trail between Legacy concepts and new implementations.
 - New code and tests are written from scratch against the new contract (new-tests-only policy in INVARIANTS.md).
-- Video-related and distributed (sync/server) capabilities are consciously excluded, not accidentally forgotten.
+- Distributed/ecosystem capabilities are NOT discarded: they are RETAINED as future product capabilities, AFTER PLAYER STABLE, per MASTER_ROADMAP_1.0.md Product Scope and MIGRATION_LEDGER ML-110. Video-related capabilities remain excluded: the product is audio-only.
 - Anything not classified in the ledger has no standing; unclassified Legacy material is not a dependency.
 
 ## Alternatives considered
