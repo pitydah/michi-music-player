@@ -95,7 +95,7 @@ These rules are exhaustive for work-package interruption and deferral.
 
 ## Current Capability Matrix
 
-Snapshot of the rebuild's components against the component state machine. Evidence: pytest suite (363 passing), Ruff clean, CI green. The matrix is a report, not a new state set; the state machine above is authoritative and unchanged.
+Snapshot of the rebuild's components against the component state machine. Evidence: pytest suite (394 passing), Ruff clean, CI green. The matrix is a report, not a new state set; the state machine above is authoritative and unchanged.
 
 **Active-contract rule**: the matrix reports only components of the active 1.0 contract on the current stack. Every state below MUST be a legal state from the component state machine above — no invented labels. Superseded clean-rebuild governance draft components (the C++20-anticipation milestones) are not reported. A contract component that has not started is UNKNOWN (not yet audited), never a custom label.
 
@@ -108,7 +108,7 @@ Snapshot of the rebuild's components against the component state machine. Eviden
 | M3 Complete Playback         | TESTED     | Play/pause/resume/stop, seek, volume, mute, position/duration events all tested; metadata extraction owned by M6 Library; gapless/crossfade are Post-1.0 |
 | M4 Queue                     | PARTIAL    | Basic queue done; shuffle/repeat absent (Required 1.0); reorder is Post-1.0 (not a blocker)                                                              |
 | M5 Database/Settings         | TESTED     | Settings persistence (volume/muted/last_directory/recent_files) + restart gate verified; queue/position persistence and library index are Post-1.0       |
-| M6 Library                   | PARTIAL    | Scan works; metadata extraction absent (Required 1.0, owned by M6); library index DB is Post-1.0 (not a blocker)                                         |
+| M6 Library                   | PARTIAL    | Scan works; TD-013 filesystem degradation RESOLVED/TESTED (typed diagnostics, scan atomicity, activation validation); metadata extraction absent (Required 1.0, owned by M6); library index DB is Post-1.0 (not a blocker) |
 | M7 Search                    | FUNCTIONAL | Substring filter over library; FTS is Post-1.0 (not a blocker)                                                                                           |
 | M8 Navigation                | TESTED     | AppRoute navigation across all four screens                                                                                                              |
 | M9 UI Foundation             | TESTED     | Tokens + primitives + shell; QML smoke tests                                                                                                             |
@@ -120,4 +120,4 @@ Snapshot of the rebuild's components against the component state machine. Eviden
 | M11.2D Startup Preflight     | TESTED     | Read-only preflight before any writable open; deterministic health routing; staged candidates are installed by M11.2E only after validation for recoverable states                    |
 | M11.2E Recovery              | TESTED     | Validated automatic restore + quarantine: healthy-LKG-authorized trusted candidate installed atomically after byte-exact quarantine evidence; terminal states non-recovering; LKG preserved; field malformed stays on M11.2C. LKG committed WAL-visible state preserved; LKG sidecars are never recovery cleanup targets. |
 
-Transitions pending per the canonical 1.0 contract: all components with outstanding Required-1.0 gaps must reach TESTED before M15. Currently those are M4 Queue and M6 Library. M11.2A-E persistence recovery is COMPLETE for Required 1.0; next authorized work package is TD-013 (Filesystem Degradation) per MASTER_ROADMAP_1.0.md.
+Transitions pending per the canonical 1.0 contract: all components with outstanding Required-1.0 gaps must reach TESTED before M15. Currently those are M4 Queue and M6 Library. M11.2A-E persistence recovery is COMPLETE for Required 1.0; next authorized work package is TD-016 (Queue/Playback cancellation-terminal synchronization) per MASTER_ROADMAP_1.0.md.

@@ -101,6 +101,10 @@ Operations: `load`, `play`, `pause`, `resume`, `stop`, `set_volume`, `set_muted`
 - Conservative handling: HEALTHY/MISSING proceed to normal flow; all failure classes produce an explicit diagnostic with no silent fallback and no destructive repair. M11.2E (TESTED) implements automatic restore + quarantine on top of this taxonomy for recoverable states only; terminal environmental failures remain non-recovering.
 - Persisted fields: volume, muted, last_directory, recent_files. Restart gate: values apply only after a successful restart restore.
 
+## Library Filesystem Boundary
+
+`LibraryService` → `LibraryScannerPort` → `FilesystemLibraryScanner`. Filesystem authority is infrastructure: application code never calls `Path.exists`/`is_file`/`stat`/`os.stat`/`os.access` for runtime authority. Missing and empty directories are distinct (missing raises a typed `LibraryFilesystemError`; a valid empty directory returns `[]`). Scan failures preserve the last valid library state and publish a typed `LibraryDiagnostic` (DIRECTORY_MISSING / ACCESS_FAILURE / IO_FAILURE / UNKNOWN_FAILURE). Same-directory rescans reconcile stale entries (STALE_ENTRIES_REMOVED + affected_count). Activation validates the selected `TrackRef` through the port before any queue mutation: TRACK_MISSING removes the exact reference and never reaches the queue; ACCESS/IO/UNKNOWN preserve the entry. Diagnostics are typed state owned by `LibraryState`; presentation (bridge/QML) only projects them. No continuous filesystem watcher exists; asynchronous scanning remains TD-009/M12.
+
 ## Lifecycle
 
 `ApplicationContainer` (bootstrap) owns the lifecycle: construct the object graph → start services → run the QML engine → shutdown.
