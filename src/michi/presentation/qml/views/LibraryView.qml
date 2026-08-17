@@ -122,6 +122,42 @@ MichiPanel {
                     onClicked: currentTab = "folders"
                 }
             }
+
+            Text {
+                text: "Favorites"
+                font.pixelSize: MichiTheme.fontSizeBody
+                font.weight: currentTab === "favorites" ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
+                color: currentTab === "favorites" ? MichiTheme.warning : MichiTheme.textSecondary
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: currentTab = "favorites"
+                }
+            }
+
+            Text {
+                text: "History"
+                font.pixelSize: MichiTheme.fontSizeBody
+                font.weight: currentTab === "history" ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
+                color: currentTab === "history" ? MichiTheme.warning : MichiTheme.textSecondary
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: currentTab = "history"
+                }
+            }
+
+            Text {
+                text: "Recently Added"
+                font.pixelSize: MichiTheme.fontSizeBody
+                font.weight: currentTab === "recently" ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
+                color: currentTab === "recently" ? MichiTheme.warning : MichiTheme.textSecondary
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: currentTab = "recently"
+                }
+            }
         }
 
         ColumnLayout {
@@ -211,6 +247,20 @@ MichiPanel {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: library.activate_album_track(index)
                     }
+
+                    Text {
+                        text: library.favoritePaths.indexOf(modelData.path) !== -1 ? "★" : "☆"
+                        color: MichiTheme.warning
+                        font.pixelSize: MichiTheme.fontSizeCaption
+                        Layout.rightMargin: MichiTheme.space8
+                    }
+                    MouseArea {
+                        width: 24
+                        height: parent.height
+                        cursorShape: Qt.PointingHandCursor
+                        Layout.rightMargin: MichiTheme.space8
+                        onClicked: library.toggle_favorite(modelData.path)
+                    }
                 }
             }
         }
@@ -237,6 +287,23 @@ MichiPanel {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: library.activate(index)
+                }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.right: parent.right
+                    anchors.rightMargin: MichiTheme.space8
+                    text: library.favoritePaths.indexOf(library.songPaths[index]) !== -1 ? "★" : "☆"
+                    color: MichiTheme.warning
+                    font.pixelSize: MichiTheme.fontSizeCaption
+                }
+                MouseArea {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 24
+                    height: parent.height
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: library.toggle_favorite(library.songPaths[index])
                 }
             }
         }
@@ -345,6 +412,54 @@ MichiPanel {
                 height: MichiTheme.controlHeightSmall
                 verticalAlignment: Text.AlignVCenter
                 text: modelData.path + " · " + modelData.trackCount + " tracks"
+                font.pixelSize: MichiTheme.fontSizeCaption
+                color: MichiTheme.textSecondary
+                elide: Text.ElideRight
+            }
+        }
+
+        ListView {
+            id: favoritesList; Layout.fillWidth: true; Layout.fillHeight: true
+            visible: currentTab === "favorites" && library.selectedAlbumKey === ""
+            model: library.favoriteRows; clip: true
+            spacing: MichiTheme.space8
+            delegate: Text {
+                width: favoritesList.width
+                height: MichiTheme.controlHeightSmall
+                verticalAlignment: Text.AlignVCenter
+                text: modelData.displayName
+                font.pixelSize: MichiTheme.fontSizeCaption
+                color: MichiTheme.textSecondary
+                elide: Text.ElideRight
+            }
+        }
+
+        ListView {
+            id: historyList; Layout.fillWidth: true; Layout.fillHeight: true
+            visible: currentTab === "history" && library.selectedAlbumKey === ""
+            model: library.historyRows; clip: true
+            spacing: MichiTheme.space8
+            delegate: Text {
+                width: historyList.width
+                height: MichiTheme.controlHeightSmall
+                verticalAlignment: Text.AlignVCenter
+                text: modelData.displayName
+                font.pixelSize: MichiTheme.fontSizeCaption
+                color: MichiTheme.textSecondary
+                elide: Text.ElideRight
+            }
+        }
+
+        ListView {
+            id: recentList; Layout.fillWidth: true; Layout.fillHeight: true
+            visible: currentTab === "recently" && library.selectedAlbumKey === ""
+            model: library.recentlyAddedRows; clip: true
+            spacing: MichiTheme.space8
+            delegate: Text {
+                width: recentList.width
+                height: MichiTheme.controlHeightSmall
+                verticalAlignment: Text.AlignVCenter
+                text: modelData.displayName
                 font.pixelSize: MichiTheme.fontSizeCaption
                 color: MichiTheme.textSecondary
                 elide: Text.ElideRight

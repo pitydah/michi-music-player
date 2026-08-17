@@ -4,6 +4,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
+HISTORY_CAP = 50
+RECENT_CAP = 50
+
 
 @dataclass(frozen=True)
 class TrackMetadata:
@@ -246,6 +249,18 @@ def build_folder_model(tracks) -> tuple[FolderRef, ...]:
     )
 
 
+@dataclass(frozen=True)
+class LibraryPrefs:
+    """Persisted library preferences: favorites, play history, recently added.
+
+    Paths are stored as plain strings (best-effort persistence; the
+    repository may drop or corrupt them and the library keeps working)."""
+
+    favorite_paths: tuple[str, ...] = ()
+    history_paths: tuple[str, ...] = ()
+    recently_added_paths: tuple[str, ...] = ()
+
+
 @dataclass
 class LibraryState:
     tracks: list[TrackRef] = field(default_factory=list)
@@ -256,6 +271,9 @@ class LibraryState:
     artists: tuple[ArtistRef, ...] = ()
     genres: tuple[GenreRef, ...] = ()
     folders: tuple[FolderRef, ...] = ()
+    favorite_paths: tuple[str, ...] = ()
+    history_paths: tuple[str, ...] = ()
+    recently_added_paths: tuple[str, ...] = ()
 
     @property
     def visible_tracks(self) -> list[TrackRef]:

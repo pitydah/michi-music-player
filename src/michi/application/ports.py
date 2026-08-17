@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from pathlib import Path
 
-from michi.domain.library import Artwork, TrackMetadata
+from michi.domain.library import Artwork, LibraryPrefs, TrackMetadata
 from michi.domain.playback import PlaybackStatus
 
 
@@ -32,6 +32,16 @@ class ArtworkProviderPort(ABC):
 
     @abstractmethod
     def get_embedded_artwork(self, file_path: Path) -> Artwork | None: ...
+
+
+class LibraryPrefsPort(ABC):
+    """Favorites/history/recently-added persistence (best effort)."""
+
+    @abstractmethod
+    def load(self) -> "LibraryPrefs": ...
+
+    @abstractmethod
+    def save(self, prefs: "LibraryPrefs") -> None: ...
 
 
 class AudioPort(ABC):

@@ -1,5 +1,7 @@
 """QML bridge for library — observes LibraryService."""
 
+from pathlib import Path
+
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from michi.application.library_service import LibraryService
@@ -129,6 +131,37 @@ class LibraryBridge(QObject):
             for ref in self._album_track_refs
         ]
 
+    def _get_favorite_paths(self) -> list[str]:
+        return list(self._service.state.favorite_paths)
+
+    def _get_history_paths(self) -> list[str]:
+        return list(self._service.state.history_paths)
+
+    def _get_recently_added_paths(self) -> list[str]:
+        return list(self._service.state.recently_added_paths)
+
+    def _get_song_paths(self) -> list[str]:
+        return [str(t.file_path) for t in self._service.state.visible_tracks]
+
+    def _get_favorite_rows(self) -> list[dict]:
+        return self._rows_for(self._service.state.favorite_paths)
+
+    def _get_history_rows(self) -> list[dict]:
+        return self._rows_for(self._service.state.history_paths)
+
+    def _get_recently_added_rows(self) -> list[dict]:
+        return self._rows_for(self._service.state.recently_added_paths)
+
+    def _rows_for(self, paths) -> list[dict]:
+        rows = []
+        for path in paths:
+            ref = self._service.resolve_trackref(Path(path))
+            if ref is not None:
+                rows.append(
+                    {"displayName": ref.display_name, "path": str(ref.file_path)}
+                )
+        return rows
+
     files = Property(list, _get_files, notify=library_changed)
     fileCount = Property(int, _get_count, notify=library_changed)
     currentDir = Property(str, _get_current_dir, notify=library_changed)
@@ -147,6 +180,15 @@ class LibraryBridge(QObject):
     albumArtist = Property(str, _get_album_artist, notify=library_changed)
     albumArtwork = Property(str, _get_album_artwork, notify=library_changed)
     albumTracks = Property(list, _get_album_tracks, notify=library_changed)
+    favoritePaths = Property(list, _get_favorite_paths, notify=library_changed)
+    historyPaths = Property(list, _get_history_paths, notify=library_changed)
+    recentlyAddedPaths = Property(
+        list, _get_recently_added_paths, notify=library_changed
+    )
+    songPaths = Property(list, _get_song_paths, notify=library_changed)
+    favoriteRows = Property(list, _get_favorite_rows, notify=library_changed)
+    historyRows = Property(list, _get_history_rows, notify=library_changed)
+    recentlyAddedRows = Property(list, _get_recently_added_rows, notify=library_changed)
 
     @Slot(str)
     def scan(self, directory: str) -> None:
@@ -159,6 +201,10 @@ class LibraryBridge(QObject):
     @Slot(int)
     def activate(self, visible_index: int) -> None:
         self._service.activate(visible_index)
+
+    @Slot(str)
+    def toggle_favorite(self, path: str) -> None:
+        self._service.toggle_favorite(path)
 
     @Slot(str)
     def select_album(self, key: str) -> None:

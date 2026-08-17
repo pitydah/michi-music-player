@@ -11,14 +11,18 @@ from michi.application.library_port import (
 )
 from michi.application.ports import (
     ArtworkProviderPort,
+    LibraryPrefsPort,
     MetadataExtractionError,
     MetadataExtractorPort,
 )
 from michi.application.queue_service import QueueService
 from michi.domain.library import (
+    HISTORY_CAP,
+    RECENT_CAP,
     AlbumRef,
     LibraryDiagnostic,
     LibraryDiagnosticCode,
+    LibraryPrefs,
     LibraryState,
     TrackMetadata,
     TrackRef,
@@ -57,6 +61,7 @@ class LibraryService:
         metadata_extractor: MetadataExtractorPort | None = None,
         artwork_provider: ArtworkProviderPort | None = None,
         artwork_cache: ArtworkCache | None = None,
+        library_prefs: LibraryPrefsPort | None = None,
     ) -> None:
         self._scanner = scanner
         self._queue = queue_service
@@ -66,6 +71,13 @@ class LibraryService:
         self._artwork_paths: dict[str, Path] = {}
         self._state = LibraryState()
         self._subscribers: list[Callable[[], None]] = []
+        self._library_prefs = library_prefs
+        if library_prefs is not None:
+            prefs = library_prefs.load()
+            self._state.favorite_paths = prefs.favorite_paths
+            self._state.history_paths = prefs.history_paths
+            self._state.recently_added_paths = prefs.recently_added_paths
+        queue_service.subscribe_changed(self._on_queue_changed)
 
     @property
     def state(self) -> LibraryState:
@@ -100,6 +112,7 @@ class LibraryService:
         new_tracks = []
         for p in paths:
             new_tracks.append(self._make_trackref(p))
+        previous_paths = {str(t.file_path) for t in self._state.tracks}
         self._state.tracks = new_tracks
         self._state.query = ""
         self._state.current_directory = directory
@@ -119,6 +132,13 @@ class LibraryService:
             )
         else:
             self._state.diagnostic = None
+        new_paths = [
+            str(t.file_path)
+            for t in self._state.tracks
+            if str(t.file_path) not in previous_paths
+        ]
+        self._state.recently_added_paths = tuple(reversed(new_paths))[:RECENT_CAP]
+        self._persist_prefs()
         self._notify()
 
     def _make_trackref(self, file_path: Path) -> TrackRef:
@@ -173,6 +193,55 @@ class LibraryService:
 
     def search(self, query: str) -> None:
         self._state.query = query.strip().lower()
+        self._notify()
+
+    def _persist_prefs(self) -> None:
+        if self._library_prefs is not None:
+            self._library_prefs.save(
+                LibraryPrefs(
+                    favorite_paths=self._state.favorite_paths,
+                    history_paths=self._state.history_paths,
+                    recently_added_paths=self._state.recently_added_paths,
+                )
+            )
+
+    def toggle_favorite(self, file_path) -> None:
+        key = str(Path(file_path))
+        updated = set(self._state.favorite_paths)
+        if key in updated:
+            updated.discard(key)
+        else:
+            updated.add(key)
+        new_tuple = tuple(sorted(updated))
+        if new_tuple == self._state.favorite_paths:
+            return
+        self._state.favorite_paths = new_tuple
+        self._persist_prefs()
+        self._notify()
+
+    def set_favorite(self, file_path, favorite: bool) -> None:
+        key = str(Path(file_path))
+        updated = set(self._state.favorite_paths)
+        if favorite:
+            updated.add(key)
+        else:
+            updated.discard(key)
+        new_tuple = tuple(sorted(updated))
+        if new_tuple == self._state.favorite_paths:
+            return
+        self._state.favorite_paths = new_tuple
+        self._persist_prefs()
+        self._notify()
+
+    def _on_queue_changed(self) -> None:
+        current = self._queue.state.current_track
+        if current is None:
+            return
+        path = str(current.file_path)
+        if self._state.history_paths and self._state.history_paths[0] == path:
+            return  # consecutive dedupe
+        self._state.history_paths = (path, *self._state.history_paths)[:HISTORY_CAP]
+        self._persist_prefs()
         self._notify()
 
     def activate(self, visible_index: int) -> None:
