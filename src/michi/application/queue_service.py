@@ -125,6 +125,14 @@ class QueueService:
     def _on_end_of_media(self) -> None:
         """Natural end of the committed track. Applies the repeat mode.
 
+        Canonical decision order (LOCAL-STABILIZATION-01.6.1):
+        1. Repeat ONE takes precedence: the exact current entry replays,
+           regardless of any remaining shuffle pool (A → A, never A → B/C).
+        2. Shuffle enabled: the next pick comes from the shuffle pool; an
+           exhausted pool stops on NONE or regenerates a new cycle on ALL.
+        3. Natural order: NONE advances by index (stops at the end), ALL
+           wraps around.
+
         A pending request means a new candidate is already in flight (manual
         navigation or a previous auto-advance): the EOM is stale and is
         ignored. Auto-advance goes through play_index so the pending/
@@ -134,6 +142,12 @@ class QueueService:
         if self._pending_track is not None:
             return
         if not self._state.tracks or self._state.current_index < 0:
+            return
+        if self._state.repeat_mode is RepeatMode.ONE:
+            # Repeat ONE has precedence over shuffle: the exact current entry
+            # replays regardless of any remaining shuffle pool. The replay
+            # path never touches the navigator, so the pool is not popped.
+            self.play_index(self._state.current_index)
             return
         if self._state.shuffle_enabled:
             target = self._shuffle_pick()
@@ -146,16 +160,10 @@ class QueueService:
                     if target is None:  # single-track edge
                         self.play_index(self._state.current_index)
                         return
-                elif self._state.repeat_mode is RepeatMode.NONE:
+                else:  # RepeatMode.NONE
                     self._playback.stop()
                     return
-                else:  # RepeatMode.ONE
-                    self.play_index(self._state.current_index)
-                    return
             self.play_index(self._index_of(target))
-            return
-        if self._state.repeat_mode is RepeatMode.ONE:
-            self.play_index(self._state.current_index)
             return
         if self._state.repeat_mode is RepeatMode.ALL:
             self.play_index((self._state.current_index + 1) % len(self._state.tracks))

@@ -1364,30 +1364,46 @@ class TestShuffleNavigation:
     def test_shuffle_pool_exhausted_repeat_one_replays_current(
         self, playback_service, fake_audio
     ):
+        """Repeat ONE takes precedence over shuffle at end-of-media.
+
+        Contract change (LOCAL-STABILIZATION-01.6.1): the OLD rule encoded
+        "while the pool has entries, EVERY mode pops the pool". The canonical
+        rule is: with shuffle ON + repeat ONE, an end-of-media replays the
+        EXACT current entry while the shuffle pool is still NON-EMPTY — the
+        pool is NOT popped (A → A, never A → B/C). The exhaustion case (pool
+        empty + ONE) also replays the current entry, unchanged.
+        """
         service = self._shuffle_queue(playback_service)
         a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
         self._populate(service, a, b, c)
         self._commit_first(service, fake_audio, a)
-        service.set_shuffle_enabled(True)
+        service.set_shuffle_enabled(True)  # pool = {b, c} — non-empty
         service.set_repeat_mode(RepeatMode.ONE)
 
-        # While the pool has entries, EVERY mode still pops the pool.
-        for _ in range(2):
-            fake_audio.trigger_end_of_media()
-            picked = fake_audio.loaded
-            assert picked in (b, c)
-            fake_audio.trigger_media_accepted(picked)
+        # ONE precedes shuffle: EOM replays the current entry (a); the
+        # non-empty pool {b, c} is NOT popped.
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.loaded == a
+        assert service.state.current_index == 0  # pending, not committed
+        fake_audio.trigger_media_accepted(a)
+        assert service.state.current_index == 0
+
+        # Exhaustion case: consume the pool through manual navigation, then
+        # ONE on an empty pool still replays the current entry.
+        service.next()
+        picked = fake_audio.loaded
+        assert picked in (b, c)
+        fake_audio.trigger_media_accepted(picked)
+        service.next()
+        remaining = next(p for p in (b, c) if p != picked)
+        assert fake_audio.loaded == remaining
+        fake_audio.trigger_media_accepted(remaining)
         current = fake_audio.loaded  # committed second pick
 
-        # Pool exhausted → repeat ONE replays the current track.
-        fake_audio.trigger_end_of_media()
+        fake_audio.trigger_end_of_media()  # empty pool + ONE → replay current
         assert fake_audio.loaded == current
         fake_audio.trigger_media_accepted(current)
         assert service.state.current_index == self._track_index(service, current)
-
-        # Pool/history untouched: a further EOM replays current again.
-        fake_audio.trigger_end_of_media()
-        assert fake_audio.loaded == current
 
     def test_shuffle_pool_exhausted_repeat_none_stops(
         self, playback_service, fake_audio
@@ -1655,3 +1671,263 @@ class TestShuffleNavigation:
         assert service.state.current_index == self._track_index(
             service, fake_audio.loaded
         )
+
+
+class TestRepeatOneShufflePrecedence:
+    """LOCAL-STABILIZATION-01.6.1: repeat ONE takes precedence over shuffle.
+
+    At end-of-media, ONE replays the EXACT current queue entry regardless of
+    any remaining shuffle pool (A → A, never A → B/C) — the pool is NOT
+    popped. Manual NEXT/PREVIOUS remain user navigation: ONE does not trap
+    them, so they keep their shuffle-pool / natural-order semantics.
+    """
+
+    def _shuffle_queue(self, playback_service, seed: int = 42):
+        from michi.application.queue_service import QueueService
+
+        return QueueService(playback_service, rng=random.Random(seed))
+
+    def _populate(self, service, *paths: Path) -> None:
+        for p in paths:
+            service.add(p)
+
+    def _commit_first(self, service, fake_audio, path: Path) -> None:
+        service.play_index(0)
+        fake_audio.trigger_media_accepted(path)
+
+    def _track_index(self, service, path: Path) -> int:
+        return [t.file_path for t in service.state.tracks].index(path)
+
+    def test_repeat_one_with_shuffle_non_empty_pool_replays_current(
+        self, playback_service, fake_audio
+    ):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        self._populate(service, a, b, c)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)  # pool = {b, c}
+        service.set_repeat_mode(RepeatMode.ONE)
+
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.loaded == a  # current replays, NOT b/c
+        assert service.state.current_index == 0  # pending, not committed
+        fake_audio.trigger_media_accepted(a)
+        assert service.state.current_index == 0
+
+    def test_repeat_one_with_shuffle_single_track(self, playback_service, fake_audio):
+        service = self._shuffle_queue(playback_service)
+        a = Path("/tmp/a.mp3")
+        service.add(a)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)  # empty pool immediately
+        service.set_repeat_mode(RepeatMode.ONE)
+
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.loaded == a
+        fake_audio.trigger_media_accepted(a)
+        assert service.state.current_index == 0
+
+    def test_repeat_one_with_shuffle_duplicate_paths(
+        self, playback_service, fake_audio
+    ):
+        service = self._shuffle_queue(playback_service)
+        x, y = Path("/tmp/x.mp3"), Path("/tmp/y.mp3")
+        service.add(x)  # index 0 — x1, committed first
+        service.add(x)  # index 1 — x2, distinct object, same path
+        service.add(y)  # index 2
+        self._commit_first(service, fake_audio, x)
+        service.set_shuffle_enabled(True)  # pool = {x2, y}
+        service.set_repeat_mode(RepeatMode.ONE)
+
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.loaded == x
+        fake_audio.trigger_media_accepted(x)
+        # Exact identity: the committed current stays the FIRST entry (x1),
+        # never a path match on the duplicate x2 sitting in the pool.
+        assert service.state.current_index == 0
+        assert service.state.current_track is service.state.tracks[0]
+
+    def test_repeat_one_after_prior_shuffled_navigation(
+        self, playback_service, fake_audio
+    ):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        self._populate(service, a, b, c)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)  # pool = {b, c}
+        service.set_repeat_mode(RepeatMode.ONE)
+
+        # ONE EOM replays the current entry; the pool is NOT popped.
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.loaded == a
+        assert {t.file_path for t in service._navigator.pool} == {b, c}
+        fake_audio.trigger_media_accepted(a)
+        assert service.state.current_index == 0
+
+        # Switching to NONE restores pool semantics: the untouched pool
+        # {b, c} still yields an auto-advance.
+        service.set_repeat_mode(RepeatMode.NONE)
+        fake_audio.trigger_end_of_media()
+        picked = fake_audio.loaded
+        assert picked in (b, c)
+        fake_audio.trigger_media_accepted(picked)
+        assert service.state.current_index != 0
+
+    def test_changing_one_to_none_restores_shuffle_pool(
+        self, playback_service, fake_audio
+    ):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        self._populate(service, a, b, c)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)
+        service.set_repeat_mode(RepeatMode.ONE)
+
+        fake_audio.trigger_end_of_media()  # ONE → replay a
+        assert fake_audio.loaded == a
+        fake_audio.trigger_media_accepted(a)
+        assert service.state.current_index == 0
+
+        service.set_repeat_mode(RepeatMode.NONE)
+        fake_audio.trigger_end_of_media()  # NONE + shuffle → pool pick
+        picked = fake_audio.loaded
+        assert picked in (b, c)
+        assert picked != a
+        fake_audio.trigger_media_accepted(picked)
+        assert service.state.current_index != 0
+
+    def test_changing_one_to_all_wraps(self, playback_service, fake_audio):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        self._populate(service, a, b, c)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)
+        service.set_repeat_mode(RepeatMode.ONE)
+        service.set_repeat_mode(RepeatMode.ALL)  # ONE no longer applies
+
+        fake_audio.trigger_end_of_media()  # ALL + shuffle → pool pick
+        picked = fake_audio.loaded
+        assert picked in (b, c)  # not a replay of a
+        assert picked != a
+        fake_audio.trigger_media_accepted(picked)
+        assert service.state.current_index != 0
+
+    def test_manual_next_not_trapped_by_repeat_one(self, queue_service, fake_audio):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.add(Path("/tmp/c.mp3"))
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        queue_service.set_repeat_mode(RepeatMode.ONE)
+
+        queue_service.next()  # user navigation, NOT a replay
+        assert fake_audio.loaded == Path("/tmp/b.mp3")
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert queue_service.state.current_index == 1
+
+    def test_manual_previous_not_trapped_by_repeat_one(self, queue_service, fake_audio):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.add(Path("/tmp/c.mp3"))
+        queue_service.play_index(1)
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        queue_service.set_repeat_mode(RepeatMode.ONE)
+
+        queue_service.previous()  # user navigation
+        assert fake_audio.loaded == Path("/tmp/a.mp3")
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        assert queue_service.state.current_index == 0
+
+    def test_manual_next_with_shuffle_and_one_picks_pool(
+        self, playback_service, fake_audio
+    ):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        self._populate(service, a, b, c)
+        self._commit_first(service, fake_audio, a)
+        service.set_shuffle_enabled(True)
+        service.set_repeat_mode(RepeatMode.ONE)
+
+        service.next()  # manual NEXT keeps pool semantics under ONE
+        picked = fake_audio.loaded
+        assert picked in (b, c)  # seeded rng → deterministic pool draw
+        assert picked != a
+        fake_audio.trigger_media_accepted(picked)
+        assert service.state.current_index != 0
+
+    def test_repeat_one_async_acceptance_still_atomic(
+        self, queue_service, playback_service, fake_audio
+    ):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        queue_service.set_repeat_mode(RepeatMode.ONE)
+
+        fake_audio.trigger_end_of_media()  # ONE → replay a, pending
+        assert fake_audio.loaded == Path("/tmp/a.mp3")
+        assert queue_service.state.current_index == 0
+
+        queue_service.remove(0)  # the pending track itself is removed
+        assert [t.file_path for t in queue_service.state.tracks] == [Path("/tmp/b.mp3")]
+        assert queue_service.state.current_index == 0  # relocated to b
+
+        # Late acceptance of the removed candidate must not commit anywhere
+        # (identity guard): current_index is not set to a stale index.
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        assert queue_service.state.current_index == 0
+        assert queue_service.state.current_track.file_path == Path("/tmp/b.mp3")
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+    def test_repeat_one_rejection_still_terminal(
+        self, queue_service, playback_service, fake_audio, monkeypatch
+    ):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        loads = []
+
+        def recording_load(p):
+            loads.append(p)
+            fake_audio.loaded = p
+
+        monkeypatch.setattr(fake_audio, "load", recording_load)
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        assert loads == [Path("/tmp/a.mp3")]
+        queue_service.set_repeat_mode(RepeatMode.ONE)
+
+        fake_audio.trigger_end_of_media()  # ONE → replay a, pending
+        assert loads == [Path("/tmp/a.mp3"), Path("/tmp/a.mp3")]
+        assert queue_service.state.current_index == 0
+
+        fake_audio.trigger_media_rejected(Path("/tmp/a.mp3"), "broken")
+        assert queue_service.state.current_index == 0  # rejection is terminal
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        assert playback_service.state.error_message == "broken"
+
+        # Pending cleared + playback intent lapsed: further EOMs do nothing.
+        fake_audio.trigger_end_of_media()
+        fake_audio.trigger_end_of_media()
+        assert loads == [Path("/tmp/a.mp3"), Path("/tmp/a.mp3")]
+        assert fake_audio.loaded == Path("/tmp/a.mp3")
+        assert queue_service.state.current_index == 0
+
+    def test_repeat_one_cancellation_still_terminal(
+        self, queue_service, playback_service, fake_audio
+    ):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        queue_service.set_repeat_mode(RepeatMode.ONE)
+
+        fake_audio.trigger_end_of_media()  # ONE → replay a, pending
+        assert fake_audio.loaded == Path("/tmp/a.mp3")
+        assert queue_service.state.current_index == 0
+
+        playback_service.stop()  # external cancel → on_cancelled clears pending
+        fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
+        # The cancelled candidate never commits: no stale commit.
+        assert queue_service.state.current_index == 0
+        assert queue_service.state.current_track.file_path == Path("/tmp/a.mp3")
+        assert playback_service.state.status == PlaybackStatus.STOPPED
