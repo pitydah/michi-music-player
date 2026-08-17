@@ -107,6 +107,8 @@ Operations: `load`, `play`, `pause`, `resume`, `stop`, `set_volume`, `set_muted`
 
 `LibraryService` → `LibraryScannerPort` → `FilesystemLibraryScanner`. Filesystem authority is infrastructure: application code never calls `Path.exists`/`is_file`/`stat`/`os.stat`/`os.access` for runtime authority. Missing and empty directories are distinct (missing raises a typed `LibraryFilesystemError`; a valid empty directory returns `[]`). Scan failures preserve the last valid library state and publish a typed `LibraryDiagnostic` (DIRECTORY_MISSING / ACCESS_FAILURE / IO_FAILURE / UNKNOWN_FAILURE). Same-directory rescans reconcile stale entries (STALE_ENTRIES_REMOVED + affected_count). Activation validates the selected `TrackRef` through the port before any queue mutation: TRACK_MISSING removes the exact reference and never reaches the queue; ACCESS/IO/UNKNOWN preserve the entry. Diagnostics are typed state owned by `LibraryState`; presentation (bridge/QML) only projects them. No continuous filesystem watcher exists; asynchronous scanning remains TD-009/M12.
 
+Library preferences (favorites, play history, recently added) are REFERENCE PERSISTENCE: they survive library membership changes and temporary filesystem unavailability, and are never erased by scans, missing-track removal, or scan failures. Current library membership is `LibraryState.tracks`; missing files fall out of the derived views but not of the persisted references (TD-013 activation only removes the stale membership entry).
+
 ## Lifecycle
 
 `ApplicationContainer` (bootstrap) owns the lifecycle: construct the object graph → start services → run the QML engine → shutdown.

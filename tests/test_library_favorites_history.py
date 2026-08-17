@@ -34,6 +34,10 @@ Coverage:
   test_recently_added_capped now assert preservation across rescans).
 - Bridge: row/toggle surface, songPaths parallel to files, missing paths
   skipped in rows
+- Reference-persistence audit (LOCAL-STABILIZATION-01.6.6): favorites survive
+  missing-track activation, favorites/history survive identical rescans,
+  failed scans preserve all three references, missing favorite hidden from
+  rows but kept in the reference tuple
 - Sqlite repository: round trip, empty fresh db, missing file never raises,
   settings table untouched (shared db)
 - QML smoke: LibraryView.qml still instantiates with the real bridge
@@ -455,6 +459,111 @@ class TestBridgeFavoritesHistory:
         ghost = tmp_path / "ghost.mp3"
         bridge.toggle_favorite(str(ghost))
         assert str(ghost) in bridge.property("favoritePaths")
+        assert bridge.property("favoriteRows") == []
+        bridge.dispose()
+
+
+class _ValidatingScanner(FakeScanner):
+    """FakeScanner whose validate_file raises a per-path error (TD-013)."""
+
+    def __init__(self, paths=None, validate_errors=None) -> None:
+        super().__init__(paths)
+        self.validate_errors = validate_errors or {}
+
+    def validate_file(self, path):
+        error = self.validate_errors.get(path)
+        if error is not None:
+            raise error
+        return None
+
+
+class TestReferencePersistenceAudit:
+    """LOCAL-STABILIZATION-01.6.6 audit: favorites/history/recently-added are
+    REFERENCE PERSISTENCE — they survive library membership changes and
+    filesystem unavailability, and are never erased by scans, missing-track
+    removal, or scan failures. Current library membership is
+    LibraryState.tracks; missing files fall out of the derived views
+    (favoriteRows/historyRows/recentlyAddedRows) but not of the persisted
+    reference tuples (favoritePaths/historyPaths/recentlyAddedPaths)."""
+
+    def test_favorite_survives_missing_track_activation(self, tmp_path):
+        """TD-013: activating a favorite whose file vanished removes the
+        membership entry (state.tracks) but MUST NOT erase the persisted
+        reference (favorite_paths); the queue stays untouched."""
+        p1 = tmp_path / "one.mp3"
+        p1.write_bytes(b"x")
+        scanner = _ValidatingScanner([p1])
+        library, queue, _ = _make_library_and_queue(scanner)
+        library.scan(str(tmp_path))
+        library.toggle_favorite(p1)
+        assert str(p1) in library.state.favorite_paths
+        scanner.validate_errors = {
+            p1: LibraryFilesystemError(LibraryDiagnosticCode.TRACK_MISSING, p1)
+        }
+        library.activate(0)
+        assert library.state.tracks == []  # membership removed
+        assert str(p1) in library.state.favorite_paths  # reference preserved
+        assert library.state.diagnostic is not None
+        assert library.state.diagnostic.code is LibraryDiagnosticCode.TRACK_MISSING
+        assert queue.state.tracks == []
+        assert queue.state.current_index == -1  # queue untouched
+
+    def test_favorites_and_history_survive_identical_rescan(self, tmp_path):
+        """An identical rescan must not erase favorites or play history;
+        recently added preservation is the LOCAL-STABILIZATION-01.6.5 rule
+        and is pinned here too."""
+        p1, p2 = _write_tracks(tmp_path, ("one.mp3", "two.mp3"))
+        scanner = FakeScanner([p1, p2])
+        library, queue, audio = _make_library_and_queue(scanner)
+        library.scan(str(tmp_path))
+        library.toggle_favorite(p1)
+        queue.add(p1)
+        queue.play_index(0)
+        audio.trigger_media_accepted(p1)
+        favorites_before = library.state.favorite_paths
+        history_before = library.state.history_paths
+        recent_before = library.state.recently_added_paths
+        assert str(p1) in favorites_before
+        assert str(p1) in history_before
+        scanner.paths = [p1, p2]  # identical rescan
+        library.scan(str(tmp_path))
+        assert library.state.favorite_paths == favorites_before
+        assert library.state.history_paths == history_before
+        assert library.state.recently_added_paths == recent_before
+
+    def test_failed_scan_preserves_favorites_and_history(self, tmp_path):
+        """Scan failure (filesystem unavailable) must not erase the persisted
+        references; recently added is covered by 6.5 — favorites and history
+        are pinned here."""
+        p1, p2 = _write_tracks(tmp_path, ("one.mp3", "two.mp3"))
+        scanner = FailingScanner([p1, p2])
+        library, queue, audio = _make_library_and_queue(scanner)
+        library.scan(str(tmp_path))
+        library.toggle_favorite(p1)
+        queue.add(p1)
+        queue.play_index(0)
+        audio.trigger_media_accepted(p1)
+        favorites_before = library.state.favorite_paths
+        history_before = library.state.history_paths
+        recent_before = library.state.recently_added_paths
+        scanner.scan_error = LibraryFilesystemError(
+            LibraryDiagnosticCode.IO_FAILURE, tmp_path, "i/o error"
+        )
+        library.scan(str(tmp_path))
+        assert library.state.favorite_paths == favorites_before
+        assert library.state.history_paths == history_before
+        assert library.state.recently_added_paths == recent_before
+
+    def test_missing_favorite_row_hidden_but_persisted(self, tmp_path):
+        """Bridge view: a favorite whose file is not in the library stays in
+        favoritePaths (persisted reference) but is excluded from favoriteRows
+        (membership-derived view)."""
+        p1 = tmp_path / "one.mp3"
+        p1.write_bytes(b"x")
+        library, _, _ = _make_library_and_queue(FakeScanner())  # never scanned
+        library.toggle_favorite(p1)
+        bridge = LibraryBridge(library)
+        assert str(p1) in bridge.property("favoritePaths")
         assert bridge.property("favoriteRows") == []
         bridge.dispose()
 
