@@ -66,7 +66,7 @@ clean install            [blocked-by: packaging — M13; 1.0 artifacts are Linux
 → pause/resume           [executable]
 → seek                   [executable]
 → previous/next          [executable]
-→ manage Queue           [executable — add/remove/clear/play_index; reorder is Post-1.0]
+→ manage Queue           [executable — add/remove/clear/move/play_index]
 → shuffle/repeat         [executable]
 → close                  [executable]
 → restart                [executable]
