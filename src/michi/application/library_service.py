@@ -10,6 +10,7 @@ from michi.application.library_port import (
     LibraryScannerPort,
 )
 from michi.application.ports import (
+    ArtworkCachePort,
     ArtworkProviderPort,
     LibraryPrefsPort,
     MetadataExtractionError,
@@ -29,7 +30,6 @@ from michi.domain.library import (
     build_folder_model,
     build_music_model,
 )
-from michi.infrastructure.artwork import ArtworkCache
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class LibraryService:
         queue_service: QueueService,
         metadata_extractor: MetadataExtractorPort | None = None,
         artwork_provider: ArtworkProviderPort | None = None,
-        artwork_cache: ArtworkCache | None = None,
+        artwork_cache: ArtworkCachePort | None = None,
         library_prefs: LibraryPrefsPort | None = None,
     ) -> None:
         self._scanner = scanner

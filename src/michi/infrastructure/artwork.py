@@ -7,7 +7,7 @@ from pathlib import Path
 from mutagen import File as MutagenFile
 from mutagen import MutagenError
 
-from michi.application.ports import ArtworkProviderPort
+from michi.application.ports import ArtworkCachePort, ArtworkProviderPort
 from michi.domain.library import Artwork
 
 logger = logging.getLogger(__name__)
@@ -72,8 +72,11 @@ class MutagenArtworkProvider(ArtworkProviderPort):
         return Artwork(data=data, mime_type=mime)
 
 
-class ArtworkCache:
-    """Deterministic, idempotent on-disk cache for album artwork."""
+class ArtworkCache(ArtworkCachePort):
+    """Deterministic, idempotent on-disk cache for album artwork.
+
+    Implements :class:`michi.application.ports.ArtworkCachePort` — the
+    application layer depends on the port, infrastructure owns the disk."""
 
     def __init__(self, cache_dir: Path) -> None:
         self._cache_dir = cache_dir

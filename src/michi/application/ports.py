@@ -35,6 +35,13 @@ class ArtworkProviderPort(ABC):
     def get_embedded_artwork(self, file_path: Path) -> Artwork | None: ...
 
 
+class ArtworkCachePort(ABC):
+    """Artwork cache boundary (best effort; infrastructure owns the disk)."""
+
+    @abstractmethod
+    def store(self, album_key: str, artwork: "Artwork") -> Path | None: ...
+
+
 class LibraryPrefsPort(ABC):
     """Favorites/history/recently-added persistence (best effort)."""
 
