@@ -1,5 +1,6 @@
 """Queue use case — sole mutation authority for QueueState. Publishes changes."""
 
+import logging
 import random
 from collections.abc import Callable
 from pathlib import Path
@@ -12,19 +13,32 @@ from michi.domain.queue import (
     ShuffleNavigator,
     Track,
 )
+from michi.domain.session import PlaybackSessionSnapshot
+
+logger = logging.getLogger(__name__)
 
 
 class QueueService:
-    """Owns QueueState. Coordinates with PlaybackService for actual playback."""
+    """Owns QueueState. Coordinates with PlaybackService for actual playback.
+
+    `restore_session` is the startup path: it rebuilds the queue and the
+    repeat/shuffle state from a persisted `PlaybackSessionSnapshot`. Pending
+    candidates are never restored and there is no autoplay — restoring never
+    requests playback, it only reconstructs navigable state.
+    """
 
     def __init__(
         self,
         playback_service: PlaybackService,
         rng=None,
         max_tracks: int = 10000,
+        shuffle_seed: int | None = None,
     ) -> None:
         self._playback = playback_service
         self._rng = rng if rng is not None else random.Random()
+        self._shuffle_seed = (
+            shuffle_seed if shuffle_seed is not None else random.randrange(1, 2**31)
+        )
         self._navigator = ShuffleNavigator()
         self._state = QueueState()
         self._subscribers: list[Callable[[], None]] = []
@@ -41,6 +55,65 @@ class QueueService:
     @property
     def max_tracks(self) -> int:
         return self._max_tracks
+
+    @property
+    def shuffle_seed(self) -> int:
+        """The seed reconstructing deterministic shuffle navigation. Restored
+        from the persisted snapshot (or defaulted at construction)."""
+        return self._shuffle_seed
+
+    def restore_session(self, snapshot: PlaybackSessionSnapshot) -> None:
+        """Atomic startup restoration from a persisted session snapshot.
+
+        Rebuilds the queue (duplicates become distinct Track objects in
+        order — never deduped by path), the current index (defensively
+        clamped to -1 when out of range), the repeat/shuffle mode and the
+        shuffle seed, and reconstructs the RNG from the persisted integer
+        seed so deterministic shuffle navigation is reproducible (this
+        replaces any injected test rng). Publishes exactly ONE notification;
+        never requests playback (no load_and_play/stop) — pending candidates
+        are never restored and there is no autoplay.
+
+        Capacity guard first: a persisted queue larger than ``max_tracks`` is
+        NEVER truncated (truncation could alter the current identity) — a
+        warning is logged and a fresh empty queue state is restored instead.
+        """
+        if len(snapshot.queue_entries) > self._max_tracks:
+            logger.warning(
+                "persisted queue %d exceeds max_tracks %d; "
+                "restoring a fresh empty queue",
+                len(snapshot.queue_entries),
+                self._max_tracks,
+            )
+            self._pending_track = None
+            self._navigator.clear()
+            self._state.tracks.clear()
+            self._state.current_index = -1
+            self._state.repeat_mode = RepeatMode.NONE
+            self._state.shuffle_enabled = False
+            self._rng = random.Random()
+            self._notify()
+            return
+
+        tracks = [
+            Track(file_path=Path(entry.file_path), title=entry.title)
+            for entry in snapshot.queue_entries
+        ]
+        self._state.tracks = tracks
+        idx = snapshot.queue_current_index
+        if not -1 <= idx < len(tracks):
+            idx = -1
+        self._state.current_index = idx
+        self._state.repeat_mode = snapshot.repeat_mode
+        self._pending_track = None
+        self._shuffle_seed = snapshot.shuffle_seed
+        self._rng = random.Random(snapshot.shuffle_seed)
+        self._state.shuffle_enabled = snapshot.shuffle_enabled
+        if self._state.shuffle_enabled:
+            self._navigator.reset(tracks, self._state.current_track, self._rng)
+        else:
+            self._navigator.clear()
+        self._notify()
 
     def subscribe_changed(self, callback: Callable[[], None]) -> None:
         if callback not in self._subscribers:
