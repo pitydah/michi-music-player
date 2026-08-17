@@ -5,24 +5,40 @@ from collections.abc import Callable
 from pathlib import Path
 
 from michi.application.playback_service import PlaybackService
-from michi.domain.queue import QueueState, RepeatMode, ShuffleNavigator, Track
+from michi.domain.queue import (
+    QueueCapacityError,
+    QueueState,
+    RepeatMode,
+    ShuffleNavigator,
+    Track,
+)
 
 
 class QueueService:
     """Owns QueueState. Coordinates with PlaybackService for actual playback."""
 
-    def __init__(self, playback_service: PlaybackService, rng=None) -> None:
+    def __init__(
+        self,
+        playback_service: PlaybackService,
+        rng=None,
+        max_tracks: int = 10000,
+    ) -> None:
         self._playback = playback_service
         self._rng = rng if rng is not None else random.Random()
         self._navigator = ShuffleNavigator()
         self._state = QueueState()
         self._subscribers: list[Callable[[], None]] = []
         self._pending_track: Track | None = None
+        self._max_tracks = max_tracks
         self._playback.subscribe_end_of_media(self._on_end_of_media)
 
     @property
     def state(self) -> QueueState:
         return self._state
+
+    @property
+    def max_tracks(self) -> int:
+        return self._max_tracks
 
     def subscribe_changed(self, callback: Callable[[], None]) -> None:
         if callback not in self._subscribers:
@@ -37,6 +53,8 @@ class QueueService:
             cb()
 
     def add(self, file_path: Path, title: str = "") -> None:
+        if self._state.count >= self._max_tracks:
+            raise QueueCapacityError(f"queue capacity {self._max_tracks} exceeded")
         track = Track(file_path=file_path, title=title)
         self._state.tracks.append(track)
         if self._state.shuffle_enabled:
@@ -66,6 +84,34 @@ class QueueService:
         self._navigator.clear()
         self._state.tracks.clear()
         self._state.current_index = -1
+        self._notify()
+
+    def move(self, from_index: int, to_index: int) -> None:
+        """Reorder by exact Track identity (M4 original contract).
+
+        The moved Track object is never recreated and never path-compared;
+        the committed current identity is preserved (current_index is
+        recomputed by identity), the pending identity is untouched (a later
+        acceptance commits at the new index), playback is never stopped or
+        reloaded, and the shuffle navigator pool/history are not regenerated
+        (they hold identity references, unaffected by physical reorder).
+        Invalid and same-index moves are deterministic no-ops with no
+        notification."""
+        tracks = self._state.tracks
+        if not (0 <= from_index < len(tracks)):
+            return
+        if not (0 <= to_index < len(tracks)):
+            return
+        if from_index == to_index:
+            return
+        track = tracks[from_index]
+        reordered = list(tracks)
+        del reordered[from_index]
+        reordered.insert(to_index, track)
+        current = self._state.current_track
+        self._state.tracks = reordered
+        if current is not None:
+            self._state.current_index = self._index_of_track(current)
         self._notify()
 
     def play_index(self, index: int) -> None:
@@ -114,6 +160,12 @@ class QueueService:
         self._notify()
 
     def _index_of(self, track: Track) -> int:
+        for i, t in enumerate(self._state.tracks):
+            if t is track:
+                return i
+        return -1
+
+    def _index_of_track(self, track: Track) -> int:
         for i, t in enumerate(self._state.tracks):
             if t is track:
                 return i
@@ -237,6 +289,11 @@ class QueueService:
                     return
             self.play_index(self._index_of(target))
             return
+        if self._state.repeat_mode is RepeatMode.ALL:
+            if not self._state.tracks:
+                return
+            self.play_index((self._state.current_index + 1) % len(self._state.tracks))
+            return
         self.play_index(self._state.current_index + 1)
 
     def previous(self) -> None:
@@ -246,6 +303,11 @@ class QueueService:
                 return
             self.play_index(self._index_of(target))
             return
+        if self._state.current_index < 0:
+            return
+        if self._state.repeat_mode is RepeatMode.ALL:
+            self.play_index((self._state.current_index - 1) % len(self._state.tracks))
+            return
         self.play_index(self._state.current_index - 1)
 
     @property
@@ -254,7 +316,17 @@ class QueueService:
             if self._navigator.pool:
                 return True
             return self._state.repeat_mode is not RepeatMode.NONE
+        if self._state.repeat_mode is RepeatMode.ALL:
+            return bool(self._state.tracks)
         return self._state.has_next
+
+    @property
+    def has_previous(self) -> bool:
+        if self._state.shuffle_enabled:
+            return len(self._navigator.history) >= 2
+        if self._state.repeat_mode is RepeatMode.ALL:
+            return bool(self._state.tracks)
+        return self._state.has_previous
 
     def play_current(self) -> None:
         self.play_index(self._state.current_index)

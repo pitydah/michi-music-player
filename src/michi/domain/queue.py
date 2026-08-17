@@ -21,6 +21,11 @@ class RepeatMode(Enum):
     ALL = auto()
 
 
+class QueueCapacityError(RuntimeError):
+    """Raised when add() would exceed the configured max_tracks; the queue
+    is left unchanged."""
+
+
 @dataclass
 class QueueState:
     """Single canonical authority for the playback queue."""

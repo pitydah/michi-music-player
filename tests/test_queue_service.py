@@ -1931,3 +1931,573 @@ class TestRepeatOneShufflePrecedence:
         assert queue_service.state.current_index == 0
         assert queue_service.state.current_track.file_path == Path("/tmp/a.mp3")
         assert playback_service.state.status == PlaybackStatus.STOPPED
+
+
+class TestQueueMove:
+    """M4 Original Closeout: queue reorder (`move`) — exact Track identity,
+    committed-current recompute, pending-track preservation, no playback
+    side effects, exactly one notification, deterministic invalid moves,
+    shuffle navigator integrity.
+
+    Contract under test (NOT yet implemented in production):
+    - `QueueService.move(from_index, to_index) -> None` moves the EXACT Track
+      object by identity — never recreates, never path-compares;
+    - the committed current Track identity is preserved: `current_index` is
+      recomputed by identity after the reorder; the pending Track identity is
+      preserved: acceptance after the reorder commits at the NEW index;
+    - a successful reorder never stops/loads/restarts playback and fires
+      EXACTLY ONE notification;
+    - invalid moves (out-of-range) and same-index moves are deterministic
+      no-ops that fire NO notification;
+    - duplicates resolve by exact object identity, never by path;
+    - the shuffle navigator pool/history are NOT regenerated or corrupted by
+      the physical list reorder (objects are identity-based).
+    """
+
+    def _shuffle_queue(self, playback_service, seed: int = 42):
+        from michi.application.queue_service import QueueService
+
+        return QueueService(playback_service, rng=random.Random(seed))
+
+    def _paths(self, service) -> list:
+        return [t.file_path for t in service.state.tracks]
+
+    def test_move_forward(self, queue_service):
+        a, b, c, d = (
+            Path("/tmp/a.mp3"),
+            Path("/tmp/b.mp3"),
+            Path("/tmp/c.mp3"),
+            Path("/tmp/d.mp3"),
+        )
+        for p in (a, b, c, d):
+            queue_service.add(p)
+        calls = []
+        queue_service.subscribe_changed(lambda: calls.append(1))
+        queue_service.move(0, 2)
+        assert self._paths(queue_service) == [b, c, a, d]
+        assert queue_service.state.count == 4
+        assert calls == [1]  # EXACTLY ONE notification
+
+    def test_move_backward(self, queue_service):
+        a, b, c, d = (
+            Path("/tmp/a.mp3"),
+            Path("/tmp/b.mp3"),
+            Path("/tmp/c.mp3"),
+            Path("/tmp/d.mp3"),
+        )
+        for p in (a, b, c, d):
+            queue_service.add(p)
+        calls = []
+        queue_service.subscribe_changed(lambda: calls.append(1))
+        queue_service.move(3, 1)
+        assert self._paths(queue_service) == [a, d, b, c]
+        assert calls == [1]
+
+    def test_move_first_to_last(self, queue_service):
+        a, b, c, d = (
+            Path("/tmp/a.mp3"),
+            Path("/tmp/b.mp3"),
+            Path("/tmp/c.mp3"),
+            Path("/tmp/d.mp3"),
+        )
+        for p in (a, b, c, d):
+            queue_service.add(p)
+        queue_service.move(0, 3)
+        assert self._paths(queue_service) == [b, c, d, a]
+
+    def test_move_last_to_first(self, queue_service):
+        a, b, c, d = (
+            Path("/tmp/a.mp3"),
+            Path("/tmp/b.mp3"),
+            Path("/tmp/c.mp3"),
+            Path("/tmp/d.mp3"),
+        )
+        for p in (a, b, c, d):
+            queue_service.add(p)
+        queue_service.move(3, 0)
+        assert self._paths(queue_service) == [d, a, b, c]
+
+    def test_move_same_index_noop(self, queue_service):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        calls = []
+        queue_service.subscribe_changed(lambda: calls.append(1))
+        queue_service.move(1, 1)
+        assert self._paths(queue_service) == [a, b, c]
+        assert calls == []  # same-index → no-op, ZERO notify
+
+    def test_move_invalid_negative(self, queue_service):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        calls = []
+        queue_service.subscribe_changed(lambda: calls.append(1))
+        queue_service.move(-1, 2)  # out-of-range source → deterministic no-op
+        assert self._paths(queue_service) == [a, b, c]
+        assert calls == []
+
+    def test_move_invalid_destination(self, queue_service):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        calls = []
+        queue_service.subscribe_changed(lambda: calls.append(1))
+        queue_service.move(1, 99)  # out-of-range destination → deterministic no-op
+        assert self._paths(queue_service) == [a, b, c]
+        assert calls == []
+
+    def test_move_current_track_preserves_identity(self, queue_service, fake_audio):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        b_track = queue_service.state.tracks[1]
+        queue_service.play_index(1)
+        fake_audio.trigger_media_accepted(b)
+        loaded_before = fake_audio.loaded
+        queue_service.move(1, 0)
+        assert queue_service.state.current_index == 0
+        assert queue_service.state.current_track is b_track  # identity, not path
+        assert fake_audio.loaded == loaded_before  # no playback reload
+        assert fake_audio.state == "playing"  # no stop
+
+    def test_move_track_before_current_after(self, queue_service, fake_audio):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        b_track = queue_service.state.tracks[1]
+        queue_service.play_index(1)
+        fake_audio.trigger_media_accepted(b)
+        queue_service.move(0, 2)  # [a, b, c] → [b, c, a]
+        assert self._paths(queue_service) == [b, c, a]
+        assert queue_service.state.current_index == 0  # recomputed by identity
+        assert queue_service.state.current_track is b_track
+
+    def test_move_track_after_current_before(self, queue_service, fake_audio):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        b_track = queue_service.state.tracks[1]
+        queue_service.play_index(1)
+        fake_audio.trigger_media_accepted(b)
+        queue_service.move(2, 0)  # [a, b, c] → [c, a, b]
+        assert self._paths(queue_service) == [c, a, b]
+        assert queue_service.state.current_index == 2  # recomputed by identity
+        assert queue_service.state.current_track is b_track
+
+    def test_move_no_playback_reload(
+        self, queue_service, playback_service, fake_audio, monkeypatch
+    ):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(a)
+        loads = []
+        orig = playback_service.load_and_play
+
+        def spy(path, **kwargs):
+            loads.append(path)
+            orig(path, **kwargs)
+
+        monkeypatch.setattr(playback_service, "load_and_play", spy)
+        loaded_before = fake_audio.loaded
+        queue_service.move(1, 2)
+        assert loads == []  # move must never call load_and_play
+        assert fake_audio.loaded == loaded_before
+
+    def test_move_no_playback_stop(
+        self, queue_service, playback_service, fake_audio, monkeypatch
+    ):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(a)
+        assert fake_audio.state == "playing"
+        stops = []
+        orig_stop = playback_service.stop
+
+        def spy_stop():
+            stops.append(1)
+            orig_stop()
+
+        monkeypatch.setattr(playback_service, "stop", spy_stop)
+        queue_service.move(1, 2)
+        assert stops == []  # no stop() call
+        assert fake_audio.state == "playing"  # playback untouched
+
+    def test_move_pending_then_accepted(self, queue_service, fake_audio):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(a)  # a committed
+        b_track = queue_service.state.tracks[1]
+        queue_service.play_index(1)  # b pending
+        queue_service.move(1, 2)  # [a, c, b]
+        assert self._paths(queue_service) == [a, c, b]
+        fake_audio.trigger_media_accepted(b)
+        assert queue_service.state.current_index == 2  # commits at the NEW index
+        assert queue_service.state.current_track is b_track  # identity
+        assert queue_service._pending_track is None  # pending cleared
+
+    def test_move_pending_then_rejected(self, queue_service, fake_audio):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(a)
+        queue_service.play_index(1)  # b pending
+        queue_service.move(1, 2)  # [a, c, b]
+        fake_audio.trigger_media_rejected(b, "broken")
+        assert self._paths(queue_service) == [a, c, b]  # reorder kept
+        assert queue_service.state.current_index == 0  # current stays 0
+        assert queue_service.state.current_track.file_path == a
+        assert queue_service._pending_track is None  # pending cleared
+
+    def test_move_pending_then_cancelled(
+        self, queue_service, playback_service, fake_audio
+    ):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(a)
+        queue_service.play_index(1)  # b pending
+        queue_service.move(1, 2)  # [a, c, b]
+        playback_service.stop()  # external cancel → on_cancelled clears pending
+        fake_audio.trigger_media_accepted(b)
+        assert queue_service.state.current_index == 0  # NOT committed
+        assert queue_service.state.current_track.file_path == a
+
+    def test_move_superseded_pending_callback(self, queue_service, fake_audio):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(a)
+        queue_service.play_index(1)  # b pending
+        queue_service.play_index(2)  # c supersedes b — b's callbacks dropped
+        c_track = queue_service.state.tracks[2]
+        queue_service.move(0, 2)  # [b, c, a] — c relocates to index 1
+        assert self._paths(queue_service) == [b, c, a]
+        fake_audio.trigger_media_accepted(c)  # late acceptance of the live pending
+        assert queue_service.state.current_track is c_track  # c commits
+        assert queue_service.state.current_index == 1  # at c's NEW index
+        # The superseded b never commits.
+        assert queue_service.state.tracks[0].file_path == b
+
+    def test_move_duplicates_exact_identity(self, queue_service, fake_audio):
+        x, y = Path("/tmp/x.mp3"), Path("/tmp/y.mp3")
+        queue_service.add(x)  # index 0 — x1
+        queue_service.add(x)  # index 1 — x2, distinct object, same path
+        queue_service.add(y)  # index 2
+        x1 = queue_service.state.tracks[0]
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(x)
+        queue_service.move(1, 2)  # [x1, y, x2]
+        assert self._paths(queue_service) == [x, y, x]
+        assert queue_service.state.current_index == 0
+        # Exact identity: never path-matched to the duplicate x2 at index 2.
+        assert queue_service.state.current_track is x1
+
+    def test_move_shuffle_pool_unchanged(self, playback_service, fake_audio):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            service.add(p)
+        service.play_index(0)
+        fake_audio.trigger_media_accepted(a)
+        service.set_shuffle_enabled(True)  # pool = {b, c}, history = [a]
+        pool_ids = {id(t) for t in service._navigator.pool}
+        history_ids = {id(t) for t in service._navigator.history}
+        service.move(1, 2)  # physical reorder
+        # The navigator holds the SAME objects — no regeneration, no mutation.
+        assert {id(t) for t in service._navigator.pool} == pool_ids
+        assert {id(t) for t in service._navigator.history} == history_ids
+        assert len(service._navigator.pool) == 2
+
+    def test_move_shuffle_history_unchanged(self, playback_service, fake_audio):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            service.add(p)
+        service.play_index(0)
+        fake_audio.trigger_media_accepted(a)
+        service.set_shuffle_enabled(True)
+        service.next()
+        picked = fake_audio.loaded
+        fake_audio.trigger_media_accepted(picked)  # history = [a, picked]
+        history_ids = {id(t) for t in service._navigator.history}
+        service.move(1, 2)
+        assert {id(t) for t in service._navigator.history} == history_ids
+
+    def test_move_previous_follows_real_history(self, playback_service, fake_audio):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            service.add(p)
+        service.play_index(0)
+        fake_audio.trigger_media_accepted(a)
+        service.set_shuffle_enabled(True)
+        service.next()
+        picked = fake_audio.loaded
+        fake_audio.trigger_media_accepted(picked)
+        service.previous()  # walk history back to a
+        assert fake_audio.loaded == a
+        fake_audio.trigger_media_accepted(a)
+        assert service.state.current_index == 0
+        loaded_before = fake_audio.loaded
+        service.move(2, 0)  # [c, a, b] — the current a relocates to index 1
+        assert service.state.current_track.file_path == a  # identity preserved
+        service.previous()
+        # Real history holds only [a]: previous() must NOT fabricate an
+        # index-artifact target (index_of(a) - 1 == 0 → c). No load occurs.
+        assert fake_audio.loaded == loaded_before
+        assert service.state.current_track.file_path == a
+
+
+class TestNavigationTruthfulness:
+    """M4 Original Closeout: QueueService owns the truthful navigation values.
+
+    Contract under test (NOT yet implemented in production):
+    - `has_next`: shuffle ON → bool(pool) or repeat_mode != NONE; shuffle
+      OFF + ALL → True whenever non-empty (manual Next wraps); shuffle OFF +
+      NONE → current_index + 1 < len(tracks).
+    - `has_previous` (NEW property): shuffle ON → len(navigator.history) >= 2
+      (previous_pick requires REAL history of at least two entries — the
+      current entry never counts as a previous step); shuffle OFF + ALL →
+      True whenever non-empty (manual Previous at first wraps to last);
+      shuffle OFF + NONE → current_index > 0.
+    - Manual navigation ignores Repeat ONE (never trapped): `next()` is the
+      shuffle pool pick, or natural-order (ALL → wrap, NONE → current + 1;
+      at last with NONE → deterministic no-op); `previous()` is the
+      navigator history walk, or natural-order (ALL → wrap, NONE →
+      current - 1; at first with NONE → deterministic no-op).
+    """
+
+    def _shuffle_queue(self, playback_service, seed: int = 42):
+        from michi.application.queue_service import QueueService
+
+        return QueueService(playback_service, rng=random.Random(seed))
+
+    def test_has_previous_shuffle_uses_history(self, playback_service, fake_audio):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            service.add(p)
+        service.play_index(0)
+        fake_audio.trigger_media_accepted(a)
+        service.set_shuffle_enabled(True)  # history = [a]
+        assert service.has_previous is False  # len(history) < 2
+        service.next()
+        picked = fake_audio.loaded
+        fake_audio.trigger_media_accepted(picked)  # history = [a, picked]
+        assert service.has_previous is True
+
+    def test_has_next_shuffle_uses_pool(self, playback_service, fake_audio):
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            service.add(p)
+        service.play_index(0)
+        fake_audio.trigger_media_accepted(a)
+        service.set_shuffle_enabled(True)
+        assert service.has_next is True  # pool non-empty
+        for _ in range(2):  # consume the pool
+            service.next()
+            fake_audio.trigger_media_accepted(fake_audio.loaded)
+        assert service.has_next is False  # pool empty, repeat NONE
+        service.set_repeat_mode(RepeatMode.ALL)
+        assert service.has_next is True  # repeat ALL → cycle continues
+
+    def test_repeat_one_eom_replays_current(self, playback_service, fake_audio):
+        """Pin at the navigation level: ONE + shuffle + non-empty pool → EOM
+        replays the current entry (existing precedence) and has_next stays
+        True (the pool is still non-empty — the UI may truthfully claim more
+        music is available)."""
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            service.add(p)
+        service.play_index(0)
+        fake_audio.trigger_media_accepted(a)
+        service.set_shuffle_enabled(True)  # pool = {b, c}
+        service.set_repeat_mode(RepeatMode.ONE)
+        fake_audio.trigger_end_of_media()
+        assert fake_audio.loaded == a  # current replays, NOT a pool pick
+        assert service.has_next is True  # pool still non-empty
+        fake_audio.trigger_media_accepted(a)
+        assert service.state.current_index == 0
+
+    def test_repeat_one_manual_next_navigates(self, queue_service, fake_audio):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(a)
+        queue_service.set_repeat_mode(RepeatMode.ONE)
+        queue_service.next()  # manual Next is NOT trapped by ONE
+        assert fake_audio.loaded == b
+        fake_audio.trigger_media_accepted(b)
+        assert queue_service.state.current_index == 1
+
+    def test_repeat_one_manual_previous_navigates(self, queue_service, fake_audio):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        queue_service.play_index(1)
+        fake_audio.trigger_media_accepted(b)
+        queue_service.set_repeat_mode(RepeatMode.ONE)
+        queue_service.previous()  # manual Previous is NOT trapped by ONE
+        assert fake_audio.loaded == a
+        fake_audio.trigger_media_accepted(a)
+        assert queue_service.state.current_index == 0
+
+    def test_repeat_all_natural_wrap(self, queue_service, fake_audio):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        queue_service.set_repeat_mode(RepeatMode.ALL)
+        queue_service.play_index(2)
+        fake_audio.trigger_media_accepted(c)
+        fake_audio.trigger_end_of_media()  # (2+1) % 3 == 0 → wraps
+        assert fake_audio.loaded == a
+        fake_audio.trigger_media_accepted(a)
+        assert queue_service.state.current_index == 0
+
+    def test_repeat_all_manual_next_wrap(self, queue_service, fake_audio):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        queue_service.set_repeat_mode(RepeatMode.ALL)
+        queue_service.play_index(2)
+        fake_audio.trigger_media_accepted(c)
+        queue_service.next()  # manual Next at last with ALL → wraps to first
+        assert fake_audio.loaded == a
+        fake_audio.trigger_media_accepted(a)
+        assert queue_service.state.current_index == 0
+
+    def test_repeat_all_manual_previous_wrap(self, queue_service, fake_audio):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        queue_service.set_repeat_mode(RepeatMode.ALL)
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(a)
+        queue_service.previous()  # manual Previous at first with ALL → wraps to last
+        assert fake_audio.loaded == c
+        fake_audio.trigger_media_accepted(c)
+        assert queue_service.state.current_index == 2
+
+    def test_repeat_none_end_stops(self, queue_service, playback_service, fake_audio):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        queue_service.play_index(2)
+        fake_audio.trigger_media_accepted(c)
+        fake_audio.trigger_end_of_media()  # NONE at last → stop
+        assert fake_audio.state == "stopped"
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        assert queue_service.state.current_index == 2
+
+    def test_has_next_truthful_at_last(self, queue_service, fake_audio):
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        for p in (a, b, c):
+            queue_service.add(p)
+        queue_service.play_index(2)
+        fake_audio.trigger_media_accepted(c)
+        assert queue_service.has_next is False  # NONE at last
+        queue_service.set_repeat_mode(RepeatMode.ALL)
+        assert queue_service.has_next is True  # ALL at last (manual wrap)
+        queue_service.play_index(0)
+        fake_audio.trigger_media_accepted(a)
+        assert queue_service.has_previous is True  # ALL at first (manual wrap)
+        queue_service.set_repeat_mode(RepeatMode.NONE)
+        assert queue_service.has_previous is False  # NONE at first
+
+
+class TestEmptyQueueSemantics:
+    """M4 Original Closeout: navigation on an empty queue is a deterministic
+    no-op — no crash, no backend load, no state change, no notification."""
+
+    def _assert_noop(self, queue_service, fake_audio, action) -> None:
+        calls = []
+        queue_service.subscribe_changed(lambda: calls.append(1))
+        action()
+        assert fake_audio.loaded is None  # no backend load
+        assert queue_service.state.count == 0  # queue unchanged
+        assert queue_service.state.current_index == -1
+        assert queue_service.state.current_track is None
+        assert calls == []  # ZERO notification
+
+    def test_empty_next_noop(self, queue_service, fake_audio):
+        self._assert_noop(queue_service, fake_audio, queue_service.next)
+
+    def test_empty_previous_noop(self, queue_service, fake_audio):
+        self._assert_noop(queue_service, fake_audio, queue_service.previous)
+
+    def test_empty_play_current_noop(self, queue_service, fake_audio):
+        self._assert_noop(queue_service, fake_audio, queue_service.play_current)
+
+
+class TestQueueCapacity:
+    """M4 Original Closeout: configurable queue capacity.
+
+    Contract under test (NOT yet implemented in production):
+    - `QueueService(playback_service, rng=None, max_tracks=10000)` — capacity
+      configurable with a safe high default;
+    - `add()` when count == max_tracks raises `QueueCapacityError`
+      (michi.domain.queue) and leaves the queue unchanged — tracks, current,
+      pending, and shuffle state untouched; NO silent truncation.
+    """
+
+    def _capacity_service(self, playback_service, max_tracks):
+        from michi.application.queue_service import QueueService
+
+        return QueueService(playback_service, max_tracks=max_tracks)
+
+    def test_capacity_exact_boundary(self, playback_service):
+        from michi.domain.queue import QueueCapacityError  # RED: undefined
+
+        service = self._capacity_service(playback_service, 3)
+        a, b, c, d = (
+            Path("/tmp/a.mp3"),
+            Path("/tmp/b.mp3"),
+            Path("/tmp/c.mp3"),
+            Path("/tmp/d.mp3"),
+        )
+        for p in (a, b, c):
+            service.add(p)
+        assert service.state.count == 3  # boundary fits
+        with pytest.raises(QueueCapacityError):
+            service.add(d)  # 4th entry exceeds capacity
+        assert service.state.count == 3  # no silent truncation
+
+    def test_over_capacity_state_unchanged(self, playback_service, fake_audio):
+        from michi.domain.queue import QueueCapacityError  # RED: undefined
+
+        service = self._capacity_service(playback_service, 2)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        service.add(a)
+        service.add(b)
+        service.play_index(0)
+        fake_audio.trigger_media_accepted(a)  # current committed
+        service.set_shuffle_enabled(True)  # shuffle state active
+        with pytest.raises(QueueCapacityError):
+            service.add(c)
+        # The queue is untouched in every dimension.
+        assert [t.file_path for t in service.state.tracks] == [a, b]  # tracks
+        assert service.state.count == 2
+        assert service.state.current_index == 0  # current unchanged
+        assert service.state.current_track.file_path == a
+        assert service._pending_track is None  # pending unchanged
+        assert service.state.shuffle_enabled is True  # shuffle unchanged
+        assert [t.file_path for t in service._navigator.pool] == [b]  # pool intact
+
+    def test_capacity_default_high(self, playback_service):
+        from michi.application.queue_service import QueueService
+
+        service = QueueService(playback_service)
+        assert service.max_tracks == 10000  # public read-only property

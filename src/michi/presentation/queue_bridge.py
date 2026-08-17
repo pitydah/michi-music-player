@@ -34,7 +34,7 @@ class QueueBridge(QObject):
         return self._service.has_next
 
     def _get_has_previous(self) -> bool:
-        return self._service.state.has_previous
+        return self._service.has_previous
 
     def _get_repeat_mode(self) -> str:
         return self._service.state.repeat_mode.name
@@ -53,6 +53,10 @@ class QueueBridge(QObject):
     @Slot(int)
     def play_index(self, index: int) -> None:
         self._service.play_index(index)
+
+    @Slot(int, int)
+    def move_track(self, from_index: int, to_index: int) -> None:
+        self._service.move(from_index, to_index)
 
     @Slot()
     def next_track(self) -> None:
