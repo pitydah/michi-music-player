@@ -73,7 +73,7 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 
 ## Future Execution Order
 
-**M11.2A-E persistence recovery — COMPLETE for Required 1.0** (M11.2E validated automatic restore + quarantine TESTED). **TD-013 filesystem degradation — RESOLVED / TESTED.** **TD-016 cancellation-terminal synchronization — RESOLVED / TESTED.** **M4 Queue — TESTED (repeat a977378 + shuffle f93a6a8).** **M6 Library — TESTED (canonical basic metadata 5fd8ec3).** NEXT AUTHORIZED WP: **LOCAL-01 — Canonical Music Model**.
+**M11.2A-E persistence recovery — COMPLETE for Required 1.0** (M11.2E validated automatic restore + quarantine TESTED). **TD-013 filesystem degradation — RESOLVED / TESTED.** **TD-016 cancellation-terminal synchronization — RESOLVED / TESTED.** **M4 Queue — TESTED (repeat a977378 + shuffle f93a6a8).** **M6 Library — TESTED (canonical basic metadata 5fd8ec3).** **LOCAL-01 Canonical Music Model — DONE (ba1532d).** NEXT AUTHORIZED WP: **LOCAL-02 — Artwork Pipeline**.
 
 1. ~~**TD-016 — Queue/Playback cancellation-terminal synchronization**~~ — DONE (216f5a1).
 2. ~~**M4 Repeat**~~ — repeat modes none/one/all — DONE (a977378).
@@ -81,7 +81,7 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 4. ~~**M4 Queue → TESTED closeout**~~ — DONE (441-pass suite).
 5. ~~**M6 Metadata**~~ — real title/artist/album/duration extraction behind a clean port boundary (Mutagen) — DONE (5fd8ec3).
 6. ~~**M6 Library → TESTED closeout**~~ — DONE (460-pass suite).
-7. **LOCAL-01 Canonical Music Model**.
+7. ~~**LOCAL-01 Canonical Music Model**~~ — derived album/artist model (AlbumRef/ArtistRef/MusicModel, canonical normalized keys, LibraryState.albums/artists rebuilt per successful scan, bridge counts) — DONE (ba1532d).
 8. **LOCAL-02 Artwork Pipeline**.
 9. **LOCAL-03 Rich Library Views**.
 10. **LOCAL-04 PathView** (successor of the retired CoverFlow).
