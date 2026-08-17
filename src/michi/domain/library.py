@@ -49,6 +49,18 @@ class LibraryDiagnostic:
 
 
 @dataclass(frozen=True)
+class Artwork:
+    """Embedded cover art extracted from a media file (LOCAL-02).
+
+    ``data`` is the raw image payload and ``mime_type`` its content type
+    (e.g. "image/jpeg", "image/png") as reported by the tag format.
+    """
+
+    data: bytes
+    mime_type: str
+
+
+@dataclass(frozen=True)
 class AlbumRef:
     """Canonical album reference derived from library tracks (LOCAL-01)."""
 
@@ -58,6 +70,7 @@ class AlbumRef:
     track_count: int
     duration_ms: int
     track_paths: tuple[Path, ...] = ()
+    has_artwork: bool = False
 
 
 @dataclass(frozen=True)

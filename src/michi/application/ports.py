@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from pathlib import Path
 
-from michi.domain.library import TrackMetadata
+from michi.domain.library import Artwork, TrackMetadata
 from michi.domain.playback import PlaybackStatus
 
 
@@ -21,6 +21,17 @@ class MetadataExtractionError(RuntimeError):
 class MetadataExtractorPort(ABC):
     @abstractmethod
     def extract(self, file_path: Path) -> TrackMetadata: ...
+
+
+class ArtworkProviderPort(ABC):
+    """Reads embedded cover art from media files.
+
+    Artwork absence is NOT an error: untagged, corrupt or unreadable files
+    yield ``None`` (the implementation logs and returns None instead of
+    raising)."""
+
+    @abstractmethod
+    def get_embedded_artwork(self, file_path: Path) -> Artwork | None: ...
 
 
 class AudioPort(ABC):

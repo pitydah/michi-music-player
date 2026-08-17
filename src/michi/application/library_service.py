@@ -2,6 +2,7 @@
 
 import logging
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 
 from michi.application.library_port import (
@@ -9,11 +10,13 @@ from michi.application.library_port import (
     LibraryScannerPort,
 )
 from michi.application.ports import (
+    ArtworkProviderPort,
     MetadataExtractionError,
     MetadataExtractorPort,
 )
 from michi.application.queue_service import QueueService
 from michi.domain.library import (
+    AlbumRef,
     LibraryDiagnostic,
     LibraryDiagnosticCode,
     LibraryState,
@@ -21,6 +24,7 @@ from michi.domain.library import (
     TrackRef,
     build_music_model,
 )
+from michi.infrastructure.artwork import ArtworkCache
 
 logger = logging.getLogger(__name__)
 
@@ -50,10 +54,14 @@ class LibraryService:
         scanner: LibraryScannerPort,
         queue_service: QueueService,
         metadata_extractor: MetadataExtractorPort | None = None,
+        artwork_provider: ArtworkProviderPort | None = None,
+        artwork_cache: ArtworkCache | None = None,
     ) -> None:
         self._scanner = scanner
         self._queue = queue_service
         self._metadata_extractor = metadata_extractor
+        self._artwork_provider = artwork_provider
+        self._artwork_cache = artwork_cache
         self._state = LibraryState()
         self._subscribers: list[Callable[[], None]] = []
 
@@ -94,7 +102,7 @@ class LibraryService:
         self._state.query = ""
         self._state.current_directory = directory
         model = build_music_model(self._state.tracks)
-        self._state.albums = model.albums
+        self._state.albums = self._enrich_albums(model.albums)
         self._state.artists = model.artists
         if same_dir and removed:
             self._state.diagnostic = LibraryDiagnostic(
@@ -125,6 +133,27 @@ class LibraryService:
             album=meta.album,
             duration_ms=meta.duration_ms,
         )
+
+    def _enrich_albums(self, albums: tuple[AlbumRef, ...]) -> tuple[AlbumRef, ...]:
+        """Mark albums with artwork: first track whose embedded art is both
+        readable (provider) and cacheable (cache.store) wins.
+
+        Without a provider or cache the albums are returned unchanged, i.e.
+        has_artwork stays False (artwork absence is never an error)."""
+        if self._artwork_provider is None or self._artwork_cache is None:
+            return albums
+        enriched = []
+        for album in albums:
+            has_artwork = False
+            for track_path in album.track_paths:
+                artwork = self._artwork_provider.get_embedded_artwork(track_path)
+                if artwork is None:
+                    continue
+                if self._artwork_cache.store(album.key, artwork) is not None:
+                    has_artwork = True
+                    break
+            enriched.append(replace(album, has_artwork=has_artwork))
+        return tuple(enriched)
 
     def restore_directory_hint(self, directory: str) -> None:
         """Restore a persisted path as context. No scan. Idempotent."""

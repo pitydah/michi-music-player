@@ -16,6 +16,7 @@ from michi.application.navigation_service import NavigationService
 from michi.application.playback_service import PlaybackService
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
+from michi.infrastructure.artwork import ArtworkCache, MutagenArtworkProvider
 from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
 from michi.infrastructure.metadata_extractor import InfrastructureMetadataExtractor
 from michi.infrastructure.qt_backend import QtMultimediaBackend
@@ -72,7 +73,11 @@ class ApplicationContainer:
         queue = QueueService(playback)
         scanner = FilesystemLibraryScanner()
         metadata_extractor = InfrastructureMetadataExtractor()
-        library = LibraryService(scanner, queue, metadata_extractor)
+        artwork_provider = MutagenArtworkProvider()
+        artwork_cache = ArtworkCache(Path.home() / ".cache" / "michi" / "artwork")
+        library = LibraryService(
+            scanner, queue, metadata_extractor, artwork_provider, artwork_cache
+        )
         navigation = NavigationService()
 
         # Load persisted preferences once
