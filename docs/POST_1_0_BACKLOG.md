@@ -47,9 +47,6 @@ These decisions are recorded in MASTER_ROADMAP_1.0.md. All are Post-1.0.
 | ----------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Gapless playback              | Post-1.0 | Seamless track-to-track playback requires buffer look-ahead and sample-accurate scheduling; 1.0 plays tracks with standard transitions.           | M      |
 | Crossfade                     | Post-1.0 | Overlapping track transitions require two-buffer mixing; not part of the 1.0 core loop.                                                           | M      |
-| Queue persistence             | Post-1.0 | Persisting queue across restarts requires storage schema and restart-restore semantics beyond the 1.0 contract; queue state is in-memory for 1.0. | M      |
-| Playback-position persistence | Post-1.0 | Resuming exact playback position per track requires per-track bookkeeping and restore logic deferred past 1.0.                                    | S      |
-| Current-track recovery        | Post-1.0 | Restoring the playing track on restart depends on queue and position persistence; deferred with them.                                             | S      |
 | Library index DB              | Post-1.0 | A persisted library index requires schema, incremental sync, and migration work; 1.0 scans the filesystem directly each session.                  | L      |
 | Cover art                     | Post-1.0 | Artwork pipeline (extraction, caching, rendering) is outside the 1.0 core loop.                                                                   | M      |
 | Full-text indexed search      | Post-1.0 | Substring filter satisfies 1.0; FTS indexing is a performance enhancement.                                                                        | M      |
