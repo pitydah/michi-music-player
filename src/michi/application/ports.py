@@ -6,6 +6,7 @@ from pathlib import Path
 
 from michi.domain.library import Artwork, LibraryPrefs, TrackMetadata
 from michi.domain.playback import PlaybackStatus
+from michi.domain.playlist import Playlist
 
 
 class MetadataExtractionError(RuntimeError):
@@ -42,6 +43,16 @@ class LibraryPrefsPort(ABC):
 
     @abstractmethod
     def save(self, prefs: "LibraryPrefs") -> None: ...
+
+
+class PlaylistsPort(ABC):
+    """Playlist persistence (best effort; load never raises)."""
+
+    @abstractmethod
+    def load(self) -> tuple[Playlist, ...]: ...
+
+    @abstractmethod
+    def save(self, playlists: tuple[Playlist, ...]) -> None: ...
 
 
 class AudioPort(ABC):

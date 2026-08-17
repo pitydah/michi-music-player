@@ -5,6 +5,7 @@ from pathlib import Path
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from michi.application.library_service import LibraryService
+from michi.application.playlist_service import PlaylistService
 from michi.domain.library import AlbumRef, TrackRef
 
 
@@ -13,16 +14,28 @@ class LibraryBridge(QObject):
 
     library_changed = Signal()
 
-    def __init__(self, service: LibraryService, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        service: LibraryService,
+        playlist_service: PlaylistService | None = None,
+        parent: QObject | None = None,
+    ) -> None:
         super().__init__(parent)
         self._service = service
+        self._playlist_service = playlist_service
         self._selected_album_key: str = ""
         self._selected_album: AlbumRef | None = None
         self._album_track_refs: list[TrackRef] = []
+        self._selected_playlist: str = ""
+        self._selected_playlist_index: int = -1
         service.subscribe_changed(self._on_service_changed)
+        if playlist_service is not None:
+            playlist_service.subscribe_changed(self._on_service_changed)
 
     def dispose(self) -> None:
         self._service.unsubscribe_changed(self._on_service_changed)
+        if self._playlist_service is not None:
+            self._playlist_service.unsubscribe_changed(self._on_service_changed)
 
     def _on_service_changed(self) -> None:
         self.library_changed.emit()
@@ -170,6 +183,43 @@ class LibraryBridge(QObject):
     def _get_recently_added_rows(self) -> list[dict]:
         return self._rows_for(self._service.state.recently_added_paths)
 
+    def _get_playlists(self) -> list[dict]:
+        if self._playlist_service is None:
+            return []
+        return [
+            {"name": p.name, "trackCount": len(p.track_paths)}
+            for p in self._playlist_service.playlists
+        ]
+
+    def _get_selected_playlist_name(self) -> str:
+        return self._selected_playlist
+
+    def _get_playlist_tracks(self) -> list[dict]:
+        if self._playlist_service is None or not self._selected_playlist:
+            return []
+        playlist = next(
+            (
+                p
+                for p in self._playlist_service.playlists
+                if p.name == self._selected_playlist
+            ),
+            None,
+        )
+        if playlist is None:
+            return []
+        rows = []
+        for path in playlist.track_paths:
+            ref = self._service.resolve_trackref(Path(path))
+            rows.append(
+                {
+                    "displayName": (
+                        ref.display_name if ref is not None else Path(path).stem
+                    ),
+                    "path": path,
+                }
+            )
+        return rows
+
     def _rows_for(self, paths) -> list[dict]:
         rows = []
         for path in paths:
@@ -208,6 +258,11 @@ class LibraryBridge(QObject):
     favoriteRows = Property(list, _get_favorite_rows, notify=library_changed)
     historyRows = Property(list, _get_history_rows, notify=library_changed)
     recentlyAddedRows = Property(list, _get_recently_added_rows, notify=library_changed)
+    playlists = Property(list, _get_playlists, notify=library_changed)
+    selectedPlaylistName = Property(
+        str, _get_selected_playlist_name, notify=library_changed
+    )
+    playlistTracks = Property(list, _get_playlist_tracks, notify=library_changed)
 
     @Slot(str)
     def scan(self, directory: str) -> None:
@@ -251,3 +306,80 @@ class LibraryBridge(QObject):
         if not (0 <= index < len(self._album_track_refs)):
             return
         self._service.activate_track(self._album_track_refs[index])
+
+    @Slot(str)
+    def select_playlist(self, name: str) -> None:
+        if self._playlist_service is None:
+            return
+        index = next(
+            (
+                i
+                for i, p in enumerate(self._playlist_service.playlists)
+                if p.name == name
+            ),
+            -1,
+        )
+        if index < 0:
+            return
+        self._selected_playlist = name
+        self._selected_playlist_index = index
+        self.library_changed.emit()
+
+    @Slot()
+    def clear_playlist_selection(self) -> None:
+        self._selected_playlist = ""
+        self._selected_playlist_index = -1
+        self.library_changed.emit()
+
+    @Slot(str)
+    def create_playlist(self, name: str) -> None:
+        if self._playlist_service is None:
+            return
+        try:
+            self._playlist_service.create_playlist(name)
+        except ValueError:
+            return
+
+    @Slot(str)
+    def delete_playlist(self, name: str) -> None:
+        if self._playlist_service is None:
+            return
+        if self._selected_playlist == name:
+            self._selected_playlist = ""
+            self._selected_playlist_index = -1
+        self._playlist_service.delete_playlist(name)
+
+    @Slot(str, str)
+    def rename_playlist(self, old_name: str, new_name: str) -> None:
+        if self._playlist_service is None:
+            return
+        try:
+            self._playlist_service.rename_playlist(old_name, new_name)
+        except ValueError:
+            return
+        if self._selected_playlist == old_name:
+            self._selected_playlist = new_name
+
+    @Slot(str, str)
+    def add_to_playlist(self, name: str, path: str) -> None:
+        if self._playlist_service is None:
+            return
+        self._playlist_service.add_track(name, Path(path))
+
+    @Slot(int)
+    def remove_playlist_track(self, index: int) -> None:
+        if self._playlist_service is None or not self._selected_playlist:
+            return
+        self._playlist_service.remove_track(self._selected_playlist, index)
+
+    @Slot(int, int)
+    def move_playlist_track(self, from_index: int, to_index: int) -> None:
+        if self._playlist_service is None or not self._selected_playlist:
+            return
+        self._playlist_service.move_track(self._selected_playlist, from_index, to_index)
+
+    @Slot()
+    def play_selected_playlist(self) -> None:
+        if self._playlist_service is None or not self._selected_playlist:
+            return
+        self._playlist_service.play_playlist(self._selected_playlist)
