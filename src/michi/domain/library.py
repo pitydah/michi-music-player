@@ -13,6 +13,7 @@ class TrackMetadata:
     artist: str = ""
     album: str = ""
     duration_ms: int = 0
+    genre: str = ""
 
 
 @dataclass(frozen=True)
@@ -23,6 +24,7 @@ class TrackRef:
     artist: str = ""
     album: str = ""
     duration_ms: int = 0
+    genre: str = ""
 
     def __post_init__(self) -> None:
         if not self.display_name:
@@ -84,11 +86,30 @@ class ArtistRef:
 
 
 @dataclass(frozen=True)
+class GenreRef:
+    """Canonical genre reference derived from library tracks (LOCAL-03)."""
+
+    key: str
+    name: str
+    track_count: int
+
+
+@dataclass(frozen=True)
+class FolderRef:
+    """Directory reference derived from library tracks (LOCAL-03)."""
+
+    key: str
+    path: str
+    track_count: int
+
+
+@dataclass(frozen=True)
 class MusicModel:
     """Pure, deterministic view of the library grouped into albums and artists."""
 
     albums: tuple[AlbumRef, ...] = ()
     artists: tuple[ArtistRef, ...] = ()
+    genres: tuple[GenreRef, ...] = ()
 
 
 def _normalize_key(s: str) -> str:
@@ -98,6 +119,7 @@ def _normalize_key(s: str) -> str:
 
 _UNKNOWN_ALBUM = "Unknown Album"
 _UNKNOWN_ARTIST = "Unknown Artist"
+_UNKNOWN_GENRE = "Unknown Genre"
 
 
 def build_music_model(tracks) -> MusicModel:
@@ -108,10 +130,13 @@ def build_music_model(tracks) -> MusicModel:
     title/artist come from the first member. Empty album -> "Unknown Album",
     empty artist -> "Unknown Artist". Album duration is the sum of members and
     ``track_paths`` preserves library order. Artists are grouped by normalized
-    name with total track count and distinct-album count.
+    name with total track count and distinct-album count. Genres are grouped
+    by normalized name with per-genre track count; empty genre -> "Unknown
+    Genre" and the sum of genre counts equals the total track count.
     """
     album_entries: dict[str, dict] = {}
     artist_entries: dict[str, dict] = {}
+    genre_entries: dict[str, dict] = {}
     for track in tracks:
         album_title = track.album.strip() or _UNKNOWN_ALBUM
         artist_name = track.artist.strip() or _UNKNOWN_ARTIST
@@ -135,6 +160,14 @@ def build_music_model(tracks) -> MusicModel:
             artist_entries[artist_key] = artist
         artist["track_count"] += 1
         artist["albums"].add(_normalize_key(album_title))
+
+        genre_name = track.genre.strip() or _UNKNOWN_GENRE
+        genre_key = _normalize_key(genre_name)
+        genre = genre_entries.get(genre_key)
+        if genre is None:
+            genre = {"name": genre_name, "track_count": 0}
+            genre_entries[genre_key] = genre
+        genre["track_count"] += 1
 
     albums = tuple(
         sorted(
@@ -166,7 +199,51 @@ def build_music_model(tracks) -> MusicModel:
             key=lambda a: a.key,
         )
     )
-    return MusicModel(albums=albums, artists=artists)
+    genres = tuple(
+        sorted(
+            (
+                GenreRef(
+                    key=key,
+                    name=entry["name"],
+                    track_count=entry["track_count"],
+                )
+                for key, entry in genre_entries.items()
+            ),
+            key=lambda g: g.key,
+        )
+    )
+    return MusicModel(albums=albums, artists=artists, genres=genres)
+
+
+def build_folder_model(tracks) -> tuple[FolderRef, ...]:
+    """Group tracks by parent directory (pure, deterministic by key).
+
+    Key is the casefolded parent path; ``path`` is the display path; counts
+    are per parent directory. Result is sorted by key so the output does not
+    depend on input order.
+    """
+    folder_entries: dict[str, dict] = {}
+    for track in tracks:
+        parent = track.file_path.parent
+        key = str(parent).casefold()
+        folder = folder_entries.get(key)
+        if folder is None:
+            folder = {"path": str(parent), "track_count": 0}
+            folder_entries[key] = folder
+        folder["track_count"] += 1
+    return tuple(
+        sorted(
+            (
+                FolderRef(
+                    key=key,
+                    path=entry["path"],
+                    track_count=entry["track_count"],
+                )
+                for key, entry in folder_entries.items()
+            ),
+            key=lambda f: f.key,
+        )
+    )
 
 
 @dataclass
@@ -177,6 +254,8 @@ class LibraryState:
     diagnostic: LibraryDiagnostic | None = None
     albums: tuple[AlbumRef, ...] = ()
     artists: tuple[ArtistRef, ...] = ()
+    genres: tuple[GenreRef, ...] = ()
+    folders: tuple[FolderRef, ...] = ()
 
     @property
     def visible_tracks(self) -> list[TrackRef]:

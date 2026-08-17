@@ -41,12 +41,14 @@ class InfrastructureMetadataExtractor(MetadataExtractorPort):
         title = self._first(tags, "title") if tags is not None else ""
         artist = self._first(tags, "artist") if tags is not None else ""
         album = self._first(tags, "album") if tags is not None else ""
+        genre = self._first(tags, "genre") if tags is not None else ""
         duration_ms = int(audio.info.length * 1000) if audio.info is not None else 0
         return TrackMetadata(
             title=title or file_path.stem,
             artist=artist or "",
             album=album or "",
             duration_ms=duration_ms,
+            genre=genre,
         )
 
     @staticmethod

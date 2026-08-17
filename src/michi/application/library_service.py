@@ -22,6 +22,7 @@ from michi.domain.library import (
     LibraryState,
     TrackMetadata,
     TrackRef,
+    build_folder_model,
     build_music_model,
 )
 from michi.infrastructure.artwork import ArtworkCache
@@ -62,6 +63,7 @@ class LibraryService:
         self._metadata_extractor = metadata_extractor
         self._artwork_provider = artwork_provider
         self._artwork_cache = artwork_cache
+        self._artwork_paths: dict[str, Path] = {}
         self._state = LibraryState()
         self._subscribers: list[Callable[[], None]] = []
 
@@ -104,6 +106,8 @@ class LibraryService:
         model = build_music_model(self._state.tracks)
         self._state.albums = self._enrich_albums(model.albums)
         self._state.artists = model.artists
+        self._state.genres = model.genres
+        self._state.folders = build_folder_model(self._state.tracks)
         if same_dir and removed:
             self._state.diagnostic = LibraryDiagnostic(
                 code=LibraryDiagnosticCode.STALE_ENTRIES_REMOVED,
@@ -132,6 +136,7 @@ class LibraryService:
             artist=meta.artist,
             album=meta.album,
             duration_ms=meta.duration_ms,
+            genre=meta.genre,
         )
 
     def _enrich_albums(self, albums: tuple[AlbumRef, ...]) -> tuple[AlbumRef, ...]:
@@ -149,7 +154,9 @@ class LibraryService:
                 artwork = self._artwork_provider.get_embedded_artwork(track_path)
                 if artwork is None:
                     continue
-                if self._artwork_cache.store(album.key, artwork) is not None:
+                stored_path = self._artwork_cache.store(album.key, artwork)
+                if stored_path is not None:
+                    self._artwork_paths[album.key] = stored_path
                     has_artwork = True
                     break
             enriched.append(replace(album, has_artwork=has_artwork))
@@ -172,28 +179,46 @@ class LibraryService:
         tracks = self._state.visible_tracks
         if not (0 <= visible_index < len(tracks)):
             return
-        ref = tracks[visible_index]
+        self.activate_track(tracks[visible_index])
+
+    def activate_track(self, track: TrackRef) -> None:
+        """TD-013 activation contract for an exact TrackRef: validate the
+        filesystem through the port BEFORE any queue mutation; TRACK_MISSING
+        removes the exact reference; ACCESS/IO/UNKNOWN preserve it; success
+        keeps the existing queue behavior."""
         try:
-            self._scanner.validate_file(ref.file_path)
+            self._scanner.validate_file(track.file_path)
         except LibraryFilesystemError as exc:
             if exc.code is LibraryDiagnosticCode.TRACK_MISSING:
-                self._state.tracks = [t for t in self._state.tracks if t is not ref]
+                self._state.tracks = [t for t in self._state.tracks if t is not track]
                 self._state.diagnostic = LibraryDiagnostic(
                     code=LibraryDiagnosticCode.TRACK_MISSING,
                     message=_user_message(
-                        LibraryDiagnosticCode.TRACK_MISSING, path=ref.file_path
+                        LibraryDiagnosticCode.TRACK_MISSING, path=track.file_path
                     ),
-                    path=ref.file_path,
+                    path=track.file_path,
                 )
             else:
                 self._state.diagnostic = LibraryDiagnostic(
                     code=exc.code,
-                    message=_user_message(exc.code, path=ref.file_path),
-                    path=ref.file_path,
+                    message=_user_message(exc.code, path=track.file_path),
+                    path=track.file_path,
                 )
             self._notify()
             return
         was_empty = self._queue.state.count == 0
-        self._queue.add(ref.file_path, title=ref.title or "")
+        self._queue.add(track.file_path, title=track.title or "")
         if was_empty:
             self._queue.play_index(0)
+
+    def artwork_path_for(self, album_key: str) -> str | None:
+        """Cached artwork path for an album key, or None when unavailable."""
+        path = self._artwork_paths.get(album_key)
+        return str(path) if path is not None else None
+
+    def resolve_trackref(self, file_path: Path) -> TrackRef | None:
+        """First TrackRef whose file_path equals ``file_path``, else None."""
+        for t in self._state.tracks:
+            if t.file_path == file_path:
+                return t
+        return None
