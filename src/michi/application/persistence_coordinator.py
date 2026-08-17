@@ -29,11 +29,14 @@ class PersistenceCoordinator:
     """Durable session lifecycle: checkpoints make restart independent of
     graceful shutdown.
 
-    Subscribes to queue.changed and playback.changed; structural/current/
+    The lifecycle is EXPLICIT: ``__init__`` arms nothing — ``start()``
+    subscribes to queue.changed/playback.changed, ``stop()`` unsubscribes,
+    and ``shutdown()`` freezes first, writes the final durable checkpoint
+    and the volume/mute preferences, then unsubscribes. Structural/current/
     repeat/shuffle changes are queue-driven (prompt save), lifecycle
     transitions (PAUSED/STOPPED) and track changes checkpoint immediately,
     and position updates checkpoint only when they have moved at least
-    ``position_checkpoint_delta_ms`` from the last persisted position.
+    ``position_checkpoint_delta_ms`` from the last PERSISTED position.
     Checkpoints are synchronous on notifications — no threads or timers.
 
     ``restore()`` (startup) rebuilds the queue from the persisted snapshot
@@ -41,8 +44,16 @@ class PersistenceCoordinator:
     identity matches the backend playback identity (coherence rule,
     §4/§22), prepares a non-autoplay resume (C4 — load + seek after
     acceptance). A mismatched playback path is never used to fabricate a
-    PlaybackState. ``shutdown()`` writes a final checkpoint and persists
-    the current volume/mute through the SettingsService public API.
+    PlaybackState. During ``restore()`` — and, when started, until the
+    resume prepare resolves — the change notifications are suppressed:
+    the durable resume snapshot is never degraded by restore's own queue
+    notification or the startup acceptance (P1-A). ``shutdown()`` freezes
+    the subscriptions FIRST, writes a final checkpoint, persists the
+    current volume/mute through the SettingsService public API, and then
+    unsubscribes (P2-A); the caller tears the backend down only after
+    ``shutdown()`` returns. Volume/mute changes are also persisted DURING
+    runtime through a separate settings channel (P1-B) — no graceful-
+    shutdown dependency.
     """
 
     def __init__(
@@ -58,13 +69,29 @@ class PersistenceCoordinator:
         self._playback = playback_service
         self._settings = settings_service
         self._position_checkpoint_delta_ms = position_checkpoint_delta_ms
-        self._last_persisted_position_ms: int | None = None
+        # Durable position marker: position deltas are measured from the
+        # last position the application KNOWS was persisted. Seeded from
+        # the current position so a volume-only event (which must never
+        # trigger a session rewrite) is not mistaken for an unpersisted
+        # baseline.
+        self._last_persisted_position_ms: int | None = (
+            playback_service.state.position_ms
+        )
         # Deterministic change detection: remember the last observed
-        # status/file_path so each notification can be classified.
+        # status/file_path so each notification can be classified. Only
+        # consulted while started.
         self._last_status = playback_service.state.status
         self._last_file_path = playback_service.state.file_path
-        queue_service.subscribe_changed(self._on_queue_changed)
-        playback_service.subscribe_changed(self._on_playback_changed)
+        # Explicit lifecycle: subscriptions are armed by start().
+        self._started = False
+        self._shutdown = False
+        self._restoring = False
+        # P1-A restore window: set by restore() when a coherent resume was
+        # prepared, cleared when that prepare resolves. While it is open,
+        # playback events are startup fallout and must not checkpoint.
+        self._restore_pending = False
+        # Last-observed volume/mute (P1-B runtime sync baseline).
+        self._last_volume, self._last_muted = playback_service.snapshot_volume()
 
     def _build_snapshot(self) -> PlaybackSessionSnapshot:
         """Encode the PUBLIC session state (§26).
@@ -96,24 +123,82 @@ class PersistenceCoordinator:
     def checkpoint(self) -> None:
         """Best-effort synchronous save of the current session state.
 
-        The repository never raises on sqlite errors; this also tolerates
-        any unexpected repository failure (logged, never propagated). The
-        last persisted position is always advanced so a failing write does
-        not turn into a retry loop.
+        The repository never raises on sqlite errors (it returns a success
+        signal); this also tolerates any unexpected repository failure
+        (logged, never propagated). The durable position marker advances
+        ONLY when the save actually succeeded, so a failing write does not
+        move the throttle baseline and the next position delta retries.
+        Runtime continues regardless.
         """
         try:
-            self._repo.save(self._build_snapshot())
+            saved = self._repo.save(self._build_snapshot())
         except Exception as exc:
-            logger.warning("session checkpoint failed; ignoring: %s", exc)
-        self._last_persisted_position_ms = self._playback.state.position_ms
+            logger.warning(
+                "session checkpoint failed; durable state remains at previous "
+                "checkpoint: %s",
+                exc,
+            )
+            saved = False
+        if saved:
+            self._last_persisted_position_ms = self._playback.state.position_ms
+        else:
+            logger.warning(
+                "session checkpoint failed; durable state remains at "
+                "previous checkpoint"
+            )
+
+    def start(self) -> None:
+        """Arm the runtime subscriptions (idempotent).
+
+        ``start()`` is the only place the coordinator subscribes: the
+        change notifications below persist session state and the runtime
+        volume/mute sync. Snapshotting the last-observed volume/mute here
+        means only changes observed AFTER startup are persisted.
+        """
+        if self._started:
+            return
+        self._queue.subscribe_changed(self._on_queue_changed)
+        self._playback.subscribe_changed(self._on_playback_changed)
+        self._last_volume, self._last_muted = self._playback.snapshot_volume()
+        self._started = True
+
+    def stop(self) -> None:
+        """Disarm the runtime subscriptions (idempotent)."""
+        if not self._started:
+            return
+        self._queue.unsubscribe_changed(self._on_queue_changed)
+        self._playback.unsubscribe_changed(self._on_playback_changed)
+        self._started = False
 
     def _on_queue_changed(self) -> None:
         # Structural/current/repeat/shuffle changes are all queue-driven:
-        # prompt save.
+        # prompt save. Never while restoring or disarmed.
+        if self._restoring or not self._started:
+            return
         self.checkpoint()
 
     def _on_playback_changed(self) -> None:
+        if self._restoring or not self._started:
+            return
         state = self._playback.state
+        # P1-A restore window: startup events after restore() — the resume
+        # acceptance, a rejection, or a stray event while the prepare is
+        # still pending — are restore fallout and must not degrade the
+        # durable resume snapshot. The window closes when the prepare
+        # resolves (a path is committed, an error is reported, or the
+        # status leaves STOPPED); the resolving event itself is consumed
+        # without a checkpoint.
+        if self._restore_pending:
+            if (
+                state.file_path is not None
+                or state.error_message is not None
+                or state.status is not PlaybackStatus.STOPPED
+            ):
+                self._restore_pending = False
+                self._last_status = state.status
+                self._last_file_path = state.file_path
+                return
+            return
         status_changed = state.status is not self._last_status
         file_path_changed = state.file_path != self._last_file_path
         if status_changed and state.status in (
@@ -136,6 +221,15 @@ class PersistenceCoordinator:
                 self.checkpoint()
         self._last_status = state.status
         self._last_file_path = state.file_path
+        # P1-B runtime volume/mute sync — a SEPARATE durable channel that
+        # never touches the session_snapshot row: persist through the
+        # settings public API only when the last-observed values changed.
+        volume, muted = self._playback.snapshot_volume()
+        if volume != self._last_volume or muted != self._last_muted:
+            self._settings.set_playback_preferences(volume, muted)
+            self._settings.save()
+            self._last_volume = volume
+            self._last_muted = muted
 
     def restore(self) -> None:
         """Startup: rebuild the queue, then resume playback only when the
@@ -146,28 +240,66 @@ class PersistenceCoordinator:
         the entry at that index equals ``snapshot.playback_path`` (string
         equality). A mismatched or absent playback path restores the queue
         only — PlaybackState is never fabricated and no load is requested.
+
+        While restoring, the change notifications (restore_session's queue
+        notification, prepare_for_resume's playback notification) are
+        suppressed so the durable resume snapshot is never degraded by the
+        restore itself. Works unstarted (no subscriptions needed). After
+        the guard clears, the durable marker is set from the restored
+        snapshot and the last-observed volume/mute is refreshed from the
+        current playback state, so a legit post-startup change syncs.
         """
-        snapshot = self._repo.load()
-        self._queue.restore_session(snapshot)
-        entries = snapshot.queue_entries
-        idx = snapshot.queue_current_index
-        coherent = (
-            snapshot.playback_path is not None
-            and 0 <= idx < len(entries)
-            and entries[idx].file_path == snapshot.playback_path
-        )
-        if coherent:
-            # C4: load + seek after acceptance; never autoplay.
-            self._playback.prepare_for_resume(
-                Path(snapshot.playback_path), snapshot.position_ms
+        if self._restoring:
+            return
+        self._restoring = True
+        try:
+            snapshot = self._repo.load()
+            self._queue.restore_session(snapshot)
+            entries = snapshot.queue_entries
+            idx = snapshot.queue_current_index
+            coherent = (
+                snapshot.playback_path is not None
+                and 0 <= idx < len(entries)
+                and entries[idx].file_path == snapshot.playback_path
             )
+            if coherent:
+                # C4: load + seek after acceptance; never autoplay.
+                self._playback.prepare_for_resume(
+                    Path(snapshot.playback_path), snapshot.position_ms
+                )
+                # The restore window stays open until the resume prepare
+                # resolves (acceptance/rejection/supersession) so the
+                # startup events never degrade the durable resume snapshot.
+                self._restore_pending = True
+        finally:
+            self._restoring = False
         # The restored position is already persisted; future checkpoints
         # measure position deltas from it.
         self._last_persisted_position_ms = snapshot.position_ms
+        # Refresh the last-observed volume/mute from the current playback
+        # state so a legit post-startup change syncs (P1-B).
+        self._last_volume, self._last_muted = self._playback.snapshot_volume()
 
     def shutdown(self) -> None:
-        """Final checkpoint + volume/mute persistence (graceful stop)."""
+        """Final durable state: freeze -> checkpoint -> prefs -> unsubscribe.
+
+        Idempotent. Freezes the subscriptions FIRST so backend teardown
+        events arriving afterwards are ignored, then writes the final
+        checkpoint (the repo save is called directly — checkpoint works
+        without subscriptions), persists volume/mute through the settings
+        public API, and unsubscribes. The caller tears the backend down
+        only after shutdown() returns, so the final durable checkpoint is
+        guaranteed to precede runtime teardown.
+        """
+        if self._shutdown:
+            return
+        self._shutdown = True
+        self._started = False  # freeze FIRST: stop accepting callbacks
         self.checkpoint()
         volume, muted = self._playback.snapshot_volume()
         self._settings.set_playback_preferences(volume, muted)
         self._settings.save()
+        self._queue.unsubscribe_changed(self._on_queue_changed)
+        self._playback.unsubscribe_changed(self._on_playback_changed)
+        self._restoring = False
+        self._restore_pending = False

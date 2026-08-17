@@ -64,8 +64,13 @@ class SqliteSessionRepository(SessionRepository):
             return fresh_snapshot()
         return decode_snapshot(row[0])
 
-    def save(self, snapshot: PlaybackSessionSnapshot) -> None:
-        """Upsert the encoded snapshot; sqlite errors are logged + ignored."""
+    def save(self, snapshot: PlaybackSessionSnapshot) -> bool:
+        """Upsert the encoded snapshot; sqlite errors are logged + ignored.
+
+        Returns True when the snapshot was durably persisted, False when a
+        sqlite error occurred (logged, never raised) — the success signal
+        the application uses to decide whether durable state advanced.
+        """
         encoded = encode_snapshot(snapshot)
         try:
             with sqlite3.connect(str(self._db_path)) as conn:
@@ -76,3 +81,5 @@ class SqliteSessionRepository(SessionRepository):
                 )
         except sqlite3.Error as exc:
             logger.warning("session snapshot save failed (%s); ignoring", exc)
+            return False
+        return True

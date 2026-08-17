@@ -98,10 +98,13 @@ class ApplicationContainer:
         # Shares the settings database; restores the queue and, when the
         # queue current identity matches the persisted playback identity,
         # prepares a non-autoplay resume — before the UI is shown, never
-        # blocking autoplay.
+        # blocking autoplay. The coordinator lifecycle is explicit:
+        # restore() rebuilds the session, then start() arms the runtime
+        # subscriptions (runtime checkpoints + volume/mute sync).
         session_repo = SqliteSessionRepository(db_path)
         persistence = PersistenceCoordinator(session_repo, queue, playback, settings)
         persistence.restore()
+        persistence.start()
 
         pb = PlaybackBridge(playback)
         qb = QueueBridge(queue)
@@ -149,6 +152,23 @@ class ApplicationContainer:
     def shutdown(self) -> None:
         error: Exception | None = None
 
+        # The persistence coordinator owns the durable session + prefs
+        # policy: freeze, final checkpoint and volume/mute persistence all
+        # happen FIRST, before any runtime teardown, so the final durable
+        # checkpoint always precedes the backend teardown events. The
+        # container only calls lifecycle; when no coordinator is wired
+        # (partial startup / tests), it falls back to persisting the prefs
+        # directly so volume/mute are never silently dropped at shutdown.
+        try:
+            if self._persistence:
+                self._persistence.shutdown()
+            elif self._playback and self._settings:
+                vol, muted = self._playback.snapshot_volume()
+                self._settings.set_playback_preferences(vol, muted)
+                self._settings.save()
+        except Exception as exc:
+            error = error or exc
+
         try:
             if self._coordinator:
                 self._coordinator.stop()
@@ -158,14 +178,6 @@ class ApplicationContainer:
         try:
             if self._library_prefs:
                 self._library_prefs.stop()
-        except Exception as exc:
-            error = error or exc
-
-        try:
-            if self._playback and self._settings:
-                vol, muted = self._playback.snapshot_volume()
-                self._settings.set_playback_preferences(vol, muted)
-                self._settings.save()
         except Exception as exc:
             error = error or exc
 
@@ -185,12 +197,6 @@ class ApplicationContainer:
         try:
             if self._engine:
                 self._engine.deleteLater()
-        except Exception as exc:
-            error = error or exc
-
-        try:
-            if self._persistence:
-                self._persistence.shutdown()
         except Exception as exc:
             error = error or exc
 

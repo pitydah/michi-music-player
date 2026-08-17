@@ -14,13 +14,13 @@ golden uses the PUBLIC service API only — no internal state fabrication:
   the queue is constructed with ``shuffle_seed=424242`` so the persisted
   seed equals 424242.
 - Volume/muted: public playback setters ``playback.set_volume(37)`` /
-  ``playback.set_muted(True)``, then persisted through the settings public
-  API composing the exact shutdown sequence ``snapshot_volume() →
-  set_playback_preferences → save()`` (PersistenceCoordinator.shutdown and
-  ApplicationContainer.shutdown both use this composition). The golden
-  itself stays on the checkpoint path (§42) — ``shutdown()`` is not called.
-  NOTE: bootstrap's startup apply path is the reverse direction:
-  ``settings.load() → playback.restore_volume(volume, muted)``
+  ``playback.set_muted(True)`` ONLY. The started PersistenceCoordinator
+  observes the runtime volume/mute changes (last-observed detection) and
+  syncs them through the settings public API ``snapshot_volume() →
+  set_playback_preferences → save()`` with NO graceful-shutdown dependency
+  — the golden stays on the checkpoint path (§42) and ``shutdown()`` is
+  never called. NOTE: bootstrap's startup apply path is the reverse
+  direction: ``settings.load() → playback.restore_volume(volume, muted)``
   (src/michi/bootstrap/__init__.py).
 - Theme/geometry: ``settings.set_theme`` / ``settings.set_window_geometry``.
   A real ``SQLiteSettingsRepository`` is required here because the C5 test
@@ -52,8 +52,17 @@ _B = Path("/m/b.flac")
 _C = Path("/m/c.flac")
 
 
-def _build(db_path: Path, settings_repo=None, shuffle_seed: int | None = None):
-    """Fresh services + coordinator on the same db (no shutdown)."""
+def _build(
+    db_path: Path,
+    settings_repo=None,
+    shuffle_seed: int | None = None,
+    start: bool = False,
+):
+    """Fresh services + coordinator on the same db (no shutdown).
+
+    ``start=True`` expresses the target lifecycle: the coordinator must be
+    explicitly started for the runtime volume/mute sync to be active.
+    """
     repo = SqliteSessionRepository(db_path)
     settings = SettingsService(
         settings_repo if settings_repo is not None else FakeSettingsRepo()
@@ -62,6 +71,8 @@ def _build(db_path: Path, settings_repo=None, shuffle_seed: int | None = None):
     playback = PlaybackService(audio)
     queue = QueueService(playback, shuffle_seed=shuffle_seed)
     coordinator = PersistenceCoordinator(repo, queue, playback, settings)
+    if start:
+        coordinator.start()
     return repo, settings, audio, playback, queue, coordinator
 
 
@@ -83,16 +94,13 @@ class TestRestartGolden:
         # ── Session 1: build the full golden state and checkpoint ──
         settings_repo = SQLiteSettingsRepository(db)
         repo1, settings1, audio1, playback1, queue1, coordinator1 = _build(
-            db, settings_repo=settings_repo, shuffle_seed=424242
+            db, settings_repo=settings_repo, shuffle_seed=424242, start=True
         )
-        # Volume/muted through the PUBLIC playback setters, then persisted
-        # via the settings public API composing the shutdown sequence
-        # (snapshot_volume → set_playback_preferences → save) — the golden
-        # stays on the checkpoint path, so shutdown() is not called.
+        # Volume/muted through the PUBLIC playback setters ONLY — the started
+        # coordinator's RUNTIME sync persists them (no manual
+        # set_playback_preferences/save, no shutdown).
         playback1.set_volume(37)
         playback1.set_muted(True)
-        settings1.set_playback_preferences(*playback1.snapshot_volume())
-        settings1.save()
         # Theme + geometry through the settings public API.
         settings1.set_theme("dark")
         settings1.set_window_geometry(WindowGeometry(10, 20, 1100, 700, False))

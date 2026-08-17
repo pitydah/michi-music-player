@@ -153,4 +153,11 @@ class SessionRepository(ABC):
     def load(self) -> PlaybackSessionSnapshot: ...
 
     @abstractmethod
-    def save(self, snapshot: PlaybackSessionSnapshot) -> None: ...
+    def save(self, snapshot: PlaybackSessionSnapshot) -> bool:
+        """Persist the snapshot; never raises.
+
+        Returns the success signal the application decides on:
+        True = the snapshot was durably persisted; False = it was not
+        persisted (the repository logged the failure). The application
+        advances its durable-state marker only on True.
+        """

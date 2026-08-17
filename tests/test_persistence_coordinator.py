@@ -146,7 +146,10 @@ class TestCheckpointing:
     def test_queue_change_triggers_checkpoint(self, tmp_path):
         db = tmp_path / "t4.db"
         repo, _settings, _audio, _playback, queue, coordinator = _build(db)
-        # No explicit checkpoint call — the coordinator's own subscription saves.
+        # Explicit lifecycle: the queue.changed subscription is armed by
+        # start(). No explicit checkpoint call — the started coordinator's
+        # own subscription saves.
+        coordinator.start()
         queue.add(_A, "A")
         snap = repo.load()
         assert snap.queue_entries == _entries(("/m/a.flac", "A"))
@@ -159,6 +162,9 @@ class TestCheckpointing:
     def test_position_throttle(self, tmp_path):
         db = tmp_path / "t5.db"
         repo, _settings, audio, playback, queue, coordinator = _build(db)
+        # Explicit lifecycle: playback.changed-driven checkpoints require
+        # the started coordinator.
+        coordinator.start()
         queue.add(_A, "A")
         queue.play_index(0)
         audio.trigger_media_accepted(_A)  # baseline checkpoint, position 0
@@ -175,6 +181,9 @@ class TestCheckpointing:
     def test_lifecycle_transition_checkpoints(self, tmp_path):
         db = tmp_path / "t6.db"
         repo, _settings, audio, playback, queue, coordinator = _build(db)
+        # Explicit lifecycle: the transition notification reaches the
+        # started coordinator only.
+        coordinator.start()
         queue.add(_A, "A")
         queue.play_index(0)
         audio.trigger_media_accepted(_A)
@@ -198,8 +207,12 @@ class TestRestore:
         repo1, settings1, audio1, playback1, queue1, coordinator1 = _build(
             db, settings_repo=settings_repo, shuffle_seed=424242
         )
-        settings1.set_playback_preferences(37, True)
-        settings1.save()
+        # Explicit lifecycle + runtime volume/mute sync (P1-B): the started
+        # coordinator observes the public playback setters and persists them
+        # through the settings public API — no manual composition.
+        coordinator1.start()
+        playback1.set_volume(37)
+        playback1.set_muted(True)
         queue1.add(_A, "A")
         queue1.add(_B, "B")
         queue1.add(_C, "C")
@@ -446,6 +459,9 @@ class TestLifecycle:
         playback = PlaybackService(audio)
         queue = QueueService(playback)
         coordinator = PersistenceCoordinator(repo, queue, playback, settings)
+        # Explicit lifecycle: start() arms the subscriptions so the
+        # queue/playback-driven best-effort paths below are exercised.
+        coordinator.start()
 
         # Direct checkpoint is best-effort.
         coordinator.checkpoint()
