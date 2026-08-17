@@ -241,51 +241,65 @@ MichiPanel {
             }
         }
 
-        ListView {
-            id: albumsList; Layout.fillWidth: true; Layout.fillHeight: true
+        PathView {
+            id: albumsPath
+            objectName: "albumsPathView"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
             visible: currentTab === "albums" && library.selectedAlbumKey === ""
-            model: library.albums; clip: true
-            spacing: MichiTheme.space8
-            delegate: RowLayout {
-                width: albumsList.width
-                height: MichiTheme.controlHeightLarge
-                spacing: MichiTheme.space8
+            model: library.albums
+            clip: true
+            pathItemCount: 3
+            preferredHighlightBegin: 0.5
+            preferredHighlightEnd: 0.5
+            path: Path {
+                startX: 0
+                startY: albumsPath.height / 2
+                PathLine { x: albumsPath.width / 2; y: albumsPath.height / 2 }
+                PathLine { x: albumsPath.width; y: albumsPath.height / 2 }
+            }
+            delegate: Item {
+                width: 180
+                height: 220
 
-                Image {
-                    Layout.preferredWidth: 44
-                    Layout.preferredHeight: 44
-                    source: "file://" + modelData.artworkPath
-                    visible: modelData.hasArtwork
-                    fillMode: Image.PreserveAspectFit
+                Rectangle {
+                    anchors.fill: parent
+                    radius: MichiTheme.radiusSmall
+                    color: PathView.isCurrentItem ? MichiTheme.surfaceSelected : MichiTheme.surfaceHover
                 }
 
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: MichiTheme.space2
+                Image {
+                    anchors.fill: parent
+                    anchors.margins: 6
+                    source: modelData.hasArtwork ? "file://" + modelData.artworkPath : ""
+                    fillMode: Image.PreserveAspectFit
+                    visible: modelData.hasArtwork
+                }
 
-                    Text {
-                        Layout.fillWidth: true
-                        text: modelData.title
-                        font.pixelSize: MichiTheme.fontSizeBody
-                        font.weight: MichiTheme.fontWeightMedium
-                        color: MichiTheme.textPrimary
-                        elide: Text.ElideRight
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: modelData.artist + " · " + modelData.trackCount + " tracks"
-                        font.pixelSize: MichiTheme.fontSizeCaption
-                        color: MichiTheme.textSecondary
-                        elide: Text.ElideRight
-                    }
+                Text {
+                    anchors.bottom: parent.bottom
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.margins: 8
+                    text: modelData.title
+                    font.pixelSize: MichiTheme.fontSizeCaption
+                    color: PathView.isCurrentItem ? MichiTheme.textPrimary : MichiTheme.textSecondary
+                    elide: Text.ElideRight
+                    horizontalAlignment: Text.AlignHCenter
                 }
 
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: library.select_album(modelData.key)
+                    onClicked: {
+                        albumsPath.currentIndex = index
+                        library.select_album(modelData.key)
+                    }
                 }
+
+                scale: PathView.isCurrentItem ? 1.0 : 0.85
+                z: PathView.isCurrentItem ? 2 : 1
+                opacity: PathView.isCurrentItem ? 1.0 : 0.6
             }
         }
 

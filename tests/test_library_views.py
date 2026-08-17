@@ -31,6 +31,16 @@ from mutagen.mp3 import MP3
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 
+try:  # QQuickPathView/QQuickListView exist in QtQuick 6, but not every PySide6
+    # build exposes their Python bindings — fall back to findChild-by-objectName
+    # through QObject, which matches any QObject child.
+    from PySide6.QtQuick import QQuickListView, QQuickPathView
+except ImportError:  # pragma: no cover - fallback path
+    from PySide6.QtCore import QObject
+
+    QQuickPathView = QObject  # type: ignore[assignment,misc]
+    QQuickListView = QObject  # type: ignore[assignment,misc]
+
 from michi.application.library_port import LibraryFilesystemError
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
@@ -480,5 +490,62 @@ class TestQmlSmoke:
         assert component.status() == QQmlComponent.Ready, f"LibraryView: {errs}"
         obj = component.create()
         assert obj is not None, "LibraryView: null object"
+        obj.deleteLater()
+        bridge.dispose()
+
+    def test_albums_tab_uses_pathview_carousel(self, qapp, tmp_path):
+        path = tmp_path / "song.mp3"
+        path.write_bytes(b"x")
+        library, *_ = _make_library(
+            FakeScanner([path]), FakeExtractor(factory=_album_genre_factory())
+        )
+        library.scan(str(tmp_path))
+        bridge = LibraryBridge(library)
+        engine = QQmlEngine()
+        engine.addImportPath(str(QML_DIR))
+        engine.rootContext().setContextProperty("library", bridge)
+        component = QQmlComponent(engine, str(QML_DIR / "views/LibraryView.qml"))
+        errs = "; ".join(e.toString() for e in component.errors())
+        assert component.status() == QQmlComponent.Ready, f"LibraryView: {errs}"
+        obj = component.create()
+        assert obj is not None, "LibraryView: null object"
+        path_view = obj.findChild(QQuickPathView, "albumsPathView")
+        assert path_view is not None, (
+            "albumsPathView not found — albums tab is not a PathView carousel"
+        )
+        assert obj.findChild(QQuickListView, "albumsList") is None, (
+            "albumsList still present — the carousel must REPLACE the list"
+        )
+        obj.deleteLater()
+        bridge.dispose()
+
+    def test_pathview_delegate_uses_artwork(self, qapp, tmp_path):
+        path = tmp_path / "song.mp3"
+        path.write_bytes(b"x")
+        provider = FakeArtworkProvider(artwork=Artwork(b"x", "image/png"))
+        cache = FakeArtworkCache()
+        library, *_ = _make_library(
+            FakeScanner([path]),
+            FakeExtractor(factory=_album_genre_factory()),
+            artwork_provider=provider,
+            artwork_cache=cache,
+        )
+        library.scan(str(tmp_path))
+        bridge = LibraryBridge(library)
+        engine = QQmlEngine()
+        engine.addImportPath(str(QML_DIR))
+        engine.rootContext().setContextProperty("library", bridge)
+        component = QQmlComponent(engine, str(QML_DIR / "views/LibraryView.qml"))
+        assert component.status() == QQmlComponent.Ready, "; ".join(
+            e.toString() for e in component.errors()
+        )
+        obj = component.create()
+        assert obj is not None, "LibraryView: null object"
+        path_view = obj.findChild(QQuickPathView, "albumsPathView")
+        assert path_view is not None, "albumsPathView not found"
+        assert path_view.property("model") is not None, (
+            "PathView model not wired to library.albums"
+        )
+        assert len(bridge.property("albums")) == 1, "album rows must exist"
         obj.deleteLater()
         bridge.dispose()
