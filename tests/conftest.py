@@ -24,6 +24,7 @@ class FakeAudioPort:
         self._acc: list = []
         self._rej: list = []
         self._pstate: list = []
+        self.seek_calls: list[int] = []
 
     def load(self, p):
         self.loaded = p
@@ -48,6 +49,7 @@ class FakeAudioPort:
 
     def seek(self, ms):
         self._position = ms
+        self.seek_calls.append(ms)
 
     def position(self):
         return self._position

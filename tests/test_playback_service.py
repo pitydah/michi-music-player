@@ -597,3 +597,110 @@ class TestRejectionCallback:
         fake_audio.trigger_media_rejected(c, "real")
         assert rejected_b == []
         assert rejected_c == ["real"]
+
+
+class TestPrepareForResume:
+    """M5.C4: prepare_for_resume — startup resume path (load + seek, NO autoplay).
+
+    prepare_for_resume requests the backend LOAD of a candidate for session
+    resume and, only on acceptance, seeks the backend to the persisted
+    position. It NEVER calls play() and never arms intent: status stays
+    STOPPED until the user's later play() starts playback from the sought
+    position.
+    """
+
+    def test_prepare_loads_but_does_not_play(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        b = Path("/tmp/b.mp3")
+        play_calls = []
+        monkeypatch.setattr(fake_audio, "play", lambda: play_calls.append(1))
+        playback_service.prepare_for_resume(b, 222000)
+        assert fake_audio.loaded == b
+        assert play_calls == []  # prepare NEVER autoplays
+        assert fake_audio.state != "playing"
+
+    def test_prepare_commits_only_after_acceptance(self, playback_service, fake_audio):
+        b = Path("/tmp/b.mp3")
+        playback_service.prepare_for_resume(b, 222000)
+        assert playback_service.state.file_path is None  # not committed yet
+        fake_audio.trigger_media_accepted(b)
+        assert playback_service.state.file_path == b
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+    def test_prepare_stays_stopped_after_acceptance(self, playback_service, fake_audio):
+        b = Path("/tmp/b.mp3")
+        calls = []
+        playback_service.subscribe_changed(lambda: calls.append(1))
+        playback_service.prepare_for_resume(b, 222000)
+        assert len(calls) == 1  # request registered as pending
+        fake_audio.trigger_media_accepted(b)
+        assert playback_service.state.status == PlaybackStatus.STOPPED  # NOT PLAYING
+        assert len(calls) == 2  # acceptance notified exactly once
+
+    def test_prepare_seek_after_acceptance(self, playback_service, fake_audio):
+        b = Path("/tmp/b.mp3")
+        playback_service.prepare_for_resume(b, 222000)
+        assert fake_audio.seek_calls == []  # nothing sought yet
+        fake_audio.trigger_media_accepted(b)
+        # exactly one seek, and only AFTER the acceptance committed the track
+        assert fake_audio.seek_calls == [222000]
+
+    def test_prepare_negative_position_clamped(self, playback_service, fake_audio):
+        b = Path("/tmp/b.mp3")
+        playback_service.prepare_for_resume(b, -5)
+        fake_audio.trigger_media_accepted(b)
+        assert fake_audio.seek_calls == [0]
+
+    def test_prepare_rejection_safe(self, playback_service, fake_audio):
+        b = Path("/tmp/b.mp3")
+        playback_service.prepare_for_resume(b, 222000)
+        fake_audio.trigger_media_rejected(b, "gone")
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        assert playback_service.state.file_path is None  # never committed
+        assert playback_service.state.error_message == "gone"
+        # Pending cleared: a late acceptance of B does nothing.
+        fake_audio.trigger_media_accepted(b)
+        assert playback_service.state.file_path is None
+        assert fake_audio.seek_calls == []
+
+    def test_prepare_stop_cancels(self, playback_service, fake_audio):
+        b = Path("/tmp/b.mp3")
+        playback_service.prepare_for_resume(b, 222000)
+        playback_service.stop()
+        fake_audio.trigger_media_accepted(b)  # late acceptance after cancel
+        assert playback_service.state.file_path is None
+        assert fake_audio.seek_calls == []
+
+    def test_prepare_supersession_protects_new_request(
+        self, playback_service, fake_audio
+    ):
+        b = Path("/tmp/b.mp3")
+        c = Path("/tmp/c.mp3")
+        playback_service.prepare_for_resume(b, 222000)
+        playback_service.load_and_play(c)  # user selects C; C supersedes B
+        fake_audio.trigger_media_accepted(b)  # stale B acceptance: dropped
+        assert playback_service.state.file_path is None
+        assert fake_audio.seek_calls == []  # stale B never seeks
+        fake_audio.trigger_media_accepted(c)
+        assert playback_service.state.file_path == c
+        assert fake_audio.seek_calls == []  # C is a play request, not a resume
+
+    def test_prepare_then_user_play_resumes(self, playback_service, fake_audio):
+        b = Path("/tmp/b.mp3")
+        playback_service.prepare_for_resume(b, 222000)
+        fake_audio.trigger_media_accepted(b)
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        assert fake_audio.position() == 222000  # backend sought after acceptance
+        playback_service.play()
+        assert fake_audio.state == "playing"
+        assert playback_service.state.status == PlaybackStatus.STOPPED  # intent only
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        assert playback_service.state.status == PlaybackStatus.PLAYING  # resumed
+
+    def test_prepare_late_playing_state_ignored(self, playback_service, fake_audio):
+        b = Path("/tmp/b.mp3")
+        playback_service.prepare_for_resume(b, 222000)
+        fake_audio.trigger_media_accepted(b)
+        fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)  # no user play()
+        assert playback_service.state.status == PlaybackStatus.STOPPED  # intent guard

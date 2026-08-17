@@ -37,6 +37,13 @@ class PlaybackService:
       for a track whose identity was not committed — stale PlayingState
       events from superseded candidates are ignored.
 
+    `prepare_for_resume` is the startup resume path: it requests a backend
+    LOAD and, only after acceptance, seeks the backend to the persisted
+    position — it loads and seeks, never autoplays. Intent stays unarmed
+    during preparation (the user has not pressed play), so a stray backend
+    PLAYING state is ignored; the user's later `play()` resumes from the
+    sought position.
+
     Commands express intent only: play()/pause()/resume() never mutate
     PlaybackStatus or notify; PLAYING/PAUSED/STOPPED are published
     exclusively from backend state events. `stop()` is the single
@@ -52,6 +59,7 @@ class PlaybackService:
         self._pending_on_accepted: Callable[[Path], None] | None = None
         self._pending_on_rejected: Callable[[Path, str], None] | None = None
         self._pending_on_cancelled: Callable[[Path], None] | None = None
+        self._pending_resume_position_ms: int | None = None
         self._intent = False
         self._accepted = False
         self._audio.subscribe_media_accepted(self._on_media_accepted)
@@ -132,6 +140,7 @@ class PlaybackService:
         self._pending_on_accepted = on_accepted
         self._pending_on_rejected = on_rejected
         self._pending_on_cancelled = on_cancelled
+        self._pending_resume_position_ms = None  # supersedes any prepare
         self._accepted = False
         self._intent = True
         try:
@@ -142,7 +151,48 @@ class PlaybackService:
             self._pending_on_accepted = None
             self._pending_on_rejected = None
             self._pending_on_cancelled = None
+            self._pending_resume_position_ms = None
             self._intent = previous_intent
+            self._accepted = previous_accepted
+            raise
+        self._state.status = PlaybackStatus.STOPPED
+        self._state.error_message = None
+        self._notify()
+
+    def prepare_for_resume(self, file_path: Path, position_ms: int) -> None:
+        """Request a startup resume: LOAD the candidate, never autoplay.
+
+        The startup resume path (M5.C4): requests the backend LOAD of the
+        persisted track so acceptance/rejection routing and the pending
+        identity guards apply exactly as for any other candidate. Unlike
+        ``load_and_play`` it NEVER calls ``play()`` and never arms intent
+        — the user has not pressed play, so a stray backend PLAYING state
+        is ignored. On acceptance the track identity is committed and the
+        backend is then asked to seek to the persisted position (the
+        backend clamps; PlaybackState never shows a position the backend
+        did not accept — the UI position arrives from the backend's own
+        position channel). Status remains STOPPED; the user's later
+        ``play()`` starts playback from the sought position. Rejection and
+        ``stop()`` use the standard pending semantics; a new request
+        supersedes an in-flight prepare without invoking any callback.
+        """
+        if position_ms < 0:
+            position_ms = 0
+        previous_accepted = self._accepted
+        self._pending_path = file_path
+        self._pending_on_accepted = None
+        self._pending_on_rejected = None
+        self._pending_on_cancelled = None
+        self._pending_resume_position_ms = position_ms
+        self._accepted = False
+        try:
+            self._audio.load(file_path)
+        except Exception:
+            self._pending_path = None
+            self._pending_on_accepted = None
+            self._pending_on_rejected = None
+            self._pending_on_cancelled = None
+            self._pending_resume_position_ms = None
             self._accepted = previous_accepted
             raise
         self._state.status = PlaybackStatus.STOPPED
@@ -163,6 +213,23 @@ class PlaybackService:
         self._notify()
         if on_accepted is not None:
             on_accepted(file_path)
+        self._apply_prepare_seek()
+
+    def _apply_prepare_seek(self) -> None:
+        """Apply a prepare_for_resume seek, post-acceptance (never autoplay).
+
+        Called from the acceptance path only, after the candidate identity
+        has been committed: the backend is asked to seek to the persisted
+        position (it clamps). The port ``seek`` is the backend position
+        primitive — the same one the public ``seek()`` uses. PlaybackState
+        is not touched here — the UI is never shown a position the backend
+        did not accept; the position the UI observes arrives from the
+        backend's own position channel.
+        """
+        resume_position = self._pending_resume_position_ms
+        self._pending_resume_position_ms = None
+        if resume_position is not None:
+            self._audio.seek(resume_position)
 
     def _on_media_rejected(self, file_path: Path, message: str) -> None:
         if self._pending_path is not None and file_path == self._pending_path:
@@ -171,6 +238,7 @@ class PlaybackService:
             self._pending_on_accepted = None
             self._pending_on_rejected = None
             self._pending_on_cancelled = None
+            self._pending_resume_position_ms = None
             self._intent = False
             self._accepted = False
             self._state.status = PlaybackStatus.STOPPED
@@ -231,6 +299,7 @@ class PlaybackService:
         self._pending_on_accepted = None
         self._pending_on_rejected = None
         self._pending_on_cancelled = None
+        self._pending_resume_position_ms = None
         self._intent = False
         self._audio.stop()
         self._state.status = PlaybackStatus.STOPPED
