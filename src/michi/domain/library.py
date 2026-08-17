@@ -10,7 +10,8 @@ RECENT_CAP = 50
 
 @dataclass(frozen=True)
 class TrackMetadata:
-    """Extracted metadata for a library entry (canonical minimal model)."""
+    """Rich canonical metadata (LOCAL-META-02): musical + technical fields;
+    0/'' mean UNKNOWN honestly — never fabricated."""
 
     title: str = ""
     artist: str = ""
@@ -18,10 +19,32 @@ class TrackMetadata:
     duration_ms: int = 0
     genre: str = ""
     year: int = 0
+    album_artist: str = ""
+    track_number: int = 0
+    track_total: int = 0
+    disc_number: int = 0
+    disc_total: int = 0
+    composer: str = ""
+    date: str = ""
+    compilation: bool = False
+    sort_title: str = ""
+    sort_artist: str = ""
+    sort_album: str = ""
+    sort_album_artist: str = ""
+    codec: str = ""
+    container: str = ""
+    sample_rate_hz: int = 0
+    bit_depth: int = 0
+    channels: int = 0
+    bitrate_bps: int = 0
+    file_size: int = 0
 
 
 @dataclass(frozen=True)
 class TrackRef:
+    """model projection of TrackMetadata (album_artist/track/disc/composer/
+    compilation); technical audio properties live in TrackMetadata"""
+
     file_path: Path
     display_name: str = ""
     title: str = ""
@@ -30,6 +53,11 @@ class TrackRef:
     duration_ms: int = 0
     genre: str = ""
     year: int = 0
+    album_artist: str = ""
+    track_number: int = 0
+    disc_number: int = 0
+    composer: str = ""
+    compilation: bool = False
 
     def __post_init__(self) -> None:
         if not self.display_name:
