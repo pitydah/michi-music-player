@@ -46,6 +46,8 @@ def _track(
     artist="",
     album="",
     duration_ms=0,
+    album_artist="",
+    compilation=False,
 ):
     return TrackRef(
         file_path=Path(path),
@@ -54,6 +56,8 @@ def _track(
         artist=artist,
         album=album,
         duration_ms=duration_ms,
+        album_artist=album_artist,
+        compilation=compilation,
     )
 
 
@@ -294,3 +298,190 @@ class TestLibraryStateModelIntegration:
         assert bridge.property("artistCount") == 2
         assert len(fired) == 1
         bridge.dispose()
+
+
+class TestCompilationAwareAlbumGrouping:
+    """LOCAL-META-02.2c compilation-aware album grouping — Phase-1 RED tests.
+
+    Target contract (michi/domain/library.py): the resolved album artist per
+    track is ``track.album_artist`` if non-empty, else "Various Artists" when
+    ``track.compilation`` is set, else ``track.artist``. Albums group by
+    ``make_album_key(track.album, resolved_album_artist)`` and the album
+    display artist is the resolved album artist. On the current baseline the
+    grouping still uses the per-track artist, so the compilation-aware tests
+    fail (RED); the key-function tests fail with ImportError until the public
+    ``make_album_key`` / ``make_artist_key`` API lands.
+    """
+
+    def test_normal_single_artist_album_unchanged(self):
+        from michi.domain.library import make_album_key
+
+        tracks = [
+            _track("/m/a.mp3", title="A", artist="Artist One", album="Album One"),
+            _track("/m/b.mp3", title="B", artist="Artist One", album="Album One"),
+        ]
+        model = build_music_model(tracks)
+        assert len(model.albums) == 1
+        album = model.albums[0]
+        assert album.artist == "Artist One"
+        assert album.key == make_album_key("Album One", "Artist One")
+
+    def test_compilation_with_albumartist_single_album(self):
+        tracks = [
+            _track(
+                "/m/a.mp3",
+                title="A",
+                artist="Artist A",
+                album="Best of the 80s",
+                album_artist="Various Artists",
+            ),
+            _track(
+                "/m/b.mp3",
+                title="B",
+                artist="Artist B",
+                album="Best of the 80s",
+                album_artist="Various Artists",
+            ),
+            _track(
+                "/m/c.mp3",
+                title="C",
+                artist="Artist C",
+                album="Best of the 80s",
+                album_artist="Various Artists",
+            ),
+        ]
+        model = build_music_model(tracks)
+        assert len(model.albums) == 1
+        album = model.albums[0]
+        assert album.title == "Best of the 80s"
+        assert album.artist == "Various Artists"
+        assert album.track_count == 3
+        assert album.track_paths == (
+            Path("/m/a.mp3"),
+            Path("/m/b.mp3"),
+            Path("/m/c.mp3"),
+        )
+
+    def test_compilation_flag_only_groups(self):
+        tracks = [
+            _track(
+                "/m/a.mp3",
+                title="A",
+                artist="Artist A",
+                album="Now That's What I Call Music",
+                compilation=True,
+            ),
+            _track(
+                "/m/b.mp3",
+                title="B",
+                artist="Artist B",
+                album="Now That's What I Call Music",
+                compilation=True,
+            ),
+        ]
+        model = build_music_model(tracks)
+        assert len(model.albums) == 1
+        album = model.albums[0]
+        assert album.artist == "Various Artists"
+        assert album.track_count == 2
+
+    def test_album_artist_absent_groups_by_track_artist(self):
+        tracks = [
+            _track("/m/a.mp3", title="A", artist="Artist A", album="Split"),
+            _track("/m/b.mp3", title="B", artist="Artist B", album="Split"),
+        ]
+        model = build_music_model(tracks)
+        assert len(model.albums) == 2
+        assert {a.artist for a in model.albums} == {"Artist A", "Artist B"}
+        assert all(a.track_count == 1 for a in model.albums)
+
+    def test_same_album_title_different_album_artists_distinct(self):
+        tracks = [
+            _track(
+                "/m/a.mp3",
+                title="A",
+                artist="The Band",
+                album="Greatest Hits",
+                album_artist="Artist One",
+            ),
+            _track(
+                "/m/b.mp3",
+                title="B",
+                artist="The Band",
+                album="Greatest Hits",
+                album_artist="Artist Two",
+            ),
+        ]
+        model = build_music_model(tracks)
+        assert len(model.albums) == 2
+        assert {a.artist for a in model.albums} == {"Artist One", "Artist Two"}
+        assert all(a.track_count == 1 for a in model.albums)
+
+    def test_case_and_whitespace_album_artist(self):
+        tracks = [
+            _track(
+                "/m/a.mp3",
+                title="A",
+                artist="Singer One",
+                album="Album One",
+                album_artist="Artist A",
+            ),
+            _track(
+                "/m/b.mp3",
+                title="B",
+                artist="Singer Two",
+                album="album one",
+                album_artist="artist a",
+            ),
+        ]
+        model = build_music_model(tracks)
+        assert len(model.albums) == 1
+        album = model.albums[0]
+        assert album.title == "Album One"
+        assert album.artist == "Artist A"
+
+    def test_compilation_featured_track_artists(self):
+        tracks = [
+            _track(
+                "/m/a.mp3",
+                title="A",
+                artist="X feat. Y",
+                album="Hits",
+                album_artist="VA",
+                compilation=True,
+            ),
+            _track(
+                "/m/b.mp3",
+                title="B",
+                artist="Y feat. Z",
+                album="Hits",
+                album_artist="VA",
+                compilation=True,
+            ),
+        ]
+        model = build_music_model(tracks)
+        assert len(model.albums) == 1
+        album = model.albums[0]
+        assert album.artist == "VA"
+        assert album.track_count == 2
+
+    def test_album_key_function_used_by_model(self):
+        from michi.domain.library import make_album_key
+
+        tracks = [
+            _track("/m/a.mp3", title="A", artist="Artist One", album="Album One"),
+            _track(
+                "/m/b.mp3",
+                title="B",
+                artist="Artist Two",
+                album="Hits",
+                compilation=True,
+            ),
+        ]
+        model = build_music_model(tracks)
+        assert len(model.albums) == 2
+        for album in model.albums:
+            assert album.key == make_album_key(album.title, album.artist)
+        keys = {a.title: a.key for a in model.albums}
+        assert keys["Album One"] == make_album_key("Album One", "Artist One")
+        assert keys["Hits"] == make_album_key("Hits", "Various Artists")

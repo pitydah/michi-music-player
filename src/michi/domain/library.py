@@ -147,39 +147,67 @@ class MusicModel:
 
 
 def _normalize_key(s: str) -> str:
-    """Canonical grouping key: casefolded and stripped."""
-    return s.casefold().strip()
+    """Canonical grouping key: casefolded, whitespace runs collapsed, stripped."""
+    return " ".join(s.casefold().split())
 
 
 _UNKNOWN_ALBUM = "Unknown Album"
 _UNKNOWN_ARTIST = "Unknown Artist"
 _UNKNOWN_GENRE = "Unknown Genre"
+_VARIOUS_ARTISTS = "Various Artists"
+
+
+def make_album_key(album_title: str, album_artist: str) -> str:
+    """Canonical album identity (LOCAL-META-02.2c): length-prefixed so a
+    '::' inside the title can never collide with the artist segment."""
+    title = _normalize_key(album_title)
+    artist = _normalize_key(album_artist)
+    return f"{len(title)}::{title}::{artist}"
+
+
+def make_artist_key(artist_name: str) -> str:
+    """Canonical artist identity (LOCAL-META-02.2c)."""
+    return _normalize_key(artist_name)
+
+
+def _resolve_album_artist(track) -> str:
+    """Resolved album-level artist (LOCAL-META-02.2c): an explicit
+    ``album_artist`` wins; a compilation without one groups under
+    "Various Artists"; otherwise the track's own artist."""
+    if track.album_artist:
+        return track.album_artist
+    if track.compilation:
+        return _VARIOUS_ARTISTS
+    return track.artist
 
 
 def build_music_model(tracks) -> MusicModel:
     """Derive albums and artists from tracks (pure, deterministic by key).
 
-    Albums are grouped by the normalized (album, primary-artist) pair where
-    the primary artist is the first track's artist within that album. Display
-    title/artist come from the first member. Empty album -> "Unknown Album",
-    empty artist -> "Unknown Artist". Album duration is the sum of members and
-    ``track_paths`` preserves library order. Artists are grouped by normalized
-    name with total track count and distinct-album count. Genres are grouped
-    by normalized name with per-genre track count; empty genre -> "Unknown
-    Genre" and the sum of genre counts equals the total track count.
+    Albums are grouped by ``make_album_key(track.album, resolved_album_artist)``
+    where the resolved album artist (LOCAL-META-02.2c) is the explicit
+    ``album_artist``, else "Various Artists" for compilations, else the track
+    artist. Display title/artist come from the first member. Empty album ->
+    "Unknown Album", empty artist -> "Unknown Artist". Album duration is the
+    sum of members and ``track_paths`` preserves library order. Artists are
+    grouped by normalized track artist (``make_artist_key``) with total track
+    count and distinct-album count. Genres are grouped by normalized name
+    with per-genre track count; empty genre -> "Unknown Genre" and the sum of
+    genre counts equals the total track count.
     """
     album_entries: dict[str, dict] = {}
     artist_entries: dict[str, dict] = {}
     genre_entries: dict[str, dict] = {}
     for track in tracks:
         album_title = track.album.strip() or _UNKNOWN_ALBUM
-        artist_name = track.artist.strip() or _UNKNOWN_ARTIST
-        album_key = f"{_normalize_key(album_title)}::{_normalize_key(artist_name)}"
+        resolved_artist = _resolve_album_artist(track).strip() or _UNKNOWN_ARTIST
+        album_key = make_album_key(album_title, resolved_artist)
         album = album_entries.get(album_key)
         if album is None:
             album = {
+                "key": album_key,
                 "title": album_title,
-                "artist": artist_name,
+                "album_artist": resolved_artist,
                 "duration_ms": 0,
                 "paths": [],
             }
@@ -188,7 +216,8 @@ def build_music_model(tracks) -> MusicModel:
         album["duration_ms"] += track.duration_ms
         album["paths"].append(track.file_path)
 
-        artist_key = _normalize_key(artist_name)
+        artist_name = track.artist.strip() or _UNKNOWN_ARTIST
+        artist_key = make_artist_key(artist_name)
         artist = artist_entries.get(artist_key)
         if artist is None:
             artist = {"name": artist_name, "track_count": 0, "albums": set()}
@@ -208,15 +237,15 @@ def build_music_model(tracks) -> MusicModel:
         sorted(
             (
                 AlbumRef(
-                    key=key,
+                    key=entry["key"],
                     title=entry["title"],
-                    artist=entry["artist"],
+                    artist=entry["album_artist"],
                     track_count=len(entry["paths"]),
                     duration_ms=entry["duration_ms"],
                     track_paths=tuple(entry["paths"]),
                     year=entry["year"],
                 )
-                for key, entry in album_entries.items()
+                for entry in album_entries.values()
             ),
             key=lambda a: a.key,
         )
