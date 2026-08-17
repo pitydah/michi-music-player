@@ -254,6 +254,38 @@ def build_folder_model(tracks) -> tuple[FolderRef, ...]:
     )
 
 
+def merge_recently_added(
+    new_paths,
+    previous_recent,
+    current_library_paths,
+    cap,
+) -> tuple[str, ...]:
+    """Canonical recently-added merge (LOCAL-STABILIZATION-01.6.5).
+
+    New tracks from the current successful scan come first (most recent
+    scan order, reversed), then previous recently-added entries that still
+    exist in the library; deduplicated, capped at ``cap``. An unchanged
+    rescan must NOT erase recently added; removed tracks fall out once they
+    leave the library.
+    """
+    seen = set()
+    merged = []
+    for path in reversed(new_paths):
+        if path not in seen:
+            seen.add(path)
+            merged.append(path)
+    for path in previous_recent:
+        if path in seen:
+            continue
+        if path not in current_library_paths:
+            continue
+        seen.add(path)
+        merged.append(path)
+        if len(merged) >= cap:
+            break
+    return tuple(merged[:cap])
+
+
 @dataclass(frozen=True)
 class LibraryPrefs:
     """Persisted library preferences: favorites, play history, recently added.

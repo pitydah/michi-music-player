@@ -22,8 +22,16 @@ Coverage:
   prefs round-trip init, best-effort persistence via the port
 - History: queue commit records, consecutive dedupe, 50 cap most-recent-first,
   nothing recorded while a play request is pending, persisted via the port
-- Recently added: only NEW scan paths, empty on no-change rescan, 50 cap in
-  scan order (most recent first), failed scan untouched, persisted via port
+- Recently added: canonical merge (LOCAL-STABILIZATION-01.6.5) — new tracks
+  from the current scan first (most recent scan order, reversed), then previous
+  recently-added entries still in the library; deduplicated and 50-cap;
+  an identical rescan MUST preserve the list, removed tracks fall out once they
+  leave the library, failed scan untouched, persisted via port.
+  CONTRACT CHANGE: the old rule rebuilt recently added from the per-scan delta,
+  so an unchanged rescan erased it; the tests that encoded that rule were
+  updated (test_identical_rescan_preserves_recently_added replaces
+  test_rescan_no_changes_no_update, test_new_scan_paths_prepended and
+  test_recently_added_capped now assert preservation across rescans).
 - Bridge: row/toggle surface, songPaths parallel to files, missing paths
   skipped in rows
 - Sqlite repository: round trip, empty fresh db, missing file never raises,
@@ -203,29 +211,51 @@ class TestHistoryRecording:
 
 class TestRecentlyAdded:
     def test_new_scan_paths_prepended(self, tmp_path):
+        """Contract change (LOCAL-STABILIZATION-01.6.5): this test previously
+        asserted the delta-rebuild rule (recent == ONLY the new paths, so a
+        scan erased earlier entries). Canonical rule: new paths first, then
+        previously recently-added entries still in the library. scan A
+        [p1,p2] -> recent (p2,p1); scan B [p1,p2,p3] -> new=[p3] -> recent
+        (p3,p2,p1) (new first, then preserved)."""
         p1, p2, p3 = _write_tracks(tmp_path, ("one.mp3", "two.mp3", "three.mp3"))
         scanner = FakeScanner([p1, p2])
         library, _, _ = _make_library_and_queue(scanner)
         library.scan(str(tmp_path))
+        assert library.state.recently_added_paths == (str(p2), str(p1))
         scanner.paths = [p1, p2, p3]
         library.scan(str(tmp_path))
-        assert library.state.recently_added_paths == (str(p3),)
+        assert library.state.recently_added_paths == (str(p3), str(p2), str(p1))
 
-    def test_rescan_no_changes_no_update(self, tmp_path):
+    def test_identical_rescan_preserves_recently_added(self, tmp_path):
+        """Contract change (LOCAL-STABILIZATION-01.6.5): the old test
+        (test_rescan_no_changes_no_update) encoded the delta-rebuild rule that
+        an identical rescan ERASES recently added (it asserted ()). Canonical
+        rule: recently added = new tracks + previous recently-added entries
+        still in the library, so an unchanged rescan MUST preserve (p2, p1)."""
         p1, p2 = _write_tracks(tmp_path, ("one.mp3", "two.mp3"))
         scanner = FakeScanner([p1, p2])
         library, _, _ = _make_library_and_queue(scanner)
         library.scan(str(tmp_path))
+        assert library.state.recently_added_paths == (str(p2), str(p1))
         scanner.paths = [p1, p2]
         library.scan(str(tmp_path))
-        assert library.state.recently_added_paths == ()
+        assert library.state.recently_added_paths == (str(p2), str(p1))
 
     def test_recently_added_capped(self, tmp_path):
+        """>cap new paths in one scan -> capped at RECENT_CAP (most recent
+        scan order first); an identical rescan keeps the capped list intact
+        (LOCAL-STABILIZATION-01.6.5 — a rescan must not erase it)."""
         paths = _write_tracks(tmp_path, [f"t{i:02d}.mp3" for i in range(60)])
-        library, _, _ = _make_library_and_queue(FakeScanner(paths))
+        scanner = FakeScanner(paths)
+        library, _, _ = _make_library_and_queue(scanner)
         library.scan(str(tmp_path))
         assert len(library.state.recently_added_paths) == RECENT_CAP
         # Most recent scan order first: the 50 newest scan entries reversed.
+        assert library.state.recently_added_paths == tuple(
+            str(p) for p in reversed(paths[-RECENT_CAP:])
+        )
+        scanner.paths = paths  # unchanged rescan
+        library.scan(str(tmp_path))
         assert library.state.recently_added_paths == tuple(
             str(p) for p in reversed(paths[-RECENT_CAP:])
         )
@@ -243,12 +273,133 @@ class TestRecentlyAdded:
         assert library.state.recently_added_paths == before
 
     def test_recently_added_persisted(self, tmp_path):
+        """Saved prefs contain the canonical merged list (new first, then
+        preserved entries) after a successful scan."""
+        p1, p2 = _write_tracks(tmp_path, ("one.mp3", "two.mp3"))
+        port = FakePrefsPort()
+        library, _, _ = _make_library_and_queue(FakeScanner([p1, p2]), prefs_port=port)
+        library.scan(str(tmp_path))
+        assert port.saved[-1].recently_added_paths == (str(p2), str(p1))
+
+    def test_recently_added_removed_tracks_fall_out(self, tmp_path):
+        """Canonical removal rule (LOCAL-STABILIZATION-01.6.5): a removed
+        track leaves recently added once it is no longer in the library while
+        surviving tracks stay. scan [p1,p2] -> (p2,p1); delete p2 and rescan
+        with only [p1] -> (p1,) — p2 fell out, p1 preserved."""
+        p1, p2 = _write_tracks(tmp_path, ("one.mp3", "two.mp3"))
+        scanner = FakeScanner([p1, p2])
+        library, _, _ = _make_library_and_queue(scanner)
+        library.scan(str(tmp_path))
+        assert library.state.recently_added_paths == (str(p2), str(p1))
+        p2.unlink()
+        scanner.paths = [p1]
+        library.scan(str(tmp_path))
+        assert library.state.recently_added_paths == (str(p1),)
+
+    def test_recently_added_duplicate_path_across_scans(self, tmp_path):
+        """Duplicate paths in the scanner result collapse to one recently-added
+        entry (the merge dedupes by path). scan [p1]; rescan [p1,p1] -> (p1,)."""
         p1 = tmp_path / "one.mp3"
         p1.write_bytes(b"x")
-        port = FakePrefsPort()
-        library, _, _ = _make_library_and_queue(FakeScanner([p1]), prefs_port=port)
+        scanner = FakeScanner([p1])
+        library, _, _ = _make_library_and_queue(scanner)
         library.scan(str(tmp_path))
-        assert str(p1) in port.saved[-1].recently_added_paths
+        assert library.state.recently_added_paths == (str(p1),)
+        scanner.paths = [p1, p1]
+        library.scan(str(tmp_path))
+        assert library.state.recently_added_paths == (str(p1),)
+
+    def test_recently_added_restart_persistence(self, tmp_path):
+        """Restart: prefs restore recently added; an unchanged rescan of the
+        same directory must preserve the restored list (canonical merge,
+        LOCAL-STABILIZATION-01.6.5 — the old delta-rebuild erased it on the
+        identical rescan)."""
+        p1, p2 = _write_tracks(tmp_path, ("one.mp3", "two.mp3"))
+        port = FakePrefsPort(
+            prefs=LibraryPrefs(recently_added_paths=(str(p2), str(p1)))
+        )
+        scanner = FakeScanner([p1, p2])
+        library, _, _ = _make_library_and_queue(scanner, prefs_port=port)
+        library.scan(str(tmp_path))
+        library.scan(str(tmp_path))  # unchanged rescan
+        assert library.state.recently_added_paths == (str(p2), str(p1))
+        assert port.saved[-1].recently_added_paths == (str(p2), str(p1))
+
+    def test_merge_recently_added_pure_helper(self):
+        """Direct unit tests of the canonical merge (LOCAL-STABILIZATION-01.6.5):
+        new paths first (reversed scan order), then previous entries still in
+        the library; dedup across new+previous and within new; cap; removal by
+        library membership; empty cases. Import is local so a missing symbol on
+        baseline surfaces as a per-test ImportError instead of a module-level
+        collection failure."""
+        from michi.domain.library import merge_recently_added
+
+        # New-first ordering: reversed(new_paths) precede preserved entries.
+        assert merge_recently_added(
+            new_paths=("a", "b"),
+            previous_recent=("x", "y"),
+            current_library_paths={"a", "b", "x", "y"},
+            cap=50,
+        ) == ("b", "a", "x", "y")
+
+        # Dedupe across new + previous (previous duplicate drops).
+        assert merge_recently_added(
+            new_paths=("a", "b"),
+            previous_recent=("b", "x"),
+            current_library_paths={"a", "b", "x"},
+            cap=50,
+        ) == ("b", "a", "x")
+
+        # Dedupe within new (duplicate scanner results collapse).
+        assert merge_recently_added(
+            new_paths=("a", "a", "b"),
+            previous_recent=(),
+            current_library_paths={"a", "b"},
+            cap=50,
+        ) == ("b", "a")
+
+        # Identical rescan: nothing new, previous entries preserved in order.
+        assert merge_recently_added(
+            new_paths=(),
+            previous_recent=("b", "a"),
+            current_library_paths={"a", "b"},
+            cap=50,
+        ) == ("b", "a")
+
+        # Cap: preserved entries survive up to the cap after new paths.
+        assert merge_recently_added(
+            new_paths=("a", "b", "c"),
+            previous_recent=("d", "e", "f"),
+            current_library_paths={"a", "b", "c", "d", "e", "f"},
+            cap=4,
+        ) == ("c", "b", "a", "d")
+
+        # Cap applies to preserved previous entries too.
+        assert merge_recently_added(
+            new_paths=(),
+            previous_recent=("a", "b", "c"),
+            current_library_paths={"a", "b", "c"},
+            cap=2,
+        ) == ("a", "b")
+
+        # Removal by library membership: dropped tracks fall out.
+        assert merge_recently_added(
+            new_paths=(),
+            previous_recent=("a", "b"),
+            current_library_paths={"a"},
+            cap=50,
+        ) == ("a",)
+
+        # Empty new + empty previous -> empty.
+        assert merge_recently_added((), (), set(), 50) == ()
+
+        # Empty previous with new paths -> just the new paths.
+        assert merge_recently_added(
+            new_paths=("a",),
+            previous_recent=("gone",),
+            current_library_paths={"a"},
+            cap=50,
+        ) == ("a",)
 
 
 class TestBridgeFavoritesHistory:
@@ -273,8 +424,14 @@ class TestBridgeFavoritesHistory:
         ]
         scanner.paths = [p1, p2, p3]
         library.scan(str(tmp_path))
+        # Contract change (LOCAL-STABILIZATION-01.6.5): this assertion
+        # previously encoded the delta-rebuild rule (recently added == ONLY
+        # the new paths). Canonical: new first, then preserved entries —
+        # [T three, T two, T one].
         assert bridge.property("recentlyAddedRows") == [
-            {"displayName": "T three", "path": str(p3)}
+            {"displayName": "T three", "path": str(p3)},
+            {"displayName": "T two", "path": str(p2)},
+            {"displayName": "T one", "path": str(p1)},
         ]
         bridge.dispose()
 

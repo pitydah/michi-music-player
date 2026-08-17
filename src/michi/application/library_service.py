@@ -29,6 +29,7 @@ from michi.domain.library import (
     TrackRef,
     build_folder_model,
     build_music_model,
+    merge_recently_added,
 )
 
 logger = logging.getLogger(__name__)
@@ -133,7 +134,13 @@ class LibraryService:
             for t in self._state.tracks
             if str(t.file_path) not in previous_paths
         ]
-        self._state.recently_added_paths = tuple(reversed(new_paths))[:RECENT_CAP]
+        previous_recent = self._state.recently_added_paths
+        self._state.recently_added_paths = merge_recently_added(
+            new_paths,
+            previous_recent,
+            current_library_paths={str(t.file_path) for t in self._state.tracks},
+            cap=RECENT_CAP,
+        )
         self._persist_prefs()
         self._notify()
 
