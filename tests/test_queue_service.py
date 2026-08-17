@@ -1868,15 +1868,20 @@ class TestRepeatOneShufflePrecedence:
         assert fake_audio.loaded == Path("/tmp/a.mp3")
         assert queue_service.state.current_index == 0
 
+        # M4-FINAL-CORRECTION: removal of the committed current no longer
+        # fabricates a relocated current (index -1, current_track None); the
+        # late acceptance does not commit. The pending branch still stops
+        # playback (TD-015).
         queue_service.remove(0)  # the pending track itself is removed
         assert [t.file_path for t in queue_service.state.tracks] == [Path("/tmp/b.mp3")]
-        assert queue_service.state.current_index == 0  # relocated to b
+        assert queue_service.state.current_index == -1  # no fictitious current
+        assert queue_service.state.current_track is None
 
         # Late acceptance of the removed candidate must not commit anywhere
         # (identity guard): current_index is not set to a stale index.
         fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
-        assert queue_service.state.current_index == 0
-        assert queue_service.state.current_track.file_path == Path("/tmp/b.mp3")
+        assert queue_service.state.current_index == -1
+        assert queue_service.state.current_track is None
         assert playback_service.state.status == PlaybackStatus.STOPPED
 
     def test_repeat_one_rejection_still_terminal(
@@ -2501,3 +2506,191 @@ class TestQueueCapacity:
 
         service = QueueService(playback_service)
         assert service.max_tracks == 10000  # public read-only property
+
+
+class TestM4FinalCorrections:
+    """M4-FINAL-CORRECTION (RED — target contract NOT yet implemented):
+
+    - `remove(committed current)`: `current_index` becomes -1 — NO fictitious
+      current pointing at a track that never played; playback is NOT stopped
+      (the removed track keeps playing until its natural end); a subsequent
+      EOM does NOT auto-advance (index -1 → no-op); pending semantics
+      unchanged (remove pending → stop + clear, TD-015); remove before
+      current → shift (current_index -= 1, identity preserved).
+    - shuffle + repeat ONE + exhausted pool + MANUAL Next: manual Next is a
+      NO-OP (must NOT replay the current entry — the ONE replay rule is
+      EOM-only); `has_next` with pool empty + ONE → False; with pool empty +
+      ALL → True (regeneration); pool non-empty → True (any mode).
+    - `QueueService(max_tracks <= 0)` → ValueError; `max_tracks` default
+      10000 (existing); capacity behavior unchanged.
+    - (internal) `_index_of_track` removed — `move` reuses `_index_of`
+      (identity scan); existing move tests cover the behavior.
+    """
+
+    def _shuffle_queue(self, playback_service, seed: int = 42):
+        from michi.application.queue_service import QueueService
+
+        return QueueService(playback_service, rng=random.Random(seed))
+
+    def test_remove_current_no_fictitious_current(self, queue_service, fake_audio):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.add(Path("/tmp/c.mp3"))
+        queue_service.play_index(1)
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        assert queue_service.state.current_index == 1  # b committed
+
+        calls = []
+        queue_service.subscribe_changed(lambda: calls.append(1))
+        queue_service.remove(1)  # the committed current itself
+
+        assert [t.file_path for t in queue_service.state.tracks] == [
+            Path("/tmp/a.mp3"),
+            Path("/tmp/c.mp3"),
+        ]
+        # NO fictitious current: index -1, never a pointer to c (which never
+        # played). The min-clamp behavior is the bug this test encodes.
+        assert queue_service.state.current_index == -1
+        assert queue_service.state.current_track is None
+        # Playback is NOT stopped by the removal — the removed track keeps
+        # playing until its natural end.
+        assert fake_audio.state == "playing"
+        assert calls == [1]  # ONE notification
+
+    def test_remove_current_then_eom_no_advance(self, queue_service, fake_audio):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.add(Path("/tmp/c.mp3"))
+        queue_service.play_index(1)
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        loaded_before = fake_audio.loaded
+        queue_service.remove(1)  # current removed → index -1
+
+        fake_audio.trigger_end_of_media()
+        # No advance to a/c: nothing new is loaded (index -1 → no-op).
+        assert fake_audio.loaded == loaded_before
+        # The queue EOM no-ops at index -1 — never stops playback; the
+        # removed track keeps playing (the contract is no-advance, not
+        # queue-initiated stop).
+        assert fake_audio.state == "playing"
+        # The queue never re-points at a track that did not play.
+        assert queue_service.state.current_index == -1
+        assert queue_service.state.current_track is None
+
+    def test_remove_track_before_current_shifts(self, queue_service, fake_audio):
+        queue_service.add(Path("/tmp/a.mp3"))
+        queue_service.add(Path("/tmp/b.mp3"))
+        queue_service.add(Path("/tmp/c.mp3"))
+        queue_service.play_index(1)
+        fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
+        b_track = queue_service.state.tracks[1]
+        assert queue_service.state.current_index == 1
+
+        queue_service.remove(0)  # a removed → b shifts to index 0
+
+        assert [t.file_path for t in queue_service.state.tracks] == [
+            Path("/tmp/b.mp3"),
+            Path("/tmp/c.mp3"),
+        ]
+        assert queue_service.state.current_index == 0  # shifted, not dropped
+        assert queue_service.state.current_track is b_track  # identity preserved
+
+    def test_shuffle_one_exhausted_manual_next_noop(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        service = self._shuffle_queue(playback_service)
+        a, b = Path("/tmp/a.mp3"), Path("/tmp/b.mp3")
+        service.add(a)
+        service.add(b)
+        service.play_index(0)
+        fake_audio.trigger_media_accepted(a)
+        service.set_shuffle_enabled(True)  # pool = {b}
+        service.set_repeat_mode(RepeatMode.ONE)
+
+        service.next()  # manual Next picks from the pool
+        assert fake_audio.loaded == b
+        fake_audio.trigger_media_accepted(b)
+        assert service.state.current_index == 1  # b committed
+        assert service.state.shuffle_enabled is True
+
+        # Pool exhausted: manual Next must be a NO-OP — the ONE replay rule
+        # is EOM-only and must NOT trap manual navigation into replaying the
+        # current entry.
+        calls = []
+        orig = playback_service.load_and_play
+
+        def spy(path, **kwargs):
+            calls.append(path)
+            orig(path, **kwargs)
+
+        monkeypatch.setattr(playback_service, "load_and_play", spy)
+        service.next()
+
+        assert calls == []  # no new playback request
+        assert fake_audio.loaded == b  # nothing reloaded
+        assert service.state.current_index == 1  # no fake advance
+
+    def test_shuffle_one_exhausted_has_next_false(self, playback_service, fake_audio):
+        service = self._shuffle_queue(playback_service)
+        a, b = Path("/tmp/a.mp3"), Path("/tmp/b.mp3")
+        service.add(a)
+        service.add(b)
+        service.play_index(0)
+        fake_audio.trigger_media_accepted(a)
+        service.set_shuffle_enabled(True)  # pool = {b}
+        service.set_repeat_mode(RepeatMode.ONE)
+        assert service.has_next is True  # pool non-empty
+
+        service.next()
+        fake_audio.trigger_media_accepted(fake_audio.loaded)  # pool now empty
+        # ONE + exhausted pool: nothing remains — has_next must be False.
+        assert service.has_next is False
+
+    def test_shuffle_one_pool_nonempty_has_next_true(
+        self, playback_service, fake_audio
+    ):
+        """Existing pin kept as regression: a non-empty pool under ONE means
+        more music is available."""
+        service = self._shuffle_queue(playback_service)
+        a, b, c = Path("/tmp/a.mp3"), Path("/tmp/b.mp3"), Path("/tmp/c.mp3")
+        service.add(a)
+        service.add(b)
+        service.add(c)
+        service.play_index(0)
+        fake_audio.trigger_media_accepted(a)
+        service.set_shuffle_enabled(True)  # pool = {b, c} — non-empty
+        service.set_repeat_mode(RepeatMode.ONE)
+        assert service.has_next is True
+
+    def test_shuffle_all_exhausted_has_next_true(self, playback_service, fake_audio):
+        service = self._shuffle_queue(playback_service)
+        a, b = Path("/tmp/a.mp3"), Path("/tmp/b.mp3")
+        service.add(a)
+        service.add(b)
+        service.play_index(0)
+        fake_audio.trigger_media_accepted(a)
+        service.set_shuffle_enabled(True)  # pool = {b}
+        service.set_repeat_mode(RepeatMode.ALL)
+
+        service.next()
+        fake_audio.trigger_media_accepted(fake_audio.loaded)  # pool now empty
+        # ALL + exhausted pool: the cycle regenerates — more music remains.
+        assert service.has_next is True
+
+    def test_max_tracks_validation(self, playback_service):
+        from michi.application.queue_service import QueueService
+        from michi.domain.queue import QueueCapacityError
+
+        with pytest.raises(ValueError):
+            QueueService(playback_service, max_tracks=0)
+        with pytest.raises(ValueError):
+            QueueService(playback_service, max_tracks=-5)
+
+        # Positive capacity constructs fine and enforces its boundary.
+        service = QueueService(playback_service, max_tracks=1)
+        assert service.max_tracks == 1
+        service.add(Path("/tmp/a.mp3"))
+        assert service.state.count == 1  # add works at capacity 1
+        with pytest.raises(QueueCapacityError):
+            service.add(Path("/tmp/b.mp3"))
+        assert service.state.count == 1

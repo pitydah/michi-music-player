@@ -29,6 +29,8 @@ class QueueService:
         self._state = QueueState()
         self._subscribers: list[Callable[[], None]] = []
         self._pending_track: Track | None = None
+        if max_tracks <= 0:
+            raise ValueError(f"max_tracks must be positive: {max_tracks!r}")
         self._max_tracks = max_tracks
         self._playback.subscribe_end_of_media(self._on_end_of_media)
 
@@ -71,9 +73,10 @@ class QueueService:
             if index < self._state.current_index:
                 self._state.current_index -= 1
             elif index == self._state.current_index:
-                self._state.current_index = min(
-                    self._state.current_index, len(self._state.tracks) - 1
-                )
+                # No fictitious current: the removed committed track may still
+                # be playing; the queue does not point at a track that never
+                # played. A later end-of-media no-ops (index < 0).
+                self._state.current_index = -1
             if self._state.shuffle_enabled:
                 self._navigator.remove(removed_track)
             self._notify()
@@ -111,7 +114,7 @@ class QueueService:
         current = self._state.current_track
         self._state.tracks = reordered
         if current is not None:
-            self._state.current_index = self._index_of_track(current)
+            self._state.current_index = self._index_of(current)
         self._notify()
 
     def play_index(self, index: int) -> None:
@@ -160,12 +163,6 @@ class QueueService:
         self._notify()
 
     def _index_of(self, track: Track) -> int:
-        for i, t in enumerate(self._state.tracks):
-            if t is track:
-                return i
-        return -1
-
-    def _index_of_track(self, track: Track) -> int:
         for i, t in enumerate(self._state.tracks):
             if t is track:
                 return i
@@ -285,7 +282,9 @@ class QueueService:
                     self._playback.stop()
                     return
                 else:  # RepeatMode.ONE
-                    self.play_index(self._state.current_index)
+                    # Manual Next with an exhausted pool under Repeat ONE is a
+                    # NO-OP — the ONE replay rule is end-of-media-only and must
+                    # not trap manual navigation.
                     return
             self.play_index(self._index_of(target))
             return
@@ -315,7 +314,9 @@ class QueueService:
         if self._state.shuffle_enabled:
             if self._navigator.pool:
                 return True
-            return self._state.repeat_mode is not RepeatMode.NONE
+            # With an exhausted pool only ALL offers a next (cycle
+            # regeneration); ONE and NONE have nothing.
+            return self._state.repeat_mode is RepeatMode.ALL
         if self._state.repeat_mode is RepeatMode.ALL:
             return bool(self._state.tracks)
         return self._state.has_next
