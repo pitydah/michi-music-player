@@ -55,7 +55,6 @@ These decisions are recorded in MASTER_ROADMAP_1.0.md. All are Post-1.0.
 | Full-text indexed search      | Post-1.0 | Substring filter satisfies 1.0; FTS indexing is a performance enhancement.                                                                        | M      |
 | Safe mode                     | Post-1.0 | A `--safe-mode` bypass requires configurable startup paths and degraded-mode contracts deferred past 1.0.                                         | M      |
 | Watchdog                      | Post-1.0 | Audio pipeline stall detection requires monitoring infrastructure deferred past 1.0.                                                              | M      |
-| Queue reorder (move)          | Post-1.0 | Reordering adds drag/move semantics to the queue model and UI; not required by the 1.0 contract.                                                  | S      |
 | Windows platform              | Post-1.0 | 1.0 targets Linux only (AppImage/Flatpak/deb); Windows installer packaging and QA deferred.                                                       | L      |
 | macOS platform                | Post-1.0 | 1.0 targets Linux only (AppImage/Flatpak/deb); macOS notarization, .dmg packaging, and QA deferred.                                               | L      |
 
