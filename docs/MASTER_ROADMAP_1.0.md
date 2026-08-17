@@ -73,7 +73,7 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 
 ## Future Execution Order
 
-**M11.2A-E persistence recovery — COMPLETE for Required 1.0** (M11.2E validated automatic restore + quarantine TESTED). **TD-013 filesystem degradation — RESOLVED / TESTED.** **TD-016 cancellation-terminal synchronization — RESOLVED / TESTED.** **M4 Queue — TESTED (repeat a977378 + shuffle f93a6a8).** **M6 Library — TESTED (canonical basic metadata 5fd8ec3).** **LOCAL-01 Canonical Music Model — DONE (ba1532d).** **LOCAL-02 Artwork Pipeline — DONE (9b16504).** **LOCAL-03 Rich Library Views — DONE (e7416ac).** **LOCAL-04 PathView — DONE (635b35b).** **LOCAL-05 Favorites / History — DONE (938191b).** **LOCAL-06 Playlists — DONE (ccdbc85).** NEXT AUTHORIZED WP: **LOCAL-07 — Mix Local**.
+**M11.2A-E persistence recovery — COMPLETE for Required 1.0** (M11.2E validated automatic restore + quarantine TESTED). **TD-013 filesystem degradation — RESOLVED / TESTED.** **TD-016 cancellation-terminal synchronization — RESOLVED / TESTED.** **M4 Queue — TESTED (repeat a977378 + shuffle f93a6a8).** **M6 Library — TESTED (canonical basic metadata 5fd8ec3).** **LOCAL-01 Canonical Music Model — DONE (ba1532d).** **LOCAL-02 Artwork Pipeline — DONE (9b16504).** **LOCAL-03 Rich Library Views — DONE (e7416ac).** **LOCAL-04 PathView — DONE (635b35b).** **LOCAL-05 Favorites / History — DONE (938191b).** **LOCAL-06 Playlists — DONE (ccdbc85).** **LOCAL-STABILIZATION-01 — DONE** (repeat-ONE×shuffle precedence deb5f93; artwork cache port inversion + architecture import guard 0c1b8c3; derived rebuild after structural mutation 1681c04; recently-added merge across rescans e650037; reference-persistence audit a7f8927). NEXT AUTHORIZED WP: **LOCAL-META-02 — Rich Canonical Metadata**.
 
 1. ~~**TD-016 — Queue/Playback cancellation-terminal synchronization**~~ — DONE (216f5a1).
 2. ~~**M4 Repeat**~~ — repeat modes none/one/all — DONE (a977378).
@@ -87,13 +87,19 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 10. ~~**LOCAL-04 PathView**~~ — album carousel (PathView) in the Albums tab, successor of the retired CoverFlow: cached artwork covers, click-to-center + AlbumDetail — DONE (635b35b).
 11. ~~**LOCAL-05 Favorites / History**~~ — persisted track favorites (SQLite library_prefs table, best-effort) + played-track history (queue commits, capped 50, consecutive-dedupe) + Recently Added (per-scan delta, capped 50) + Favorites/History/Recently Added tabs + ★ toggles in Songs/AlbumDetail — DONE (938191b).
 12. ~~**LOCAL-06 Playlists**~~ — persisted user-defined playlists (PlaylistService + SQLite library_prefs "playlists" key): create/delete/rename/add (dedupe)/remove/reorder (▲▼)/play-to-queue + Playlists tab with detail + inline add-to-playlist selector on Songs/AlbumDetail — DONE (ccdbc85).
-13. **LOCAL-07 Mix Local**.
-14. **LOCAL-08 Premium Player UI Completion**.
-15. **M12 Performance** — benchmark and tune scan/startup/memory; CI performance gate; resolves TD-009 (async/incremental scan with progress in LibraryState), TD-004 (markdown link validation), TD-012 (coverage tooling).
-16. **M13 Packaging** — Linux installable artifacts (AppImage/Flatpak/deb), icon suite, desktop integration, CLI entry points. Windows and macOS are Post-1.0 per the canonical contract.
-17. **M14 Beta** — beta channel, opt-in telemetry, feedback loop, triage SLA.
-18. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
-19. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
+13. ~~**LOCAL-STABILIZATION-01**~~ — queue semantics + architecture enforcement + derived-state consistency + recently-added/reference persistence — DONE (deb5f93, 0c1b8c3, 1681c04, e650037, a7f8927).
+14. **LOCAL-META-02 Rich Canonical Metadata** — album_artist, composer, track/disc numbers, date/year, compilation, technical audio properties (codec/container/sample rate/bit depth/channels/bitrate/file size), fallbacks.
+15. **LOCAL-MODEL-02 Canonical Music Model v2** — album_artist grouping (compilations not split), centralized canonical identities, disc/track ordering, timeline derivation, composer support.
+16. **M12A Async Library Pipeline** — scan off the UI thread, scan_status/progress, generation/supersession, atomic commit; resolves TD-009.
+17. **LOCAL-ART-02B Artwork Pipeline v2** — front-cover preference, local cover fallbacks, content-digest cache invalidation.
+18. **LOCAL-LIBRARY-02 Six Canonical Views hardening** — data contracts + QML decomposition (LibraryView split into focused components).
+19. **LOCAL-07 Mix Local**.
+20. **LOCAL-08 Premium Player UI Completion**.
+21. **M12 Performance** — benchmark and tune scan/startup/memory; CI performance gate; resolves TD-009 (async/incremental scan with progress in LibraryState), TD-004 (markdown link validation), TD-012 (coverage tooling).
+22. **M13 Packaging** — Linux installable artifacts (AppImage/Flatpak/deb), icon suite, desktop integration, CLI entry points. Windows and macOS are Post-1.0 per the canonical contract.
+23. **M14 Beta** — beta channel, opt-in telemetry, feedback loop, triage SLA.
+24. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
+25. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
 
 LOCAL-01 through LOCAL-08 are the Local Player Completion work packages: after M6, the local product experience (canonical music model, artwork, albums/artists/genres/folders, PathView, favorites, history, playlists, local mix, final player UI) is developed BEFORE Beta — M6 closure does not jump directly to M12.
 
