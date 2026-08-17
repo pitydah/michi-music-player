@@ -5,7 +5,7 @@ Does NOT own runtime Playback/Queue/Library state.
 """
 
 from michi.application.persistence import SettingsRepository
-from michi.domain.settings import SettingsState
+from michi.domain.settings import SettingsState, WindowGeometry
 
 
 class SettingsService:
@@ -38,3 +38,11 @@ class SettingsService:
 
     def set_recent_files(self, files: list[str]) -> None:
         self.state.recent_files = list(files)
+
+    def set_theme(self, theme: str) -> None:
+        self.state.theme = theme
+        self.save()
+
+    def set_window_geometry(self, geometry: WindowGeometry) -> None:
+        self.state.window_geometry = geometry
+        self.save()

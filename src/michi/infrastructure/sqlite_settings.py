@@ -16,7 +16,12 @@ from michi.domain.persistence_health import (
     PersistenceDiagnostic,
     PersistenceHealth,
 )
-from michi.domain.settings import SettingsState
+from michi.domain.settings import (
+    SettingsState,
+    WindowGeometry,
+    window_geometry_from_json,
+    window_geometry_to_json,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -292,6 +297,31 @@ def _decode_recent_files(raw: object) -> tuple[list[str], bool]:
     return parsed, False
 
 
+def _decode_theme(raw: object) -> tuple[str, bool]:
+    """Decode a persisted theme value into (value, malformed).
+
+    Text is preserved exactly (the theme namespace is open-ended); any
+    non-text row (e.g. an integer or BLOB inserted directly) is malformed
+    and falls back to the domain default ("dark").
+    """
+    if isinstance(raw, str):
+        return raw, False
+    return "dark", True
+
+
+def _decode_window_geometry(raw: object) -> tuple[WindowGeometry, bool]:
+    """Decode a persisted window_geometry value into (geometry, malformed).
+
+    Strict-JSON decode rules (canonical implementation lives in the domain
+    helper so the presentation bridge can share them without importing
+    infrastructure): width/height must be present and positive; x/y may be
+    null or any integer (negative legitimate); maximized must be a boolean
+    when present. Missing keys default (x/y -> None, maximized -> False);
+    any violation falls back to WindowGeometry() with malformed=True.
+    """
+    return window_geometry_from_json(raw)
+
+
 def _migrate_0_to_1(conn: sqlite3.Connection) -> None:
     """Apply the v0 -> v1 migration inside a single transaction.
 
@@ -419,6 +449,11 @@ class SQLiteSettingsRepository(SettingsRepository):
 
     @staticmethod
     def _validate_rows(rows: list[tuple]) -> PersistenceDiagnostic:
+        # M5.C6: theme/window_geometry rows are intentionally NOT validated
+        # here — same additive-safe choice as last_directory/schema_version.
+        # Their malformed-data handling lives in load()'s per-field decoders
+        # (M11.2C field fallback); inspect_path stays HEALTHY for any
+        # string-typed row under those keys.
         for key, value in rows:
             if key == "volume":
                 try:
@@ -847,6 +882,19 @@ class SQLiteSettingsRepository(SettingsRepository):
                     logger.warning(
                         "invalid persisted setting 'recent_files'; using default []"
                     )
+            elif key == "theme":
+                state.theme, malformed = _decode_theme(value)
+                if malformed:
+                    logger.warning(
+                        "invalid persisted setting 'theme'; using default 'dark'"
+                    )
+            elif key == "window_geometry":
+                state.window_geometry, malformed = _decode_window_geometry(value)
+                if malformed:
+                    logger.warning(
+                        "invalid persisted setting 'window_geometry'; "
+                        "using default geometry"
+                    )
         return state
 
     def save(self, state: SettingsState) -> None:
@@ -855,6 +903,8 @@ class SQLiteSettingsRepository(SettingsRepository):
             ("muted", str(state.muted).lower()),
             ("last_directory", state.last_directory),
             ("recent_files", json.dumps(state.recent_files)),
+            ("theme", state.theme),
+            ("window_geometry", window_geometry_to_json(state.window_geometry)),
         ]
         with sqlite3.connect(str(self._db_path)) as conn:
             conn.executemany("INSERT OR REPLACE INTO settings VALUES (?, ?)", rows)

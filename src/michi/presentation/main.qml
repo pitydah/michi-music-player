@@ -21,6 +21,35 @@ ApplicationWindow {
     Shortcut { sequence: "Ctrl+2"; onActivated: navigation.navigate("library") }
     Shortcut { sequence: "Ctrl+3"; onActivated: navigation.navigate("queue") }
 
+    // M5.C6: apply persisted geometry on startup (guard invalid values).
+    Component.onCompleted: {
+        var g = null
+        try {
+            g = JSON.parse(settingsBridge.windowGeometry)
+        } catch (e) {
+            return
+        }
+        if (g === null || typeof g !== "object") return
+        if (typeof g.width !== "number" || g.width <= 0) return
+        if (typeof g.height !== "number" || g.height <= 0) return
+        if (typeof g.x === "number") window.x = g.x
+        if (typeof g.y === "number") window.y = g.y
+        window.width = g.width
+        window.height = g.height
+        if (g.maximized === true) window.visibility = Window.Maximized
+    }
+
+    // M5.C6: capture the current geometry on close.
+    onClosing: function(close) {
+        settingsBridge.set_window_geometry(JSON.stringify({
+            x: window.x,
+            y: window.y,
+            width: window.width,
+            height: window.height,
+            maximized: window.visibility === Window.Maximized
+        }))
+    }
+
     AppShell {
         currentRoute: navigation.currentRoute
         onNavigationRequested: routeId => navigation.navigate(routeId)
