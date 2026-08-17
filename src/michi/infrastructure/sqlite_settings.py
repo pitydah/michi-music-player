@@ -20,6 +20,10 @@ from michi.domain.settings import SettingsState
 
 logger = logging.getLogger(__name__)
 
+# Persisted settings schema version (the settings key/value row
+# `schema_version`). Absent or non-integer rows are treated as version 0.
+CURRENT_SCHEMA_VERSION = 1
+
 # SQLite primary result codes (standard constants from sqlite3 module)
 _SQLITE_BUSY = sqlite3.SQLITE_BUSY
 _SQLITE_LOCKED = sqlite3.SQLITE_LOCKED
@@ -105,6 +109,14 @@ class PersistenceStartupError(RuntimeError):
         self.recovery_diagnostic = recovery_diagnostic
         self.recovery_candidate = recovery_candidate
         self.quarantine_path = quarantine_path
+
+
+class SchemaVersionError(RuntimeError):
+    """The database schema is newer than this build supports (fail closed).
+
+    A newer version is never downgraded, rewritten, or treated as the
+    current version: the caller must refuse to open and surface the error.
+    """
 
 
 def _read_only_uri(db_path: Path) -> str:
@@ -280,6 +292,26 @@ def _decode_recent_files(raw: object) -> tuple[list[str], bool]:
     return parsed, False
 
 
+def _migrate_0_to_1(conn: sqlite3.Connection) -> None:
+    """Apply the v0 -> v1 migration inside a single transaction.
+
+    The caller passes a connection opened in autocommit mode
+    (``isolation_level=None``); this function owns BEGIN/COMMIT/ROLLBACK.
+    On any failure the transaction is rolled back and re-raised — no
+    partial new state is ever authoritative.
+    """
+    conn.execute("BEGIN")
+    try:
+        conn.execute(
+            "INSERT INTO settings(key, value) VALUES('schema_version', '1') "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+        )
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+
+
 class SQLiteSettingsRepository(SettingsRepository):
     """Infrastructure adapter: persists settings to SQLite."""
 
@@ -293,11 +325,50 @@ class SQLiteSettingsRepository(SettingsRepository):
     def __init__(self, db_path: Path) -> None:
         self._db_path = db_path
         self._ensure_schema()
+        self._migrate_schema()
 
     def _ensure_schema(self) -> None:
         with sqlite3.connect(str(self._db_path)) as conn:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.executescript(self._SCHEMA)
+
+    def _migrate_schema(self) -> None:
+        """Version-check and migrate the persisted schema (writable path only).
+
+        READ FIRST, DECIDE SECOND, WRITE ONLY WHEN AUTHORIZED: this runs
+        exclusively in the writable constructor flow — never from the
+        read-only preflight (inspect_path / LKG inspection). Version
+        interpretation: absent or non-integer row -> 0 (malformed is
+        warned and treated as v0, per the M11.2C field fallback
+        philosophy); a version newer than supported fails closed with
+        SchemaVersionError (never downgrade, never rewrite, never pretend
+        it is the current version).
+        """
+        conn = sqlite3.connect(str(self._db_path), isolation_level=None, timeout=0.2)
+        try:
+            row = conn.execute(
+                "SELECT value FROM settings WHERE key = 'schema_version'"
+            ).fetchone()
+            raw = row[0] if row is not None else None
+            if raw is None or not str(raw).isdigit():
+                if raw is not None:
+                    logger.warning(
+                        "Malformed schema_version %r — treating as v0 and migrating",
+                        raw,
+                    )
+                current = 0
+            else:
+                current = int(raw)
+            if current == CURRENT_SCHEMA_VERSION:
+                return
+            if current > CURRENT_SCHEMA_VERSION:
+                raise SchemaVersionError(
+                    f"database schema version {current} is newer than "
+                    f"supported {CURRENT_SCHEMA_VERSION}; refusing to open"
+                )
+            _migrate_0_to_1(conn)
+        finally:
+            conn.close()
 
     @staticmethod
     def inspect_path(db_path: Path) -> PersistenceDiagnostic:
