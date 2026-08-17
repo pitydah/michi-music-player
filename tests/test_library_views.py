@@ -465,6 +465,88 @@ class TestBridgeViews:
         bridge.dispose()
 
 
+class TestDerivedRebuildOnMissingActivation:
+    """LOCAL-STABILIZATION-01.6.4 — TRACK_MISSING activation removal must
+    rebuild the derived projections (albums/artists/genres/folders) from the
+    canonical tracks, exactly like a successful scan does."""
+
+    def test_missing_activation_rebuilds_multi_track_album(self, tmp_path):
+        a = tmp_path / "a.mp3"
+        b = tmp_path / "b.mp3"
+        for p in (a, b):
+            p.write_bytes(b"x")
+
+        def factory(path):
+            return TrackMetadata(
+                title=path.stem,
+                artist="Art",
+                album="Alpha",
+                genre="Rock",
+                duration_ms=1000 if path.stem == "a" else 2000,
+            )
+
+        scanner = _ValidateScanner([a, b])
+        library, *_ = _make_library(scanner, FakeExtractor(factory=factory))
+        library.scan(str(tmp_path))
+        assert len(library.state.albums) == 1
+        assert library.state.albums[0].track_count == 2
+        assert library.state.albums[0].duration_ms == 3000
+        scanner.validate_errors = {
+            a: LibraryFilesystemError(LibraryDiagnosticCode.TRACK_MISSING, a)
+        }
+        library.activate(0)  # visible list = [a, b]; index 0 is a
+        assert [t.file_path for t in library.state.tracks] == [b]
+        assert len(library.state.albums) == 1
+        assert library.state.albums[0].title == "Alpha"
+        assert library.state.albums[0].track_count == 1
+        assert library.state.albums[0].duration_ms == 2000  # sum of b only
+        assert list(library.state.albums[0].track_paths) == [b]
+        assert len(library.state.artists) == 1
+        assert library.state.artists[0].name == "Art"
+        assert library.state.artists[0].track_count == 1
+        assert len(library.state.genres) == 1
+        assert library.state.genres[0].name == "Rock"
+        assert library.state.genres[0].track_count == 1
+        assert len(library.state.folders) == 1
+        assert library.state.folders[0].path == str(tmp_path)
+        assert library.state.folders[0].track_count == 1
+
+    def test_missing_activation_removes_single_track_album(self, tmp_path):
+        a = tmp_path / "a.mp3"
+        b = tmp_path / "b.mp3"
+        for p in (a, b):
+            p.write_bytes(b"x")
+
+        def factory(path):
+            solo = path.stem == "a"
+            return TrackMetadata(
+                title=path.stem,
+                artist="One" if solo else "Two",
+                album="Solo" if solo else "Duo",
+                genre="Jazz" if solo else "Rock",
+                duration_ms=1000,
+            )
+
+        scanner = _ValidateScanner([a, b])
+        library, *_ = _make_library(scanner, FakeExtractor(factory=factory))
+        library.scan(str(tmp_path))
+        assert {al.title for al in library.state.albums} == {"Solo", "Duo"}
+        scanner.validate_errors = {
+            a: LibraryFilesystemError(LibraryDiagnosticCode.TRACK_MISSING, a)
+        }
+        library.activate(0)  # visible list = [a, b]; index 0 is a
+        assert [t.file_path for t in library.state.tracks] == [b]
+        assert [al.title for al in library.state.albums] == ["Duo"]
+        assert library.state.albums[0].track_count == 1
+        assert [ar.name for ar in library.state.artists] == ["Two"]
+        assert library.state.artists[0].track_count == 1
+        assert [g.name for g in library.state.genres] == ["Rock"]
+        assert library.state.genres[0].track_count == 1
+        assert len(library.state.folders) == 1
+        assert library.state.folders[0].path == str(tmp_path)
+        assert library.state.folders[0].track_count == 1
+
+
 @pytest.fixture(scope="module")
 def qapp():
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")

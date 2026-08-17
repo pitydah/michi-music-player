@@ -116,11 +116,7 @@ class LibraryService:
         self._state.tracks = new_tracks
         self._state.query = ""
         self._state.current_directory = directory
-        model = build_music_model(self._state.tracks)
-        self._state.albums = self._enrich_albums(model.albums)
-        self._state.artists = model.artists
-        self._state.genres = model.genres
-        self._state.folders = build_folder_model(self._state.tracks)
+        self._rebuild_derived_library_state()
         if same_dir and removed:
             self._state.diagnostic = LibraryDiagnostic(
                 code=LibraryDiagnosticCode.STALE_ENTRIES_REMOVED,
@@ -182,6 +178,16 @@ class LibraryService:
                     break
             enriched.append(replace(album, has_artwork=has_artwork))
         return tuple(enriched)
+
+    def _rebuild_derived_library_state(self) -> None:
+        """Recompute albums/artists/genres/folders from the canonical tracks
+        and enrich albums with artwork. Called after ANY structural track
+        mutation (successful scan, TRACK_MISSING removal, future mutations)."""
+        model = build_music_model(self._state.tracks)
+        self._state.albums = self._enrich_albums(model.albums)
+        self._state.artists = model.artists
+        self._state.genres = model.genres
+        self._state.folders = build_folder_model(self._state.tracks)
 
     def restore_directory_hint(self, directory: str) -> None:
         """Restore a persisted path as context. No scan. Idempotent."""
@@ -261,6 +267,7 @@ class LibraryService:
         except LibraryFilesystemError as exc:
             if exc.code is LibraryDiagnosticCode.TRACK_MISSING:
                 self._state.tracks = [t for t in self._state.tracks if t is not track]
+                self._rebuild_derived_library_state()
                 self._state.diagnostic = LibraryDiagnostic(
                     code=LibraryDiagnosticCode.TRACK_MISSING,
                     message=_user_message(
