@@ -44,6 +44,12 @@ class LibraryBridge(QObject):
     def _get_has_diagnostic(self) -> bool:
         return self._service.state.diagnostic is not None
 
+    def _get_album_count(self) -> int:
+        return len(self._service.state.albums)
+
+    def _get_artist_count(self) -> int:
+        return len(self._service.state.artists)
+
     files = Property(list, _get_files, notify=library_changed)
     fileCount = Property(int, _get_count, notify=library_changed)
     currentDir = Property(str, _get_current_dir, notify=library_changed)
@@ -51,6 +57,8 @@ class LibraryBridge(QObject):
     diagnosticCode = Property(str, _get_diagnostic_code, notify=library_changed)
     diagnosticMessage = Property(str, _get_diagnostic_message, notify=library_changed)
     hasDiagnostic = Property(bool, _get_has_diagnostic, notify=library_changed)
+    albumCount = Property(int, _get_album_count, notify=library_changed)
+    artistCount = Property(int, _get_artist_count, notify=library_changed)
 
     @Slot(str)
     def scan(self, directory: str) -> None:

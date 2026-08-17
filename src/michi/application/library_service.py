@@ -19,6 +19,7 @@ from michi.domain.library import (
     LibraryState,
     TrackMetadata,
     TrackRef,
+    build_music_model,
 )
 
 logger = logging.getLogger(__name__)
@@ -92,6 +93,9 @@ class LibraryService:
         self._state.tracks = new_tracks
         self._state.query = ""
         self._state.current_directory = directory
+        model = build_music_model(self._state.tracks)
+        self._state.albums = model.albums
+        self._state.artists = model.artists
         if same_dir and removed:
             self._state.diagnostic = LibraryDiagnostic(
                 code=LibraryDiagnosticCode.STALE_ENTRIES_REMOVED,
