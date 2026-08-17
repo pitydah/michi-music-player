@@ -13,6 +13,7 @@ from michi.application.library_preferences_coordinator import (
 )
 from michi.application.library_service import LibraryService
 from michi.application.navigation_service import NavigationService
+from michi.application.persistence_coordinator import PersistenceCoordinator
 from michi.application.playback_service import PlaybackService
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
@@ -20,6 +21,7 @@ from michi.infrastructure.artwork import ArtworkCache, MutagenArtworkProvider
 from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
 from michi.infrastructure.metadata_extractor import InfrastructureMetadataExtractor
 from michi.infrastructure.qt_backend import QtMultimediaBackend
+from michi.infrastructure.session_repository import SqliteSessionRepository
 from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
 from michi.presentation.library_bridge import LibraryBridge
 from michi.presentation.navigation_bridge import NavigationBridge
@@ -49,6 +51,7 @@ class ApplicationContainer:
         self._library_prefs: LibraryPreferencesCoordinator | None = None
         self._navigation: NavigationService | None = None
         self._coordinator: PlaybackCoordinator | None = None
+        self._persistence: PersistenceCoordinator | None = None
         self._pb: PlaybackBridge | None = None
         self._qb: QueueBridge | None = None
         self._lb: LibraryBridge | None = None
@@ -91,6 +94,15 @@ class ApplicationContainer:
         coordinator = PlaybackCoordinator(backend, queue, playback)
         coordinator.start()
 
+        # Session persistence (M5.C5): runtime checkpoints + startup restore.
+        # Shares the settings database; restores the queue and, when the
+        # queue current identity matches the persisted playback identity,
+        # prepares a non-autoplay resume — before the UI is shown, never
+        # blocking autoplay.
+        session_repo = SqliteSessionRepository(db_path)
+        persistence = PersistenceCoordinator(session_repo, queue, playback, settings)
+        persistence.restore()
+
         pb = PlaybackBridge(playback)
         qb = QueueBridge(queue)
         lb = LibraryBridge(library)
@@ -114,6 +126,7 @@ class ApplicationContainer:
         self._library_prefs = lib_prefs
         self._navigation = navigation
         self._coordinator = coordinator
+        self._persistence = persistence
         self._pb = pb
         self._qb = qb
         self._lb = lb
@@ -175,6 +188,12 @@ class ApplicationContainer:
         except Exception as exc:
             error = error or exc
 
+        try:
+            if self._persistence:
+                self._persistence.shutdown()
+        except Exception as exc:
+            error = error or exc
+
         self._engine = None
         self._lb = None
         self._qb = None
@@ -182,6 +201,7 @@ class ApplicationContainer:
         self._nb = None
         self._sb = None
         self._coordinator = None
+        self._persistence = None
         self._library_prefs = None
         self._navigation = None
         self._library = None
