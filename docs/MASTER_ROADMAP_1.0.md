@@ -83,7 +83,7 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 6. ~~**M6 Library → TESTED closeout**~~ — DONE (460-pass suite).
 7. ~~**LOCAL-01 Canonical Music Model**~~ — derived album/artist model (AlbumRef/ArtistRef/MusicModel, canonical normalized keys, LibraryState.albums/artists rebuilt per successful scan, bridge counts) — DONE (ba1532d).
 8. ~~**LOCAL-02 Artwork Pipeline**~~ — embedded artwork extraction (APIC/PICTURE via Mutagen) + deterministic per-album-key disk cache + AlbumRef.has_artwork — DONE (9b16504).
-9. ~~**LOCAL-03 Rich Library Views**~~ — Songs/Albums/Artists/Genres/Folders tabs + Album Detail (artwork, track list, activation) using the canonical model; genre extraction added to the metadata pipeline — DONE (e7416ac).
+9. ~~**LOCAL-03 Rich Library Views**~~ — Songs/Albums/Artists/Genres/Folders tabs + Album Detail (artwork, track list, activation) using the canonical model; genre extraction added to the metadata pipeline — DONE (e7416ac). Album view modes added: Grid / Cover (PathView) / Vinyl Wall / Timeline (year-decade sections) / Magazine / List with year metadata (a60d4c6).
 10. ~~**LOCAL-04 PathView**~~ — album carousel (PathView) in the Albums tab, successor of the retired CoverFlow: cached artwork covers, click-to-center + AlbumDetail — DONE (635b35b).
 11. ~~**LOCAL-05 Favorites / History**~~ — persisted track favorites (SQLite library_prefs table, best-effort) + played-track history (queue commits, capped 50, consecutive-dedupe) + Recently Added (per-scan delta, capped 50) + Favorites/History/Recently Added tabs + ★ toggles in Songs/AlbumDetail — DONE (938191b).
 12. **LOCAL-06 Playlists**.
