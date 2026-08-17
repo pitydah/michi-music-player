@@ -7,6 +7,7 @@ from pathlib import Path
 from michi.domain.library import Artwork, LibraryPrefs, TrackMetadata
 from michi.domain.playback import PlaybackStatus
 from michi.domain.playlist import Playlist
+from michi.domain.session import PlaybackSessionSnapshot
 
 
 class MetadataExtractionError(RuntimeError):
@@ -138,3 +139,18 @@ class AudioPort(ABC):
     def unsubscribe_playback_state_changed(
         self, callback: Callable[[PlaybackStatus], None]
     ) -> None: ...
+
+
+class SessionRepository(ABC):
+    """Playback session snapshot persistence (best effort; load never raises).
+
+    A malformed or unreadable persisted snapshot degrades to a fresh
+    snapshot (safe read fallback) — load() never raises and never
+    overwrites the malformed original data.
+    """
+
+    @abstractmethod
+    def load(self) -> PlaybackSessionSnapshot: ...
+
+    @abstractmethod
+    def save(self, snapshot: PlaybackSessionSnapshot) -> None: ...
