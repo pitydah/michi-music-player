@@ -157,6 +157,7 @@ class LibraryService:
             album=meta.album,
             duration_ms=meta.duration_ms,
             genre=meta.genre,
+            year=meta.year,
         )
 
     def _enrich_albums(self, albums: tuple[AlbumRef, ...]) -> tuple[AlbumRef, ...]:

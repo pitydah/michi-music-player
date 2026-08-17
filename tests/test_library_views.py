@@ -269,6 +269,7 @@ class TestBridgeViews:
                 "durationMs",
                 "hasArtwork",
                 "artworkPath",
+                "year",
             }
             assert row["hasArtwork"] is True
             assert row["artworkPath"] == str(cache.paths[row["key"]])
@@ -509,9 +510,9 @@ class TestQmlSmoke:
         assert component.status() == QQmlComponent.Ready, f"LibraryView: {errs}"
         obj = component.create()
         assert obj is not None, "LibraryView: null object"
-        path_view = obj.findChild(QQuickPathView, "albumsPathView")
+        path_view = obj.findChild(QQuickPathView, "albumCoverView")
         assert path_view is not None, (
-            "albumsPathView not found — albums tab is not a PathView carousel"
+            "albumCoverView not found — albums tab is not a PathView carousel"
         )
         assert obj.findChild(QQuickListView, "albumsList") is None, (
             "albumsList still present — the carousel must REPLACE the list"
@@ -541,8 +542,8 @@ class TestQmlSmoke:
         )
         obj = component.create()
         assert obj is not None, "LibraryView: null object"
-        path_view = obj.findChild(QQuickPathView, "albumsPathView")
-        assert path_view is not None, "albumsPathView not found"
+        path_view = obj.findChild(QQuickPathView, "albumCoverView")
+        assert path_view is not None, "albumCoverView not found"
         assert path_view.property("model") is not None, (
             "PathView model not wired to library.albums"
         )

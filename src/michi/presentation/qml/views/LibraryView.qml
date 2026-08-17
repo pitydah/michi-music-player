@@ -6,6 +6,8 @@ import "../ui"
 MichiPanel {
 
     property string currentTab: "songs"
+    property string albumMode: "grid"
+    readonly property var heroAlbum: library.albums.length > 0 ? library.albums[0] : null
 
     function formatDuration(ms) {
         if (ms <= 0)
@@ -160,6 +162,84 @@ MichiPanel {
             }
         }
 
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: MichiTheme.space12
+            visible: currentTab === "albums" && library.selectedAlbumKey === ""
+
+            Text {
+                text: "Grid"
+                font.pixelSize: MichiTheme.fontSizeCaption
+                font.weight: albumMode === "grid" ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
+                color: albumMode === "grid" ? MichiTheme.warning : MichiTheme.textSecondary
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: albumMode = "grid"
+                }
+            }
+
+            Text {
+                text: "Cover"
+                font.pixelSize: MichiTheme.fontSizeCaption
+                font.weight: albumMode === "cover" ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
+                color: albumMode === "cover" ? MichiTheme.warning : MichiTheme.textSecondary
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: albumMode = "cover"
+                }
+            }
+
+            Text {
+                text: "Vinyl"
+                font.pixelSize: MichiTheme.fontSizeCaption
+                font.weight: albumMode === "vinyl" ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
+                color: albumMode === "vinyl" ? MichiTheme.warning : MichiTheme.textSecondary
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: albumMode = "vinyl"
+                }
+            }
+
+            Text {
+                text: "Timeline"
+                font.pixelSize: MichiTheme.fontSizeCaption
+                font.weight: albumMode === "timeline" ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
+                color: albumMode === "timeline" ? MichiTheme.warning : MichiTheme.textSecondary
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: albumMode = "timeline"
+                }
+            }
+
+            Text {
+                text: "Magazine"
+                font.pixelSize: MichiTheme.fontSizeCaption
+                font.weight: albumMode === "magazine" ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
+                color: albumMode === "magazine" ? MichiTheme.warning : MichiTheme.textSecondary
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: albumMode = "magazine"
+                }
+            }
+
+            Text {
+                text: "List"
+                font.pixelSize: MichiTheme.fontSizeCaption
+                font.weight: albumMode === "list" ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
+                color: albumMode === "list" ? MichiTheme.warning : MichiTheme.textSecondary
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: albumMode = "list"
+                }
+            }
+        }
+
         ColumnLayout {
             visible: library.selectedAlbumKey !== ""
             Layout.fillWidth: true
@@ -310,10 +390,10 @@ MichiPanel {
 
         PathView {
             id: albumsPath
-            objectName: "albumsPathView"
+            objectName: "albumCoverView"
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: currentTab === "albums" && library.selectedAlbumKey === ""
+            visible: currentTab === "albums" && library.selectedAlbumKey === "" && albumMode === "cover"
             model: library.albums
             clip: true
             pathItemCount: 3
@@ -367,6 +447,331 @@ MichiPanel {
                 scale: PathView.isCurrentItem ? 1.0 : 0.85
                 z: PathView.isCurrentItem ? 2 : 1
                 opacity: PathView.isCurrentItem ? 1.0 : 0.6
+            }
+        }
+
+        GridView {
+            id: albumGrid
+            objectName: "albumGridView"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: currentTab === "albums" && library.selectedAlbumKey === "" && albumMode === "grid"
+            model: library.albums
+            cellWidth: 150
+            cellHeight: 190
+            clip: true
+            delegate: Item {
+                width: 150
+                height: 190
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: MichiTheme.radiusSmall
+                    color: MichiTheme.surfaceHover
+                    visible: !modelData.hasArtwork
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: modelData.title.length > 0 ? modelData.title.charAt(0).toUpperCase() : "?"
+                        font.pixelSize: MichiTheme.fontSizeTitle
+                        font.weight: MichiTheme.fontWeightBold
+                        color: MichiTheme.textSecondary
+                    }
+                }
+
+                Image {
+                    anchors.fill: parent
+                    anchors.margins: 6
+                    source: modelData.hasArtwork ? "file://" + modelData.artworkPath : ""
+                    visible: modelData.hasArtwork
+                    fillMode: Image.PreserveAspectFit
+                }
+
+                Text {
+                    anchors.bottom: parent.bottom
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.margins: 6
+                    text: modelData.title
+                    font.pixelSize: MichiTheme.fontSizeCaption
+                    color: MichiTheme.textPrimary
+                    elide: Text.ElideRight
+                    horizontalAlignment: Text.AlignHCenter
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: library.select_album(modelData.key)
+                }
+            }
+        }
+
+        GridView {
+            id: albumVinyl
+            objectName: "albumVinylView"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: currentTab === "albums" && library.selectedAlbumKey === "" && albumMode === "vinyl"
+            model: library.albums
+            cellWidth: 140
+            cellHeight: 170
+            clip: true
+            delegate: Item {
+                width: 140
+                height: 170
+
+                Rectangle {
+                    id: vinylDisc
+                    width: 100
+                    height: 100
+                    radius: 50
+                    color: MichiTheme.surfaceSelected
+                    border.width: 1
+                    border.color: MichiTheme.borderSubtle
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+
+                    RotationAnimation on rotation {
+                        from: 0
+                        to: 360
+                        duration: 9000
+                        loops: Animation.Infinite
+                        running: true
+                    }
+
+                    Rectangle {
+                        width: 56
+                        height: 56
+                        radius: 28
+                        color: MichiTheme.surfaceHover
+                        clip: true
+                        anchors.centerIn: parent
+
+                        Image {
+                            anchors.fill: parent
+                            source: modelData.hasArtwork ? "file://" + modelData.artworkPath : ""
+                            visible: modelData.hasArtwork
+                            fillMode: Image.PreserveAspectFit
+                        }
+                    }
+                }
+
+                Text {
+                    anchors.top: vinylDisc.bottom
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.leftMargin: 6
+                    anchors.rightMargin: 6
+                    anchors.topMargin: MichiTheme.space8
+                    text: modelData.title
+                    font.pixelSize: MichiTheme.fontSizeCaption
+                    color: MichiTheme.textSecondary
+                    elide: Text.ElideRight
+                    horizontalAlignment: Text.AlignHCenter
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: library.select_album(modelData.key)
+                }
+            }
+        }
+
+        ListView {
+            id: albumTimeline
+            objectName: "albumTimelineView"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: currentTab === "albums" && library.selectedAlbumKey === "" && albumMode === "timeline"
+            model: library.timelineAlbums
+            clip: true
+            section.property: "decade"
+            section.criteria: ViewSection.FullString
+            section.delegate: Text {
+                width: albumTimeline.width
+                height: MichiTheme.controlHeightSmall
+                verticalAlignment: Text.AlignVCenter
+                text: section
+                font.pixelSize: MichiTheme.fontSizeCaption
+                font.weight: MichiTheme.fontWeightBold
+                color: MichiTheme.warning
+                padding: MichiTheme.space8
+            }
+            delegate: RowLayout {
+                width: albumTimeline.width
+                height: MichiTheme.controlHeightSmall
+                spacing: MichiTheme.space8
+
+                Image {
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
+                    source: modelData.hasArtwork ? "file://" + modelData.artworkPath : ""
+                    visible: modelData.hasArtwork
+                    fillMode: Image.PreserveAspectFit
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    text: modelData.title
+                    font.pixelSize: MichiTheme.fontSizeCaption
+                    color: MichiTheme.textPrimary
+                    elide: Text.ElideRight
+                }
+
+                Text {
+                    text: modelData.year > 0 ? "" + modelData.year : "Unknown"
+                    font.pixelSize: MichiTheme.fontSizeCaption
+                    color: MichiTheme.textSecondary
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: library.select_album(modelData.key)
+                }
+            }
+        }
+
+        ColumnLayout {
+            id: albumMagazine
+            objectName: "albumMagazineView"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: currentTab === "albums" && library.selectedAlbumKey === "" && albumMode === "magazine"
+            spacing: MichiTheme.space8
+
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 160
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (heroAlbum !== null)
+                            library.select_album(heroAlbum.key)
+                    }
+                }
+
+                Image {
+                    anchors.fill: parent
+                    source: heroAlbum !== null && heroAlbum.hasArtwork ? "file://" + heroAlbum.artworkPath : ""
+                    visible: heroAlbum !== null && heroAlbum.hasArtwork
+                    fillMode: Image.PreserveAspectFit
+                }
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: heroAlbum !== null ? heroAlbum.title : ""
+                font.pixelSize: MichiTheme.fontSizeTitle
+                font.weight: MichiTheme.fontWeightBold
+                color: MichiTheme.textPrimary
+                elide: Text.ElideRight
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: heroAlbum !== null ? heroAlbum.artist + " · " + heroAlbum.trackCount + " tracks" : ""
+                font.pixelSize: MichiTheme.fontSizeBody
+                color: MichiTheme.textSecondary
+                elide: Text.ElideRight
+            }
+
+            ListView {
+                id: magazineRows
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                model: library.albums
+                clip: true
+                spacing: MichiTheme.space8
+                delegate: RowLayout {
+                    visible: index > 0
+                    width: magazineRows.width
+                    height: MichiTheme.controlHeightSmall
+                    spacing: MichiTheme.space8
+
+                    Image {
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                        source: modelData.hasArtwork ? "file://" + modelData.artworkPath : ""
+                        visible: modelData.hasArtwork
+                        fillMode: Image.PreserveAspectFit
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: modelData.title
+                        font.pixelSize: MichiTheme.fontSizeCaption
+                        color: MichiTheme.textPrimary
+                        elide: Text.ElideRight
+                    }
+
+                    Text {
+                        text: modelData.year > 0 ? "" + modelData.year : "Unknown"
+                        font.pixelSize: MichiTheme.fontSizeCaption
+                        color: MichiTheme.textSecondary
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: library.select_album(modelData.key)
+                    }
+                }
+            }
+        }
+
+        ListView {
+            id: albumList
+            objectName: "albumListView"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: currentTab === "albums" && library.selectedAlbumKey === "" && albumMode === "list"
+            model: library.albums
+            clip: true
+            spacing: MichiTheme.space8
+            delegate: RowLayout {
+                width: albumList.width
+                height: MichiTheme.controlHeightSmall
+                spacing: MichiTheme.space8
+
+                Image {
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
+                    source: modelData.hasArtwork ? "file://" + modelData.artworkPath : ""
+                    visible: modelData.hasArtwork
+                    fillMode: Image.PreserveAspectFit
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    text: modelData.title
+                    font.pixelSize: MichiTheme.fontSizeCaption
+                    color: MichiTheme.textPrimary
+                    elide: Text.ElideRight
+                }
+
+                Text {
+                    text: modelData.artist
+                    font.pixelSize: MichiTheme.fontSizeCaption
+                    color: MichiTheme.textSecondary
+                    elide: Text.ElideRight
+                }
+
+                Text {
+                    text: modelData.trackCount + " tracks"
+                    font.pixelSize: MichiTheme.fontSizeCaption
+                    color: MichiTheme.textSecondary
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: library.select_album(modelData.key)
+                }
             }
         }
 

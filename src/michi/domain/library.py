@@ -17,6 +17,7 @@ class TrackMetadata:
     album: str = ""
     duration_ms: int = 0
     genre: str = ""
+    year: int = 0
 
 
 @dataclass(frozen=True)
@@ -28,6 +29,7 @@ class TrackRef:
     album: str = ""
     duration_ms: int = 0
     genre: str = ""
+    year: int = 0
 
     def __post_init__(self) -> None:
         if not self.display_name:
@@ -76,6 +78,7 @@ class AlbumRef:
     duration_ms: int
     track_paths: tuple[Path, ...] = ()
     has_artwork: bool = False
+    year: int = 0
 
 
 @dataclass(frozen=True)
@@ -153,6 +156,7 @@ def build_music_model(tracks) -> MusicModel:
                 "paths": [],
             }
             album_entries[album_key] = album
+        album.setdefault("year", track.year)  # first member wins
         album["duration_ms"] += track.duration_ms
         album["paths"].append(track.file_path)
 
@@ -182,6 +186,7 @@ def build_music_model(tracks) -> MusicModel:
                     track_count=len(entry["paths"]),
                     duration_ms=entry["duration_ms"],
                     track_paths=tuple(entry["paths"]),
+                    year=entry["year"],
                 )
                 for key, entry in album_entries.items()
             ),

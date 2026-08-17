@@ -68,6 +68,24 @@ class LibraryBridge(QObject):
                     "durationMs": album.duration_ms,
                     "hasArtwork": album.has_artwork,
                     "artworkPath": self._service.artwork_path_for(album.key) or "",
+                    "year": album.year,
+                }
+            )
+        return rows
+
+    def _get_timeline_albums(self) -> list[dict]:
+        rows = []
+        for album in sorted(self._service.state.albums, key=lambda a: (-a.year, a.key)):
+            decade = f"{album.year // 10 * 10}s" if album.year > 0 else "Unknown era"
+            rows.append(
+                {
+                    "key": album.key,
+                    "title": album.title,
+                    "artist": album.artist,
+                    "year": album.year,
+                    "decade": decade,
+                    "hasArtwork": album.has_artwork,
+                    "artworkPath": self._service.artwork_path_for(album.key) or "",
                 }
             )
         return rows
@@ -172,6 +190,7 @@ class LibraryBridge(QObject):
     albumCount = Property(int, _get_album_count, notify=library_changed)
     artistCount = Property(int, _get_artist_count, notify=library_changed)
     albums = Property(list, _get_albums, notify=library_changed)
+    timelineAlbums = Property(list, _get_timeline_albums, notify=library_changed)
     artists = Property(list, _get_artists, notify=library_changed)
     genres = Property(list, _get_genres, notify=library_changed)
     folders = Property(list, _get_folders, notify=library_changed)

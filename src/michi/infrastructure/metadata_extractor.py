@@ -42,6 +42,7 @@ class InfrastructureMetadataExtractor(MetadataExtractorPort):
         artist = self._first(tags, "artist") if tags is not None else ""
         album = self._first(tags, "album") if tags is not None else ""
         genre = self._first(tags, "genre") if tags is not None else ""
+        year = self._parse_year(self._first(tags, "date") if tags is not None else "")
         duration_ms = int(audio.info.length * 1000) if audio.info is not None else 0
         return TrackMetadata(
             title=title or file_path.stem,
@@ -49,6 +50,7 @@ class InfrastructureMetadataExtractor(MetadataExtractorPort):
             album=album or "",
             duration_ms=duration_ms,
             genre=genre,
+            year=year,
         )
 
     @staticmethod
@@ -57,6 +59,14 @@ class InfrastructureMetadataExtractor(MetadataExtractorPort):
         if isinstance(value, list):
             return str(value[0]) if value else ""
         return str(value) if value is not None else ""
+
+    @staticmethod
+    def _parse_year(raw: str) -> int:
+        digits = "".join(ch for ch in raw if ch.isdigit())[:4]
+        try:
+            return int(digits) if len(digits) == 4 else 0
+        except ValueError:
+            return 0
 
     @staticmethod
     def _fallback(file_path: Path, duration_ms: int = 0) -> TrackMetadata:
