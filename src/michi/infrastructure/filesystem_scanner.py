@@ -71,3 +71,13 @@ class FilesystemLibraryScanner(LibraryScannerPort):
             self._raise_fs_error(_classify_os_error(exc, root=False), path, str(exc))
         if not stat.S_ISREG(st.st_mode):
             self._raise_fs_error(LibraryDiagnosticCode.TRACK_MISSING, path)
+
+    def fingerprint(self, path: Path) -> tuple[int, int]:
+        """Filesystem fingerprint (size, mtime_ns) — incremental scans."""
+        try:
+            st = path.stat()
+        except FileNotFoundError:
+            self._raise_fs_error(LibraryDiagnosticCode.TRACK_MISSING, path)
+        except OSError as exc:
+            self._raise_fs_error(_classify_os_error(exc, root=False), path, str(exc))
+        return (st.st_size, st.st_mtime_ns)

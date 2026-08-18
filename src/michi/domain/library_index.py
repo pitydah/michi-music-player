@@ -5,6 +5,7 @@ FILESYSTEM is the truth about physical existence; the index never is.
 """
 
 import json
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 
 from michi.domain.library import TrackMetadata
@@ -68,3 +69,45 @@ def decode_index_metadata(raw: str) -> TrackMetadata | None:
     if set(kwargs) != set(TrackMetadata.__dataclass_fields__):
         return None  # missing field(s)
     return TrackMetadata(**kwargs)
+
+
+@dataclass(frozen=True)
+class ScanClassification:
+    """Pure scan-delta classification (M6.3)."""
+
+    added: tuple[str, ...] = ()
+    modified: tuple[str, ...] = ()
+    removed: tuple[str, ...] = ()
+    unchanged: tuple[str, ...] = ()
+
+
+def classify_scan(
+    known_entries: Mapping[str, LibraryIndexEntry],
+    discovered: Sequence[tuple[str, int, int]],
+) -> ScanClassification:
+    """Classify a discovery pass against the known index (M6.3, pure).
+
+    discovered items are (track_id, file_size, mtime_ns). A path absent from
+    the known index is ADDED; a path with an identical fingerprint is
+    UNCHANGED; a path with a different fingerprint is MODIFIED; a known
+    track_id not discovered is REMOVED. added/unchanged/modified follow the
+    discovered order; removed is sorted by track_id."""
+    known = dict(known_entries)
+    added: list[str] = []
+    modified: list[str] = []
+    unchanged: list[str] = []
+    for track_id, file_size, mtime_ns in discovered:
+        entry = known.pop(track_id, None)
+        if entry is None:
+            added.append(track_id)
+        elif entry.file_size == file_size and entry.mtime_ns == mtime_ns:
+            unchanged.append(track_id)
+        else:
+            modified.append(track_id)
+    removed = sorted(known)
+    return ScanClassification(
+        added=tuple(added),
+        modified=tuple(modified),
+        removed=tuple(removed),
+        unchanged=tuple(unchanged),
+    )

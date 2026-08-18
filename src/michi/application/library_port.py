@@ -29,5 +29,10 @@ class LibraryScannerPort(ABC):
     def scan(self, root: Path) -> list[Path]: ...
 
     @abstractmethod
+    def fingerprint(self, path: Path) -> tuple[int, int]:
+        """Filesystem fingerprint (file_size, mtime_ns) for incremental
+        scans; raises LibraryFilesystemError on failure (typed)."""
+
+    @abstractmethod
     def validate_file(self, path: Path) -> None:
         """Raise LibraryFilesystemError when ``path`` is not a playable file."""
