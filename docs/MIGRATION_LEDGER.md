@@ -60,6 +60,10 @@ Audit reference: Legacy commit `63914a00f381104299fa50147220e05c04d5ad7e` (Legac
 | ML-113 | Legacy governance documentation                                                 | Legacy tree contains ARCHITECTURE.md, BACKLOG.md, KNOWN_ISSUES.md, and other docs                                                                                      | DISCARD (content); evidence-only               | Current governance derives from the clean-rebuild SDD baseline, not from Legacy docs; Legacy docs are read-only evidence                                                                                                                  |
 | ML-114 | CoverFlow album-art browsing UI                                                 | Legacy tree cover-flow views (Legacy evidence at freeze)                                                                                                               | RETIRED (product decision — DO NOT implement, restore, or port) | Successor: PathView — ACTIVE PRODUCT CAPABILITY, pre-Stable local album experience (LOCAL-04); recorded in MASTER_ROADMAP_1.0.md Product Scope                                                                                             |
 
+## Governance Event — M6 Original Contract Reconciliation (2026-08-18)
+
+M6 ORIGINAL CONTRACT (2026-08-18): the LOCAL-MODEL-02 / M12A / LOCAL-ART-02B / LOCAL-LIBRARY-02 execution tracks are SUPERSEDED and absorbed into the M6.0-M6.8 sequence (docs/M6_LIBRARY_MASTER_PLAN.md). The prior mega-WP is SUPERSEDED AS EXECUTION PLAN and remains a REQUIREMENTS SOURCE.
+
 ## Rules
 
 - Rows above are the complete set of prior-material decisions for the clean rebuild. New prior material discovered later is admitted here first, with its evidence class, before any new-contract effect.
