@@ -36,6 +36,11 @@ class ArtworkProviderPort(ABC):
     @abstractmethod
     def get_embedded_artwork(self, file_path: Path) -> Artwork | None: ...
 
+    @abstractmethod
+    def get_local_artwork(self, album_dir: Path) -> Artwork | None:
+        """Deterministic local fallback in the album directory (M6.5):
+        cover.* / folder.* / front.* — unreadable entries skipped."""
+
 
 class ArtworkCachePort(ABC):
     """Artwork cache boundary (best effort; infrastructure owns the disk)."""

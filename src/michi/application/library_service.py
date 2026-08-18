@@ -395,25 +395,36 @@ class LibraryService:
         )
 
     def _enrich_albums(self, albums: tuple[AlbumRef, ...]) -> tuple[AlbumRef, ...]:
-        """Mark albums with artwork: first track whose embedded art is both
-        readable (provider) and cacheable (cache.store) wins.
+        """Mark albums with artwork (M6.5 resolution order, per album):
+        1. embedded (front-preferred) from the album's tracks in order
+           (first readable artwork wins);
+        2. if none AND the album has tracks -> local artwork from the
+           first track's parent directory;
+        3. none -> has_artwork stays False.
 
-        Without a provider or cache the albums are returned unchanged, i.e.
-        has_artwork stays False (artwork absence is never an error)."""
+        The cache store + _artwork_paths recording happen exactly once,
+        for whichever source resolved first. Without a provider or cache
+        the albums are returned unchanged, i.e. has_artwork stays False
+        (artwork absence is never an error)."""
         if self._artwork_provider is None or self._artwork_cache is None:
             return albums
         enriched = []
         for album in albums:
-            has_artwork = False
+            artwork = None
             for track_path in album.track_paths:
                 artwork = self._artwork_provider.get_embedded_artwork(track_path)
-                if artwork is None:
-                    continue
+                if artwork is not None:
+                    break
+            if artwork is None and album.track_paths:
+                artwork = self._artwork_provider.get_local_artwork(
+                    album.track_paths[0].parent
+                )
+            has_artwork = False
+            if artwork is not None:
                 stored_path = self._artwork_cache.store(album.key, artwork)
                 if stored_path is not None:
                     self._artwork_paths[album.key] = stored_path
                     has_artwork = True
-                    break
             enriched.append(replace(album, has_artwork=has_artwork))
         return tuple(enriched)
 

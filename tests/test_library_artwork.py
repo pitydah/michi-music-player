@@ -41,18 +41,27 @@ from tests.test_metadata_extractor import _build_media
 # size/mime matter to the pipeline.
 PNG_1x1 = b"\x89PNG\r\n\x1a\n" + b"\x00" * 20
 JPEG_BYTES = b"\xff\xd8\xff\xe0" + b"\x00" * 16
+# A second PNG payload — same mime, DIFFERENT content (M6.5: the cache key
+# must be content-digest-aware, so mime alone must not keep the same path).
+PNG_1x1_ALT = b"\x89PNG\r\n\x1a\n" + b"\xff" * 20
 
 
 class FakeArtworkProvider:
     """Duck-typed provider: canned artwork (or None) for every path."""
 
-    def __init__(self, artwork=None):
+    def __init__(self, artwork=None, local_artwork=None):
         self.artwork = artwork
+        self.local_artwork = local_artwork
         self.calls = []
+        self.local_calls = []
 
     def get_embedded_artwork(self, file_path):
         self.calls.append(file_path)
         return self.artwork
+
+    def get_local_artwork(self, album_dir):
+        self.local_calls.append(album_dir)
+        return self.local_artwork
 
 
 class FakeArtworkCache:
@@ -162,7 +171,14 @@ class TestArtworkCache:
         first = cache.store(key, artwork)
         assert first is not None
         assert first.exists()
-        digest = hashlib.sha256(key.encode()).hexdigest()[:16]
+        # M6.5: the cache key is content-digest-aware — sha256(album_key +
+        # sha256(data))[:16] — so the v1 album-key-only derivation no longer
+        # matches the produced filename. The digest participates in the key
+        # so CHANGED artwork yields a NEW entry (active on rescan) while
+        # unchanged content keeps the same path (see TestCacheDigestInvalidation
+        # for the authoritative M6.5 contract).
+        content_digest = hashlib.sha256(PNG_1x1).hexdigest()
+        digest = hashlib.sha256((key + content_digest).encode()).hexdigest()[:16]
         assert first.name == f"{digest}.png"
         assert first.read_bytes() == PNG_1x1
         # Idempotent: same key -> same path, content untouched (no rewrite).
@@ -274,3 +290,287 @@ class TestLibraryArtworkScan:
         keys_second = [key for key, _ in cache.stores]
         assert keys_first == keys_second
         assert list(cache.paths.values()) == paths_first
+
+
+class TestFrontCoverPreference:
+    """M6.5 — embedded selection must prefer the FRONT COVER designation
+    (APIC/Picture type 3) over the first frame, and fall back to the first
+    image only when NO front-cover designation exists."""
+
+    def test_embedded_front_wins_when_not_first(self, tmp_path):
+        path = _build_media(tmp_path, "mp3")
+        audio = MP3(str(path))
+        audio.add_tags()
+        back = APIC(encoding=3, mime="image/jpeg", type=4, desc="back", data=JPEG_BYTES)
+        front = APIC(encoding=3, mime="image/png", type=3, desc="front", data=PNG_1x1)
+        audio.tags.add(back)  # BACK tagged FIRST
+        audio.tags.add(front)  # FRONT second — must win
+        audio.save()
+        artwork = MutagenArtworkProvider().get_embedded_artwork(path)
+        assert artwork is not None
+        assert artwork.data == PNG_1x1
+        assert artwork.mime_type == "image/png"
+
+    def test_embedded_flac_front_picture_preferred(self, tmp_path):
+        path = _build_media(tmp_path, "flac")
+        audio = FLAC(str(path))
+        back = Picture()
+        back.type = 4
+        back.mime = "image/jpeg"
+        back.data = JPEG_BYTES
+        front = Picture()
+        front.type = 3
+        front.mime = "image/png"
+        front.data = PNG_1x1
+        audio.add_picture(back)  # BACK first
+        audio.add_picture(front)  # FRONT second — must win
+        audio.save()
+        artwork = MutagenArtworkProvider().get_embedded_artwork(path)
+        assert artwork is not None
+        assert artwork.data == PNG_1x1
+        assert artwork.mime_type == "image/png"
+
+    def test_embedded_no_front_designation_uses_first(self, tmp_path):
+        path = _build_media(tmp_path, "mp3")
+        audio = MP3(str(path))
+        audio.add_tags()
+        first = APIC(
+            encoding=3, mime="image/jpeg", type=4, desc="back", data=JPEG_BYTES
+        )
+        second = APIC(encoding=3, mime="image/png", type=6, desc="media", data=PNG_1x1)
+        audio.tags.add(first)
+        audio.tags.add(second)
+        audio.save()
+        artwork = MutagenArtworkProvider().get_embedded_artwork(path)
+        assert artwork is not None
+        assert artwork.data == JPEG_BYTES  # no front cover -> the FIRST frame
+        assert artwork.mime_type == "image/jpeg"
+
+
+def _album_dir_with_track(tmp_path, name="album"):
+    """A directory holding a bare MP3 (no embedded art) — the unit under
+    test for the local artwork fallback."""
+    album_dir = tmp_path / name
+    album_dir.mkdir()
+    _build_media(album_dir, "mp3")
+    return album_dir
+
+
+class TestLocalArtworkFallback:
+    """M6.5 — deterministic local fallback: cover.jpg, cover.jpeg, cover.png,
+    folder.jpg, folder.png, front.jpg, front.png (case-insensitive), read
+    from the album directory; unreadable/over-max entries are skipped."""
+
+    def test_cover_jpg_fallback(self, tmp_path):
+        album_dir = _album_dir_with_track(tmp_path)
+        (album_dir / "cover.jpg").write_bytes(JPEG_BYTES)
+        artwork = MutagenArtworkProvider().get_local_artwork(album_dir)
+        assert artwork is not None
+        assert artwork.data == JPEG_BYTES
+        assert artwork.mime_type == "image/jpeg"
+
+    def test_folder_png_fallback(self, tmp_path):
+        album_dir = _album_dir_with_track(tmp_path)
+        (album_dir / "folder.png").write_bytes(PNG_1x1)
+        artwork = MutagenArtworkProvider().get_local_artwork(album_dir)
+        assert artwork is not None
+        assert artwork.data == PNG_1x1
+        assert artwork.mime_type == "image/png"
+
+    def test_front_jpg_fallback(self, tmp_path):
+        album_dir = _album_dir_with_track(tmp_path)
+        (album_dir / "front.jpg").write_bytes(JPEG_BYTES)
+        artwork = MutagenArtworkProvider().get_local_artwork(album_dir)
+        assert artwork is not None
+        assert artwork.data == JPEG_BYTES
+        assert artwork.mime_type == "image/jpeg"
+
+    def test_local_case_insensitive(self, tmp_path):
+        album_dir = _album_dir_with_track(tmp_path)
+        (album_dir / "COVER.JPG").write_bytes(JPEG_BYTES)
+        artwork = MutagenArtworkProvider().get_local_artwork(album_dir)
+        assert artwork is not None
+        assert artwork.data == JPEG_BYTES
+        assert artwork.mime_type == "image/jpeg"
+
+    def test_local_priority_order(self, tmp_path):
+        album_dir = _album_dir_with_track(tmp_path)
+        (album_dir / "cover.jpg").write_bytes(JPEG_BYTES)
+        (album_dir / "folder.png").write_bytes(PNG_1x1)
+        artwork = MutagenArtworkProvider().get_local_artwork(album_dir)
+        assert artwork is not None
+        assert artwork.data == JPEG_BYTES  # cover.jpg wins the order
+        assert artwork.mime_type == "image/jpeg"
+
+    def test_local_none_returns_none(self, tmp_path):
+        album_dir = _album_dir_with_track(tmp_path)
+        assert MutagenArtworkProvider().get_local_artwork(album_dir) is None
+
+    def test_local_unreadable_skipped(self, tmp_path, monkeypatch):
+        album_dir = _album_dir_with_track(tmp_path)
+        cover_jpg = album_dir / "cover.jpg"
+        cover_jpg.write_bytes(JPEG_BYTES)
+        folder_png = album_dir / "folder.png"
+        folder_png.write_bytes(PNG_1x1)
+        provider = MutagenArtworkProvider()
+
+        real_read_bytes = Path.read_bytes
+
+        def fake_read_bytes(self_, *args, **kwargs):
+            if self_ == cover_jpg:
+                raise OSError("simulated unreadable")
+            return real_read_bytes(self_, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "read_bytes", fake_read_bytes)
+        artwork = provider.get_local_artwork(album_dir)
+        assert artwork is not None
+        assert artwork.data == PNG_1x1  # cover.jpg skipped -> folder.png wins
+        assert artwork.mime_type == "image/png"
+
+        # Every candidate unreadable -> all skipped -> None.
+        def fake_read_bytes_always(self_, *args, **kwargs):
+            raise OSError("simulated unreadable")
+
+        monkeypatch.setattr(Path, "read_bytes", fake_read_bytes_always)
+        assert provider.get_local_artwork(album_dir) is None
+
+    def test_local_unknown_extension_not_scanned(self, tmp_path):
+        album_dir = _album_dir_with_track(tmp_path)
+        (album_dir / "cover.jpg2").write_bytes(JPEG_BYTES)
+        (album_dir / "notes.txt").write_bytes(b"not art")
+        assert MutagenArtworkProvider().get_local_artwork(album_dir) is None
+
+
+class TestResolutionOrder:
+    """M6.5 — per album: 1. embedded (front-preferred) from the tracks in
+    order; 2. if none -> local artwork from the album directory; 3. none ->
+    has_artwork False (cache untouched)."""
+
+    def test_embedded_wins_over_local(self, tmp_path):
+        album_dir = tmp_path / "album"
+        album_dir.mkdir()
+        track = album_dir / "a1.mp3"
+        track.write_bytes(b"x")
+        (album_dir / "cover.jpg").write_bytes(JPEG_BYTES)
+        provider = FakeArtworkProvider(
+            artwork=Artwork(data=PNG_1x1, mime_type="image/png"),
+            local_artwork=Artwork(data=JPEG_BYTES, mime_type="image/jpeg"),
+        )
+        cache = FakeArtworkCache()
+        library = _make_library(
+            FakeScanner([track]),
+            FakeExtractor(factory=_album_factory()),
+            artwork_provider=provider,
+            artwork_cache=cache,
+        )
+        library.scan(str(tmp_path))
+        album = library.state.albums[0]
+        assert album.has_artwork is True
+        stored = next(art for key, art in cache.stores if key == album.key)
+        assert stored.data == PNG_1x1  # EMBEDDED content, not the local bytes
+        assert provider.local_calls == []  # embedded won; local never consulted
+
+    def test_local_fallback_when_no_embedded(self, tmp_path):
+        album_dir = tmp_path / "album"
+        album_dir.mkdir()
+        track = album_dir / "a1.mp3"
+        track.write_bytes(b"x")
+        (album_dir / "cover.jpg").write_bytes(JPEG_BYTES)
+        provider = FakeArtworkProvider(
+            artwork=None,  # no embedded art anywhere
+            local_artwork=Artwork(data=JPEG_BYTES, mime_type="image/jpeg"),
+        )
+        cache = FakeArtworkCache()
+        library = _make_library(
+            FakeScanner([track]),
+            FakeExtractor(factory=_album_factory()),
+            artwork_provider=provider,
+            artwork_cache=cache,
+        )
+        library.scan(str(tmp_path))
+        album = library.state.albums[0]
+        assert album.has_artwork is True
+        stored = next(art for key, art in cache.stores if key == album.key)
+        assert stored.data == JPEG_BYTES  # the LOCAL bytes
+        assert stored.mime_type == "image/jpeg"
+
+    def test_no_artwork_anywhere(self, tmp_path):
+        album_dir = tmp_path / "album"
+        album_dir.mkdir()
+        track = album_dir / "a1.mp3"
+        track.write_bytes(b"x")
+        provider = FakeArtworkProvider(artwork=None, local_artwork=None)
+        cache = FakeArtworkCache()
+        library = _make_library(
+            FakeScanner([track]),
+            FakeExtractor(factory=_album_factory()),
+            artwork_provider=provider,
+            artwork_cache=cache,
+        )
+        library.scan(str(tmp_path))
+        assert library.state.albums[0].has_artwork is False
+        assert cache.stores == []  # cache never consulted
+
+
+class TestCacheDigestInvalidation:
+    """M6.5 — the cache key participates in the artwork CONTENT: changed
+    artwork yields a NEW path (active on rescan); unchanged content keeps
+    the same path without rewriting (idempotent); old entries stay in place
+    (stale-aware, no eager deletion)."""
+
+    def test_changed_artwork_invalidates_cache(self, tmp_path):
+        cache = ArtworkCache(tmp_path / "cache")
+        key = "album one::artist one"
+        art_a = Artwork(data=PNG_1x1, mime_type="image/png")
+        art_b = Artwork(data=PNG_1x1_ALT, mime_type="image/png")
+        path_a = cache.store(key, art_a)
+        path_b = cache.store(key, art_b)
+        assert path_a is not None
+        assert path_b is not None
+        assert path_a != path_b  # the content digest participates in the key
+        assert path_a.read_bytes() == PNG_1x1
+        assert path_b.read_bytes() == PNG_1x1_ALT
+
+    def test_unchanged_content_same_path_no_rewrite(self, tmp_path):
+        cache = ArtworkCache(tmp_path / "cache")
+        key = "album one::artist one"
+        artwork = Artwork(data=PNG_1x1, mime_type="image/png")
+        first = cache.store(key, artwork)
+        assert first is not None
+        mtime_ns = first.stat().st_mtime_ns
+        second = cache.store(key, artwork)
+        assert second == first  # unchanged content -> the SAME path
+        assert second.stat().st_mtime_ns == mtime_ns  # no rewrite
+        assert second.read_bytes() == PNG_1x1
+
+    def test_enrichment_updated_artwork_becomes_active(self, tmp_path):
+        album_dir = tmp_path / "album"
+        album_dir.mkdir()
+        track = album_dir / "a1.mp3"
+        track.write_bytes(b"x")
+        provider = FakeArtworkProvider(
+            artwork=Artwork(data=PNG_1x1, mime_type="image/png")
+        )
+        cache = ArtworkCache(tmp_path / "cache")
+        library = _make_library(
+            FakeScanner([track]),
+            FakeExtractor(factory=_album_factory()),
+            artwork_provider=provider,
+            artwork_cache=cache,
+        )
+        library.scan(str(tmp_path))
+        album_key = library.state.albums[0].key
+        path_a = library.artwork_path_for(album_key)
+        assert path_a is not None
+        assert Path(path_a).read_bytes() == PNG_1x1
+
+        # The embedded artwork is replaced with different content (same
+        # mime) — the digest-aware key must make the NEW artwork active.
+        provider.artwork = Artwork(data=PNG_1x1_ALT, mime_type="image/png")
+        library.scan(str(tmp_path))
+        path_b = library.artwork_path_for(album_key)
+        assert path_b is not None
+        assert path_a != path_b
+        assert Path(path_b).read_bytes() == PNG_1x1_ALT
+        # Stale-aware: the old entry is left in place (no eager deletion).
+        assert Path(path_a).exists()
