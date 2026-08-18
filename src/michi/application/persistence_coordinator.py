@@ -32,8 +32,10 @@ class PersistenceCoordinator:
     The lifecycle is EXPLICIT: ``__init__`` arms nothing — ``start()``
     subscribes to queue.changed/playback.changed, ``stop()`` unsubscribes,
     and ``shutdown()`` freezes first, writes the final durable checkpoint
-    and the volume/mute preferences, then unsubscribes. Structural/current/
-    repeat/shuffle changes are queue-driven (prompt save), lifecycle
+    and the volume/mute preferences, then unsubscribes (while a resume
+    prepare is unresolved, the final checkpoint is skipped — the restored
+    snapshot is the only valid durable truth, M5-LAST-GATE). Structural/
+    current/repeat/shuffle changes are queue-driven (prompt save), lifecycle
     transitions (PAUSED/STOPPED) and track changes checkpoint immediately,
     and position updates checkpoint only when they have moved at least
     ``position_checkpoint_delta_ms`` from the last PERSISTED position.
@@ -90,6 +92,11 @@ class PersistenceCoordinator:
         # prepared, cleared when that prepare resolves. While it is open,
         # playback events are startup fallout and must not checkpoint.
         self._restore_pending = False
+        # M5-LAST-GATE: the loaded durable truth while the resume prepare is
+        # unresolved; a shutdown/queue change inside the pending window must
+        # never let the incomplete runtime Playback (still None@0) overwrite
+        # it. Cleared when the prepare resolves or the coordinator stops.
+        self._restored_snapshot: PlaybackSessionSnapshot | None = None
         # Last-observed volume/mute (P1-B runtime sync baseline).
         self._last_volume, self._last_muted = playback_service.snapshot_volume()
 
@@ -173,7 +180,11 @@ class PersistenceCoordinator:
     def _on_queue_changed(self) -> None:
         # Structural/current/repeat/shuffle changes are all queue-driven:
         # prompt save. Never while restoring or disarmed.
-        if self._restoring or not self._started:
+        if self._restoring or not self._started or self._restore_pending:
+            # While the resume prepare is unresolved, the restored snapshot
+            # is the durable truth — queue-driven checkpoints must not build
+            # a degraded snapshot from the incomplete Playback. Normal
+            # checkpointing resumes once the prepare resolves.
             return
         self.checkpoint()
 
@@ -263,6 +274,11 @@ class PersistenceCoordinator:
                 and entries[idx].file_path == snapshot.playback_path
             )
             if coherent:
+                # M5-LAST-GATE: the loaded snapshot is the last valid durable
+                # truth while the resume prepare is unresolved; a shutdown or
+                # queue change inside the pending window must never overwrite
+                # it with the incomplete runtime Playback.
+                self._restored_snapshot = snapshot
                 # C4: load + seek after acceptance; never autoplay.
                 self._playback.prepare_for_resume(
                     Path(snapshot.playback_path), snapshot.position_ms
@@ -271,6 +287,10 @@ class PersistenceCoordinator:
                 # resolves (acceptance/rejection/supersession) so the
                 # startup events never degrade the durable resume snapshot.
                 self._restore_pending = True
+            else:
+                # No resume is pending: no restored truth is being held, so a
+                # later shutdown must checkpoint normally.
+                self._restored_snapshot = None
         finally:
             self._restoring = False
         # The restored position is already persisted; future checkpoints
@@ -290,12 +310,28 @@ class PersistenceCoordinator:
         public API, and unsubscribes. The caller tears the backend down
         only after shutdown() returns, so the final durable checkpoint is
         guaranteed to precede runtime teardown.
+
+        M5-LAST-GATE: while the resume prepare is unresolved
+        (``_restore_pending``), the final checkpoint is SKIPPED — the
+        runtime Playback is still None@0 and the restored durable snapshot
+        is the only valid truth; overwriting it would lose the resumed
+        position on the next kill. Volume/mute persist unchanged in both
+        paths (the settings channel never touches the session row).
         """
         if self._shutdown:
             return
         self._shutdown = True
         self._started = False  # freeze FIRST: stop accepting callbacks
-        self.checkpoint()
+        if self._restore_pending:
+            # While the resume prepare is unresolved, the RESTORED snapshot
+            # is the last valid durable truth; the runtime Playback (still
+            # None@0) must never overwrite it. The durable row already
+            # holds the restored truth — no checkpoint is written.
+            logger.warning(
+                "shutdown during pending resume; keeping the restored durable snapshot"
+            )
+        else:
+            self.checkpoint()
         volume, muted = self._playback.snapshot_volume()
         self._settings.set_playback_preferences(volume, muted)
         self._settings.save()
@@ -303,3 +339,4 @@ class PersistenceCoordinator:
         self._playback.unsubscribe_changed(self._on_playback_changed)
         self._restoring = False
         self._restore_pending = False
+        self._restored_snapshot = None

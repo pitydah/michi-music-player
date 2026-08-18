@@ -33,6 +33,7 @@ from michi.application.persistence_coordinator import PersistenceCoordinator
 from michi.application.playback_service import PlaybackService
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
+from michi.domain.playback import PlaybackStatus
 from michi.domain.queue import RepeatMode
 from michi.infrastructure.session_repository import SqliteSessionRepository
 from tests.conftest import FakeAudioPort, FakeSettingsRepo
@@ -345,3 +346,109 @@ class TestRestoreNotificationContract:
         assert _session_row(db) == before
         assert repo2.load().playback_path == "/m/b.flac"
         assert repo2.load().position_ms == 222000
+
+
+class TestPendingResumeShutdown:
+    """M5-LAST-GATE — WHILE the resume prepare is unresolved, the RESTORED
+    snapshot is the last valid durable truth; runtime must not overwrite it.
+
+    The defect (confirmed): ``shutdown()`` freezes ``_started`` and then calls
+    ``checkpoint()`` UNCONDITIONALLY. If shutdown happens while
+    ``_restore_pending`` is active (prepare_for_resume awaiting media
+    acceptance), the runtime Playback is still ``file_path=None/position=0``
+    and the final checkpoint overwrites the durable B@222000 with null@0 — a
+    second kill loses the position. The same invariant applies to
+    ``_on_queue_changed``: a queue change during the pending window would
+    build a degraded snapshot too. Tests 12-14 pin the suppression; the
+    durable authority returns to runtime only once the prepare resolves.
+    """
+
+    def test_shutdown_during_prepare_preserves_restored_snapshot(
+        self, tmp_path, monkeypatch
+    ):
+        db = tmp_path / "t12.db"
+        _build_golden_state(db)
+
+        # ── Session 2: restore; NO media acceptance — the prepare is still
+        # pending — then a graceful shutdown ──
+        _r2, _s2, audio2, _p2, _q2, coordinator2 = _build(db)
+        coordinator2.start()
+        coordinator2.restore()
+        coordinator2.shutdown()  # must SKIP the degraded final checkpoint
+        del coordinator2, audio2
+
+        # ── Session 3: the durable B@222000 survived the shutdown during the
+        # pending window — the resume is requested again (never B@0/null) ──
+        _r3, _s3, audio3, playback3, _q3, coordinator3 = _build(db)
+        coordinator3.start()
+        prepare_calls = []
+        orig_prepare = playback3.prepare_for_resume
+
+        def spy_prepare(path, position_ms):
+            prepare_calls.append((path, position_ms))
+            orig_prepare(path, position_ms)
+
+        monkeypatch.setattr(playback3, "prepare_for_resume", spy_prepare)
+        coordinator3.restore()
+
+        assert prepare_calls == [(_B, 222000)]
+
+    def test_queue_change_during_pending_window_does_not_degrade_snapshot(
+        self, tmp_path
+    ):
+        db = tmp_path / "t13.db"
+        _build_golden_state(db)
+
+        # ── Session 2: restore; the prepare is still pending ──
+        repo2, _s2, _a2, playback2, queue2, coordinator2 = _build(db)
+        coordinator2.start()
+        coordinator2.restore()
+
+        # A queue change DURING the pending window fires queue.changed: the
+        # coordinator must suppress it — the restored truth is authoritative
+        # and the runtime Playback (still None@0) would build a degraded
+        # snapshot.
+        queue2.add(Path("/m/d.flac"), "D")
+        snap = repo2.load()
+        assert snap.playback_path == "/m/b.flac"
+        assert snap.position_ms == 222000  # never B@0 / null
+
+        # Resolve the prepare (acceptance) → the pending window closes; a
+        # subsequent legit change checkpoints the NEW runtime truth.
+        _a2.trigger_media_accepted(_B)
+        playback2.update_position(230000)
+        resolved = repo2.load()
+        assert resolved.playback_path == "/m/b.flac"
+        assert resolved.position_ms == 230000  # durable authority is runtime again
+
+    def test_shutdown_during_pending_then_resume_resolves(self, tmp_path):
+        db = tmp_path / "t14.db"
+        _build_golden_state(db)
+
+        # ── Session 2: restore (pending) + shutdown — the final checkpoint
+        # must be skipped so the durable B@222000 survives ──
+        _r2, _s2, _a2, _p2, _q2, coordinator2 = _build(db)
+        coordinator2.start()
+        coordinator2.restore()
+        coordinator2.shutdown()
+        del coordinator2
+
+        # ── Session 3: resume resolves normally — prepare, accept (STOPPED +
+        # seek to the persisted position), then a legit checkpoint persists
+        # the NEW runtime truth ──
+        repo3, _s3, audio3, playback3, _q3, coordinator3 = _build(db)
+        coordinator3.start()
+        coordinator3.restore()
+        audio3.trigger_media_accepted(_B)
+
+        # The prepare committed and sought; status stayed STOPPED (no autoplay).
+        assert playback3.state.status is PlaybackStatus.STOPPED
+        assert playback3.state.file_path == _B
+        assert audio3.seek_calls == [222000]
+
+        # The pending window closed with the acceptance: a legit position
+        # change now checkpoints the runtime truth (B@240000, not B@222000).
+        playback3.update_position(240000)
+        snap = repo3.load()
+        assert snap.playback_path == "/m/b.flac"
+        assert snap.position_ms == 240000
