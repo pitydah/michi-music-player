@@ -24,8 +24,8 @@ Each stage has exactly one owner (domain/service/port/bridge), deterministic out
 
 ## 2. Authoritative Execution Order (the ONLY one)
 
-1. **M6.0 Contract Reconciliation** (this document + governance) — **OPEN / IN PROGRESS**
-2. **M6.1 Canonical Music Model v2** — canonical identity types, canonical disc/track ordering, ComposerRef/composers grouping, timeline derivation moved OUT of the bridge into the domain, album model v2, artist identity.
+1. **M6.0 Contract Reconciliation** — **DONE (567bbfa)**.
+2. **M6.1 Canonical Music Model v2** — **DONE (8694077)**: canonical identity API (make_track_id/make_genre_key/make_composer_key), canonical disc/track ordering (UNKNOWN-last, input-order independent), ComposerRef + MusicModel.composers + LibraryState.composers, Album V2 derived fields (disc_count/genres/composers), timeline projection moved to domain (timeline_decade/build_timeline_projection, bridge adapts only).
 3. **M6.2 Persistent Library Index** — `LibraryIndexRepository` port + versioned SQLite index; filesystem fingerprint `size`/`mtime_ns`; no reparse of unchanged files.
 4. **M6.3 Incremental Library Engine** — ADDED / MODIFIED / REMOVED / UNCHANGED classification; reuse of unchanged metadata.
 5. **M6.4 Async Library Pipeline** — scan off the UI thread; `scan_status` / `generation` / `processed` / `total` / `progress`; cooperative cancellation; supersession — a stale generation never commits. **OWNS TD-009; NOT M12.**
