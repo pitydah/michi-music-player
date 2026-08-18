@@ -1214,3 +1214,209 @@ class TestRemoveCurrentPostRestore:
         snap3 = repo3.load()
         assert snap3.playback_path is None  # the durable truth never resurrects
         assert snap3.position_ms == 0
+
+
+class TestTerminalRestoreReconciliation:
+    """M5-FINAL-TERMINAL-RECONCILIATION — POST-RESTORE TERMINAL RESOLUTION.
+
+    The _restoring guard suppresses playback notifications during restore(),
+    but a FAST backend can surface a TERMINAL outcome synchronously INSIDE
+    the restore call (rejection, seek failure) — or the confirmation itself
+    (fast clamp). The terminal events' notifications are consumed by the
+    guard, so restore() must reconcile AFTER the _restoring zone closes:
+
+    - POST-RESTORE TERMINAL RECONCILIATION: after restore() finishes, if the
+      resume phase is STILL active AND PlaybackService already surfaced a
+      terminal error (error_message is not None — a fast rejection or a fast
+      seek failure consumed inside restore), the coordinator MUST release the
+      resume authority and persist a coherent checkpoint — the state machine
+      must never stay open forever (no eternal WAITING_MEDIA/WAITING_POSITION).
+      A rejection inside restore -> the coherent post-rejection session
+      (playback_path None / position 0 — no fabricated B) and the NEXT restore
+      never prepares (test 1). A seek failure inside restore -> the honest
+      runtime truth B@0 (the media WAS accepted, the seek never applied),
+      never the hybrid B@222000, and the NEXT restore resumes from 0
+      (test 2). No resume_prepared ever fires on the seek-failure path.
+    - DURABLE MARKER: restore()'s tail must NOT overwrite
+      ``_last_persisted_position_ms`` with the stale snapshot position when
+      the resume was already confirmed during restore (fast clamp inside the
+      restore window: confirmed 300000 vs snapshot 999999 — the CONFIRMED
+      value wins as the throttle baseline, test 3).
+    """
+
+    def _wire_audio_path(self, audio, queue, playback):
+        """Production position wiring: PlaybackCoordinator forwards the
+        backend position channel into PlaybackService.update_position."""
+        coordinator = PlaybackCoordinator(audio, queue, playback)
+        coordinator.start()
+        return coordinator
+
+    # ── 1: a fast rejection inside restore releases the authority ─────────
+    def test_fast_rejection_during_restore_releases_authority(
+        self, tmp_path, monkeypatch
+    ):
+        db = tmp_path / "t32.db"
+        _build_golden_state(db)
+
+        # ── Session 2 (production lifecycle: start() then restore()): the
+        # backend is FAST and REJECTS synchronously INSIDE the restore call.
+        # The rejection's playback notification is consumed by the _restoring
+        # guard — the resume authority must NOT stay open forever. ──
+        repo2, _s2, audio2, playback2, _q2, coordinator2 = _build(db)
+        coordinator2.start()
+        orig_prepare = playback2.prepare_for_resume
+
+        def rejecting_prepare(path, position_ms):
+            orig_prepare(path, position_ms)
+            audio2.trigger_media_rejected(path, "gone")  # terminal, inside restore
+
+        monkeypatch.setattr(playback2, "prepare_for_resume", rejecting_prepare)
+        coordinator2.restore()
+
+        # The terminal rejection surfaced during restore resolved the restore
+        # window: an explicit checkpoint writes the COHERENT post-rejection
+        # session — queue restored, playback_path None / position 0 — never
+        # the hybrid keeping the rejected B (no fabricated resume).
+        coordinator2.checkpoint()
+        snap = repo2.load()
+        assert snap.playback_path is None  # RED: hybrid keeps B / phase open
+        assert snap.position_ms == 0
+        assert snap.queue_current_index == 1
+        assert [e.file_path for e in snap.queue_entries] == [
+            "/m/a.flac",
+            "/m/b.flac",
+            "/m/c.flac",
+        ]
+
+        # ── Session 3: the durable never keeps B — NO prepare is requested
+        # (queue restored only, no fabricated resume, no autoplay). ──
+        repo3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        coordinator3.start()
+        prepare_calls = []
+        orig_prepare3 = playback3.prepare_for_resume
+
+        def spy_prepare(path, position_ms):
+            prepare_calls.append((path, position_ms))
+            orig_prepare3(path, position_ms)
+
+        monkeypatch.setattr(playback3, "prepare_for_resume", spy_prepare)
+        coordinator3.restore()
+
+        assert [t.file_path for t in queue3.state.tracks] == [_A, _B, _C]
+        assert queue3.state.current_index == 1
+        assert prepare_calls == []  # RED: durable kept B -> prepare(B, 222000)
+
+    # ── 2: a fast seek failure inside restore resolves deterministically ──
+    def test_fast_seek_failure_during_restore_resolves_deterministically(
+        self, tmp_path, monkeypatch
+    ):
+        db = tmp_path / "t33.db"
+        _build_golden_state(db)
+
+        # ── Session 2 (production lifecycle): the backend ACCEPTS, but the
+        # seek RAISES synchronously inside the restore call (records the
+        # attempt, then fails). The acceptance path hits the raising seek ->
+        # error_message "seek failed", no resume_prepared, and the terminal
+        # notifications are consumed by the _restoring guard. ──
+        repo2, _s2, audio2, playback2, _q2, coordinator2 = _build(db)
+        coordinator2.start()
+        events = []
+        playback2.subscribe_resume_prepared(lambda p, pos: events.append((p, pos)))
+
+        real_seek = audio2.seek
+
+        def raising_seek(ms):
+            real_seek(ms)  # record the seek attempt first
+            raise RuntimeError("seek failed")
+
+        monkeypatch.setattr(audio2, "seek", raising_seek)
+        orig_prepare = playback2.prepare_for_resume
+
+        def accepting_prepare(path, position_ms):
+            orig_prepare(path, position_ms)
+            audio2.trigger_media_accepted(path)  # acceptance -> raising seek
+
+        monkeypatch.setattr(playback2, "prepare_for_resume", accepting_prepare)
+        coordinator2.restore()
+
+        # The media WAS accepted (file_path B committed) but the seek never
+        # applied: the honest runtime truth is B@0. The terminal seek failure
+        # surfaced during restore resolved the window — an explicit checkpoint
+        # writes the COHERENT runtime truth B@0, never the hybrid B@222000.
+        assert audio2.seek_calls == [222000]  # the seek attempt happened
+        assert playback2.state.error_message == "seek failed"
+        coordinator2.checkpoint()
+        snap = repo2.load()
+        assert snap.playback_path == "/m/b.flac"  # the media WAS accepted
+        assert snap.position_ms == 0  # RED: hybrid writes the stale 222000
+        assert snap.queue_current_index == 1
+
+        # The seek failure disarmed the confirmation latch: no resume_prepared
+        # event fired during the whole flow.
+        assert events == []
+
+        # ── Session 3: resume from 0 — the honest runtime truth, never the
+        # stale 222000. ──
+        repo3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        coordinator3.start()
+        prepare_calls = []
+        orig_prepare3 = playback3.prepare_for_resume
+
+        def spy_prepare(path, position_ms):
+            prepare_calls.append((path, position_ms))
+            orig_prepare3(path, position_ms)
+
+        monkeypatch.setattr(playback3, "prepare_for_resume", spy_prepare)
+        coordinator3.restore()
+
+        assert [t.file_path for t in queue3.state.tracks] == [_A, _B, _C]
+        assert queue3.state.current_index == 1
+        assert prepare_calls == [(_B, 0)]  # RED: durable kept 222000
+
+    # ── 3: the confirmed clamp never regresses the throttle marker ────────
+    def test_confirmed_clamp_during_restore_does_not_regress_marker(
+        self, tmp_path, monkeypatch
+    ):
+        db = tmp_path / "t34.db"
+        _build_golden_state(db, position_ms=999999)
+
+        # ── Session 2 (production lifecycle, audio position path wired): the
+        # backend is FAST — acceptance + a CLAMPED position confirmation
+        # (300000 vs the persisted 999999) fire synchronously INSIDE the
+        # restore call, confirming the resume inside the restore window. ──
+        stub = _FailOnDemandRepo(SqliteSessionRepository(db))
+        settings = SettingsService(FakeSettingsRepo())
+        audio = FakeAudioPort()
+        playback = PlaybackService(audio)
+        queue = QueueService(playback)
+        coordinator = PersistenceCoordinator(stub, queue, playback, settings)
+        self._wire_audio_path(audio, queue, playback)
+        coordinator.start()
+        orig_prepare = playback.prepare_for_resume
+
+        def fast_clamped_prepare(path, position_ms):
+            orig_prepare(path, position_ms)
+            audio.trigger_media_accepted(path)
+            audio.trigger_position(300000)  # backend clamp -> confirmation
+
+        monkeypatch.setattr(playback, "prepare_for_resume", fast_clamped_prepare)
+        coordinator.restore()
+
+        # The confirmed clamp (300000) became the durable truth during the
+        # restore (the coordinator's own confirmation checkpoint consumed one
+        # save): drain the counter before the throttle assertions.
+        assert audio.seek_calls == [999999]  # the persisted position was sought
+        assert stub.load().playback_path == "/m/b.flac"
+        assert stub.load().position_ms == 300000
+        stub.save_calls = 0
+
+        # THROTTLE BASELINE: restore()'s tail must NOT regress the marker to
+        # the stale snapshot 999999 — the CONFIRMED 300000 wins as the
+        # baseline for future position deltas.
+        playback.update_position(303000)  # delta 3000 from the confirmed 300000
+        assert stub.save_calls == 0  # RED: marker 999999 -> premature save
+        assert stub.load().position_ms == 300000  # nothing durably written yet
+
+        playback.update_position(306000)  # delta 6000 >= 5000 from 300000
+        assert stub.save_calls == 1  # RED: second premature save -> count 2
+        assert stub.load().position_ms == 306000

@@ -416,9 +416,20 @@ class PersistenceCoordinator:
         notification, prepare_for_resume's playback notification) are
         suppressed so the durable resume snapshot is never degraded by the
         restore itself. Works unstarted (no subscriptions needed). After
-        the guard clears, the durable marker is set from the restored
-        snapshot and the last-observed volume/mute is refreshed from the
-        current playback state, so a legit post-startup change syncs.
+        the guard clears (M5-FINAL-TERMINAL-RECONCILIATION): the durable
+        marker is set from the restored snapshot ONLY while the resume
+        phase is still open (a confirmation that arrived INSIDE restore
+        already advanced it to the CONFIRMED value — never regressed by
+        the stale snapshot position); the change-detection baseline is
+        refreshed from the current playback state so the first post-restore
+        position tick classifies by the position delta, never a stale
+        file_path change; a terminal backend outcome surfaced inside
+        restore while a phase is still open (error_message set — fast
+        rejection / seek failure, notifications consumed by the guard)
+        releases the resume authority and persists the coherent session —
+        the state machine never stays open forever; and the last-observed
+        volume/mute is refreshed so a legit post-startup change syncs
+        (P1-B).
         """
         if self._restoring:
             return
@@ -455,11 +466,35 @@ class PersistenceCoordinator:
         finally:
             self._restoring = False
         # The restored position is already persisted; future checkpoints
-        # measure position deltas from it.
-        self._last_persisted_position_ms = snapshot.position_ms
+        # measure position deltas from it. A confirmation that arrived
+        # INSIDE restore (fast backend) already advanced the durable marker
+        # to the CONFIRMED value — the stale snapshot position must never
+        # regress it; only the still-pending case adopts the snapshot
+        # position (which is what the hybrid holds).
+        if self._resume_phase is not _ResumePhase.NONE:
+            self._last_persisted_position_ms = snapshot.position_ms
+        # Refresh the change-detection baseline from the CURRENT playback
+        # state so the first post-restore position tick classifies by the
+        # position delta — never a stale file_path/status change that a
+        # suppressed restore notification left behind.
+        self._last_status = self._playback.state.status
+        self._last_file_path = self._playback.state.file_path
         # Refresh the last-observed volume/mute from the current playback
         # state so a legit post-startup change syncs (P1-B).
         self._last_volume, self._last_muted = self._playback.snapshot_volume()
+        # M5-FINAL-TERMINAL-RECONCILIATION: a FAST backend terminal outcome
+        # (rejection / seek failure) surfaced synchronously INSIDE restore()
+        # and its notifications were consumed by the _restoring guard. The
+        # state machine must never stay open forever: release the resume
+        # authority and persist the coherent session (queue restored;
+        # playback truth per the runtime encode — rejection: None@0; seek
+        # failure: the committed path at 0, never the stale hybrid position).
+        if (
+            self._resume_phase is not _ResumePhase.NONE
+            and self._playback.state.error_message is not None
+        ):
+            self._release_resume_authority(reason="terminal restore outcome")
+            self.checkpoint()
 
     def shutdown(self) -> None:
         """Final durable state: freeze -> checkpoint -> prefs -> unsubscribe.
