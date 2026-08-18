@@ -53,6 +53,27 @@ def _remove_wal_sidecars(db_path):
             sidecar.unlink()
 
 
+def _corrupt_primary(db_path, payload=b"THIS IS NOT SQLITE", remove_sidecars=True):
+    """Overwrite the primary with garbage on a NEW inode (os.replace).
+
+    A lingering WAL-mode connection from a preceding test in the same
+    process may finalize (GC) after the corruption and checkpoint through
+    its OLD inode, resurrecting a healthy DB over in-place write_bytes.
+    Replacing the path with a fresh inode makes such close-time writes
+    harmless (they land on the unlinked old inode).
+
+    remove_sidecars=False keeps any existing -wal/-shm in place — needed by
+    the byte-exact sidecar-quarantine test, where those sidecars are part of
+    the asserted quarantine evidence.
+    """
+    if remove_sidecars:
+        _remove_wal_sidecars(db_path)
+    tmp = Path(str(db_path) + ".corrupt-tmp")
+    tmp.write_bytes(payload)
+    os.replace(tmp, db_path)
+    return payload
+
+
 def _sha256(path):
     """Streaming SHA-256 of a file (chunked reads, no full load)."""
     digest = hashlib.sha256()
@@ -148,8 +169,7 @@ class TestAutoRecoveryInstall:
         _remove_wal_sidecars(db)
         assert not Path(str(db) + "-wal").exists()
         assert not Path(str(db) + "-shm").exists()
-        corrupt = b"THIS IS NOT SQLITE"
-        db.write_bytes(corrupt)
+        corrupt = _corrupt_primary(db)
         corrupt_sha = _sha256(db)
 
         repo = SQLiteSettingsRepository.open_for_startup(db)
@@ -314,8 +334,9 @@ class TestCandidateTrust:
         candidate = SQLiteSettingsRepository.recovery_candidate_path(db)
         _write_raw_rows(candidate, _foreign_candidate_rows())
         candidate_before = candidate.read_bytes()
-        _remove_wal_sidecars(lkg)
-        lkg.write_bytes(b"THIS IS NOT SQLITE")
+        # The LKG must STAY corrupt (asserted below); corrupt on a new inode
+        # so a lingering connection can never resurrect it either.
+        _corrupt_primary(lkg)
         lkg_before = lkg.read_bytes()
         _remove_wal_sidecars(db)
         db.unlink()
@@ -393,8 +414,7 @@ class TestQuarantine:
     def test_quarantine_multiple_generations(self, tmp_path):
         db = tmp_path / "michi.db"
         _make_healthy_with_lkg(db)
-        _remove_wal_sidecars(db)
-        db.write_bytes(b"THIS IS NOT SQLITE")
+        _corrupt_primary(db)
         qroot = Path(str(db) + ".quarantine")
         old_gen = qroot / "recovery-old"
         old_gen.mkdir(parents=True)
@@ -420,8 +440,7 @@ class TestQuarantine:
     def test_quarantine_main_byte_exact(self, tmp_path):
         db = tmp_path / "michi.db"
         _make_healthy_with_lkg(db)
-        _remove_wal_sidecars(db)
-        db.write_bytes(b"THIS IS NOT SQLITE")
+        _corrupt_primary(db)
         original_sha = _sha256(db)
 
         repo = SQLiteSettingsRepository.open_for_startup(db)
@@ -457,7 +476,13 @@ class TestQuarantine:
             assert wal.exists()
             assert shm.exists()
             wal_sha = _sha256(wal)
-            db.write_bytes(b"THIS IS NOT SQLITE - corrupt after WAL snapshot")
+            # Sidecars must SURVIVE here: they are part of the byte-exact
+            # quarantine evidence asserted below, so bypass sidecar removal.
+            _corrupt_primary(
+                db,
+                payload=b"THIS IS NOT SQLITE - corrupt after WAL snapshot",
+                remove_sidecars=False,
+            )
             corrupt_sha = _sha256(db)
 
             replace_calls = []
@@ -514,8 +539,7 @@ class TestQuarantine:
         _make_healthy_with_lkg(db)
         lkg = SQLiteSettingsRepository.last_known_good_path(db)
         lkg_before = lkg.read_bytes()
-        _remove_wal_sidecars(db)
-        db.write_bytes(b"THIS IS NOT SQLITE")
+        _corrupt_primary(db)
         primary_before = db.read_bytes()
         assert not Path(str(db) + "-wal").exists()
         assert not Path(str(db) + "-shm").exists()
@@ -552,8 +576,7 @@ class TestQuarantine:
         _make_healthy_with_lkg(db)
         lkg = SQLiteSettingsRepository.last_known_good_path(db)
         lkg_before = lkg.read_bytes()
-        _remove_wal_sidecars(db)
-        db.write_bytes(b"THIS IS NOT SQLITE")
+        _corrupt_primary(db)
         primary_before = db.read_bytes()
         candidate = SQLiteSettingsRepository.recovery_candidate_path(db)
         assert not candidate.exists()
@@ -582,8 +605,7 @@ class TestQuarantine:
         _make_healthy_with_lkg(db)
         lkg = SQLiteSettingsRepository.last_known_good_path(db)
         lkg_before = lkg.read_bytes()
-        _remove_wal_sidecars(db)
-        db.write_bytes(b"THIS IS NOT SQLITE")
+        _corrupt_primary(db)
         primary_before = db.read_bytes()
         candidate = SQLiteSettingsRepository.recovery_candidate_path(db)
         assert not candidate.exists()
@@ -611,8 +633,7 @@ class TestInstallOrdering:
     def test_post_install_ordering(self, tmp_path, monkeypatch):
         db = tmp_path / "michi.db"
         _make_healthy_with_lkg(db)
-        _remove_wal_sidecars(db)
-        db.write_bytes(b"THIS IS NOT SQLITE")
+        _corrupt_primary(db)
         events = []
 
         orig_inspect = SQLiteSettingsRepository.inspect_path
@@ -768,8 +789,7 @@ class TestTerminalStates:
             is PersistenceHealth.HEALTHY
         )
         candidate_before = candidate.read_bytes()
-        _remove_wal_sidecars(db)
-        db.write_bytes(b"THIS IS NOT SQLITE")
+        _corrupt_primary(db)
 
         def forced_inspect(path):
             return PersistenceDiagnostic(health, "forced")
@@ -812,8 +832,7 @@ class TestRecoveryWarningsAndPreservation:
     def test_recovery_warning_emitted(self, tmp_path, caplog):
         db = tmp_path / "michi.db"
         _make_healthy_with_lkg(db)
-        _remove_wal_sidecars(db)
-        db.write_bytes(b"THIS IS NOT SQLITE")
+        _corrupt_primary(db)
 
         with caplog.at_level(
             logging.WARNING, logger="michi.infrastructure.sqlite_settings"
@@ -840,7 +859,7 @@ class TestRecoveryWarningsAndPreservation:
         lkg_before = lkg.read_bytes()
         _remove_wal_sidecars(db)
         if scenario == "corrupt":
-            db.write_bytes(b"THIS IS NOT SQLITE")
+            _corrupt_primary(db)
         else:
             db.unlink()
 
@@ -894,8 +913,7 @@ class TestLkgWalPreservation:
             )
 
             # Make the primary recoverable (CORRUPT_DATABASE).
-            _remove_wal_sidecars(db)
-            db.write_bytes(b"THIS IS NOT SQLITE")
+            _corrupt_primary(db)
 
             recovered = SQLiteSettingsRepository.open_for_startup(db)
 
@@ -924,8 +942,7 @@ class TestQuarantineRootContract:
     def test_quarantine_root_regular_file_blocks(self, tmp_path, monkeypatch):
         db = tmp_path / "michi.db"
         _make_healthy_with_lkg(db)
-        _remove_wal_sidecars(db)
-        db.write_bytes(b"THIS IS NOT SQLITE")
+        _corrupt_primary(db)
         primary_before = db.read_bytes()
         qroot = Path(str(db) + ".quarantine")
         qroot.write_text("I am a file, not a directory")
@@ -950,8 +967,7 @@ class TestQuarantineRootContract:
     def test_quarantine_root_permissions(self, tmp_path):
         db = tmp_path / "michi.db"
         _make_healthy_with_lkg(db)
-        _remove_wal_sidecars(db)
-        db.write_bytes(b"THIS IS NOT SQLITE")
+        _corrupt_primary(db)
 
         repo = SQLiteSettingsRepository.open_for_startup(db)
 

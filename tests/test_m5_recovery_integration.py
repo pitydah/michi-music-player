@@ -27,6 +27,7 @@ failure these tests discriminate against.
 """
 
 import json
+import os
 import sqlite3
 from pathlib import Path
 
@@ -123,9 +124,17 @@ def _make_healthy_with_lkg(db_path, state=None):
 
 
 def _corrupt_primary(db_path, payload=b"THIS IS NOT SQLITE"):
-    """Corrupt-primary construction: sidecar removal, then garbage bytes."""
+    """Overwrite the primary with garbage on a NEW inode (os.replace).
+
+    A lingering WAL-mode connection from a preceding test in the same
+    process may finalize (GC) after the corruption and checkpoint through
+    its OLD inode, resurrecting a healthy DB over in-place write_bytes.
+    Replacing the path with a fresh inode makes such close-time writes
+    harmless (they land on the unlinked old inode)."""
     _remove_wal_sidecars(db_path)
-    db_path.write_bytes(payload)
+    tmp = Path(str(db_path) + ".corrupt-tmp")
+    tmp.write_bytes(payload)
+    os.replace(tmp, db_path)
     return payload
 
 

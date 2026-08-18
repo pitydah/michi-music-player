@@ -45,6 +45,21 @@ def _remove_wal_sidecars(db_path: Path) -> None:
             sidecar.unlink()
 
 
+def _corrupt_primary(db_path: Path, payload: bytes = b"THIS IS NOT SQLITE") -> bytes:
+    """Overwrite the primary with garbage on a NEW inode (os.replace).
+
+    A lingering WAL-mode connection from a preceding test in the same
+    process may finalize (GC) after the corruption and checkpoint through
+    its OLD inode, resurrecting a healthy DB over in-place write_bytes.
+    Replacing the path with a fresh inode makes such close-time writes
+    harmless (they land on the unlinked old inode)."""
+    _remove_wal_sidecars(db_path)
+    tmp = Path(str(db_path) + ".corrupt-tmp")
+    tmp.write_bytes(payload)
+    os.replace(tmp, db_path)
+    return payload
+
+
 def _healthy_state(**overrides):
     fields = {
         "volume": 42,
@@ -119,8 +134,7 @@ class TestRefreshLastKnownGood:
         )
         lkg = SQLiteSettingsRepository.last_known_good_path(db)
         lkg_before = lkg.read_bytes()
-        _remove_wal_sidecars(db)
-        db.write_bytes(b"THIS IS NOT SQLITE")
+        _corrupt_primary(db)
         result = SQLiteSettingsRepository.refresh_last_known_good(db)
         assert result.health is PersistenceHealth.CORRUPT_DATABASE
         assert lkg.read_bytes() == lkg_before
@@ -217,8 +231,7 @@ class TestStageRecovery:
             is PersistenceHealth.HEALTHY
         )
         lkg = SQLiteSettingsRepository.last_known_good_path(db)
-        _remove_wal_sidecars(db)
-        db.write_bytes(b"THIS IS NOT SQLITE")
+        _corrupt_primary(db)
         primary_bytes = db.read_bytes()
         destination = tmp_path / "recovered.db"
         result = SQLiteSettingsRepository.stage_recovery_from_last_known_good(
@@ -259,8 +272,9 @@ class TestStageRecovery:
             is PersistenceHealth.HEALTHY
         )
         lkg = SQLiteSettingsRepository.last_known_good_path(db)
-        _remove_wal_sidecars(lkg)
-        lkg.write_bytes(b"THIS IS NOT SQLITE")
+        # The LKG must STAY corrupt (asserted below); corrupt on a new inode
+        # so a lingering connection can never resurrect it either.
+        _corrupt_primary(lkg)
         lkg_bytes = lkg.read_bytes()
         _checkpoint_wal(db)
         primary_before = db.read_bytes()

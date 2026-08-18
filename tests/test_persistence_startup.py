@@ -2,6 +2,7 @@
 
 import errno
 import logging
+import os
 import sqlite3
 from pathlib import Path
 
@@ -44,6 +45,21 @@ def _remove_wal_sidecars(db_path):
         sidecar = Path(str(db_path) + suffix)
         if sidecar.exists():
             sidecar.unlink()
+
+
+def _corrupt_primary(db_path, payload=b"THIS IS NOT SQLITE"):
+    """Overwrite the primary with garbage on a NEW inode (os.replace).
+
+    A lingering WAL-mode connection from a preceding test in the same
+    process may finalize (GC) after the corruption and checkpoint through
+    its OLD inode, resurrecting a healthy DB over in-place write_bytes.
+    Replacing the path with a fresh inode makes such close-time writes
+    harmless (they land on the unlinked old inode)."""
+    _remove_wal_sidecars(db_path)
+    tmp = Path(str(db_path) + ".corrupt-tmp")
+    tmp.write_bytes(payload)
+    os.replace(tmp, db_path)
+    return payload
 
 
 def _healthy_state(**overrides):
@@ -595,7 +611,7 @@ class TestCorruptRouting:
         lkg_before = lkg.read_bytes()
         lkg_rows = _read_raw_settings(lkg)
         _remove_wal_sidecars(db)
-        db.write_bytes(b"THIS IS NOT SQLITE")
+        _corrupt_primary(db)
         primary_before = db.read_bytes()
 
         events = []
@@ -643,7 +659,7 @@ class TestCorruptRouting:
 
     def test_corrupt_no_lkg_errors(self, tmp_path, monkeypatch):
         db = tmp_path / "michi.db"
-        db.write_bytes(b"THIS IS NOT SQLITE")
+        _corrupt_primary(db)
         primary_before = db.read_bytes()
 
         init_spy = CallSpy()
@@ -681,8 +697,7 @@ class TestCorruptRouting:
             ).health
             is PersistenceHealth.HEALTHY
         )
-        _remove_wal_sidecars(db)
-        db.write_bytes(b"THIS IS NOT SQLITE")
+        _corrupt_primary(db)
 
         stage_spy = CallSpy(
             result=PersistenceDiagnostic(PersistenceHealth.HEALTHY, "spy")
@@ -787,8 +802,7 @@ class TestWriteOrder:
     def test_corrupt_order_stages_then_writable(self, tmp_path, monkeypatch):
         db = tmp_path / "michi.db"
         _make_healthy_with_lkg(db)
-        _remove_wal_sidecars(db)
-        db.write_bytes(b"THIS IS NOT SQLITE")
+        _corrupt_primary(db)
         events = []
 
         orig_init = SQLiteSettingsRepository.__init__
@@ -832,7 +846,7 @@ class TestWriteOrder:
 
     def test_corrupt_no_lkg_order_never_writable(self, tmp_path, monkeypatch):
         db = tmp_path / "michi.db"
-        db.write_bytes(b"THIS IS NOT SQLITE")
+        _corrupt_primary(db)
         events = []
 
         init_spy = CallSpy()
