@@ -5,6 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from michi.domain.library import Artwork, LibraryPrefs, TrackMetadata
+from michi.domain.library_index import LibraryIndexEntry
 from michi.domain.playback import PlaybackStatus
 from michi.domain.playlist import Playlist
 from michi.domain.session import PlaybackSessionSnapshot
@@ -161,3 +162,26 @@ class SessionRepository(ABC):
         persisted (the repository logged the failure). The application
         advances its durable-state marker only on True.
         """
+
+
+class LibraryIndexRepository(ABC):
+    """Persistent library index (M6.2) — bounded context, best effort.
+
+    The filesystem is the truth about physical existence; this repository
+    only persists cached knowledge. Never raises: sqlite errors are logged.
+    """
+
+    @abstractmethod
+    def load_all(self) -> tuple[LibraryIndexEntry, ...]: ...
+
+    @abstractmethod
+    def upsert_many(self, entries) -> None: ...
+
+    @abstractmethod
+    def remove(self, track_id: str) -> None: ...
+
+    @abstractmethod
+    def clear(self) -> None: ...
+
+    @abstractmethod
+    def version(self) -> int: ...
