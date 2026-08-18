@@ -58,6 +58,7 @@ class TrackRef:
     disc_number: int = 0
     composer: str = ""
     compilation: bool = False
+    sort_title: str = ""
 
     def __post_init__(self) -> None:
         if not self.display_name:
@@ -107,6 +108,9 @@ class AlbumRef:
     track_paths: tuple[Path, ...] = ()
     has_artwork: bool = False
     year: int = 0
+    disc_count: int = 0
+    genres: tuple[str, ...] = ()
+    composers: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -129,6 +133,15 @@ class GenreRef:
 
 
 @dataclass(frozen=True)
+class ComposerRef:
+    """Canonical composer reference derived from library tracks (M6.1)."""
+
+    key: str
+    name: str
+    track_count: int
+
+
+@dataclass(frozen=True)
 class FolderRef:
     """Directory reference derived from library tracks (LOCAL-03)."""
 
@@ -144,6 +157,7 @@ class MusicModel:
     albums: tuple[AlbumRef, ...] = ()
     artists: tuple[ArtistRef, ...] = ()
     genres: tuple[GenreRef, ...] = ()
+    composers: tuple[ComposerRef, ...] = ()
 
 
 def _normalize_key(s: str) -> str:
@@ -154,6 +168,7 @@ def _normalize_key(s: str) -> str:
 _UNKNOWN_ALBUM = "Unknown Album"
 _UNKNOWN_ARTIST = "Unknown Artist"
 _UNKNOWN_GENRE = "Unknown Genre"
+_UNKNOWN_COMPOSER = "Unknown Composer"
 _VARIOUS_ARTISTS = "Various Artists"
 
 
@@ -170,6 +185,24 @@ def make_artist_key(artist_name: str) -> str:
     return _normalize_key(artist_name)
 
 
+def make_track_id(file_path) -> str:
+    """Canonical track identity (M6.1): the serialized path itself.
+
+    Paths are case-sensitive on the local filesystem — NO casefold (a
+    different case is a different file). Deterministic and serializable."""
+    return str(Path(file_path))
+
+
+def make_genre_key(genre_name: str) -> str:
+    """Canonical genre identity (M6.1): normalized name."""
+    return _normalize_key(genre_name)
+
+
+def make_composer_key(composer_name: str) -> str:
+    """Canonical composer identity (M6.1): normalized name."""
+    return _normalize_key(composer_name)
+
+
 def _resolve_album_artist(track) -> str:
     """Resolved album-level artist (LOCAL-META-02.2c): an explicit
     ``album_artist`` wins; a compilation without one groups under
@@ -181,6 +214,18 @@ def _resolve_album_artist(track) -> str:
     return track.artist
 
 
+def _canonical_track_sort_key(track) -> tuple:
+    """Canonical per-album track ordering (M6.1): (disc>0 or 10**6,
+    track>0 or 10**6, casefolded sort title or title, path). UNKNOWN (0)
+    sorts deterministically LAST within its dimension — never invented as 1."""
+    return (
+        track.disc_number if track.disc_number > 0 else 10**6,
+        track.track_number if track.track_number > 0 else 10**6,
+        (track.sort_title or track.title or "").casefold(),
+        str(track.file_path),
+    )
+
+
 def build_music_model(tracks) -> MusicModel:
     """Derive albums and artists from tracks (pure, deterministic by key).
 
@@ -189,15 +234,24 @@ def build_music_model(tracks) -> MusicModel:
     ``album_artist``, else "Various Artists" for compilations, else the track
     artist. Display title/artist come from the first member. Empty album ->
     "Unknown Album", empty artist -> "Unknown Artist". Album duration is the
-    sum of members and ``track_paths`` preserves library order. Artists are
-    grouped by normalized track artist (``make_artist_key``) with total track
-    count and distinct-album count. Genres are grouped by normalized name
-    with per-genre track count; empty genre -> "Unknown Genre" and the sum of
-    genre counts equals the total track count.
+    sum of members and ``track_paths`` is the CANONICAL member order (M6.1):
+    (disc>0 or 10**6, track>0 or 10**6, casefolded sort title or title,
+    path) — independent of the scan/insertion order, multi-disc albums are
+    Disc 1 tracks then Disc 2 tracks, and UNKNOWN (0) sorts last within its
+    dimension. AlbumRef V2 fields (M6.1): ``disc_count`` (distinct non-zero
+    disc numbers, 1 when all unknown), ``genres`` and ``composers`` (distinct
+    non-empty member values, sorted casefold). Artists are grouped by
+    normalized track artist (``make_artist_key``) with total track count and
+    distinct-album count. Genres are grouped by normalized name with per-genre
+    track count; empty genre -> "Unknown Genre". Composers (M6.1) are grouped
+    by normalized name with per-composer track count; empty composer ->
+    "Unknown Composer"; the sum of genre counts and the sum of composer counts
+    each equal the total track count.
     """
     album_entries: dict[str, dict] = {}
     artist_entries: dict[str, dict] = {}
     genre_entries: dict[str, dict] = {}
+    composer_entries: dict[str, dict] = {}
     for track in tracks:
         album_title = track.album.strip() or _UNKNOWN_ALBUM
         resolved_artist = _resolve_album_artist(track).strip() or _UNKNOWN_ARTIST
@@ -209,12 +263,12 @@ def build_music_model(tracks) -> MusicModel:
                 "title": album_title,
                 "album_artist": resolved_artist,
                 "duration_ms": 0,
-                "paths": [],
+                "tracks": [],
             }
             album_entries[album_key] = album
         album.setdefault("year", track.year)  # first member wins
         album["duration_ms"] += track.duration_ms
-        album["paths"].append(track.file_path)
+        album["tracks"].append(track)
 
         artist_name = track.artist.strip() or _UNKNOWN_ARTIST
         artist_key = make_artist_key(artist_name)
@@ -233,6 +287,33 @@ def build_music_model(tracks) -> MusicModel:
             genre_entries[genre_key] = genre
         genre["track_count"] += 1
 
+        composer_name = track.composer.strip() or _UNKNOWN_COMPOSER
+        composer_key = make_composer_key(composer_name)
+        composer = composer_entries.get(composer_key)
+        if composer is None:
+            composer = {"name": composer_name, "track_count": 0}
+            composer_entries[composer_key] = composer
+        composer["track_count"] += 1
+
+    for entry in album_entries.values():
+        tracks_sorted = sorted(entry["tracks"], key=_canonical_track_sort_key)
+        entry["paths"] = tuple(t.file_path for t in tracks_sorted)
+        entry["disc_count"] = (
+            len({t.disc_number for t in entry["tracks"] if t.disc_number > 0}) or 1
+        )
+        entry["genres"] = tuple(
+            sorted(
+                {g for t in entry["tracks"] for g in [t.genre] if g},
+                key=str.casefold,
+            )
+        )
+        entry["composers"] = tuple(
+            sorted(
+                {c for t in entry["tracks"] for c in [t.composer] if c},
+                key=str.casefold,
+            )
+        )
+
     albums = tuple(
         sorted(
             (
@@ -242,8 +323,11 @@ def build_music_model(tracks) -> MusicModel:
                     artist=entry["album_artist"],
                     track_count=len(entry["paths"]),
                     duration_ms=entry["duration_ms"],
-                    track_paths=tuple(entry["paths"]),
+                    track_paths=entry["paths"],
                     year=entry["year"],
+                    disc_count=entry["disc_count"],
+                    genres=entry["genres"],
+                    composers=entry["composers"],
                 )
                 for entry in album_entries.values()
             ),
@@ -277,7 +361,55 @@ def build_music_model(tracks) -> MusicModel:
             key=lambda g: g.key,
         )
     )
-    return MusicModel(albums=albums, artists=artists, genres=genres)
+    composers = tuple(
+        sorted(
+            (
+                ComposerRef(
+                    key=key,
+                    name=entry["name"],
+                    track_count=entry["track_count"],
+                )
+                for key, entry in composer_entries.items()
+            ),
+            key=lambda c: c.key,
+        )
+    )
+    return MusicModel(
+        albums=albums,
+        artists=artists,
+        genres=genres,
+        composers=composers,
+    )
+
+
+def timeline_decade(year: int) -> str:
+    """Canonical timeline decade (M6.1): derived OUTSIDE Presentation."""
+    return f"{year // 10 * 10}s" if year > 0 else "Unknown era"
+
+
+@dataclass(frozen=True)
+class TimelineAlbumProjection:
+    album_key: str
+    title: str
+    artist: str
+    year: int
+    decade: str
+
+
+def build_timeline_projection(albums) -> tuple[TimelineAlbumProjection, ...]:
+    """Canonical timeline projection: sorted by (-year, key); the decade is
+    derived here, never in the bridge or QML."""
+    rows = [
+        TimelineAlbumProjection(
+            album_key=a.key,
+            title=a.title,
+            artist=a.artist,
+            year=a.year,
+            decade=timeline_decade(a.year),
+        )
+        for a in albums
+    ]
+    return tuple(sorted(rows, key=lambda r: (-r.year, r.album_key)))
 
 
 def build_folder_model(tracks) -> tuple[FolderRef, ...]:
@@ -364,6 +496,7 @@ class LibraryState:
     albums: tuple[AlbumRef, ...] = ()
     artists: tuple[ArtistRef, ...] = ()
     genres: tuple[GenreRef, ...] = ()
+    composers: tuple[ComposerRef, ...] = ()
     folders: tuple[FolderRef, ...] = ()
     favorite_paths: tuple[str, ...] = ()
     history_paths: tuple[str, ...] = ()

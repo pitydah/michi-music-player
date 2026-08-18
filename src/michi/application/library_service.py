@@ -166,6 +166,7 @@ class LibraryService:
             disc_number=meta.disc_number,
             composer=meta.composer,
             compilation=meta.compilation,
+            sort_title=meta.sort_title,
         )
 
     def _enrich_albums(self, albums: tuple[AlbumRef, ...]) -> tuple[AlbumRef, ...]:
@@ -199,6 +200,7 @@ class LibraryService:
         self._state.albums = self._enrich_albums(model.albums)
         self._state.artists = model.artists
         self._state.genres = model.genres
+        self._state.composers = model.composers
         self._state.folders = build_folder_model(self._state.tracks)
 
     def restore_directory_hint(self, directory: str) -> None:

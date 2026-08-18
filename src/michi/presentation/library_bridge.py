@@ -6,7 +6,11 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from michi.application.library_service import LibraryService
 from michi.application.playlist_service import PlaylistService
-from michi.domain.library import AlbumRef, TrackRef
+from michi.domain.library import (
+    AlbumRef,
+    TrackRef,
+    build_timeline_projection,
+)
 
 
 class LibraryBridge(QObject):
@@ -88,17 +92,20 @@ class LibraryBridge(QObject):
 
     def _get_timeline_albums(self) -> list[dict]:
         rows = []
-        for album in sorted(self._service.state.albums, key=lambda a: (-a.year, a.key)):
-            decade = f"{album.year // 10 * 10}s" if album.year > 0 else "Unknown era"
+        albums_by_key = {a.key: a for a in self._service.state.albums}
+        for projection in build_timeline_projection(self._service.state.albums):
+            album = albums_by_key.get(projection.album_key)
             rows.append(
                 {
-                    "key": album.key,
-                    "title": album.title,
-                    "artist": album.artist,
-                    "year": album.year,
-                    "decade": decade,
-                    "hasArtwork": album.has_artwork,
-                    "artworkPath": self._service.artwork_path_for(album.key) or "",
+                    "key": projection.album_key,
+                    "title": projection.title,
+                    "artist": projection.artist,
+                    "year": projection.year,
+                    "decade": projection.decade,
+                    "hasArtwork": album.has_artwork if album is not None else False,
+                    "artworkPath": (
+                        self._service.artwork_path_for(projection.album_key) or ""
+                    ),
                 }
             )
         return rows
