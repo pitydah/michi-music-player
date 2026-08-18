@@ -185,3 +185,43 @@ class LibraryIndexRepository(ABC):
 
     @abstractmethod
     def version(self) -> int: ...
+
+
+class ScanProgress:
+    """Mutable cross-thread scan progress (M6.4). The worker updates the
+    fields and reports; the owner maps them onto LibraryState."""
+
+    def __init__(self) -> None:
+        self.phase: str | None = None
+        self.current_path: str | None = None
+        self.processed: int = 0
+        self.total: int = 0
+
+
+class ScanCancelToken:
+    """Cooperative cancellation flag (M6.4). The worker checks it between
+    tracks and raises ScanCancelled."""
+
+    def __init__(self) -> None:
+        self.cancelled: bool = False
+
+
+class ScanCancelled(Exception):  # noqa: N818 — name pinned by the M6.4 contract
+    """Cooperative cancellation signal (M6.4)."""
+
+
+class ScanPipelinePort(ABC):
+    """Async scan runner boundary (M6.4). The heavy scan work runs off the
+    UI thread; progress/done are dispatched to the owner thread.
+
+    Contract shapes:
+    - work = Callable[[ScanProgress, ScanCancelToken, Callable[[], None]], ScanResult]
+    - on_progress = Callable[[ScanProgress], None]
+    - on_done = Callable[[int, ScanResult | None, BaseException | None], None]
+    """
+
+    @abstractmethod
+    def submit(self, generation: int, work, on_progress, on_done) -> None: ...
+
+    @abstractmethod
+    def cancel(self, generation: int) -> None: ...

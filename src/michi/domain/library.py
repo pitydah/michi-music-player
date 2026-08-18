@@ -1,7 +1,7 @@
 """Library domain state — pure, no Qt/infra dependencies."""
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import Enum, auto
 from pathlib import Path
 
 HISTORY_CAP = 50
@@ -74,6 +74,21 @@ class LibraryDiagnosticCode(Enum):
     IO_FAILURE = "io_failure"
     UNKNOWN_FAILURE = "unknown_failure"
     STALE_ENTRIES_REMOVED = "stale_entries_removed"
+
+
+class LibraryScanStatus(Enum):
+    """Async scan lifecycle (M6.4). The scan-state contract arms on
+    start_scan and lands on a terminal status (COMPLETED/CANCELLED/FAILED)
+    on the owner thread; the synchronous scan() fallback never touches it."""
+
+    IDLE = auto()
+    DISCOVERING = auto()
+    INDEXING = auto()
+    EXTRACTING = auto()
+    COMMITTING = auto()
+    COMPLETED = auto()
+    CANCELLED = auto()
+    FAILED = auto()
 
 
 @dataclass(frozen=True)
@@ -501,6 +516,12 @@ class LibraryState:
     favorite_paths: tuple[str, ...] = ()
     history_paths: tuple[str, ...] = ()
     recently_added_paths: tuple[str, ...] = ()
+    scan_status: LibraryScanStatus = LibraryScanStatus.IDLE
+    scan_generation: int = 0
+    scan_processed: int = 0
+    scan_total: int = 0
+    scan_progress: float | None = None
+    scan_current_path: str | None = None
 
     @property
     def visible_tracks(self) -> list[TrackRef]:

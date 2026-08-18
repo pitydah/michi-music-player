@@ -8,7 +8,7 @@ import json
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 
-from michi.domain.library import TrackMetadata
+from michi.domain.library import TrackMetadata, TrackRef
 
 
 @dataclass(frozen=True)
@@ -79,6 +79,20 @@ class ScanClassification:
     modified: tuple[str, ...] = ()
     removed: tuple[str, ...] = ()
     unchanged: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class ScanResult:
+    """Async scan heavy-work output (M6.4). The commit derives the state
+    deltas on the owner thread.
+
+    ``directory`` rides along with the payload so the owner-thread done
+    handler never needs the directory captured at relay-connect time."""
+
+    tracks: tuple[TrackRef, ...] = ()
+    upserts: tuple[LibraryIndexEntry, ...] = ()
+    removed: tuple[str, ...] = ()
+    directory: str = ""
 
 
 def classify_scan(

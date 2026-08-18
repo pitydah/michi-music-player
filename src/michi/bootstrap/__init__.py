@@ -21,6 +21,7 @@ from michi.infrastructure.artwork import ArtworkCache, MutagenArtworkProvider
 from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
 from michi.infrastructure.metadata_extractor import InfrastructureMetadataExtractor
 from michi.infrastructure.qt_backend import QtMultimediaBackend
+from michi.infrastructure.scan_runner import ScanRelay, ThreadScanRunner
 from michi.infrastructure.session_repository import SqliteSessionRepository
 from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
 from michi.presentation.library_bridge import LibraryBridge
@@ -78,8 +79,25 @@ class ApplicationContainer:
         metadata_extractor = InfrastructureMetadataExtractor()
         artwork_provider = MutagenArtworkProvider()
         artwork_cache = ArtworkCache(Path.home() / ".cache" / "michi" / "artwork")
+        scan_relay = ScanRelay()
+        scan_runner = ThreadScanRunner(scan_relay)
         library = LibraryService(
-            scanner, queue, metadata_extractor, artwork_provider, artwork_cache
+            scanner,
+            queue,
+            metadata_extractor,
+            artwork_provider,
+            artwork_cache,
+            scan_pipeline=scan_runner,
+        )
+        # Async scan dispatch (M6.4): the runner emits on the worker thread;
+        # the queued connections deliver progress/done to the owner thread.
+        scan_relay.done.connect(
+            lambda generation, result, error: library._on_scan_done(
+                generation, result, error
+            )
+        )
+        scan_relay.progress.connect(
+            lambda generation, progress: library._on_scan_progress(generation, progress)
         )
         navigation = NavigationService()
 

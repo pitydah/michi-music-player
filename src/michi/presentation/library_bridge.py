@@ -273,7 +273,7 @@ class LibraryBridge(QObject):
 
     @Slot(str)
     def scan(self, directory: str) -> None:
-        self._service.scan(directory)
+        self._service.start_scan(directory)
 
     @Slot(str)
     def search(self, query: str) -> None:

@@ -16,6 +16,10 @@ from michi.application.ports import (
     LibraryPrefsPort,
     MetadataExtractionError,
     MetadataExtractorPort,
+    ScanCancelled,
+    ScanCancelToken,
+    ScanPipelinePort,
+    ScanProgress,
 )
 from michi.application.queue_service import QueueService
 from michi.domain.library import (
@@ -25,6 +29,7 @@ from michi.domain.library import (
     LibraryDiagnostic,
     LibraryDiagnosticCode,
     LibraryPrefs,
+    LibraryScanStatus,
     LibraryState,
     TrackMetadata,
     TrackRef,
@@ -32,7 +37,11 @@ from michi.domain.library import (
     build_music_model,
     merge_recently_added,
 )
-from michi.domain.library_index import LibraryIndexEntry, classify_scan
+from michi.domain.library_index import (
+    LibraryIndexEntry,
+    ScanResult,
+    classify_scan,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +75,7 @@ class LibraryService:
         artwork_cache: ArtworkCachePort | None = None,
         library_prefs: LibraryPrefsPort | None = None,
         library_index: LibraryIndexRepository | None = None,
+        scan_pipeline: ScanPipelinePort | None = None,
     ) -> None:
         self._scanner = scanner
         self._queue = queue_service
@@ -77,6 +87,7 @@ class LibraryService:
         self._subscribers: list[Callable[[], None]] = []
         self._library_prefs = library_prefs
         self._library_index = library_index
+        self._scan_pipeline = scan_pipeline
         if library_prefs is not None:
             prefs = library_prefs.load()
             self._state.favorite_paths = prefs.favorite_paths
@@ -121,8 +132,16 @@ class LibraryService:
             )
             self._notify()
             return
-        # Everything derived is computed BEFORE any state assignment; then a
-        # single assignment block and ONE notify (never a half state).
+        # The commit block is shared with the async path (M6.4): the sync
+        # scan() notifies once after the commit; the async _on_scan_done
+        # notifies once with the terminal COMPLETED status.
+        self._commit_scan_result(next_tracks, directory)
+        self._notify()
+
+    def _commit_scan_result(self, next_tracks: list[TrackRef], directory: str) -> None:
+        """Atomic commit of a successful scan result (M6.4): everything
+        derived is computed BEFORE any state assignment; then a single
+        assignment block. The caller owns the single notify."""
         previous_paths = {str(t.file_path) for t in self._state.tracks}
         removed = {t.file_path for t in self._state.tracks} - {
             t.file_path for t in next_tracks
@@ -163,7 +182,6 @@ class LibraryService:
         else:
             self._state.diagnostic = None
         self._persist_prefs()
-        self._notify()
 
     def _incremental_tracks(self, paths, discovered) -> list[TrackRef]:
         """Incremental M6.3 path: fingerprint -> classify -> extract ONLY
@@ -178,15 +196,7 @@ class LibraryService:
         for track_id, file_size, mtime_ns in discovered:
             path = Path(track_id)
             if track_id in added_ids or track_id in modified_ids:
-                try:
-                    meta = (
-                        self._metadata_extractor.extract(path)
-                        if self._metadata_extractor
-                        else TrackMetadata(title=path.stem)
-                    )
-                except MetadataExtractionError as exc:
-                    logger.warning("Metadata extraction failed for %s: %s", path, exc)
-                    meta = TrackMetadata(title=path.stem)
+                meta = self._extract_meta(path)
                 ref = self._trackref_from_metadata(path, meta)
                 upserts.append(LibraryIndexEntry(track_id, file_size, mtime_ns, meta))
             else:
@@ -198,6 +208,163 @@ class LibraryService:
         for track_id in classification.removed:
             self._library_index.remove(track_id)
         return track_refs
+
+    def start_scan(self, directory: str) -> None:
+        """Async scan entry (M6.4): the heavy work runs off the UI thread via
+        the scan pipeline; the commit happens on the owner thread. Without a
+        pipeline this falls back to the synchronous scan() — and the sync
+        path never touches the scan-state contract."""
+        if self._scan_pipeline is None:
+            self.scan(directory)
+            return
+        generation = self._state.scan_generation + 1
+        self._state.scan_generation = generation
+        self._state.scan_status = LibraryScanStatus.DISCOVERING
+        self._state.scan_processed = 0
+        self._state.scan_total = 0
+        self._state.scan_progress = None
+        self._state.scan_current_path = None
+        self._notify()
+        self._scan_pipeline.submit(
+            generation,
+            self._build_scan_work(directory),
+            lambda progress: self._on_scan_progress(generation, progress),
+            lambda gen, result, error: self._on_scan_done(gen, result, error),
+        )
+
+    def cancel_scan(self) -> None:
+        if self._scan_pipeline is not None:
+            self._scan_pipeline.cancel(self._state.scan_generation)
+
+    def _build_scan_work(self, directory: str):
+        return lambda progress, token, report: self._run_scan_work(
+            directory, progress, token, report
+        )
+
+    def _run_scan_work(
+        self,
+        directory,
+        progress: ScanProgress,
+        token: ScanCancelToken,
+        report,
+    ) -> ScanResult:
+        """The heavy scan work (runs on the worker thread). Discovering ->
+        indexing (fingerprints + classify) -> extracting (per track: token
+        check, extraction, progress report). The COMMIT phase happens on the
+        owner thread."""
+        progress.phase = "DISCOVERING"
+        root = Path(directory)
+        paths = self._scanner.scan(root)  # LibraryFilesystemError propagates
+        if self._library_index is not None:
+            progress.phase = "INDEXING"
+            discovered = [(str(p), *self._scanner.fingerprint(p)) for p in paths]
+            known = {e.track_id: e for e in self._library_index.load_all()}
+            classification = classify_scan(known, discovered)
+            added_ids = set(classification.added)
+            modified_ids = set(classification.modified)
+            progress.phase = "EXTRACTING"
+            progress.total = len(discovered)
+            progress.processed = 0
+            track_refs = []
+            upserts = []
+            for track_id, file_size, mtime_ns in discovered:
+                if token.cancelled:
+                    raise ScanCancelled()
+                progress.current_path = track_id
+                progress.processed += 1
+                path = Path(track_id)
+                if track_id in added_ids or track_id in modified_ids:
+                    meta = self._extract_meta(path)
+                    track_refs.append(self._trackref_from_metadata(path, meta))
+                    upserts.append(
+                        LibraryIndexEntry(track_id, file_size, mtime_ns, meta)
+                    )
+                else:
+                    entry = known[track_id]
+                    track_refs.append(
+                        self._trackref_from_metadata(path, entry.metadata)
+                    )
+                report()
+            if upserts:
+                self._library_index.upsert_many(tuple(upserts))
+            for track_id in classification.removed:
+                self._library_index.remove(track_id)
+            return ScanResult(
+                tracks=tuple(track_refs),
+                upserts=tuple(upserts),
+                removed=classification.removed,
+                directory=directory,
+            )
+        # No index: the full-scan extraction with the same discipline.
+        progress.phase = "EXTRACTING"
+        progress.total = len(paths)
+        progress.processed = 0
+        track_refs = []
+        for p in paths:
+            if token.cancelled:
+                raise ScanCancelled()
+            progress.current_path = str(p)
+            progress.processed += 1
+            track_refs.append(self._make_trackref(p))
+            report()
+        return ScanResult(tracks=tuple(track_refs), directory=directory)
+
+    def _extract_meta(self, path: Path) -> TrackMetadata:
+        if self._metadata_extractor is None:
+            return TrackMetadata(title=path.stem)
+        try:
+            return self._metadata_extractor.extract(path)
+        except MetadataExtractionError as exc:
+            logger.warning("Metadata extraction failed for %s: %s", path, exc)
+            return TrackMetadata(title=path.stem)
+
+    def _on_scan_progress(self, generation: int, progress: ScanProgress) -> None:
+        if generation != self._state.scan_generation:
+            return  # stale generation: never touch the observable state
+        phase = progress.phase
+        if phase == "DISCOVERING":
+            self._state.scan_status = LibraryScanStatus.DISCOVERING
+        elif phase == "INDEXING":
+            self._state.scan_status = LibraryScanStatus.INDEXING
+        elif phase == "EXTRACTING":
+            self._state.scan_status = LibraryScanStatus.EXTRACTING
+        self._state.scan_processed = progress.processed
+        self._state.scan_total = progress.total
+        self._state.scan_progress = (
+            progress.processed / progress.total if progress.total > 0 else None
+        )
+        self._state.scan_current_path = progress.current_path
+        self._notify()
+
+    def _on_scan_done(
+        self,
+        generation: int,
+        result: ScanResult | None,
+        error: BaseException | None,
+    ) -> None:
+        if generation != self._state.scan_generation:
+            return  # stale generation NEVER commits
+        if isinstance(error, ScanCancelled):
+            self._state.scan_status = LibraryScanStatus.CANCELLED
+            self._notify()
+            return
+        if isinstance(error, LibraryFilesystemError):
+            self._state.scan_status = LibraryScanStatus.FAILED
+            self._state.diagnostic = LibraryDiagnostic(
+                code=error.code,
+                message=_user_message(error.code, path=error.path),
+                path=error.path,
+            )
+            self._notify()
+            return
+        if error is not None:
+            self._state.scan_status = LibraryScanStatus.FAILED
+            self._notify()
+            return
+        self._state.scan_status = LibraryScanStatus.COMMITTING
+        self._commit_scan_result(list(result.tracks), result.directory)
+        self._state.scan_status = LibraryScanStatus.COMPLETED
+        self._notify()
 
     def _make_trackref(self, file_path: Path) -> TrackRef:
         if self._metadata_extractor is None:
