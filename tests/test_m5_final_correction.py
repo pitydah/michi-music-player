@@ -40,6 +40,7 @@ freezes them.
 import sqlite3
 from pathlib import Path
 
+from michi.application.coordinator import PlaybackCoordinator
 from michi.application.persistence_coordinator import PersistenceCoordinator
 from michi.application.playback_service import PlaybackService
 from michi.application.queue_service import QueueService
@@ -885,3 +886,331 @@ class TestLastGate2:
         coordinator3.restore()
 
         assert prepare_calls == [(_C, 0)]
+
+
+class TestProductionLifecycle:
+    """M5-PRODUCTION-LIFECYCLE-GATE — CANONICAL LIFECYCLE (§7, §29-B/C).
+
+    Bootstrap's canonical order is construct -> start() -> restore() — the
+    subscriptions (queue/playback/resume_prepared) are armed BEFORE the
+    restore, so a FAST backend's resume_prepared is never lost. restore()
+    runs UNDER _restoring (its queue.changed/playback.changed notifications
+    never checkpoint a degraded snapshot); _on_resume_prepared processes
+    whenever started — even during _restoring, it is the completion signal:
+    the state IS complete at that point and must never be dropped by an
+    ``if _restoring: return`` guard.
+    """
+
+    def _wire_audio_path(self, audio, queue, playback):
+        """Production position wiring: PlaybackCoordinator forwards the
+        backend position channel into PlaybackService.update_position."""
+        coordinator = PlaybackCoordinator(audio, queue, playback)
+        coordinator.start()
+        return coordinator
+
+    # ── 1: start-then-restore receives the resume confirmation (§7) ──────
+    def test_production_lifecycle_start_then_restore_receives_resume_confirmation(
+        self, tmp_path
+    ):
+        db = tmp_path / "t25.db"
+        _build_golden_state(db)
+
+        # ── Session 2 EXACTLY the bootstrap order: construct -> start() ->
+        # restore() (production lifecycle: start() then restore()). The
+        # PlaybackCoordinator audio position path is started first, matching
+        # the composition root. ──
+        repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        self._wire_audio_path(audio2, queue2, playback2)
+        coordinator2.start()
+        coordinator2.restore()
+
+        # Backend: acceptance + positionChanged through the AUDIO path (the
+        # fake's position trigger -> PlaybackCoordinator -> update_position —
+        # never a direct service call).
+        audio2.trigger_media_accepted(_B)
+        audio2.trigger_position(222000)
+
+        # Restore authority ended: the confirmation made B@222000 durable;
+        # status STOPPED, no autoplay.
+        snap = repo2.load()
+        assert snap.playback_path == "/m/b.flac"
+        assert snap.position_ms == 222000
+        assert playback2.state.status is PlaybackStatus.STOPPED
+        assert audio2.state != "playing"
+
+        # A later runtime position persists normally: the durable row advances.
+        playback2.update_position(230000)
+        assert repo2.load().position_ms == 230000
+
+    # ── 2: restore's own notifications never self-checkpoint (§29-B) ─────
+    def test_restore_notification_does_not_self_checkpoint(self, tmp_path):
+        db = tmp_path / "t26.db"
+        _build_golden_state(db)
+
+        repo2, _s2, _a2, _p2, _q2, coordinator2 = _build(db)
+        coordinator2.start()  # production lifecycle: start() then restore()
+        before = repo2.load()
+        coordinator2.restore()
+        after = repo2.load()
+
+        # The queue.changed/playback.changed notifications fired by
+        # restore_session/prepare_for_resume DURING restore() must not write a
+        # degraded snapshot: the durable resume truth is identical before and
+        # after the restore (before any backend confirmation).
+        assert after == before
+        assert after.playback_path == "/m/b.flac"
+        assert after.position_ms == 222000
+
+    # ── 3: a FAST backend's event is received inside the restore (§29-C) ──
+    def test_resume_prepared_received_with_production_order(
+        self, tmp_path, monkeypatch
+    ):
+        db = tmp_path / "t27.db"
+        _build_golden_state(db)
+
+        repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        self._wire_audio_path(audio2, queue2, playback2)
+        coordinator2.start()  # production lifecycle: start() then restore()
+
+        # The fake backend is FAST: acceptance + position confirmation fire
+        # synchronously INSIDE the restore call (spy-wrapped prepare). With
+        # start-then-restore ordering the resume_prepared subscription is
+        # armed BEFORE the restore, so the event is received — not lost.
+        orig_prepare = playback2.prepare_for_resume
+        events = []
+        playback2.subscribe_resume_prepared(lambda p, pos: events.append((p, pos)))
+
+        def fast_prepare(path, position_ms):
+            orig_prepare(path, position_ms)
+            audio2.trigger_media_accepted(path)
+            audio2.trigger_position(position_ms)
+
+        monkeypatch.setattr(playback2, "prepare_for_resume", fast_prepare)
+        coordinator2.restore()
+
+        # The confirmation was received INSIDE the restore window: phase
+        # released, durable truth B@222000, no eternal WAITING_POSITION.
+        assert events == [(_B, 222000)]
+        assert audio2.seek_calls == [222000]
+        snap = repo2.load()
+        assert snap.playback_path == "/m/b.flac"
+        assert snap.position_ms == 222000
+        assert playback2.state.status is PlaybackStatus.STOPPED
+
+        # The release is real: a later runtime position persists normally.
+        playback2.update_position(230000)
+        assert repo2.load().position_ms == 230000
+
+
+class TestZeroPositionAudioPath:
+    """M5-PRODUCTION-LIFECYCLE-GATE — ZERO POSITION via the audio path
+    (§29-G/H, §16).
+
+    The resume confirmation must not depend on a positionChanged that Qt may
+    not emit when the effective position already equals the requested value
+    (e.g. seek to 0 from 0): after a non-reentrant seek() returns, if the
+    backend position ALREADY equals the requested value, resume_prepared
+    fires with that backend-reported position (audio.position() — never
+    fabricated). The latch prevents double-fire. A clamped position is
+    equally confirmed by the first post-acceptance position update through
+    the audio channel.
+    """
+
+    def _wire_audio_path(self, audio, queue, playback):
+        coordinator = PlaybackCoordinator(audio, queue, playback)
+        coordinator.start()
+        return coordinator
+
+    # ── 1: position 0 confirmed via the backend-reported position (§29-G) ─
+    def test_zero_position_through_audio_event_path(self, tmp_path, monkeypatch):
+        db = tmp_path / "t28.db"
+        _build_golden_state(db, position_ms=0)
+
+        repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        self._wire_audio_path(audio2, queue2, playback2)
+        coordinator2.start()  # production lifecycle: start() then restore()
+        prepare_calls = []
+        orig_prepare = playback2.prepare_for_resume
+
+        def spy_prepare(path, position_ms):
+            prepare_calls.append((path, position_ms))
+            orig_prepare(path, position_ms)
+
+        monkeypatch.setattr(playback2, "prepare_for_resume", spy_prepare)
+        events = []
+        playback2.subscribe_resume_prepared(lambda p, pos: events.append((p, pos)))
+        coordinator2.restore()
+        assert prepare_calls == [(_B, 0)]
+
+        # The backend accepts and seeks to 0 — but does NOT emit
+        # positionChanged (Qt skips the signal when the effective position
+        # already equals the requested value). The confirmation must come
+        # from the backend-REPORTED position (audio.position()) after the
+        # seek returns — never from a fabricated signal, never an eternal
+        # WAITING_POSITION.
+        audio2.trigger_media_accepted(_B)
+        assert events == [(_B, 0)]  # RED: no post-seek check -> never fires
+        # The event carried the backend-reported position — never fabricated.
+        assert events[0][1] == audio2.position()
+
+        # Durable truth B@0: position 0 IS the truth; restore completed.
+        snap = repo2.load()
+        assert snap.playback_path == "/m/b.flac"
+        assert snap.position_ms == 0
+
+        # The restore authority ended: a later runtime position tick through
+        # the AUDIO path persists the new runtime truth.
+        audio2.trigger_position(6000)
+        assert repo2.load().position_ms == 6000
+
+    # ── 2: a clamped position is still confirmed (§29-H) ─────────────────
+    def test_clamped_position_still_confirmed(self, tmp_path, monkeypatch):
+        db = tmp_path / "t29.db"
+        _build_golden_state(db, position_ms=999999)
+
+        repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        self._wire_audio_path(audio2, queue2, playback2)
+        coordinator2.start()  # production lifecycle: start() then restore()
+        prepare_calls = []
+        orig_prepare = playback2.prepare_for_resume
+
+        def spy_prepare(path, position_ms):
+            prepare_calls.append((path, position_ms))
+            orig_prepare(path, position_ms)
+
+        monkeypatch.setattr(playback2, "prepare_for_resume", spy_prepare)
+        coordinator2.restore()
+        assert prepare_calls == [(_B, 999999)]
+
+        # The backend CLAMPS: it reports 300000 through the audio position
+        # channel. The first post-acceptance position update confirms,
+        # whatever its value; the release makes the confirmed clamp the
+        # durable truth.
+        audio2.trigger_media_accepted(_B)
+        audio2.trigger_position(300000)
+        snap = repo2.load()
+        assert snap.playback_path == "/m/b.flac"
+        assert snap.position_ms == 300000
+        assert playback2.state.status is PlaybackStatus.STOPPED
+
+
+class TestRemoveCurrentPostRestore:
+    """M5-PRODUCTION-LIFECYCLE-GATE — REMOVE-CURRENT RESURRECTION (§20,
+    §21, §29-J/K).
+
+    After the restore authority is released due to a queue coherence break
+    (removing the restored current), subsequent checkpoints must NOT
+    resurrect the old playback_path from PlaybackService's RETAINED file_path
+    (M4 semantics keep file_path == B after stop()). The durable playback
+    truth stays None@0 until a NEW coherent runtime identity (queue current
+    valid AND matching playback.file_path) appears.
+    """
+
+    def test_remove_current_waiting_position_shutdown_persists_none(
+        self, tmp_path, monkeypatch
+    ):
+        db = tmp_path / "t30.db"
+        _build_golden_state(db)
+
+        # ── Session 2: restore (WAITING_MEDIA); accept B (WAITING_POSITION,
+        # no position confirmation); the user REMOVES the restored current B
+        # -> current -1; the coordinator's coherence-break release runs
+        # (public playback.stop()); shutdown persists the durable truth
+        # None@0 — never the retained B. ──
+        repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        coordinator2.start()  # production lifecycle: start() then restore()
+        coordinator2.restore()
+        audio2.trigger_media_accepted(_B)  # WAITING_MEDIA -> WAITING_POSITION
+        queue2.remove(1)  # B removed -> current -1; coherence break
+        assert [t.file_path for t in queue2.state.tracks] == [_A, _C]
+        assert queue2.state.current_index == -1
+        coordinator2.shutdown()
+
+        snap2 = repo2.load()
+        assert snap2.playback_path is None  # RED: B resurrects here
+        assert snap2.position_ms == 0
+        assert snap2.queue_current_index == -1
+        assert [e.file_path for e in snap2.queue_entries] == [
+            "/m/a.flac",
+            "/m/c.flac",
+        ]
+
+        # ── Session 3: queue restored as A,C / current -1; NO fabricated
+        # resume (the durable playback truth is None@0, never B@0). ──
+        repo3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        coordinator3.start()
+        prepare_calls = []
+        orig_prepare = playback3.prepare_for_resume
+
+        def spy_prepare(path, position_ms):
+            prepare_calls.append((path, position_ms))
+            orig_prepare(path, position_ms)
+
+        monkeypatch.setattr(playback3, "prepare_for_resume", spy_prepare)
+        coordinator3.restore()
+
+        assert [t.file_path for t in queue3.state.tracks] == [_A, _C]
+        assert queue3.state.current_index == -1
+        assert prepare_calls == []  # no fabricated B; no autoplay
+        assert playback3.state.file_path is None
+        snap3 = repo3.load()
+        assert snap3.playback_path is None  # the durable truth never resurrects
+        assert snap3.position_ms == 0
+
+    def test_remove_current_then_second_checkpoint_does_not_resurrect_old_path(
+        self, tmp_path, monkeypatch
+    ):
+        db = tmp_path / "t31.db"
+        _build_golden_state(db)
+
+        # ── Session 2: restore + accept (WAITING_POSITION); the user REMOVES
+        # the restored current B -> the coherence break releases the authority
+        # (public playback.stop()); even though playback.state.file_path is
+        # STILL B after stop() (M4 semantics), a LATER legitimate checkpoint
+        # must NOT resurrect it: the durable truth stays None@0 until a NEW
+        # coherent runtime identity appears. ──
+        repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        coordinator2.start()  # production lifecycle: start() then restore()
+        coordinator2.restore()
+        audio2.trigger_media_accepted(_B)  # WAITING_MEDIA -> WAITING_POSITION
+        queue2.remove(1)  # B removed -> current -1; release + stop()
+        assert [t.file_path for t in queue2.state.tracks] == [_A, _C]
+        assert queue2.state.current_index == -1
+        assert playback2.state.file_path == _B  # M4: stop() retains file_path
+
+        queue2.add(Path("/m/d.flac"), "D")  # another legitimate checkpoint
+        coordinator2.shutdown()
+
+        snap2 = repo2.load()
+        assert snap2.playback_path is None  # RED: the second checkpoint resurrects B
+        assert snap2.position_ms == 0
+        assert snap2.queue_current_index == -1
+        assert [e.file_path for e in snap2.queue_entries] == [
+            "/m/a.flac",
+            "/m/c.flac",
+            "/m/d.flac",
+        ]
+
+        # ── Session 3: NO prepare — the old path never returns. ──
+        repo3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        coordinator3.start()
+        prepare_calls = []
+        orig_prepare = playback3.prepare_for_resume
+
+        def spy_prepare(path, position_ms):
+            prepare_calls.append((path, position_ms))
+            orig_prepare(path, position_ms)
+
+        monkeypatch.setattr(playback3, "prepare_for_resume", spy_prepare)
+        coordinator3.restore()
+
+        assert [t.file_path for t in queue3.state.tracks] == [
+            _A,
+            _C,
+            Path("/m/d.flac"),
+        ]
+        assert queue3.state.current_index == -1
+        assert prepare_calls == []  # no fabricated B; no autoplay
+        snap3 = repo3.load()
+        assert snap3.playback_path is None  # the durable truth never resurrects
+        assert snap3.position_ms == 0

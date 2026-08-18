@@ -246,22 +246,46 @@ class PlaybackService:
     def _apply_prepare_seek(self) -> None:
         """Apply a prepare_for_resume seek, post-acceptance (never autoplay).
 
-        Called from the acceptance path only, after the candidate identity
-        has been committed: the backend is asked to seek to the persisted
-        position (it clamps). The port ``seek`` is the backend position
-        primitive — the same one the public ``seek()`` uses. PlaybackState
-        is not touched here — the UI is never shown a position the backend
-        did not accept; the position the UI observes arrives from the
-        backend's own position channel.
+        M5-PRODUCTION-LIFECYCLE-GATE: the confirmation latch is armed BEFORE
+        the backend seek is issued, so a REENTRANT backend that emits the
+        position callback synchronously from within seek() confirms the
+        resume — never lost to a latch armed after the fact, never
+        double-fired (the latch disarms on the first fire). A seek that
+        raises disarms the latch cleanly (no false resume-complete, no
+        eternal latch) and surfaces the error on the state. After a
+        non-reentrant seek returns, if the backend-reported position is
+        UNCHANGED and already equals the requested value (e.g. seek to 0
+        from 0 — Qt may not emit a positionChanged for an unchanged value),
+        the confirmation fires with that backend-reported position — never
+        fabricated. A clamped position (position() != requested) and a
+        position that the seek actually CHANGED stay latched: the async
+        positionChanged confirms with the backend-reported value.
         """
         resume_position = self._pending_resume_position_ms
         self._pending_resume_position_ms = None
-        if resume_position is not None:
+        if resume_position is None:
+            return
+        self._resume_prepared_pending = True  # armed BEFORE the backend seek
+        try:
+            before = self._audio.position()
             self._audio.seek(resume_position)
-            # A resume position was actually requested and the seek is on its
-            # way to the backend: the FIRST post-acceptance position update
-            # confirms the resume (M5-LAST-GATE-2).
-            self._resume_prepared_pending = True
+        except Exception as exc:
+            self._resume_prepared_pending = False
+            self._state.error_message = str(exc)
+            self._notify()
+            return
+        if self._resume_prepared_pending and self._state.file_path is not None:
+            # Non-reentrant path: only when the seek left the position
+            # UNCHANGED does the backend ALREADY report the requested value
+            # (Qt skips positionChanged for an unchanged value) — the
+            # confirmation is real (backend truth, never fabricated) and
+            # fires now instead of waiting for a signal that never comes. A
+            # clamped or changed position stays latched for the async event.
+            confirmed = self._audio.position()
+            if confirmed == resume_position and confirmed == before:
+                self._resume_prepared_pending = False
+                for cb in list(self._resume_prepared_subscribers):
+                    cb(self._state.file_path, confirmed)
 
     def _on_media_rejected(self, file_path: Path, message: str) -> None:
         if self._pending_path is not None and file_path == self._pending_path:

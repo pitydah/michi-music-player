@@ -144,7 +144,10 @@ class PersistenceCoordinator:
         identity == restored path); a broken coherence writes
         playback_path None / position 0 — the queue mutation wins and no
         identity is fabricated. Outside any phase the runtime Playback is
-        encoded.
+        encoded ONLY WHILE coherent with the live queue current identity;
+        a retained playback file_path (M4: stop() keeps it) that the queue
+        does not confirm is never encoded — the durable projection never
+        fabricates a playback identity the queue does not confirm.
         """
         queue_state = self._queue.state
         if (
@@ -159,12 +162,21 @@ class PersistenceCoordinator:
                 position_ms = 0
         else:
             playback_state = self._playback.state
-            playback_path = (
-                str(playback_state.file_path)
-                if playback_state.file_path is not None
-                else None
+            coherent_runtime = (
+                playback_state.file_path is not None
+                and 0 <= queue_state.current_index < len(queue_state.tracks)
+                and str(queue_state.tracks[queue_state.current_index].file_path)
+                == str(playback_state.file_path)
             )
-            position_ms = playback_state.position_ms
+            if coherent_runtime:
+                playback_path = str(playback_state.file_path)
+                position_ms = playback_state.position_ms
+            else:
+                # Queue coherence is authoritative: a retained playback
+                # file_path (M4: stop() keeps it) must never become durable
+                # garbage when the queue has no matching current.
+                playback_path = None
+                position_ms = 0
         return PlaybackSessionSnapshot(
             format_version=FORMAT_VERSION,
             queue_entries=tuple(
@@ -282,20 +294,28 @@ class PersistenceCoordinator:
             self._release_resume_authority(reason="queue coherence broken")
 
     def _on_resume_prepared(self, path: Path, position_ms: int) -> None:
-        # M5-LAST-GATE-2: the backend CONFIRMED the resume position (media
-        # accepted + first post-acceptance position update — the confirmed,
-        # clamp-aware value). The restore window closes and the runtime truth
-        # (including the confirmed position) becomes durable immediately:
-        # no future checkpoint can regress it.
-        if self._resume_phase in (
-            _ResumePhase.WAITING_MEDIA,
-            _ResumePhase.WAITING_POSITION,
-        ):
-            self._release_resume_authority(reason="resume position confirmed")
-            self._last_persisted_position_ms = position_ms
-            self.checkpoint()
+        # M5-PRODUCTION-LIFECYCLE-GATE: the backend CONFIRMED the resume
+        # position (media accepted + first post-acceptance position update —
+        # the confirmed, clamp-aware value). Received even DURING _restoring:
+        # it is the COMPLETION signal of the two-phase restore — the state IS
+        # complete at that point (release + marker + checkpoint are safe;
+        # restore_session already ran and the confirmed position is the
+        # runtime truth) — so it is gated ONLY on _started and never dropped
+        # inside the restore window. The restore window closes and the
+        # runtime truth (including the confirmed position) becomes durable
+        # immediately: no future checkpoint can regress it.
+        if not self._started:
+            return
+        self._release_resume_authority(reason="resume position confirmed")
+        self._last_persisted_position_ms = position_ms
+        self.checkpoint()
 
     def _on_playback_changed(self) -> None:
+        # Restore's OWN notifications (restore_session/prepare_for_resume)
+        # never checkpoint: suppressed while restoring or disarmed. The
+        # restore COMPLETION does not flow through here — it arrives via
+        # _on_resume_prepared, which is gated ONLY on _started (never
+        # dropped inside the restore window).
         if self._restoring or not self._started:
             return
         state = self._playback.state

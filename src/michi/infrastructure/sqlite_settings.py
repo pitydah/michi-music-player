@@ -358,9 +358,17 @@ class SQLiteSettingsRepository(SettingsRepository):
         self._migrate_schema()
 
     def _ensure_schema(self) -> None:
-        with sqlite3.connect(str(self._db_path)) as conn:
+        # Explicit close (M5-PRODUCTION-LIFECYCLE-GATE): the with-conn only
+        # commits; close deterministically instead of waiting for GC.
+        # close() would ROLL BACK a pending transaction — commit explicitly
+        # to preserve the with-conn's commit-on-exit.
+        conn = sqlite3.connect(str(self._db_path))
+        try:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.executescript(self._SCHEMA)
+            conn.commit()
+        finally:
+            conn.close()
 
     def _migrate_schema(self) -> None:
         """Version-check and migrate the persisted schema (writable path only).
@@ -854,8 +862,13 @@ class SQLiteSettingsRepository(SettingsRepository):
 
     def load(self) -> SettingsState:
         state = SettingsState()
-        with sqlite3.connect(str(self._db_path)) as conn:
+        # Explicit close (M5-PRODUCTION-LIFECYCLE-GATE): the with-conn only
+        # commits; close deterministically instead of waiting for GC.
+        conn = sqlite3.connect(str(self._db_path))
+        try:
             rows = conn.execute("SELECT key, value FROM settings").fetchall()
+        finally:
+            conn.close()
 
         for key, value in rows:
             if key == "volume":
@@ -906,8 +919,16 @@ class SQLiteSettingsRepository(SettingsRepository):
             ("theme", state.theme),
             ("window_geometry", window_geometry_to_json(state.window_geometry)),
         ]
-        with sqlite3.connect(str(self._db_path)) as conn:
+        # Explicit close (M5-PRODUCTION-LIFECYCLE-GATE): the with-conn only
+        # commits; close deterministically instead of waiting for GC.
+        # close() would ROLL BACK a pending transaction — commit explicitly
+        # to preserve the with-conn's commit-on-exit.
+        conn = sqlite3.connect(str(self._db_path))
+        try:
             conn.executemany("INSERT OR REPLACE INTO settings VALUES (?, ?)", rows)
+            conn.commit()
+        finally:
+            conn.close()
 
 
 def _quarantine_primary_artifacts(db_path: Path) -> Path:

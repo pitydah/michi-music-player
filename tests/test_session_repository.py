@@ -15,6 +15,7 @@ from michi.domain.session import (
     encode_snapshot,
     fresh_snapshot,
 )
+from michi.infrastructure import session_repository
 from michi.infrastructure.session_repository import SqliteSessionRepository
 
 _SESSION_KEY = "session_snapshot"
@@ -117,3 +118,72 @@ def test_load_never_raises(tmp_path, monkeypatch):
 
     monkeypatch.setattr(sqlite3, "connect", _exploding_connect)
     assert repo.load() == fresh_snapshot()
+
+
+class TestExplicitClose:
+    """M5-PRODUCTION-LIFECYCLE-GATE — deterministic connection close.
+
+    load()/save() must close their sqlite3 connections EXPLICITLY (a
+    ``with sqlite3.connect(...)`` only commits — the connection would
+    otherwise linger until GC). A recording wrapper around sqlite3.connect
+    (installed inside the module under test) records every connection the
+    operation opens. Python 3.11's sqlite3.Connection exposes no ``.closed``
+    flag and its ``close`` is read-only (unwrappable), so closure is proven
+    with a use-after-close probe: any operation on a closed connection
+    raises sqlite3.ProgrammingError — deterministic, no GC dependence (a
+    still-open connection would succeed).
+    """
+
+    def _install_recording_connect(self, monkeypatch):
+        real_connect = session_repository.sqlite3.connect
+        opened = []
+
+        def recording_connect(*args, **kwargs):
+            conn = real_connect(*args, **kwargs)
+            opened.append(conn)
+            return conn
+
+        monkeypatch.setattr(session_repository.sqlite3, "connect", recording_connect)
+        return opened
+
+    @staticmethod
+    def _probe_closed(conn) -> bool:
+        """True when the connection is closed: use-after-close raises
+        ProgrammingError; a live connection executes successfully."""
+        try:
+            conn.execute("SELECT 1")
+        except sqlite3.ProgrammingError:
+            return True
+        return False
+
+    def _assert_all_closed(self, opened):
+        # Every connection the operation opened must be closed NOW —
+        # closed count == opened count, nothing waiting on GC.
+        assert opened, "the operation must have opened a connection"
+        assert all(self._probe_closed(conn) for conn in opened)
+
+    def test_load_closes_its_connection(self, tmp_path, monkeypatch):
+        db = tmp_path / "michi.db"
+        repo = SqliteSessionRepository(db)  # schema ensured before the patch
+        opened = self._install_recording_connect(monkeypatch)
+
+        repo.load()
+
+        assert len(opened) == 1  # load opens exactly one connection
+        self._assert_all_closed(opened)
+
+    def test_save_closes_its_connection(self, tmp_path, monkeypatch):
+        db = tmp_path / "michi.db"
+        repo = SqliteSessionRepository(db)  # schema ensured before the patch
+        opened = self._install_recording_connect(monkeypatch)
+
+        assert repo.save(_full_snapshot()) is True
+
+        assert len(opened) == 1  # save opens exactly one connection
+        self._assert_all_closed(opened)
+
+        # The save was durably committed BEFORE the close (explicit commit,
+        # never rolled back), and a second operation re-opens + re-closes.
+        assert repo.load() == _full_snapshot()
+        assert len(opened) == 2
+        self._assert_all_closed(opened)

@@ -98,13 +98,16 @@ class ApplicationContainer:
         # Shares the settings database; restores the queue and, when the
         # queue current identity matches the persisted playback identity,
         # prepares a non-autoplay resume — before the UI is shown, never
-        # blocking autoplay. The coordinator lifecycle is explicit:
-        # restore() rebuilds the session, then start() arms the runtime
-        # subscriptions (runtime checkpoints + volume/mute sync).
+        # blocking autoplay. The coordinator lifecycle is explicit, in the
+        # CANONICAL production order (M5-PRODUCTION-LIFECYCLE-GATE):
+        # start() arms the runtime subscriptions (queue/playback/
+        # resume_prepared) BEFORE restore() so a FAST backend's
+        # resume_prepared is never lost; _restoring suppresses the
+        # restore-generated checkpoints.
         session_repo = SqliteSessionRepository(db_path)
         persistence = PersistenceCoordinator(session_repo, queue, playback, settings)
-        persistence.restore()
         persistence.start()
+        persistence.restore()
 
         pb = PlaybackBridge(playback)
         qb = QueueBridge(queue)

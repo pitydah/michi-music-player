@@ -39,8 +39,12 @@ class SqliteSessionRepository(SessionRepository):
         self._ensure_schema()
 
     def _ensure_schema(self) -> None:
-        with sqlite3.connect(str(self._db_path)) as conn:
+        conn = sqlite3.connect(str(self._db_path))
+        try:
             conn.executescript(_SCHEMA)
+            conn.commit()
+        finally:
+            conn.close()
 
     def load(self) -> PlaybackSessionSnapshot:
         """Read the snapshot; never raises and never writes.
@@ -50,10 +54,16 @@ class SqliteSessionRepository(SessionRepository):
         fallback); sqlite errors -> logged + fresh snapshot.
         """
         try:
-            with sqlite3.connect(str(self._db_path)) as conn:
+            # Explicit close (M5-PRODUCTION-LIFECYCLE-GATE): the with-conn
+            # commits but does NOT close — the connection would linger until
+            # GC. The finally runs on the sqlite3.Error path too.
+            conn = sqlite3.connect(str(self._db_path))
+            try:
                 row = conn.execute(
                     "SELECT value FROM settings WHERE key = ?", (SESSION_KEY,)
                 ).fetchone()
+            finally:
+                conn.close()
         except sqlite3.Error as exc:
             logger.warning(
                 "session snapshot load failed (%s); using fresh snapshot", exc
@@ -73,12 +83,21 @@ class SqliteSessionRepository(SessionRepository):
         """
         encoded = encode_snapshot(snapshot)
         try:
-            with sqlite3.connect(str(self._db_path)) as conn:
+            # Explicit close (M5-PRODUCTION-LIFECYCLE-GATE): the with-conn
+            # commits but does NOT close — the connection would linger until
+            # GC. The finally runs on the sqlite3.Error path too.
+            conn = sqlite3.connect(str(self._db_path))
+            try:
                 conn.execute(
                     "INSERT INTO settings(key, value) VALUES(?, ?) "
                     "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
                     (SESSION_KEY, encoded),
                 )
+                # close() would ROLL BACK a pending transaction — commit
+                # explicitly to preserve the with-conn's commit-on-exit.
+                conn.commit()
+            finally:
+                conn.close()
         except sqlite3.Error as exc:
             logger.warning("session snapshot save failed (%s); ignoring", exc)
             return False

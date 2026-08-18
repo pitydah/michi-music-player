@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from michi.application.coordinator import PlaybackCoordinator
 from michi.domain.playback import PlaybackStatus
 
 
@@ -772,3 +773,110 @@ class TestResumePreparedEvent:
         fake_audio.trigger_media_accepted(c)
         playback_service.update_position(222000)
         assert events == []  # a superseded resume never fires
+
+
+class TestReentrantSeek:
+    """M5-PRODUCTION-LIFECYCLE-GATE — REENTRANT SEEK (§29-D/E, §10).
+
+    A Qt backend can emit positionChanged SYNCHRONOUSLY from within seek()
+    (the seek primitive). ``_apply_prepare_seek`` must arm the
+    ``_resume_prepared_pending`` latch BEFORE issuing the backend seek, so a
+    synchronous position callback DURING seek() fires resume_prepared exactly
+    once — never lost to a latch armed after the fact, never double-fired
+    (the latch disarms on the first fire). A seek that RAISES must disarm the
+    latch cleanly: no false resume-complete, no eternal latch, and the
+    acceptance path must contain the failure (no crash escaping into the
+    backend callback).
+
+    The audio path is the production wiring: the PlaybackCoordinator forwards
+    the fake's position_changed channel into PlaybackService.update_position
+    (trigger_position alone has no subscribers without the coordinator).
+    """
+
+    def _wire_audio_path(self, playback_service, fake_audio, queue_service):
+        coordinator = PlaybackCoordinator(fake_audio, queue_service, playback_service)
+        coordinator.start()
+        return coordinator
+
+    def test_reentrant_seek_position_callback_not_lost(
+        self, playback_service, fake_audio, queue_service, monkeypatch
+    ):
+        b = Path("/tmp/b.mp3")
+        events = []
+        playback_service.subscribe_resume_prepared(
+            lambda p, pos: events.append((p, pos))
+        )
+        self._wire_audio_path(playback_service, fake_audio, queue_service)
+
+        # The backend emits positionChanged synchronously DURING seek().
+        def reentrant_seek(ms):
+            fake_audio.seek_calls.append(ms)
+            fake_audio.trigger_position(ms)
+
+        monkeypatch.setattr(fake_audio, "seek", reentrant_seek)
+        playback_service.prepare_for_resume(b, 222000)
+        fake_audio.trigger_media_accepted(b)
+
+        # The synchronous callback during seek() confirmed the resume: exactly
+        # ONE event with the committed path and the confirmed position.
+        assert events == [(b, 222000)]  # RED: latch armed AFTER seek -> lost
+        assert fake_audio.seek_calls == [222000]
+        assert playback_service.state.file_path == b
+        assert playback_service.state.position_ms == 222000
+        assert playback_service.state.status is PlaybackStatus.STOPPED
+        assert fake_audio.state != "playing"  # never autoplays
+
+    def test_reentrant_seek_no_double_fire(
+        self, playback_service, fake_audio, queue_service, monkeypatch
+    ):
+        b = Path("/tmp/b.mp3")
+        events = []
+        playback_service.subscribe_resume_prepared(
+            lambda p, pos: events.append((p, pos))
+        )
+        self._wire_audio_path(playback_service, fake_audio, queue_service)
+
+        def reentrant_seek(ms):
+            fake_audio.seek_calls.append(ms)
+            fake_audio.trigger_position(ms)
+
+        monkeypatch.setattr(fake_audio, "seek", reentrant_seek)
+        playback_service.prepare_for_resume(b, 222000)
+        fake_audio.trigger_media_accepted(b)
+        assert events == [(b, 222000)]  # the reentrant fire (exactly once)
+
+        # The latch is DISARMED by the reentrant fire: a LATER position update
+        # must not emit a second resume_prepared.
+        playback_service.update_position(230000)
+        assert events == [(b, 222000)]  # RED: current code fires (b, 230000)
+
+    def test_seek_failure_disarms_cleanly(
+        self, playback_service, fake_audio, queue_service, monkeypatch
+    ):
+        b = Path("/tmp/b.mp3")
+        events = []
+        playback_service.subscribe_resume_prepared(
+            lambda p, pos: events.append((p, pos))
+        )
+        self._wire_audio_path(playback_service, fake_audio, queue_service)
+
+        def failing_seek(ms):
+            fake_audio.seek_calls.append(ms)
+            raise RuntimeError("seek failed")
+
+        monkeypatch.setattr(fake_audio, "seek", failing_seek)
+        playback_service.prepare_for_resume(b, 222000)
+
+        # The acceptance path CONTAINS the seek failure: no crash escapes into
+        # the backend callback; the error surfaces on the state; the latch is
+        # disarmed; no false resume-complete is emitted.
+        fake_audio.trigger_media_accepted(b)  # RED: current code raises here
+        assert fake_audio.seek_calls == [222000]
+        assert playback_service.state.file_path == b  # acceptance committed B
+        assert playback_service.state.status is PlaybackStatus.STOPPED
+        assert playback_service.state.error_message == "seek failed"
+        assert events == []  # no false resume-complete
+
+        # No eternal latch: a later position update must NOT emit the event.
+        playback_service.update_position(230000)
+        assert events == []

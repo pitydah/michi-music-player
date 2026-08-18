@@ -61,7 +61,10 @@ def _build(
     """Fresh services + coordinator on the same db (no shutdown).
 
     ``start=True`` expresses the target lifecycle: the coordinator must be
-    explicitly started for the runtime volume/mute sync to be active.
+    explicitly started for the runtime volume/mute sync to be active. Every
+    SESSION-2 graph uses ``start=True`` because the production bootstrap
+    order is construct -> ``start()`` -> ``restore()`` (the subscriptions are
+    armed before the restore; see src/michi/bootstrap/__init__.py).
     """
     repo = SqliteSessionRepository(db_path)
     settings = SettingsService(
@@ -119,8 +122,10 @@ class TestRestartGolden:
         del coordinator1, queue1, playback1, audio1, repo1
 
         # ── Session 2: fresh services + coordinator on the SAME db ──
+        # Production lifecycle: start() then restore() — the subscriptions
+        # are armed before the restore (target bootstrap order).
         repo2, settings2, audio2, playback2, queue2, coordinator2 = _build(
-            db, settings_repo=SQLiteSettingsRepository(db)
+            db, settings_repo=SQLiteSettingsRepository(db), start=True
         )
         prepare_calls = []
         _orig_prepare, spy_prepare = _spy_resume(playback2, prepare_calls)
@@ -189,7 +194,10 @@ class TestRestartGolden:
         del coordinator1, queue1, playback1, audio1, repo1
 
         # ── Session 2 ──
-        repo2, settings2, audio2, playback2, queue2, coordinator2 = _build(db)
+        # Production lifecycle: start() then restore() (target bootstrap order).
+        repo2, settings2, audio2, playback2, queue2, coordinator2 = _build(
+            db, start=True
+        )
         prepare_calls = []
         _orig_prepare, spy_prepare = _spy_resume(playback2, prepare_calls)
         monkeypatch.setattr(playback2, "prepare_for_resume", spy_prepare)
@@ -227,7 +235,10 @@ class TestRestartGolden:
         del coordinator1, queue1, playback1, audio1, repo1
 
         # ── Session 2 ──
-        repo2, settings2, audio2, playback2, queue2, coordinator2 = _build(db)
+        # Production lifecycle: start() then restore() (target bootstrap order).
+        repo2, settings2, audio2, playback2, queue2, coordinator2 = _build(
+            db, start=True
+        )
         prepare_calls = []
         _orig_prepare, spy_prepare = _spy_resume(playback2, prepare_calls)
         monkeypatch.setattr(playback2, "prepare_for_resume", spy_prepare)

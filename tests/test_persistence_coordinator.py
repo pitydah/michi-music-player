@@ -227,9 +227,11 @@ class TestRestore:
         del coordinator1, queue1, playback1, audio1, repo1
 
         # ── Session 2: fresh services + coordinator on the SAME db ──
+        # Production lifecycle: start() then restore() (target bootstrap order).
         repo2, settings2, audio2, playback2, queue2, coordinator2 = _build(
             db, settings_repo=settings_repo
         )
+        coordinator2.start()
         prepare_calls = []
         orig_prepare = playback2.prepare_for_resume
 
@@ -281,6 +283,8 @@ class TestRestore:
         del coordinator, queue, playback, audio, repo
 
         _repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        # Production lifecycle: start() then restore() (target bootstrap order).
+        coordinator2.start()
         play_calls = []
         orig_play = audio2.play
 
@@ -312,6 +316,8 @@ class TestRestore:
         )
 
         _repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        # Production lifecycle: start() then restore() (target bootstrap order).
+        coordinator2.start()
         prepare_calls = []
         orig_prepare = playback2.prepare_for_resume
 
@@ -342,6 +348,8 @@ class TestRestore:
         )
 
         _repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        # Production lifecycle: start() then restore() (target bootstrap order).
+        coordinator2.start()
         prepare_calls = []
         orig_prepare = playback2.prepare_for_resume
 
@@ -372,6 +380,8 @@ class TestRestore:
         )
 
         _repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        # Production lifecycle: start() then restore() (target bootstrap order).
+        coordinator2.start()
         coordinator2.restore()  # coherent -> prepare_for_resume(B, 222000)
         audio2.trigger_media_rejected(_B, "gone")
 
@@ -394,6 +404,8 @@ class TestRestore:
         del coordinator, queue, playback, audio, repo
 
         _repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        # Production lifecycle: start() then restore() (target bootstrap order).
+        coordinator2.start()
         coordinator2.restore()
         assert [t.file_path for t in queue2.state.tracks] == [_A, _B]
         assert queue2.state.current_index == 1
@@ -412,6 +424,8 @@ class TestRestore:
         del coordinator, queue, playback, audio, repo
 
         _repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        # Production lifecycle: start() then restore() (target bootstrap order).
+        coordinator2.start()
         coordinator2.restore()
         tracks = queue2.state.tracks
         assert len(tracks) == 3  # duplicates survive as distinct entries
