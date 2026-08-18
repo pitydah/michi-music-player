@@ -704,3 +704,71 @@ class TestPrepareForResume:
         fake_audio.trigger_media_accepted(b)
         fake_audio.trigger_playback_state(PlaybackStatus.PLAYING)  # no user play()
         assert playback_service.state.status == PlaybackStatus.STOPPED  # intent guard
+
+
+class TestResumePreparedEvent:
+    """M5-LAST-GATE-2 — the minimal public resume-prepared event.
+
+    ``subscribe_resume_prepared(cb: Callable[[Path, int], None])`` /
+    ``unsubscribe_resume_prepared(cb)`` fires ONCE when a prepare_for_resume
+    reaches media accepted + backend position update post-seek, carrying the
+    committed file_path and the CONFIRMED position. It never autoplays, is
+    not fired for normal load_and_play, is not fired again after release, and
+    position 0 fires correctly. Media acceptance ALONE must not fire it — the
+    backend position confirmation is the release signal.
+    """
+
+    def test_resume_prepared_fires_after_position_update(
+        self, playback_service, fake_audio
+    ):
+        b = Path("/tmp/b.mp3")
+        events = []
+        playback_service.subscribe_resume_prepared(
+            lambda p, pos: events.append((p, pos))
+        )
+        playback_service.prepare_for_resume(b, 222000)
+        fake_audio.trigger_media_accepted(b)
+        assert events == []  # WAITING_POSITION: acceptance alone is no release
+        playback_service.update_position(222000)  # backend position confirms
+        assert events == [(b, 222000)]  # fired ONCE with the confirmed position
+        playback_service.update_position(223000)  # further updates: no replay
+        assert events == [(b, 222000)]
+
+    def test_resume_prepared_fires_for_position_zero(
+        self, playback_service, fake_audio
+    ):
+        b = Path("/tmp/b.mp3")
+        events = []
+        playback_service.subscribe_resume_prepared(
+            lambda p, pos: events.append((p, pos))
+        )
+        playback_service.prepare_for_resume(b, 0)
+        fake_audio.trigger_media_accepted(b)
+        playback_service.update_position(0)  # position 0 is a valid confirmation
+        assert events == [(b, 0)]
+
+    def test_resume_prepared_not_fired_for_load_and_play(
+        self, playback_service, fake_audio
+    ):
+        c = Path("/tmp/c.mp3")
+        events = []
+        playback_service.subscribe_resume_prepared(
+            lambda p, pos: events.append((p, pos))
+        )
+        playback_service.load_and_play(c)
+        fake_audio.trigger_media_accepted(c)
+        playback_service.update_position(5000)
+        assert events == []  # normal playback is never a resume
+
+    def test_resume_prepared_superseded_no_fire(self, playback_service, fake_audio):
+        b = Path("/tmp/b.mp3")
+        c = Path("/tmp/c.mp3")
+        events = []
+        playback_service.subscribe_resume_prepared(
+            lambda p, pos: events.append((p, pos))
+        )
+        playback_service.prepare_for_resume(b, 222000)
+        playback_service.load_and_play(c)  # C supersedes B's prepare
+        fake_audio.trigger_media_accepted(c)
+        playback_service.update_position(222000)
+        assert events == []  # a superseded resume never fires

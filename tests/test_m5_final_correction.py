@@ -20,6 +20,17 @@ Four gaps are encoded here (the TARGET behavior the coordinator must reach):
 - P2-B: a checkpoint advances the durable position marker ONLY when the save
   actually succeeded (``SessionRepository.save`` returns a success signal).
   The failing-repo stub below pins the marker semantics (tests 9-10).
+- M5-LAST-GATE-2 (TestLastGate2): the restore window is TWO-PHASE and the
+  durable snapshot during it is a HYBRID. Media acceptance alone does NOT
+  release the restore authority — a backend position confirmation does
+  (position 0 is a valid confirmation; the first post-acceptance position
+  update confirms, clamped or not). During the window, the queue portion of
+  every checkpoint reflects the LIVE runtime queue (user mutations are never
+  lost) while the playback portion keeps the restored truth WHILE coherent;
+  a broken coherence (e.g. removing the current) writes playback_path None
+  and releases the authority. Rejection/supersession release it too. The
+  resume completes through PlaybackService's public ``resume_prepared``
+  event (TestResumePreparedEvent in tests/test_playback_service.py).
 
 The lifecycle is expressed explicitly in every test: ``coordinator.start()``
 after construction arms the persistence subscriptions, ``coordinator.shutdown()``
@@ -97,12 +108,25 @@ class _FailOnDemandRepo:
         return True
 
 
-def _build_golden_state(db_path: Path):
+def _build_golden_state(
+    db_path: Path,
+    *,
+    repeat_mode: RepeatMode = RepeatMode.ALL,
+    shuffle_enabled: bool = True,
+    position_ms: int = 222000,
+    shuffle_seed: int = 424242,
+) -> None:
     """First graph: build the B@222000 resume state via the real flow and
     checkpoint; destroy WITHOUT shutdown (abrupt restart must not depend on
-    graceful stop)."""
+    graceful stop).
+
+    Keyword variants build a golden with a different repeat/shuffle/position
+    profile for the M5-LAST-GATE-2 RED tests (repeat NONE, shuffle OFF,
+    position 0, a clamped 999999). The shuffle seed always travels with the
+    snapshot so a later shuffle enable reconstructs the same navigator.
+    """
     repo, _settings, audio, playback, queue, coordinator = _build(
-        db_path, shuffle_seed=424242
+        db_path, shuffle_seed=shuffle_seed
     )
     coordinator.start()
     queue.add(_A, "A")
@@ -110,9 +134,9 @@ def _build_golden_state(db_path: Path):
     queue.add(_C, "C")
     queue.play_index(1)  # B pending
     audio.trigger_media_accepted(_B)  # B committed, current 1
-    playback.update_position(222000)
-    queue.set_repeat_mode(RepeatMode.ALL)
-    queue.set_shuffle_enabled(True)
+    playback.update_position(position_ms)
+    queue.set_repeat_mode(repeat_mode)
+    queue.set_shuffle_enabled(shuffle_enabled)
     coordinator.checkpoint()
     del coordinator, queue, playback, audio, repo
 
@@ -350,17 +374,19 @@ class TestRestoreNotificationContract:
 
 class TestPendingResumeShutdown:
     """M5-LAST-GATE — WHILE the resume prepare is unresolved, the RESTORED
-    snapshot is the last valid durable truth; runtime must not overwrite it.
+    playback truth is the last valid durable truth; runtime must not overwrite
+    it with the incomplete Playback (still None@0); a second kill must not
+    lose the position.
 
-    The defect (confirmed): ``shutdown()`` freezes ``_started`` and then calls
-    ``checkpoint()`` UNCONDITIONALLY. If shutdown happens while
-    ``_restore_pending`` is active (prepare_for_resume awaiting media
-    acceptance), the runtime Playback is still ``file_path=None/position=0``
-    and the final checkpoint overwrites the durable B@222000 with null@0 — a
-    second kill loses the position. The same invariant applies to
-    ``_on_queue_changed``: a queue change during the pending window would
-    build a degraded snapshot too. Tests 12-14 pin the suppression; the
-    durable authority returns to runtime only once the prepare resolves.
+    M5-LAST-GATE-2 hybrid refinement: during the restore window the durable
+    snapshot is a HYBRID. The PLAYBACK portion keeps the restored
+    playback_path/position_ms while coherent (queue current identity ==
+    restored path) — never the incomplete runtime None@0. The QUEUE portion
+    reflects the LIVE runtime queue, so user mutations during startup are
+    never lost (test 13 now persists queue.add(D) instead of suppressing it).
+    A shutdown inside any phase keeps the restored truth (test 12); the
+    durable authority returns to runtime only when the backend position
+    confirms the resume (test 14).
     """
 
     def test_shutdown_during_prepare_preserves_restored_snapshot(
@@ -399,27 +425,47 @@ class TestPendingResumeShutdown:
         db = tmp_path / "t13.db"
         _build_golden_state(db)
 
-        # ── Session 2: restore; the prepare is still pending ──
+        # ── Session 2: restore; the resume is still pending (WAITING_MEDIA) ──
         repo2, _s2, _a2, playback2, queue2, coordinator2 = _build(db)
         coordinator2.start()
         coordinator2.restore()
+        before = _session_row(db)
 
-        # A queue change DURING the pending window fires queue.changed: the
-        # coordinator must suppress it — the restored truth is authoritative
-        # and the runtime Playback (still None@0) would build a degraded
-        # snapshot.
+        # A queue mutation DURING the restore window is a USER mutation: the
+        # hybrid contract persists the LIVE queue alongside the RESTORED
+        # playback truth. The session row CHANGES to include D, but the
+        # playback portion is still the restored "/m/b.flac"@222000 — the
+        # incomplete runtime Playback (None@0) never leaks into it.
         queue2.add(Path("/m/d.flac"), "D")
-        snap = repo2.load()
-        assert snap.playback_path == "/m/b.flac"
-        assert snap.position_ms == 222000  # never B@0 / null
+        after_row = _session_row(db)
+        assert after_row != before  # the row CHANGES (hybrid persists the add)
+        assert '"/m/d.flac"' in after_row  # D is durable
+        hybrid = repo2.load()
+        assert hybrid.playback_path == "/m/b.flac"
+        assert hybrid.position_ms == 222000  # never B@0 / null
+        assert [e.file_path for e in hybrid.queue_entries] == [
+            "/m/a.flac",
+            "/m/b.flac",
+            "/m/c.flac",
+            "/m/d.flac",
+        ]
 
-        # Resolve the prepare (acceptance) → the pending window closes; a
-        # subsequent legit change checkpoints the NEW runtime truth.
+        # The restore completes in TWO phases: the media acceptance moves the
+        # window to WAITING_POSITION (still no checkpoint), and the backend
+        # position update CONFIRMS the resume — the durable authority returns
+        # to runtime; a subsequent legit change checkpoints the NEW runtime
+        # truth (B@230000 with the live queue preserved).
         _a2.trigger_media_accepted(_B)
         playback2.update_position(230000)
         resolved = repo2.load()
         assert resolved.playback_path == "/m/b.flac"
         assert resolved.position_ms == 230000  # durable authority is runtime again
+        assert [e.file_path for e in resolved.queue_entries] == [
+            "/m/a.flac",
+            "/m/b.flac",
+            "/m/c.flac",
+            "/m/d.flac",
+        ]
 
     def test_shutdown_during_pending_then_resume_resolves(self, tmp_path):
         db = tmp_path / "t14.db"
@@ -452,3 +498,390 @@ class TestPendingResumeShutdown:
         snap = repo3.load()
         assert snap.playback_path == "/m/b.flac"
         assert snap.position_ms == 240000
+
+
+class TestLastGate2:
+    """M5-LAST-GATE-2 — TWO-PHASE resume + HYBRID snapshot during the window.
+
+    The restore authority is released ONLY by a backend position
+    confirmation, never by media acceptance alone. Explicit phases:
+    WAITING_MEDIA (file_path not confirmed) -> media accepted ->
+    WAITING_POSITION (file_path committed, position not confirmed) ->
+    backend position update -> NONE (runtime authoritative). Position 0 is
+    a valid confirmation (never position>0 as the signal); the FIRST
+    post-acceptance position update confirms, whatever its value (backend
+    clamp tolerated).
+
+    While any phase is open, every checkpoint is a HYBRID: the queue portion
+    is the LIVE runtime QueueState (user mutations during startup are never
+    lost), the playback portion is the restored snapshot's
+    playback_path/position_ms WHILE coherent (current_index valid AND
+    queue[current_index].file_path == restored playback_path). A broken
+    coherence (e.g. removing the current) writes playback_path None /
+    position 0 and releases the authority. Rejection/supersession release it
+    too — the restored truth is never retained indefinitely; the next
+    checkpoint is a coherent session.
+    """
+
+    # ── 1: WAITING_POSITION shutdown preserves the restored position ──────
+    def test_shutdown_after_accept_before_position_confirm_preserves_position(
+        self, tmp_path, monkeypatch
+    ):
+        db = tmp_path / "t15.db"
+        _build_golden_state(db)
+
+        # ── Session 2: restore; media accepted (WAITING_POSITION — file_path
+        # committed, position NOT confirmed); then a graceful shutdown. The
+        # position confirmation never arrived, so the restored truth is the
+        # durable authority: B@222000, NEVER the runtime's B@0. ──
+        _r2, _s2, audio2, playback2, _q2, coordinator2 = _build(db)
+        coordinator2.start()
+        coordinator2.restore()
+        audio2.trigger_media_accepted(_B)  # WAITING_MEDIA -> WAITING_POSITION
+        coordinator2.shutdown()
+        del coordinator2, audio2, playback2
+
+        # ── Session 3: the durable B@222000 survived — never B@0 ──
+        _r3, _s3, _a3, playback3, _q3, coordinator3 = _build(db)
+        coordinator3.start()
+        prepare_calls = []
+        orig_prepare = playback3.prepare_for_resume
+
+        def spy_prepare(path, position_ms):
+            prepare_calls.append((path, position_ms))
+            orig_prepare(path, position_ms)
+
+        monkeypatch.setattr(playback3, "prepare_for_resume", spy_prepare)
+        coordinator3.restore()
+
+        assert prepare_calls == [(_B, 222000)]
+
+    # ── 2: queue.add during the window survives an abrupt kill ────────────
+    def test_queue_add_during_restore_survives_abrupt_kill(self, tmp_path, monkeypatch):
+        db = tmp_path / "t16.db"
+        _build_golden_state(db)
+
+        # ── Session 2: restore (pending); a user queue.add DURING the window
+        # fires queue.changed -> the hybrid checkpoint persists the LIVE queue
+        # alongside the restored playback truth; destroy abruptly (no
+        # acceptance, no shutdown). ──
+        _r2, _s2, _a2, _p2, queue2, coordinator2 = _build(db)
+        coordinator2.start()
+        coordinator2.restore()
+        queue2.add(Path("/m/d.flac"), "D")
+        del coordinator2, queue2  # abrupt kill during the window
+
+        # ── Session 3: the hybrid survived — queue A,B,C,D; current still B
+        # (index 1); the restore is requested at the restored position. ──
+        _r3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        coordinator3.start()
+        prepare_calls = []
+        orig_prepare = playback3.prepare_for_resume
+
+        def spy_prepare(path, position_ms):
+            prepare_calls.append((path, position_ms))
+            orig_prepare(path, position_ms)
+
+        monkeypatch.setattr(playback3, "prepare_for_resume", spy_prepare)
+        coordinator3.restore()
+
+        assert [t.file_path for t in queue3.state.tracks] == [
+            _A,
+            _B,
+            _C,
+            Path("/m/d.flac"),
+        ]
+        assert queue3.state.current_index == 1
+        assert prepare_calls == [(_B, 222000)]
+
+    # ── 3: queue.move during the window preserves current + position ──────
+    def test_queue_move_during_restore_preserves_current_and_position(
+        self, tmp_path, monkeypatch
+    ):
+        db = tmp_path / "t17.db"
+        _build_golden_state(db)
+
+        # ── Session 2: restore (pending); move B (index 1) to index 2 ->
+        # [A,C,B] with the committed current identity (B) following to index
+        # 2; kill abruptly. ──
+        _r2, _s2, _a2, _p2, queue2, coordinator2 = _build(db)
+        coordinator2.start()
+        coordinator2.restore()
+        queue2.move(1, 2)
+        assert [t.file_path for t in queue2.state.tracks] == [_A, _C, _B]
+        assert queue2.state.current_index == 2
+        del coordinator2, queue2  # abrupt kill during the window
+
+        # ── Session 3: order A,C,B with current B at index 2 and the restored
+        # position intact — coherence (queue[2] == B) keeps the resume. ──
+        _r3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        coordinator3.start()
+        prepare_calls = []
+        orig_prepare = playback3.prepare_for_resume
+
+        def spy_prepare(path, position_ms):
+            prepare_calls.append((path, position_ms))
+            orig_prepare(path, position_ms)
+
+        monkeypatch.setattr(playback3, "prepare_for_resume", spy_prepare)
+        coordinator3.restore()
+
+        assert [t.file_path for t in queue3.state.tracks] == [_A, _C, _B]
+        assert queue3.state.current_index == 2
+        assert prepare_calls == [(_B, 222000)]
+
+    # ── 4: removing the restored current clears the resume truth ──────────
+    def test_remove_restored_current_clears_resume_truth(self, tmp_path, monkeypatch):
+        db = tmp_path / "t18.db"
+        _build_golden_state(db)
+
+        # ── Session 2: restore (pending); the user REMOVES the restored
+        # current (B). The queue drops to A,C with current -1 (no fictitious
+        # identity) and the pending resume is superseded/cancelled through the
+        # queue/playback public machinery; kill abruptly. ──
+        _r2, _s2, _a2, _p2, queue2, coordinator2 = _build(db)
+        coordinator2.start()
+        coordinator2.restore()
+        queue2.remove(1)  # removes the restored current B
+        assert [t.file_path for t in queue2.state.tracks] == [_A, _C]
+        assert queue2.state.current_index == -1
+        del coordinator2, queue2  # abrupt kill during the window
+
+        # ── Session 3: NO fabricated resume — no prepare is requested at all;
+        # the queue restores as A,C with no current; no autoplay. ──
+        _r3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        coordinator3.start()
+        prepare_calls = []
+        orig_prepare = playback3.prepare_for_resume
+
+        def spy_prepare(path, position_ms):
+            prepare_calls.append((path, position_ms))
+            orig_prepare(path, position_ms)
+
+        monkeypatch.setattr(playback3, "prepare_for_resume", spy_prepare)
+        coordinator3.restore()
+
+        assert [t.file_path for t in queue3.state.tracks] == [_A, _C]
+        assert queue3.state.current_index == -1
+        assert prepare_calls == []  # no fabricated B; no autoplay
+
+    # ── 5: repeat change during the window is durable ─────────────────────
+    def test_repeat_change_during_restore_is_durable(self, tmp_path, monkeypatch):
+        db = tmp_path / "t19.db"
+        _build_golden_state(db, repeat_mode=RepeatMode.NONE)
+
+        # ── Session 2: restore (pending); repeat -> ALL DURING the window;
+        # kill abruptly. ──
+        _r2, _s2, _a2, _p2, queue2, coordinator2 = _build(db)
+        coordinator2.start()
+        coordinator2.restore()
+        queue2.set_repeat_mode(RepeatMode.ALL)
+        del coordinator2, queue2  # abrupt kill during the window
+
+        # ── Session 3: the repeat change survived — repeat ALL AND the
+        # restored position intact. ──
+        _r3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        coordinator3.start()
+        prepare_calls = []
+        orig_prepare = playback3.prepare_for_resume
+
+        def spy_prepare(path, position_ms):
+            prepare_calls.append((path, position_ms))
+            orig_prepare(path, position_ms)
+
+        monkeypatch.setattr(playback3, "prepare_for_resume", spy_prepare)
+        coordinator3.restore()
+
+        assert queue3.state.repeat_mode is RepeatMode.ALL
+        assert prepare_calls == [(_B, 222000)]
+
+    # ── 6: shuffle change during the window is durable ────────────────────
+    def test_shuffle_change_during_restore_is_durable(self, tmp_path, monkeypatch):
+        db = tmp_path / "t20.db"
+        _build_golden_state(db, shuffle_enabled=False)  # seed 424242 travels
+
+        # ── Session 2: restore (pending); shuffle ON during the window (the
+        # restored RNG, seeded 424242, drives the navigator reset); kill. ──
+        _r2, _s2, _a2, _p2, queue2, coordinator2 = _build(db)
+        coordinator2.start()
+        coordinator2.restore()
+        queue2.set_shuffle_enabled(True)
+        del coordinator2, queue2  # abrupt kill during the window
+
+        # ── Session 3: shuffle True + seed 424242 AND the restored position
+        # intact. ──
+        _r3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        coordinator3.start()
+        prepare_calls = []
+        orig_prepare = playback3.prepare_for_resume
+
+        def spy_prepare(path, position_ms):
+            prepare_calls.append((path, position_ms))
+            orig_prepare(path, position_ms)
+
+        monkeypatch.setattr(playback3, "prepare_for_resume", spy_prepare)
+        coordinator3.restore()
+
+        assert queue3.state.shuffle_enabled is True
+        assert queue3.shuffle_seed == 424242
+        assert prepare_calls == [(_B, 222000)]
+
+    # ── 7: position 0 is a valid confirmation ─────────────────────────────
+    def test_zero_position_resume_can_complete(self, tmp_path, monkeypatch):
+        db = tmp_path / "t21.db"
+        _build_golden_state(db, position_ms=0)
+
+        # ── Session 2: restore (pending); media accepted -> WAITING_POSITION;
+        # update_position(0) CONFIRMS the resume — position 0 is a valid
+        # confirmation (never position>0 as the signal); shutdown then writes
+        # the runtime truth (B@0): the restore COMPLETED, not eternally
+        # pending. ──
+        repo2, _s2, audio2, playback2, _q2, coordinator2 = _build(db)
+        coordinator2.start()
+        coordinator2.restore()
+        audio2.trigger_media_accepted(_B)
+        playback2.update_position(0)  # position 0 CONFIRMED
+        coordinator2.shutdown()
+
+        snap = repo2.load()
+        assert snap.playback_path == "/m/b.flac"
+        assert snap.position_ms == 0
+
+        # ── Session 3: the completed zero-position restore is durable —
+        # prepare(B, 0). ──
+        _r3, _s3, _a3, playback3, _q3, coordinator3 = _build(db)
+        coordinator3.start()
+        prepare_calls = []
+        orig_prepare = playback3.prepare_for_resume
+
+        def spy_prepare(path, position_ms):
+            prepare_calls.append((path, position_ms))
+            orig_prepare(path, position_ms)
+
+        monkeypatch.setattr(playback3, "prepare_for_resume", spy_prepare)
+        coordinator3.restore()
+
+        assert prepare_calls == [(_B, 0)]
+
+    # ── 8: the first post-acceptance position update confirms (clamp) ─────
+    def test_clamped_position_confirmation_releases_restore_authority(
+        self, tmp_path, monkeypatch
+    ):
+        db = tmp_path / "t22.db"
+        _build_golden_state(db, position_ms=999999)
+
+        # ── Session 2: restore (pending); accept B (WAITING_POSITION); the
+        # backend CLAMPS the seek to 300000 — the FIRST post-acceptance
+        # position update confirms, whatever its value; shutdown persists the
+        # confirmed clamp as the durable truth. ──
+        _r2, _s2, audio2, playback2, _q2, coordinator2 = _build(db)
+        coordinator2.start()
+        coordinator2.restore()
+        audio2.trigger_media_accepted(_B)
+        playback2.update_position(300000)  # backend clamp -> confirmation
+        coordinator2.shutdown()
+
+        # ── Session 3: prepare(B, 300000) — the clamp became the durable
+        # truth, NOT the golden 999999. ──
+        _r3, _s3, _a3, playback3, _q3, coordinator3 = _build(db)
+        coordinator3.start()
+        prepare_calls = []
+        orig_prepare = playback3.prepare_for_resume
+
+        def spy_prepare(path, position_ms):
+            prepare_calls.append((path, position_ms))
+            orig_prepare(path, position_ms)
+
+        monkeypatch.setattr(playback3, "prepare_for_resume", spy_prepare)
+        coordinator3.restore()
+
+        assert prepare_calls == [(_B, 300000)]
+
+    # ── 9: rejection releases the restore authority ───────────────────────
+    def test_rejection_releases_restore_authority(self, tmp_path, monkeypatch):
+        db = tmp_path / "t23.db"
+        _build_golden_state(db)
+
+        # ── Session 2: restore (pending); the resume is REJECTED by the
+        # backend -> the restore authority is released (phase NONE); the NEXT
+        # legitimate checkpoint writes a COHERENT session: queue restored,
+        # playback_path None (no fabricated B), STOPPED. ──
+        _r2, _s2, audio2, _p2, queue2, coordinator2 = _build(db)
+        coordinator2.start()
+        coordinator2.restore()
+        audio2.trigger_media_rejected(_B, "gone")
+        queue2.add(Path("/m/d.flac"), "D")  # legit checkpoint after release
+        coordinator2.shutdown()
+
+        snap = _r2.load()
+        assert snap.playback_path is None  # no fabricated B
+        assert snap.position_ms == 0
+        assert snap.queue_current_index == 1
+        assert [e.file_path for e in snap.queue_entries] == [
+            "/m/a.flac",
+            "/m/b.flac",
+            "/m/c.flac",
+            "/m/d.flac",
+        ]
+
+        # ── Session 3: queue restored; NO resume requested — the rejected
+        # truth is never retained indefinitely. ──
+        _r3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        coordinator3.start()
+        prepare_calls = []
+        orig_prepare = playback3.prepare_for_resume
+
+        def spy_prepare(path, position_ms):
+            prepare_calls.append((path, position_ms))
+            orig_prepare(path, position_ms)
+
+        monkeypatch.setattr(playback3, "prepare_for_resume", spy_prepare)
+        coordinator3.restore()
+
+        assert [t.file_path for t in queue3.state.tracks] == [
+            _A,
+            _B,
+            _C,
+            Path("/m/d.flac"),
+        ]
+        assert queue3.state.current_index == 1
+        assert prepare_calls == []
+
+    # ── 10: supersession releases the OLD restore authority ───────────────
+    def test_supersession_releases_old_restore_authority(self, tmp_path, monkeypatch):
+        db = tmp_path / "t24.db"
+        _build_golden_state(db)
+
+        # ── Session 2: restore (prepare B pending); the user selects C via
+        # the queue — C's request supersedes B's prepare; a LATE B acceptance
+        # is dropped by the identity guards (never restores authority); C's
+        # acceptance commits C at index 2 (the queue current); shutdown
+        # persists the C session. ──
+        _r2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        coordinator2.start()
+        coordinator2.restore()
+        queue2.play_index(2)  # user selects C; C supersedes B's prepare
+        audio2.trigger_media_accepted(_B)  # LATE stale B acceptance: ignored
+        audio2.trigger_media_accepted(_C)  # C commits -> queue current 2
+        coordinator2.shutdown()
+
+        snap = _r2.load()
+        assert snap.queue_current_index == 2
+        assert snap.playback_path == "/m/c.flac"
+        assert snap.position_ms == 0  # C's runtime position (no seek/update)
+
+        # ── Session 3: the C session is durable — prepare(C, 0); NEVER a
+        # prepare for the superseded B. ──
+        _r3, _s3, _a3, playback3, _q3, coordinator3 = _build(db)
+        coordinator3.start()
+        prepare_calls = []
+        orig_prepare = playback3.prepare_for_resume
+
+        def spy_prepare(path, position_ms):
+            prepare_calls.append((path, position_ms))
+            orig_prepare(path, position_ms)
+
+        monkeypatch.setattr(playback3, "prepare_for_resume", spy_prepare)
+        coordinator3.restore()
+
+        assert prepare_calls == [(_C, 0)]

@@ -44,6 +44,15 @@ class PlaybackService:
     PLAYING state is ignored; the user's later `play()` resumes from the
     sought position.
 
+    `subscribe_resume_prepared` is the public resume-confirmation signal
+    (M5-LAST-GATE-2): it fires exactly ONCE — on the first backend position
+    update after a prepare_for_resume reached media acceptance and the seek
+    was requested — carrying the committed file path and the CONFIRMED
+    position (backend clamp tolerated; position 0 is a valid confirmation).
+    Status stays STOPPED and nothing autoplays: the signal only completes
+    the two-phase restore (media accepted -> position confirmed). It never
+    fires for load_and_play (no resume slot).
+
     Commands express intent only: play()/pause()/resume() never mutate
     PlaybackStatus or notify; PLAYING/PAUSED/STOPPED are published
     exclusively from backend state events. `stop()` is the single
@@ -60,6 +69,12 @@ class PlaybackService:
         self._pending_on_rejected: Callable[[Path, str], None] | None = None
         self._pending_on_cancelled: Callable[[Path], None] | None = None
         self._pending_resume_position_ms: int | None = None
+        # M5-LAST-GATE-2 resume confirmation: armed when a prepare_for_resume
+        # actually requested a seek (post-acceptance), disarmed by the FIRST
+        # position update (which fires `resume_prepared` once) or by any path
+        # that clears the resume slot (rejection/stop/supersession).
+        self._resume_prepared_subscribers: list[Callable[[Path, int], None]] = []
+        self._resume_prepared_pending: bool = False
         self._intent = False
         self._accepted = False
         self._audio.subscribe_media_accepted(self._on_media_accepted)
@@ -90,6 +105,16 @@ class PlaybackService:
     def unsubscribe_end_of_media(self, callback: Callable[[], None]) -> None:
         if callback in self._eom_subscribers:
             self._eom_subscribers.remove(callback)
+
+    def subscribe_resume_prepared(self, callback: Callable[[Path, int], None]) -> None:
+        if callback not in self._resume_prepared_subscribers:
+            self._resume_prepared_subscribers.append(callback)
+
+    def unsubscribe_resume_prepared(
+        self, callback: Callable[[Path, int], None]
+    ) -> None:
+        if callback in self._resume_prepared_subscribers:
+            self._resume_prepared_subscribers.remove(callback)
 
     def _on_end_of_media(self) -> None:
         # Forward only for a committed track: a natural end of the current
@@ -141,6 +166,7 @@ class PlaybackService:
         self._pending_on_rejected = on_rejected
         self._pending_on_cancelled = on_cancelled
         self._pending_resume_position_ms = None  # supersedes any prepare
+        self._resume_prepared_pending = False  # supersedes any pending confirm
         self._accepted = False
         self._intent = True
         try:
@@ -152,6 +178,7 @@ class PlaybackService:
             self._pending_on_rejected = None
             self._pending_on_cancelled = None
             self._pending_resume_position_ms = None
+            self._resume_prepared_pending = False
             self._intent = previous_intent
             self._accepted = previous_accepted
             raise
@@ -193,6 +220,7 @@ class PlaybackService:
             self._pending_on_rejected = None
             self._pending_on_cancelled = None
             self._pending_resume_position_ms = None
+            self._resume_prepared_pending = False
             self._accepted = previous_accepted
             raise
         self._state.status = PlaybackStatus.STOPPED
@@ -230,6 +258,10 @@ class PlaybackService:
         self._pending_resume_position_ms = None
         if resume_position is not None:
             self._audio.seek(resume_position)
+            # A resume position was actually requested and the seek is on its
+            # way to the backend: the FIRST post-acceptance position update
+            # confirms the resume (M5-LAST-GATE-2).
+            self._resume_prepared_pending = True
 
     def _on_media_rejected(self, file_path: Path, message: str) -> None:
         if self._pending_path is not None and file_path == self._pending_path:
@@ -239,6 +271,7 @@ class PlaybackService:
             self._pending_on_rejected = None
             self._pending_on_cancelled = None
             self._pending_resume_position_ms = None
+            self._resume_prepared_pending = False
             self._intent = False
             self._accepted = False
             self._state.status = PlaybackStatus.STOPPED
@@ -300,6 +333,7 @@ class PlaybackService:
         self._pending_on_rejected = None
         self._pending_on_cancelled = None
         self._pending_resume_position_ms = None
+        self._resume_prepared_pending = False
         self._intent = False
         self._audio.stop()
         self._state.status = PlaybackStatus.STOPPED
@@ -336,6 +370,16 @@ class PlaybackService:
         if self._state.position_ms != position_ms:
             self._state.position_ms = position_ms
             self._notify()
+        if self._resume_prepared_pending:
+            # M5-LAST-GATE-2: the FIRST post-acceptance position update
+            # confirms the resume (position 0 included; the backend clamp is
+            # tolerated — whatever the backend reports is the CONFIRMED
+            # position). Fires ONCE, with the committed path and the
+            # confirmed position, then disarms.
+            self._resume_prepared_pending = False
+            if self._state.file_path is not None:
+                for cb in list(self._resume_prepared_subscribers):
+                    cb(self._state.file_path, position_ms)
 
     def update_duration(self, duration_ms: int) -> None:
         if self._state.duration_ms != duration_ms:
