@@ -31,9 +31,27 @@ ColumnLayout {
     MichiTextField {
         id: searchInput
         Layout.fillWidth: true
-        text: library.searchQuery
+        text: library.searchQuery  // RAW query (presentation form preserved)
         placeholderText: "Search..."
         onTextEdited: library.search(text)
+    }
+
+    // M7: functional clear action (raw query restored to empty; the
+    // canonical collections come back exactly).
+    MichiButton {
+        objectName: "searchClearButton"
+        text: "✕"
+        visible: library.searchQuery !== ""
+        onClicked: library.clear_search()
+    }
+
+    // M7: deterministic no-results state (functional; M9 styles it).
+    Text {
+        objectName: "searchNoResultsText"
+        visible: library.searchActive && library.searchTotalCount === 0
+        text: "No results"
+        font.pixelSize: MichiTheme.fontSizeBody
+        color: MichiTheme.textSecondary
     }
 
     // M6-PRODUCTION-INTEGRATION: functional scan state — status, processed/
