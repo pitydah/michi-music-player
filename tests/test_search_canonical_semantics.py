@@ -18,9 +18,12 @@ Plus: all six album modes must share the SAME filtered canonical AlbumIds
 (keys, not counts).
 """
 
+import os
+import sys
 from pathlib import Path
 
 import pytest
+from PySide6.QtGui import QGuiApplication
 
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
@@ -327,6 +330,15 @@ class TestTrackSortTitleTieBreak:
         )
         projection = _project_seq("x", tracks)
         assert _track_ids(projection) == ["/m/b.mp3", "/m/a.mp3"]  # title order
+
+
+@pytest.fixture(scope="module")
+def qapp():
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    app = QGuiApplication.instance()
+    if app is None:
+        app = QGuiApplication(sys.argv)
+    yield app
 
 
 def _service_library(tmp_path):
