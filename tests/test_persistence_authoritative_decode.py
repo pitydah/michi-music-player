@@ -24,6 +24,7 @@ silently treated as empty — that IS the expected Phase-1 red evidence.
 """
 
 import json
+import logging
 import sqlite3
 from pathlib import Path
 
@@ -277,3 +278,120 @@ def _production_graph(db_path):
         artwork_provider=None,
         artwork_cache=None,
     )
+
+
+class TestDecodeLoggingAccuracy:
+    """M6-FINAL-DECODE-LOGGING-MICROFIX: warnings must represent REAL
+    malformed persisted data — a valid empty list and a missing row are
+    NORMAL state, not corruption."""
+
+    def _prefs_warnings(self, caplog):
+        return [
+            r.message
+            for r in caplog.records
+            if "Malformed library prefs value" in r.message
+        ]
+
+    def _playlist_warnings(self, caplog):
+        return [r.message for r in caplog.records if "Malformed playlists" in r.message]
+
+    def test_valid_empty_favorites_does_not_warn(self, tmp_path, caplog):
+        db = tmp_path / "michi.db"
+        _seed_library_prefs(db, "favorites", "[]")
+        with caplog.at_level(
+            logging.WARNING, logger="michi.infrastructure.library_prefs"
+        ):
+            prefs = _prefs_repo(db).load()
+        assert prefs.favorite_paths == ()  # valid empty list
+        assert self._prefs_warnings(caplog) == []
+
+    def test_missing_favorites_does_not_warn(self, tmp_path, caplog):
+        db = tmp_path / "michi.db"
+        with caplog.at_level(
+            logging.WARNING, logger="michi.infrastructure.library_prefs"
+        ):
+            prefs = _prefs_repo(db).load()
+        assert prefs.favorite_paths == ()  # absent row: normal first-run state
+        assert self._prefs_warnings(caplog) == []
+
+    def test_malformed_scalar_favorites_warns(self, tmp_path, caplog):
+        db = tmp_path / "michi.db"
+        _seed_library_prefs(db, "favorites", "42")
+        with caplog.at_level(
+            logging.WARNING, logger="michi.infrastructure.library_prefs"
+        ):
+            prefs = _prefs_repo(db).load()
+        assert prefs.favorite_paths == ()
+        assert len(self._prefs_warnings(caplog)) == 1
+
+    def test_mixed_list_warns(self, tmp_path, caplog):
+        db = tmp_path / "michi.db"
+        _seed_library_prefs(db, "favorites", json.dumps(["A", 42]))
+        with caplog.at_level(
+            logging.WARNING, logger="michi.infrastructure.library_prefs"
+        ):
+            prefs = _prefs_repo(db).load()
+        assert prefs.favorite_paths == ()
+        assert len(self._prefs_warnings(caplog)) == 1
+
+    def test_non_text_sqlite_value_falls_back_safe(self, tmp_path, caplog):
+        db = tmp_path / "michi.db"
+        with sqlite3.connect(str(db)) as conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS library_prefs ("
+                "key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+            )
+            conn.execute(
+                "INSERT OR REPLACE INTO library_prefs VALUES (?, ?)",
+                ("favorites", b'["A"]'),
+            )
+        with caplog.at_level(
+            logging.WARNING, logger="michi.infrastructure.library_prefs"
+        ):
+            prefs = _prefs_repo(db).load()
+        assert prefs.favorite_paths == ()  # strict TEXT contract: BLOB is malformed
+        assert len(self._prefs_warnings(caplog)) == 1
+
+    def test_history_and_recent_share_the_decoder(self, tmp_path, caplog):
+        db = tmp_path / "michi.db"
+        _seed_library_prefs(db, "history", "[]")
+        _seed_library_prefs(db, "recently_added", "[]")
+        with caplog.at_level(
+            logging.WARNING, logger="michi.infrastructure.library_prefs"
+        ):
+            prefs = _prefs_repo(db).load()
+        assert prefs.history_paths == ()
+        assert prefs.recently_added_paths == ()
+        assert self._prefs_warnings(caplog) == []  # valid empties, no warnings
+
+    def test_valid_empty_playlist_list_does_not_warn(self, tmp_path, caplog):
+        db = tmp_path / "michi.db"
+        _seed_library_prefs(db, "playlists", "[]")
+        with caplog.at_level(logging.WARNING, logger="michi.infrastructure.playlists"):
+            playlists = _playlists_repo(db).load()
+        assert playlists == ()  # valid empty root list
+        assert self._playlist_warnings(caplog) == []
+
+    def test_invalid_playlist_root_warns(self, tmp_path, caplog):
+        db = tmp_path / "michi.db"
+        _seed_library_prefs(db, "playlists", "42")
+        with caplog.at_level(logging.WARNING, logger="michi.infrastructure.playlists"):
+            playlists = _playlists_repo(db).load()
+        assert playlists == ()
+        assert len(self._playlist_warnings(caplog)) == 1
+
+    def test_non_text_playlist_value_falls_back_safe(self, tmp_path, caplog):
+        db = tmp_path / "michi.db"
+        with sqlite3.connect(str(db)) as conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS library_prefs ("
+                "key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+            )
+            conn.execute(
+                "INSERT OR REPLACE INTO library_prefs VALUES (?, ?)",
+                ("playlists", b'[{"name": "Road", "track_paths": ["A"]}]'),
+            )
+        with caplog.at_level(logging.WARNING, logger="michi.infrastructure.playlists"):
+            playlists = _playlists_repo(db).load()
+        assert playlists == ()  # strict TEXT contract: BLOB is malformed
+        assert len(self._playlist_warnings(caplog)) == 1
