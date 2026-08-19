@@ -9,8 +9,8 @@ is deterministic per entity; tie-break by canonical order.
 from michi.domain.library import AlbumRef, ArtistRef, ComposerRef, GenreRef
 from michi.domain.search import (
     SearchQuery,
-    build_search_projection,
     build_search_corpus,
+    build_search_projection,
 )
 
 
@@ -27,8 +27,9 @@ def _album(key, title, artist="", genres=(), composers=()):
 
 
 def _album_tracks(key, title, artist="", genre="", composer=""):
-    from michi.domain.library import TrackRef
     from pathlib import Path
+
+    from michi.domain.library import TrackRef
 
     return TrackRef(
         file_path=Path(f"/m/{key}.mp3"),
@@ -103,7 +104,9 @@ class TestAlbumSearch:
 
 class TestArtistSearch:
     def test_returns_artist_results(self):
-        artists = (ArtistRef(key="a1", name="Miles Davis", track_count=1, album_count=1),)
+        artists = (
+            ArtistRef(key="a1", name="Miles Davis", track_count=1, album_count=1),
+        )
         projection = _project("miles", (), (), artists, (), ())
         assert [a.key for a in projection.artists] == ["a1"]
 
@@ -157,9 +160,7 @@ class TestComposerSearch:
 class TestEntityCounts:
     def test_counts_reflect_results(self):
         albums = (_album("a1", "Kind of Blue"),)
-        artists = (
-            ArtistRef(key="a1", name="Blue Note", track_count=1, album_count=1),
-        )
+        artists = (ArtistRef(key="a1", name="Blue Note", track_count=1, album_count=1),)
         projection = _project("blue", (), albums, artists, (), ())
         assert projection.album_count == 1
         assert projection.artist_count == 1

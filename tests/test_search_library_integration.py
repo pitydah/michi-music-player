@@ -10,32 +10,46 @@ query, counts, clear and the no-results state — no business logic in
 bridge/QML.
 """
 
-from pathlib import Path
-
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
 from michi.application.queue_service import QueueService
-from michi.domain.library import LibraryScanStatus, TrackMetadata
+from michi.domain.library import TrackMetadata
 from michi.presentation.library_bridge import LibraryBridge
 from tests.conftest import FakeAudioPort
 from tests.test_library_metadata import FakeExtractor, FakeScanner
 
 GOLDEN = {
     "a.mp3": dict(
-        title="Blue", artist="Joni Mitchell", album="Blue",
-        album_artist="Joni Mitchell", genre="Folk", composer="Joni Mitchell",
+        title="Blue",
+        artist="Joni Mitchell",
+        album="Blue",
+        album_artist="Joni Mitchell",
+        genre="Folk",
+        composer="Joni Mitchell",
     ),
     "b.mp3": dict(
-        title="So What", artist="Miles Davis", album="Kind of Blue",
-        album_artist="Miles Davis", genre="Jazz", composer="Miles Davis",
+        title="So What",
+        artist="Miles Davis",
+        album="Kind of Blue",
+        album_artist="Miles Davis",
+        genre="Jazz",
+        composer="Miles Davis",
     ),
     "c.mp3": dict(
-        title="Time", artist="Hans Zimmer", album="Inception",
-        album_artist="Hans Zimmer", genre="Soundtrack", composer="Hans Zimmer",
+        title="Time",
+        artist="Hans Zimmer",
+        album="Inception",
+        album_artist="Hans Zimmer",
+        genre="Soundtrack",
+        composer="Hans Zimmer",
     ),
     "d.mp3": dict(
-        title="Cornfield Chase", artist="Hans Zimmer", album="Interstellar",
-        album_artist="Hans Zimmer", genre="Soundtrack", composer="Hans Zimmer",
+        title="Cornfield Chase",
+        artist="Hans Zimmer",
+        album="Interstellar",
+        album_artist="Hans Zimmer",
+        genre="Soundtrack",
+        composer="Hans Zimmer",
     ),
 }
 
@@ -168,7 +182,9 @@ class TestSelectionSafety:
     def test_filtered_out_album_is_not_deleted(self, tmp_path):
         library, *_ = _make(tmp_path, list(GOLDEN))
         bridge = _bridge(library)
-        kind_of_blue = next(a for a in library.state.albums if a.title == "Kind of Blue")
+        kind_of_blue = next(
+            a for a in library.state.albums if a.title == "Kind of Blue"
+        )
         bridge.select_album(kind_of_blue.key)
         library.search("zimmer")  # hides Kind of Blue
         assert kind_of_blue in library.state.albums  # canonical, not deleted
@@ -178,7 +194,9 @@ class TestSelectionSafety:
     def test_clear_search_restores_selected_album_visibility(self, tmp_path):
         library, *_ = _make(tmp_path, list(GOLDEN))
         bridge = _bridge(library)
-        kind_of_blue = next(a for a in library.state.albums if a.title == "Kind of Blue")
+        kind_of_blue = next(
+            a for a in library.state.albums if a.title == "Kind of Blue"
+        )
         bridge.select_album(kind_of_blue.key)
         library.search("zimmer")
         assert kind_of_blue.key not in {r["key"] for r in bridge.property("albums")}
@@ -190,7 +208,9 @@ class TestSelectionSafety:
     def test_real_album_removal_clears_selection(self, tmp_path):
         library, *_ = _make(tmp_path, list(GOLDEN))
         bridge = _bridge(library)
-        kind_of_blue = next(a for a in library.state.albums if a.title == "Kind of Blue")
+        kind_of_blue = next(
+            a for a in library.state.albums if a.title == "Kind of Blue"
+        )
         bridge.select_album(kind_of_blue.key)
         # Structural removal: the Miles track disappears -> album gone.
         library._state.tracks = [
@@ -208,7 +228,8 @@ class TestActiveSearchLifecycle:
         library.search("zimmer")
         # Canonical tie-break: equal scores -> title order.
         assert [t.display_name for t in library.state.visible_tracks] == [
-            "Cornfield Chase", "Time",
+            "Cornfield Chase",
+            "Time",
         ]
         # Rescan removes the Zimmer tracks and adds a new Miles track.
         new_path = music / "e.mp3"
@@ -225,20 +246,23 @@ class TestActiveSearchLifecycle:
         assert [t.display_name for t in library.state.visible_tracks] == ["So What"]
         # The Joni track's metadata is corrected to Miles and rescanned.
         library._scanner.paths = [paths[0], paths[1]]
-        library._metadata_extractor.factory = (
-            lambda p: (
-                TrackMetadata(
-                    title="Blue", artist="Miles Davis", album="Blue",
-                    album_artist="Miles Davis", genre="Jazz",
-                    composer="Miles Davis", duration_ms=1000,
-                )
-                if p == paths[0]
-                else _factory(p)
+        library._metadata_extractor.factory = lambda p: (
+            TrackMetadata(
+                title="Blue",
+                artist="Miles Davis",
+                album="Blue",
+                album_artist="Miles Davis",
+                genre="Jazz",
+                composer="Miles Davis",
+                duration_ms=1000,
             )
+            if p == paths[0]
+            else _factory(p)
         )
         library.scan(str(music))
         assert {t.display_name for t in library.state.visible_tracks} == {
-            "Blue", "So What",
+            "Blue",
+            "So What",
         }
 
 

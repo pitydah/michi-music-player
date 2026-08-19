@@ -37,15 +37,15 @@ from michi.domain.library import (
     build_music_model,
     merge_recently_added,
 )
-from michi.domain.search import (
-    SearchQuery,
-    build_search_corpus,
-    build_search_projection,
-)
 from michi.domain.library_index import (
     LibraryIndexEntry,
     ScanResult,
     classify_scan,
+)
+from michi.domain.search import (
+    SearchQuery,
+    build_search_corpus,
+    build_search_projection,
 )
 
 logger = logging.getLogger(__name__)

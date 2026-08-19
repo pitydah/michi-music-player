@@ -204,8 +204,7 @@ class LibraryBridge(QObject):
             else self._service.state.genres
         )
         return [
-            {"key": g.key, "name": g.name, "trackCount": g.track_count}
-            for g in genres
+            {"key": g.key, "name": g.name, "trackCount": g.track_count} for g in genres
         ]
 
     def _composer_rows(self) -> list[dict]:
@@ -362,7 +361,9 @@ class LibraryBridge(QObject):
     searchAlbumCount = Property(int, _get_search_album_count, notify=library_changed)
     searchArtistCount = Property(int, _get_search_artist_count, notify=library_changed)
     searchGenreCount = Property(int, _get_search_genre_count, notify=library_changed)
-    searchComposerCount = Property(int, _get_search_composer_count, notify=library_changed)
+    searchComposerCount = Property(
+        int, _get_search_composer_count, notify=library_changed
+    )
     searchTotalCount = Property(int, _get_search_total_count, notify=library_changed)
     diagnosticCode = Property(str, _get_diagnostic_code, notify=library_changed)
     diagnosticMessage = Property(str, _get_diagnostic_message, notify=library_changed)

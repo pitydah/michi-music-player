@@ -614,8 +614,7 @@ class LibraryState:
     def search_active(self) -> bool:
         """M7: True only while a projection with tokens is active."""
         return (
-            self.search_projection is not None
-            and self.search_projection.query.active
+            self.search_projection is not None and self.search_projection.query.active
         )
 
     @property

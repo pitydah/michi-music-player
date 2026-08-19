@@ -24,9 +24,7 @@ def normalize_search_text(text: str) -> str:
     -> collapse whitespace -> strip. Deterministic and pure.
     """
     decomposed = unicodedata.normalize("NFKD", text or "")
-    no_diacritics = "".join(
-        ch for ch in decomposed if not unicodedata.combining(ch)
-    )
+    no_diacritics = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
     return _WHITESPACE_RE.sub(" ", no_diacritics.casefold()).strip()
 
 
@@ -240,7 +238,9 @@ def _album_document(album) -> EntitySearchDocument:
 
 def _named_document(entity) -> EntitySearchDocument:
     return EntitySearchDocument(
-        entity=entity, key=entity.key, name=entity.name,
+        entity=entity,
+        key=entity.key,
+        name=entity.name,
         norm_name=normalize_search_text(entity.name),
     )
 
@@ -339,7 +339,9 @@ def _ranked_entities(query: SearchQuery, docs) -> tuple:
     return tuple(doc.entity for _, doc in scored)
 
 
-def build_search_projection(query: SearchQuery, corpus: SearchCorpus) -> SearchProjection:
+def build_search_projection(
+    query: SearchQuery, corpus: SearchCorpus
+) -> SearchProjection:
     """Pure projector: score the corpus against the query.
 
     Track ordering: score desc -> canonical display sort (title/sort_title

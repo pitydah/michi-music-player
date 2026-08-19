@@ -38,9 +38,11 @@ class TestNormalizeSearchText:
 
     def test_unicode_variants_equivalent(self):
         # Same musical name in different input forms -> same representation.
-        assert normalize_search_text("Beyoncé") == normalize_search_text(
-            "BEYONCE"
-        ) == normalize_search_text("  beyoncé  ")
+        assert (
+            normalize_search_text("Beyoncé")
+            == normalize_search_text("BEYONCE")
+            == normalize_search_text("  beyoncé  ")
+        )
 
 
 class TestSearchQuery:
