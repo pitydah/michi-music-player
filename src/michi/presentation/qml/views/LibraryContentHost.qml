@@ -1,0 +1,172 @@
+import QtQuick
+import QtQuick.Layouts
+import "../theme"
+
+ColumnLayout {
+    id: root
+
+    property string currentTab: "songs"
+    property string addTargetPath: ""
+    property var _content: null   // the current tab view
+
+    // M6.7: explicit per-tab management. The object tree must NOT keep the
+    // previous tab alive after a switch (the findChild unload contract in
+    // the offscreen harness only spins processEvents, which does not flush
+    // deferred deletes, and QML parent= does not detach the QObject parent)
+    // — so clear the objectName synchronously (removes it from
+    // findChild(QObject, name) matching), then detach + schedule the delete
+    // for memory hygiene. The component FILE keeps its objectName
+    // declaration (structural tests read files, unaffected).
+    function _loadTab(tab) {
+        if (_content) {
+            _content.objectName = ""
+            _content.parent = null
+            _content.destroy()
+            _content = null
+        }
+        var component = null
+        switch (tab) {
+            case "songs": component = songsViewComponent; break
+            case "albums": component = albumsViewComponent; break
+            case "artists": component = artistsViewComponent; break
+            case "genres": component = genresViewComponent; break
+            case "folders": component = foldersViewComponent; break
+            case "favorites": component = favoritesViewComponent; break
+            case "history": component = historyViewComponent; break
+            case "recently": component = recentlyViewComponent; break
+            case "playlists": component = playlistsViewComponent; break
+        }
+        if (component)
+            _content = component.createObject(contentArea)
+    }
+
+    onCurrentTabChanged: _loadTab(currentTab)
+    Component.onCompleted: _loadTab(currentTab)
+
+    Layout.fillWidth: true
+    Layout.fillHeight: true
+    spacing: MichiTheme.space8
+
+    Text {
+        visible: library.hasDiagnostic
+        text: library.diagnosticMessage
+        color: MichiTheme.warning
+        wrapMode: Text.Wrap
+        Layout.fillWidth: true
+    }
+
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: MichiTheme.space12
+        visible: addTargetPath !== ""
+
+        Text {
+            text: "Add to:"
+            font.pixelSize: MichiTheme.fontSizeCaption
+            color: MichiTheme.textSecondary
+        }
+
+        Repeater {
+            model: library.playlists
+            delegate: Text {
+                text: modelData.name
+                font.pixelSize: MichiTheme.fontSizeCaption
+                color: MichiTheme.warning
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        library.add_to_playlist(modelData.name, addTargetPath)
+                        addTargetPath = ""
+                    }
+                }
+            }
+        }
+
+        Text {
+            text: "✕"
+            font.pixelSize: MichiTheme.fontSizeCaption
+            color: MichiTheme.textSecondary
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: addTargetPath = ""
+            }
+        }
+    }
+
+    Item {
+        id: contentArea
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+    }
+
+    Component {
+        id: songsViewComponent
+        SongsView {
+            anchors.fill: parent
+            addTargetPath: root.addTargetPath
+            onAddTargetPathChanged: root.addTargetPath = addTargetPath
+        }
+    }
+
+    Component {
+        id: albumsViewComponent
+        AlbumsView {
+            anchors.fill: parent
+            addTargetPath: root.addTargetPath
+            onAddTargetPathChanged: root.addTargetPath = addTargetPath
+        }
+    }
+
+    Component {
+        id: artistsViewComponent
+        ArtistsView {
+            anchors.fill: parent
+        }
+    }
+
+    Component {
+        id: genresViewComponent
+        GenresView {
+            anchors.fill: parent
+        }
+    }
+
+    Component {
+        id: foldersViewComponent
+        FoldersView {
+            anchors.fill: parent
+        }
+    }
+
+    Component {
+        id: favoritesViewComponent
+        FavoritesView {
+            anchors.fill: parent
+        }
+    }
+
+    Component {
+        id: historyViewComponent
+        HistoryView {
+            anchors.fill: parent
+        }
+    }
+
+    Component {
+        id: recentlyViewComponent
+        RecentlyAddedView {
+            anchors.fill: parent
+        }
+    }
+
+    Component {
+        id: playlistsViewComponent
+        PlaylistsView {
+            anchors.fill: parent
+            addTargetPath: root.addTargetPath
+            onAddTargetPathChanged: root.addTargetPath = addTargetPath
+        }
+    }
+}

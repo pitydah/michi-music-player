@@ -30,7 +30,7 @@ from pathlib import Path
 import pytest
 from mutagen.flac import FLAC
 from mutagen.mp3 import EasyMP3
-from PySide6.QtCore import QObject
+from PySide6.QtCore import QCoreApplication, QObject
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 
@@ -255,16 +255,28 @@ class TestQmlSmoke:
         assert component.status() == QQmlComponent.Ready, f"LibraryView: {errs}"
         obj = component.create()
         assert obj is not None, "LibraryView: null object"
-        for name in (
-            "albumGridView",
-            "albumCoverView",
-            "albumVinylView",
-            "albumTimelineView",
-            "albumMagazineView",
-            "albumListView",
+        # M6.7: the six projections live behind LibraryContentHost's Loader —
+        # only the ACTIVE album mode is instantiated (master plan §50 allows
+        # migrating objectName tests structurally). Activate the albums tab,
+        # then drive the host's albumMode through all six modes.
+        obj.setProperty("currentTab", "albums")
+        QCoreApplication.processEvents()
+        albums_host = obj.findChild(QObject, "albumsView")
+        assert albums_host is not None, (
+            "albumsView host missing after activating the albums tab"
+        )
+        for mode, name in (
+            ("grid", "albumGridView"),
+            ("cover", "albumCoverView"),
+            ("vinyl", "albumVinylView"),
+            ("timeline", "albumTimelineView"),
+            ("magazine", "albumMagazineView"),
+            ("list", "albumListView"),
         ):
+            albums_host.setProperty("albumMode", mode)
+            QCoreApplication.processEvents()
             assert obj.findChild(QObject, name) is not None, (
-                f"{name} not found — album mode view missing"
+                f"{name} not found — album mode view missing in mode {mode!r}"
             )
         obj.deleteLater()
         bridge.dispose()

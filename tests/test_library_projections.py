@@ -40,15 +40,6 @@ from michi.presentation.library_bridge import LibraryBridge
 from tests.conftest import FakeAudioPort
 from tests.test_library_metadata import FakeExtractor, FakeScanner
 
-_LIBRARY_VIEW_QML = (
-    Path(__file__).resolve().parents[1]
-    / "src"
-    / "michi"
-    / "presentation"
-    / "qml"
-    / "views"
-    / "LibraryView.qml"
-)
 _LIBRARY_BRIDGE_SRC = (
     Path(__file__).resolve().parents[1]
     / "src"
@@ -56,6 +47,28 @@ _LIBRARY_BRIDGE_SRC = (
     / "presentation"
     / "library_bridge.py"
 )
+
+# M6.7 ADAPTATION (documented): LibraryView.qml is now PURE ORCHESTRATION —
+# the six album projections, the tab contents and the album detail moved
+# into their own components under views/. The structural greps that pinned
+# the shared album model must therefore AGGREGATE over every views/*.qml
+# file: the "model: library.albums" bindings, the objectNames and the
+# heroAlbum property now live in the projection components, not in the
+# root file.
+_VIEWS_DIR = (
+    Path(__file__).resolve().parents[1]
+    / "src"
+    / "michi"
+    / "presentation"
+    / "qml"
+    / "views"
+)
+
+
+def _aggregated_views_qml() -> str:
+    """Concatenated text of every QML file under views/ (sorted for
+    determinism). M6.7: the projections/tab contents are components now."""
+    return "\n".join(p.read_text() for p in sorted(_VIEWS_DIR.glob("*.qml")))
 
 
 def _make_library(scanner, extractor=None, artwork_provider=None, artwork_cache=None):
@@ -116,7 +129,11 @@ def _numbered_paths(tmp_path):
 
 class TestSharedAlbumModel:
     def test_six_views_share_one_album_model(self):
-        qml = _LIBRARY_VIEW_QML.read_text()
+        # M6.7 ADAPTATION: aggregated views/*.qml text — the six
+        # projections are components now (AlbumGridView/AlbumPathView/
+        # VinylWallView/TimelineView/MagazineView/AlbumListView), each
+        # carrying its own objectName and shared-model binding.
+        qml = _aggregated_views_qml()
         # The six album views exist by objectName.
         for name in (
             "albumGridView",
@@ -132,7 +149,8 @@ class TestSharedAlbumModel:
         assert qml.count("model: library.albums") == 5
         # The timeline is the ONLY view bound to the canonical projection.
         assert qml.count("model: library.timelineAlbums") == 1
-        # The magazine hero comes from library.albums too.
+        # The magazine hero comes from library.albums too (the heroAlbum
+        # property moved into MagazineView.qml with the magazine).
         assert (
             "readonly property var heroAlbum: "
             "library.albums.length > 0 ? library.albums[0] : null" in qml
@@ -170,12 +188,14 @@ class TestSharedAlbumModel:
 
         # Structural: albumMode is a local view property and the switcher
         # buttons only ASSIGN albumMode (no library. calls inside the block).
-        qml = _LIBRARY_VIEW_QML.read_text()
-        assert "property string albumMode" in qml
-        start = qml.index('onClicked: albumMode = "grid"')
+        # M6.7 ADAPTATION: albumMode + the switcher moved into
+        # AlbumsView.qml (the albums host), so the greps target that file.
+        albums_view_qml = (_VIEWS_DIR / "AlbumsView.qml").read_text()
+        assert "property string albumMode" in albums_view_qml
+        start = albums_view_qml.index('onClicked: albumMode = "grid"')
         list_marker = 'onClicked: albumMode = "list"'
-        end = qml.index(list_marker) + len(list_marker)
-        switcher = qml[start:end]
+        end = albums_view_qml.index(list_marker) + len(list_marker)
+        switcher = albums_view_qml[start:end]
         assert "library." not in switcher, (
             "the mode switcher must not touch the bridge — albumMode is local"
         )

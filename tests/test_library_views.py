@@ -28,6 +28,7 @@ from pathlib import Path
 import pytest
 from mutagen.id3 import TCON
 from mutagen.mp3 import MP3
+from PySide6.QtCore import QCoreApplication, QObject
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 
@@ -597,6 +598,17 @@ class TestQmlSmoke:
         assert component.status() == QQmlComponent.Ready, f"LibraryView: {errs}"
         obj = component.create()
         assert obj is not None, "LibraryView: null object"
+        # M6.7: LibraryContentHost instantiates on demand — activate the
+        # albums tab and the cover mode before the carousel exists
+        # (master plan §50 allows migrating objectName tests structurally).
+        obj.setProperty("currentTab", "albums")
+        QCoreApplication.processEvents()
+        albums_host = obj.findChild(QObject, "albumsView")
+        assert albums_host is not None, (
+            "albumsView host missing after activating the albums tab"
+        )
+        albums_host.setProperty("albumMode", "cover")
+        QCoreApplication.processEvents()
         path_view = obj.findChild(QQuickPathView, "albumCoverView")
         assert path_view is not None, (
             "albumCoverView not found — albums tab is not a PathView carousel"
@@ -629,6 +641,17 @@ class TestQmlSmoke:
         )
         obj = component.create()
         assert obj is not None, "LibraryView: null object"
+        # M6.7: LibraryContentHost instantiates on demand — activate the
+        # albums tab and the cover mode before the carousel exists
+        # (master plan §50 allows migrating objectName tests structurally).
+        obj.setProperty("currentTab", "albums")
+        QCoreApplication.processEvents()
+        albums_host = obj.findChild(QObject, "albumsView")
+        assert albums_host is not None, (
+            "albumsView host missing after activating the albums tab"
+        )
+        albums_host.setProperty("albumMode", "cover")
+        QCoreApplication.processEvents()
         path_view = obj.findChild(QQuickPathView, "albumCoverView")
         assert path_view is not None, "albumCoverView not found"
         assert path_view.property("model") is not None, (

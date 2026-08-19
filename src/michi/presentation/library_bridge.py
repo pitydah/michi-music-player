@@ -8,6 +8,7 @@ from michi.application.library_service import LibraryService
 from michi.application.playlist_service import PlaylistService
 from michi.domain.library import (
     AlbumRef,
+    LibraryScanStatus,
     TrackRef,
     build_timeline_projection,
 )
@@ -74,6 +75,13 @@ class LibraryBridge(QObject):
 
     def _get_has_diagnostic(self) -> bool:
         return self._service.state.diagnostic is not None
+
+    def _get_scan_status(self) -> str:
+        """M6.7: scan-state projection — the enum NAME while a scan is in
+        flight (DISCOVERING/INDEXING/...), "" when IDLE. The QML toolbar
+        shows the name only when it is not IDLE."""
+        status = self._service.state.scan_status
+        return status.name if status is not LibraryScanStatus.IDLE else ""
 
     def _get_album_count(self) -> int:
         return len(self._service.state.albums)
@@ -254,6 +262,7 @@ class LibraryBridge(QObject):
     diagnosticCode = Property(str, _get_diagnostic_code, notify=library_changed)
     diagnosticMessage = Property(str, _get_diagnostic_message, notify=library_changed)
     hasDiagnostic = Property(bool, _get_has_diagnostic, notify=library_changed)
+    scanStatus = Property(str, _get_scan_status, notify=library_changed)
     albumCount = Property(int, _get_album_count, notify=library_changed)
     artistCount = Property(int, _get_artist_count, notify=library_changed)
     albums = Property(list, _get_albums, notify=library_changed)
