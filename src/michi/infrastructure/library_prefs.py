@@ -13,11 +13,38 @@ logger = logging.getLogger(__name__)
 _PREFS_KEYS = ("favorites", "history", "recently_added")
 
 
+def _decode_string_list(raw) -> tuple[str, ...]:
+    """STRICT string-list decode for AUTHORITATIVE user state.
+
+    ONLY a JSON list whose members are ALL strings is valid; everything
+    else — scalars, JSON strings, objects, null, booleans, lists with any
+    non-string member, invalid JSON — falls back to () without raising.
+
+    NEVER fabricate: a JSON string must never iterate into characters, a
+    JSON object must never yield its keys as paths.
+    NEVER partially salvage: ["A", 42, "B"] is malformed as a WHOLE -> (),
+    not ("A", "B").
+    """
+    if not raw:
+        return ()
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, ValueError):
+        return ()
+    if not isinstance(parsed, list):
+        return ()
+    if not all(isinstance(item, str) for item in parsed):
+        return ()
+    return tuple(parsed)
+
+
 class SqliteLibraryPrefsRepository(LibraryPrefsPort):
     """Key/value JSON rows in the shared settings database.
 
     Uses its own `library_prefs` table; never touches the settings table,
-    never changes journal mode, never raises: persistence is best effort."""
+    never changes journal mode, never raises: persistence is best effort.
+    Authoritative user state is decoded STRICTLY (safe empty fallback for
+    malformed values — read tolerance, never repair)."""
 
     def __init__(self, db_path: Path) -> None:
         self._db_path = db_path
@@ -41,20 +68,21 @@ class SqliteLibraryPrefsRepository(LibraryPrefsPort):
             logger.warning("Library prefs load failed: %s", exc)
             return LibraryPrefs()
         return LibraryPrefs(
-            favorite_paths=self._decode(rows.get("favorites")),
-            history_paths=self._decode(rows.get("history")),
-            recently_added_paths=self._decode(rows.get("recently_added")),
+            favorite_paths=self._decode("favorites", rows.get("favorites")),
+            history_paths=self._decode("history", rows.get("history")),
+            recently_added_paths=self._decode(
+                "recently_added", rows.get("recently_added")
+            ),
         )
 
-    @staticmethod
-    def _decode(raw):
-        if not raw:
-            return ()
-        try:
-            values = json.loads(raw)
-        except ValueError:
-            return ()
-        return tuple(v for v in values if isinstance(v, str))
+    def _decode(self, key: str, raw) -> tuple[str, ...]:
+        values = _decode_string_list(raw)
+        if raw and not values:
+            logger.warning(
+                "Malformed library prefs value for %s; using safe empty fallback",
+                key,
+            )
+        return values
 
     def save(self, prefs: LibraryPrefs) -> None:
         payload = {
