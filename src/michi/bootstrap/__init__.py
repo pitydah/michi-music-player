@@ -1,6 +1,14 @@
-"""Composition root — wires dependencies, owns lifecycle. No business logic."""
+"""Composition root — wires dependencies, owns lifecycle. No business logic.
+
+M6-PRODUCTION-INTEGRATION-AND-ASYNC-CORRECTION: ``_build_services`` is the
+single production-graph construction path shared by the application
+container AND the tests — TEST GRAPH == PRODUCTION GRAPH. The container
+additionally wires the QML engine, settings/coordinators and owns the
+shutdown lifecycle.
+"""
 
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 from PySide6.QtCore import QStandardPaths, Qt, QUrl
@@ -15,12 +23,17 @@ from michi.application.library_service import LibraryService
 from michi.application.navigation_service import NavigationService
 from michi.application.persistence_coordinator import PersistenceCoordinator
 from michi.application.playback_service import PlaybackService
+from michi.application.playlist_service import PlaylistService
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
 from michi.infrastructure.artwork import ArtworkCache, MutagenArtworkProvider
 from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
+from michi.infrastructure.library_index import SqliteLibraryIndexRepository
+from michi.infrastructure.library_prefs import SqliteLibraryPrefsRepository
 from michi.infrastructure.metadata_extractor import InfrastructureMetadataExtractor
+from michi.infrastructure.playlists import SqlitePlaylistsRepository
 from michi.infrastructure.qt_backend import QtMultimediaBackend
+from michi.infrastructure.scan_dispatcher import LibraryScanDispatcher
 from michi.infrastructure.scan_runner import ScanRelay, ThreadScanRunner
 from michi.infrastructure.session_repository import SqliteSessionRepository
 from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
@@ -30,12 +43,121 @@ from michi.presentation.playback_bridge import PlaybackBridge
 from michi.presentation.queue_bridge import QueueBridge
 from michi.presentation.settings_bridge import SettingsBridge
 
+_MISSING = object()  # sentinel: production default vs explicit None override
+
 
 def _data_dir() -> Path:
     base = QStandardPaths.writableLocation(QStandardPaths.AppLocalDataLocation)
     path = Path(base)
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+@dataclass
+class ServiceGraph:
+    """The production library graph — the same wiring for app and tests."""
+
+    db_path: Path
+    library: LibraryService
+    bridge: LibraryBridge
+    runner: ThreadScanRunner
+    dispatcher: LibraryScanDispatcher
+    playlist_service: PlaylistService
+    library_index: SqliteLibraryIndexRepository
+    library_prefs_repo: SqliteLibraryPrefsRepository
+    playlists_repo: SqlitePlaylistsRepository
+    relay: ScanRelay
+    queue: QueueService
+    playback: PlaybackService
+    backend: object
+    scanner: object
+    metadata_extractor: object
+    artwork_provider: object
+    artwork_cache: object
+
+
+def _build_services(
+    db_path,
+    *,
+    backend=None,
+    scanner=None,
+    metadata_extractor=None,
+    artwork_provider=_MISSING,
+    artwork_cache=_MISSING,
+) -> ServiceGraph:
+    """Build the PRODUCTION library service graph (composition root core).
+
+    The application container and the production-composition tests share
+    this exact construction path. ``backend`` defaults to the real Qt
+    backend (tests inject the fake audio port); ``scanner``/
+    ``metadata_extractor`` default to the real infrastructure (tests inject
+    spies); ``artwork_provider``/``artwork_cache`` default to the real
+    Mutagen implementations (passing None disables artwork in headless
+    tests). All library persistence is real: SqliteLibraryIndexRepository,
+    SqliteLibraryPrefsRepository, SqlitePlaylistsRepository.
+    """
+    if backend is None:
+        backend = QtMultimediaBackend()
+    if scanner is None:
+        scanner = FilesystemLibraryScanner()
+    if metadata_extractor is None:
+        metadata_extractor = InfrastructureMetadataExtractor()
+    if artwork_provider is _MISSING:
+        artwork_provider = MutagenArtworkProvider()
+    if artwork_cache is _MISSING:
+        artwork_cache = ArtworkCache(Path.home() / ".cache" / "michi" / "artwork")
+
+    playback = PlaybackService(backend)
+    queue = QueueService(playback)
+
+    library_index = SqliteLibraryIndexRepository(db_path)
+    library_prefs_repo = SqliteLibraryPrefsRepository(db_path)
+    playlists_repo = SqlitePlaylistsRepository(db_path)
+    playlist_service = PlaylistService(queue, playlists_repo)
+
+    scan_relay = ScanRelay()
+    scan_runner = ThreadScanRunner(scan_relay)
+
+    library = LibraryService(
+        scanner,
+        queue,
+        metadata_extractor,
+        artwork_provider,
+        artwork_cache,
+        library_prefs=library_prefs_repo,
+        library_index=library_index,
+        scan_pipeline=scan_runner,
+    )
+
+    # Owner-thread async dispatch (M6-PRODUCTION-INTEGRATION): the runner
+    # emits on the worker thread; the EXPLICIT QueuedConnection delivers
+    # progress/done to the owner (GUI) thread where the dispatcher delegates
+    # to the service. The service never touches Qt.
+    scan_dispatcher = LibraryScanDispatcher(library)
+    scan_relay.done.connect(scan_dispatcher.on_done, Qt.QueuedConnection)
+    scan_relay.progress.connect(scan_dispatcher.on_progress, Qt.QueuedConnection)
+
+    lb = LibraryBridge(library, playlist_service=playlist_service)
+
+    return ServiceGraph(
+        db_path=db_path,
+        library=library,
+        bridge=lb,
+        runner=scan_runner,
+        dispatcher=scan_dispatcher,
+        playlist_service=playlist_service,
+        library_index=library_index,
+        library_prefs_repo=library_prefs_repo,
+        playlists_repo=playlists_repo,
+        relay=scan_relay,
+        queue=queue,
+        playback=playback,
+        backend=backend,
+        scanner=scanner,
+        metadata_extractor=metadata_extractor,
+        artwork_provider=artwork_provider,
+        artwork_cache=artwork_cache,
+    )
 
 
 class ApplicationContainer:
@@ -53,6 +175,9 @@ class ApplicationContainer:
         self._navigation: NavigationService | None = None
         self._coordinator: PlaybackCoordinator | None = None
         self._persistence: PersistenceCoordinator | None = None
+        self._playlist_service: PlaylistService | None = None
+        self._scan_runner: ThreadScanRunner | None = None
+        self._scan_dispatcher: LibraryScanDispatcher | None = None
         self._pb: PlaybackBridge | None = None
         self._qb: QueueBridge | None = None
         self._lb: LibraryBridge | None = None
@@ -70,35 +195,17 @@ class ApplicationContainer:
 
         db_path = _data_dir() / "michi.db"
         repo = SQLiteSettingsRepository.open_for_startup(db_path)
-        backend = QtMultimediaBackend()
+        graph = _build_services(db_path)
+        backend = graph.backend
         settings = SettingsService(repo)
 
-        playback = PlaybackService(backend)
-        queue = QueueService(playback)
-        scanner = FilesystemLibraryScanner()
-        metadata_extractor = InfrastructureMetadataExtractor()
-        artwork_provider = MutagenArtworkProvider()
-        artwork_cache = ArtworkCache(Path.home() / ".cache" / "michi" / "artwork")
-        scan_relay = ScanRelay()
-        scan_runner = ThreadScanRunner(scan_relay)
-        library = LibraryService(
-            scanner,
-            queue,
-            metadata_extractor,
-            artwork_provider,
-            artwork_cache,
-            scan_pipeline=scan_runner,
-        )
-        # Async scan dispatch (M6.4): the runner emits on the worker thread;
-        # the queued connections deliver progress/done to the owner thread.
-        scan_relay.done.connect(
-            lambda generation, result, error: library._on_scan_done(
-                generation, result, error
-            )
-        )
-        scan_relay.progress.connect(
-            lambda generation, progress: library._on_scan_progress(generation, progress)
-        )
+        playback = graph.playback
+        queue = graph.queue
+        library = graph.library
+        scan_runner = graph.runner
+        scan_dispatcher = graph.dispatcher
+        playlist_service = graph.playlist_service
+
         navigation = NavigationService()
 
         # Load persisted preferences once
@@ -129,7 +236,7 @@ class ApplicationContainer:
 
         pb = PlaybackBridge(playback)
         qb = QueueBridge(queue)
-        lb = LibraryBridge(library)
+        lb = graph.bridge
         nb = NavigationBridge(navigation)
         sb = SettingsBridge(settings)
 
@@ -147,6 +254,9 @@ class ApplicationContainer:
         self._playback = playback
         self._queue = queue
         self._library = library
+        self._playlist_service = playlist_service
+        self._scan_runner = scan_runner
+        self._scan_dispatcher = scan_dispatcher
         self._library_prefs = lib_prefs
         self._navigation = navigation
         self._coordinator = coordinator
@@ -190,6 +300,25 @@ class ApplicationContainer:
         except Exception as exc:
             error = error or exc
 
+        # Async scan lifecycle (M6-PRODUCTION-INTEGRATION): freeze the
+        # runner (reject new submits + cancel active generations) and close
+        # the dispatcher (drop late callbacks) BEFORE any bridge/coordinator
+        # teardown — a worker finishing late can never mutate LibraryState
+        # or reach the QML bridge.
+        try:
+            if self._scan_runner:
+                self._scan_runner.shutdown()
+            if self._scan_dispatcher:
+                self._scan_dispatcher.shutdown()
+            if self._scan_runner and self._scan_runner._relay is not None:
+                try:
+                    self._scan_runner._relay.done.disconnect()
+                    self._scan_runner._relay.progress.disconnect()
+                except (TypeError, RuntimeError):
+                    pass  # no live connections
+        except Exception as exc:
+            error = error or exc
+
         try:
             if self._coordinator:
                 self._coordinator.stop()
@@ -230,6 +359,9 @@ class ApplicationContainer:
         self._coordinator = None
         self._persistence = None
         self._library_prefs = None
+        self._playlist_service = None
+        self._scan_runner = None
+        self._scan_dispatcher = None
         self._navigation = None
         self._library = None
         self._queue = None
