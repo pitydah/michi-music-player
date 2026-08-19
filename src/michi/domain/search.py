@@ -13,6 +13,8 @@ import unicodedata
 from dataclasses import dataclass
 from enum import Enum, auto
 
+from michi.domain.library import resolve_album_artist
+
 _WHITESPACE_RE = re.compile(r"\s+")
 
 
@@ -111,12 +113,34 @@ _TYPE_BONUS = {
     SearchMatchType.SUBSTRING: 300,
 }
 
+# Album entity semantics (M7-CANONICAL-SEMANTICS-AND-RANKING-CORRECTION):
+# the album TITLE is the primary identity-bearing field. Wide field bands
+# make field semantics dominate match type across UNRELATED fields: an
+# exact album title (4400) always outranks an exact album artist (3400);
+# a title prefix (4300) beats any secondary-field exact match except a
+# title one. Within the SAME field the match type still orders
+# EXACT > PREFIX > TOKEN_PREFIX > SUBSTRING.
+_ALBUM_FIELD_BAND = {"title": 4000, "artist": 3000, "composer": 2000, "genre": 1000}
+_ALBUM_TYPE_BONUS = {
+    SearchMatchType.EXACT: 400,
+    SearchMatchType.PREFIX: 300,
+    SearchMatchType.TOKEN_PREFIX: 200,
+    SearchMatchType.SUBSTRING: 100,
+}
+
 
 @dataclass(frozen=True)
 class TrackSearchDocument:
     """Search representation of a canonical TrackRef — NOT a new entity.
     Holds the canonical reference (identity only, no copy) plus the
-    pre-normalized searchable fields."""
+    pre-normalized searchable fields.
+
+    The ``album_artist`` field is the CANONICAL RESOLVED album artist from
+    M6 (resolve_album_artist — the single source of truth): a compilation
+    without an explicit album_artist is searchable as "Various Artists"
+    exactly like the canonical album grouping. ``sort_title`` participates
+    ONLY in the deterministic tie-break — it is ordering metadata, never an
+    eighth searchable field."""
 
     track: object  # canonical TrackRef
     norm_title: str = ""
@@ -126,6 +150,7 @@ class TrackSearchDocument:
     norm_genre: str = ""
     norm_composer: str = ""
     norm_display_name: str = ""
+    norm_sort_title: str = ""  # tie-break only: normalize(sort_title or title)
 
     @property
     def track_id(self) -> str:
@@ -138,10 +163,11 @@ class TrackSearchDocument:
             norm_title=normalize_search_text(track.title),
             norm_artist=normalize_search_text(track.artist),
             norm_album=normalize_search_text(track.album),
-            norm_album_artist=normalize_search_text(track.album_artist),
+            norm_album_artist=normalize_search_text(resolve_album_artist(track)),
             norm_genre=normalize_search_text(track.genre),
             norm_composer=normalize_search_text(track.composer),
             norm_display_name=normalize_search_text(track.display_name),
+            norm_sort_title=normalize_search_text(track.sort_title or track.title),
         )
 
     def _fields(self):
@@ -222,12 +248,50 @@ class EntitySearchDocument:
         return total
 
 
-def _album_document(album) -> EntitySearchDocument:
-    return EntitySearchDocument(
+@dataclass(frozen=True)
+class AlbumSearchDocument:
+    """Search representation of a canonical AlbumRef with EXPLICIT album
+    semantics (M7-CANONICAL-SEMANTICS): title is the primary identity-
+    bearing field and outranks album artist, composer and genre — the
+    entity relevance answers what the user most likely means."""
+
+    entity: object  # canonical AlbumRef
+    key: str
+    norm_name: str  # canonical display name for tie-break (album title)
+    norm_title: str
+    extra: tuple[tuple[str, str], ...] = ()  # ("artist"/"composer"/"genre", norm)
+
+    def match_token(self, token: str) -> tuple[SearchMatchType, str, int]:
+        best_type = SearchMatchType.NONE
+        best_field = ""
+        best_score = 0
+        for field, value in (("title", self.norm_title), *self.extra):
+            match_type = match_token_to_field(token, value)
+            if match_type is SearchMatchType.NONE:
+                continue
+            score = _ALBUM_FIELD_BAND.get(field, 1000) + _ALBUM_TYPE_BONUS[match_type]
+            if score > best_score:
+                best_type = match_type
+                best_field = field
+                best_score = score
+        return best_type, best_field, best_score
+
+    def total_score(self, tokens: tuple[str, ...]) -> int:
+        total = 0
+        for token in tokens:
+            _, _, score = self.match_token(token)
+            if score == 0:
+                return 0  # AND semantics
+            total += score
+        return total
+
+
+def _album_document(album) -> AlbumSearchDocument:
+    return AlbumSearchDocument(
         entity=album,
         key=album.key,
-        name=album.title,
         norm_name=normalize_search_text(album.title),
+        norm_title=normalize_search_text(album.title),
         extra=(
             ("artist", normalize_search_text(album.artist)),
             ("composer", normalize_search_text(" ".join(album.composers))),
@@ -254,7 +318,7 @@ class SearchCorpus:
     canonical model at any time."""
 
     tracks: tuple[TrackSearchDocument, ...] = ()
-    albums: tuple[EntitySearchDocument, ...] = ()
+    albums: tuple[AlbumSearchDocument, ...] = ()
     artists: tuple[EntitySearchDocument, ...] = ()
     genres: tuple[EntitySearchDocument, ...] = ()
     composers: tuple[EntitySearchDocument, ...] = ()
@@ -354,7 +418,7 @@ def build_search_projection(
         if score == 0:
             continue
         scored.append((score, doc))
-    scored.sort(key=lambda pair: (-pair[0], pair[1].norm_title, pair[1].track_id))
+    scored.sort(key=lambda pair: (-pair[0], pair[1].norm_sort_title, pair[1].track_id))
     return SearchProjection(
         query=query,
         tracks=tuple(doc.track for _, doc in scored),
