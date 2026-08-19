@@ -2,6 +2,29 @@
 
 Status: **M7 — OPEN** (baseline `ee8c23f5f6e90d20c2902ac5ab29c639b03f7282`).
 
+> **M7.7 closeout (FINAL STATE)**
+>
+> **M7 — SEARCH: CLOSED / TESTED / FROZEN; SEARCH MODEL CANONICAL/LOCAL/
+> OFFLINE; QUERY RAW-PRESERVED/NORMALIZED/ACCENT+CASE-INSENSITIVE/
+> MULTI-TOKEN; FIELDS TITLE/ARTIST/ALBUM/ALBUM-ARTIST/GENRE/COMPOSER/
+> DISPLAY-NAME; MATCHING EXACT/PREFIX/TOKEN-PREFIX/SUBSTRING; RELEVANCE
+> DETERMINISTIC (score desc → canonical title → canonical ID; input-order
+> independent); ENTITIES TRACKS/ALBUMS/ARTISTS/GENRES/COMPOSERS; LIBRARY
+> UNIFIED SEARCH PROJECTION (Songs/Albums/Artists/Genres/Favorites/History/
+> Recently-Added through the SAME matched sets; clear restores canonical
+> exactly); SIX ALBUM VIEWS ONE FILTERED CANONICAL MODEL; SELECTION
+> CANONICAL-SAFE (filtering never deletes; real removal still clears);
+> ACTIVE SEARCH FOLLOWS STRUCTURAL CHANGES (query survives rescans; corpus
+> rebuilt on structural mutation only); FTS POST-1.0; AI NOT INVOLVED;
+> NO PERSISTENCE; NO FILESYSTEM/MUTAGEN ACCESS; P0=0; P1=0.**
+>
+> Test gates: 49 domain (query model/fields/ranking/entities) + 18 library
+> integration + 8 presentation + 18 golden/scale — 1171-suite green; CI
+> green on the exact final HEAD. Advanced field syntax/ranges/technical
+> filtering/playlist+folder search/year ranges remain FUTURE (documented
+> exclusions). M12 owns performance profiling; 10k correctness +
+> determinism baseline recorded (no timing claims).
+
 ## 0. Contract Reconciliation (M7.0)
 
 **Current search state (audited at M7.0 open):**
