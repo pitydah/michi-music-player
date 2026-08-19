@@ -144,9 +144,43 @@ Consequences:
   as POST-M6 / M12 startup improvement. The filesystem remains the authority
   over physical existence.
 
+**Authoritative user data decoding (M6-AUTHORITATIVE-DATA-DECODE-GATE,
+TESTED)** — library user state is authoritative but decoded DEFENSIVELY.
+AUTHORITATIVE means "the user's persisted state is not reconstructable from
+the filesystem" — it does NOT mean "malformed bytes must crash the app".
+
+Valid shapes (the ONLY accepted ones):
+
+- `favorites` / `history` / `recently_added`: JSON `list[str]`
+- `playlists`: JSON `list` of `{"name": str, "track_paths": list[str]}`
+
+Malformed values (scalars, JSON strings, objects, null, booleans, mixed
+lists like `["A", 42]`, invalid JSON) degrade with SAFE EMPTY FALLBACK:
+- `LOAD NEVER RAISES` — no persisted shape can escape TypeError/ValueError/
+  KeyError/AttributeError/IndexError;
+- NO FABRICATION — a JSON string never iterates into characters, a JSON
+  object never yields its keys as paths;
+- NO PARTIAL SALVAGE — `["A", 42, "B"]` -> `()`, never `("A", "B")`;
+- malformed playlist ROOT -> whole collection `()`; malformed playlist ENTRY
+  -> that entry discarded, valid siblings preserved;
+- NO WRITEBACK during load (read tolerance, not repair — same philosophy as
+  M11.2C);
+- malformed rows are still compared RAW by provenance (provenance answers
+  "did the candidate originate from the trusted LKG?"; semantic load safety
+  is owned by the repository decoders — PROVENANCE ≠ SEMANTIC VALIDATION).
+
+**Required vs optional authoritative tables** — `_AUTHORITATIVE_TABLES` is
+`("settings", "library_prefs")`; `_OPTIONAL_AUTHORITATIVE_TABLES` is
+`{"library_prefs"}` (pre-M6 compatibility: absent == empty). A missing
+REQUIRED table (`settings`) makes the authoritative read raise and the
+candidate provenance FAIL CLOSED — a settings-less database is never
+treated as an empty settings database. Future authoritative tables must be
+added to `_AUTHORITATIVE_TABLES` AND declared optional explicitly if
+pre-existing databases may lack them (optionality is never implicit).
+
 ## Library Filesystem Boundary
 
-`LibraryService` → `LibraryScannerPort` → `FilesystemLibraryScanner`. Filesystem authority is infrastructure: application code never calls `Path.exists`/`is_file`/`stat`/`os.stat`/`os.access` for runtime authority. Missing and empty directories are distinct (missing raises a typed `LibraryFilesystemError`; a valid empty directory returns `[]`). Scan failures preserve the last valid library state and publish a typed `LibraryDiagnostic` (DIRECTORY_MISSING / ACCESS_FAILURE / IO_FAILURE / UNKNOWN_FAILURE). Same-directory rescans reconcile stale entries (STALE_ENTRIES_REMOVED + affected_count). Activation validates the selected `TrackRef` through the port before any queue mutation: TRACK_MISSING removes the exact reference and never reaches the queue; ACCESS/IO/UNKNOWN preserve the entry. Diagnostics are typed state owned by `LibraryState`; presentation (bridge/QML) only projects them. No continuous filesystem watcher exists; asynchronous scanning remains TD-009/M12.
+`LibraryService` → `LibraryScannerPort` → `FilesystemLibraryScanner`. Filesystem authority is infrastructure: application code never calls `Path.exists`/`is_file`/`stat`/`os.stat`/`os.access` for runtime authority. Missing and empty directories are distinct (missing raises a typed `LibraryFilesystemError`; a valid empty directory returns `[]`). Scan failures preserve the last valid library state and publish a typed `LibraryDiagnostic` (DIRECTORY_MISSING / ACCESS_FAILURE / IO_FAILURE / UNKNOWN_FAILURE). Same-directory rescans reconcile stale entries (STALE_ENTRIES_REMOVED + affected_count). Activation validates the selected `TrackRef` through the port before any queue mutation: TRACK_MISSING removes the exact reference and never reaches the queue; ACCESS/IO/UNKNOWN preserve the entry. Diagnostics are typed state owned by `LibraryState`; presentation (bridge/QML) only projects them. No continuous filesystem watcher exists. **Async ownership (M6-AUTHORITATIVE-DATA-DECODE-GATE correction): M6 owns async scanning, incremental scanning, cancellation, supersession, progress and owner-thread commit (TD-009 resolved by M6.4); M12 owns profiling, performance tuning, memory optimization, startup optimization, the 10k performance target and index-hydration optimization (instant canonical Library from the persisted index + async filesystem reconciliation — classified POST-M6 / M12, NOT implemented).**
 
 Library preferences (favorites, play history, recently added) are REFERENCE PERSISTENCE: they survive library membership changes and temporary filesystem unavailability, and are never erased by scans, missing-track removal, or scan failures. Current library membership is `LibraryState.tracks`; missing files fall out of the derived views but not of the persisted references (TD-013 activation only removes the stale membership entry).
 
