@@ -13,29 +13,39 @@ logger = logging.getLogger(__name__)
 _PREFS_KEYS = ("favorites", "history", "recently_added")
 
 
-def _decode_string_list(raw) -> tuple[str, ...]:
+def _decode_string_list(raw) -> tuple[tuple[str, ...], bool]:
     """STRICT string-list decode for AUTHORITATIVE user state.
 
-    ONLY a JSON list whose members are ALL strings is valid; everything
-    else — scalars, JSON strings, objects, null, booleans, lists with any
-    non-string member, invalid JSON — falls back to () without raising.
+    Returns ``(decoded, malformed)`` — the malformed flag is EXPLICIT so a
+    VALID EMPTY list (``[]`` -> ``(), False``) is never confused with a
+    malformed value (``42`` -> ``(), True``). The storage contract accepts
+    ONLY SQLite TEXT: a non-str value (BLOB/number/float) is malformed.
 
     NEVER fabricate: a JSON string must never iterate into characters, a
     JSON object must never yield its keys as paths.
     NEVER partially salvage: ["A", 42, "B"] is malformed as a WHOLE -> (),
     not ("A", "B").
+
+    Semantics: None -> (), False (missing row: normal absent state);
+    "" -> (), True (empty string is not a valid persisted JSON document);
+    "[]" -> (), False; '["A","B"]' -> ("A","B"), False; non-list roots,
+    mixed lists and invalid JSON -> (), True.
     """
-    if not raw:
-        return ()
+    if raw is None:
+        return (), False
+    if not isinstance(raw, str):
+        return (), True  # strict TEXT contract: BLOB/number values are malformed
+    if raw == "":
+        return (), True
     try:
         parsed = json.loads(raw)
     except (TypeError, ValueError):
-        return ()
+        return (), True
     if not isinstance(parsed, list):
-        return ()
+        return (), True
     if not all(isinstance(item, str) for item in parsed):
-        return ()
-    return tuple(parsed)
+        return (), True
+    return tuple(parsed), False
 
 
 class SqliteLibraryPrefsRepository(LibraryPrefsPort):
@@ -76,8 +86,10 @@ class SqliteLibraryPrefsRepository(LibraryPrefsPort):
         )
 
     def _decode(self, key: str, raw) -> tuple[str, ...]:
-        values = _decode_string_list(raw)
-        if raw and not values:
+        values, malformed = _decode_string_list(raw)
+        if malformed:
+            # Only REAL malformed persisted data warns: a valid empty list
+            # and a missing row are normal state, never corruption.
             logger.warning(
                 "Malformed library prefs value for %s; using safe empty fallback",
                 key,

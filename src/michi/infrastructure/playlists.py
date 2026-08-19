@@ -65,9 +65,17 @@ class SqlitePlaylistsRepository(PlaylistsPort):
             return ()
         if row is None:
             return ()
+        raw = row[0]
+        if not isinstance(raw, str):
+            # Strict TEXT contract (M6-FINAL-DECODE-LOGGING-MICROFIX): a
+            # non-text SQLite value (BLOB/number) is malformed, never
+            # decoded as if it were JSON text.
+            logger.warning("Malformed playlists root; using safe empty fallback")
+            return ()
         try:
-            parsed = json.loads(row[0])
+            parsed = json.loads(raw)
         except (TypeError, ValueError):
+            logger.warning("Malformed playlists root; using safe empty fallback")
             return ()
         if not isinstance(parsed, list):
             # Malformed ROOT: the whole persisted collection is rejected —
