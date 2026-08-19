@@ -111,13 +111,37 @@ M6.8 SHALL close M6 only when all of the following hold:
 1. **M6.1-M6.7 delivered** — every phase above reached its contract state with tests.
 2. **Reconciliation gaps closed** — the PARTIAL/TODO rows of §4 are DONE or explicitly reclassified with approved scope change.
 3. **Golden runs green** — restart, incremental, async, and six-views golden scenarios pass on the golden dataset.
-4. **Scale baseline evidenced** — 10k-file scan baseline recorded (time, memory, determinism).
+4. **Scale baseline evidenced** — 10k-file scan baseline recorded. The M6 scale contract is: **10k correctness + time-bound + determinism** (index 10k rows, unchanged rescan ZERO extractions, coherent model, deterministic). **Memory profiling is MOVED TO M12** (no fake memory claims in M6 docs).
 5. **Error/degradation contract honored** — typed diagnostics; stale generations never commit; no silent failures.
 6. **Bridge audit clean** — no musical rule lives in the bridge; QML is projection-only.
 7. **Contract complete** — the ORIGINAL M6 contract is declared complete, not a reduced subset.
 
 ## 7. Final State Definition
 
-**M6 — LIBRARY: STATUS CLOSED / TESTED / FROZEN; ORIGINAL CONTRACT COMPLETE; CANONICAL MUSIC MODEL V2; LIBRARY INDEX PERSISTENT/VERSIONED; SCAN INCREMENTAL/ASYNC/CANCELLABLE/SUPERSESSION-SAFE; ARTWORK V2; ALBUM VIEWS GRID/PATHVIEW/VINYL WALL/TIMELINE/MAGAZINE/LIST; DATA MODEL ONE CANONICAL SOURCE; PRESENTATION MODULAR; NEXT PHASE M7 — SEARCH (not automatic).**
+**M6 — LIBRARY: STATUS CLOSED / TESTED / FROZEN / PRODUCTION COMPOSITION VERIFIED; ORIGINAL CONTRACT COMPLETE + PRODUCTION-INTEGRATION CORRECTION APPLIED; CANONICAL MUSIC MODEL V2; LIBRARY INDEX PERSISTENT/VERSIONED + WIRED IN THE PRODUCTION GRAPH; SCAN INCREMENTAL/ASYNC/CANCELLABLE/SUPERSESSION-SAFE; ARTWORK V2; ALBUM VIEWS GRID/PATHVIEW/VINYL WALL/TIMELINE/MAGAZINE/LIST; DATA MODEL ONE CANONICAL SOURCE; PRESENTATION MODULAR; NEXT PHASE M7 — SEARCH (not automatic).**
 
-Status: **M6 — CLOSED / TESTED / FROZEN** (closeout gate passed at `01fe2ec` (CI green); §6 checklist complete).
+Status: **M6 — CLOSED / TESTED / FROZEN / PRODUCTION COMPOSITION VERIFIED** (closeout gate passed at `01fe2ec` (CI green); original closeout at `39f0f3b`; the M6-PRODUCTION-INTEGRATION-AND-ASYNC-CORRECTION WP re-opened M6 LIMITED to production-integration gaps and re-closed it at the FINAL HEAD — CI green; §6 checklist complete; §8 production-composition checklist complete).
+
+## 8. Production-Integration Correction (M6-PRODUCTION-INTEGRATION-AND-ASYNC-CORRECTION)
+
+A limited M6 re-open closed the ONLY weak category of the original closeout: TEST GRAPH == PRODUCTION GRAPH. The rule now enforced by `tests/test_m6_production_composition.py` (26 gates through the REAL bootstrap `_build_services`):
+
+**PRODUCTION COMPOSITION** — `bootstrap._build_services(db_path, ...)` is the single production-graph construction path shared by `ApplicationContainer` and the tests. The production LibraryService is wired with the REAL `SqliteLibraryIndexRepository` (`library_index`), the REAL `SqliteLibraryPrefsRepository` (`library_prefs` — favorites/history/recently_added persist), and the REAL `SqlitePlaylistsRepository` + `PlaylistService` (`LibraryBridge.playlist_service` — playlist slots live). `LibraryPreferencesCoordinator` remains the distinct last_directory contract.
+
+**ASYNC GENERATION SAFETY** — `ThreadScanRunner` keeps ONE `ScanCancelToken` PER GENERATION (a cancelled scan never poisons a later one; `cancel(generation)` targets exactly that generation; unknown generations are safe no-ops). The worker ONLY computes `ScanResult(tracks, upserts, removed)` — durable index mutation happens on the owner thread AFTER the generation gate via a single transactional `apply_delta` (BEGIN/upserts/removes/COMMIT, ROLLBACK on error). A stale generation can never write SQLite nor mutate LibraryState.
+
+**OWNER-THREAD DISPATCH** — `LibraryScanDispatcher(QObject)` (infrastructure) receives the relay signals with EXPLICIT `Qt.QueuedConnection` and delegates to the public `LibraryService.handle_scan_progress/handle_scan_done` on the GUI thread; the service never touches Qt. Tests prove exact thread IDs: heavy work on the worker thread, progress/done/state mutation on the owner thread.
+
+**SHUTDOWN LIFECYCLE** — `ApplicationContainer.shutdown()` order: (1) M5 persistence shutdown first; (2) `scan_runner.shutdown()` (reject new submits + cancel active generations) and `scan_dispatcher.shutdown()` (drop late callbacks) + relay disconnect; (3) playback coordinator; (4) library-preferences coordinator; (5) bridges; (6) backend; (7) QML. A worker finishing after shutdown can neither mutate state nor write the index.
+
+**CANONICAL DETERMINISM** — `AlbumRef.year` = first CANONICAL-sorted member with a known year (0 when none) — input-order-independent (tested under permutation). `ArtistRef.album_count` counts canonical AlbumIds (same title under a different album artist is a different album).
+
+**ARTWORK STATE** — `_artwork_paths` is rebuilt atomically during enrichment (stale entries pruned when albums/art disappear). Album resolution is two-pass: PASS 1 explicit FRONT (APIC/Picture type 3) across ALL tracks; PASS 2 first embedded fallback; PASS 3 local (`cover.*`/`folder.*`/`front.*`); PASS 4 none. **Michi fallback artwork: RECLASSIFIED — deferred to M9** (no canonical asset exists; the original master-prompt chain "... → Michi fallback" is documented as deferred, NOT dropped; M9 owns it).
+
+**PRESENTATION STATE** — `albumMode` lives in `LibraryView` (survives the AlbumsView recreation on tab switches). The bridge exposes `scanProcessed/scanTotal/scanProgress/scanCurrentPath` + a `cancel_scan` slot; `LibraryToolbar` shows status / processed-total / plain progress bar / Cancel (functional, not premium — M9 refines aesthetics).
+
+**TECHNICAL METADATA** — the canonical `TrackRef` retains codec/container/sample_rate_hz/bit_depth/channels/bitrate_bps/file_size (copied in `_trackref_from_metadata`); the album-tracks projection exposes them + a facts-only `qualityLabel` ("FLAC · 24-bit · 96 kHz", "MP3 · 320 kbps" — never "Hi-Res"/"Lossless"); `AlbumRef.technical_summary` is the exact label when every member renders the same one, else "Mixed formats"; AlbumListView shows year/duration/technical summary minimally.
+
+**SCALE CLAIMS CORRECTION** — the M6 scale baseline is **10k correctness + time-bound + determinism**; the previous "time, memory, determinism" claim is corrected: **memory profiling MOVED TO M12**.
+
+Commit record of the correction WP is in `git log` between `39f0f3b` and the FINAL HEAD.
