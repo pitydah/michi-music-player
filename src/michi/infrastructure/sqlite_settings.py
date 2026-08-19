@@ -198,23 +198,54 @@ def _remove_sqlite_sidecars_strict(db_path: Path) -> None:
             Path(str(db_path) + suffix).unlink()
 
 
-def _read_raw_settings_rows(path: Path) -> list[tuple[str, str]]:
-    """Raw settings rows (key, value) ordered by key, read-only.
+# Authoritative logical state for recovery provenance
+# (M6-FINAL-CROSS-PERSISTENCE-GATE). These tables carry USER/AUTHORITATIVE
+# durable state: settings holds the application/session rows (including the
+# session_snapshot row) and library_prefs holds favorites/history/
+# recently_added/playlists. REBUILDABLE CACHE tables (library_index,
+# library_meta) are intentionally EXCLUDED: the filesystem is the authority
+# over file existence and the index is cached musical knowledge that can be
+# reconstructed — its divergence must never invalidate provenance. Adding a
+# future authoritative table means adding it HERE (single source, never
+# scattered hardcodes).
+_AUTHORITATIVE_TABLES = ("settings", "library_prefs")
 
-    sqlite3/OSError propagate to the caller; nothing is decoded or
-    normalized here — the raw tuples are compared as-is.
+
+def _read_authoritative_state(path: Path) -> dict[str, list[tuple[str, str]]]:
+    """Logical authoritative state of a database: ordered (key, value) rows
+    of every authoritative table, read-only.
+
+    An ABSENT optional authoritative table is equivalent to an EMPTY one
+    (pre-M6 databases legitimately lack ``library_prefs``); a NON-empty
+    table is never equivalent to a missing one. Rebuildable cache tables
+    are never part of the provenance identity. Structural/operational
+    errors propagate to the caller (fail closed in _candidate_matches_lkg).
     """
     conn = sqlite3.connect(_read_only_uri(path), uri=True, timeout=0.2)
     try:
-        return conn.execute("SELECT key, value FROM settings ORDER BY key").fetchall()
+        state: dict[str, list[tuple[str, str]]] = {}
+        for table in _AUTHORITATIVE_TABLES:
+            try:
+                rows = conn.execute(
+                    f"SELECT key, value FROM {table} ORDER BY key"
+                ).fetchall()
+            except sqlite3.OperationalError as exc:
+                if "no such table" in str(exc).lower():
+                    rows = []  # absent authoritative optional table == empty
+                else:
+                    raise
+            state[table] = rows
+        return state
     finally:
         conn.close()
 
 
 def _candidate_matches_lkg(candidate_path: Path, lkg_path: Path) -> bool:
-    """Logical (row-level) equality between candidate and LKG; fail closed."""
+    """Logical (row-level) equality of the AUTHORITATIVE state between
+    candidate and LKG; fail closed. Rebuildable cache divergence never
+    invalidates provenance (M6-FINAL-CROSS-PERSISTENCE-GATE)."""
     try:
-        return _read_raw_settings_rows(candidate_path) == _read_raw_settings_rows(
+        return _read_authoritative_state(candidate_path) == _read_authoritative_state(
             lkg_path
         )
     except (sqlite3.Error, OSError):
