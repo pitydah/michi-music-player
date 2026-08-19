@@ -11,10 +11,34 @@ from michi.domain.playlist import Playlist
 logger = logging.getLogger(__name__)
 
 
+def _decode_playlist_entry(entry) -> Playlist | None:
+    """STRICT playlist entry decode (authoritative user state).
+
+    Valid shape: {"name": str, "track_paths": list[str]}. A malformed entry
+    (non-dict, wrong member types, track_paths with ANY non-string member)
+    is rejected WHOLE — NEVER partially salvaged (["A", 42] is malformed,
+    not ["A"]). Valid sibling entries in the same root list are preserved
+    (established best-effort collection semantics)."""
+    if not isinstance(entry, dict):
+        return None
+    name = entry.get("name")
+    paths = entry.get("track_paths")
+    if not isinstance(name, str) or not isinstance(paths, list):
+        return None
+    if not all(isinstance(path, str) for path in paths):
+        return None
+    return Playlist(name=name, track_paths=tuple(paths))
+
+
 class SqlitePlaylistsRepository(PlaylistsPort):
     """One JSON list under the 'playlists' key of the shared library_prefs
     table. Never touches the settings table or journal mode; never raises:
-    persistence is best effort."""
+    persistence is best effort.
+
+    Malformed ROOT (scalar/string/object/null/boolean/invalid JSON) ->
+    whole collection (). Malformed ENTRY -> that entry discarded; valid
+    siblings preserved. No writeback during load (read tolerance, not
+    repair)."""
 
     def __init__(self, db_path: Path) -> None:
         self._db_path = db_path
@@ -42,19 +66,19 @@ class SqlitePlaylistsRepository(PlaylistsPort):
         if row is None:
             return ()
         try:
-            raw = json.loads(row[0])
-        except ValueError:
+            parsed = json.loads(row[0])
+        except (TypeError, ValueError):
+            return ()
+        if not isinstance(parsed, list):
+            # Malformed ROOT: the whole persisted collection is rejected —
+            # a scalar/string/object root can never fabricate playlists.
+            logger.warning("Malformed playlists root; using safe empty fallback")
             return ()
         playlists = []
-        for entry in raw:
-            if not isinstance(entry, dict):
-                continue
-            name = entry.get("name")
-            paths = entry.get("track_paths")
-            if isinstance(name, str) and isinstance(paths, list):
-                playlists.append(
-                    Playlist(name, tuple(p for p in paths if isinstance(p, str)))
-                )
+        for entry in parsed:
+            playlist = _decode_playlist_entry(entry)
+            if playlist is not None:
+                playlists.append(playlist)
         return tuple(playlists)
 
     def save(self, playlists: tuple[Playlist, ...]) -> None:
