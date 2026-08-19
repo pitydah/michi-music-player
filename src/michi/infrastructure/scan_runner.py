@@ -24,6 +24,7 @@ from michi.application.ports import (
     ScanCancelToken,
     ScanPipelinePort,
     ScanProgress,
+    ScanProgressSnapshot,
 )
 
 
@@ -62,7 +63,13 @@ class ThreadScanRunner(ScanPipelinePort):
             progress = ScanProgress()
 
             def report() -> None:
-                self._relay.progress.emit(generation, progress)
+                # M6-FINAL-CROSS-PERSISTENCE-GATE: the thread boundary
+                # transports an IMMUTABLE snapshot, never the mutable
+                # worker-owned builder — the owner thread can never observe
+                # a mutating object.
+                self._relay.progress.emit(
+                    generation, ScanProgressSnapshot.from_progress(progress)
+                )
 
             try:
                 result = work(progress, token, report)

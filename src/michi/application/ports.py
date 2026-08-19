@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 from michi.domain.library import Artwork, LibraryPrefs, TrackMetadata
@@ -210,13 +211,40 @@ class LibraryIndexRepository(ABC):
 
 class ScanProgress:
     """Mutable cross-thread scan progress (M6.4). The worker updates the
-    fields and reports; the owner maps them onto LibraryState."""
+    fields and reports; the owner maps them onto LibraryState.
+
+    M6-FINAL-CROSS-PERSISTENCE-GATE: the mutable builder stays WORKER-LOCAL;
+    every emission transports a fresh immutable ``ScanProgressSnapshot`` so
+    the owner thread never observes a mutating object."""
 
     def __init__(self) -> None:
         self.phase: str | None = None
         self.current_path: str | None = None
         self.processed: int = 0
         self.total: int = 0
+
+
+@dataclass(frozen=True)
+class ScanProgressSnapshot:
+    """Immutable progress snapshot crossing the thread boundary.
+
+    The worker owns the mutable builder; the runner snapshots it at every
+    report() so the Qt signal and the owner thread see stable values that
+    can never be mutated by later progress (M6-FINAL-CROSS-PERSISTENCE)."""
+
+    phase: str | None = None
+    current_path: str | None = None
+    processed: int = 0
+    total: int = 0
+
+    @classmethod
+    def from_progress(cls, progress: ScanProgress) -> "ScanProgressSnapshot":
+        return cls(
+            phase=progress.phase,
+            current_path=progress.current_path,
+            processed=progress.processed,
+            total=progress.total,
+        )
 
 
 class ScanCancelToken:
