@@ -99,9 +99,50 @@ Operations: `load`, `play`, `pause`, `resume`, `stop`, `set_volume`, `set_muted`
 - M11.2B (TESTED): `SQLiteSettingsRepository` exposes `last_known_good_path` (`<db>.lkg`), `refresh_last_known_good` (only a HEALTHY primary may refresh; SQLite backup API from a read-only source; unique sibling temp candidate validated before atomic `os.replace` promotion; an existing LKG is preserved for all failures occurring before successful atomic promotion — a candidate is validated before `os.replace()`, so only a validated SQLite snapshot is promoted) and `stage_recovery_from_last_known_good` (healthy-LKG-only source; SQLite backup API into an exclusively reserved new destination — `O_CREAT | O_EXCL` — validated before success; `FileExistsError` on existing destinations; `ValueError` on primary/LKG aliases; foreign files never overwritten or deleted; primary and LKG never mutated). M11.2E automatic recovery is the production consumer of these primitives (`stage_recovery_from_last_known_good` stages the candidate that M11.2E validates and installs).
 - M11.2C (TESTED): field-level malformed-data recovery. `load()` decodes each persisted field independently; a malformed value falls back to its domain default with one logged warning while valid sibling fields are preserved; no field is silently coerced; nothing is written back to SQLite (safe read fallback, not repair). Canonical persisted `muted` representation is `"true"`/`"false"` (as written by `save()`), and `load()` and `inspect_path()` agree on it. The health classifier remains strict: a database containing malformed data still reports `MALFORMED_DATA` even though `load()` can produce a safe `SettingsState` — load tolerance is not database health.
 - M11.2D (TESTED): startup preflight + recovery routing. `ApplicationContainer` calls `SQLiteSettingsRepository.open_for_startup(db_path)` before `QtMultimediaBackend` construction; the classmethod reads health first (READ FIRST, DECIDE SECOND, WRITE ONLY WHEN AUTHORIZED): HEALTHY → best-effort LKG refresh then writable open; MISSING with no recovery material → true first run (create + validate); MISSING with LKG/candidate → staged recovery into `<db>.recovery` (M11.2D itself did not install candidates; M11.2E installs them after validation for recoverable states); field-level MALFORMED_DATA (read-only structural probe passes) → writable open of the same primary, M11.2C fallback applies; structural MALFORMED/CORRUPT → recovery staging (installed by M11.2E after validation); LOCKED/ACCESS_FAILURE/IO_FAILURE/UNKNOWN_FAILURE → `PersistenceStartupError`, no fallback, no staging, no writable open. M11.2D itself never replaced, renamed, deleted, or repaired the primary and never installed staged candidates; the validated atomic install is M11.2E's responsibility. For an initially MALFORMED_DATA primary, structural readability is probed read-only: genuine schema malformation routes to non-destructive recovery staging, while environmental/operational failures during that probe are reclassified through the existing persistence-health taxonomy — LOCKED / ACCESS_FAILURE / IO_FAILURE / UNKNOWN_FAILURE block startup and never trigger LKG fallback.
-- M11.2E (TESTED): validated automatic restore + quarantine. Recoverable primaries (MISSING / CORRUPT_DATABASE / structural MALFORMED_DATA) with a healthy LKG are auto-restored: a candidate (`<db>.recovery`, staged from the LKG via the SQLite backup API or a pre-existing trusted candidate) is installed only after it is HEALTHY, its logical settings rows exactly match the LKG rows, and it has no `-wal`/`-shm` sidecars; the original primary artifacts are quarantined first as byte-exact evidence into a fresh `<db>.quarantine/recovery-*` generation (0o600 copies verified by size + streaming SHA-256; quarantine is evidence only, never a recovery source); original primary sidecars are strictly removed before the atomic `os.replace(candidate, primary)` install; the installed primary is re-inspected HEALTHY before the writable repository is constructed; the LKG is preserved; terminal states (LOCKED/ACCESS/IO/UNKNOWN) remain non-recovering and field-level MALFORMED_DATA stays on the M11.2C path. The LKG is never mutated by recovery: committed WAL-visible LKG state is preserved, and LKG -wal/-shm sidecars are not recovery housekeeping targets.
+- M11.2E (TESTED): validated automatic restore + quarantine. Recoverable primaries (MISSING / CORRUPT_DATABASE / structural MALFORMED_DATA) with a healthy LKG are auto-restored: a candidate (`<db>.recovery`, staged from the LKG via the SQLite backup API or a pre-existing trusted candidate) is installed only after it is HEALTHY, its logical AUTHORITATIVE rows exactly match the LKG rows (M6-FINAL-CROSS-PERSISTENCE-GATE: settings AND library_prefs — see "michi.db Durability Ownership" below), and it has no `-wal`/`-shm` sidecars; the original primary artifacts are quarantined first as byte-exact evidence into a fresh `<db>.quarantine/recovery-*` generation (0o600 copies verified by size + streaming SHA-256; quarantine is evidence only, never a recovery source); original primary sidecars are strictly removed before the atomic `os.replace(candidate, primary)` install; the installed primary is re-inspected HEALTHY before the writable repository is constructed; the LKG is preserved; terminal states (LOCKED/ACCESS/IO/UNKNOWN) remain non-recovering and field-level MALFORMED_DATA stays on the M11.2C path. The LKG is never mutated by recovery: committed WAL-visible LKG state is preserved, and LKG -wal/-shm sidecars are not recovery housekeeping targets.
 - Conservative handling: HEALTHY/MISSING proceed to normal flow; all failure classes produce an explicit diagnostic with no silent fallback and no destructive repair. M11.2E (TESTED) implements automatic restore + quarantine on top of this taxonomy for recoverable states only; terminal environmental failures remain non-recovering.
 - Persisted fields: volume, muted, last_directory, recent_files. Restart gate: values apply only after a successful restart restore.
+
+## michi.db Durability Ownership (M6-FINAL-CROSS-PERSISTENCE-GATE, TESTED)
+
+M6 introduced NEW authoritative durable state inside the SAME `michi.db` that
+M5/M11.2 recovery protects. The cross-persistence contract (verified by
+`tests/test_persistence_cross_context.py`):
+
+| Region | Classification | Rationale |
+| ------ | -------------- | --------- |
+| `settings` (incl. `session_snapshot` row) | **AUTHORITATIVE** application/session state | user/application decisions; NOT reconstructable |
+| `library_prefs` (favorites/history/recently_added/playlists) | **AUTHORITATIVE** user library state | user decisions; NOT reconstructable |
+| `library_index` | **REBUILDABLE CACHE** | the FILESYSTEM is the authority over file existence; the index is cached musical knowledge reconstructable by scanning + extraction |
+| `library_meta` | **CACHE SCHEMA METADATA** | versioning for the rebuildable index |
+
+Consequences:
+
+- **LKG = FULL DATABASE SNAPSHOT**: `refresh_last_known_good` /
+  `stage_recovery_from_last_known_good` use the SQLite backup API on the
+  COMPLETE database — every table (including M6's) rides along and survives
+  recovery.
+- **PROVENANCE = AUTHORITATIVE LOGICAL STATE**: `_candidate_matches_lkg`
+  compares ordered `(key, value)` rows of `_AUTHORITATIVE_TABLES`
+  (`settings`, `library_prefs`) — never binary bytes, never WAL layout,
+  never settings-only, never cache equality. The table set is centralized in
+  ONE place (`_AUTHORITATIVE_TABLES`); future authoritative tables are added
+  there.
+- **Absence semantics**: an ABSENT optional authoritative table (`library_prefs`
+  in pre-M6 databases) is logically equivalent to an EMPTY one; a NON-empty
+  table is never equivalent to a missing one. Backward compatible, tested.
+- **Cache divergence never invalidates recovery**: a candidate whose
+  `library_index` differs from the LKG's is authorized (provenance passes);
+  the full-database install preserves whichever cache the candidate carries,
+  and a missing/cleared index is safely rebuilt from the filesystem.
+- **Failure semantics**: a `library_index` durability failure degrades
+  performance (re-extraction) but MUST NOT corrupt authoritative user data;
+  `library_prefs`/`playlists` durability failures keep their best-effort
+  load/save contracts.
+- **Hydration note**: instant index hydration (cached library shown at
+  startup, async filesystem reconciliation) is NOT implemented — classified
+  as POST-M6 / M12 startup improvement. The filesystem remains the authority
+  over physical existence.
 
 ## Library Filesystem Boundary
 
