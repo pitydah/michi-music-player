@@ -118,9 +118,9 @@ M6.8 SHALL close M6 only when all of the following hold:
 
 ## 7. Final State Definition
 
-**M6 — LIBRARY: STATUS CLOSED / TESTED / FROZEN / PRODUCTION COMPOSITION VERIFIED; ORIGINAL CONTRACT COMPLETE + PRODUCTION-INTEGRATION CORRECTION APPLIED; CANONICAL MUSIC MODEL V2; LIBRARY INDEX PERSISTENT/VERSIONED + WIRED IN THE PRODUCTION GRAPH; SCAN INCREMENTAL/ASYNC/CANCELLABLE/SUPERSESSION-SAFE; ARTWORK V2; ALBUM VIEWS GRID/PATHVIEW/VINYL WALL/TIMELINE/MAGAZINE/LIST; DATA MODEL ONE CANONICAL SOURCE; PRESENTATION MODULAR; NEXT PHASE M7 — SEARCH (not automatic).**
+**M6 — LIBRARY: STATUS CLOSED / TESTED / FROZEN / PRODUCTION COMPOSITION VERIFIED / CROSS-PERSISTENCE VERIFIED; ORIGINAL CONTRACT COMPLETE + PRODUCTION-INTEGRATION CORRECTION APPLIED + CROSS-PERSISTENCE GATE APPLIED; CANONICAL MUSIC MODEL V2; LIBRARY INDEX PERSISTENT/VERSIONED/INCREMENTAL/REBUILDABLE CACHE + WIRED IN THE PRODUCTION GRAPH; USER LIBRARY STATE DURABLE + RECOVERY-AWARE; SCAN INCREMENTAL/ASYNC/CANCELLABLE/SUPERSESSION-SAFE; ARTWORK V2; PRESENTATION MODULAR; TECHNICAL METADATA CANONICAL + FACTS-ONLY; NEXT PHASE M7 — SEARCH (not automatic).**
 
-Status: **M6 — CLOSED / TESTED / FROZEN / PRODUCTION COMPOSITION VERIFIED** (closeout gate passed at `01fe2ec` (CI green); original closeout at `39f0f3b`; the M6-PRODUCTION-INTEGRATION-AND-ASYNC-CORRECTION WP re-opened M6 LIMITED to production-integration gaps and re-closed it at the FINAL HEAD — CI green; §6 checklist complete; §8 production-composition checklist complete).
+Status: **M6 — CLOSED / TESTED / FROZEN / PRODUCTION COMPOSITION VERIFIED / CROSS-PERSISTENCE VERIFIED** (closeout gate passed at `01fe2ec` (CI green); original closeout at `39f0f3b`; production-composition re-close at the a3772bb-series; the M6-FINAL-CROSS-PERSISTENCE-GATE WP re-opened M6 LIMITED to the M6-persistence × M5/M11.2 recovery interaction and re-closed it at the FINAL HEAD — CI green; §6 checklist complete; §8 production-composition checklist complete; §9 cross-persistence checklist complete).
 
 ## 8. Production-Integration Correction (M6-PRODUCTION-INTEGRATION-AND-ASYNC-CORRECTION)
 
@@ -145,3 +145,47 @@ A limited M6 re-open closed the ONLY weak category of the original closeout: TES
 **SCALE CLAIMS CORRECTION** — the M6 scale baseline is **10k correctness + time-bound + determinism**; the previous "time, memory, determinism" claim is corrected: **memory profiling MOVED TO M12**.
 
 Commit record of the correction WP is in `git log` between `39f0f3b` and the FINAL HEAD.
+
+## 9. Cross-Persistence Gate (M6-FINAL-CROSS-PERSISTENCE-GATE)
+
+A final transversal gate closed the M6-persistence × M5/M11.2 recovery
+interaction. Verified by `tests/test_persistence_cross_context.py` (26 gates;
+the durability ownership policy is also documented in docs/ARCHITECTURE.md
+"michi.db Durability Ownership").
+
+**DURABILITY OWNERSHIP** — `settings` (incl. `session_snapshot`) =
+AUTHORITATIVE application/session state; `library_prefs` (favorites/history/
+recently_added/playlists) = AUTHORITATIVE user library state; `library_index`
+= REBUILDABLE CACHE (the filesystem is the authority over file existence);
+`library_meta` = CACHE SCHEMA METADATA.
+
+**PROVENANCE** — `_candidate_matches_lkg` now compares the AUTHORITATIVE
+logical state (`_AUTHORITATIVE_TABLES` = settings + library_prefs, ordered
+rows; single centralized table set), NOT settings-only. Absence semantics:
+an ABSENT optional authoritative table (pre-M6 `library_prefs`) is equivalent
+to an EMPTY one; a NON-empty table is never equivalent to a missing one.
+Rebuildable cache divergence NEVER invalidates provenance — but the LKG is a
+FULL-database snapshot (SQLite backup API), so a valid index survives normal
+recovery and a missing index is safely rebuilt from the filesystem. Fail
+closed: unreadable/mismatched authoritative state rejects the candidate.
+
+**RECOVERY** — after recovery, the PRODUCTION graph (bootstrap._build_services)
+loads the restored favorites/history/recently_added/playlists verbatim — no
+fabricated user data.
+
+**TECHNICAL SUMMARY HONESTY** — album technical summary policy is structured
+(EXACT/MIXED/PARTIAL/UNKNOWN): uniform known tracks report the exact
+facts-only label; mixed known tracks report "Mixed formats"; known + unknown
+reports "" (NEVER a definitive album-wide claim — UNKNOWN stays UNKNOWN);
+all unknown reports "". No marketing labels.
+
+**ASYNC PROGRESS SNAPSHOT** — the thread boundary transports an immutable
+`ScanProgressSnapshot` (fresh instance per emission); the mutable builder
+stays worker-local; owner-thread delivery, cancellation and supersession
+regressions stay green.
+
+**NOT IN SCOPE** — instant index hydration (POST-M6 / M12 startup
+improvement); 10k optimization / memory profiling (M12); M9 artwork/visuals;
+M7 search.
+
+Commit record: `git log` between `a3772bb` and the FINAL HEAD.
