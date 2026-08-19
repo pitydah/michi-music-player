@@ -207,19 +207,26 @@ def _remove_sqlite_sidecars_strict(db_path: Path) -> None:
 # over file existence and the index is cached musical knowledge that can be
 # reconstructed — its divergence must never invalidate provenance. Adding a
 # future authoritative table means adding it HERE (single source, never
-# scattered hardcodes).
+# scattered hardcodes) — and, if the table is optional (pre-existing
+# databases legitimately lack it), its optionality MUST be declared
+# explicitly in _OPTIONAL_AUTHORITATIVE_TABLES; a required table missing
+# from a database is a provenance failure (fail closed), never an empty one.
 _AUTHORITATIVE_TABLES = ("settings", "library_prefs")
+_OPTIONAL_AUTHORITATIVE_TABLES = frozenset({"library_prefs"})
 
 
 def _read_authoritative_state(path: Path) -> dict[str, list[tuple[str, str]]]:
     """Logical authoritative state of a database: ordered (key, value) rows
     of every authoritative table, read-only.
 
-    An ABSENT optional authoritative table is equivalent to an EMPTY one
-    (pre-M6 databases legitimately lack ``library_prefs``); a NON-empty
-    table is never equivalent to a missing one. Rebuildable cache tables
-    are never part of the provenance identity. Structural/operational
-    errors propagate to the caller (fail closed in _candidate_matches_lkg).
+    An ABSENT OPTIONAL authoritative table (``library_prefs`` in pre-M6
+    databases) is equivalent to an EMPTY one; a NON-empty table is never
+    equivalent to a missing one. An absent REQUIRED table (``settings``)
+    raises — the candidate provenance FAILS CLOSED; a settings-less
+    database is never silently treated as an empty settings database.
+    Rebuildable cache tables are never part of the provenance identity.
+    Structural/operational errors propagate to the caller (fail closed in
+    _candidate_matches_lkg).
     """
     conn = sqlite3.connect(_read_only_uri(path), uri=True, timeout=0.2)
     try:
@@ -230,10 +237,13 @@ def _read_authoritative_state(path: Path) -> dict[str, list[tuple[str, str]]]:
                     f"SELECT key, value FROM {table} ORDER BY key"
                 ).fetchall()
             except sqlite3.OperationalError as exc:
-                if "no such table" in str(exc).lower():
-                    rows = []  # absent authoritative optional table == empty
+                if (
+                    "no such table" in str(exc).lower()
+                    and table in _OPTIONAL_AUTHORITATIVE_TABLES
+                ):
+                    rows = []  # absent optional authoritative table == empty
                 else:
-                    raise
+                    raise  # required table missing: provenance fails closed
             state[table] = rows
         return state
     finally:
