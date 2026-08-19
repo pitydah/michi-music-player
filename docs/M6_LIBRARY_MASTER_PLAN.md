@@ -118,9 +118,9 @@ M6.8 SHALL close M6 only when all of the following hold:
 
 ## 7. Final State Definition
 
-**M6 — LIBRARY: STATUS CLOSED / TESTED / FROZEN / PRODUCTION COMPOSITION VERIFIED / CROSS-PERSISTENCE VERIFIED; ORIGINAL CONTRACT COMPLETE + PRODUCTION-INTEGRATION CORRECTION APPLIED + CROSS-PERSISTENCE GATE APPLIED; CANONICAL MUSIC MODEL V2; LIBRARY INDEX PERSISTENT/VERSIONED/INCREMENTAL/REBUILDABLE CACHE + WIRED IN THE PRODUCTION GRAPH; USER LIBRARY STATE DURABLE + RECOVERY-AWARE; SCAN INCREMENTAL/ASYNC/CANCELLABLE/SUPERSESSION-SAFE; ARTWORK V2; PRESENTATION MODULAR; TECHNICAL METADATA CANONICAL + FACTS-ONLY; NEXT PHASE M7 — SEARCH (not automatic).**
+**M6 — LIBRARY: STATUS CLOSED / TESTED / FROZEN / PRODUCTION COMPOSITION VERIFIED / CROSS-PERSISTENCE VERIFIED / AUTHORITATIVE DATA DECODE VERIFIED; ORIGINAL CONTRACT COMPLETE + PRODUCTION-INTEGRATION CORRECTION APPLIED + CROSS-PERSISTENCE GATE APPLIED + AUTHORITATIVE DECODE GATE APPLIED; CANONICAL MUSIC MODEL V2; LIBRARY INDEX PERSISTENT/VERSIONED/INCREMENTAL/REBUILDABLE CACHE + WIRED IN THE PRODUCTION GRAPH; USER LIBRARY STATE DURABLE + RECOVERY-AWARE + STRICT-DECODE; SCAN INCREMENTAL/ASYNC/CANCELLABLE/SUPERSESSION-SAFE; ARTWORK V2; PRESENTATION MODULAR; TECHNICAL METADATA CANONICAL + FACTS-ONLY; NEXT PHASE M7 — SEARCH (not automatic).**
 
-Status: **M6 — CLOSED / TESTED / FROZEN / PRODUCTION COMPOSITION VERIFIED / CROSS-PERSISTENCE VERIFIED** (closeout gate passed at `01fe2ec` (CI green); original closeout at `39f0f3b`; production-composition re-close at the a3772bb-series; the M6-FINAL-CROSS-PERSISTENCE-GATE WP re-opened M6 LIMITED to the M6-persistence × M5/M11.2 recovery interaction and re-closed it at the FINAL HEAD — CI green; §6 checklist complete; §8 production-composition checklist complete; §9 cross-persistence checklist complete).
+Status: **M6 — CLOSED / TESTED / FROZEN / PRODUCTION COMPOSITION VERIFIED / CROSS-PERSISTENCE VERIFIED / AUTHORITATIVE DATA DECODE VERIFIED** (closeout gate passed at `01fe2ec` (CI green); original closeout at `39f0f3b`; production-composition re-close at the a3772bb-series; cross-persistence re-close at the 449bbdd-series; the M6-AUTHORITATIVE-DATA-DECODE-GATE WP hardened the authoritative decoders and re-closed at the FINAL HEAD — CI green; §6 checklist complete; §8 production-composition checklist complete; §9 cross-persistence checklist complete; §10 authoritative-decode checklist complete).
 
 ## 8. Production-Integration Correction (M6-PRODUCTION-INTEGRATION-AND-ASYNC-CORRECTION)
 
@@ -189,3 +189,33 @@ improvement); 10k optimization / memory profiling (M12); M9 artwork/visuals;
 M7 search.
 
 Commit record: `git log` between `a3772bb` and the FINAL HEAD.
+
+## 10. Authoritative Data Decode Gate (M6-AUTHORITATIVE-DATA-DECODE-GATE)
+
+AUTHORITATIVE does not mean TRUST ALL BYTES BLINDLY: the user's state
+cannot be reconstructed, so Michi protects it carefully. Verified by
+`tests/test_persistence_authoritative_decode.py` (53 gates; the contract is
+also documented in docs/ARCHITECTURE.md "Authoritative user data decoding").
+
+**STRICT DECODE** — `SqliteLibraryPrefsRepository` and
+`SqlitePlaylistsRepository` accept ONLY the valid shapes: `list[str]` for
+favorites/history/recently_added; a JSON `list` of `{"name": str,
+"track_paths": list[str]}` for playlists. Everything else degrades with
+SAFE EMPTY FALLBACK: LOAD NEVER RAISES, NO FABRICATION (a JSON string never
+iterates into characters; a JSON object never yields keys as paths), NO
+PARTIAL SALVAGE (`["A", 42, "B"]` -> `()`, never `("A", "B")`). Malformed
+playlist ROOT -> whole collection `()`; malformed ENTRY -> that entry
+discarded, valid siblings preserved. NO WRITEBACK during load (read
+tolerance, not repair — M11.2C philosophy).
+
+**REQUIRED VS OPTIONAL AUTHORITATIVE TABLES** — `_AUTHORITATIVE_TABLES` =
+(settings, library_prefs); `_OPTIONAL_AUTHORITATIVE_TABLES` = {library_prefs}
+(pre-M6 absent == empty). A missing REQUIRED table (settings) makes the
+authoritative read raise and candidate provenance FAIL CLOSED. Future
+authoritative tables must declare optionality explicitly.
+
+**SEPARATION** — PROVENANCE = candidate authoritative rows == LKG rows (raw,
+malformed-inclusive); SEMANTIC VALIDATION = repository decoders. Both are
+required; they solve different problems and are never merged.
+
+Commit record: `git log` between `449bbdd` and the FINAL HEAD.
