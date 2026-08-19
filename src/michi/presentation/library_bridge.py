@@ -42,6 +42,14 @@ class LibraryBridge(QObject):
             self._playlist_service.unsubscribe_changed(self._on_service_changed)
 
     def _on_service_changed(self) -> None:
+        # M6.6: the selection identity is the canonical album key; a selected
+        # album that leaves the library clears the detail safely.
+        if self._selected_album_key and self._selected_album_key not in {
+            a.key for a in self._service.state.albums
+        }:
+            self._selected_album_key = ""
+            self._selected_album = None
+            self._album_track_refs = []
         self.library_changed.emit()
 
     def _get_files(self) -> list[str]:
@@ -165,6 +173,8 @@ class LibraryBridge(QObject):
                 "artist": ref.artist,
                 "durationMs": ref.duration_ms,
                 "path": str(ref.file_path),
+                "trackNumber": ref.track_number,
+                "discNumber": ref.disc_number,
             }
             for ref in self._album_track_refs
         ]

@@ -342,12 +342,17 @@ class TestBridgeViews:
         assert isinstance(rows, list)
         assert len(rows) == 2
         for row in rows:
+            # M6.6 enriches the canonical album-tracks projection; the M6.6
+            # RED test test_album_tracks_rows_include_canonical_numbers is
+            # authoritative.
             assert set(row.keys()) == {
                 "displayName",
                 "title",
                 "artist",
                 "durationMs",
                 "path",
+                "trackNumber",
+                "discNumber",
             }
         assert [r["path"] for r in rows] == [str(a1), str(a2)]
         assert all(r["title"] and r["displayName"] and r["artist"] for r in rows)
