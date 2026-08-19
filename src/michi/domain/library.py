@@ -3,8 +3,11 @@
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from michi.domain.search import SearchProjection  # M7: derived search state
+if TYPE_CHECKING:  # M7: search types annotate LibraryState without a runtime
+    # import cycle (search.py imports resolve_album_artist from here).
+    from michi.domain.search import SearchProjection
 
 HISTORY_CAP = 50
 RECENT_CAP = 50
@@ -239,10 +242,15 @@ def make_composer_key(composer_name: str) -> str:
     return _normalize_key(composer_name)
 
 
-def _resolve_album_artist(track) -> str:
+def resolve_album_artist(track) -> str:
     """Resolved album-level artist (LOCAL-META-02.2c): an explicit
     ``album_artist`` wins; a compilation without one groups under
-    "Various Artists"; otherwise the track's own artist."""
+    "Various Artists"; otherwise the track's own artist.
+
+    M7-CANONICAL-SEMANTICS: this is THE single source of truth for album
+    artist resolution — the canonical model grouping (build_music_model)
+    and the M7 search representation (TrackSearchDocument) share exactly
+    this helper. Never duplicate the fallback constants elsewhere."""
     if track.album_artist:
         return track.album_artist
     if track.compilation:
@@ -347,7 +355,7 @@ def build_music_model(tracks) -> MusicModel:
     composer_entries: dict[str, dict] = {}
     for track in tracks:
         album_title = track.album.strip() or _UNKNOWN_ALBUM
-        resolved_artist = _resolve_album_artist(track).strip() or _UNKNOWN_ARTIST
+        resolved_artist = resolve_album_artist(track).strip() or _UNKNOWN_ARTIST
         album_key = make_album_key(album_title, resolved_artist)
         album = album_entries.get(album_key)
         if album is None:
@@ -592,7 +600,7 @@ class LibraryPrefs:
 class LibraryState:
     tracks: list[TrackRef] = field(default_factory=list)
     query: str = ""  # RAW query (presentation form — never normalized here)
-    search_projection: SearchProjection | None = None  # M7: derived, inactive when None
+    search_projection: "SearchProjection | None" = None  # M7: derived
     current_directory: str = ""
     diagnostic: LibraryDiagnostic | None = None
     albums: tuple[AlbumRef, ...] = ()
