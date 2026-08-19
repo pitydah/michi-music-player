@@ -90,6 +90,34 @@ class MutagenArtworkProvider(ArtworkProviderPort):
 
         return None
 
+    def get_embedded_front_artwork(self, file_path: Path) -> Artwork | None:
+        """EXPLICIT front-cover artwork only (M6-PRODUCTION-INTEGRATION):
+        APIC/picture frames designated type 3 (front cover); anything else
+        yields None so the album-level two-pass resolution can prefer a real
+        front cover from ANY track before falling back to any embedded art."""
+        try:
+            audio = MutagenFile(str(file_path))
+        except OSError as exc:
+            logger.warning("Cannot read %s for artwork: %s", file_path, exc)
+            return None
+        except MutagenError as exc:
+            logger.warning("Cannot read %s for artwork: %s", file_path, exc)
+            return None
+        if audio is None:
+            return None
+        tags = getattr(audio, "tags", None)
+        if tags is not None and hasattr(tags, "getall"):
+            frames = tags.getall("APIC")
+            frame = next((f for f in frames if getattr(f, "type", None) == 3), None)
+            if frame is not None:
+                return self._guarded(frame.mime, frame.data)
+        pictures = getattr(audio, "pictures", None)
+        if pictures:
+            picture = next((p for p in pictures if getattr(p, "type", None) == 3), None)
+            if picture is not None:
+                return self._guarded(picture.mime, picture.data)
+        return None
+
     def get_local_artwork(self, album_dir: Path) -> Artwork | None:
         """Deterministic local artwork fallback (M6.5): cover.* then
         folder.* then front.*, case-insensitive, in the album directory.

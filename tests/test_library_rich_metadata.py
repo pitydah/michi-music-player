@@ -200,10 +200,17 @@ class TestTrackRefProjection:
         assert track.disc_number == 2
         assert track.composer == "Composer"
         assert track.compilation is True
-        # Technical fields stay in TrackMetadata only — never on TrackRef.
-        assert not hasattr(track, "codec")
-        assert not hasattr(track, "sample_rate_hz")
-        assert not hasattr(track, "file_size")
+        # M6-PRODUCTION-INTEGRATION (spec §39-40): the canonical TrackRef
+        # RETAINS the technical carrier so runtime projections can show
+        # facts — the old "technical fields stay in TrackMetadata only"
+        # contract is retired.
+        assert track.codec == "FLAC"
+        assert track.container == "flac"
+        assert track.sample_rate_hz == 96000
+        assert track.bit_depth == 24
+        assert track.channels == 2
+        assert track.bitrate_bps == 0
+        assert track.file_size == 12345
 
     def test_scan_without_extractor_defaults(self, tmp_path):
         p1 = tmp_path / "plain.flac"

@@ -1,25 +1,24 @@
-"""Technical-quality label projection (LOCAL-META-02.2d).
+"""Technical-quality label projections (LOCAL-META-02.2d).
 
 Facts only — never marketing labels ("Hi-Res"/"Lossless"). The label is a
-centralized projection so QML delegates never compose it themselves."""
+centralized projection so QML delegates never compose it themselves. The
+pure render lives in the domain; this module adapts it for TrackMetadata
+and the canonical TrackRef.
+"""
+
+from michi.domain.library import render_technical_label
 
 
 def make_audio_quality_label(meta) -> str:
-    """Render an honest technical-quality label from TrackMetadata.
+    """Render an honest technical-quality label from TrackMetadata."""
+    return render_technical_label(
+        meta.codec, meta.bit_depth, meta.sample_rate_hz, meta.bitrate_bps
+    )
 
-    - Lossless (bit_depth > 0 and sample_rate_hz > 0):
-      "FLAC · 24-bit · 96 kHz" (kHz with up to 1 decimal).
-    - Lossy (bit_depth == 0 and bitrate_bps > 0): "MP3 · 320 kbps".
-    - Bare codec when only the codec is known.
-    - "" when nothing technical is known.
-    """
-    codec = meta.codec
-    if meta.bit_depth > 0 and meta.sample_rate_hz > 0:
-        khz = meta.sample_rate_hz / 1000
-        khz_text = f"{khz:g} kHz"
-        return f"{codec} · {meta.bit_depth}-bit · {khz_text}"
-    if meta.bit_depth == 0 and meta.bitrate_bps > 0:
-        return f"{codec} · {meta.bitrate_bps // 1000} kbps"
-    if codec:
-        return codec
-    return ""
+
+def make_track_quality_label(track) -> str:
+    """Render an honest technical-quality label from a canonical TrackRef
+    (M6-PRODUCTION-INTEGRATION: TrackRef retains the technical carrier)."""
+    return render_technical_label(
+        track.codec, track.bit_depth, track.sample_rate_hz, track.bitrate_bps
+    )

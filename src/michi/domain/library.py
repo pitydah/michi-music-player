@@ -43,7 +43,9 @@ class TrackMetadata:
 @dataclass(frozen=True)
 class TrackRef:
     """model projection of TrackMetadata (album_artist/track/disc/composer/
-    compilation); technical audio properties live in TrackMetadata"""
+    compilation + technical audio facts: codec/container/sample_rate/bit
+    depth/channels/bitrate/file_size — M6-PRODUCTION-INTEGRATION retains the
+    technical carrier so canonical runtime projections can show facts)"""
 
     file_path: Path
     display_name: str = ""
@@ -59,6 +61,13 @@ class TrackRef:
     composer: str = ""
     compilation: bool = False
     sort_title: str = ""
+    codec: str = ""
+    container: str = ""
+    sample_rate_hz: int = 0
+    bit_depth: int = 0
+    channels: int = 0
+    bitrate_bps: int = 0
+    file_size: int = 0
 
     def __post_init__(self) -> None:
         if not self.display_name:
@@ -126,6 +135,7 @@ class AlbumRef:
     disc_count: int = 0
     genres: tuple[str, ...] = ()
     composers: tuple[str, ...] = ()
+    technical_summary: str = ""
 
 
 @dataclass(frozen=True)
@@ -241,6 +251,39 @@ def _canonical_track_sort_key(track) -> tuple:
     )
 
 
+def render_technical_label(codec, bit_depth, sample_rate_hz, bitrate_bps) -> str:
+    """Honest technical-quality label (facts only — never marketing).
+
+    - Lossless (bit_depth > 0 and sample_rate_hz > 0):
+      "FLAC · 24-bit · 96 kHz" (kHz with up to 1 decimal).
+    - Lossy (bit_depth == 0 and bitrate_bps > 0): "MP3 · 320 kbps".
+    - Bare codec when only the codec is known; "" when nothing is known."""
+    if bit_depth > 0 and sample_rate_hz > 0:
+        khz = sample_rate_hz / 1000
+        return f"{codec} · {bit_depth}-bit · {khz:g} kHz"
+    if bit_depth == 0 and bitrate_bps > 0:
+        return f"{codec} · {bitrate_bps // 1000} kbps"
+    return codec or ""
+
+
+def _album_technical_summary(tracks) -> str:
+    """Honest album-level technical summary (M6-PRODUCTION-INTEGRATION).
+
+    When EVERY known member renders the SAME facts-only label, that exact
+    label is used; a mixed album reports "Mixed formats" — a summary for a
+    mixed album would be a fabrication."""
+    known = [t for t in tracks if t.codec]
+    if not known:
+        return ""
+    labels = {
+        render_technical_label(t.codec, t.bit_depth, t.sample_rate_hz, t.bitrate_bps)
+        for t in known
+    }
+    if len(labels) == 1:
+        return next(iter(labels))
+    return "Mixed formats"
+
+
 def build_music_model(tracks) -> MusicModel:
     """Derive albums and artists from tracks (pure, deterministic by key).
 
@@ -255,13 +298,18 @@ def build_music_model(tracks) -> MusicModel:
     Disc 1 tracks then Disc 2 tracks, and UNKNOWN (0) sorts last within its
     dimension. AlbumRef V2 fields (M6.1): ``disc_count`` (distinct non-zero
     disc numbers, 1 when all unknown), ``genres`` and ``composers`` (distinct
-    non-empty member values, sorted casefold). Artists are grouped by
-    normalized track artist (``make_artist_key``) with total track count and
-    distinct-album count. Genres are grouped by normalized name with per-genre
-    track count; empty genre -> "Unknown Genre". Composers (M6.1) are grouped
-    by normalized name with per-composer track count; empty composer ->
-    "Unknown Composer"; the sum of genre counts and the sum of composer counts
-    each equal the total track count.
+    non-empty member values, sorted casefold). AlbumRef PRODUCTION fields
+    (M6-PRODUCTION-INTEGRATION): ``year`` is the first canonical-sorted
+    member with a known year (0 when none — deterministic under input
+    permutation) and ``technical_summary`` is the exact facts-only label when
+    every member renders the same one, else "Mixed formats". Artists are
+    grouped by normalized track artist (``make_artist_key``) with total track
+    count and distinct-album count over CANONICAL AlbumIds (same title under
+    a different album artist is a different album). Genres are grouped by
+    normalized name with per-genre track count; empty genre -> "Unknown
+    Genre". Composers (M6.1) are grouped by normalized name with per-composer
+    track count; empty composer -> "Unknown Composer"; the sum of genre counts
+    and the sum of composer counts each equal the total track count.
     """
     album_entries: dict[str, dict] = {}
     artist_entries: dict[str, dict] = {}
@@ -281,7 +329,6 @@ def build_music_model(tracks) -> MusicModel:
                 "tracks": [],
             }
             album_entries[album_key] = album
-        album.setdefault("year", track.year)  # first member wins
         album["duration_ms"] += track.duration_ms
         album["tracks"].append(track)
 
@@ -292,7 +339,10 @@ def build_music_model(tracks) -> MusicModel:
             artist = {"name": artist_name, "track_count": 0, "albums": set()}
             artist_entries[artist_key] = artist
         artist["track_count"] += 1
-        artist["albums"].add(_normalize_key(album_title))
+        # M6-PRODUCTION-INTEGRATION: the album count uses the CANONICAL
+        # AlbumId (title + resolved album artist), never the bare title —
+        # same-title albums under different album artists count separately.
+        artist["albums"].add(album_key)
 
         genre_name = track.genre.strip() or _UNKNOWN_GENRE
         genre_key = _normalize_key(genre_name)
@@ -313,6 +363,11 @@ def build_music_model(tracks) -> MusicModel:
     for entry in album_entries.values():
         tracks_sorted = sorted(entry["tracks"], key=_canonical_track_sort_key)
         entry["paths"] = tuple(t.file_path for t in tracks_sorted)
+        # M6-PRODUCTION-INTEGRATION: the canonical album year is the first
+        # canonical-sorted track with a known year; 0 when none. NEVER the
+        # first member in input order (input-order-independent determinism).
+        entry["year"] = next((t.year for t in tracks_sorted if t.year > 0), 0)
+        entry["technical_summary"] = _album_technical_summary(tracks_sorted)
         entry["disc_count"] = (
             len({t.disc_number for t in entry["tracks"] if t.disc_number > 0}) or 1
         )
@@ -343,6 +398,7 @@ def build_music_model(tracks) -> MusicModel:
                     disc_count=entry["disc_count"],
                     genres=entry["genres"],
                     composers=entry["composers"],
+                    technical_summary=entry["technical_summary"],
                 )
                 for entry in album_entries.values()
             ),

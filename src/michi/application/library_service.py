@@ -121,9 +121,12 @@ class LibraryService:
             paths = self._scanner.scan(root)
             if self._library_index is not None:
                 discovered = [(str(p), *self._scanner.fingerprint(p)) for p in paths]
-                next_tracks = self._incremental_tracks(paths, discovered)
+                next_tracks, upserts, removed = self._incremental_tracks(
+                    paths, discovered
+                )
             else:
                 next_tracks = [self._make_trackref(p) for p in paths]
+                upserts, removed = (), ()
         except LibraryFilesystemError as exc:
             self._state.diagnostic = LibraryDiagnostic(
                 code=exc.code,
@@ -132,11 +135,25 @@ class LibraryService:
             )
             self._notify()
             return
+        # Durable index mutation on the OWNER thread (the sync path has no
+        # generation race) inside a single transactional apply_delta, before
+        # the atomic state commit.
+        self._apply_index_delta(upserts, removed)
         # The commit block is shared with the async path (M6.4): the sync
         # scan() notifies once after the commit; the async _on_scan_done
         # notifies once with the terminal COMPLETED status.
         self._commit_scan_result(next_tracks, directory)
         self._notify()
+
+    def _apply_index_delta(self, upserts, removed) -> None:
+        """Durable index mutation (M6-PRODUCTION-INTEGRATION): ONLY called on
+        the owner thread, ONLY after the generation gate (async path) and
+        inside a single transactional apply_delta. The worker NEVER writes
+        durable state — it only computes ScanResult deltas."""
+        if self._library_index is None:
+            return
+        if upserts or removed:
+            self._library_index.apply_delta(upserts, removed)
 
     def _commit_scan_result(self, next_tracks: list[TrackRef], directory: str) -> None:
         """Atomic commit of a successful scan result (M6.4): everything
@@ -183,10 +200,12 @@ class LibraryService:
             self._state.diagnostic = None
         self._persist_prefs()
 
-    def _incremental_tracks(self, paths, discovered) -> list[TrackRef]:
+    def _incremental_tracks(self, paths, discovered):
         """Incremental M6.3 path: fingerprint -> classify -> extract ONLY
-        added/modified; reuse the index metadata for unchanged; update the
-        index (upsert added+modified, remove removed)."""
+        added/modified; reuse the index metadata for unchanged. The durable
+        upsert/remove delta is RETURNED (never written here) — the caller
+        applies it via apply_delta on the owner thread (M6-PRODUCTION-
+        INTEGRATION: the worker must never mutate durable state)."""
         known = {e.track_id: e for e in self._library_index.load_all()}
         classification = classify_scan(known, discovered)
         added_ids = set(classification.added)
@@ -203,11 +222,7 @@ class LibraryService:
                 entry = known[track_id]
                 ref = self._trackref_from_metadata(path, entry.metadata)
             track_refs.append(ref)
-        if upserts:
-            self._library_index.upsert_many(tuple(upserts))
-        for track_id in classification.removed:
-            self._library_index.remove(track_id)
-        return track_refs
+        return track_refs, tuple(upserts), classification.removed
 
     def start_scan(self, directory: str) -> None:
         """Async scan entry (M6.4): the heavy work runs off the UI thread via
@@ -285,10 +300,9 @@ class LibraryService:
                         self._trackref_from_metadata(path, entry.metadata)
                     )
                 report()
-            if upserts:
-                self._library_index.upsert_many(tuple(upserts))
-            for track_id in classification.removed:
-                self._library_index.remove(track_id)
+            # M6-PRODUCTION-INTEGRATION: the worker ONLY computes — the
+            # durable apply_delta happens on the owner thread AFTER the
+            # generation gate in _on_scan_done.
             return ScanResult(
                 tracks=tuple(track_refs),
                 upserts=tuple(upserts),
@@ -362,9 +376,28 @@ class LibraryService:
             self._notify()
             return
         self._state.scan_status = LibraryScanStatus.COMMITTING
+        # Durable index mutation ONLY after the generation gate (the worker
+        # only computed; the commit path owns the durable state) — a stale
+        # generation can never write SQLite.
+        self._apply_index_delta(result.upserts, result.removed)
         self._commit_scan_result(list(result.tracks), result.directory)
         self._state.scan_status = LibraryScanStatus.COMPLETED
         self._notify()
+
+    def handle_scan_progress(self, generation: int, progress: ScanProgress) -> None:
+        """Owner-thread entry point (M6-PRODUCTION-INTEGRATION): called by
+        the LibraryScanDispatcher from the GUI thread."""
+        self._on_scan_progress(generation, progress)
+
+    def handle_scan_done(
+        self,
+        generation: int,
+        result: ScanResult | None,
+        error: BaseException | None,
+    ) -> None:
+        """Owner-thread entry point (M6-PRODUCTION-INTEGRATION): called by
+        the LibraryScanDispatcher from the GUI thread."""
+        self._on_scan_done(generation, result, error)
 
     def _make_trackref(self, file_path: Path) -> TrackRef:
         if self._metadata_extractor is None:
@@ -392,40 +425,68 @@ class LibraryService:
             composer=meta.composer,
             compilation=meta.compilation,
             sort_title=meta.sort_title,
+            # M6-PRODUCTION-INTEGRATION: the canonical TrackRef retains the
+            # technical carrier so runtime projections can show facts
+            # (codec/container/sample rate/bit depth/channels/bitrate/size).
+            codec=meta.codec,
+            container=meta.container,
+            sample_rate_hz=meta.sample_rate_hz,
+            bit_depth=meta.bit_depth,
+            channels=meta.channels,
+            bitrate_bps=meta.bitrate_bps,
+            file_size=meta.file_size,
         )
 
     def _enrich_albums(self, albums: tuple[AlbumRef, ...]) -> tuple[AlbumRef, ...]:
-        """Mark albums with artwork (M6.5 resolution order, per album):
-        1. embedded (front-preferred) from the album's tracks in order
-           (first readable artwork wins);
-        2. if none AND the album has tracks -> local artwork from the
-           first track's parent directory;
-        3. none -> has_artwork stays False.
+        """Mark albums with artwork (M6.5 + M6-PRODUCTION-INTEGRATION):
+        PASS 1 — explicit FRONT cover from ANY album track (two-pass: a
+        back cover on track 1 must never win over a front cover on track 2);
+        PASS 2 — first embedded fallback in canonical track order;
+        PASS 3 — local artwork from the first track's parent directory;
+        PASS 4 — none (has_artwork stays False; the Michi fallback asset is
+        RECLASSIFIED to M9 — documented, not silently dropped).
 
-        The cache store + _artwork_paths recording happen exactly once,
-        for whichever source resolved first. Without a provider or cache
-        the albums are returned unchanged, i.e. has_artwork stays False
+        ``_artwork_paths`` is REBUILT from scratch (atomic replace after the
+        loop) so stale mappings are pruned when albums or their artwork
+        disappear. The cache store + mapping happen exactly once, for
+        whichever source resolved first. Without a provider or cache the
+        albums are returned unchanged, i.e. has_artwork stays False
         (artwork absence is never an error)."""
         if self._artwork_provider is None or self._artwork_cache is None:
             return albums
+        next_artwork_paths: dict[str, Path] = {}
         enriched = []
         for album in albums:
             artwork = None
-            for track_path in album.track_paths:
-                artwork = self._artwork_provider.get_embedded_artwork(track_path)
-                if artwork is not None:
-                    break
+            # PASS 1: explicit FRONT cover anywhere in the album.
+            front_getter = getattr(
+                self._artwork_provider, "get_embedded_front_artwork", None
+            )
+            if front_getter is not None:
+                for track_path in album.track_paths:
+                    artwork = front_getter(track_path)
+                    if artwork is not None:
+                        break
+            # PASS 2: first embedded fallback in canonical track order.
+            if artwork is None:
+                for track_path in album.track_paths:
+                    artwork = self._artwork_provider.get_embedded_artwork(track_path)
+                    if artwork is not None:
+                        break
+            # PASS 3: local artwork from the first track's parent directory.
             if artwork is None and album.track_paths:
                 artwork = self._artwork_provider.get_local_artwork(
                     album.track_paths[0].parent
                 )
+            # PASS 4: none (Michi fallback reclassified to M9).
             has_artwork = False
             if artwork is not None:
                 stored_path = self._artwork_cache.store(album.key, artwork)
                 if stored_path is not None:
-                    self._artwork_paths[album.key] = stored_path
+                    next_artwork_paths[album.key] = stored_path
                     has_artwork = True
             enriched.append(replace(album, has_artwork=has_artwork))
+        self._artwork_paths = next_artwork_paths  # atomic replace: stale pruned
         return tuple(enriched)
 
     def _rebuild_derived_library_state(self) -> None:

@@ -271,6 +271,7 @@ class TestBridgeViews:
                 "hasArtwork",
                 "artworkPath",
                 "year",
+                "technicalSummary",
             }
             assert row["hasArtwork"] is True
             assert row["artworkPath"] == str(cache.paths[row["key"]])
@@ -354,6 +355,16 @@ class TestBridgeViews:
                 "path",
                 "trackNumber",
                 "discNumber",
+                # M6-PRODUCTION-INTEGRATION (spec §39-43): the canonical
+                # album-tracks projection carries the technical facts.
+                "codec",
+                "container",
+                "sampleRateHz",
+                "bitDepth",
+                "channels",
+                "bitrateBps",
+                "fileSize",
+                "qualityLabel",
             }
         assert [r["path"] for r in rows] == [str(a1), str(a2)]
         assert all(r["title"] and r["displayName"] and r["artist"] for r in rows)

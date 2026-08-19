@@ -4,6 +4,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
+from michi.application.audio_quality import make_track_quality_label
 from michi.application.library_service import LibraryService
 from michi.application.playlist_service import PlaylistService
 from michi.domain.library import (
@@ -83,6 +84,18 @@ class LibraryBridge(QObject):
         status = self._service.state.scan_status
         return status.name if status is not LibraryScanStatus.IDLE else ""
 
+    def _get_scan_processed(self) -> int:
+        return self._service.state.scan_processed
+
+    def _get_scan_total(self) -> int:
+        return self._service.state.scan_total
+
+    def _get_scan_progress(self) -> float:
+        return self._service.state.scan_progress or 0.0
+
+    def _get_scan_current_path(self) -> str:
+        return self._service.state.scan_current_path or ""
+
     def _get_album_count(self) -> int:
         return len(self._service.state.albums)
 
@@ -102,6 +115,7 @@ class LibraryBridge(QObject):
                     "hasArtwork": album.has_artwork,
                     "artworkPath": self._service.artwork_path_for(album.key) or "",
                     "year": album.year,
+                    "technicalSummary": album.technical_summary,
                 }
             )
         return rows
@@ -183,6 +197,17 @@ class LibraryBridge(QObject):
                 "path": str(ref.file_path),
                 "trackNumber": ref.track_number,
                 "discNumber": ref.disc_number,
+                # M6-PRODUCTION-INTEGRATION: the canonical TrackRef retains
+                # the technical carrier; facts-only quality label (never
+                # "Hi-Res"/"Lossless").
+                "codec": ref.codec,
+                "container": ref.container,
+                "sampleRateHz": ref.sample_rate_hz,
+                "bitDepth": ref.bit_depth,
+                "channels": ref.channels,
+                "bitrateBps": ref.bitrate_bps,
+                "fileSize": ref.file_size,
+                "qualityLabel": make_track_quality_label(ref),
             }
             for ref in self._album_track_refs
         ]
@@ -263,6 +288,10 @@ class LibraryBridge(QObject):
     diagnosticMessage = Property(str, _get_diagnostic_message, notify=library_changed)
     hasDiagnostic = Property(bool, _get_has_diagnostic, notify=library_changed)
     scanStatus = Property(str, _get_scan_status, notify=library_changed)
+    scanProcessed = Property(int, _get_scan_processed, notify=library_changed)
+    scanTotal = Property(int, _get_scan_total, notify=library_changed)
+    scanProgress = Property(float, _get_scan_progress, notify=library_changed)
+    scanCurrentPath = Property(str, _get_scan_current_path, notify=library_changed)
     albumCount = Property(int, _get_album_count, notify=library_changed)
     artistCount = Property(int, _get_artist_count, notify=library_changed)
     albums = Property(list, _get_albums, notify=library_changed)
@@ -293,6 +322,12 @@ class LibraryBridge(QObject):
     @Slot(str)
     def scan(self, directory: str) -> None:
         self._service.start_scan(directory)
+
+    @Slot()
+    def cancel_scan(self) -> None:
+        """M6-PRODUCTION-INTEGRATION: delegate to the service (no progress
+        logic in the bridge)."""
+        self._service.cancel_scan()
 
     @Slot(str)
     def search(self, query: str) -> None:

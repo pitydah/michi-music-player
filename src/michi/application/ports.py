@@ -36,6 +36,14 @@ class ArtworkProviderPort(ABC):
     @abstractmethod
     def get_embedded_artwork(self, file_path: Path) -> Artwork | None: ...
 
+    def get_embedded_front_artwork(self, file_path: Path) -> Artwork | None:
+        """EXPLICIT front-cover-only embedded artwork (M6-PRODUCTION-
+        INTEGRATION): the album-level resolution needs to distinguish
+        'explicit FRONT' from 'any embedded'. Default: None (no
+        differentiation) — providers that cannot distinguish fall back to
+        the generic embedded lookup."""
+        return None
+
     @abstractmethod
     def get_local_artwork(self, album_dir: Path) -> Artwork | None:
         """Deterministic local fallback in the album directory (M6.5):
@@ -184,6 +192,14 @@ class LibraryIndexRepository(ABC):
 
     @abstractmethod
     def remove(self, track_id: str) -> None: ...
+
+    @abstractmethod
+    def apply_delta(self, upserts, removed) -> None:
+        """All-or-nothing durable index mutation (M6-PRODUCTION-INTEGRATION):
+        the upserts AND removes land in ONE transaction. The application
+        calls this ONLY after the generation gate on the owner thread — a
+        stale/closed generation can never leave a partially-applied index.
+        Never raises: sqlite errors are logged."""
 
     @abstractmethod
     def clear(self) -> None: ...

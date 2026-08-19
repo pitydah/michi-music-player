@@ -167,6 +167,46 @@ class SqliteLibraryIndexRepository(LibraryIndexRepository):
         except sqlite3.Error as exc:
             logger.warning("library index remove failed: %s", exc)
 
+    def apply_delta(self, upserts, removed) -> None:
+        """Atomic durable index mutation (M6-PRODUCTION-INTEGRATION): the
+        upserts and removes land in a SINGLE transaction (ROLLBACK on any
+        error) — the index can never be left half-applied by a commit."""
+        if not upserts and not removed:
+            return
+        try:
+            conn = self._connect()
+            try:
+                conn.execute("BEGIN")
+                for entry in upserts:
+                    conn.execute(
+                        "INSERT INTO library_index(track_id, file_size, "
+                        "mtime_ns, metadata) "
+                        "VALUES(?, ?, ?, ?) "
+                        "ON CONFLICT(track_id) DO UPDATE SET "
+                        "file_size = excluded.file_size, "
+                        "mtime_ns = excluded.mtime_ns, "
+                        "metadata = excluded.metadata",
+                        (
+                            entry.track_id,
+                            entry.file_size,
+                            entry.mtime_ns,
+                            encode_index_metadata(entry.metadata),
+                        ),
+                    )
+                for track_id in removed:
+                    conn.execute(
+                        "DELETE FROM library_index WHERE track_id = ?", (track_id,)
+                    )
+                conn.execute("COMMIT")
+            except Exception:
+                with contextlib.suppress(sqlite3.Error):
+                    conn.execute("ROLLBACK")
+                raise
+            finally:
+                conn.close()
+        except sqlite3.Error as exc:
+            logger.warning("library index apply_delta failed: %s", exc)
+
     def clear(self) -> None:
         try:
             conn = self._connect()
