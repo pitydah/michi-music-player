@@ -36,11 +36,56 @@ ColumnLayout {
         onTextEdited: library.search(text)
     }
 
-    Text {
-        objectName: "scanStatusText"
+    // M6-PRODUCTION-INTEGRATION: functional scan state — status, processed/
+    // total, a plain progress bar and Cancel. No premium animation (M9 will
+    // refine the aesthetics).
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: MichiTheme.space6
         visible: library.scanStatus !== "" && library.scanStatus !== "IDLE"
-        text: library.scanStatus
-        font.pixelSize: MichiTheme.fontSizeCaption
-        color: MichiTheme.warning
+
+        Text {
+            objectName: "scanStatusText"
+            text: library.scanStatus
+            font.pixelSize: MichiTheme.fontSizeCaption
+            color: MichiTheme.warning
+        }
+
+        Text {
+            text: library.scanProcessed + " / " + library.scanTotal
+            font.pixelSize: MichiTheme.fontSizeCaption
+            color: MichiTheme.textSecondary
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 6
+            radius: 3
+            color: MichiTheme.surfacePrimary
+            visible: library.scanTotal > 0
+
+            Rectangle {
+                width: parent.width * (library.scanProgress)
+                height: parent.height
+                radius: 3
+                color: MichiTheme.warning
+            }
+        }
+
+        Text {
+            text: library.scanCurrentPath
+            Layout.maximumWidth: 180
+            font.pixelSize: MichiTheme.fontSizeCaption
+            color: MichiTheme.textMuted
+            elide: Text.ElideMiddle
+        }
+
+        MichiButton {
+            text: "Cancel"
+            visible: library.scanStatus !== "COMPLETED"
+                && library.scanStatus !== "CANCELLED"
+                && library.scanStatus !== "FAILED"
+            onClicked: library.cancel_scan()
+        }
     }
 }

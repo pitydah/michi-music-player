@@ -45,6 +45,32 @@ ListView {
             color: MichiTheme.textSecondary
         }
 
+        Text {
+            // M6-PRODUCTION-INTEGRATION: honest album facts when known
+            // (year, duration, technical summary) — minimal, M9 decides the
+            // premium composition.
+            text: modelData.year > 0 ? modelData.year : ""
+            font.pixelSize: MichiTheme.fontSizeCaption
+            color: MichiTheme.textSecondary
+        }
+
+        Text {
+            text: modelData.durationMs > 0
+                ? Math.floor(modelData.durationMs / 60000) + ":" +
+                    (Math.floor(modelData.durationMs % 60000 / 1000) < 10 ? "0" : "") +
+                    Math.floor(modelData.durationMs % 60000 / 1000)
+                : ""
+            font.pixelSize: MichiTheme.fontSizeCaption
+            color: MichiTheme.textSecondary
+        }
+
+        Text {
+            text: modelData.technicalSummary
+            font.pixelSize: MichiTheme.fontSizeCaption
+            color: MichiTheme.textMuted
+            elide: Text.ElideRight
+        }
+
         MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
