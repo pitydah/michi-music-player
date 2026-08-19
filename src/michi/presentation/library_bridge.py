@@ -224,6 +224,12 @@ class LibraryBridge(QObject):
             for f in self._service.state.folders
         ]
 
+    def _get_composers(self) -> list[dict]:
+        """M7-CANONICAL-SEMANTICS: composer entity rows are consumable like
+        albums/artists/genres (canonical passthrough; filtered by the same
+        projection when search is active)."""
+        return self._composer_rows()
+
     def _get_albums(self) -> list[dict]:
         return self._album_rows()
 
@@ -376,9 +382,10 @@ class LibraryBridge(QObject):
     albumCount = Property(int, _get_album_count, notify=library_changed)
     artistCount = Property(int, _get_artist_count, notify=library_changed)
     albums = Property(list, _get_albums, notify=library_changed)
-    timelineAlbums = Property(list, _get_timeline_albums, notify=library_changed)
     artists = Property(list, _get_artists, notify=library_changed)
     genres = Property(list, _get_genres, notify=library_changed)
+    composers = Property(list, _get_composers, notify=library_changed)
+    timelineAlbums = Property(list, _get_timeline_albums, notify=library_changed)
     folders = Property(list, _get_folders, notify=library_changed)
     selectedAlbumKey = Property(str, _get_selected_album_key, notify=library_changed)
     albumTitle = Property(str, _get_album_title, notify=library_changed)

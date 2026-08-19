@@ -52,6 +52,7 @@ ColumnLayout {
 
     ListView {
         id: magazineRows
+        objectName: "albumMagazineList"
         Layout.fillWidth: true
         Layout.fillHeight: true
         model: library.albums
