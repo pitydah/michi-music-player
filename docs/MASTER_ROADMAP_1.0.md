@@ -4,7 +4,7 @@ Michi Music Player — phase plan for the clean rebuild. Stack: Python 3.11+, Py
 
 > **Superseded clean-rebuild governance draft**: M0 Foundation v2 governance artifacts of this rebuild (Proposed ADRs D1–D10, dated 2026-08-10) described a C++20/Qt 6 architecture with CMake, CTest, Catch2/doctest, and a `main.cpp` entry point. That anticipated direction was never implemented and is superseded by the Python/PySide6 stack (ADR 0001); it imposes **no active requirements**. It is preserved here only as historical context for reviewers.
 
-Phases M0–M16 remain the roadmap skeleton. M0 (governance foundation) through M11.2A are executed on the current stack; the table below records their verified status. Remaining work follows the order in "Future Execution Order".
+Phases M0–M16 remain the roadmap skeleton. M0 (governance foundation) through M11.2E applicable Required-1.0 milestones are TESTED on the current stack, with M7 Search also CLOSED / TESTED / FROZEN; the table below records their verified status. Remaining work follows the "Current Execution Order" in "Future Execution Order".
 
 ## Canonical 1.0 Contract
 
@@ -29,10 +29,10 @@ Phases M0–M16 remain the roadmap skeleton. M0 (governance foundation) through 
 | Settings persistence (volume/muted/last_directory/recent_files)                          | Required 1.0   | Implemented (restart gate)                                                                                                        |
 | `last_directory` persistence                                                             | Required 1.0   | Implemented                                                                                                                       |
 | Library scan (recursive, extension filter)                                               | Required 1.0   | Implemented                                                                                                                       |
-| Library index DB                                                                         | Post-1.0       | Deferred                                                                                                                          |
-| Basic metadata (title/artist/album/duration)                                             | Required 1.0   | Not implemented (filename stem only today)                                                                                        |
-| Cover art                                                                                | Post-1.0       | Deferred                                                                                                                          |
-| Search — simple substring filter                                                         | Required 1.0   | Implemented                                                                                                                       |
+| Library index DB                                                                         | Included in current 1.0 baseline (originally Post-1.0, implemented early) | Implemented — M6.2 Persistent Library Index (versioned SQLite; rebuildable cache; incremental scan support via size/mtime fingerprint per docs/M6_LIBRARY_MASTER_PLAN.md) |
+| Basic metadata (title/artist/album/duration)                                             | Required 1.0   | Implemented — M6 Canonical Music Model v2 rich extraction (title/artist/album/album_artist/genre/composer/track/disc/year/duration + technical audio fields per docs/M6_LIBRARY_MASTER_PLAN.md) |
+| Cover art                                                                                | Included in current 1.0 baseline (originally Post-1.0, implemented early) | Implemented — M6.5 Artwork Pipeline v2 (embedded artwork, front-cover preference, local cover/folder/front fallback, digest-aware cache per docs/M6_LIBRARY_MASTER_PLAN.md) |
+| Search — simple substring filter                                                         | Required 1.0   | Implemented — M7 rich canonical local search (multi-field, multi-entity, multi-token, deterministic; per docs/M7_SEARCH_MASTER_PLAN.md) |
 | Search — full-text indexed                                                               | Post-1.0       | Deferred                                                                                                                          |
 | Settings persistence + corruption recovery                                               | Required 1.0   | M11.2A detection TESTED; M11.2B LKG/staging TESTED; M11.2C field recovery TESTED; M11.2D startup preflight TESTED; M11.2E automatic restore + quarantine TESTED — Required-1.0 persistence corruption recovery COMPLETE |
 | Safe mode                                                                                | Post-1.0       | Deferred                                                                                                                          |
@@ -79,7 +79,21 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 
 ## Future Execution Order
 
-**M11.2A-E persistence recovery — COMPLETE for Required 1.0** (M11.2E validated automatic restore + quarantine TESTED). **TD-013 filesystem degradation — RESOLVED / TESTED.** **TD-016 cancellation-terminal synchronization — RESOLVED / TESTED.** **M4 Queue — TESTED (repeat a977378 + shuffle f93a6a8).** **M6 Library — TESTED / M6 SERIES DONE** (original M6 contract M6.0-M6.8 closed at beff4a0 per docs/M6_LIBRARY_MASTER_PLAN.md). **LOCAL-01 Canonical Music Model — DONE (ba1532d).** **LOCAL-02 Artwork Pipeline — DONE (9b16504).** **LOCAL-03 Rich Library Views — DONE (e7416ac).** **LOCAL-04 PathView — DONE (635b35b).** **LOCAL-05 Favorites / History — DONE (938191b).** **LOCAL-06 Playlists — DONE (ccdbc85).** **LOCAL-STABILIZATION-01 — DONE** (repeat-ONE×shuffle precedence deb5f93; artwork cache port inversion + architecture import guard 0c1b8c3; derived rebuild after structural mutation 1681c04; recently-added merge across rescans e650037; reference-persistence audit a7f8927). **LOCAL-META-02 — DONE** (rich musical + technical model fields 08ea531; rich tag extraction 3fc0cb3; album artist + compilations + canonical identities aaddf30; technical quality projection 8e8f335). NEXT AUTHORIZED WP: **M12 — PERFORMANCE** (M1-M11.2E + M7 SEARCH series DONE — M8 Navigation, M9 UI Foundation, M10 Settings, M11.1 + M11.2A-E all TESTED; M12 is the first incomplete Required-1.0 milestone; LOCAL-07/08 and M13-M16 remain later in the canonical order).
+### Current Execution Order (canonical)
+
+The ONE canonical execution order after the current baseline (M1–M11.2E + M7 SEARCH TESTED):
+
+1. **M12 Performance** — benchmark and tune scan/startup/memory; CI performance gate; resolves TD-009 (async/incremental scan with progress in LibraryState — owned by M6.4 per its contract), TD-004 (markdown link validation), TD-012 (coverage tooling).
+2. **M13 Packaging** — Linux installable artifacts (AppImage/Flatpak/deb), icon suite, desktop integration, CLI entry points. Windows and macOS are Post-1.0 per the canonical contract.
+3. **M14 Beta** — beta channel, opt-in telemetry, feedback loop, triage SLA.
+4. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
+5. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
+
+**NEXT AUTHORIZED WP: M12 — PERFORMANCE** (sole authority for the next WP; STATUS_MATRIX references this document).
+
+### Historical / Superseded execution record
+
+The numbered list below is the HISTORICAL execution record of this rebuild (what was executed and how it was absorbed). It is NOT the current execution order — see "Current Execution Order" above.
 
 1. ~~**TD-016 — Queue/Playback cancellation-terminal synchronization**~~ — DONE (216f5a1).
 2. ~~**M4 Repeat**~~ — repeat modes none/one/all — DONE (a977378).
@@ -103,17 +117,21 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 20. **M6.6 Canonical Library Projections** — one canonical album model for the six views; `selectedAlbumId` survives view switches; bridge audit — musical rules move down.
 21. **M6.7 Library Presentation Architecture** — LibraryView decomposition per the target tree; Loader/Host; preserve objectNames or migrate explicitly; structural tests.
 22. **M6.8 Golden / Scale / Closeout** — golden dataset; golden restart/incremental/async/six-views; 10k scale baseline; error/degradation contract; closeout gate §69.
-23. **LOCAL-07 Mix Local**.
-24. **LOCAL-08 Premium Player UI Completion**.
-25. **M12 Performance** — benchmark and tune scan/startup/memory; CI performance gate; resolves TD-009 (async/incremental scan with progress in LibraryState), TD-004 (markdown link validation), TD-012 (coverage tooling).
-26. **M13 Packaging** — Linux installable artifacts (AppImage/Flatpak/deb), icon suite, desktop integration, CLI entry points. Windows and macOS are Post-1.0 per the canonical contract.
-27. **M14 Beta** — beta channel, opt-in telemetry, feedback loop, triage SLA.
-28. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
-29. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
+23. ~~**LOCAL-07 Mix Local**~~ — RETIRED AS EXECUTION WP (see below).
+24. ~~**LOCAL-08 Premium Player UI Completion**~~ — RETIRED AS EXECUTION WP (see below).
+25. **M12 Performance** — see Current Execution Order.
+26. **M13 Packaging** — see Current Execution Order.
+27. **M14 Beta** — see Current Execution Order.
+28. **M15 Release Candidate** — see Current Execution Order.
+29. **M16 Michi Music Player 1.0 Stable** — see Current Execution Order.
 
-LOCAL-01 through LOCAL-08 were the Local Player Completion work packages (the M6 mega-WP). **STATUS: SUPERSEDED AS EXECUTION PLAN — requirements source only.** The absorbed local experience work (canonical music model, artwork, albums/artists/genres/folders, PathView, favorites, history, playlists) is delivered or absorbed into the M6.0-M6.8 sequence per docs/M6_LIBRARY_MASTER_PLAN.md; local mix (LOCAL-07) and final player UI (LOCAL-08) remain before Beta — M6 closure does not jump directly to M12.
+LOCAL-01 through LOCAL-08 were the Local Player Completion work packages (the M6 mega-WP). **STATUS: SUPERSEDED AS EXECUTION PLAN — requirements source only.**
 
-Required-for-1.0 gaps (shuffle, repeat, metadata extraction) are scheduled as work packages within this order before M12; they are part of the 1.0 contract and may not slip past M15.
+- **LOCAL-01 through LOCAL-06 — ABSORBED / DONE**: the absorbed local experience work (canonical music model, artwork, albums/artists/genres/folders, PathView, favorites, history, playlists) is delivered or absorbed into the M6.0-M6.8 sequence per docs/M6_LIBRARY_MASTER_PLAN.md (LOCAL-01 ba1532d; LOCAL-02 9b16504; LOCAL-03 e7416ac; LOCAL-04 635b35b; LOCAL-05 938191b; LOCAL-06 ccdbc85).
+- **LOCAL-07 Mix Local — RETIRED AS EXECUTION WP**: its requirements were NEVER specified in this repository (no spec, no openspec change, no contract). The MIX LOCAL product capability remains RETAINED in Product Scope (deterministic, local data, part of the Player, pre-Stable policy); any future implementation requires an explicit contract — no requirements are invented here. NOT required before M12.
+- **LOCAL-08 Premium Player UI Completion — RETIRED AS EXECUTION WP**: its requirements were NEVER specified in this repository. M9 UI Foundation (TESTED) delivers tokens/primitives/shell/base views; any premium refinement is M9-scope future work without a current contract. NOT required before M12.
+
+Required-for-1.0 gaps (shuffle, repeat, metadata extraction) are **RESOLVED**: shuffle and repeat are TESTED (f93a6a8, a977378, deb5f93) and metadata extraction is TESTED (M6); no Required-1.0 capability gaps remain before the Current Execution Order — the contract rows above record the implemented state.
 
 ## Gate
 
