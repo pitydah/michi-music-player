@@ -39,11 +39,15 @@ from pathlib import Path
 
 from mutagen.flac import FLAC
 from mutagen.id3 import APIC
-from mutagen.mp3 import EasyMP3, MP3
+from mutagen.mp3 import MP3, EasyMP3
 
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
-from michi.application.ports import MetadataExtractionError, ScanCancelToken, ScanProgress
+from michi.application.ports import (
+    MetadataExtractionError,
+    ScanCancelToken,
+    ScanProgress,
+)
 from michi.application.queue_service import QueueService
 from michi.domain.library import (
     LibraryDiagnosticCode,
@@ -98,7 +102,9 @@ def _make_flac(path: Path, tags: dict | None = None) -> Path:
     return path
 
 
-def _tag_mp3_artwork(path: Path, data: bytes, mime: str = "image/png", type_: int = 3) -> None:
+def _tag_mp3_artwork(
+    path: Path, data: bytes, mime: str = "image/png", type_: int = 3
+) -> None:
     """Replace the embedded artwork of an MP3 with ``data`` (APIC frame).
 
     The file may already carry an ID3 tag (from _make_mp3's EasyMP3 tagging):
@@ -162,24 +168,36 @@ def build_golden(tmp_path: Path) -> GoldenDataset:
         _make_mp3(
             root / "single" / "01 Intro.mp3",
             {
-                "title": "Intro", "artist": "Single Artist", "album": "Single Disc",
-                "tracknumber": "1", "genre": "Rock", "composer": "S. Composer",
+                "title": "Intro",
+                "artist": "Single Artist",
+                "album": "Single Disc",
+                "tracknumber": "1",
+                "genre": "Rock",
+                "composer": "S. Composer",
                 "date": "2005-03-01",
             },
         ),
         _make_mp3(
             root / "single" / "02 Middle.mp3",
             {
-                "title": "Middle", "artist": "Single Artist", "album": "Single Disc",
-                "tracknumber": "2", "genre": "Rock", "composer": "S. Composer",
+                "title": "Middle",
+                "artist": "Single Artist",
+                "album": "Single Disc",
+                "tracknumber": "2",
+                "genre": "Rock",
+                "composer": "S. Composer",
                 "date": "2005-03-01",
             },
         ),
         _make_mp3(
             root / "single" / "03 Outro.mp3",
             {
-                "title": "Outro", "artist": "Single Artist", "album": "Single Disc",
-                "tracknumber": "3", "genre": "Rock", "composer": "S. Composer",
+                "title": "Outro",
+                "artist": "Single Artist",
+                "album": "Single Disc",
+                "tracknumber": "3",
+                "genre": "Rock",
+                "composer": "S. Composer",
                 "date": "2005-03-01",
             },
         ),
@@ -202,17 +220,25 @@ def build_golden(tmp_path: Path) -> GoldenDataset:
         _make_mp3(
             root / "compilation" / "va-one.mp3",
             {
-                "title": "Compilation One", "artist": "Performer One",
-                "album": "Compilation Album", "albumartist": "Various Artists",
-                "tracknumber": "1", "genre": "Pop", "date": "2015-05-05",
+                "title": "Compilation One",
+                "artist": "Performer One",
+                "album": "Compilation Album",
+                "albumartist": "Various Artists",
+                "tracknumber": "1",
+                "genre": "Pop",
+                "date": "2015-05-05",
             },
         ),
         _make_mp3(
             root / "compilation" / "va-two.mp3",
             {
-                "title": "Compilation Two", "artist": "Performer Two",
-                "album": "Compilation Album", "albumartist": "Various Artists",
-                "tracknumber": "2", "genre": "Pop", "date": "2015-05-05",
+                "title": "Compilation Two",
+                "artist": "Performer Two",
+                "album": "Compilation Album",
+                "albumartist": "Various Artists",
+                "tracknumber": "2",
+                "genre": "Pop",
+                "date": "2015-05-05",
             },
         ),
     )
@@ -222,9 +248,13 @@ def build_golden(tmp_path: Path) -> GoldenDataset:
         _make_mp3(
             root / "explicit" / "one.mp3",
             {
-                "title": "Explicit One", "artist": "Solo Performer",
-                "album": "Explicit AA Album", "albumartist": "The Band",
-                "tracknumber": "1", "genre": "Rock", "date": "2010-10-10",
+                "title": "Explicit One",
+                "artist": "Solo Performer",
+                "album": "Explicit AA Album",
+                "albumartist": "The Band",
+                "tracknumber": "1",
+                "genre": "Rock",
+                "date": "2010-10-10",
             },
         ),
     )
@@ -234,8 +264,11 @@ def build_golden(tmp_path: Path) -> GoldenDataset:
         _make_mp3(
             root / "missing-aa" / "two.mp3",
             {
-                "title": "No AA Two", "artist": "Track Singer",
-                "album": "No AA Album", "tracknumber": "1", "date": "2012-12-12",
+                "title": "No AA Two",
+                "artist": "Track Singer",
+                "album": "No AA Album",
+                "tracknumber": "1",
+                "date": "2012-12-12",
             },
         ),
     )
@@ -245,9 +278,13 @@ def build_golden(tmp_path: Path) -> GoldenDataset:
         _make_mp3(
             root / "composer" / "one.mp3",
             {
-                "title": "Composer Piece", "artist": "Composer Artist",
-                "album": "Composer Album", "tracknumber": "1",
-                "composer": "C. Composer", "genre": "Classical", "date": "2008-08-08",
+                "title": "Composer Piece",
+                "artist": "Composer Artist",
+                "album": "Composer Album",
+                "tracknumber": "1",
+                "composer": "C. Composer",
+                "genre": "Classical",
+                "date": "2008-08-08",
             },
         ),
     )
@@ -260,15 +297,23 @@ def build_golden(tmp_path: Path) -> GoldenDataset:
         _make_mp3(
             root / "same-title" / "a.mp3",
             {
-                "title": "A Side", "artist": "Band A", "album": "Best Of",
-                "tracknumber": "1", "genre": "Pop", "date": "2000-01-01",
+                "title": "A Side",
+                "artist": "Band A",
+                "album": "Best Of",
+                "tracknumber": "1",
+                "genre": "Pop",
+                "date": "2000-01-01",
             },
         ),
         _make_mp3(
             root / "same-title" / "b.mp3",
             {
-                "title": "B Side", "artist": "Band B", "album": "Best Of",
-                "tracknumber": "1", "genre": "Jazz", "composer": "B. Composer",
+                "title": "B Side",
+                "artist": "Band B",
+                "album": "Best Of",
+                "tracknumber": "1",
+                "genre": "Jazz",
+                "composer": "B. Composer",
                 "date": "2000-01-01",
             },
         ),
@@ -279,14 +324,18 @@ def build_golden(tmp_path: Path) -> GoldenDataset:
         _make_mp3(
             root / "case-variation" / "one.mp3",
             {
-                "title": "Case One", "artist": "The Artist", "album": "Case Album",
+                "title": "Case One",
+                "artist": "The Artist",
+                "album": "Case Album",
                 "tracknumber": "1",
             },
         ),
         _make_mp3(
             root / "case-variation" / "two.mp3",
             {
-                "title": "Case Two", "artist": "THE ARTIST", "album": "Case Album",
+                "title": "Case Two",
+                "artist": "THE ARTIST",
+                "album": "Case Album",
                 "tracknumber": "2",
             },
         ),
@@ -297,15 +346,23 @@ def build_golden(tmp_path: Path) -> GoldenDataset:
         _make_mp3(
             root / "duplicates" / "a.mp3",
             {
-                "title": "Chorus", "artist": "Dup Artist", "album": "Duplicates",
-                "tracknumber": "1", "genre": "Rock", "date": "1990-01-01",
+                "title": "Chorus",
+                "artist": "Dup Artist",
+                "album": "Duplicates",
+                "tracknumber": "1",
+                "genre": "Rock",
+                "date": "1990-01-01",
             },
         ),
         _make_mp3(
             root / "duplicates" / "b.mp3",
             {
-                "title": "Chorus", "artist": "Dup Artist", "album": "Duplicates",
-                "tracknumber": "2", "genre": "Rock", "date": "1990-01-01",
+                "title": "Chorus",
+                "artist": "Dup Artist",
+                "album": "Duplicates",
+                "tracknumber": "2",
+                "genre": "Rock",
+                "date": "1990-01-01",
             },
         ),
     )
@@ -313,58 +370,114 @@ def build_golden(tmp_path: Path) -> GoldenDataset:
     # 11. Unknown track/disc numbers: the 00-* files SCAN FIRST (lexicographic)
     # but must sort LAST deterministically (M6.1 UNKNOWN-last rule).
     unknown_numbers = (
-        _make_mp3(root / "unknown" / "00-Zulu.mp3", {
-            "title": "Zulu", "artist": "Order Artist", "album": "Ordered",
-        }),
-        _make_mp3(root / "unknown" / "00-Alpha.mp3", {
-            "title": "Alpha", "artist": "Order Artist", "album": "Ordered",
-        }),
-        _make_mp3(root / "unknown" / "01 Known.mp3", {
-            "title": "Known", "artist": "Order Artist", "album": "Ordered",
-            "tracknumber": "1",
-        }),
-        _make_mp3(root / "unknown" / "02 Known2.mp3", {
-            "title": "Known2", "artist": "Order Artist", "album": "Ordered",
-            "tracknumber": "2",
-        }),
+        _make_mp3(
+            root / "unknown" / "00-Zulu.mp3",
+            {
+                "title": "Zulu",
+                "artist": "Order Artist",
+                "album": "Ordered",
+            },
+        ),
+        _make_mp3(
+            root / "unknown" / "00-Alpha.mp3",
+            {
+                "title": "Alpha",
+                "artist": "Order Artist",
+                "album": "Ordered",
+            },
+        ),
+        _make_mp3(
+            root / "unknown" / "01 Known.mp3",
+            {
+                "title": "Known",
+                "artist": "Order Artist",
+                "album": "Ordered",
+                "tracknumber": "1",
+            },
+        ),
+        _make_mp3(
+            root / "unknown" / "02 Known2.mp3",
+            {
+                "title": "Known2",
+                "artist": "Order Artist",
+                "album": "Ordered",
+                "tracknumber": "2",
+            },
+        ),
     )
 
     # 12. Different years -> canonical timeline decades.
     years = (
-        _make_mp3(root / "years" / "1985-retro.mp3", {
-            "title": "Retro Track", "artist": "Year Artist", "album": "Retro",
-            "genre": "Rock", "date": "1985-06-01",
-        }),
-        _make_mp3(root / "years" / "2001-millennium.mp3", {
-            "title": "Millennium Track", "artist": "Year Artist", "album": "Millennium",
-            "genre": "Electronic", "date": "2001-01-15",
-        }),
-        _make_mp3(root / "years" / "2019-modern.mp3", {
-            "title": "Modern Track", "artist": "Year Artist", "album": "Modern",
-            "genre": "Pop", "date": "2019-12-31",
-        }),
+        _make_mp3(
+            root / "years" / "1985-retro.mp3",
+            {
+                "title": "Retro Track",
+                "artist": "Year Artist",
+                "album": "Retro",
+                "genre": "Rock",
+                "date": "1985-06-01",
+            },
+        ),
+        _make_mp3(
+            root / "years" / "2001-millennium.mp3",
+            {
+                "title": "Millennium Track",
+                "artist": "Year Artist",
+                "album": "Millennium",
+                "genre": "Electronic",
+                "date": "2001-01-15",
+            },
+        ),
+        _make_mp3(
+            root / "years" / "2019-modern.mp3",
+            {
+                "title": "Modern Track",
+                "artist": "Year Artist",
+                "album": "Modern",
+                "genre": "Pop",
+                "date": "2019-12-31",
+            },
+        ),
     )
 
     # 13. Artwork: embedded front, folder cover.jpg, none.
     embedded_art = (
-        _make_mp3(root / "art-embedded" / "one.mp3", {
-            "title": "Embedded One", "artist": "Art Artist", "album": "Embedded Art",
-            "tracknumber": "1", "date": "2018-01-01",
-        }),
+        _make_mp3(
+            root / "art-embedded" / "one.mp3",
+            {
+                "title": "Embedded One",
+                "artist": "Art Artist",
+                "album": "Embedded Art",
+                "tracknumber": "1",
+                "date": "2018-01-01",
+            },
+        ),
     )
     _tag_mp3_artwork(embedded_art[0], PNG_1x1)  # APIC front cover (type 3)
     folder_art = (
-        _make_mp3(root / "art-folder" / "one.mp3", {
-            "title": "Folder One", "artist": "Art Artist", "album": "Folder Art",
-            "tracknumber": "1", "date": "2018-01-01",
-        }),
+        _make_mp3(
+            root / "art-folder" / "one.mp3",
+            {
+                "title": "Folder One",
+                "artist": "Art Artist",
+                "album": "Folder Art",
+                "tracknumber": "1",
+                "date": "2018-01-01",
+            },
+        ),
     )
     (root / "art-folder" / "cover.jpg").write_bytes(JPEG_BYTES)
     no_art = (
-        _make_mp3(root / "art-none" / "one.mp3", {
-            "title": "None One", "artist": "Art Artist", "album": "No Art",
-            "tracknumber": "1", "date": "2018-01-01",
-        }),
+        _make_mp3(
+            root / "art-none" / "one.mp3",
+            {
+                "title": "None One",
+                "artist": "Art Artist",
+                "album": "No Art",
+                "tracknumber": "1",
+                "date": "2018-01-01",
+            },
+        ),
     )
 
     # Self-verification via the REAL scanner: every file is recognized and the
@@ -493,7 +606,8 @@ class TestGoldenRestart:
             library2.state.composers,
             library2.state.folders,
         )
-        assert after == before  # tracks/albums/artists/genres/composers/folders coherent
+        # tracks/albums/artists/genres/composers/folders coherent
+        assert after == before
         assert len(repo2.load_all()) == _GOLDEN_TRACK_COUNT
 
 
@@ -515,8 +629,12 @@ class TestGoldenIncremental:
         _make_mp3(
             encore,
             {
-                "title": "Encore", "artist": "Single Artist", "album": "Single Disc",
-                "tracknumber": "4", "genre": "Rock", "composer": "S. Composer",
+                "title": "Encore",
+                "artist": "Single Artist",
+                "album": "Single Disc",
+                "tracknumber": "4",
+                "genre": "Rock",
+                "composer": "S. Composer",
                 "date": "2005-03-01",
             },
         )
@@ -538,7 +656,9 @@ class TestGoldenIncremental:
         assert len(library.state.tracks) == _GOLDEN_TRACK_COUNT
 
         # B absent from the model: no album/artist/genre/composer/folder refs.
-        assert removed_b not in {tp for al in library.state.albums for tp in al.track_paths}
+        assert removed_b not in {
+            tp for al in library.state.albums for tp in al.track_paths
+        }
         assert "Band B" not in [a.artist for a in library.state.albums]
         assert "Band B" not in [ar.name for ar in library.state.artists]
         assert "Jazz" not in [g.name for g in library.state.genres]
@@ -555,9 +675,11 @@ class TestGoldenIncremental:
         assert {e.track_id for e in repo.load_all()} == {str(p) for p in final_paths}
         assert len(repo.load_all()) == _GOLDEN_TRACK_COUNT
         # Coherence + recently-added delta semantics.
-        assert sum(al.track_count for al in library.state.albums) == len(
-            library.state.tracks
-        ) == _GOLDEN_TRACK_COUNT
+        assert (
+            sum(al.track_count for al in library.state.albums)
+            == len(library.state.tracks)
+            == _GOLDEN_TRACK_COUNT
+        )
         assert str(encore) in library.state.recently_added_paths
         assert str(removed_b) not in library.state.recently_added_paths
 
@@ -575,13 +697,21 @@ class TestGoldenOrderingPins:
         multi_paths = {str(p) for p in golden.multi}
         scan_order = [p for p in golden.scan_order if str(p) in multi_paths]
         assert [p.name for p in scan_order] == [
-            "t1-d1.flac", "t1-d2.flac", "t2-d1.flac", "t2-d2.flac",
+            "t1-d1.flac",
+            "t1-d2.flac",
+            "t2-d1.flac",
+            "t2-d2.flac",
         ]
         # The model follows the canonical (disc, track) order, NOT the scan.
         assert list(album.track_paths) == list(golden.multi)
         refs = {t.file_path: t for t in library.state.tracks}
-        assert [(refs[p].disc_number, refs[p].track_number) for p in album.track_paths] == [
-            (1, 1), (1, 2), (2, 1), (2, 2),
+        assert [
+            (refs[p].disc_number, refs[p].track_number) for p in album.track_paths
+        ] == [
+            (1, 1),
+            (1, 2),
+            (2, 1),
+            (2, 2),
         ]
         # FLAC format proof: the real FLAC extraction reads a 60 s stream.
         assert album.duration_ms == 4 * 60_000
@@ -678,10 +808,10 @@ class TestGoldenOrderingPins:
         positive = [p for p in timeline if p.year > 0]
         assert positive  # the different-year albums are in the timeline
         assert all(p.decade == "Unknown era" for p in year0)
-        assert all(
-            timeline[i] in year0 for i in range(len(positive), len(timeline))
-        ), "every year-0 album must sort after every year>0 album"
-        assert [p.album_key for p in timeline[-len(year0):]] == sorted(
+        assert all(timeline[i] in year0 for i in range(len(positive), len(timeline))), (
+            "every year-0 album must sort after every year>0 album"
+        )
+        assert [p.album_key for p in timeline[-len(year0) :]] == sorted(
             p.album_key for p in year0
         )
 
@@ -735,7 +865,11 @@ class TestGoldenAsync:
 
 _VIEWS_DIR = (
     Path(__file__).resolve().parents[1]
-    / "src" / "michi" / "presentation" / "qml" / "views"
+    / "src"
+    / "michi"
+    / "presentation"
+    / "qml"
+    / "views"
 )
 
 
@@ -764,7 +898,8 @@ class TestGoldenSixViews:
         assert keys == {a.key for a in library.state.albums}
         assert album_x.key in keys
         timeline_keys = {row["key"] for row in bridge.property("timelineAlbums")}
-        assert timeline_keys == keys  # timeline = the same album set, canonically projected
+        # timeline = the same album set, canonically projected
+        assert timeline_keys == keys
         # The selected album's detail rows follow the canonical track order.
         rows = bridge.property("albumTracks")
         assert [r["path"] for r in rows] == [str(p) for p in album_x.track_paths]
@@ -792,14 +927,23 @@ class TestGoldenSixViews:
         # Structural (M6.7): the six projections consume ONE shared model.
         qml = _aggregated_views_qml()
         for name in (
-            "albumGridView", "albumCoverView", "albumVinylView",
-            "albumTimelineView", "albumMagazineView", "albumListView",
+            "albumGridView",
+            "albumCoverView",
+            "albumVinylView",
+            "albumTimelineView",
+            "albumMagazineView",
+            "albumListView",
         ):
             assert f'objectName: "{name}"' in qml, f"{name} missing"
         assert qml.count("model: library.albums") == 5
         assert qml.count("model: library.timelineAlbums") == 1
-        for ident in ("gridAlbums", "vinylAlbums", "magazineAlbums",
-                      "pathAlbums", "listAlbums"):
+        for ident in (
+            "gridAlbums",
+            "vinylAlbums",
+            "magazineAlbums",
+            "pathAlbums",
+            "listAlbums",
+        ):
             assert ident not in qml, (
                 f"view-specific album model {ident!r} must not exist"
             )
@@ -817,8 +961,11 @@ class TestGoldenDegradation:
         provider = MutagenArtworkProvider(max_bytes=64)
         cache = ArtworkCache(tmp_path / "art-cache")
         library, _ = _make_library(
-            tmp_path, scanner, SpyExtractor(),
-            artwork_provider=provider, artwork_cache=cache,
+            tmp_path,
+            scanner,
+            SpyExtractor(),
+            artwork_provider=provider,
+            artwork_cache=cache,
         )
         library.scan(str(golden.root))
         assert library.state.diagnostic is None
@@ -880,9 +1027,11 @@ class TestGoldenDegradation:
         # The rest is intact: the Single Disc album keeps its healthy tracks.
         album = next(a for a in library.state.albums if a.title == "Single Disc")
         assert [p.name for p in album.track_paths] == ["01 Intro.mp3", "03 Outro.mp3"]
-        assert sum(al.track_count for al in library.state.albums) == len(
-            library.state.tracks
-        ) == _GOLDEN_TRACK_COUNT
+        assert (
+            sum(al.track_count for al in library.state.albums)
+            == len(library.state.tracks)
+            == _GOLDEN_TRACK_COUNT
+        )
 
     def test_golden_degradation_missing_file_and_dir(self, tmp_path):
         """TD-013 TRACK_MISSING activation preserves the library; a
@@ -905,8 +1054,10 @@ class TestGoldenDegradation:
         assert library.state.diagnostic.path == missing_path
         assert missing_path not in {t.file_path for t in library.state.tracks}
         assert len(library.state.tracks) == _GOLDEN_TRACK_COUNT - 1
-        assert not any(a.title == "No Art" for a in library.state.albums)  # sole track removed
-        assert any(a.title == "Multi Disc" for a in library.state.albums)  # rest preserved
+        # sole track removed
+        assert not any(a.title == "No Art" for a in library.state.albums)
+        # rest preserved
+        assert any(a.title == "Multi Disc" for a in library.state.albums)
         rows_before = repo.load_all()
 
         # A MISSING DIRECTORY scan preserves the last valid library + sets the

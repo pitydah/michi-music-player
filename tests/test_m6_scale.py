@@ -170,6 +170,8 @@ class TestScale10k:
         assert library_a.state.genres == library_b.state.genres
         assert library_a.state.composers == library_b.state.composers
         assert library_a.state.folders == library_b.state.folders
-        assert library_a.state.recently_added_paths == library_b.state.recently_added_paths
+        assert (
+            library_a.state.recently_added_paths == library_b.state.recently_added_paths
+        )
         # Generous bound for the two full 10k scans.
         assert time.monotonic() - started < 120
