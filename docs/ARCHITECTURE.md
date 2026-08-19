@@ -163,6 +163,12 @@ lists like `["A", 42]`, invalid JSON) degrade with SAFE EMPTY FALLBACK:
 - NO PARTIAL SALVAGE — `["A", 42, "B"]` -> `()`, never `("A", "B")`;
 - malformed playlist ROOT -> whole collection `()`; malformed playlist ENTRY
   -> that entry discarded, valid siblings preserved;
+- the storage contract accepts ONLY SQLite TEXT for these JSON payloads: a
+  non-text SQLite value (BLOB/number) is malformed, never decoded as JSON
+  text;
+- warnings fire ONLY for real malformed persisted data: a valid empty list
+  (`[]`) and a missing row are normal state — never logged as corruption
+  (M6-FINAL-DECODE-LOGGING-MICROFIX);
 - NO WRITEBACK during load (read tolerance, not repair — same philosophy as
   M11.2C);
 - malformed rows are still compared RAW by provenance (provenance answers
