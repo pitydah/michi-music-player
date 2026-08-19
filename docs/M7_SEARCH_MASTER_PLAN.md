@@ -24,6 +24,37 @@ Status: **M7 — OPEN** (baseline `ee8c23f5f6e90d20c2902ac5ab29c639b03f7282`).
 > filtering/playlist+folder search/year ranges remain FUTURE (documented
 > exclusions). M12 owns performance profiling; 10k correctness +
 > determinism baseline recorded (no timing claims).
+>
+> **M7-CANONICAL-SEMANTICS-AND-RANKING-CORRECTION (re-close):**
+>
+> - **Track `album_artist` = M6 CANONICAL RESOLVED ALBUM ARTIST.** M6's
+>   `resolve_album_artist(track)` (explicit album_artist → compilation
+>   "Various Artists" → track artist) is now PUBLIC API, used by BOTH
+>   `build_music_model` and `TrackSearchDocument.from_track` — one and only
+>   one source of truth; no duplicate "Various Artists" constant in search.
+>   A compilation (a-ha / 80s Collection) is found by "Various Artists" as
+>   BOTH a Track result and the Album result, agreeing on the same resolved
+>   artist. Explicit album_artist still wins over the compilation fallback.
+> - **Album entity ranking is TITLE-FIRST.** A dedicated AlbumSearchDocument
+>   uses wide semantic bands (title 4000 > album artist 3000 > composer
+>   2000 > genre 1000) + match bonuses (exact 400 > prefix 300 > token
+>   prefix 200 > substring 100): an exact album title always outranks an
+>   exact album-artist match on another album; within a field, match types
+>   still order EXACT > PREFIX > TOKEN_PREFIX > SUBSTRING; AND semantics
+>   across tokens preserved (miles blue → artist + title). Ranking only
+>   affects ORDER — never album identity/grouping/membership.
+> - **Track tie-break honors canonical sort metadata:** score desc →
+>   `normalize(sort_title or title)` → track_id. sort_title is ORDERING
+>   metadata only — it is NOT an eighth searchable field.
+> - **Composer entity rows exposed vertically:** `LibraryBridge.composers`
+>   Property (canonical passthrough; filtered by the active search; clear
+>   restores) — no new tab/navigation (M9 decides rendering).
+> - **Six-view invariant hardened:** every album mode (grid/cover/vinyl/
+>   timeline/magazine/list) verified to consume the SAME filtered canonical
+>   AlbumIds — not just the same count.
+>
+> Re-close gates: 24 tests (test_search_canonical_semantics.py) — suite
+> 1195 green; CI green on the exact re-close HEAD.
 
 ## 0. Contract Reconciliation (M7.0)
 
