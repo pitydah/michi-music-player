@@ -100,6 +100,15 @@ class LibraryScanStatus(Enum):
     FAILED = auto()
 
 
+class AlbumTechnicalState(Enum):
+    """Structured album technical state (M6-FINAL-CROSS-PERSISTENCE-GATE)."""
+
+    EXACT = auto()
+    MIXED = auto()
+    PARTIAL = auto()
+    UNKNOWN = auto()
+
+
 @dataclass(frozen=True)
 class LibraryDiagnostic:
     code: LibraryDiagnosticCode
@@ -266,22 +275,41 @@ def render_technical_label(codec, bit_depth, sample_rate_hz, bitrate_bps) -> str
     return codec or ""
 
 
-def _album_technical_summary(tracks) -> str:
-    """Honest album-level technical summary (M6-PRODUCTION-INTEGRATION).
-
-    When EVERY known member renders the SAME facts-only label, that exact
-    label is used; a mixed album reports "Mixed formats" — a summary for a
-    mixed album would be a fabrication."""
+def _album_technical_state(tracks) -> "AlbumTechnicalState":
+    """Structured album technical state (M6-FINAL-CROSS-PERSISTENCE-GATE):
+    EXACT — every member has facts and renders the same label; MIXED —
+    every member has facts but renders differently; PARTIAL — some members
+    lack technical facts (a definitive album-wide claim would fabricate
+    information); UNKNOWN — no member has facts."""
     known = [t for t in tracks if t.codec]
     if not known:
-        return ""
+        return AlbumTechnicalState.UNKNOWN
+    if any(not t.codec for t in tracks):
+        return AlbumTechnicalState.PARTIAL
     labels = {
         render_technical_label(t.codec, t.bit_depth, t.sample_rate_hz, t.bitrate_bps)
         for t in known
     }
     if len(labels) == 1:
-        return next(iter(labels))
-    return "Mixed formats"
+        return AlbumTechnicalState.EXACT
+    return AlbumTechnicalState.MIXED
+
+
+def _album_technical_summary(tracks) -> str:
+    """Honest album-level technical summary (facts only — never marketing).
+
+    EXACT -> the exact facts-only label; MIXED -> "Mixed formats";
+    PARTIAL -> "" (known + unknown must NEVER report a definitive album-wide
+    label — UNKNOWN stays UNKNOWN); UNKNOWN -> ""."""
+    state = _album_technical_state(tracks)
+    if state is AlbumTechnicalState.EXACT:
+        first = next(t for t in tracks if t.codec)
+        return render_technical_label(
+            first.codec, first.bit_depth, first.sample_rate_hz, first.bitrate_bps
+        )
+    if state is AlbumTechnicalState.MIXED:
+        return "Mixed formats"
+    return ""
 
 
 def build_music_model(tracks) -> MusicModel:
