@@ -1,6 +1,6 @@
 # M7 — Search: Rich Canonical Local Search — Master Plan
 
-Status: **M7 — OPEN** (baseline `ee8c23f5f6e90d20c2902ac5ab29c639b03f7282`).
+Status: **M7 — CLOSED / TESTED / FROZEN** (baseline `ee8c23f5f6e90d20c2902ac5ab29c639b03f7282`; current effective closeout HEAD `677468f0b0c1e102a36cd9654aca5fae73a6b715`).
 
 > **M7.7 closeout (FINAL STATE)**
 >
@@ -19,8 +19,8 @@ Status: **M7 — OPEN** (baseline `ee8c23f5f6e90d20c2902ac5ab29c639b03f7282`).
 > NO PERSISTENCE; NO FILESYSTEM/MUTAGEN ACCESS; P0=0; P1=0.**
 >
 > Test gates: 49 domain (query model/fields/ranking/entities) + 18 library
-> integration + 8 presentation + 18 golden/scale — 1171-suite green; CI
-> green on the exact final HEAD. Advanced field syntax/ranges/technical
+> integration + 8 presentation + 18 golden/scale — 1195-suite green at the
+> current effective closeout HEAD. Advanced field syntax/ranges/technical
 > filtering/playlist+folder search/year ranges remain FUTURE (documented
 > exclusions). M12 owns performance profiling; 10k correctness +
 > determinism baseline recorded (no timing claims).
@@ -53,8 +53,13 @@ Status: **M7 — OPEN** (baseline `ee8c23f5f6e90d20c2902ac5ab29c639b03f7282`).
 >   timeline/magazine/list) verified to consume the SAME filtered canonical
 >   AlbumIds — not just the same count.
 >
-> Re-close gates: 24 tests (test_search_canonical_semantics.py) — suite
-> 1195 green; CI green on the exact re-close HEAD.
+> Re-close gates: 24 tests (test_search_canonical_semantics.py). CI
+> evidence, truthful: the first exact-HEAD CI run of the re-close
+> (32286592546) FAILED — the six-view tests relied on pytest-qt's `qapp`
+> fixture, which exists locally but not in CI; fixed by defining the
+> module-scoped offscreen fixture (677468f); the current effective
+> closeout HEAD 677468f is CI GREEN (run 32286911191, success); local
+> focused gate 24/24 and local full suite 1195 green.
 
 ## 0. Contract Reconciliation (M7.0)
 
