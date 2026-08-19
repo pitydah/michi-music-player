@@ -64,7 +64,34 @@ class LibraryBridge(QObject):
         return self._service.state.current_directory
 
     def _get_search_query(self) -> str:
-        return self._service.state.query
+        return self._service.state.query  # RAW query (presentation form)
+
+    def _get_search_active(self) -> bool:
+        return self._service.state.search_active
+
+    def _get_search_track_count(self) -> int:
+        projection = self._service.state.search_projection
+        return projection.track_count if projection is not None else 0
+
+    def _get_search_album_count(self) -> int:
+        projection = self._service.state.search_projection
+        return projection.album_count if projection is not None else 0
+
+    def _get_search_artist_count(self) -> int:
+        projection = self._service.state.search_projection
+        return projection.artist_count if projection is not None else 0
+
+    def _get_search_genre_count(self) -> int:
+        projection = self._service.state.search_projection
+        return projection.genre_count if projection is not None else 0
+
+    def _get_search_composer_count(self) -> int:
+        projection = self._service.state.search_projection
+        return projection.composer_count if projection is not None else 0
+
+    def _get_search_total_count(self) -> int:
+        projection = self._service.state.search_projection
+        return projection.total_count if projection is not None else 0
 
     def _get_diagnostic_code(self) -> str:
         diagnostic = self._service.state.diagnostic
@@ -103,8 +130,15 @@ class LibraryBridge(QObject):
         return len(self._service.state.artists)
 
     def _album_rows(self) -> list[dict]:
+        # M7: the unified search projection filters the album surface; the
+        # canonical collections are the passthrough when search is inactive.
+        albums = (
+            self._service.state.search_projection.albums
+            if self._service.state.search_active
+            else self._service.state.albums
+        )
         rows = []
-        for album in self._service.state.albums:
+        for album in albums:
             rows.append(
                 {
                     "key": album.key,
@@ -121,9 +155,16 @@ class LibraryBridge(QObject):
         return rows
 
     def _get_timeline_albums(self) -> list[dict]:
+        # M7: the timeline receives the SAME filtered album set as the other
+        # five views — it never recomputes matching itself.
+        albums = (
+            self._service.state.search_projection.albums
+            if self._service.state.search_active
+            else self._service.state.albums
+        )
         rows = []
-        albums_by_key = {a.key: a for a in self._service.state.albums}
-        for projection in build_timeline_projection(self._service.state.albums):
+        albums_by_key = {a.key: a for a in albums}
+        for projection in build_timeline_projection(albums):
             album = albums_by_key.get(projection.album_key)
             rows.append(
                 {
@@ -141,6 +182,11 @@ class LibraryBridge(QObject):
         return rows
 
     def _artist_rows(self) -> list[dict]:
+        artists = (
+            self._service.state.search_projection.artists
+            if self._service.state.search_active
+            else self._service.state.artists
+        )
         return [
             {
                 "key": a.key,
@@ -148,13 +194,29 @@ class LibraryBridge(QObject):
                 "trackCount": a.track_count,
                 "albumCount": a.album_count,
             }
-            for a in self._service.state.artists
+            for a in artists
         ]
 
     def _genre_rows(self) -> list[dict]:
+        genres = (
+            self._service.state.search_projection.genres
+            if self._service.state.search_active
+            else self._service.state.genres
+        )
         return [
             {"key": g.key, "name": g.name, "trackCount": g.track_count}
-            for g in self._service.state.genres
+            for g in genres
+        ]
+
+    def _composer_rows(self) -> list[dict]:
+        composers = (
+            self._service.state.search_projection.composers
+            if self._service.state.search_active
+            else self._service.state.composers
+        )
+        return [
+            {"key": c.key, "name": c.name, "trackCount": c.track_count}
+            for c in composers
         ]
 
     def _folder_rows(self) -> list[dict]:
@@ -213,25 +275,36 @@ class LibraryBridge(QObject):
         ]
 
     def _get_favorite_paths(self) -> list[str]:
-        return list(self._service.state.favorite_paths)
+        return list(self._reference_paths(self._service.state.favorite_paths))
 
     def _get_history_paths(self) -> list[str]:
-        return list(self._service.state.history_paths)
+        return list(self._reference_paths(self._service.state.history_paths))
 
     def _get_recently_added_paths(self) -> list[str]:
-        return list(self._service.state.recently_added_paths)
+        return list(self._reference_paths(self._service.state.recently_added_paths))
+
+    def _reference_paths(self, paths) -> tuple[str, ...]:
+        """M7: reference surfaces (favorites/history/recently-added) are
+        filtered by the SAME matched track ids when search is active."""
+        state = self._service.state
+        if not state.search_active:
+            return tuple(paths)
+        matched = state.search_projection.matched_track_ids
+        return tuple(p for p in paths if p in matched)
 
     def _get_song_paths(self) -> list[str]:
         return [str(t.file_path) for t in self._service.state.visible_tracks]
 
     def _get_favorite_rows(self) -> list[dict]:
-        return self._rows_for(self._service.state.favorite_paths)
+        return self._rows_for(self._reference_paths(self._service.state.favorite_paths))
 
     def _get_history_rows(self) -> list[dict]:
-        return self._rows_for(self._service.state.history_paths)
+        return self._rows_for(self._reference_paths(self._service.state.history_paths))
 
     def _get_recently_added_rows(self) -> list[dict]:
-        return self._rows_for(self._service.state.recently_added_paths)
+        return self._rows_for(
+            self._reference_paths(self._service.state.recently_added_paths)
+        )
 
     def _get_playlists(self) -> list[dict]:
         if self._playlist_service is None:
@@ -284,6 +357,13 @@ class LibraryBridge(QObject):
     fileCount = Property(int, _get_count, notify=library_changed)
     currentDir = Property(str, _get_current_dir, notify=library_changed)
     searchQuery = Property(str, _get_search_query, notify=library_changed)
+    searchActive = Property(bool, _get_search_active, notify=library_changed)
+    searchTrackCount = Property(int, _get_search_track_count, notify=library_changed)
+    searchAlbumCount = Property(int, _get_search_album_count, notify=library_changed)
+    searchArtistCount = Property(int, _get_search_artist_count, notify=library_changed)
+    searchGenreCount = Property(int, _get_search_genre_count, notify=library_changed)
+    searchComposerCount = Property(int, _get_search_composer_count, notify=library_changed)
+    searchTotalCount = Property(int, _get_search_total_count, notify=library_changed)
     diagnosticCode = Property(str, _get_diagnostic_code, notify=library_changed)
     diagnosticMessage = Property(str, _get_diagnostic_message, notify=library_changed)
     hasDiagnostic = Property(bool, _get_has_diagnostic, notify=library_changed)
@@ -332,6 +412,11 @@ class LibraryBridge(QObject):
     @Slot(str)
     def search(self, query: str) -> None:
         self._service.search(query)
+
+    @Slot()
+    def clear_search(self) -> None:
+        """M7: deactivate search; the canonical collections are restored."""
+        self._service.clear_search()
 
     @Slot(int)
     def activate(self, visible_index: int) -> None:

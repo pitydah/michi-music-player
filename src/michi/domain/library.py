@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
 
+from michi.domain.search import SearchProjection  # M7: derived search state
+
 HISTORY_CAP = 50
 RECENT_CAP = 50
 
@@ -589,7 +591,8 @@ class LibraryPrefs:
 @dataclass
 class LibraryState:
     tracks: list[TrackRef] = field(default_factory=list)
-    query: str = ""
+    query: str = ""  # RAW query (presentation form — never normalized here)
+    search_projection: SearchProjection | None = None  # M7: derived, inactive when None
     current_directory: str = ""
     diagnostic: LibraryDiagnostic | None = None
     albums: tuple[AlbumRef, ...] = ()
@@ -608,8 +611,17 @@ class LibraryState:
     scan_current_path: str | None = None
 
     @property
+    def search_active(self) -> bool:
+        """M7: True only while a projection with tokens is active."""
+        return (
+            self.search_projection is not None
+            and self.search_projection.query.active
+        )
+
+    @property
     def visible_tracks(self) -> list[TrackRef]:
-        if not self.query:
+        """M7: the unified search projection filters the Songs surface; the
+        canonical tracks are the passthrough when search is inactive."""
+        if not self.search_active:
             return self.tracks
-        q = self.query.lower()
-        return [t for t in self.tracks if q in t.display_name.lower()]
+        return list(self.search_projection.tracks)

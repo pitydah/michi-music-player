@@ -37,6 +37,11 @@ from michi.domain.library import (
     build_music_model,
     merge_recently_added,
 )
+from michi.domain.search import (
+    SearchQuery,
+    build_search_corpus,
+    build_search_projection,
+)
 from michi.domain.library_index import (
     LibraryIndexEntry,
     ScanResult,
@@ -84,6 +89,7 @@ class LibraryService:
         self._artwork_cache = artwork_cache
         self._artwork_paths: dict[str, Path] = {}
         self._state = LibraryState()
+        self._search_corpus = None  # M7: derived corpus, rebuilt structurally
         self._subscribers: list[Callable[[], None]] = []
         self._library_prefs = library_prefs
         self._library_index = library_index
@@ -173,7 +179,8 @@ class LibraryService:
             if str(t.file_path) not in previous_paths
         ]
         self._state.tracks = next_tracks
-        self._state.query = ""
+        # M7: the RAW query SURVIVES successful scans — the active search
+        # projection is rebuilt against the new canonical library below.
         self._state.current_directory = directory
         self._state.albums = next_albums
         self._state.artists = model.artists
@@ -199,6 +206,9 @@ class LibraryService:
         else:
             self._state.diagnostic = None
         self._persist_prefs()
+        # M7: the active query follows the NEW canonical library (never
+        # stale) — the caller owns the single notify.
+        self._rebuild_search_corpus()
 
     def _incremental_tracks(self, paths, discovered):
         """Incremental M6.3 path: fingerprint -> classify -> extract ONLY
@@ -499,6 +509,9 @@ class LibraryService:
         self._state.genres = model.genres
         self._state.composers = model.composers
         self._state.folders = build_folder_model(self._state.tracks)
+        # M7: the search corpus + active projection follow the new canonical
+        # model (structural mutation chokepoint).
+        self._rebuild_search_corpus()
 
     def restore_directory_hint(self, directory: str) -> None:
         """Restore a persisted path as context. No scan. Idempotent."""
@@ -510,8 +523,47 @@ class LibraryService:
         self._notify()
 
     def search(self, query: str) -> None:
-        self._state.query = query.strip().lower()
+        """M7: set the RAW query (presentation form preserved verbatim) and
+        project the pre-normalized corpus. Never mutates the canonical
+        model — search is a deterministic derived projection."""
+        self._state.query = query or ""
+        self._apply_query_projection()
         self._notify()
+
+    def clear_search(self) -> None:
+        """M7: deactivate search and restore the canonical collections."""
+        self._state.query = ""
+        self._state.search_projection = None
+        self._notify()
+
+    def _apply_query_projection(self) -> None:
+        """Score the EXISTING corpus against the current query (cheap;
+        the corpus is rebuilt only on structural change)."""
+        if self._search_corpus is None:
+            self._rebuild_search_corpus()
+            return
+        query = SearchQuery.from_raw(self._state.query)
+        if query.active:
+            self._state.search_projection = build_search_projection(
+                query, self._search_corpus
+            )
+        else:
+            self._state.search_projection = None
+
+    def _rebuild_search_corpus(self) -> None:
+        """Centralized search refresh (M7.5): rebuild the derived corpus
+        from the canonical model and keep the active projection in sync.
+        Called after EVERY structural mutation (scan commit, track
+        removal) — an active query always follows the NEW canonical
+        library; stale results are impossible."""
+        self._search_corpus = build_search_corpus(
+            self._state.tracks,
+            self._state.albums,
+            self._state.artists,
+            self._state.genres,
+            self._state.composers,
+        )
+        self._apply_query_projection()
 
     def _persist_prefs(self) -> None:
         if self._library_prefs is not None:
