@@ -26,7 +26,8 @@ ColumnLayout {
             MichiIcon {
                 anchors.centerIn: parent
                 name: "artist"
-                size: 32
+                width: 32
+                height: 32
                 iconColor: MichiPalette.auroraCyan
             }
         }

@@ -44,7 +44,8 @@ Item {
             MichiIcon {
                 anchors.centerIn: parent
                 name: "artist"
-                size: 20
+                width: 20
+                height: 20
                 iconColor: MichiPalette.auroraCyan
             }
         }
