@@ -80,6 +80,10 @@ class PlaybackBridge(QObject):
         track = self._current_track()
         return make_track_quality_label(track) if track is not None else ""
 
+    def _get_format_label(self) -> str:
+        path = self._service.state.file_path
+        return path.suffix.removeprefix(".").upper() if path is not None else ""
+
     def _get_artwork_path(self) -> str:
         track = self._current_track()
         if track is None or self._library_service is None:
@@ -111,6 +115,7 @@ class PlaybackBridge(QObject):
     artist = Property(str, _get_artist, notify=state_changed)
     album = Property(str, _get_album, notify=state_changed)
     qualityLabel = Property(str, _get_quality_label, notify=state_changed)
+    formatLabel = Property(str, _get_format_label, notify=state_changed)
     artworkPath = Property(str, _get_artwork_path, notify=state_changed)
     position = Property(int, _get_position, notify=state_changed)
     duration = Property(int, _get_duration, notify=state_changed)

@@ -54,6 +54,14 @@ Item {
                 ctx.rect(w * .2, h * .22, w * .15, h * .58); ctx.rect(w * .43, h * .16, w * .15, h * .64); ctx.rect(w * .66, h * .28, w * .15, h * .52)
             } else if (root.name === "queue") {
                 line(ctx, w * .2, h * .28, w * .72, h * .28); line(ctx, w * .2, h * .5, w * .72, h * .5); line(ctx, w * .2, h * .72, w * .55, h * .72); ctx.moveTo(w * .66, h * .62); ctx.lineTo(w * .84, h * .72); ctx.lineTo(w * .66, h * .82); ctx.closePath()
+            } else if (root.name === "shuffle") {
+                ctx.moveTo(w * .18, h * .3); ctx.lineTo(w * .31, h * .3); ctx.bezierCurveTo(w * .45, h * .3, w * .53, h * .7, w * .68, h * .7); line(ctx, w * .68, h * .7, w * .82, h * .7); line(ctx, w * .72, h * .6, w * .82, h * .7); line(ctx, w * .72, h * .8, w * .82, h * .7); ctx.moveTo(w * .18, h * .7); ctx.lineTo(w * .31, h * .7); ctx.bezierCurveTo(w * .45, h * .7, w * .53, h * .3, w * .68, h * .3); line(ctx, w * .68, h * .3, w * .82, h * .3); line(ctx, w * .72, h * .2, w * .82, h * .3); line(ctx, w * .72, h * .4, w * .82, h * .3)
+            } else if (root.name === "repeat" || root.name === "repeat-one") {
+                ctx.moveTo(w * .25, h * .34); ctx.lineTo(w * .7, h * .34); line(ctx, w * .61, h * .25, w * .7, h * .34); line(ctx, w * .61, h * .43, w * .7, h * .34); ctx.arc(cx, cy, w * .3, -.7, Math.PI - .45); ctx.moveTo(w * .75, h * .66); ctx.lineTo(w * .3, h * .66); line(ctx, w * .39, h * .57, w * .3, h * .66); line(ctx, w * .39, h * .75, w * .3, h * .66); if (root.name === "repeat-one") { ctx.stroke(); ctx.beginPath(); ctx.font = Math.round(h * .36) + "px sans-serif"; ctx.fillText("1", w * .44, h * .61); return }
+            } else if (root.name === "sliders") {
+                line(ctx, w * .27, h * .18, w * .27, h * .82); line(ctx, cx, h * .18, cx, h * .82); line(ctx, w * .73, h * .18, w * .73, h * .82); ctx.moveTo(w * .2, h * .36); ctx.lineTo(w * .34, h * .36); ctx.moveTo(w * .43, h * .62); ctx.lineTo(w * .57, h * .62); ctx.moveTo(w * .66, h * .42); ctx.lineTo(w * .8, h * .42)
+            } else if (root.name === "device") {
+                ctx.rect(w * .25, h * .15, w * .5, h * .7); ctx.moveTo(w * .4, h * .27); ctx.lineTo(w * .6, h * .27); ctx.arc(cx, h * .58, w * .1, 0, Math.PI * 2); ctx.fillRect(cx - 1, h * .77, 2, 2)
             } else if (root.name === "settings") {
                 ctx.arc(cx, cy, w * .17, 0, Math.PI * 2); ctx.moveTo(cx, h * .12); ctx.lineTo(cx, h * .24); ctx.moveTo(cx, h * .76); ctx.lineTo(cx, h * .88); ctx.moveTo(w * .12, cy); ctx.lineTo(w * .24, cy); ctx.moveTo(w * .76, cy); ctx.lineTo(w * .88, cy)
             } else if (root.name === "heart") {

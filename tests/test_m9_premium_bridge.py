@@ -148,6 +148,7 @@ def test_playback_and_queue_enrich_current_track_from_library(tmp_path) -> None:
     assert playback_bridge.property("title") == "One"
     assert playback_bridge.property("artist") == "Michi Artist"
     assert playback_bridge.property("qualityLabel") == "FLAC · 24-bit · 96 kHz"
+    assert playback_bridge.property("formatLabel") == "FLAC"
     assert queue_bridge.property("trackRows")[0]["durationMs"] == 123_000
     playback_bridge.dispose()
     queue_bridge.dispose()

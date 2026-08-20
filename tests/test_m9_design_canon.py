@@ -106,8 +106,31 @@ def test_deferred_capabilities_have_no_qml_shells() -> None:
 
 def test_package_contains_new_qml_layers() -> None:
     pyproject = Path("pyproject.toml").read_text()
-    for directory in ("controls", "dev", "media", "patterns", "primitives"):
+    for directory in (
+        "controls",
+        "dev",
+        "media",
+        "patterns",
+        "player",
+        "primitives",
+    ):
         assert f'"presentation/qml/{directory}/*.qml"' in pyproject
+
+
+def test_canonical_now_playing_bar_is_shell_bound() -> None:
+    bar = _text("player/NowPlayingBar.qml")
+    shell = _text("shell/AppShell.qml")
+    assert "implicitWidth: 1920" in bar
+    assert "implicitHeight: 154" in bar
+    assert "NowPlayingBar" in shell
+    for projection in (
+        "playback.position",
+        "playback.duration",
+        "playback.volume",
+        "queue.shuffleEnabled",
+        "queue.repeatMode",
+    ):
+        assert projection in shell
 
 
 def test_search_and_playback_errors_are_actionable_surfaces() -> None:

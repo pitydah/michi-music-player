@@ -8,7 +8,7 @@ ApplicationWindow {
     visible: true
     width: 1100
     height: 700
-    minimumWidth: 800
+    minimumWidth: 1100
     minimumHeight: 480
     title: "Michi Music Player"
     color: MichiTheme.backgroundBase
@@ -57,6 +57,7 @@ ApplicationWindow {
 
     AppShell {
         id: appShell
+        anchors.fill: parent
         currentRoute: navigation.currentRoute
         onNavigationRequested: routeId => navigation.navigate(routeId)
     }

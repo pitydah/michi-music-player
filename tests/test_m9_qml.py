@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from PySide6.QtCore import QObject
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 
@@ -139,3 +140,39 @@ class TestQmlSmoke:
 
     def test_queue_panel(self, qapp):
         _load_qml("components/QueuePanel.qml", "QueuePanel")
+
+    def test_now_playing_bar(self, qapp):
+        _load_qml("player/NowPlayingBar.qml", "NowPlayingBar")
+
+
+def test_now_playing_bar_matches_canonical_geometry(qapp):
+    """Project the landmarks measured from the pinned 1920×154 golden."""
+    engine = QQmlEngine()
+    engine.addImportPath(str(QML_DIR))
+    component = QQmlComponent(engine, str(QML_DIR / "player/NowPlayingBar.qml"))
+    errs = "; ".join(error.toString() for error in component.errors())
+    assert component.status() == QQmlComponent.Ready, errs
+    root = component.create()
+    assert root is not None
+    root.setProperty("width", 1920)
+    root.setProperty("height", 154)
+    qapp.processEvents()
+
+    expected = {
+        "trackCard": (38, 34, 270, 86),
+        "trackArtwork": (12, 12, 64, 64),
+        "timeline": (385, 33, 1162, 28),
+        "playPauseButton": (889, 73, 55, 54),
+        "queueButton": (1560, 82, 36, 36),
+        "volumeSlider": (1680, 33, 80, 28),
+        "outputBadge": (1722, 86, 150, 34),
+    }
+    for object_name, geometry in expected.items():
+        item = root.findChild(QObject, object_name)
+        assert item is not None, object_name
+        actual = tuple(
+            round(item.property(name)) for name in ("x", "y", "width", "height")
+        )
+        assert actual == geometry, f"{object_name}: {actual} != {geometry}"
+
+    root.deleteLater()
