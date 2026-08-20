@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "../controls"
 import "../patterns"
 import "../primitives"
 import "../theme"

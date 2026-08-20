@@ -144,6 +144,7 @@ def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
     assert "property bool accented" in glass
     assert "Behavior on scale" in button
     assert "MichiStatusChip" in toolbar
+    assert 'import "../controls"' in content
     assert 'text: "ADD TRACK TO"' in content
     assert "MichiIconButton" in content
     assert "property bool revealed" in queue
