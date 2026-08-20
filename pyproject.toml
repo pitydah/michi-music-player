@@ -22,6 +22,11 @@ where = ["src"]
 michi = [
     "presentation/*.qml",
     "presentation/qml/components/*.qml",
+    "presentation/qml/controls/*.qml",
+    "presentation/qml/dev/*.qml",
+    "presentation/qml/media/*.qml",
+    "presentation/qml/patterns/*.qml",
+    "presentation/qml/primitives/*.qml",
     "presentation/qml/shell/*.qml",
     "presentation/qml/views/*.qml",
     "presentation/qml/theme/*.qml",

@@ -112,3 +112,21 @@ class TestQmlSmoke:
 
     def test_shell(self, qapp):
         _load_qml("shell/AppShell.qml", "AppShell")
+
+    def test_michi_glass_surface(self, qapp):
+        _load_qml("primitives/MichiGlassSurface.qml", "MichiGlassSurface")
+
+    def test_michi_focus_ring(self, qapp):
+        _load_qml("primitives/MichiFocusRing.qml", "MichiFocusRing")
+
+    def test_michi_icon_button(self, qapp):
+        _load_qml("controls/MichiIconButton.qml", "MichiIconButton")
+
+    def test_michi_search_field(self, qapp):
+        _load_qml("controls/MichiSearchField.qml", "MichiSearchField")
+
+    def test_artwork(self, qapp):
+        _load_qml("media/Artwork.qml", "Artwork")
+
+    def test_ui_gallery(self, qapp):
+        _load_qml("dev/MichiUIGallery.qml", "MichiUIGallery")

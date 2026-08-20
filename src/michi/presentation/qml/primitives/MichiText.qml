@@ -1,0 +1,24 @@
+import QtQuick
+import "../theme"
+
+Text {
+    id: root
+    property string role: "body"
+    property bool technical: false
+
+    color: role === "muted" ? MichiPalette.textMuted
+        : role === "secondary" || role === "technical" ? MichiPalette.textSecondary
+        : MichiPalette.textPrimary
+    font.family: MichiTypography.family
+    font.pixelSize: role === "display" ? MichiTypography.display
+        : role === "title" ? MichiTypography.title
+        : role === "section" ? MichiTypography.section
+        : role === "caption" ? MichiTypography.caption
+        : role === "technical" ? MichiTypography.technical
+        : role === "secondary" ? MichiTypography.secondary
+        : MichiTypography.body
+    font.weight: role === "display" || role === "title" || role === "section"
+        ? Font.DemiBold : Font.Normal
+    font.features: technical ? ({ "tnum": 1 }) : ({})
+    renderType: Text.NativeRendering
+}
