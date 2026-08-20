@@ -251,6 +251,26 @@ class LibraryBridge(QObject):
     def _get_album_artist(self) -> str:
         return self._selected_album.artist if self._selected_album is not None else ""
 
+    def _get_album_year(self) -> int:
+        return self._selected_album.year if self._selected_album is not None else 0
+
+    def _get_album_genres(self) -> str:
+        if self._selected_album is None:
+            return ""
+        return " · ".join(self._selected_album.genres)
+
+    def _get_album_duration(self) -> int:
+        return (
+            self._selected_album.duration_ms if self._selected_album is not None else 0
+        )
+
+    def _get_album_technical_summary(self) -> str:
+        return (
+            self._selected_album.technical_summary
+            if self._selected_album is not None
+            else ""
+        )
+
     def _get_album_artwork(self) -> str:
         return self._service.artwork_path_for(self._selected_album_key) or ""
 
@@ -300,14 +320,50 @@ class LibraryBridge(QObject):
     def _get_song_paths(self) -> list[str]:
         return [str(t.file_path) for t in self._service.state.visible_tracks]
 
+    @staticmethod
+    def _track_row(ref: TrackRef) -> dict:
+        """Map one canonical TrackRef to display facts without UI inference."""
+        return {
+            "displayName": ref.display_name,
+            "title": ref.title or ref.display_name,
+            "artist": ref.artist,
+            "album": ref.album,
+            "durationMs": ref.duration_ms,
+            "path": str(ref.file_path),
+            "qualityLabel": make_track_quality_label(ref),
+            "codec": ref.codec,
+            "sampleRateHz": ref.sample_rate_hz,
+            "bitDepth": ref.bit_depth,
+            "channels": ref.channels,
+            "fileSize": ref.file_size,
+        }
+
+    def _get_song_rows(self) -> list[dict]:
+        return [self._track_row(ref) for ref in self._service.state.visible_tracks]
+
     def _get_favorite_rows(self) -> list[dict]:
         return self._rows_for(self._reference_paths(self._service.state.favorite_paths))
+
+    def _get_favorite_track_rows(self) -> list[dict]:
+        return self._track_rows_for(
+            self._reference_paths(self._service.state.favorite_paths)
+        )
 
     def _get_history_rows(self) -> list[dict]:
         return self._rows_for(self._reference_paths(self._service.state.history_paths))
 
+    def _get_history_track_rows(self) -> list[dict]:
+        return self._track_rows_for(
+            self._reference_paths(self._service.state.history_paths)
+        )
+
     def _get_recently_added_rows(self) -> list[dict]:
         return self._rows_for(
+            self._reference_paths(self._service.state.recently_added_paths)
+        )
+
+    def _get_recently_added_track_rows(self) -> list[dict]:
+        return self._track_rows_for(
             self._reference_paths(self._service.state.recently_added_paths)
         )
 
@@ -348,6 +404,43 @@ class LibraryBridge(QObject):
             )
         return rows
 
+    def _get_playlist_track_rows(self) -> list[dict]:
+        if self._playlist_service is None or not self._selected_playlist:
+            return []
+        playlist = next(
+            (
+                p
+                for p in self._playlist_service.playlists
+                if p.name == self._selected_playlist
+            ),
+            None,
+        )
+        if playlist is None:
+            return []
+        rows = []
+        for path in playlist.track_paths:
+            ref = self._service.resolve_trackref(Path(path))
+            if ref is not None:
+                rows.append(self._track_row(ref))
+                continue
+            rows.append(
+                {
+                    "displayName": Path(path).stem,
+                    "title": Path(path).stem,
+                    "artist": "",
+                    "album": "",
+                    "durationMs": 0,
+                    "path": path,
+                    "qualityLabel": "",
+                    "codec": "",
+                    "sampleRateHz": 0,
+                    "bitDepth": 0,
+                    "channels": 0,
+                    "fileSize": 0,
+                }
+            )
+        return rows
+
     def _rows_for(self, paths) -> list[dict]:
         rows = []
         for path in paths:
@@ -356,6 +449,14 @@ class LibraryBridge(QObject):
                 rows.append(
                     {"displayName": ref.display_name, "path": str(ref.file_path)}
                 )
+        return rows
+
+    def _track_rows_for(self, paths) -> list[dict]:
+        rows = []
+        for path in paths:
+            ref = self._service.resolve_trackref(Path(path))
+            if ref is not None:
+                rows.append(self._track_row(ref))
         return rows
 
     files = Property(list, _get_files, notify=library_changed)
@@ -390,6 +491,12 @@ class LibraryBridge(QObject):
     selectedAlbumKey = Property(str, _get_selected_album_key, notify=library_changed)
     albumTitle = Property(str, _get_album_title, notify=library_changed)
     albumArtist = Property(str, _get_album_artist, notify=library_changed)
+    albumYear = Property(int, _get_album_year, notify=library_changed)
+    albumGenres = Property(str, _get_album_genres, notify=library_changed)
+    albumDurationMs = Property(int, _get_album_duration, notify=library_changed)
+    albumTechnicalSummary = Property(
+        str, _get_album_technical_summary, notify=library_changed
+    )
     albumArtwork = Property(str, _get_album_artwork, notify=library_changed)
     albumTracks = Property(list, _get_album_tracks, notify=library_changed)
     favoritePaths = Property(list, _get_favorite_paths, notify=library_changed)
@@ -398,14 +505,21 @@ class LibraryBridge(QObject):
         list, _get_recently_added_paths, notify=library_changed
     )
     songPaths = Property(list, _get_song_paths, notify=library_changed)
+    songRows = Property(list, _get_song_rows, notify=library_changed)
     favoriteRows = Property(list, _get_favorite_rows, notify=library_changed)
     historyRows = Property(list, _get_history_rows, notify=library_changed)
     recentlyAddedRows = Property(list, _get_recently_added_rows, notify=library_changed)
+    favoriteTrackRows = Property(list, _get_favorite_track_rows, notify=library_changed)
+    historyTrackRows = Property(list, _get_history_track_rows, notify=library_changed)
+    recentlyAddedTrackRows = Property(
+        list, _get_recently_added_track_rows, notify=library_changed
+    )
     playlists = Property(list, _get_playlists, notify=library_changed)
     selectedPlaylistName = Property(
         str, _get_selected_playlist_name, notify=library_changed
     )
     playlistTracks = Property(list, _get_playlist_tracks, notify=library_changed)
+    playlistTrackRows = Property(list, _get_playlist_track_rows, notify=library_changed)
 
     @Slot(str)
     def scan(self, directory: str) -> None:
@@ -429,6 +543,12 @@ class LibraryBridge(QObject):
     @Slot(int)
     def activate(self, visible_index: int) -> None:
         self._service.activate(visible_index)
+
+    @Slot(str)
+    def activate_path(self, path: str) -> None:
+        ref = self._service.resolve_trackref(Path(path))
+        if ref is not None:
+            self._service.activate_track(ref)
 
     @Slot(str)
     def toggle_favorite(self, path: str) -> None:

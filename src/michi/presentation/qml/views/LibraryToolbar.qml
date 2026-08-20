@@ -48,6 +48,30 @@ MichiGlassSurface {
         onClearRequested: library.clear_search()
     }
 
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: MichiSpacing.md
+
+        MichiSegmentedControl {
+            Layout.fillWidth: true
+            model: [
+                { value: "comfortable", label: "Comfortable" },
+                { value: "standard", label: "Standard" },
+                { value: "compact", label: "Compact" }
+            ]
+            currentValue: MichiThemeState.density
+            compact: root.width < 620
+            Accessible.name: "Library density"
+            onSelected: value => MichiThemeState.density = value
+        }
+
+        MichiSwitch {
+            text: root.width < 720 ? "Precision" : "Precision metadata"
+            checked: MichiThemeState.precisionMode
+            onToggled: MichiThemeState.precisionMode = checked
+        }
+    }
+
     // M7: functional clear action (raw query restored to empty; the
     // canonical collections come back exactly).
     MichiButton {

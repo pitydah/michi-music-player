@@ -1,23 +1,32 @@
 import QtQuick
 import QtQuick.Layouts
+import "../media"
 import "../theme"
 
 ListView {
-    id: favoritesList
+    id: root
     objectName: "favoritesView"
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    model: library.favoriteRows
+    model: library.favoriteTrackRows
     clip: true
-    spacing: MichiTheme.space8
-    delegate: Text {
-        width: favoritesList.width
-        height: MichiTheme.controlHeightSmall
-        verticalAlignment: Text.AlignVCenter
-        text: modelData.displayName
-        font.pixelSize: MichiTheme.fontSizeCaption
-        color: MichiTheme.textSecondary
-        elide: Text.ElideRight
+    spacing: MichiSpacing.xs
+    boundsBehavior: Flickable.StopAtBounds
+
+    delegate: TrackRow {
+        required property int index
+        required property var modelData
+        width: root.width
+        numberText: String(index + 1)
+        title: modelData.title
+        artist: modelData.artist
+        album: modelData.album
+        durationMs: modelData.durationMs
+        quality: modelData.qualityLabel
+        favorite: true
+        showFavorite: true
+        onActivated: library.activate_path(modelData.path)
+        onFavoriteToggled: library.toggle_favorite(modelData.path)
     }
 }

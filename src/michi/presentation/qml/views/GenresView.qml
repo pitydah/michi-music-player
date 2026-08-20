@@ -1,23 +1,25 @@
 import QtQuick
 import QtQuick.Layouts
+import "../media"
 import "../theme"
 
 ListView {
-    id: genresList
+    id: root
     objectName: "genresView"
 
     Layout.fillWidth: true
     Layout.fillHeight: true
     model: library.genres
     clip: true
-    spacing: MichiTheme.space8
-    delegate: Text {
-        width: genresList.width
-        height: MichiTheme.controlHeightSmall
-        verticalAlignment: Text.AlignVCenter
-        text: modelData.name + " · " + modelData.trackCount + " tracks"
-        font.pixelSize: MichiTheme.fontSizeCaption
-        color: MichiTheme.textSecondary
-        elide: Text.ElideRight
+    spacing: MichiSpacing.xs
+    boundsBehavior: Flickable.StopAtBounds
+
+    delegate: MichiEntityRow {
+        required property var modelData
+        width: root.width
+        iconName: "genre"
+        title: modelData.name
+        technical: modelData.trackCount + " tracks"
+        interactive: false
     }
 }

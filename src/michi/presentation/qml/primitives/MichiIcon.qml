@@ -52,6 +52,22 @@ Item {
                 ctx.arc(cx, cy, w * .31, -.35, Math.PI * 1.65); line(ctx, cx, cy, cx, h * .31); line(ctx, cx, cy, w * .67, h * .58); line(ctx, w * .19, h * .2, w * .2, h * .4); line(ctx, w * .19, h * .2, w * .39, h * .21)
             } else if (root.name === "close") {
                 line(ctx, w * .25, h * .25, w * .75, h * .75); line(ctx, w * .75, h * .25, w * .25, h * .75)
+            } else if (root.name === "add") {
+                line(ctx, cx, h * .22, cx, h * .78); line(ctx, w * .22, cy, w * .78, cy)
+            } else if (root.name === "info") {
+                ctx.arc(cx, cy, w * .32, 0, Math.PI * 2); line(ctx, cx, h * .43, cx, h * .72); ctx.fillRect(cx - 1, h * .27, 2, 2)
+            } else if (root.name === "trash") {
+                ctx.rect(w * .3, h * .31, w * .4, h * .5); line(ctx, w * .23, h * .25, w * .77, h * .25); line(ctx, w * .4, h * .18, w * .6, h * .18); line(ctx, w * .42, h * .42, w * .42, h * .68); line(ctx, w * .58, h * .42, w * .58, h * .68)
+            } else if (root.name === "up") {
+                line(ctx, w * .24, h * .62, cx, h * .36); line(ctx, cx, h * .36, w * .76, h * .62)
+            } else if (root.name === "down") {
+                line(ctx, w * .24, h * .38, cx, h * .64); line(ctx, cx, h * .64, w * .76, h * .38)
+            } else if (root.name === "folder") {
+                ctx.moveTo(w * .17, h * .3); ctx.lineTo(w * .42, h * .3); ctx.lineTo(w * .5, h * .4); ctx.lineTo(w * .83, h * .4); ctx.lineTo(w * .83, h * .76); ctx.lineTo(w * .17, h * .76); ctx.closePath()
+            } else if (root.name === "artist") {
+                ctx.arc(cx, h * .34, w * .16, 0, Math.PI * 2); ctx.arc(cx, h * .83, w * .29, Math.PI, Math.PI * 2)
+            } else if (root.name === "genre") {
+                ctx.moveTo(w * .18, h * .31); ctx.lineTo(w * .61, h * .31); ctx.lineTo(w * .82, cy); ctx.lineTo(w * .61, h * .69); ctx.lineTo(w * .18, h * .69); ctx.closePath(); ctx.moveTo(w * .3, cy); ctx.arc(w * .3, cy, 1.5, 0, Math.PI * 2)
             } else if (root.name === "more") {
                 ctx.fillRect(w * .2, cy - 1, 2, 2); ctx.fillRect(cx - 1, cy - 1, 2, 2); ctx.fillRect(w * .8 - 2, cy - 1, 2, 2); return
             } else if (root.name === "home") {

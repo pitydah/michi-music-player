@@ -9,6 +9,10 @@ Item {
     property alias placeholderText: field.placeholderText
     signal edited(string text)
     signal clearRequested()
+    signal nextResultRequested()
+    signal previousResultRequested()
+    signal activateResultRequested()
+    signal escapeRequested()
     implicitHeight: MichiMetrics.controlMedium
     implicitWidth: 260
 
@@ -21,6 +25,26 @@ Item {
             leftPadding: MichiSpacing.xl + MichiSpacing.sm
             rightPadding: root.text.length > 0 ? MichiSpacing.xl + MichiSpacing.sm : MichiSpacing.md
             onTextEdited: root.edited(text)
+            Keys.onDownPressed: event => {
+                root.nextResultRequested()
+                event.accepted = true
+            }
+            Keys.onUpPressed: event => {
+                root.previousResultRequested()
+                event.accepted = true
+            }
+            Keys.onReturnPressed: event => {
+                root.activateResultRequested()
+                event.accepted = true
+            }
+            Keys.onEnterPressed: event => {
+                root.activateResultRequested()
+                event.accepted = true
+            }
+            Keys.onEscapePressed: event => {
+                root.escapeRequested()
+                event.accepted = true
+            }
         }
     }
     MichiIcon {

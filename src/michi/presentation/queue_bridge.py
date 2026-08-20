@@ -24,6 +24,21 @@ class QueueBridge(QObject):
     def _get_track_names(self) -> list[str]:
         return [t.title for t in self._service.state.tracks]
 
+    def _get_track_rows(self) -> list[dict]:
+        """Presentation-only queue projection.
+
+        Queue identity and ordering remain owned by ``QueueService``.  The
+        bridge only exposes stable, display-ready facts already present on
+        each canonical queue entry.
+        """
+        return [
+            {
+                "title": track.title or track.file_path.stem,
+                "path": str(track.file_path),
+            }
+            for track in self._service.state.tracks
+        ]
+
     def _get_current_index(self) -> int:
         return self._service.state.current_index
 
@@ -43,6 +58,7 @@ class QueueBridge(QObject):
         return self._service.state.shuffle_enabled
 
     trackNames = Property(list, _get_track_names, notify=queue_changed)
+    trackRows = Property(list, _get_track_rows, notify=queue_changed)
     currentIndex = Property(int, _get_current_index, notify=queue_changed)
     count = Property(int, _get_count, notify=queue_changed)
     hasNext = Property(bool, _get_has_next, notify=queue_changed)
@@ -57,6 +73,10 @@ class QueueBridge(QObject):
     @Slot(int, int)
     def move_track(self, from_index: int, to_index: int) -> None:
         self._service.move(from_index, to_index)
+
+    @Slot(int)
+    def remove_track(self, index: int) -> None:
+        self._service.remove(index)
 
     @Slot()
     def next_track(self) -> None:

@@ -1,70 +1,37 @@
 import QtQuick
 import QtQuick.Layouts
+import "../media"
 import "../theme"
 
 ListView {
-    id: libList
+    id: root
     objectName: "songsView"
 
     property string addTargetPath: ""
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    model: library.files
+    model: library.songRows
     clip: true
-    delegate: Rectangle {
-        width: libList.width
-        height: MichiTheme.controlHeightSmall
-        color: mouseArea.containsMouse ? MichiTheme.surfaceHover : "transparent"
-        radius: MichiTheme.radiusSmall
-        Text {
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.left: parent.left; anchors.leftMargin: MichiTheme.space8
-            text: modelData; color: MichiTheme.textSecondary
-            font.pixelSize: MichiTheme.fontSizeCaption
-            elide: Text.ElideRight; width: parent.width - MichiTheme.space16
-        }
-        MouseArea {
-            id: mouseArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: library.activate(index)
-        }
+    spacing: MichiSpacing.xs
+    boundsBehavior: Flickable.StopAtBounds
+    keyNavigationEnabled: true
 
-        Text {
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.right: parent.right
-            anchors.rightMargin: MichiTheme.space8
-            text: library.favoritePaths.indexOf(library.songPaths[index]) !== -1 ? "★" : "☆"
-            color: MichiTheme.warning
-            font.pixelSize: MichiTheme.fontSizeCaption
-        }
-        MouseArea {
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            width: 24
-            height: parent.height
-            cursorShape: Qt.PointingHandCursor
-            onClicked: library.toggle_favorite(library.songPaths[index])
-        }
-
-        Text {
-            anchors.right: parent.right
-            anchors.rightMargin: MichiTheme.space8 + 24
-            anchors.verticalCenter: parent.verticalCenter
-            text: "＋"
-            color: MichiTheme.warning
-            font.pixelSize: MichiTheme.fontSizeCaption
-        }
-        MouseArea {
-            anchors.right: parent.right
-            anchors.rightMargin: MichiTheme.space8 + 24
-            anchors.verticalCenter: parent.verticalCenter
-            width: 24
-            height: parent.height
-            cursorShape: Qt.PointingHandCursor
-            onClicked: addTargetPath = library.songPaths[index]
-        }
+    delegate: TrackRow {
+        required property int index
+        required property var modelData
+        width: root.width
+        numberText: String(index + 1)
+        title: modelData.title
+        artist: modelData.artist
+        album: modelData.album
+        durationMs: modelData.durationMs
+        quality: modelData.qualityLabel
+        favorite: library.favoritePaths.indexOf(modelData.path) !== -1
+        showFavorite: true
+        showAddToPlaylist: true
+        onActivated: library.activate(index)
+        onFavoriteToggled: library.toggle_favorite(modelData.path)
+        onAddToPlaylistRequested: root.addTargetPath = modelData.path
     }
 }

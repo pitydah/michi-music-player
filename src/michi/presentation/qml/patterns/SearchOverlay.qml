@@ -1,12 +1,17 @@
 import QtQuick
 import QtQuick.Layouts
 import "../controls"
+import "../media"
 import "../primitives"
 import "../theme"
 
 Item {
     id: root
     property bool opened: false
+    property int resultIndex: 0
+    readonly property int visibleTrackCount: Math.min(6, library.searchTrackCount)
+    readonly property int visibleAlbumCount: Math.min(6, library.searchAlbumCount)
+    readonly property int actionableResultCount: visibleTrackCount + visibleAlbumCount
     signal closeRequested()
     signal navigationRequested(string routeId)
     visible: opacity > 0
@@ -14,6 +19,27 @@ Item {
     enabled: opened
     Keys.onEscapePressed: closeRequested()
     Behavior on opacity { NumberAnimation { duration: MichiMotion.panel; easing.type: MichiMotion.outCubic } }
+
+    function moveResult(delta) {
+        if (actionableResultCount <= 0)
+            return
+        resultIndex = (resultIndex + delta + actionableResultCount) % actionableResultCount
+    }
+
+    function activateResult() {
+        if (resultIndex < visibleTrackCount) {
+            library.activate(resultIndex)
+            closeRequested()
+            navigationRequested("now_playing")
+            return
+        }
+        var albumIndex = resultIndex - visibleTrackCount
+        if (albumIndex >= 0 && albumIndex < visibleAlbumCount) {
+            library.select_album(library.albums[albumIndex].key)
+            closeRequested()
+            navigationRequested("library")
+        }
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -35,9 +61,16 @@ Item {
                 id: searchInput
                 Layout.fillWidth: true
                 text: library.searchQuery
-                placeholderText: "Search tracks, albums, artists and playlists"
-                onEdited: query => library.search(query)
+                placeholderText: "Search tracks, albums, artists and genres"
+                onEdited: query => {
+                    root.resultIndex = 0
+                    library.search(query)
+                }
                 onClearRequested: library.clear_search()
+                onNextResultRequested: root.moveResult(1)
+                onPreviousResultRequested: root.moveResult(-1)
+                onActivateResultRequested: root.activateResult()
+                onEscapeRequested: root.closeRequested()
             }
             MichiText {
                 visible: library.searchActive
@@ -69,13 +102,17 @@ Item {
 
                     MichiText { text: "Tracks"; role: "section"; visible: library.searchTrackCount > 0 }
                     Repeater {
-                        model: Math.min(6, library.searchTrackCount)
-                        delegate: MichiButton {
+                        model: root.visibleTrackCount
+                        delegate: TrackRow {
                             required property int index
                             Layout.fillWidth: true
-                            text: library.files[index]
-                            variant: "ghost"
-                            onClicked: {
+                            title: library.songRows[index].title
+                            artist: library.songRows[index].artist
+                            album: library.songRows[index].album
+                            durationMs: library.songRows[index].durationMs
+                            quality: library.songRows[index].qualityLabel
+                            selected: root.resultIndex === index
+                            onActivated: {
                                 library.activate(index)
                                 root.closeRequested()
                                 root.navigationRequested("now_playing")
@@ -85,12 +122,13 @@ Item {
 
                     MichiText { text: "Albums"; role: "section"; visible: library.searchAlbumCount > 0 }
                     Repeater {
-                        model: Math.min(6, library.searchAlbumCount)
+                        model: root.visibleAlbumCount
                         delegate: MichiButton {
                             required property int index
                             Layout.fillWidth: true
                             text: library.albums[index].title + " · " + library.albums[index].artist
                             variant: "ghost"
+                            selected: root.resultIndex === root.visibleTrackCount + index
                             onClicked: {
                                 library.select_album(library.albums[index].key)
                                 root.closeRequested()
@@ -102,24 +140,26 @@ Item {
                     MichiText { text: "Artists"; role: "section"; visible: library.searchArtistCount > 0 }
                     Repeater {
                         model: Math.min(6, library.searchArtistCount)
-                        delegate: MichiText {
+                        delegate: MichiEntityRow {
                             required property int index
                             Layout.fillWidth: true
-                            text: library.artists[index].name + " · "
-                                + library.artists[index].trackCount + " tracks"
-                            role: "secondary"
+                            iconName: "artist"
+                            title: library.artists[index].name
+                            technical: library.artists[index].trackCount + " tracks"
+                            interactive: false
                         }
                     }
 
                     MichiText { text: "Genres"; role: "section"; visible: library.searchGenreCount > 0 }
                     Repeater {
                         model: Math.min(6, library.searchGenreCount)
-                        delegate: MichiText {
+                        delegate: MichiEntityRow {
                             required property int index
                             Layout.fillWidth: true
-                            text: library.genres[index].name + " · "
-                                + library.genres[index].trackCount + " tracks"
-                            role: "secondary"
+                            iconName: "genre"
+                            title: library.genres[index].name
+                            technical: library.genres[index].trackCount + " tracks"
+                            interactive: false
                         }
                     }
                 }
@@ -127,5 +167,9 @@ Item {
         }
         Component.onCompleted: if (root.opened) searchInput.forceInputFocus()
     }
-    onOpenedChanged: if (opened) { forceActiveFocus(); searchInput.forceInputFocus() }
+    onOpenedChanged: if (opened) {
+        resultIndex = 0
+        forceActiveFocus()
+        searchInput.forceInputFocus()
+    }
 }

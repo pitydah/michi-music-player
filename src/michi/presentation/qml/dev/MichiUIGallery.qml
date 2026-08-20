@@ -94,9 +94,22 @@ MichiSurface {
                     TrackRow { Layout.fillWidth: true; title: "So What"; artist: "Miles Davis"; album: "Kind of Blue"; duration: "9:22"; playing: true }
                     TrackRow { Layout.fillWidth: true; title: "Freddie Freeloader"; artist: "Miles Davis"; album: "Kind of Blue"; duration: "9:46"; quality: "FLAC · 24-bit · 96 kHz" }
                     TrackRow { Layout.fillWidth: true; title: "Unavailable track"; unavailable: true; duration: "—" }
+                    MichiEntityRow { Layout.fillWidth: true; iconName: "artist"; title: "Miles Davis"; subtitle: "12 albums"; technical: "148 tracks" }
                     PlaybackProgress { Layout.fillWidth: true; position: 202; duration: 562 }
                     AudioQualityBadge { label: "FLAC · 24-bit · 96 kHz" }
                 }
+            }
+
+            InspectorPanel {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 210
+                title: "So What"
+                rows: [
+                    { label: "Format", value: "FLAC" },
+                    { label: "Sample rate", value: "96 kHz" },
+                    { label: "Bit depth", value: "24-bit" },
+                    { label: "Path", value: "/Music/Miles Davis/Kind of Blue/01 So What.flac" }
+                ]
             }
 
             MichiText { text: "System states"; role: "section" }
