@@ -147,6 +147,12 @@ ColumnLayout {
             clip: true
             spacing: MichiSpacing.xs
             boundsBehavior: Flickable.StopAtBounds
+            headerPositioning: ListView.InlineHeader
+
+            header: TrackTableHeader {
+                width: playlistTracksList.width
+                actionColumnWidth: 116
+            }
 
             delegate: RowLayout {
                 required property int index

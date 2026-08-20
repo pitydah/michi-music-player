@@ -17,9 +17,9 @@ Rectangle {
     implicitWidth: content.implicitWidth + MichiSpacing.md * 2
     implicitHeight: 24
     radius: MichiRadius.pill
-    color: Qt.rgba(root.toneColor.r, root.toneColor.g, root.toneColor.b, 0.09)
+    color: MichiSemanticColors.statusSurface(root.toneColor)
     border.width: 1
-    border.color: Qt.rgba(root.toneColor.r, root.toneColor.g, root.toneColor.b, 0.24)
+    border.color: MichiSemanticColors.statusBorder(root.toneColor)
     Accessible.role: Accessible.StaticText
     Accessible.name: root.text
 

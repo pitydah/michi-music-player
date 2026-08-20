@@ -13,6 +13,12 @@ ListView {
     clip: true
     spacing: MichiSpacing.xs
     boundsBehavior: Flickable.StopAtBounds
+    headerPositioning: ListView.InlineHeader
+
+    header: TrackTableHeader {
+        width: root.width
+        actionColumnWidth: 32
+    }
 
     delegate: TrackRow {
         required property int index

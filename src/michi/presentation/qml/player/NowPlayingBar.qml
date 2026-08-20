@@ -48,8 +48,8 @@ Item {
         color: MichiSemanticColors.backplane
         gradient: Gradient {
             orientation: Gradient.Vertical
-            GradientStop { position: 0; color: "#0B0E16" }
-            GradientStop { position: 1; color: "#07090E" }
+            GradientStop { position: 0; color: MichiPalette.playerSurfaceTop }
+            GradientStop { position: 1; color: MichiPalette.obsidianDeep }
         }
         border.width: 1
         border.color: MichiSemanticColors.borderSubtle
@@ -63,7 +63,7 @@ Item {
         gradient: Gradient {
             orientation: Gradient.Horizontal
             GradientStop { position: 0; color: "transparent" }
-            GradientStop { position: 0.5; color: Qt.rgba(0.298, 0.651, 1, 0.34) }
+            GradientStop { position: 0.5; color: MichiSemanticColors.auroraBlueGlow }
             GradientStop { position: 1; color: "transparent" }
         }
     }
@@ -79,13 +79,14 @@ Item {
         color: MichiSemanticColors.controlSurface
         gradient: Gradient {
             orientation: Gradient.Vertical
-            GradientStop { position: 0; color: trackHover.hovered ? "#171B29" : "#141824" }
-            GradientStop { position: 1; color: "#0D1018" }
+            GradientStop { position: 0; color: trackHover.hovered
+                ? MichiPalette.trackSurfaceHover : MichiPalette.trackSurfaceTop }
+            GradientStop { position: 1; color: MichiPalette.trackSurfaceBottom }
         }
         border.width: 1
         border.color: trackHover.hovered
-            ? Qt.rgba(0.129, 0.839, 0.902, 0.38)
-            : Qt.rgba(0.604, 0.486, 1, 0.24)
+            ? MichiSemanticColors.auroraCyanBorderStrong
+            : MichiSemanticColors.auroraPurpleBorderSoft
 
         Artwork {
             objectName: "trackArtwork"
@@ -329,8 +330,8 @@ Item {
         y: 82
         width: 36
         height: 36
-        iconName: "device"
-        accessibleName: "Local audio output"
+        iconName: "output-status"
+        accessibleName: "Local playback engine"
         enabled: false
     }
     MichiIconButton {
@@ -429,9 +430,9 @@ Item {
         width: 150
         height: 34
         radius: 13
-        color: Qt.rgba(0.604, 0.486, 1, 0.10)
+        color: MichiSemanticColors.auroraPurpleSurfaceSoft
         border.width: 1
-        border.color: Qt.rgba(0.604, 0.486, 1, 0.30)
+        border.color: MichiSemanticColors.auroraPurpleBorderMedium
 
         Row {
             anchors.centerIn: parent

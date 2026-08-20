@@ -116,6 +116,13 @@ ColumnLayout {
             clip: true
             spacing: MichiSpacing.xs
             boundsBehavior: Flickable.StopAtBounds
+            headerPositioning: ListView.InlineHeader
+
+            header: TrackTableHeader {
+                width: albumTracksList.width
+                showAlbumColumn: false
+                actionColumnWidth: 116
+            }
 
             delegate: TrackRow {
                 required property int index
@@ -126,6 +133,7 @@ ColumnLayout {
                     : String(modelData.trackNumber > 0 ? modelData.trackNumber : index + 1)
                 title: modelData.title || modelData.displayName
                 artist: modelData.artist
+                showAlbumColumn: false
                 durationMs: modelData.durationMs
                 quality: modelData.qualityLabel
                 playing: playback.currentPath === modelData.path

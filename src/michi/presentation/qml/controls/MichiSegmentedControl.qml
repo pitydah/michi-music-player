@@ -28,9 +28,10 @@ Rectangle {
                 Layout.fillHeight: true
                 text: root.compact ? "" : modelData.label
                 iconName: modelData.icon || ""
+                iconOnly: root.compact
+                accessibleName: modelData.label
                 variant: "ghost"
                 selected: root.currentValue === modelData.value
-                Accessible.name: modelData.label
                 onClicked: {
                     root.currentValue = modelData.value
                     root.selected(modelData.value)

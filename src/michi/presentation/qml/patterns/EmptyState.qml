@@ -23,9 +23,9 @@ Item {
             Layout.preferredHeight: 52
             Layout.bottomMargin: MichiSpacing.sm
             radius: MichiRadius.floating
-            color: Qt.rgba(0.298, 0.651, 1, 0.08)
+            color: MichiSemanticColors.surfaceSelected
             border.width: 1
-            border.color: Qt.rgba(0.298, 0.651, 1, 0.18)
+            border.color: MichiSemanticColors.auroraBorderSubtle
             MichiIcon {
                 anchors.centerIn: parent
                 width: MichiMetrics.iconLarge

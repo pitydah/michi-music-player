@@ -63,7 +63,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: Qt.rgba(0.02, 0.025, 0.04, 0.72)
+        color: MichiSemanticColors.scrimStrong
         MouseArea { anchors.fill: parent; onClicked: root.closeRequested() }
     }
     MichiGlassSurface {

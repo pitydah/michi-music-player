@@ -22,6 +22,8 @@ Rectangle {
     property bool showAddToPlaylist: false
     property bool showInspector: false
     property bool showRemove: false
+    property bool showArtistColumn: true
+    property bool showAlbumColumn: true
     signal activated()
     signal favoriteToggled()
     signal addToPlaylistRequested()
@@ -34,8 +36,8 @@ Rectangle {
         : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
     radius: MichiRadius.sm
     border.width: selected || playing ? 1 : 0
-    border.color: playing ? Qt.rgba(0.129, 0.839, 0.902, 0.28)
-        : Qt.rgba(0.298, 0.651, 1, 0.2)
+    border.color: playing ? MichiSemanticColors.auroraCyanBorder
+        : MichiSemanticColors.auroraBorderSubtle
     opacity: unavailable ? 0.55 : 1
     activeFocusOnTab: root.interactive && !root.unavailable
     Accessible.role: Accessible.ListItem
@@ -96,15 +98,34 @@ Rectangle {
                 technical: true
             }
         }
-        MichiText { Layout.fillWidth: true; text: root.title; role: "body"; elide: Text.ElideRight }
-        MichiText { Layout.preferredWidth: 160; text: root.artist; role: "secondary"; elide: Text.ElideRight }
-        MichiText { Layout.preferredWidth: 180; text: root.album; role: "secondary"; visible: !MichiThemeState.precisionMode; elide: Text.ElideRight }
+        MichiText {
+            Layout.fillWidth: true
+            text: root.title
+            role: "body"
+            font.weight: root.playing || root.selected ? Font.DemiBold : Font.Normal
+            elide: Text.ElideRight
+        }
+        MichiText {
+            visible: root.showArtistColumn
+            Layout.preferredWidth: 160
+            text: root.artist
+            role: "secondary"
+            elide: Text.ElideRight
+        }
+        MichiText {
+            Layout.preferredWidth: 180
+            text: root.album
+            role: "secondary"
+            visible: root.showAlbumColumn && !MichiThemeState.precisionMode
+            elide: Text.ElideRight
+        }
         MichiText { Layout.preferredWidth: 150; text: root.quality; role: "technical"; technical: true; visible: MichiThemeState.precisionMode; elide: Text.ElideRight }
         MichiText { Layout.preferredWidth: 48; text: root.durationText; role: "technical"; technical: true; horizontalAlignment: Text.AlignRight }
 
         MichiIconButton {
             visible: root.showFavorite
-            opacity: hover.hovered || root.activeFocus || root.selected || root.favorite ? 1 : 0.46
+            opacity: hover.hovered || root.activeFocus || activeFocus
+                || root.selected || root.favorite ? 1 : 0.18
             Layout.preferredWidth: 32
             Layout.preferredHeight: 32
             iconName: "heart"
@@ -114,7 +135,8 @@ Rectangle {
         }
         MichiIconButton {
             visible: root.showAddToPlaylist
-            opacity: hover.hovered || root.activeFocus || root.selected ? 1 : 0.46
+            opacity: hover.hovered || root.activeFocus || activeFocus
+                || root.selected ? 1 : 0.18
             Layout.preferredWidth: 32
             Layout.preferredHeight: 32
             iconName: "add"
@@ -123,7 +145,8 @@ Rectangle {
         }
         MichiIconButton {
             visible: root.showInspector
-            opacity: hover.hovered || root.activeFocus || root.selected ? 1 : 0.46
+            opacity: hover.hovered || root.activeFocus || activeFocus
+                || root.selected ? 1 : 0.18
             Layout.preferredWidth: 32
             Layout.preferredHeight: 32
             iconName: "info"
@@ -132,7 +155,8 @@ Rectangle {
         }
         MichiIconButton {
             visible: root.showRemove
-            opacity: hover.hovered || root.activeFocus || root.selected ? 1 : 0.46
+            opacity: hover.hovered || root.activeFocus || activeFocus
+                || root.selected ? 1 : 0.18
             Layout.preferredWidth: 32
             Layout.preferredHeight: 32
             iconName: "trash"
@@ -148,6 +172,17 @@ Rectangle {
         height: Math.max(16, parent.height - MichiSpacing.md)
         radius: 1
         color: MichiPalette.auroraCyan
+    }
+    Rectangle {
+        visible: !root.playing && !root.selected
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: MichiSpacing.xl
+        anchors.rightMargin: MichiSpacing.sm
+        height: 1
+        color: MichiSemanticColors.borderSubtle
+        opacity: hover.hovered ? 0 : 0.72
     }
     Behavior on color {
         enabled: !MichiAccessibility.reducedMotion

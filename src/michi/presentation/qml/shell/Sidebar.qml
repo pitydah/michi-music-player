@@ -38,15 +38,8 @@ MichiGlassSurface {
 
             contentItem: RowLayout {
                 spacing: MichiSpacing.md
-                Rectangle {
-                    visible: routeItem._active
-                    Layout.preferredWidth: 2
-                    Layout.preferredHeight: 20
-                    radius: 2
-                    color: MichiPalette.auroraBlue
-                }
                 MichiIcon {
-                    Layout.leftMargin: routeItem._active ? MichiSpacing.sm : MichiSpacing.md
+                    Layout.leftMargin: MichiSpacing.md
                     name: modelData.icon
                     Layout.preferredWidth: MichiMetrics.iconMedium
                     Layout.preferredHeight: MichiMetrics.iconMedium
@@ -68,7 +61,7 @@ MichiGlassSurface {
                     : routeItem._active ? MichiSemanticColors.surfaceSelected
                     : routeItem.hovered || routeItem.visualFocus ? MichiSemanticColors.surfaceHover : "transparent"
                 border.width: routeItem._active ? 1 : 0
-                border.color: Qt.rgba(0.298, 0.651, 1, 0.18)
+                border.color: MichiSemanticColors.auroraBorderSubtle
                 Rectangle {
                     visible: routeItem._active
                     anchors.left: parent.left
@@ -102,9 +95,9 @@ MichiGlassSurface {
                     Layout.preferredWidth: 28
                     Layout.preferredHeight: 28
                     radius: MichiRadius.md
-                    color: Qt.rgba(0.604, 0.486, 1, 0.14)
+                    color: MichiSemanticColors.auroraPurpleSurface
                     border.width: 1
-                    border.color: Qt.rgba(0.604, 0.486, 1, 0.34)
+                    border.color: MichiSemanticColors.auroraPurpleBorder
                     MichiText {
                         anchors.centerIn: parent
                         text: "M"
@@ -129,6 +122,17 @@ MichiGlassSurface {
                     }
                 }
             }
+        }
+
+        MichiText {
+            visible: !root.compact
+            Layout.leftMargin: MichiSpacing.md
+            Layout.topMargin: MichiSpacing.sm
+            Layout.bottomMargin: MichiSpacing.xs
+            text: "NAVIGATION"
+            role: "technical"
+            technical: true
+            color: MichiPalette.textMuted
         }
 
         Repeater {

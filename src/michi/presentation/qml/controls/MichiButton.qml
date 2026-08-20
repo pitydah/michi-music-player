@@ -7,18 +7,21 @@ Button {
     id: root
     property string variant: "primary"
     property string iconName: ""
+    property string accessibleName: text
+    property bool iconOnly: false
     property bool selected: checked
     readonly property bool primary: variant === "primary"
     readonly property bool ghost: variant === "ghost"
 
     implicitHeight: MichiMetrics.controlMedium
-    implicitWidth: Math.max(72, contentRow.implicitWidth + MichiSpacing.xl * 2)
+    implicitWidth: iconOnly ? implicitHeight
+        : Math.max(72, contentRow.implicitWidth + MichiSpacing.xl * 2)
     leftPadding: MichiSpacing.md
     rightPadding: MichiSpacing.md
     focusPolicy: Qt.StrongFocus
     hoverEnabled: true
     Accessible.role: Accessible.Button
-    Accessible.name: text
+    Accessible.name: accessibleName
 
     contentItem: Row {
         id: contentRow
@@ -35,6 +38,7 @@ Button {
         MichiText {
             id: label
             text: root.text
+            visible: !root.iconOnly && text.length > 0
             role: "secondary"
             color: !root.enabled ? MichiPalette.textDisabled
                 : root.primary ? MichiPalette.obsidian
@@ -70,7 +74,8 @@ Button {
             anchors.leftMargin: parent.radius
             anchors.rightMargin: parent.radius
             height: 1
-            color: root.primary ? Qt.rgba(1, 1, 1, 0.32) : MichiPalette.auroraCyan
+            color: root.primary ? MichiSemanticColors.innerHighlightStrong
+                : MichiPalette.auroraCyan
             opacity: root.pressed ? 0.18 : 0.55
         }
         Behavior on color {
@@ -86,5 +91,9 @@ Button {
             NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
         }
         MichiFocusRing { visualFocus: root.visualFocus }
+    }
+    MichiTooltip {
+        visible: root.iconOnly && root.hovered && root.accessibleName.length > 0
+        text: root.accessibleName
     }
 }

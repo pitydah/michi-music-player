@@ -33,7 +33,12 @@ Item {
 
         LibraryHeader { Layout.fillWidth: true }
 
-        LibraryToolbar { Layout.fillWidth: true }
+        LibraryToolbar {
+            Layout.fillWidth: true
+            currentTab: root.currentTab
+            albumMode: root.albumMode
+            onAlbumModeRequested: mode => root.albumMode = mode
+        }
 
         LibraryTabs {
             Layout.fillWidth: true

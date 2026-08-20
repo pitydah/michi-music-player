@@ -43,7 +43,7 @@ Item {
             radius: 24
             color: MichiSemanticColors.controlSurfaceStrong
             border.width: 1
-            border.color: Qt.rgba(0.129, 0.839, 0.902, 0.2)
+            border.color: MichiSemanticColors.auroraCyanBorderSubtle
             MichiIcon {
                 anchors.centerIn: parent
                 name: "artist"

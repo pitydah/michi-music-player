@@ -8,9 +8,9 @@ Rectangle {
     implicitWidth: qualityText.implicitWidth + MichiSpacing.md * 2
     implicitHeight: 24
     radius: MichiRadius.pill
-    color: Qt.rgba(0.129, 0.839, 0.902, 0.08)
+    color: MichiSemanticColors.auroraCyanSurface
     border.width: 1
-    border.color: Qt.rgba(0.129, 0.839, 0.902, 0.2)
+    border.color: MichiSemanticColors.auroraCyanBorder
     visible: label.length > 0
     MichiText {
         id: qualityText

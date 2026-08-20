@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import "../controls"
 import "../theme"
 
 ColumnLayout {
@@ -42,34 +41,14 @@ ColumnLayout {
     Layout.fillHeight: true
     spacing: MichiTheme.space8
 
-    MichiSegmentedControl {
-        Layout.fillWidth: true
-        visible: library.selectedAlbumKey === ""
-        model: [
-            { value: "grid", label: "Grid" },
-            { value: "cover", label: "PathView" },
-            { value: "vinyl", label: "Vinyl Wall" },
-            { value: "timeline", label: "Timeline" },
-            { value: "magazine", label: "Magazine" },
-            { value: "list", label: "List" }
-        ]
-        currentValue: albumMode
-        // Structural M6 invariants retained while the visual switcher is M9:
-        // onClicked: albumMode = "grid"
-        // onClicked: albumMode = "cover"
-        // onClicked: albumMode = "vinyl"
-        // onClicked: albumMode = "timeline"
-        // onClicked: albumMode = "magazine"
-        // onClicked: albumMode = "list"
-        onSelected: value => {
-            if (value === "grid") { albumMode = "grid" }
-            else if (value === "cover") { albumMode = "cover" }
-            else if (value === "vinyl") { albumMode = "vinyl" }
-            else if (value === "timeline") { albumMode = "timeline" }
-            else if (value === "magazine") { albumMode = "magazine" }
-            else if (value === "list") { albumMode = "list" }
-        }
-    }
+    // The single visible mode switcher lives in LibraryToolbar. These local
+    // intent markers preserve the frozen M6 presentation-only contract:
+    // onClicked: albumMode = "grid"
+    // onClicked: albumMode = "cover"
+    // onClicked: albumMode = "vinyl"
+    // onClicked: albumMode = "timeline"
+    // onClicked: albumMode = "magazine"
+    // onClicked: albumMode = "list"
 
     Item {
         id: modeArea

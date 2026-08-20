@@ -20,7 +20,7 @@ Rectangle {
         : hover.hovered && root.interactive ? MichiSemanticColors.surfaceHover
         : "transparent"
     border.width: root.selected ? 1 : 0
-    border.color: Qt.rgba(0.298, 0.651, 1, 0.2)
+    border.color: MichiSemanticColors.auroraBorderSubtle
     activeFocusOnTab: root.interactive
     Accessible.role: Accessible.ListItem
     Accessible.name: root.title + (root.subtitle.length > 0 ? ", " + root.subtitle : "")

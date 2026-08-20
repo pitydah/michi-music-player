@@ -3,7 +3,13 @@ import QtQuick
 
 QtObject {
     readonly property color obsidian: "#090B11"
+    readonly property color obsidianDeep: "#07090E"
+    readonly property color obsidianRaised: "#0D111B"
     readonly property color graphite: "#14171C"
+    readonly property color playerSurfaceTop: "#0B0E16"
+    readonly property color trackSurfaceTop: "#141824"
+    readonly property color trackSurfaceHover: "#171B29"
+    readonly property color trackSurfaceBottom: "#0D1018"
     readonly property color smoke: "#1F232A"
     readonly property color smokeRaised: "#282D36"
     readonly property color textPrimary: "#ECEEF3"

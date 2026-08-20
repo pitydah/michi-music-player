@@ -22,9 +22,9 @@ Item {
         color: MichiSemanticColors.backplane
         gradient: Gradient {
             orientation: Gradient.Vertical
-            GradientStop { position: 0; color: "#0D111B" }
+            GradientStop { position: 0; color: MichiPalette.obsidianRaised }
             GradientStop { position: 0.42; color: MichiSemanticColors.backplane }
-            GradientStop { position: 1; color: "#07090E" }
+            GradientStop { position: 1; color: MichiPalette.obsidianDeep }
         }
     }
 
@@ -85,7 +85,10 @@ Item {
     }
 
     Loader {
-        anchors.fill: parent
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: nowPlayingBar.top
         z: 80
         active: root.currentRoute === "queue"
         visible: active

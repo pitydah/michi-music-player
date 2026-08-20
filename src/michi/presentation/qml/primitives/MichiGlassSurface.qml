@@ -10,12 +10,11 @@ Rectangle {
     property color accentColor: MichiPalette.auroraBlue
     readonly property real materialOpacity: MichiThemeState.glassQuality === "low" ? 0.96
         : MichiThemeState.glassQuality === "high" ? 0.76 : 0.86
-    readonly property color materialTop: elevation === "modal" || elevation === "elevated"
-        ? Qt.rgba(0.086, 0.102, 0.142, Math.min(1, root.materialOpacity + 0.05))
-        : Qt.rgba(0.073, 0.087, 0.12, Math.min(1, root.materialOpacity + 0.02))
-    readonly property color materialBottom: elevation === "modal" || elevation === "elevated"
-        ? Qt.rgba(0.052, 0.062, 0.088, Math.min(1, root.materialOpacity + 0.08))
-        : Qt.rgba(0.049, 0.059, 0.083, root.materialOpacity)
+    readonly property bool raised: elevation === "modal" || elevation === "elevated"
+    readonly property color materialTop: MichiSemanticColors.glassTop(
+        root.raised, root.materialOpacity)
+    readonly property color materialBottom: MichiSemanticColors.glassBottom(
+        root.raised, root.materialOpacity)
 
     color: root.materialBottom
     gradient: Gradient {
@@ -27,7 +26,7 @@ Rectangle {
     border.width: 1
     border.color: MichiAccessibility.highContrast
         ? MichiSemanticColors.borderStrong
-        : root.accented ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.22)
+        : root.accented ? MichiSemanticColors.accentBorder(root.accentColor)
         : MichiSemanticColors.borderSubtle
 
     Rectangle {
@@ -58,7 +57,7 @@ Rectangle {
         anchors.leftMargin: root.radius
         anchors.rightMargin: root.radius
         height: 1
-        color: Qt.rgba(0, 0, 0, 0.22)
+        color: MichiSemanticColors.glassShadow
     }
 
     Item {

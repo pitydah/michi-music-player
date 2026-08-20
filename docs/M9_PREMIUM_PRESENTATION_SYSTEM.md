@@ -4,9 +4,9 @@ Implementation contract for **Michi UI Design Canon 2.0 — Feline Hi-Fi Desktop
 
 **Authority:** approved product direction, 2026-08-20.
 **Boundary:** presentation only. M4–M8 domain/application behavior remains frozen.
-**Current work package:** `M9-PREMIUM-05` — `REVIEW` (ultra-premium detail
-pass over shared materials, interaction states, hierarchy, library workflow,
-contextual Queue and the geometry-protected NowPlayingBar).
+**Current work package:** `M9-PREMIUM-07` — `REVIEW` (ultra-premium workspace
+pass over Library navigation, contextual tools, audio tables, shell hierarchy,
+Queue behavior and the geometry-protected NowPlayingBar).
 
 ## Product invariants
 
@@ -130,3 +130,26 @@ server.
   shell and remain explicit and actionable.
 - NowPlayingBar gains refined Aurora progress, volume, hover and edge-lighting
   while every golden landmark and visible control remains unchanged.
+
+## M9-PREMIUM-07 workspace refinement
+
+- Library now has one contextual toolbar: its title, result count, search hint,
+  source controls and precision tools adapt to the active tab instead of
+  presenting a permanently expanded strip of unrelated actions.
+- The six canonical album presentations live in one icon-first view switcher.
+  Each option retains an accessible name and tooltip; the duplicate selector
+  previously rendered by the Albums view has been removed.
+- Density selection is compact and visual, while its labels remain available
+  to assistive technology. Icon-only controls share a square hit target,
+  focus treatment and tooltip behavior through `MichiButton`.
+- Audio collections share a semantic table header and column contract. Album
+  and artist detail hide redundant columns without forking the row component,
+  and row actions remain quiet until hover, focus or selection.
+- Sidebar navigation has one active-route rail and stronger optical alignment;
+  Settings uses the shared page header and a centered desktop content width.
+- Queue is constrained above the persistent NowPlayingBar, so opening the
+  contextual drawer can never create or obscure a second transport surface.
+- NowPlayingBar keeps its canonical geometry while local-output status and
+  device selection use distinct icons and descriptions. Its local colors,
+  along with the refined shell and row states, are sourced from semantic
+  tokens rather than hardcoded values.

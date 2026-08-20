@@ -25,7 +25,8 @@ Item {
         width: parent.width - 4
         height: parent.height - 4
         radius: MichiRadius.lg
-        color: Qt.rgba(0, 0, 0, tap.hovered ? 0.26 : 0.12)
+        color: tap.hovered ? MichiSemanticColors.artworkScrimHover
+            : MichiSemanticColors.artworkScrim
         opacity: root.selected || tap.hovered ? 1 : 0
         Behavior on opacity {
             enabled: !MichiAccessibility.reducedMotion

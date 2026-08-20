@@ -11,7 +11,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: Qt.rgba(0.02, 0.025, 0.04, 0.62)
+        color: MichiSemanticColors.scrim
         opacity: root.revealed ? 1 : 0
         Behavior on opacity {
             enabled: !MichiAccessibility.reducedMotion

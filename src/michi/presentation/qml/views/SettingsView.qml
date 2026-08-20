@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "../controls" as Controls
+import "../patterns"
 import "../theme"
 import "../ui"
 
@@ -12,26 +13,14 @@ Item {
 
         ColumnLayout {
             id: contentColumn
-            width: Math.min(parent.width, 920)
+            width: Math.min(parent.width, 1180)
+            anchors.horizontalCenter: parent.horizontalCenter
             spacing: MichiTheme.space24
 
-            // ── Header ──────────────────────────────────────
-            ColumnLayout {
+            PageHeader {
                 Layout.fillWidth: true
-                spacing: MichiTheme.space8
-
-                Text {
-                    text: "Settings"
-                    font.pixelSize: MichiTheme.fontSizeHeading
-                    font.weight: MichiTheme.fontWeightBold
-                    color: MichiTheme.textPrimary
-                }
-
-                Text {
-                    text: "Configure existing Michi capabilities."
-                    font.pixelSize: MichiTheme.fontSizeBody
-                    color: MichiTheme.textSecondary
-                }
+                title: "Settings"
+                subtitle: "Configure appearance, playback and your local library."
             }
 
             // ── Playback ────────────────────────────────────

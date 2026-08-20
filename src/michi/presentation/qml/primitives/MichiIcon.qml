@@ -44,6 +44,8 @@ Item {
                 ctx.fillRect(w * .22, h * .25, w * .08, h * .5); ctx.moveTo(w * .72, h * .25); ctx.lineTo(w * .34, cy); ctx.lineTo(w * .72, h * .75); ctx.closePath(); ctx.fill(); return
             } else if (root.name === "next") {
                 ctx.fillRect(w * .7, h * .25, w * .08, h * .5); ctx.moveTo(w * .28, h * .25); ctx.lineTo(w * .66, cy); ctx.lineTo(w * .28, h * .75); ctx.closePath(); ctx.fill(); return
+            } else if (root.name === "output-status") {
+                ctx.moveTo(w * .18, h * .42); ctx.lineTo(w * .34, h * .42); ctx.lineTo(w * .52, h * .26); ctx.lineTo(w * .52, h * .74); ctx.lineTo(w * .34, h * .58); ctx.lineTo(w * .18, h * .58); ctx.closePath(); ctx.moveTo(w * .64, h * .4); ctx.arc(w * .57, cy, w * .18, -.65, .65); ctx.moveTo(w * .79, h * .24); ctx.arc(w * .62, cy, w * .3, -.85, .85)
             } else if (root.name === "volume" || root.name === "mute") {
                 ctx.moveTo(w * .2, h * .42); ctx.lineTo(w * .36, h * .42); ctx.lineTo(w * .55, h * .25); ctx.lineTo(w * .55, h * .75); ctx.lineTo(w * .36, h * .58); ctx.lineTo(w * .2, h * .58); ctx.closePath();
                 if (root.name === "volume") { ctx.moveTo(w * .65, h * .38); ctx.arc(w * .58, cy, w * .2, -.7, .7) }
@@ -52,6 +54,24 @@ Item {
                 ctx.arc(w * .43, h * .43, w * .24, 0, Math.PI * 2); line(ctx, w * .61, h * .61, w * .82, h * .82)
             } else if (root.name === "library") {
                 ctx.rect(w * .2, h * .22, w * .15, h * .58); ctx.rect(w * .43, h * .16, w * .15, h * .64); ctx.rect(w * .66, h * .28, w * .15, h * .52)
+            } else if (root.name === "view-grid") {
+                ctx.rect(w * .18, h * .18, w * .25, h * .25); ctx.rect(w * .57, h * .18, w * .25, h * .25); ctx.rect(w * .18, h * .57, w * .25, h * .25); ctx.rect(w * .57, h * .57, w * .25, h * .25)
+            } else if (root.name === "view-path") {
+                ctx.rect(w * .2, h * .29, w * .42, h * .48); ctx.rect(w * .38, h * .2, w * .42, h * .48); line(ctx, w * .26, h * .68, w * .52, h * .68)
+            } else if (root.name === "view-vinyl") {
+                ctx.arc(cx, cy, w * .32, 0, Math.PI * 2); ctx.moveTo(w * .62, cy); ctx.arc(cx, cy, w * .12, 0, Math.PI * 2); ctx.moveTo(cx + 1, cy); ctx.arc(cx, cy, 1.5, 0, Math.PI * 2)
+            } else if (root.name === "view-timeline") {
+                line(ctx, w * .3, h * .16, w * .3, h * .84); ctx.moveTo(w * .36, h * .28); ctx.arc(w * .3, h * .28, w * .06, 0, Math.PI * 2); ctx.moveTo(w * .36, h * .52); ctx.arc(w * .3, h * .52, w * .06, 0, Math.PI * 2); ctx.moveTo(w * .36, h * .76); ctx.arc(w * .3, h * .76, w * .06, 0, Math.PI * 2); line(ctx, w * .43, h * .28, w * .8, h * .28); line(ctx, w * .43, h * .52, w * .72, h * .52); line(ctx, w * .43, h * .76, w * .78, h * .76)
+            } else if (root.name === "view-magazine") {
+                ctx.rect(w * .17, h * .2, w * .4, h * .6); ctx.rect(w * .64, h * .2, w * .19, h * .22); line(ctx, w * .64, h * .53, w * .83, h * .53); line(ctx, w * .64, h * .66, w * .83, h * .66); line(ctx, w * .64, h * .79, w * .78, h * .79)
+            } else if (root.name === "view-list") {
+                ctx.rect(w * .18, h * .2, w * .13, h * .13); ctx.rect(w * .18, h * .44, w * .13, h * .13); ctx.rect(w * .18, h * .68, w * .13, h * .13); line(ctx, w * .4, h * .265, w * .82, h * .265); line(ctx, w * .4, h * .505, w * .82, h * .505); line(ctx, w * .4, h * .745, w * .82, h * .745)
+            } else if (root.name === "density-comfortable") {
+                line(ctx, w * .22, h * .28, w * .78, h * .28); line(ctx, w * .22, h * .72, w * .78, h * .72)
+            } else if (root.name === "density-standard") {
+                line(ctx, w * .22, h * .25, w * .78, h * .25); line(ctx, w * .22, cy, w * .78, cy); line(ctx, w * .22, h * .75, w * .78, h * .75)
+            } else if (root.name === "density-compact") {
+                line(ctx, w * .22, h * .22, w * .78, h * .22); line(ctx, w * .22, h * .41, w * .78, h * .41); line(ctx, w * .22, h * .59, w * .78, h * .59); line(ctx, w * .22, h * .78, w * .78, h * .78)
             } else if (root.name === "queue") {
                 line(ctx, w * .2, h * .28, w * .72, h * .28); line(ctx, w * .2, h * .5, w * .72, h * .5); line(ctx, w * .2, h * .72, w * .55, h * .72); ctx.moveTo(w * .66, h * .62); ctx.lineTo(w * .84, h * .72); ctx.lineTo(w * .66, h * .82); ctx.closePath()
             } else if (root.name === "shuffle") {

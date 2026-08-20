@@ -54,7 +54,7 @@ Flickable {
                     color: tabButton.checked ? MichiSemanticColors.surfaceSelected
                         : tabButton.hovered ? MichiSemanticColors.surfaceHover : "transparent"
                     border.width: tabButton.checked ? 1 : 0
-                    border.color: Qt.rgba(0.298, 0.651, 1, 0.2)
+                    border.color: MichiSemanticColors.auroraBorderSubtle
                     scale: tabButton.pressed ? 0.98 : 1
                     Rectangle {
                         visible: tabButton.checked

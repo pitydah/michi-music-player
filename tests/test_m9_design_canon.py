@@ -1,5 +1,6 @@
 """Static acceptance gates for the Michi UI Design Canon 2.0."""
 
+import re
 from pathlib import Path
 
 QML = Path("src/michi/presentation/qml")
@@ -256,3 +257,62 @@ def test_playing_indicator_is_bound_on_library_track_surfaces() -> None:
         "views/PlaylistsView.qml",
     ):
         assert "playback.currentPath" in _text(view)
+
+
+def test_premium_library_workspace_is_contextual_and_single_source() -> None:
+    toolbar = _text("views/LibraryToolbar.qml")
+    albums = _text("views/AlbumsView.qml")
+    library = _text("views/LibraryView.qml")
+    assert 'objectName: "albumViewSwitcher"' in toolbar
+    for icon in (
+        "view-grid",
+        "view-path",
+        "view-vinyl",
+        "view-timeline",
+        "view-magazine",
+        "view-list",
+    ):
+        assert f'icon: "{icon}"' in toolbar
+    assert "sourceExpanded" in toolbar
+    assert "albumModeRequested" in toolbar
+    assert "MichiSegmentedControl {" not in albums
+    assert "onAlbumModeRequested" in library
+
+
+def test_audio_surfaces_share_a_semantic_table_header() -> None:
+    assert (QML / "media" / "TrackTableHeader.qml").is_file()
+    for view in (
+        "views/SongsView.qml",
+        "views/FavoritesView.qml",
+        "views/HistoryView.qml",
+        "views/RecentlyAddedView.qml",
+        "views/AlbumDetailView.qml",
+        "views/ArtistDetailView.qml",
+        "views/PlaylistsView.qml",
+    ):
+        assert "TrackTableHeader" in _text(view)
+    row = _text("media/TrackRow.qml")
+    assert "showArtistColumn" in row
+    assert "showAlbumColumn" in row
+    assert "MichiSemanticColors.surfaceSelected" in row
+
+
+def test_queue_respects_the_player_and_output_controls_are_distinct() -> None:
+    shell = _text("shell/AppShell.qml")
+    bar = _text("player/NowPlayingBar.qml")
+    assert shell.count("anchors.bottom: nowPlayingBar.top") >= 2
+    assert "Qt.rgba" not in bar
+    assert "#" not in bar
+    assert 'iconName: "output-status"' in bar
+    assert 'iconName: "device"' in bar
+
+
+def test_presentation_colors_are_owned_by_the_theme_layer() -> None:
+    offenders = []
+    for path in QML.rglob("*.qml"):
+        if path.parent.name == "theme":
+            continue
+        source = path.read_text()
+        if "Qt.rgba" in source or re.search(r'"#[0-9A-Fa-f]{6,8}"', source):
+            offenders.append(str(path.relative_to(QML)))
+    assert offenders == []
