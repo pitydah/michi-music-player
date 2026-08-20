@@ -79,10 +79,15 @@ MichiGlassSurface {
 
             MichiStatusChip {
                 objectName: "searchNoResultsText"
-                visible: library.searchActive
-                text: library.searchTotalCount === 0
-                    ? "No results" : library.searchTotalCount + " results"
-                tone: library.searchTotalCount === 0 ? "warning" : "active"
+                visible: library.searchActive && library.searchTotalCount === 0
+                text: "No results"
+                tone: "warning"
+            }
+
+            MichiStatusChip {
+                visible: library.searchActive && library.searchTotalCount > 0
+                text: library.searchTotalCount + " results"
+                tone: "active"
             }
 
             MichiIconButton {
