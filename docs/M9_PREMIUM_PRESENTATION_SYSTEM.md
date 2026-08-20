@@ -93,8 +93,9 @@ server.
 - Track context menus expose only implemented actions: Play, Favorite,
   Add to playlist, Properties, and Remove where available.
 - Search result navigation covers every required actionable group.
-- Artwork Focus Mode renders only current artwork/metadata/progress/transport;
-  no visualizer or fabricated output data is introduced.
+- The Now Playing route and Artwork Focus Mode render only current artwork and
+  metadata. Progress, transport and volume remain exclusively in the canonical
+  persistent NowPlayingBar, so entering the route never creates a second player.
 - `player/NowPlayingBar.qml` preserves the supplied geometry and control
   distribution while binding only to real playback/Queue capabilities. The
   fixed local-output controls are explicitly unavailable; the badge reports

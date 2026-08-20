@@ -227,6 +227,24 @@ def test_artist_detail_focus_mode_and_contextual_queue_are_real() -> None:
     assert "MichiContextMenu" in track_row
 
 
+def test_now_playing_page_never_duplicates_the_persistent_transport() -> None:
+    page = _text("views/NowPlayingView.qml")
+    focus = _text("media/ArtworkFocusMode.qml")
+    assert "ArtworkFocusMode" in page
+    assert (
+        'message: "Choose a track from your library. Playback controls remain '
+        'in the persistent bar below."' in page
+    )
+    for duplicate in (
+        "NowPlayingPanel",
+        "PlaybackControls",
+        "PlaybackProgress",
+        "VolumeControl",
+    ):
+        assert duplicate not in page
+        assert duplicate not in focus
+
+
 def test_playing_indicator_is_bound_on_library_track_surfaces() -> None:
     for view in (
         "views/SongsView.qml",

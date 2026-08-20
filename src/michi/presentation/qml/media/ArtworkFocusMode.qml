@@ -6,13 +6,16 @@ import "../theme"
 
 ColumnLayout {
     id: root
+    property bool immersive: false
     spacing: MichiSpacing.lg
 
     Item { Layout.fillHeight: true }
 
     Artwork {
         Layout.alignment: Qt.AlignHCenter
-        Layout.preferredWidth: Math.min(360, Math.max(220, root.width * .42))
+        Layout.preferredWidth: Math.min(root.immersive ? 520 : 400,
+                                        Math.max(root.immersive ? 280 : 220,
+                                                 root.width * (root.immersive ? .52 : .40)))
         Layout.preferredHeight: Layout.preferredWidth
         sourcePath: playback.artworkPath
         fallbackText: playback.title
@@ -46,30 +49,6 @@ ColumnLayout {
             horizontalAlignment: Text.AlignHCenter
             visible: text.length > 0
         }
-    }
-
-    PlaybackProgress {
-        Layout.alignment: Qt.AlignHCenter
-        Layout.preferredWidth: Math.min(620, root.width * .76)
-        position: playback.position
-        duration: Math.max(playback.duration, 1)
-        seekEnabled: playback.duration > 0
-        onSeekRequested: seconds => playback.seek_seconds(seconds)
-    }
-
-    PlaybackControls {
-        Layout.alignment: Qt.AlignHCenter
-        playing: playback.status === "playing"
-        canPlay: playback.fileName !== ""
-        canPause: playback.status === "playing"
-        canStop: playback.status !== "stopped"
-        canPrev: queue.hasPrevious
-        canNext: queue.hasNext
-        onPlayClicked: playback.play()
-        onPauseClicked: playback.pause()
-        onStopClicked: playback.stop()
-        onPrevClicked: queue.previous_track()
-        onNextClicked: queue.next_track()
     }
 
     Item { Layout.fillHeight: true }
