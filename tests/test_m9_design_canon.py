@@ -118,3 +118,53 @@ def test_search_and_playback_errors_are_actionable_surfaces() -> None:
     assert "playback.errorMessage" in now_playing
     assert "library.searchTrackCount" in overlay
     assert "Keys.onEscapePressed" in overlay
+
+
+def test_library_delegates_use_shared_media_rows() -> None:
+    track_views = (
+        "views/SongsView.qml",
+        "views/FavoritesView.qml",
+        "views/HistoryView.qml",
+        "views/RecentlyAddedView.qml",
+    )
+    for view in track_views:
+        assert "delegate: TrackRow" in _text(view)
+    for view in (
+        "views/ArtistsView.qml",
+        "views/GenresView.qml",
+        "views/FoldersView.qml",
+    ):
+        assert "delegate: MichiEntityRow" in _text(view)
+    assert "delegate: MichiAlbumRow" in _text("views/AlbumListView.qml")
+
+
+def test_density_precision_and_inspector_are_real_surfaces() -> None:
+    toolbar = _text("views/LibraryToolbar.qml")
+    album_detail = _text("views/AlbumDetailView.qml")
+    assert "MichiThemeState.density" in toolbar
+    assert "MichiThemeState.precisionMode" in toolbar
+    assert "InspectorPanel" in album_detail
+    assert "library.albumTechnicalSummary" in album_detail
+    assert 'text: "Add to queue"' not in album_detail
+
+
+def test_queue_panel_exposes_existing_m4_intents() -> None:
+    queue_view = _text("views/QueueView.qml")
+    queue_panel = _text("components/QueuePanel.qml")
+    bridge = Path("src/michi/presentation/queue_bridge.py").read_text()
+    assert "MichiGlassSurface" in queue_panel
+    assert "queue.move_track" in queue_view
+    assert "queue.remove_track" in queue_view
+    assert "queue.clear_queue" in queue_view
+    assert "def remove_track" in bridge
+
+
+def test_search_overlay_supports_keyboard_result_navigation() -> None:
+    field = _text("controls/MichiSearchField.qml")
+    overlay = _text("patterns/SearchOverlay.qml")
+    assert "nextResultRequested" in field
+    assert "previousResultRequested" in field
+    assert "activateResultRequested" in field
+    assert "function moveResult" in overlay
+    assert "function activateResult" in overlay
+    assert "playlists" not in overlay.casefold()

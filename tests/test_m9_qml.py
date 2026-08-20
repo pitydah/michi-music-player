@@ -130,3 +130,12 @@ class TestQmlSmoke:
 
     def test_ui_gallery(self, qapp):
         _load_qml("dev/MichiUIGallery.qml", "MichiUIGallery")
+
+    def test_michi_entity_row(self, qapp):
+        _load_qml("media/MichiEntityRow.qml", "MichiEntityRow")
+
+    def test_michi_album_row(self, qapp):
+        _load_qml("media/MichiAlbumRow.qml", "MichiAlbumRow")
+
+    def test_queue_panel(self, qapp):
+        _load_qml("components/QueuePanel.qml", "QueuePanel")

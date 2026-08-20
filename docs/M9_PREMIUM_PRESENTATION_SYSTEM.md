@@ -4,7 +4,7 @@ Implementation contract for **Michi UI Design Canon 2.0 — Feline Hi-Fi Desktop
 
 **Authority:** approved product direction, 2026-08-20.
 **Boundary:** presentation only. M4–M8 domain/application behavior remains frozen.
-**Current work package:** `M9-PREMIUM-01` — `IN_PROGRESS`.
+**Current work package:** `M9-PREMIUM-02` — `IN_PROGRESS`.
 
 ## Product invariants
 
@@ -34,14 +34,14 @@ Implementation contract for **Michi UI Design Canon 2.0 — Feline Hi-Fi Desktop
 | M9.2 Desktop controls | REVIEW | Keyboard/focus-aware buttons, fields, segmented controls, menus, dialogs, scrolling |
 | M9.3 UI Gallery | REVIEW | `dev/MichiUIGallery.qml` |
 | M9.4 Application Shell | REVIEW | Floating sidebar/content islands and global search overlay |
-| M9.5 Library premium UX | IN_PROGRESS | Toolbar/tabs/Grid/PathView/Vinyl/Timeline/Magazine/List migration started |
-| M9.6 Album/Artist UX | IN_PROGRESS | Album detail and shared artwork migration started |
+| M9.5 Library premium UX | IN_PROGRESS | All library delegates use shared rows; runtime density and Precision Mode are wired |
+| M9.6 Album/Artist UX | IN_PROGRESS | Responsive album detail and contextual technical inspector; artist detail awaits a canonical read projection |
 | M9.7 Playback UX | IN_PROGRESS | Visible playback error state; canonical geometry preserved |
-| M9.8 Search UX | IN_PROGRESS | `Ctrl+F`, Escape, grouped local results; playlist search awaits an explicit bridge capability |
+| M9.8 Search UX | IN_PROGRESS | `Ctrl+F`, Escape, Up/Down/Enter and grouped local results; playlist search awaits an explicit bridge capability |
 | M9.9 Motion | REVIEW | Tokenized durations/easing; permanent vinyl rotation removed |
 | M9.10 Smoked Glass/Aurora | IN_PROGRESS | Control-only materiality and semantic Aurora states; real high-quality backdrop blur remains pending |
-| M9.11 Responsive desktop | IN_PROGRESS | Compact sidebar breakpoint; deeper responsive audit pending |
-| M9.12 Accessibility | IN_PROGRESS | focus ring, roles, keyboard controls; screen-reader audit pending |
+| M9.11 Responsive desktop | IN_PROGRESS | Compact sidebar, responsive album inspector, density controls and bounded right queue panel |
+| M9.12 Accessibility | IN_PROGRESS | focus ring, roles, keyboard result navigation and labelled queue controls; screen-reader audit pending |
 | M9.13 UI performance | IN_PROGRESS | active-view instantiation retained; profiling belongs to M12 |
 | M9.14 Capability/error audit | REVIEW | no deferred shells; empty/loading/error and playback failures visible |
 | M9.15 Golden screens | BLOCKED | canonical Now Playing reference image is not present in the repository |
@@ -81,9 +81,9 @@ server.
 
 ## Next baby steps
 
-1. Finish migration of all list delegates to shared media primitives.
-2. Add semantic sort/filter capabilities only after the bridge exposes them.
-3. Implement Queue Drawer without duplicating or changing M4 semantics.
-4. Complete mouse/keyboard/accessibility acceptance for every control.
+1. Add semantic sort/filter capabilities only after the bridge exposes them.
+2. Add artist detail only through a canonical read projection; do not filter in QML.
+3. Complete mouse/keyboard/accessibility acceptance for every control.
+4. Finish the contextual queue transition without changing M8 navigation ownership.
 5. Establish the Now Playing golden once the canonical reference is checked in.
 6. Run M12 profiling for blur quality, artwork memory, startup, and large libraries.
