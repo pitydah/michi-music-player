@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../patterns"
 import "../theme"
+import "../views"
 
 Item {
     id: root
