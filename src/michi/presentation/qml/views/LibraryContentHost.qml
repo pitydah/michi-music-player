@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "../patterns"
+import "../primitives"
 import "../theme"
 
 ColumnLayout {
@@ -61,41 +62,42 @@ ColumnLayout {
         Layout.preferredHeight: visible ? implicitHeight : 0
     }
 
-    RowLayout {
+    MichiGlassSurface {
         Layout.fillWidth: true
-        spacing: MichiTheme.space12
+        Layout.preferredHeight: visible ? 48 : 0
         visible: addTargetPath !== ""
+        elevation: "subtle"
+        contentPadding: MichiSpacing.sm
+        accented: true
+        accentColor: MichiPalette.auroraPurple
 
-        Text {
-            text: "Add to:"
-            font.pixelSize: MichiTheme.fontSizeCaption
-            color: MichiTheme.textSecondary
-        }
+        RowLayout {
+            anchors.fill: parent
+            spacing: MichiSpacing.sm
+            MichiText {
+                text: "ADD TRACK TO"
+                role: "technical"
+                technical: true
+                color: MichiPalette.auroraPurple
+                font.weight: Font.DemiBold
+            }
 
-        Repeater {
-            model: library.playlists
-            delegate: Text {
-                text: modelData.name
-                font.pixelSize: MichiTheme.fontSizeCaption
-                color: MichiTheme.warning
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
+            Repeater {
+                model: library.playlists
+                delegate: MichiButton {
+                    text: modelData.name
+                    variant: "secondary"
                     onClicked: {
                         library.add_to_playlist(modelData.name, addTargetPath)
                         addTargetPath = ""
                     }
                 }
             }
-        }
 
-        Text {
-            text: "✕"
-            font.pixelSize: MichiTheme.fontSizeCaption
-            color: MichiTheme.textSecondary
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
+            Item { Layout.fillWidth: true }
+            MichiIconButton {
+                iconName: "close"
+                accessibleName: "Cancel playlist selection"
                 onClicked: addTargetPath = ""
             }
         }

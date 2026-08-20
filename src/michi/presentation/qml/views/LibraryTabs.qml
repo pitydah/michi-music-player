@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import "../primitives"
 import "../theme"
 
 Flickable {
@@ -35,6 +36,7 @@ Flickable {
                 text: modelData.label
                 checked: root.currentTab === modelData.value
                 focusPolicy: Qt.StrongFocus
+                hoverEnabled: true
                 Accessible.role: Accessible.PageTab
                 Accessible.name: text
                 contentItem: Text {
@@ -47,11 +49,13 @@ Flickable {
                     verticalAlignment: Text.AlignVCenter
                 }
                 background: Rectangle {
+                    id: tabSurface
                     radius: MichiRadius.md
                     color: tabButton.checked ? MichiSemanticColors.surfaceSelected
                         : tabButton.hovered ? MichiSemanticColors.surfaceHover : "transparent"
                     border.width: tabButton.checked ? 1 : 0
                     border.color: Qt.rgba(0.298, 0.651, 1, 0.2)
+                    scale: tabButton.pressed ? 0.98 : 1
                     Rectangle {
                         visible: tabButton.checked
                         height: 2
@@ -60,6 +64,15 @@ Flickable {
                         anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
                         anchors.leftMargin: MichiSpacing.sm; anchors.rightMargin: MichiSpacing.sm
                     }
+                    Behavior on color {
+                        enabled: !MichiAccessibility.reducedMotion
+                        ColorAnimation { duration: MichiMotion.micro }
+                    }
+                    Behavior on scale {
+                        enabled: !MichiAccessibility.reducedMotion
+                        NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
+                    }
+                    MichiFocusRing { visualFocus: tabButton.visualFocus }
                 }
                 onClicked: root.currentTab = modelData.value
             }

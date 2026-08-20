@@ -11,13 +11,25 @@ MichiGlassSurface {
     property string actionText: "Try again"
     signal actionRequested()
     elevation: "elevated"
+    accented: true
+    accentColor: MichiPalette.error
     implicitHeight: contentColumn.implicitHeight + MichiSpacing.xl * 2
 
     ColumnLayout {
         id: contentColumn
         anchors.fill: parent
         spacing: MichiSpacing.sm
-        MichiText { text: root.title; role: "section"; color: MichiPalette.error }
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: MichiSpacing.sm
+            MichiIcon {
+                name: "info"
+                Layout.preferredWidth: MichiMetrics.iconMedium
+                Layout.preferredHeight: MichiMetrics.iconMedium
+                iconColor: MichiPalette.error
+            }
+            MichiText { Layout.fillWidth: true; text: root.title; role: "section"; color: MichiPalette.error }
+        }
         MichiText { Layout.fillWidth: true; text: root.message; role: "secondary"; wrapMode: Text.WordWrap }
         MichiButton {
             visible: root.actionText.length > 0

@@ -56,8 +56,23 @@ Button {
             : root.selected ? MichiSemanticColors.surfaceSelected
             : root.ghost ? "transparent" : MichiPalette.smoke
         border.width: root.primary ? 0 : 1
-        border.color: root.selected ? MichiPalette.auroraBlue : MichiSemanticColors.borderSubtle
+        border.color: root.selected ? MichiPalette.auroraBlue
+            : root.hovered ? MichiSemanticColors.borderStrong
+            : MichiSemanticColors.borderSubtle
         y: root.pressed ? 1 : 0
+        scale: root.pressed ? 0.985 : root.hovered ? 1.01 : 1
+
+        Rectangle {
+            visible: root.enabled && (root.primary || root.selected)
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.leftMargin: parent.radius
+            anchors.rightMargin: parent.radius
+            height: 1
+            color: root.primary ? Qt.rgba(1, 1, 1, 0.32) : MichiPalette.auroraCyan
+            opacity: root.pressed ? 0.18 : 0.55
+        }
         Behavior on color {
             enabled: !MichiAccessibility.reducedMotion
             ColorAnimation { duration: MichiMotion.micro }
@@ -65,6 +80,10 @@ Button {
         Behavior on y {
             enabled: !MichiAccessibility.reducedMotion
             NumberAnimation { duration: MichiMotion.instant }
+        }
+        Behavior on scale {
+            enabled: !MichiAccessibility.reducedMotion
+            NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
         }
         MichiFocusRing { visualFocus: root.visualFocus }
     }

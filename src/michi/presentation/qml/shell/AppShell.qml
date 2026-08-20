@@ -17,7 +17,16 @@ Item {
             lastContentRoute = currentRoute
     }
 
-    Rectangle { anchors.fill: parent; color: MichiSemanticColors.backplane }
+    Rectangle {
+        anchors.fill: parent
+        color: MichiSemanticColors.backplane
+        gradient: Gradient {
+            orientation: Gradient.Vertical
+            GradientStop { position: 0; color: "#0D111B" }
+            GradientStop { position: 0.42; color: MichiSemanticColors.backplane }
+            GradientStop { position: 1; color: "#07090E" }
+        }
+    }
 
     RowLayout {
         anchors.top: parent.top

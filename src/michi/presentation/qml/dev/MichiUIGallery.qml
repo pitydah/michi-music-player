@@ -72,6 +72,9 @@ MichiSurface {
                 MichiButton { text: "Disabled"; enabled: false }
                 MichiIconButton { iconName: "play"; accessibleName: "Play" }
                 MichiIconButton { iconName: "heart"; accessibleName: "Favorite"; selected: true }
+                MichiStatusChip { text: "SCANNING"; tone: "active" }
+                MichiStatusChip { text: "READY"; tone: "success" }
+                MichiStatusChip { text: "UNAVAILABLE"; tone: "warning" }
             }
 
             RowLayout {
@@ -128,6 +131,7 @@ MichiSurface {
                 spacing: MichiSpacing.md
                 MichiGlassSurface {
                     Layout.fillWidth: true; Layout.preferredHeight: 170; elevation: "standard"
+                    accented: true; accentColor: MichiPalette.auroraBlue
                     EmptyState { anchors.fill: parent; title: "No albums yet"; message: "Add a music folder to begin."; actionText: "Add folder" }
                 }
                 ErrorState {

@@ -33,6 +33,9 @@ Rectangle {
     color: selected || playing ? MichiSemanticColors.surfaceSelected
         : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
     radius: MichiRadius.sm
+    border.width: selected || playing ? 1 : 0
+    border.color: playing ? Qt.rgba(0.129, 0.839, 0.902, 0.28)
+        : Qt.rgba(0.298, 0.651, 1, 0.2)
     opacity: unavailable ? 0.55 : 1
     activeFocusOnTab: root.interactive && !root.unavailable
     Accessible.role: Accessible.ListItem
@@ -101,6 +104,7 @@ Rectangle {
 
         MichiIconButton {
             visible: root.showFavorite
+            opacity: hover.hovered || root.activeFocus || root.selected || root.favorite ? 1 : 0.46
             Layout.preferredWidth: 32
             Layout.preferredHeight: 32
             iconName: "heart"
@@ -110,6 +114,7 @@ Rectangle {
         }
         MichiIconButton {
             visible: root.showAddToPlaylist
+            opacity: hover.hovered || root.activeFocus || root.selected ? 1 : 0.46
             Layout.preferredWidth: 32
             Layout.preferredHeight: 32
             iconName: "add"
@@ -118,6 +123,7 @@ Rectangle {
         }
         MichiIconButton {
             visible: root.showInspector
+            opacity: hover.hovered || root.activeFocus || root.selected ? 1 : 0.46
             Layout.preferredWidth: 32
             Layout.preferredHeight: 32
             iconName: "info"
@@ -126,12 +132,30 @@ Rectangle {
         }
         MichiIconButton {
             visible: root.showRemove
+            opacity: hover.hovered || root.activeFocus || root.selected ? 1 : 0.46
             Layout.preferredWidth: 32
             Layout.preferredHeight: 32
             iconName: "trash"
             accessibleName: "Remove from queue"
             onClicked: root.removeRequested()
         }
+    }
+    Rectangle {
+        visible: root.playing
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+        width: 2
+        height: Math.max(16, parent.height - MichiSpacing.md)
+        radius: 1
+        color: MichiPalette.auroraCyan
+    }
+    Behavior on color {
+        enabled: !MichiAccessibility.reducedMotion
+        ColorAnimation { duration: MichiMotion.micro }
+    }
+    Behavior on border.color {
+        enabled: !MichiAccessibility.reducedMotion
+        ColorAnimation { duration: MichiMotion.micro }
     }
     HoverHandler { id: hover; cursorShape: root.interactive && !root.unavailable ? Qt.PointingHandCursor : Qt.ArrowCursor }
     TapHandler { enabled: root.interactive && !root.unavailable; onTapped: { MichiAccessibility.notePointer(); root.forceActiveFocus(); root.activated() } }

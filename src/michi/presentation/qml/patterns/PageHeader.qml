@@ -7,8 +7,18 @@ RowLayout {
     id: root
     property string title: ""
     property string subtitle: ""
+    property color accentColor: MichiPalette.auroraBlue
     default property alias actions: actionHost.data
     spacing: MichiSpacing.md
+    Rectangle {
+        Layout.preferredWidth: 2
+        Layout.preferredHeight: 34
+        radius: 1
+        gradient: Gradient {
+            GradientStop { position: 0; color: root.accentColor }
+            GradientStop { position: 1; color: Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.16) }
+        }
+    }
     ColumnLayout {
         Layout.fillWidth: true
         spacing: MichiSpacing.xxs

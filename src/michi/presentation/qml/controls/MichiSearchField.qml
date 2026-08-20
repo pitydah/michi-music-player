@@ -55,6 +55,10 @@ Item {
         anchors.leftMargin: MichiSpacing.md
         anchors.verticalCenter: parent.verticalCenter
         iconColor: field.activeFocus ? MichiPalette.auroraBlue : MichiPalette.textMuted
+        Behavior on iconColor {
+            enabled: !MichiAccessibility.reducedMotion
+            ColorAnimation { duration: MichiMotion.micro }
+        }
     }
     MichiIconButton {
         visible: root.text.length > 0

@@ -27,6 +27,7 @@ def test_design_system_has_canonical_layers() -> None:
         "primitives/MichiGlassSurface.qml",
         "primitives/MichiFocusRing.qml",
         "primitives/MichiIcon.qml",
+        "primitives/MichiStatusChip.qml",
         "controls/MichiButton.qml",
         "controls/MichiSearchField.qml",
         "controls/MichiSegmentedControl.qml",
@@ -131,6 +132,23 @@ def test_canonical_now_playing_bar_is_shell_bound() -> None:
         "queue.repeatMode",
     ):
         assert projection in shell
+
+
+def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
+    glass = _text("primitives/MichiGlassSurface.qml")
+    button = _text("controls/MichiButton.qml")
+    toolbar = _text("views/LibraryToolbar.qml")
+    content = _text("views/LibraryContentHost.qml")
+    queue = _text("views/QueueView.qml")
+    now_playing = _text("player/NowPlayingBar.qml")
+    assert "property bool accented" in glass
+    assert "Behavior on scale" in button
+    assert "MichiStatusChip" in toolbar
+    assert 'text: "ADD TRACK TO"' in content
+    assert "MichiIconButton" in content
+    assert "property bool revealed" in queue
+    assert "Gradient.Horizontal" in now_playing
+    assert 'accessibleName: "Output selection unavailable"' in now_playing
 
 
 def test_search_and_playback_errors_are_actionable_surfaces() -> None:

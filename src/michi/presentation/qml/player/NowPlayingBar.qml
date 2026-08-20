@@ -46,8 +46,26 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: MichiSemanticColors.backplane
+        gradient: Gradient {
+            orientation: Gradient.Vertical
+            GradientStop { position: 0; color: "#0B0E16" }
+            GradientStop { position: 1; color: "#07090E" }
+        }
         border.width: 1
         border.color: MichiSemanticColors.borderSubtle
+    }
+
+    Rectangle {
+        anchors.top: parent.top
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: Math.max(240, parent.width * 0.42)
+        height: 1
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0; color: "transparent" }
+            GradientStop { position: 0.5; color: Qt.rgba(0.298, 0.651, 1, 0.34) }
+            GradientStop { position: 1; color: "transparent" }
+        }
     }
 
     Rectangle {
@@ -59,8 +77,15 @@ Item {
         height: 86
         radius: 17
         color: MichiSemanticColors.controlSurface
+        gradient: Gradient {
+            orientation: Gradient.Vertical
+            GradientStop { position: 0; color: trackHover.hovered ? "#171B29" : "#141824" }
+            GradientStop { position: 1; color: "#0D1018" }
+        }
         border.width: 1
-        border.color: Qt.rgba(0.604, 0.486, 1, 0.24)
+        border.color: trackHover.hovered
+            ? Qt.rgba(0.129, 0.839, 0.902, 0.38)
+            : Qt.rgba(0.604, 0.486, 1, 0.24)
 
         Artwork {
             objectName: "trackArtwork"
@@ -108,6 +133,11 @@ Item {
         }
 
         TapHandler { onTapped: root.nowPlayingRequested() }
+        HoverHandler { id: trackHover; cursorShape: Qt.PointingHandCursor }
+        Behavior on border.color {
+            enabled: !MichiAccessibility.reducedMotion
+            ColorAnimation { duration: MichiMotion.micro }
+        }
     }
 
     MichiText {
@@ -157,13 +187,11 @@ Item {
                 height: parent.height
                 radius: parent.radius
                 color: timeline.enabled ? MichiPalette.auroraBlue : MichiPalette.textDisabled
-                Rectangle {
-                    anchors.right: parent.right
-                    width: Math.min(parent.width, 120)
-                    height: parent.height
-                    radius: parent.radius
-                    color: MichiPalette.auroraPurple
-                    opacity: parent.width > 24 ? 0.74 : 0
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0; color: MichiPalette.auroraBlue }
+                    GradientStop { position: 0.72; color: MichiPalette.auroraCyan }
+                    GradientStop { position: 1; color: MichiPalette.auroraPurple }
                 }
             }
         }
@@ -254,6 +282,15 @@ Item {
             border.width: 1
             border.color: playPauseButton.visualFocus
                 ? MichiSemanticColors.focusRing : MichiSemanticColors.borderStrong
+            Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+                anchors.topMargin: 1
+                width: 24
+                height: 1
+                color: MichiPalette.auroraCyan
+                opacity: playPauseButton.enabled ? 0.58 : 0.16
+            }
             MichiFocusRing { visualFocus: playPauseButton.visualFocus }
         }
         MichiTooltip {
@@ -343,7 +380,11 @@ Item {
                 width: volumeSlider.visualPosition * parent.width
                 height: parent.height
                 radius: parent.radius
-                color: MichiPalette.auroraBlue
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0; color: MichiPalette.auroraBlue }
+                    GradientStop { position: 1; color: MichiPalette.auroraPurple }
+                }
             }
         }
         handle: Rectangle {

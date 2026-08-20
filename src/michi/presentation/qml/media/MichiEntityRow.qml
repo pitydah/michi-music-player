@@ -19,6 +19,8 @@ Rectangle {
     color: root.selected ? MichiSemanticColors.surfaceSelected
         : hover.hovered && root.interactive ? MichiSemanticColors.surfaceHover
         : "transparent"
+    border.width: root.selected ? 1 : 0
+    border.color: Qt.rgba(0.298, 0.651, 1, 0.2)
     activeFocusOnTab: root.interactive
     Accessible.role: Accessible.ListItem
     Accessible.name: root.title + (root.subtitle.length > 0 ? ", " + root.subtitle : "")
@@ -98,4 +100,8 @@ Rectangle {
         }
     }
     MichiFocusRing { visualFocus: root.activeFocus && MichiAccessibility.keyboardMode }
+    Behavior on color {
+        enabled: !MichiAccessibility.reducedMotion
+        ColorAnimation { duration: MichiMotion.micro }
+    }
 }

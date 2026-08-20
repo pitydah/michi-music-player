@@ -67,7 +67,10 @@ Item {
         MouseArea { anchors.fill: parent; onClicked: root.closeRequested() }
     }
     MichiGlassSurface {
+        id: searchPanel
         elevation: "modal"
+        accented: true
+        accentColor: MichiPalette.auroraCyan
         width: Math.min(720, root.width - MichiSpacing.xxl * 2)
         height: Math.min(520, root.height - MichiSpacing.xxl * 2)
         anchors.horizontalCenter: parent.horizontalCenter
@@ -80,30 +83,38 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             spacing: MichiSpacing.md
-            MichiSearchField {
-                id: searchInput
+            RowLayout {
                 Layout.fillWidth: true
-                text: library.searchQuery
-                placeholderText: "Search tracks, albums, artists and playlists"
-                onEdited: query => {
-                    root.resultIndex = 0
-                    library.search(query)
+                spacing: MichiSpacing.md
+                MichiSearchField {
+                    id: searchInput
+                    Layout.fillWidth: true
+                    text: library.searchQuery
+                    placeholderText: "Search tracks, albums, artists and playlists"
+                    onEdited: query => {
+                        root.resultIndex = 0
+                        library.search(query)
+                    }
+                    onClearRequested: library.clear_search()
+                    onNextResultRequested: root.moveResult(1)
+                    onPreviousResultRequested: root.moveResult(-1)
+                    onActivateResultRequested: root.activateResult()
+                    onEscapeRequested: root.closeRequested()
                 }
-                onClearRequested: library.clear_search()
-                onNextResultRequested: root.moveResult(1)
-                onPreviousResultRequested: root.moveResult(-1)
-                onActivateResultRequested: root.activateResult()
-                onEscapeRequested: root.closeRequested()
+                MichiStatusChip {
+                    text: "CTRL F"
+                    dotVisible: false
+                }
             }
-            MichiText {
+            MichiStatusChip {
                 visible: library.searchActive
                 text: library.searchDisplayTotalCount + " results · "
                     + library.searchTrackCount + " tracks · "
                     + library.searchAlbumCount + " albums · "
                     + library.searchArtistCount + " artists · "
                     + library.searchPlaylistCount + " playlists"
-                role: "technical"
-                technical: true
+                tone: "active"
+                Layout.alignment: Qt.AlignLeft
             }
             MichiDivider { Layout.fillWidth: true }
             EmptyState {

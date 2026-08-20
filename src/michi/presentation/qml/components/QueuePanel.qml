@@ -28,6 +28,8 @@ MichiGlassSurface {
     signal closeRequested()
 
     elevation: "elevated"
+    accented: true
+    accentColor: MichiPalette.auroraPurple
     contentPadding: MichiSpacing.lg
 
     ColumnLayout {

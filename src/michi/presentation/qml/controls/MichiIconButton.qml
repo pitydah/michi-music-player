@@ -25,15 +25,32 @@ Button {
             : root.hovered ? MichiPalette.textPrimary : MichiPalette.textSecondary
     }
     background: Rectangle {
+        id: iconSurface
         radius: MichiRadius.md
         color: root.pressed ? MichiSemanticColors.surfacePressed
             : root.hovered ? MichiSemanticColors.surfaceHover
             : root.selected ? MichiSemanticColors.surfaceSelected : "transparent"
-        border.width: root.selected ? 1 : 0
-        border.color: MichiPalette.auroraBlue
+        border.width: root.selected || root.hovered ? 1 : 0
+        border.color: root.selected ? MichiPalette.auroraBlue : MichiSemanticColors.borderSubtle
+        scale: root.pressed ? 0.92 : root.hovered ? 1.045 : 1
+
+        Rectangle {
+            visible: root.selected
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 3
+            width: 10
+            height: 1
+            radius: 1
+            color: MichiPalette.auroraCyan
+        }
         Behavior on color {
             enabled: !MichiAccessibility.reducedMotion
             ColorAnimation { duration: MichiMotion.micro }
+        }
+        Behavior on scale {
+            enabled: !MichiAccessibility.reducedMotion
+            NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
         }
         MichiFocusRing { visualFocus: root.visualFocus }
     }

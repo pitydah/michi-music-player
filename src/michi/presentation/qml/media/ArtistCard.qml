@@ -11,6 +11,7 @@ Item {
 
     implicitWidth: 184
     implicitHeight: 88
+    scale: hover.hovered ? 1.012 : 1
     activeFocusOnTab: true
     Accessible.role: Accessible.ListItem
     Accessible.name: artist ? artist.name : "Artist"
@@ -22,8 +23,8 @@ Item {
         anchors.fill: parent
         radius: MichiRadius.lg
         color: hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
-        border.width: root.selected ? 1 : 0
-        border.color: MichiPalette.auroraBlue
+        border.width: root.selected || hover.hovered ? 1 : 0
+        border.color: root.selected ? MichiPalette.auroraBlue : MichiSemanticColors.borderSubtle
         Behavior on color {
             enabled: !MichiAccessibility.reducedMotion
             ColorAnimation { duration: MichiMotion.micro }
@@ -41,6 +42,8 @@ Item {
             Layout.preferredHeight: 48
             radius: 24
             color: MichiSemanticColors.controlSurfaceStrong
+            border.width: 1
+            border.color: Qt.rgba(0.129, 0.839, 0.902, 0.2)
             MichiIcon {
                 anchors.centerIn: parent
                 name: "artist"
@@ -69,6 +72,11 @@ Item {
                 elide: Text.ElideRight
             }
         }
+    }
+
+    Behavior on scale {
+        enabled: !MichiAccessibility.reducedMotion
+        NumberAnimation { duration: MichiMotion.artwork; easing.type: MichiMotion.outCubic }
     }
 
     HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }

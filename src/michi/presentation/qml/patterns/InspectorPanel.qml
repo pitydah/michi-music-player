@@ -10,6 +10,8 @@ MichiGlassSurface {
     property var rows: []
     signal closeRequested()
     elevation: "elevated"
+    accented: true
+    accentColor: MichiPalette.auroraCyan
     implicitWidth: 320
     ColumnLayout {
         anchors.fill: parent

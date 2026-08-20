@@ -4,9 +4,9 @@ Implementation contract for **Michi UI Design Canon 2.0 — Feline Hi-Fi Desktop
 
 **Authority:** approved product direction, 2026-08-20.
 **Boundary:** presentation only. M4–M8 domain/application behavior remains frozen.
-**Current work package:** `M9-PREMIUM-04` — `DONE` (the project-supplied
-canonical Now Playing reference is pinned as the M9.15 golden and its measured
-geometry is enforced against the production component).
+**Current work package:** `M9-PREMIUM-05` — `REVIEW` (ultra-premium detail
+pass over shared materials, interaction states, hierarchy, library workflow,
+contextual Queue and the geometry-protected NowPlayingBar).
 
 ## Product invariants
 
@@ -114,3 +114,18 @@ server.
    memory, startup, and 10k/50k/100k library behavior there.
 2. Add semantic sort/filter controls only when their application-layer
    capabilities exist; M9 deliberately does not fabricate them.
+
+## M9-PREMIUM-05 detail pass
+
+- Smoked-glass surfaces now share directional material depth, inner edge
+  lighting and opt-in Aurora accent rails without introducing costly blur.
+- Buttons, icon buttons, tabs, switches, cards and rows have restrained
+  reduced-motion-aware hover, press, selection and focus feedback.
+- Library scanning uses a semantic status chip and animated Aurora progress;
+  playlist targeting is a proper control surface instead of loose text links.
+- Search communicates its keyboard shortcut and result summary as compact
+  technical instrumentation; Queue enters as a contextual right-side panel.
+- Empty, error and Inspector states use the same visual grammar as the main
+  shell and remain explicit and actionable.
+- NowPlayingBar gains refined Aurora progress, volume, hover and edge-lighting
+  while every golden landmark and visible control remains unchanged.

@@ -19,6 +19,9 @@ Text {
         : MichiTypography.body
     font.weight: role === "display" || role === "title" || role === "section"
         ? Font.DemiBold : Font.Normal
+    font.letterSpacing: role === "display" ? -0.35
+        : role === "title" ? -0.18
+        : role === "technical" ? 0.22 : 0
     font.features: technical ? ({ "tnum": 1 }) : ({})
     renderType: Text.NativeRendering
 }

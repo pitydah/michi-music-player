@@ -11,6 +11,8 @@ MichiGlassSurface {
     property bool compact: false
     contentPadding: MichiSpacing.sm
     elevation: "standard"
+    accented: true
+    accentColor: MichiPalette.auroraPurple
 
     readonly property var _routes: [
         { id: "now_playing", label: "Now Playing", icon: "play" },
@@ -67,6 +69,15 @@ MichiGlassSurface {
                     : routeItem.hovered || routeItem.visualFocus ? MichiSemanticColors.surfaceHover : "transparent"
                 border.width: routeItem._active ? 1 : 0
                 border.color: Qt.rgba(0.298, 0.651, 1, 0.18)
+                Rectangle {
+                    visible: routeItem._active
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 2
+                    radius: 1
+                    color: MichiPalette.auroraCyan
+                }
                 Behavior on color {
                     enabled: !MichiAccessibility.reducedMotion
                     ColorAnimation { duration: MichiMotion.micro }
@@ -82,13 +93,41 @@ MichiGlassSurface {
         spacing: MichiSpacing.xs
 
         Item {
-        Layout.fillWidth: true
+            Layout.fillWidth: true
             Layout.preferredHeight: 54
-            MichiText {
-            anchors.centerIn: parent
-                text: root.compact ? "M" : "Michi"
-                role: "section"
-                color: MichiPalette.textPrimary
+            RowLayout {
+                anchors.centerIn: parent
+                spacing: MichiSpacing.sm
+                Rectangle {
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    radius: MichiRadius.md
+                    color: Qt.rgba(0.604, 0.486, 1, 0.14)
+                    border.width: 1
+                    border.color: Qt.rgba(0.604, 0.486, 1, 0.34)
+                    MichiText {
+                        anchors.centerIn: parent
+                        text: "M"
+                        role: "secondary"
+                        color: MichiPalette.auroraCyan
+                        font.weight: Font.Bold
+                    }
+                }
+                ColumnLayout {
+                    visible: !root.compact
+                    spacing: 0
+                    MichiText {
+                        text: "Michi"
+                        role: "section"
+                        color: MichiPalette.textPrimary
+                    }
+                    MichiText {
+                        text: "LOCAL HI-FI"
+                        role: "technical"
+                        technical: true
+                        color: MichiPalette.textMuted
+                    }
+                }
             }
         }
 

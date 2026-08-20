@@ -20,6 +20,7 @@ TextField {
     Accessible.name: accessibleName.length > 0 ? accessibleName : placeholderText
 
     background: Rectangle {
+        id: fieldSurface
         radius: MichiRadius.md
         color: root.enabled ? MichiSemanticColors.controlSurface : MichiPalette.graphite
         border.color: root.activeFocus ? MichiPalette.auroraBlue
@@ -28,6 +29,17 @@ TextField {
         Behavior on border.color {
             enabled: !MichiAccessibility.reducedMotion
             ColorAnimation { duration: MichiMotion.micro }
+        }
+        Rectangle {
+            visible: root.activeFocus
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.leftMargin: parent.radius
+            anchors.rightMargin: parent.radius
+            height: 1
+            color: MichiPalette.auroraCyan
+            opacity: 0.65
         }
     }
 }

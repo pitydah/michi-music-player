@@ -120,6 +120,9 @@ class TestQmlSmoke:
     def test_michi_focus_ring(self, qapp):
         _load_qml("primitives/MichiFocusRing.qml", "MichiFocusRing")
 
+    def test_michi_status_chip(self, qapp):
+        _load_qml("primitives/MichiStatusChip.qml", "MichiStatusChip")
+
     def test_michi_icon_button(self, qapp):
         _load_qml("controls/MichiIconButton.qml", "MichiIconButton")
 

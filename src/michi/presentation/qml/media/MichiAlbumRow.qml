@@ -12,6 +12,8 @@ Rectangle {
     implicitHeight: Math.max(MichiThemeState.rowHeight, 44)
     radius: MichiRadius.sm
     color: hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
+    border.width: hover.hovered ? 1 : 0
+    border.color: MichiSemanticColors.borderSubtle
     activeFocusOnTab: true
     Accessible.role: Accessible.ListItem
     Accessible.name: root.album
@@ -86,4 +88,8 @@ Rectangle {
         }
     }
     MichiFocusRing { visualFocus: root.activeFocus }
+    Behavior on color {
+        enabled: !MichiAccessibility.reducedMotion
+        ColorAnimation { duration: MichiMotion.micro }
+    }
 }

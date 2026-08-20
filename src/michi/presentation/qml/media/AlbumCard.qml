@@ -12,6 +12,7 @@ Item {
     implicitHeight: 206
     focus: false
     activeFocusOnTab: true
+    scale: tap.hovered ? 1.018 : 1
     Accessible.role: Accessible.ListItem
     Accessible.name: album ? album.title + " by " + album.artist : "Album"
     Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); activated() }
@@ -19,11 +20,24 @@ Item {
     Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); activated() }
 
     Rectangle {
+        x: 2
+        y: 4
+        width: parent.width - 4
+        height: parent.height - 4
+        radius: MichiRadius.lg
+        color: Qt.rgba(0, 0, 0, tap.hovered ? 0.26 : 0.12)
+        opacity: root.selected || tap.hovered ? 1 : 0
+        Behavior on opacity {
+            enabled: !MichiAccessibility.reducedMotion
+            NumberAnimation { duration: MichiMotion.micro }
+        }
+    }
+    Rectangle {
         anchors.fill: parent
         radius: MichiRadius.lg
         color: tap.hovered ? MichiSemanticColors.surfaceHover : "transparent"
-        border.width: root.selected ? 1 : 0
-        border.color: MichiPalette.auroraBlue
+        border.width: root.selected || tap.hovered ? 1 : 0
+        border.color: root.selected ? MichiPalette.auroraBlue : MichiSemanticColors.borderSubtle
         Behavior on color {
             enabled: !MichiAccessibility.reducedMotion
             ColorAnimation { duration: MichiMotion.micro }
@@ -54,6 +68,10 @@ Item {
             role: "secondary"
             elide: Text.ElideRight
         }
+    }
+    Behavior on scale {
+        enabled: !MichiAccessibility.reducedMotion
+        NumberAnimation { duration: MichiMotion.artwork; easing.type: MichiMotion.outCubic }
     }
     HoverHandler { id: tap; cursorShape: Qt.PointingHandCursor }
     TapHandler { onTapped: { MichiAccessibility.notePointer(); root.forceActiveFocus(); root.activated() } }

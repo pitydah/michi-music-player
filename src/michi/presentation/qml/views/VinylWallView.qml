@@ -22,7 +22,7 @@ GridView {
             width: 100
             height: 100
             radius: 50
-            color: "#111318"
+            color: MichiPalette.graphite
             border.width: 1
             border.color: MichiSemanticColors.borderStrong
             x: sleeve.x + sleeve.width - 38
