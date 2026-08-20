@@ -11,14 +11,20 @@ Item {
     property int resultIndex: 0
     readonly property int visibleTrackCount: Math.min(6, library.searchTrackCount)
     readonly property int visibleAlbumCount: Math.min(6, library.searchAlbumCount)
+    readonly property int visibleArtistCount: Math.min(6, library.searchArtistCount)
+    readonly property int visiblePlaylistCount: Math.min(6, library.searchPlaylistCount)
     readonly property int actionableResultCount: visibleTrackCount + visibleAlbumCount
+        + visibleArtistCount + visiblePlaylistCount
     signal closeRequested()
     signal navigationRequested(string routeId)
     visible: opacity > 0
     opacity: opened ? 1 : 0
     enabled: opened
     Keys.onEscapePressed: closeRequested()
-    Behavior on opacity { NumberAnimation { duration: MichiMotion.panel; easing.type: MichiMotion.outCubic } }
+    Behavior on opacity {
+        enabled: !MichiAccessibility.reducedMotion
+        NumberAnimation { duration: MichiMotion.panel; easing.type: MichiMotion.outCubic }
+    }
 
     function moveResult(delta) {
         if (actionableResultCount <= 0)
@@ -38,6 +44,20 @@ Item {
             library.select_album(library.albums[albumIndex].key)
             closeRequested()
             navigationRequested("library")
+            return
+        }
+        var artistIndex = albumIndex - visibleAlbumCount
+        if (artistIndex >= 0 && artistIndex < visibleArtistCount) {
+            library.select_artist(library.artists[artistIndex].key)
+            closeRequested()
+            navigationRequested("library")
+            return
+        }
+        var playlistIndex = artistIndex - visibleArtistCount
+        if (playlistIndex >= 0 && playlistIndex < visiblePlaylistCount) {
+            library.select_playlist(library.searchPlaylists[playlistIndex].name)
+            closeRequested()
+            navigationRequested("library")
         }
     }
 
@@ -52,7 +72,10 @@ Item {
         height: Math.min(520, root.height - MichiSpacing.xxl * 2)
         anchors.horizontalCenter: parent.horizontalCenter
         y: root.opened ? MichiSpacing.xxxl : MichiSpacing.xxl
-        Behavior on y { NumberAnimation { duration: MichiMotion.panel; easing.type: MichiMotion.outCubic } }
+        Behavior on y {
+            enabled: !MichiAccessibility.reducedMotion
+            NumberAnimation { duration: MichiMotion.panel; easing.type: MichiMotion.outCubic }
+        }
 
         ColumnLayout {
             anchors.fill: parent
@@ -61,7 +84,7 @@ Item {
                 id: searchInput
                 Layout.fillWidth: true
                 text: library.searchQuery
-                placeholderText: "Search tracks, albums, artists and genres"
+                placeholderText: "Search tracks, albums, artists and playlists"
                 onEdited: query => {
                     root.resultIndex = 0
                     library.search(query)
@@ -74,26 +97,27 @@ Item {
             }
             MichiText {
                 visible: library.searchActive
-                text: library.searchTotalCount + " results · "
+                text: library.searchDisplayTotalCount + " results · "
                     + library.searchTrackCount + " tracks · "
                     + library.searchAlbumCount + " albums · "
-                    + library.searchArtistCount + " artists"
+                    + library.searchArtistCount + " artists · "
+                    + library.searchPlaylistCount + " playlists"
                 role: "technical"
                 technical: true
             }
             MichiDivider { Layout.fillWidth: true }
             EmptyState {
                 Layout.fillWidth: true; Layout.fillHeight: true
-                visible: !library.searchActive || library.searchTotalCount === 0
+                visible: !library.searchActive || library.searchDisplayTotalCount === 0
                 title: library.searchActive ? "No results" : "Search your library"
                 message: library.searchActive
-                    ? "Try a title, artist, album, genre or composer."
+                    ? "Try a title, artist, album, playlist, genre or composer."
                     : "Results are grouped by musical entity and remain fully local."
             }
             MichiScrollView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                visible: library.searchActive && library.searchTotalCount > 0
+                visible: library.searchActive && library.searchDisplayTotalCount > 0
                 contentWidth: availableWidth
 
                 ColumnLayout {
@@ -111,6 +135,7 @@ Item {
                             album: library.songRows[index].album
                             durationMs: library.songRows[index].durationMs
                             quality: library.songRows[index].qualityLabel
+                            playing: playback.currentPath === library.songRows[index].path
                             selected: root.resultIndex === index
                             onActivated: {
                                 library.activate(index)
@@ -139,14 +164,39 @@ Item {
 
                     MichiText { text: "Artists"; role: "section"; visible: library.searchArtistCount > 0 }
                     Repeater {
-                        model: Math.min(6, library.searchArtistCount)
+                        model: root.visibleArtistCount
                         delegate: MichiEntityRow {
                             required property int index
                             Layout.fillWidth: true
                             iconName: "artist"
                             title: library.artists[index].name
                             technical: library.artists[index].trackCount + " tracks"
-                            interactive: false
+                            selected: root.resultIndex === root.visibleTrackCount
+                                + root.visibleAlbumCount + index
+                            onActivated: {
+                                library.select_artist(library.artists[index].key)
+                                root.closeRequested()
+                                root.navigationRequested("library")
+                            }
+                        }
+                    }
+
+                    MichiText { text: "Playlists"; role: "section"; visible: library.searchPlaylistCount > 0 }
+                    Repeater {
+                        model: root.visiblePlaylistCount
+                        delegate: MichiEntityRow {
+                            required property int index
+                            Layout.fillWidth: true
+                            iconName: "queue"
+                            title: library.searchPlaylists[index].name
+                            technical: library.searchPlaylists[index].trackCount + " tracks"
+                            selected: root.resultIndex === root.visibleTrackCount
+                                + root.visibleAlbumCount + root.visibleArtistCount + index
+                            onActivated: {
+                                library.select_playlist(library.searchPlaylists[index].name)
+                                root.closeRequested()
+                                root.navigationRequested("library")
+                            }
                         }
                     }
 

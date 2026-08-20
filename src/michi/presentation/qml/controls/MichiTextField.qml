@@ -25,6 +25,9 @@ TextField {
         border.color: root.activeFocus ? MichiPalette.auroraBlue
             : root.hovered ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
         border.width: root.activeFocus ? 2 : 1
-        Behavior on border.color { ColorAnimation { duration: MichiMotion.micro } }
+        Behavior on border.color {
+            enabled: !MichiAccessibility.reducedMotion
+            ColorAnimation { duration: MichiMotion.micro }
+        }
     }
 }

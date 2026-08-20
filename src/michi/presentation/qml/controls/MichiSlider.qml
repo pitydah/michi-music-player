@@ -5,9 +5,11 @@ import "../theme"
 
 Slider {
     id: root
+    property string accessibleName: "Slider"
     implicitHeight: MichiMetrics.controlSmall
     focusPolicy: Qt.StrongFocus
     Accessible.role: Accessible.Slider
+    Accessible.name: accessibleName
 
     background: Rectangle {
         x: root.leftPadding
@@ -36,7 +38,10 @@ Slider {
         border.color: root.pressed || root.visualFocus
             ? MichiPalette.auroraBlue : MichiSemanticColors.borderStrong
         scale: root.pressed ? 1.08 : 1
-        Behavior on scale { NumberAnimation { duration: MichiMotion.micro } }
+        Behavior on scale {
+            enabled: !MichiAccessibility.reducedMotion
+            NumberAnimation { duration: MichiMotion.micro }
+        }
         MichiFocusRing { visualFocus: root.visualFocus }
     }
 }

@@ -1,7 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import "../theme"
-import "../ui"
+import "../controls"
+import "../primitives"
 
 RowLayout {
     id: root
@@ -13,23 +14,24 @@ RowLayout {
     signal volumeChangeRequested(int value)
     signal muteToggleRequested(bool muted)
 
-    Text {
+    MichiText {
         text: "Vol"
-        font.pixelSize: MichiTheme.fontSizeCaption
-        color: MichiTheme.textSecondary
+        role: "technical"
+        technical: true
     }
 
     MichiSlider {
         id: volSlider
         from: 0; to: 100
         Layout.preferredWidth: 90
+        accessibleName: "Volume"
         onMoved: root.volumeChangeRequested(value)
     }
 
-    MichiButton {
+    MichiIconButton {
         id: muteBtn
-        text: checked ? "🔇" : "🔊"
-        variant: "ghost"
+        iconName: checked ? "mute" : "volume"
+        accessibleName: checked ? "Unmute" : "Mute"
         checkable: true
         onClicked: root.muteToggleRequested(checked)
     }

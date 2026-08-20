@@ -23,9 +23,30 @@ Rectangle {
     Accessible.role: Accessible.ListItem
     Accessible.name: root.title + (root.subtitle.length > 0 ? ", " + root.subtitle : "")
 
-    Keys.onEnterPressed: if (root.interactive) root.activated()
-    Keys.onReturnPressed: if (root.interactive) root.activated()
-    Keys.onSpacePressed: if (root.interactive) root.activated()
+    Keys.onEnterPressed: if (root.interactive) { MichiAccessibility.noteKeyboard(); root.activated() }
+    Keys.onReturnPressed: if (root.interactive) { MichiAccessibility.noteKeyboard(); root.activated() }
+    Keys.onSpacePressed: if (root.interactive) { MichiAccessibility.noteKeyboard(); root.activated() }
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_PageDown) {
+            MichiAccessibility.noteKeyboard()
+            root.moveByPage(1)
+            event.accepted = true
+        } else if (event.key === Qt.Key_PageUp) {
+            MichiAccessibility.noteKeyboard()
+            root.moveByPage(-1)
+            event.accepted = true
+        }
+    }
+
+    function moveByPage(direction) {
+        var view = root.ListView.view
+        if (!view || view.count <= 0)
+            return
+        var pageSize = Math.max(1, Math.floor(view.height / root.height) - 1)
+        view.currentIndex = Math.max(0, Math.min(view.count - 1,
+            view.currentIndex + direction * pageSize))
+        view.positionViewAtIndex(view.currentIndex, ListView.Contain)
+    }
 
     RowLayout {
         anchors.fill: parent
@@ -71,9 +92,10 @@ Rectangle {
     TapHandler {
         enabled: root.interactive
         onTapped: {
+            MichiAccessibility.notePointer()
             root.forceActiveFocus()
             root.activated()
         }
     }
-    MichiFocusRing { visualFocus: root.activeFocus }
+    MichiFocusRing { visualFocus: root.activeFocus && MichiAccessibility.keyboardMode }
 }

@@ -5,10 +5,13 @@ import "../theme"
 
 ComboBox {
     id: root
+    property string accessibleName: "Options"
     implicitHeight: MichiMetrics.controlMedium
     leftPadding: MichiSpacing.md
     rightPadding: MichiSpacing.xl
     focusPolicy: Qt.StrongFocus
+    Accessible.role: Accessible.ComboBox
+    Accessible.name: accessibleName
     contentItem: MichiText {
         leftPadding: 0
         rightPadding: root.indicator.width + root.spacing

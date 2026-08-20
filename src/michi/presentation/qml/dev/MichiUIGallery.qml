@@ -42,8 +42,15 @@ MichiSurface {
                     }
                     MichiComboBox {
                         model: ["comfortable", "standard", "compact"]
+                        accessibleName: "Library density"
                         currentIndex: model.indexOf(MichiThemeState.density)
                         onActivated: MichiThemeState.density = currentText
+                    }
+                    MichiComboBox {
+                        model: ["high", "normal", "low"]
+                        accessibleName: "Glass quality"
+                        currentIndex: model.indexOf(MichiThemeState.glassQuality)
+                        onActivated: MichiThemeState.glassQuality = currentText
                     }
                     MichiSwitch {
                         text: "Precision mode"
@@ -87,6 +94,9 @@ MichiSurface {
                 spacing: MichiSpacing.xl
                 AlbumCard {
                     album: ({ title: "Kind of Blue", artist: "Miles Davis", hasArtwork: false, artworkPath: "" })
+                }
+                ArtistCard {
+                    artist: ({ name: "Miles Davis", albumCount: 12, trackCount: 148 })
                 }
                 ColumnLayout {
                     Layout.fillWidth: true

@@ -6,10 +6,12 @@ Rectangle {
     default property alias contentData: content.data
     property string elevation: "standard"
     property int contentPadding: MichiSpacing.lg
+    readonly property real materialOpacity: MichiThemeState.glassQuality === "low" ? 0.96
+        : MichiThemeState.glassQuality === "high" ? 0.76 : 0.86
 
     color: elevation === "modal" || elevation === "elevated"
-        ? MichiSemanticColors.controlSurfaceStrong
-        : MichiSemanticColors.controlSurface
+        ? Qt.rgba(0.075, 0.09, 0.125, Math.min(1, root.materialOpacity + 0.04))
+        : Qt.rgba(0.065, 0.078, 0.11, root.materialOpacity)
     radius: elevation === "subtle" ? MichiRadius.md : MichiRadius.floating
     border.width: 1
     border.color: MichiAccessibility.highContrast

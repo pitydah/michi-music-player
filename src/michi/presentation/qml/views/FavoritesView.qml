@@ -24,6 +24,7 @@ ListView {
         album: modelData.album
         durationMs: modelData.durationMs
         quality: modelData.qualityLabel
+        playing: playback.currentPath === modelData.path
         favorite: true
         showFavorite: true
         onActivated: library.activate_path(modelData.path)

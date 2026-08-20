@@ -24,6 +24,7 @@ RowLayout {
         Layout.fillWidth: true
         from: 0; to: Math.max(root.duration, 1); value: root.position
         enabled: root.seekEnabled
+        accessibleName: "Playback position"
         onMoved: root.seekRequested(value)
     }
     MichiText { text: root.formatTime(root.duration); role: "technical"; technical: true; horizontalAlignment: Text.AlignRight; Layout.preferredWidth: 38 }

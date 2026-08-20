@@ -7,7 +7,13 @@ Item {
     id: root
     property string currentRoute: ""
     property bool searchOpened: false
+    property string lastContentRoute: "library"
     signal navigationRequested(string routeId)
+
+    onCurrentRouteChanged: {
+        if (currentRoute !== "queue" && currentRoute !== "")
+            lastContentRoute = currentRoute
+    }
 
     Rectangle { anchors.fill: parent; color: MichiSemanticColors.backplane }
 
@@ -27,7 +33,22 @@ Item {
         ContentHost {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            currentRoute: root.currentRoute
+            currentRoute: root.currentRoute === "queue" ? root.lastContentRoute : root.currentRoute
+        }
+    }
+
+    Loader {
+        anchors.fill: parent
+        z: 80
+        active: root.currentRoute === "queue"
+        visible: active
+        sourceComponent: queueDrawerComponent
+    }
+
+    Component {
+        id: queueDrawerComponent
+        QueueView {
+            onCloseRequested: root.navigationRequested(root.lastContentRoute)
         }
     }
 
@@ -40,4 +61,15 @@ Item {
     }
 
     function openSearch() { searchOpened = true }
+    function goBack() {
+        if (searchOpened) {
+            searchOpened = false
+            return
+        }
+        if (currentRoute === "queue") {
+            navigationRequested(lastContentRoute)
+            return
+        }
+        navigationRequested("library")
+    }
 }

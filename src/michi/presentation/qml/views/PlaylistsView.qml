@@ -162,6 +162,7 @@ ColumnLayout {
                     album: modelData.album || ""
                     durationMs: modelData.durationMs || 0
                     quality: modelData.qualityLabel || ""
+                    playing: playback.currentPath === modelData.path
                     interactive: false
                 }
                 MichiIconButton {

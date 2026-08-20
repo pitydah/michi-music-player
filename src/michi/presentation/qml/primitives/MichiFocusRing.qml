@@ -14,6 +14,7 @@ Rectangle {
     opacity: visualFocus ? 1 : 0
     visible: opacity > 0
     Behavior on opacity {
+        enabled: !MichiAccessibility.reducedMotion
         NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
     }
 }

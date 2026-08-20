@@ -14,9 +14,9 @@ Item {
     activeFocusOnTab: true
     Accessible.role: Accessible.ListItem
     Accessible.name: album ? album.title + " by " + album.artist : "Album"
-    Keys.onEnterPressed: activated()
-    Keys.onReturnPressed: activated()
-    Keys.onSpacePressed: activated()
+    Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); activated() }
+    Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); activated() }
+    Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); activated() }
 
     Rectangle {
         anchors.fill: parent
@@ -24,8 +24,11 @@ Item {
         color: tap.hovered ? MichiSemanticColors.surfaceHover : "transparent"
         border.width: root.selected ? 1 : 0
         border.color: MichiPalette.auroraBlue
-        Behavior on color { ColorAnimation { duration: MichiMotion.micro } }
-        MichiFocusRing { visualFocus: root.activeFocus }
+        Behavior on color {
+            enabled: !MichiAccessibility.reducedMotion
+            ColorAnimation { duration: MichiMotion.micro }
+        }
+        MichiFocusRing { visualFocus: root.activeFocus && MichiAccessibility.keyboardMode }
     }
     ColumnLayout {
         anchors.fill: parent
@@ -53,5 +56,5 @@ Item {
         }
     }
     HoverHandler { id: tap; cursorShape: Qt.PointingHandCursor }
-    TapHandler { onTapped: { root.forceActiveFocus(); root.activated() } }
+    TapHandler { onTapped: { MichiAccessibility.notePointer(); root.forceActiveFocus(); root.activated() } }
 }

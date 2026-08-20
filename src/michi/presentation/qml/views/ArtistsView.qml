@@ -3,24 +3,38 @@ import QtQuick.Layouts
 import "../media"
 import "../theme"
 
-ListView {
+Item {
     id: root
     objectName: "artistsView"
+    property string addTargetPath: ""
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    model: library.artists
-    clip: true
-    spacing: MichiSpacing.xs
-    boundsBehavior: Flickable.StopAtBounds
 
-    delegate: MichiEntityRow {
-        required property var modelData
-        width: root.width
-        iconName: "artist"
-        title: modelData.name
-        subtitle: modelData.albumCount + " albums"
-        technical: modelData.trackCount + " tracks"
-        interactive: false
+    ListView {
+        id: artistList
+        anchors.fill: parent
+        visible: library.selectedArtistKey === ""
+        model: library.artists
+        clip: true
+        spacing: MichiSpacing.xs
+        boundsBehavior: Flickable.StopAtBounds
+        keyNavigationEnabled: true
+
+        delegate: MichiEntityRow {
+            required property var modelData
+            width: artistList.width
+            iconName: "artist"
+            title: modelData.name
+            subtitle: modelData.albumCount + " albums"
+            technical: modelData.trackCount + " tracks"
+            onActivated: library.select_artist(modelData.key)
+        }
+    }
+
+    ArtistDetailView {
+        anchors.fill: parent
+        addTargetPath: root.addTargetPath
+        onAddTargetPathChanged: root.addTargetPath = addTargetPath
     }
 }

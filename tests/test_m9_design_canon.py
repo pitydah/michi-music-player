@@ -167,4 +167,32 @@ def test_search_overlay_supports_keyboard_result_navigation() -> None:
     assert "activateResultRequested" in field
     assert "function moveResult" in overlay
     assert "function activateResult" in overlay
-    assert "playlists" not in overlay.casefold()
+    assert "library.searchPlaylists" in overlay
+    assert "library.select_playlist" in overlay
+
+
+def test_artist_detail_focus_mode_and_contextual_queue_are_real() -> None:
+    artists = _text("views/ArtistsView.qml")
+    artist_detail = _text("views/ArtistDetailView.qml")
+    now_playing = _text("views/NowPlayingView.qml")
+    shell = _text("shell/AppShell.qml")
+    track_row = _text("media/TrackRow.qml")
+    assert "library.select_artist" in artists
+    assert "library.artistTracks" in artist_detail
+    assert "ArtworkFocusMode" in now_playing
+    assert 'active: root.currentRoute === "queue"' in shell
+    assert "Qt.RightButton" in track_row
+    assert "MichiContextMenu" in track_row
+
+
+def test_playing_indicator_is_bound_on_library_track_surfaces() -> None:
+    for view in (
+        "views/SongsView.qml",
+        "views/FavoritesView.qml",
+        "views/HistoryView.qml",
+        "views/RecentlyAddedView.qml",
+        "views/AlbumDetailView.qml",
+        "views/ArtistDetailView.qml",
+        "views/PlaylistsView.qml",
+    ):
+        assert "playback.currentPath" in _text(view)

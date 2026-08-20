@@ -7,6 +7,8 @@ RadioButton {
     id: root
     spacing: MichiSpacing.sm
     focusPolicy: Qt.StrongFocus
+    Accessible.role: Accessible.RadioButton
+    Accessible.name: text
     indicator: Rectangle {
         implicitWidth: 18; implicitHeight: 18
         x: root.leftPadding; y: parent.height / 2 - height / 2

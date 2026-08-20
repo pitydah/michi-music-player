@@ -27,6 +27,7 @@ ListView {
         album: modelData.album
         durationMs: modelData.durationMs
         quality: modelData.qualityLabel
+        playing: playback.currentPath === modelData.path
         favorite: library.favoritePaths.indexOf(modelData.path) !== -1
         showFavorite: true
         showAddToPlaylist: true

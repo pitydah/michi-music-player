@@ -14,7 +14,10 @@ ScrollBar {
         radius: 2
         color: root.pressed ? MichiPalette.auroraBlue : MichiPalette.textMuted
         opacity: root.active ? 0.8 : 0
-        Behavior on opacity { NumberAnimation { duration: MichiMotion.standard } }
+        Behavior on opacity {
+            enabled: !MichiAccessibility.reducedMotion
+            NumberAnimation { duration: MichiMotion.standard }
+        }
     }
     background: Item { }
 }

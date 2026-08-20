@@ -25,6 +25,7 @@ MichiGlassSurface {
     signal nextRequested()
     signal repeatModeRequested(string mode)
     signal shuffleRequested(bool enabled)
+    signal closeRequested()
 
     elevation: "elevated"
     contentPadding: MichiSpacing.lg
@@ -40,6 +41,11 @@ MichiGlassSurface {
                 Layout.fillWidth: true
                 title: "Queue"
                 subtitle: root.count + (root.count === 1 ? " track" : " tracks")
+            }
+            MichiIconButton {
+                iconName: "close"
+                accessibleName: "Close queue"
+                onClicked: root.closeRequested()
             }
             MichiButton {
                 text: "Clear"
@@ -118,9 +124,14 @@ MichiGlassSurface {
                     Layout.fillWidth: true
                     numberText: String(index + 1)
                     title: modelData.title
+                    artist: modelData.artist || ""
+                    album: modelData.album || ""
+                    durationMs: modelData.durationMs || 0
                     playing: index === root.currentIndex
                     selected: index === root.currentIndex
+                    showRemove: true
                     onActivated: root.trackClicked(index)
+                    onRemoveRequested: root.removeRequested(index)
                 }
                 MichiIconButton {
                     iconName: "up"
@@ -133,11 +144,6 @@ MichiGlassSurface {
                     accessibleName: "Move track down"
                     enabled: index + 1 < root.count
                     onClicked: root.moveRequested(index, index + 1)
-                }
-                MichiIconButton {
-                    iconName: "trash"
-                    accessibleName: "Remove from queue"
-                    onClicked: root.removeRequested(index)
                 }
             }
         }

@@ -8,6 +8,7 @@ CheckBox {
     spacing: MichiSpacing.sm
     focusPolicy: Qt.StrongFocus
     Accessible.role: Accessible.CheckBox
+    Accessible.name: text
     indicator: Rectangle {
         implicitWidth: 18; implicitHeight: 18
         x: root.leftPadding

@@ -37,9 +37,20 @@ Rectangle {
     activeFocusOnTab: root.interactive && !root.unavailable
     Accessible.role: Accessible.ListItem
     Accessible.name: title + (artist.length > 0 ? " by " + artist : "")
-    Keys.onEnterPressed: if (root.interactive && !root.unavailable) activated()
-    Keys.onReturnPressed: if (root.interactive && !root.unavailable) activated()
-    Keys.onSpacePressed: if (root.interactive && !root.unavailable) activated()
+    Keys.onEnterPressed: if (root.interactive && !root.unavailable) { MichiAccessibility.noteKeyboard(); activated() }
+    Keys.onReturnPressed: if (root.interactive && !root.unavailable) { MichiAccessibility.noteKeyboard(); activated() }
+    Keys.onSpacePressed: if (root.interactive && !root.unavailable) { MichiAccessibility.noteKeyboard(); activated() }
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_PageDown) {
+            MichiAccessibility.noteKeyboard()
+            root.moveByPage(1)
+            event.accepted = true
+        } else if (event.key === Qt.Key_PageUp) {
+            MichiAccessibility.noteKeyboard()
+            root.moveByPage(-1)
+            event.accepted = true
+        }
+    }
 
     function formatDuration(ms) {
         if (ms <= 0)
@@ -48,6 +59,16 @@ Rectangle {
         var minutes = Math.floor(totalSeconds / 60)
         var seconds = totalSeconds % 60
         return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
+    }
+
+    function moveByPage(direction) {
+        var view = root.ListView.view
+        if (!view || view.count <= 0)
+            return
+        var pageSize = Math.max(1, Math.floor(view.height / root.height) - 1)
+        view.currentIndex = Math.max(0, Math.min(view.count - 1,
+            view.currentIndex + direction * pageSize))
+        view.positionViewAtIndex(view.currentIndex, ListView.Contain)
     }
 
     RowLayout {
@@ -113,6 +134,25 @@ Rectangle {
         }
     }
     HoverHandler { id: hover; cursorShape: root.interactive && !root.unavailable ? Qt.PointingHandCursor : Qt.ArrowCursor }
-    TapHandler { enabled: root.interactive && !root.unavailable; onTapped: { root.forceActiveFocus(); root.activated() } }
-    MichiFocusRing { visualFocus: root.activeFocus }
+    TapHandler { enabled: root.interactive && !root.unavailable; onTapped: { MichiAccessibility.notePointer(); root.forceActiveFocus(); root.activated() } }
+    TapHandler {
+        acceptedButtons: Qt.RightButton
+        enabled: root.interactive && !root.unavailable
+        onTapped: { MichiAccessibility.notePointer(); contextMenu.popup() }
+    }
+    MichiContextMenu {
+        id: contextMenu
+        canPlay: root.interactive && !root.unavailable
+        canFavorite: root.showFavorite
+        favorite: root.favorite
+        canAddToPlaylist: root.showAddToPlaylist
+        canInspect: root.showInspector
+        canRemove: root.showRemove
+        onPlayRequested: root.activated()
+        onFavoriteRequested: root.favoriteToggled()
+        onAddToPlaylistRequested: root.addToPlaylistRequested()
+        onInspectRequested: root.inspectorRequested()
+        onRemoveRequested: root.removeRequested()
+    }
+    MichiFocusRing { visualFocus: root.activeFocus && MichiAccessibility.keyboardMode }
 }

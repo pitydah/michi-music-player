@@ -58,7 +58,13 @@ PathView {
         scale: PathView.isCurrentItem ? 1.0 : 0.86
         z: PathView.isCurrentItem ? 2 : 1
         opacity: PathView.isCurrentItem ? 1.0 : 0.68
-        Behavior on scale { NumberAnimation { duration: MichiMotion.artwork; easing.type: MichiMotion.outCubic } }
-        Behavior on opacity { NumberAnimation { duration: MichiMotion.standard } }
+        Behavior on scale {
+            enabled: !MichiAccessibility.reducedMotion
+            NumberAnimation { duration: MichiMotion.artwork; easing.type: MichiMotion.outCubic }
+        }
+        Behavior on opacity {
+            enabled: !MichiAccessibility.reducedMotion
+            NumberAnimation { duration: MichiMotion.standard }
+        }
     }
 }

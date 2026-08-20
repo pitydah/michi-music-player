@@ -8,6 +8,7 @@ Switch {
     spacing: MichiSpacing.sm
     focusPolicy: Qt.StrongFocus
     Accessible.role: Accessible.CheckBox
+    Accessible.name: text
     indicator: Rectangle {
         implicitWidth: 36; implicitHeight: 20
         x: root.leftPadding; y: parent.height / 2 - height / 2
@@ -20,7 +21,10 @@ Switch {
             x: root.checked ? parent.width - width - 3 : 3
             anchors.verticalCenter: parent.verticalCenter
             color: root.checked ? MichiPalette.obsidian : MichiPalette.textSecondary
-            Behavior on x { NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic } }
+            Behavior on x {
+                enabled: !MichiAccessibility.reducedMotion
+                NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
+            }
         }
         MichiFocusRing { visualFocus: root.visualFocus }
     }

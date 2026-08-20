@@ -67,7 +67,10 @@ MichiGlassSurface {
                     : routeItem.hovered || routeItem.visualFocus ? MichiSemanticColors.surfaceHover : "transparent"
                 border.width: routeItem._active ? 1 : 0
                 border.color: Qt.rgba(0.298, 0.651, 1, 0.18)
-                Behavior on color { ColorAnimation { duration: MichiMotion.micro } }
+                Behavior on color {
+                    enabled: !MichiAccessibility.reducedMotion
+                    ColorAnimation { duration: MichiMotion.micro }
+                }
                 MichiFocusRing { visualFocus: routeItem.visualFocus }
             }
             onClicked: root.navigationRequested(modelData.id)

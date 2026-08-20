@@ -11,6 +11,22 @@ Item {
     // must never be the source of a preference we want to preserve.
     property string albumMode: "grid"
 
+    function syncEntitySelection() {
+        if (library.selectedAlbumKey !== "")
+            currentTab = "albums"
+        else if (library.selectedArtistKey !== "")
+            currentTab = "artists"
+        else if (library.selectedPlaylistName !== "")
+            currentTab = "playlists"
+    }
+
+    Connections {
+        target: library
+        function onLibrary_changed() { root.syncEntitySelection() }
+    }
+
+    Component.onCompleted: syncEntitySelection()
+
     ColumnLayout {
         anchors.fill: parent
         spacing: MichiThemeState.contentGap

@@ -149,6 +149,8 @@ ColumnLayout {
         id: artistsViewComponent
         ArtistsView {
             anchors.fill: parent
+            addTargetPath: root.addTargetPath
+            onAddTargetPathChanged: root.addTargetPath = addTargetPath
         }
     }
 

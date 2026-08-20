@@ -6,6 +6,13 @@ import "../theme"
 Item {
     id: root
     objectName: "queueView"
+    signal closeRequested()
+
+    Rectangle {
+        anchors.fill: parent
+        color: Qt.rgba(0.02, 0.025, 0.04, 0.5)
+        MouseArea { anchors.fill: parent; onClicked: root.closeRequested() }
+    }
 
     RowLayout {
         anchors.fill: parent
@@ -31,6 +38,7 @@ Item {
             onNextRequested: queue.next_track()
             onRepeatModeRequested: mode => queue.set_repeat_mode(mode)
             onShuffleRequested: enabled => queue.set_shuffle_enabled(enabled)
+            onCloseRequested: root.closeRequested()
         }
     }
 }

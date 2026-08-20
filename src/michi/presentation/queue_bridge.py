@@ -2,6 +2,7 @@
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
+from michi.application.library_service import LibraryService
 from michi.application.queue_service import QueueService
 
 
@@ -10,13 +11,23 @@ class QueueBridge(QObject):
 
     queue_changed = Signal()
 
-    def __init__(self, service: QueueService, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        service: QueueService,
+        library_service: LibraryService | None = None,
+        parent: QObject | None = None,
+    ) -> None:
         super().__init__(parent)
         self._service = service
+        self._library_service = library_service
         service.subscribe_changed(self._on_service_changed)
+        if library_service is not None:
+            library_service.subscribe_changed(self._on_service_changed)
 
     def dispose(self) -> None:
         self._service.unsubscribe_changed(self._on_service_changed)
+        if self._library_service is not None:
+            self._library_service.unsubscribe_changed(self._on_service_changed)
 
     def _on_service_changed(self) -> None:
         self.queue_changed.emit()
@@ -31,13 +42,22 @@ class QueueBridge(QObject):
         bridge only exposes stable, display-ready facts already present on
         each canonical queue entry.
         """
-        return [
-            {
+        rows = []
+        for track in self._service.state.tracks:
+            row = {
                 "title": track.title or track.file_path.stem,
                 "path": str(track.file_path),
             }
-            for track in self._service.state.tracks
-        ]
+            if self._library_service is not None:
+                ref = self._library_service.resolve_trackref(track.file_path)
+                if ref is not None:
+                    row.update(
+                        artist=ref.artist,
+                        album=ref.album,
+                        durationMs=ref.duration_ms,
+                    )
+            rows.append(row)
+        return rows
 
     def _get_current_index(self) -> int:
         return self._service.state.current_index

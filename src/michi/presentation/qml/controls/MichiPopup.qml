@@ -9,7 +9,7 @@ Popup {
     modal: false
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: MichiMotion.panel } }
-    exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: MichiMotion.standard } }
+    enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: MichiAccessibility.reducedMotion ? 0 : MichiMotion.panel } }
+    exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: MichiAccessibility.reducedMotion ? 0 : MichiMotion.standard } }
     background: MichiGlassSurface { elevation: root.modal ? "modal" : "elevated"; contentPadding: 0 }
 }

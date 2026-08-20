@@ -58,8 +58,14 @@ Button {
         border.width: root.primary ? 0 : 1
         border.color: root.selected ? MichiPalette.auroraBlue : MichiSemanticColors.borderSubtle
         y: root.pressed ? 1 : 0
-        Behavior on color { ColorAnimation { duration: MichiMotion.micro } }
-        Behavior on y { NumberAnimation { duration: MichiMotion.instant } }
+        Behavior on color {
+            enabled: !MichiAccessibility.reducedMotion
+            ColorAnimation { duration: MichiMotion.micro }
+        }
+        Behavior on y {
+            enabled: !MichiAccessibility.reducedMotion
+            NumberAnimation { duration: MichiMotion.instant }
+        }
         MichiFocusRing { visualFocus: root.visualFocus }
     }
 }

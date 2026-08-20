@@ -36,7 +36,10 @@ Rectangle {
         fillMode: Image.PreserveAspectCrop
         visible: status === Image.Ready
         opacity: visible ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: MichiMotion.artwork; easing.type: MichiMotion.outCubic } }
+        Behavior on opacity {
+            enabled: !MichiAccessibility.reducedMotion
+            NumberAnimation { duration: MichiMotion.artwork; easing.type: MichiMotion.outCubic }
+        }
     }
     Rectangle {
         anchors.fill: parent

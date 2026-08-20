@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "../controls" as Controls
 import "../theme"
 import "../ui"
 
@@ -30,6 +31,68 @@ Item {
                     text: "Configure existing Michi capabilities."
                     font.pixelSize: MichiTheme.fontSizeBody
                     color: MichiTheme.textSecondary
+                }
+            }
+
+            // ── Playback ────────────────────────────────────
+            MichiPanel {
+                id: appearancePanel
+                objectName: "appearanceSettingsPanel"
+                Layout.fillWidth: true
+                implicitHeight: appearanceContent.implicitHeight
+                    + MichiTheme.space16 + MichiTheme.space16
+
+                ColumnLayout {
+                    id: appearanceContent
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    spacing: MichiTheme.space12
+
+                    Text {
+                        text: "Appearance and accessibility"
+                        font.pixelSize: MichiTheme.fontSizeTitle
+                        font.weight: MichiTheme.fontWeightBold
+                        color: MichiTheme.textPrimary
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Text {
+                            text: "Glass quality"
+                            font.pixelSize: MichiTheme.fontSizeBody
+                            color: MichiTheme.textSecondary
+                            Layout.fillWidth: true
+                        }
+                        Controls.MichiComboBox {
+                            model: ["High", "Normal", "Low"]
+                            currentIndex: MichiThemeState.glassQuality === "high" ? 0
+                                : MichiThemeState.glassQuality === "low" ? 2 : 1
+                            Accessible.name: "Glass quality"
+                            onActivated: index => MichiThemeState.glassQuality =
+                                index === 0 ? "high" : index === 2 ? "low" : "normal"
+                        }
+                    }
+
+                    Controls.MichiSwitch {
+                        text: "Reduce motion"
+                        checked: MichiAccessibility.reducedMotion
+                        onToggled: MichiAccessibility.reducedMotion = checked
+                    }
+
+                    Controls.MichiSwitch {
+                        text: "High contrast"
+                        checked: MichiAccessibility.highContrast
+                        onToggled: MichiAccessibility.highContrast = checked
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Low glass quality uses a nearly opaque smoke surface to reduce visual cost."
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: MichiTheme.fontSizeCaption
+                        color: MichiTheme.textMuted
+                    }
                 }
             }
 

@@ -1,16 +1,17 @@
 import QtQuick
 import QtQuick.Layouts
-import "../ui"
+import "../controls"
 
 RowLayout {
     id: root
     spacing: 8
 
-    property alias canPlay: playBtn.enabled
-    property alias canPause: pauseBtn.enabled
-    property alias canStop: stopBtn.enabled
-    property alias canPrev: prevBtn.enabled
-    property alias canNext: nextBtn.enabled
+    property bool playing: false
+    property bool canPlay: false
+    property bool canPause: false
+    property bool canStop: false
+    property bool canPrev: false
+    property bool canNext: false
 
     signal playClicked()
     signal pauseClicked()
@@ -18,9 +19,31 @@ RowLayout {
     signal prevClicked()
     signal nextClicked()
 
-    MichiButton { id: prevBtn; text: "⏮"; variant: "ghost"; onClicked: root.prevClicked() }
-    MichiButton { id: playBtn; text: "▶"; onClicked: root.playClicked() }
-    MichiButton { id: pauseBtn; text: "⏸"; variant: "secondary"; onClicked: root.pauseClicked() }
-    MichiButton { id: stopBtn; text: "■"; variant: "ghost"; onClicked: root.stopClicked() }
-    MichiButton { id: nextBtn; text: "⏭"; variant: "ghost"; onClicked: root.nextClicked() }
+    MichiIconButton {
+        iconName: "previous"
+        accessibleName: "Previous track"
+        enabled: root.canPrev
+        onClicked: root.prevClicked()
+    }
+    MichiIconButton {
+        iconName: root.playing ? "pause" : "play"
+        accessibleName: root.playing ? "Pause" : "Play"
+        selected: root.playing
+        enabled: root.playing ? root.canPause : root.canPlay
+        implicitWidth: MichiMetrics.controlLarge
+        implicitHeight: MichiMetrics.controlLarge
+        onClicked: root.playing ? root.pauseClicked() : root.playClicked()
+    }
+    MichiIconButton {
+        iconName: "stop"
+        accessibleName: "Stop"
+        enabled: root.canStop
+        onClicked: root.stopClicked()
+    }
+    MichiIconButton {
+        iconName: "next"
+        accessibleName: "Next track"
+        enabled: root.canNext
+        onClicked: root.nextClicked()
+    }
 }

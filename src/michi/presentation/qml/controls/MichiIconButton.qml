@@ -31,7 +31,14 @@ Button {
             : root.selected ? MichiSemanticColors.surfaceSelected : "transparent"
         border.width: root.selected ? 1 : 0
         border.color: MichiPalette.auroraBlue
-        Behavior on color { ColorAnimation { duration: MichiMotion.micro } }
+        Behavior on color {
+            enabled: !MichiAccessibility.reducedMotion
+            ColorAnimation { duration: MichiMotion.micro }
+        }
         MichiFocusRing { visualFocus: root.visualFocus }
+    }
+    MichiTooltip {
+        visible: root.hovered && root.accessibleName.length > 0
+        text: root.accessibleName
     }
 }

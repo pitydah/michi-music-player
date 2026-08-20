@@ -38,6 +38,16 @@ Item {
                 ctx.moveTo(w * .34, h * .23); ctx.lineTo(w * .76, cy); ctx.lineTo(w * .34, h * .77); ctx.closePath(); ctx.fill(); return
             } else if (root.name === "pause") {
                 ctx.fillRect(w * .3, h * .24, w * .13, h * .52); ctx.fillRect(w * .57, h * .24, w * .13, h * .52); return
+            } else if (root.name === "stop") {
+                ctx.fillRect(w * .28, h * .28, w * .44, h * .44); return
+            } else if (root.name === "previous") {
+                ctx.fillRect(w * .22, h * .25, w * .08, h * .5); ctx.moveTo(w * .72, h * .25); ctx.lineTo(w * .34, cy); ctx.lineTo(w * .72, h * .75); ctx.closePath(); ctx.fill(); return
+            } else if (root.name === "next") {
+                ctx.fillRect(w * .7, h * .25, w * .08, h * .5); ctx.moveTo(w * .28, h * .25); ctx.lineTo(w * .66, cy); ctx.lineTo(w * .28, h * .75); ctx.closePath(); ctx.fill(); return
+            } else if (root.name === "volume" || root.name === "mute") {
+                ctx.moveTo(w * .2, h * .42); ctx.lineTo(w * .36, h * .42); ctx.lineTo(w * .55, h * .25); ctx.lineTo(w * .55, h * .75); ctx.lineTo(w * .36, h * .58); ctx.lineTo(w * .2, h * .58); ctx.closePath();
+                if (root.name === "volume") { ctx.moveTo(w * .65, h * .38); ctx.arc(w * .58, cy, w * .2, -.7, .7) }
+                else { line(ctx, w * .65, h * .37, w * .83, h * .63); line(ctx, w * .83, h * .37, w * .65, h * .63) }
             } else if (root.name === "search") {
                 ctx.arc(w * .43, h * .43, w * .24, 0, Math.PI * 2); line(ctx, w * .61, h * .61, w * .82, h * .82)
             } else if (root.name === "library") {
