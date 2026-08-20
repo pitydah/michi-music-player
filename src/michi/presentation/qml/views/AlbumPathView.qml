@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "../media"
 import "../theme"
 
 PathView {
@@ -23,18 +24,14 @@ PathView {
         width: 180
         height: 220
 
-        Rectangle {
-            anchors.fill: parent
-            radius: MichiTheme.radiusSmall
-            color: PathView.isCurrentItem ? MichiTheme.surfaceSelected : MichiTheme.surfaceHover
-        }
-
-        Image {
-            anchors.fill: parent
-            anchors.margins: 6
-            source: modelData.hasArtwork ? "file://" + modelData.artworkPath : ""
-            fillMode: Image.PreserveAspectFit
-            visible: modelData.hasArtwork
+        Artwork {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            height: 180
+            sourcePath: modelData.hasArtwork ? modelData.artworkPath : ""
+            fallbackText: modelData.title
+            requestedSize: 360
         }
 
         Text {
@@ -58,8 +55,10 @@ PathView {
             }
         }
 
-        scale: PathView.isCurrentItem ? 1.0 : 0.85
+        scale: PathView.isCurrentItem ? 1.0 : 0.86
         z: PathView.isCurrentItem ? 2 : 1
-        opacity: PathView.isCurrentItem ? 1.0 : 0.6
+        opacity: PathView.isCurrentItem ? 1.0 : 0.68
+        Behavior on scale { NumberAnimation { duration: MichiMotion.artwork; easing.type: MichiMotion.outCubic } }
+        Behavior on opacity { NumberAnimation { duration: MichiMotion.standard } }
     }
 }

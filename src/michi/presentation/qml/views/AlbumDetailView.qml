@@ -1,5 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
+import "../controls"
+import "../media"
+import "../primitives"
 import "../theme"
 
 ColumnLayout {
@@ -22,27 +25,23 @@ ColumnLayout {
         return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
     }
 
-    Text {
-        text: "← Back"
-        font.pixelSize: MichiTheme.fontSizeBody
-        color: MichiTheme.textSecondary
-        MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: library.clear_album_selection()
-        }
+    MichiButton {
+        text: "Back"
+        variant: "ghost"
+        Layout.alignment: Qt.AlignLeft
+        onClicked: library.clear_album_selection()
     }
 
     RowLayout {
         Layout.fillWidth: true
         spacing: MichiTheme.space12
 
-        Image {
-            source: "file://" + library.albumArtwork
-            visible: library.albumArtwork !== ""
-            Layout.preferredWidth: 120
-            Layout.preferredHeight: 120
-            fillMode: Image.PreserveAspectFit
+        Artwork {
+            sourcePath: library.albumArtwork
+            fallbackText: library.albumTitle
+            Layout.preferredWidth: 180
+            Layout.preferredHeight: 180
+            requestedSize: 420
         }
 
         ColumnLayout {
@@ -50,21 +49,26 @@ ColumnLayout {
             Layout.fillHeight: true
             spacing: MichiTheme.space4
 
-            Text {
+            MichiText {
                 Layout.fillWidth: true
                 text: library.albumTitle
-                font.pixelSize: MichiTheme.fontSizeTitle
-                font.weight: MichiTheme.fontWeightBold
-                color: MichiTheme.textPrimary
+                role: "title"
                 elide: Text.ElideRight
             }
 
-            Text {
+            MichiText {
                 Layout.fillWidth: true
                 text: library.albumArtist
-                font.pixelSize: MichiTheme.fontSizeBody
-                color: MichiTheme.textSecondary
+                role: "secondary"
                 elide: Text.ElideRight
+            }
+            AudioQualityBadge {
+                label: library.albumTracks.length > 0 ? library.albumTracks[0].qualityLabel : ""
+            }
+            RowLayout {
+                spacing: MichiSpacing.sm
+                MichiButton { text: "Play"; iconName: "play"; onClicked: if (library.albumTracks.length > 0) library.activate_album_track(0) }
+                MichiButton { text: "Add to queue"; variant: "secondary"; enabled: false; Accessible.description: "Unavailable until album queue intent is exposed by the bridge" }
             }
         }
     }

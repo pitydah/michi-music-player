@@ -1,9 +1,10 @@
 import QtQuick
-import "../theme"
+import "../patterns"
 
-Text {
-    text: "Library" + (library.fileCount > 0 ? " (" + library.fileCount + ")" : "")
-    font.pixelSize: MichiTheme.fontSizeBodyLarge
-    font.weight: MichiTheme.fontWeightBold
-    color: MichiTheme.textSecondary
+PageHeader {
+    title: "Library"
+    subtitle: library.fileCount > 0
+        ? library.fileCount + " tracks · " + library.albumCount + " albums · "
+            + library.artistCount + " artists"
+        : "Your local music collection"
 }

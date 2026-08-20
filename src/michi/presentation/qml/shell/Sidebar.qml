@@ -1,104 +1,103 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../primitives"
 import "../theme"
 
-ColumnLayout {
+MichiGlassSurface {
     id: root
-    spacing: 0
-
     signal navigationRequested(string routeId)
     property string currentRoute: ""
+    property bool compact: false
+    contentPadding: MichiSpacing.sm
+    elevation: "standard"
 
     readonly property var _routes: [
-        { id: "now_playing", label: "Now Playing" },
-        { id: "library",     label: "Library" },
-        { id: "queue",       label: "Queue" }
+        { id: "now_playing", label: "Now Playing", icon: "play" },
+        { id: "library", label: "Library", icon: "library" },
+        { id: "queue", label: "Queue", icon: "queue" }
     ]
 
     readonly property var _bottom_routes: [
-        { id: "settings",    label: "Settings" }
+        { id: "settings", label: "Settings", icon: "settings" }
     ]
 
     Component {
         id: routeDelegate
-
         ItemDelegate {
+            id: routeItem
             Layout.fillWidth: true
-            height: MichiTheme.controlHeightMedium
-
+            height: MichiMetrics.controlLarge
             readonly property bool _active: root.currentRoute === modelData.id
-
             focusPolicy: Qt.StrongFocus
+            hoverEnabled: true
+            Accessible.role: Accessible.Button
+            Accessible.name: modelData.label
 
             contentItem: RowLayout {
-                spacing: 0
-
+                spacing: MichiSpacing.md
                 Rectangle {
-                    visible: _active
-                    Layout.preferredWidth: 3
-                    Layout.preferredHeight: parent.height - MichiTheme.space12
+                    visible: routeItem._active
+                    Layout.preferredWidth: 2
+                    Layout.preferredHeight: 20
                     radius: 2
-                    color: MichiTheme.accent
+                    color: MichiPalette.auroraBlue
                 }
-
-                Text {
-                    Layout.leftMargin: _active
-                        ? MichiTheme.space16 : MichiTheme.space20
+                MichiIcon {
+                    Layout.leftMargin: routeItem._active ? MichiSpacing.sm : MichiSpacing.md
+                    name: modelData.icon
+                    Layout.preferredWidth: MichiMetrics.iconMedium
+                    Layout.preferredHeight: MichiMetrics.iconMedium
+                    iconColor: routeItem._active ? MichiPalette.auroraBlue
+                        : routeItem.hovered ? MichiPalette.textPrimary : MichiPalette.textSecondary
+                }
+                MichiText {
+                    visible: !root.compact
                     text: modelData.label
-                    font.pixelSize: MichiTheme.fontSizeBody
-                    font.weight: _active
-                        ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
-                    color: _active
-                        ? MichiTheme.textPrimary
-                        : (hovered
-                            ? MichiTheme.textPrimary : MichiTheme.textSecondary)
+                    role: "secondary"
+                    font.weight: routeItem._active ? Font.DemiBold : Font.Normal
+                    color: routeItem._active || routeItem.hovered ? MichiPalette.textPrimary : MichiPalette.textSecondary
                 }
+                Item { Layout.fillWidth: true }
             }
-
             background: Rectangle {
-                radius: MichiTheme.radiusMedium
-                color: {
-                    if (_active) return MichiTheme.surfaceSelected
-                    if (hovered) return MichiTheme.surfaceHover
-                    if (visualFocus) return MichiTheme.surfaceHover
-                    return "transparent"
-                }
+                radius: MichiRadius.md
+                color: routeItem.pressed ? MichiSemanticColors.surfacePressed
+                    : routeItem._active ? MichiSemanticColors.surfaceSelected
+                    : routeItem.hovered || routeItem.visualFocus ? MichiSemanticColors.surfaceHover : "transparent"
+                border.width: routeItem._active ? 1 : 0
+                border.color: Qt.rgba(0.298, 0.651, 1, 0.18)
+                Behavior on color { ColorAnimation { duration: MichiMotion.micro } }
+                MichiFocusRing { visualFocus: routeItem.visualFocus }
             }
-
             onClicked: root.navigationRequested(modelData.id)
         }
     }
 
-    Rectangle {
-        Layout.fillWidth: true
-        height: 56
-        color: MichiTheme.backgroundRaised
-
-        Text {
-            anchors.centerIn: parent
-            text: "Michi"
-            font.pixelSize: MichiTheme.fontSizeTitle
-            font.weight: MichiTheme.fontWeightBold
-            color: MichiTheme.textPrimary
-        }
-    }
-
     ColumnLayout {
+        anchors.fill: parent
+        spacing: MichiSpacing.xs
+
+        Item {
         Layout.fillWidth: true
-        Layout.topMargin: MichiTheme.space12
-        spacing: MichiTheme.space2
+            Layout.preferredHeight: 54
+            MichiText {
+            anchors.centerIn: parent
+                text: root.compact ? "M" : "Michi"
+                role: "section"
+                color: MichiPalette.textPrimary
+            }
+        }
 
         Repeater {
             model: root._routes
             delegate: routeDelegate
         }
-    }
-
-    Item { Layout.fillHeight: true }
-
-    Repeater {
-        model: root._bottom_routes
-        delegate: routeDelegate
+        Item { Layout.fillHeight: true }
+        Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: MichiSemanticColors.borderSubtle }
+        Repeater {
+            model: root._bottom_routes
+            delegate: routeDelegate
+        }
     }
 }

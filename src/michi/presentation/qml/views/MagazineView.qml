@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "../media"
 import "../theme"
 
 ColumnLayout {
@@ -25,11 +26,11 @@ ColumnLayout {
             }
         }
 
-        Image {
+        Artwork {
             anchors.fill: parent
-            source: heroAlbum !== null && heroAlbum.hasArtwork ? "file://" + heroAlbum.artworkPath : ""
-            visible: heroAlbum !== null && heroAlbum.hasArtwork
-            fillMode: Image.PreserveAspectFit
+            sourcePath: heroAlbum !== null && heroAlbum.hasArtwork ? heroAlbum.artworkPath : ""
+            fallbackText: heroAlbum !== null ? heroAlbum.title : "?"
+            requestedSize: 640
         }
     }
 
@@ -64,12 +65,12 @@ ColumnLayout {
             height: MichiTheme.controlHeightSmall
             spacing: MichiTheme.space8
 
-            Image {
+            Artwork {
                 Layout.preferredWidth: 32
                 Layout.preferredHeight: 32
-                source: modelData.hasArtwork ? "file://" + modelData.artworkPath : ""
-                visible: modelData.hasArtwork
-                fillMode: Image.PreserveAspectFit
+                sourcePath: modelData.hasArtwork ? modelData.artworkPath : ""
+                fallbackText: modelData.title
+                requestedSize: 64
             }
 
             Text {

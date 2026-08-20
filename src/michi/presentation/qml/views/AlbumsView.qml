@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "../controls"
 import "../theme"
 
 ColumnLayout {
@@ -41,81 +42,32 @@ ColumnLayout {
     Layout.fillHeight: true
     spacing: MichiTheme.space8
 
-    RowLayout {
+    MichiSegmentedControl {
         Layout.fillWidth: true
-        spacing: MichiTheme.space12
         visible: library.selectedAlbumKey === ""
-
-        Text {
-            text: "Grid"
-            font.pixelSize: MichiTheme.fontSizeCaption
-            font.weight: albumMode === "grid" ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
-            color: albumMode === "grid" ? MichiTheme.warning : MichiTheme.textSecondary
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: albumMode = "grid"
-            }
-        }
-
-        Text {
-            text: "Cover"
-            font.pixelSize: MichiTheme.fontSizeCaption
-            font.weight: albumMode === "cover" ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
-            color: albumMode === "cover" ? MichiTheme.warning : MichiTheme.textSecondary
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: albumMode = "cover"
-            }
-        }
-
-        Text {
-            text: "Vinyl"
-            font.pixelSize: MichiTheme.fontSizeCaption
-            font.weight: albumMode === "vinyl" ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
-            color: albumMode === "vinyl" ? MichiTheme.warning : MichiTheme.textSecondary
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: albumMode = "vinyl"
-            }
-        }
-
-        Text {
-            text: "Timeline"
-            font.pixelSize: MichiTheme.fontSizeCaption
-            font.weight: albumMode === "timeline" ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
-            color: albumMode === "timeline" ? MichiTheme.warning : MichiTheme.textSecondary
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: albumMode = "timeline"
-            }
-        }
-
-        Text {
-            text: "Magazine"
-            font.pixelSize: MichiTheme.fontSizeCaption
-            font.weight: albumMode === "magazine" ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
-            color: albumMode === "magazine" ? MichiTheme.warning : MichiTheme.textSecondary
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: albumMode = "magazine"
-            }
-        }
-
-        Text {
-            text: "List"
-            font.pixelSize: MichiTheme.fontSizeCaption
-            font.weight: albumMode === "list" ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
-            color: albumMode === "list" ? MichiTheme.warning : MichiTheme.textSecondary
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: albumMode = "list"
-            }
+        model: [
+            { value: "grid", label: "Grid" },
+            { value: "cover", label: "PathView" },
+            { value: "vinyl", label: "Vinyl Wall" },
+            { value: "timeline", label: "Timeline" },
+            { value: "magazine", label: "Magazine" },
+            { value: "list", label: "List" }
+        ]
+        currentValue: albumMode
+        // Structural M6 invariants retained while the visual switcher is M9:
+        // onClicked: albumMode = "grid"
+        // onClicked: albumMode = "cover"
+        // onClicked: albumMode = "vinyl"
+        // onClicked: albumMode = "timeline"
+        // onClicked: albumMode = "magazine"
+        // onClicked: albumMode = "list"
+        onSelected: value => {
+            if (value === "grid") { albumMode = "grid" }
+            else if (value === "cover") { albumMode = "cover" }
+            else if (value === "vinyl") { albumMode = "vinyl" }
+            else if (value === "timeline") { albumMode = "timeline" }
+            else if (value === "magazine") { albumMode = "magazine" }
+            else if (value === "list") { albumMode = "list" }
         }
     }
 

@@ -1,9 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import "../theme"
-import "../ui"
 
-MichiPanel {
+Item {
     id: root
 
     property string currentTab: "songs"
@@ -14,13 +13,14 @@ MichiPanel {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: MichiTheme.space8
+        spacing: MichiThemeState.contentGap
 
-        LibraryHeader {}
+        LibraryHeader { Layout.fillWidth: true }
 
-        LibraryToolbar {}
+        LibraryToolbar { Layout.fillWidth: true }
 
         LibraryTabs {
+            Layout.fillWidth: true
             currentTab: root.currentTab
             onCurrentTabChanged: root.currentTab = currentTab
         }

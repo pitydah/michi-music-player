@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "../primitives"
 import "../theme"
 import "../views"
 
@@ -17,14 +18,11 @@ Item {
         }
     }
 
-    Rectangle {
-        anchors.fill: parent
-        color: MichiTheme.backgroundBase
-    }
+    MichiSurface { anchors.fill: parent; level: "content"; radius: MichiRadius.floating }
 
     StackLayout {
         anchors.fill: parent
-        anchors.margins: MichiTheme.space16
+        anchors.margins: MichiSpacing.xl
         currentIndex: root.routeIndex(root.currentRoute)
 
         NowPlayingView { }

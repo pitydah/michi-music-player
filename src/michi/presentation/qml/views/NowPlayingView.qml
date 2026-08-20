@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../theme"
 import "../components"
+import "../patterns"
 
 ColumnLayout {
     spacing: MichiTheme.space12
@@ -12,6 +13,15 @@ ColumnLayout {
         font.pixelSize: MichiTheme.fontSizeTitle
         font.weight: MichiTheme.fontWeightBold
         color: MichiTheme.textPrimary
+    }
+
+    ErrorState {
+        Layout.fillWidth: true
+        Layout.preferredHeight: visible ? implicitHeight : 0
+        visible: playback.errorMessage !== ""
+        title: "Playback unavailable"
+        message: playback.errorMessage
+        actionText: ""
     }
 
     NowPlayingPanel {

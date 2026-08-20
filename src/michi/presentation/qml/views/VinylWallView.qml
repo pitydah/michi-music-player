@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "../media"
 import "../theme"
 
 GridView {
@@ -21,39 +22,36 @@ GridView {
             width: 100
             height: 100
             radius: 50
-            color: MichiTheme.surfaceSelected
+            color: "#111318"
             border.width: 1
-            border.color: MichiTheme.borderSubtle
-            anchors.horizontalCenter: parent.horizontalCenter
+            border.color: MichiSemanticColors.borderStrong
+            x: sleeve.x + sleeve.width - 38
             anchors.top: parent.top
 
-            RotationAnimation on rotation {
-                from: 0
-                to: 360
-                duration: 9000
-                loops: Animation.Infinite
-                running: true
-            }
-
             Rectangle {
-                width: 56
-                height: 56
-                radius: 28
-                color: MichiTheme.surfaceHover
+                width: 28
+                height: 28
+                radius: 14
+                color: MichiPalette.auroraPurple
                 clip: true
                 anchors.centerIn: parent
-
-                Image {
-                    anchors.fill: parent
-                    source: modelData.hasArtwork ? "file://" + modelData.artworkPath : ""
-                    visible: modelData.hasArtwork
-                    fillMode: Image.PreserveAspectFit
-                }
             }
         }
 
+        Artwork {
+            id: sleeve
+            width: 100
+            height: 100
+            x: 10
+            anchors.top: parent.top
+            z: 2
+            sourcePath: modelData.hasArtwork ? modelData.artworkPath : ""
+            fallbackText: modelData.title
+            requestedSize: 240
+        }
+
         Text {
-            anchors.top: vinylDisc.bottom
+            anchors.top: sleeve.bottom
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.leftMargin: 6

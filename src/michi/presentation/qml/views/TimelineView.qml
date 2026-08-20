@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "../media"
 import "../theme"
 
 ListView {
@@ -27,12 +28,12 @@ ListView {
         height: MichiTheme.controlHeightSmall
         spacing: MichiTheme.space8
 
-        Image {
+        Artwork {
             Layout.preferredWidth: 32
             Layout.preferredHeight: 32
-            source: modelData.hasArtwork ? "file://" + modelData.artworkPath : ""
-            visible: modelData.hasArtwork
-            fillMode: Image.PreserveAspectFit
+            sourcePath: modelData.hasArtwork ? modelData.artworkPath : ""
+            fallbackText: modelData.title
+            requestedSize: 64
         }
 
         Text {

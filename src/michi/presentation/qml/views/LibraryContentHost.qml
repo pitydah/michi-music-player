@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "../patterns"
 import "../theme"
 
 ColumnLayout {
@@ -51,12 +52,13 @@ ColumnLayout {
     Layout.fillHeight: true
     spacing: MichiTheme.space8
 
-    Text {
+    ErrorState {
         visible: library.hasDiagnostic
-        text: library.diagnosticMessage
-        color: MichiTheme.warning
-        wrapMode: Text.Wrap
+        title: "Library unavailable"
+        message: library.diagnosticMessage
+        actionText: ""
         Layout.fillWidth: true
+        Layout.preferredHeight: visible ? implicitHeight : 0
     }
 
     RowLayout {
@@ -103,6 +105,24 @@ ColumnLayout {
         id: contentArea
         Layout.fillWidth: true
         Layout.fillHeight: true
+        visible: library.fileCount > 0
+    }
+
+    EmptyState {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        visible: library.fileCount === 0
+            && (library.scanStatus === "" || library.scanStatus === "IDLE")
+        title: "No music yet"
+        message: "Choose a music directory above and scan it to build your local library."
+    }
+
+    LoadingState {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        visible: library.fileCount === 0
+            && library.scanStatus !== "" && library.scanStatus !== "IDLE"
+        message: "Building your library…"
     }
 
     Component {

@@ -17,6 +17,10 @@ ApplicationWindow {
     Shortcut { sequence: "Left"; onActivated: queue.previous_track() }
     Shortcut { sequence: "Right"; onActivated: queue.next_track() }
     Shortcut { sequence: "Ctrl+Q"; onActivated: window.close() }
+    Shortcut { sequence: "Ctrl+F"; onActivated: appShell.openSearch() }
+    Shortcut { sequence: "Ctrl+L"; onActivated: navigation.navigate("library") }
+    Shortcut { sequence: "Ctrl+,"; onActivated: navigation.navigate("settings") }
+    Shortcut { sequence: "Alt+Left"; onActivated: navigation.navigate("library") }
     Shortcut { sequence: "Ctrl+1"; onActivated: navigation.navigate("now_playing") }
     Shortcut { sequence: "Ctrl+2"; onActivated: navigation.navigate("library") }
     Shortcut { sequence: "Ctrl+3"; onActivated: navigation.navigate("queue") }
@@ -51,6 +55,7 @@ ApplicationWindow {
     }
 
     AppShell {
+        id: appShell
         currentRoute: navigation.currentRoute
         onNavigationRequested: routeId => navigation.navigate(routeId)
     }
