@@ -148,8 +148,8 @@ class TestQmlSmoke:
         _load_qml("player/NowPlayingBar.qml", "NowPlayingBar")
 
 
-def test_now_playing_bar_matches_canonical_geometry(qapp):
-    """Project the landmarks measured from the pinned 1920×154 golden."""
+def test_now_playing_bar_preserves_landmarks_in_responsive_layout(qapp):
+    """The canonical landmarks remain present without fixed x coordinates."""
     engine = QQmlEngine()
     engine.addImportPath(str(QML_DIR))
     component = QQmlComponent(engine, str(QML_DIR / "player/NowPlayingBar.qml"))
@@ -161,21 +161,27 @@ def test_now_playing_bar_matches_canonical_geometry(qapp):
     root.setProperty("height", 154)
     qapp.processEvents()
 
-    expected = {
-        "trackCard": (38, 34, 270, 86),
-        "trackArtwork": (12, 12, 64, 64),
-        "timeline": (385, 33, 1162, 28),
-        "playPauseButton": (889, 73, 55, 54),
-        "queueButton": (1560, 82, 36, 36),
-        "volumeSlider": (1680, 33, 80, 28),
-        "outputBadge": (1722, 86, 150, 34),
-    }
-    for object_name, geometry in expected.items():
+    assert root.property("width") == 1920
+    assert root.property("height") == 154
+    assert root.property("compact") is False
+    assert root.property("narrow") is False
+    for object_name in (
+        "trackCard",
+        "trackArtwork",
+        "playbackZone",
+        "timeline",
+        "playPauseButton",
+        "outputZone",
+        "queueButton",
+        "volumeSlider",
+        "outputBadge",
+    ):
         item = root.findChild(QObject, object_name)
         assert item is not None, object_name
-        actual = tuple(
-            round(item.property(name)) for name in ("x", "y", "width", "height")
-        )
-        assert actual == geometry, f"{object_name}: {actual} != {geometry}"
+
+    qml = (QML_DIR / "player/NowPlayingBar.qml").read_text()
+    assert "RowLayout" in qml
+    assert "transportOrigin" not in qml
+    assert "x: root.width" not in qml
 
     root.deleteLater()

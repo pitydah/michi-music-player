@@ -10,6 +10,7 @@ ColumnLayout {
     objectName: "albumMagazineView"
 
     property var albumModel: library.albums
+    readonly property var model: albumModel
     readonly property var heroAlbum: albumModel.length > 0 ? albumModel[0] : null
     readonly property var featureAlbums: albumModel.length > 1
         ? albumModel.slice(1, 7) : []

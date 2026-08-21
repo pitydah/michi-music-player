@@ -4,7 +4,7 @@ import "../primitives"
 import "../theme"
 
 Rectangle {
-    id: root
+    id: segmentedControl
     property var model: []
     property string currentValue: ""
     property bool compact: false
@@ -23,20 +23,20 @@ Rectangle {
         anchors.margins: MichiSpacing.xs
         spacing: MichiSpacing.xxs
         Repeater {
-            model: root.model
+            model: segmentedControl.model
             delegate: MichiButton {
                 required property var modelData
-                objectName: root.objectName.length > 0
-                    ? root.objectName + "-" + modelData.value : ""
+                objectName: segmentedControl.objectName.length > 0
+                    ? segmentedControl.objectName + "-" + String(modelData.value) : ""
                 Layout.fillHeight: true
-                text: root.compact ? "" : modelData.label
+                text: segmentedControl.compact ? "" : modelData.label
                 iconName: modelData.icon || ""
-                iconOnly: root.compact
-                accessibleName: (root.accessiblePrefix.length > 0
-                    ? root.accessiblePrefix + ": " : "") + modelData.label
+                iconOnly: segmentedControl.compact
+                accessibleName: (segmentedControl.accessiblePrefix.length > 0
+                    ? segmentedControl.accessiblePrefix + ": " : "") + modelData.label
                 variant: "ghost"
-                selected: root.currentValue === modelData.value
-                onClicked: root.selected(modelData.value)
+                selected: segmentedControl.currentValue === modelData.value
+                onClicked: segmentedControl.selected(modelData.value)
             }
         }
     }

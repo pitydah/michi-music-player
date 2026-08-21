@@ -90,6 +90,14 @@ ColumnLayout {
         }
     }
 
+    onAlbumModeChanged: {
+        // Loader releases the old item with deferred deletion. Clear its
+        // diagnostic identity synchronously so accessibility/tests never see
+        // two active projections during the transition.
+        if (modeLoader.item)
+            modeLoader.item.objectName = ""
+    }
+
     Layout.fillWidth: true
     Layout.fillHeight: true
     spacing: MichiTheme.space8
