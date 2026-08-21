@@ -415,7 +415,7 @@ def test_precision_pass_uses_resizable_smoked_surfaces_without_accent_rules() ->
     assert 'elevation: "elevated"' in sidebar
     assert "MichiMaterialTexture" in sidebar
     assert "textureOpacity: 0.14" in sidebar
-    assert 'property bool accentLineVisible: false' in glass
+    assert "property bool accentLineVisible: false" in glass
     assert "root.accented && root.accentLineVisible" in glass
     assert "root.enabled && root.primary" in button
     assert "anchors.bottom: parent.bottom" not in tabs
