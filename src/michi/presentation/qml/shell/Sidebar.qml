@@ -1,104 +1,265 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../primitives"
 import "../theme"
 
-ColumnLayout {
+MichiGlassSurface {
     id: root
-    spacing: 0
-
     signal navigationRequested(string routeId)
     property string currentRoute: ""
+    property bool compact: false
+    contentPadding: MichiSpacing.sm
+    elevation: "elevated"
+    shadowed: true
+    textured: true
+    accented: true
+    accentColor: MichiPalette.auroraPurple
 
     readonly property var _routes: [
-        { id: "now_playing", label: "Now Playing" },
-        { id: "library",     label: "Library" },
-        { id: "queue",       label: "Queue" }
+        { id: "now_playing", label: "Now Playing", icon: "play" },
+        { id: "library", label: "Library", icon: "library" }
     ]
 
     readonly property var _bottom_routes: [
-        { id: "settings",    label: "Settings" }
+        { id: "settings", label: "Settings", icon: "settings" }
     ]
+
+    Rectangle {
+        anchors.fill: parent
+        radius: root.radius
+        opacity: 0.62
+        z: 0
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop {
+                position: 0
+                color: MichiSemanticColors.auroraPurpleSurface
+            }
+            GradientStop { position: 0.46; color: "transparent" }
+            GradientStop {
+                position: 1
+                color: MichiSemanticColors.auroraCyanSurface
+            }
+        }
+    }
+
+    MichiMaterialTexture {
+        anchors.fill: parent
+        textureOpacity: 0.14
+        z: 0
+    }
 
     Component {
         id: routeDelegate
-
         ItemDelegate {
+            id: routeItem
             Layout.fillWidth: true
-            height: MichiTheme.controlHeightMedium
-
+            height: MichiMetrics.controlLarge
             readonly property bool _active: root.currentRoute === modelData.id
-
             focusPolicy: Qt.StrongFocus
+            hoverEnabled: true
+            Accessible.role: Accessible.Button
+            Accessible.name: modelData.label
 
             contentItem: RowLayout {
-                spacing: 0
-
+                spacing: MichiSpacing.md
                 Rectangle {
-                    visible: _active
-                    Layout.preferredWidth: 3
-                    Layout.preferredHeight: parent.height - MichiTheme.space12
-                    radius: 2
-                    color: MichiTheme.accent
+                    Layout.leftMargin: MichiSpacing.md
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
+                    radius: 10
+                    color: routeItem._active
+                        ? MichiSemanticColors.surfaceSelected
+                        : routeItem.hovered ? MichiSemanticColors.controlSurface : "transparent"
+                    border.width: routeItem._active ? 1 : 0
+                    border.color: MichiSemanticColors.auroraCyanBorderSubtle
+                    MichiIcon {
+                        anchors.centerIn: parent
+                        name: modelData.icon
+                        width: 18
+                        height: 18
+                        strokeWidth: routeItem._active ? 2.0 : 1.8
+                        iconColor: routeItem._active ? MichiPalette.auroraCyan
+                            : routeItem.hovered ? MichiPalette.textPrimary
+                            : MichiPalette.textSecondary
+                    }
                 }
-
-                Text {
-                    Layout.leftMargin: _active
-                        ? MichiTheme.space16 : MichiTheme.space20
+                MichiText {
+                    visible: !root.compact
                     text: modelData.label
-                    font.pixelSize: MichiTheme.fontSizeBody
-                    font.weight: _active
-                        ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
-                    color: _active
-                        ? MichiTheme.textPrimary
-                        : (hovered
-                            ? MichiTheme.textPrimary : MichiTheme.textSecondary)
+                    role: "secondary"
+                    font.weight: routeItem._active ? Font.DemiBold : Font.Normal
+                    color: routeItem._active || routeItem.hovered ? MichiPalette.textPrimary : MichiPalette.textSecondary
                 }
+                Item { Layout.fillWidth: true }
             }
-
             background: Rectangle {
-                radius: MichiTheme.radiusMedium
-                color: {
-                    if (_active) return MichiTheme.surfaceSelected
-                    if (hovered) return MichiTheme.surfaceHover
-                    if (visualFocus) return MichiTheme.surfaceHover
-                    return "transparent"
+                radius: MichiRadius.md
+                color: routeItem.pressed ? MichiSemanticColors.surfacePressed
+                    : routeItem._active ? MichiSemanticColors.surfaceSelected
+                    : routeItem.hovered || routeItem.visualFocus ? MichiSemanticColors.surfaceHover : "transparent"
+                border.width: routeItem._active ? 1 : 0
+                border.color: MichiSemanticColors.auroraBorderSubtle
+                Rectangle {
+                    visible: routeItem._active
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 3
+                    radius: 2
+                    gradient: Gradient {
+                        GradientStop { position: 0; color: MichiPalette.auroraBlue }
+                        GradientStop { position: 0.5; color: MichiPalette.auroraCyan }
+                        GradientStop { position: 1; color: MichiPalette.auroraPurple }
+                    }
                 }
+                Behavior on color {
+                    enabled: !MichiAccessibility.reducedMotion
+                    ColorAnimation { duration: MichiMotion.micro }
+                }
+                MichiFocusRing { visualFocus: routeItem.visualFocus }
             }
-
             onClicked: root.navigationRequested(modelData.id)
         }
     }
 
-    Rectangle {
-        Layout.fillWidth: true
-        height: 56
-        color: MichiTheme.backgroundRaised
-
-        Text {
-            anchors.centerIn: parent
-            text: "Michi"
-            font.pixelSize: MichiTheme.fontSizeTitle
-            font.weight: MichiTheme.fontWeightBold
-            color: MichiTheme.textPrimary
-        }
-    }
-
     ColumnLayout {
-        Layout.fillWidth: true
-        Layout.topMargin: MichiTheme.space12
-        spacing: MichiTheme.space2
+        anchors.fill: parent
+        spacing: MichiSpacing.xs
+        z: 1
+
+        Item {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 72
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: root.compact ? 8 : MichiSpacing.md
+                anchors.rightMargin: root.compact ? 8 : MichiSpacing.md
+                spacing: MichiSpacing.md
+                Rectangle {
+                    Layout.preferredWidth: 40
+                    Layout.preferredHeight: 40
+                    radius: 14
+                    color: MichiSemanticColors.auroraPurpleSurface
+                    border.width: 1
+                    border.color: MichiSemanticColors.auroraPurpleBorder
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: 4
+                        radius: 11
+                        color: MichiSemanticColors.auroraCyanSurface
+                    }
+                    MichiIcon {
+                        anchors.centerIn: parent
+                        width: 23
+                        height: 23
+                        name: "cat"
+                        iconColor: MichiPalette.auroraCyan
+                        strokeWidth: 1.9
+                    }
+                }
+                ColumnLayout {
+                    visible: !root.compact
+                    spacing: 0
+                    MichiText {
+                        text: "Michi"
+                        role: "title"
+                        color: MichiPalette.textPrimary
+                        font.weight: Font.DemiBold
+                    }
+                    MichiText {
+                        text: "LOCAL HI-FI"
+                        role: "technical"
+                        technical: true
+                        color: MichiPalette.textMuted
+                    }
+                }
+                Item { Layout.fillWidth: true }
+                Rectangle {
+                    visible: !root.compact
+                    Layout.preferredWidth: 7
+                    Layout.preferredHeight: 7
+                    radius: 4
+                    color: library.fileCount > 0
+                        ? MichiPalette.auroraGreen : MichiPalette.textMuted
+                }
+            }
+        }
+
+        MichiText {
+            visible: !root.compact
+            Layout.leftMargin: MichiSpacing.md
+            Layout.topMargin: MichiSpacing.sm
+            Layout.bottomMargin: MichiSpacing.xs
+            text: "NAVIGATION"
+            role: "technical"
+            technical: true
+            color: MichiPalette.textMuted
+        }
 
         Repeater {
             model: root._routes
             delegate: routeDelegate
         }
-    }
 
-    Item { Layout.fillHeight: true }
+        Item { Layout.fillHeight: true }
 
-    Repeater {
-        model: root._bottom_routes
-        delegate: routeDelegate
+        MichiGlassSurface {
+            visible: !root.compact
+            Layout.fillWidth: true
+            Layout.preferredHeight: 72
+            Layout.bottomMargin: MichiSpacing.xs
+            elevation: "subtle"
+            contentPadding: MichiSpacing.sm
+            textured: true
+            accented: library.fileCount > 0
+            accentColor: MichiPalette.auroraCyan
+
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: MichiSpacing.xs
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: MichiSpacing.xs
+                    Rectangle {
+                        Layout.preferredWidth: 7
+                        Layout.preferredHeight: 7
+                        radius: 4
+                        color: library.fileCount > 0
+                            ? MichiPalette.auroraGreen : MichiPalette.textMuted
+                    }
+                    MichiText {
+                        text: "LOCAL"
+                        role: "technical"
+                        technical: true
+                        color: MichiPalette.textMuted
+                    }
+                    Item { Layout.fillWidth: true }
+                }
+                MichiText {
+                    text: library.fileCount > 0
+                        ? library.fileCount + " tracks" : "Ready to scan"
+                    role: "secondary"
+                    font.weight: Font.DemiBold
+                }
+                MichiText {
+                    text: library.fileCount > 0
+                        ? library.albumCount + " albums · "
+                            + library.artistCount + " artists"
+                        : "Your collection stays on this device"
+                    role: "technical"
+                    technical: true
+                    color: MichiPalette.textMuted
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
+            }
+        }
+        Item { Layout.preferredHeight: MichiSpacing.xs }
+        Repeater {
+            model: root._bottom_routes
+            delegate: routeDelegate
+        }
     }
 }

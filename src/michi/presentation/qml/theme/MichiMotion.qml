@@ -1,0 +1,14 @@
+pragma Singleton
+import QtQuick
+
+QtObject {
+    readonly property int instant: MichiAccessibility.reducedMotion ? 0 : 80
+    readonly property int micro: MichiAccessibility.reducedMotion ? 0 : 110
+    readonly property int standard: MichiAccessibility.reducedMotion ? 0 : 180
+    readonly property int panel: MichiAccessibility.reducedMotion ? 0 : 220
+    readonly property int page: MichiAccessibility.reducedMotion ? 0 : 240
+    readonly property int artwork: MichiAccessibility.reducedMotion ? 0 : 210
+    readonly property int outCubic: Easing.OutCubic
+    readonly property int outQuart: Easing.OutQuart
+    readonly property int inOutCubic: Easing.InOutCubic
+}

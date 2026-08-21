@@ -2,7 +2,7 @@
 
 Target contract (M6.7 master plan §47-52): ``LibraryView.qml`` becomes a
 PURE ORCHESTRATION component (``LibraryPage``) composing
-``LibraryHeader`` + ``LibraryToolbar`` + ``LibraryTabs`` +
+``LibraryHeader`` + ``LibraryToolbar`` (with embedded ``LibraryTabs``) +
 ``LibraryContentHost``. The six album projections, the tab contents and the
 album detail are NOT inline in ``LibraryView.qml`` anymore — they live in
 their own component files, instantiated ON DEMAND through the host's
@@ -32,7 +32,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QCoreApplication, QObject
+from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject, QObject, Qt
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 
@@ -164,8 +164,8 @@ def qapp():
 class TestLibraryPageOrchestration:
     def test_library_page_loads(self, qapp, tmp_path):
         """The orchestration root compiles and instantiates with the default
-        Songs tab (LibraryHeader + LibraryToolbar + LibraryTabs +
-        LibraryContentHost compose eagerly)."""
+        Songs tab (LibraryHeader + LibraryToolbar, including its embedded
+        LibraryTabs, + LibraryContentHost compose eagerly)."""
         bridge, engine, component = _load_library_view(tmp_path)
         try:
             errs = "; ".join(e.toString() for e in component.errors())
@@ -242,6 +242,49 @@ class TestLibraryPageOrchestration:
                         f"albumMode {mode!r} — the six heavy views must be "
                         "unloaded on mode switch"
                     )
+            obj.deleteLater()
+        finally:
+            bridge.dispose()
+
+    def test_album_view_switcher_event_drives_the_loaded_projection(
+        self, qapp, tmp_path
+    ):
+        """The user-facing selector is the integration contract.
+
+        A selected-looking segment must never diverge from the projection
+        owned by LibraryView/AlbumsView. Emit the public selector event rather
+        than assigning albumMode directly so the full ownership chain runs.
+        """
+        bridge, engine, component = _load_library_view(tmp_path)
+        try:
+            errs = "; ".join(e.toString() for e in component.errors())
+            assert component.status() == QQmlComponent.Ready, f"LibraryView: {errs}"
+            obj = component.create()
+            assert obj is not None, "LibraryView: null object"
+            obj.setProperty("currentTab", "albums")
+            _process_events()
+
+            host = obj.findChild(QObject, "albumsView")
+            assert host is not None
+            switcher = obj.findChild(QObject, "albumViewSwitcher")
+            assert switcher is not None
+            previous_name = "albumGridView"
+            for mode, object_name in ALBUM_MODES[1:]:
+                assert QMetaObject.invokeMethod(
+                    switcher,
+                    "selected",
+                    Qt.DirectConnection,
+                    Q_ARG(str, mode),
+                )
+                _process_events()
+
+                assert obj.property("albumMode") == mode
+                assert host.property("albumMode") == mode
+                assert switcher.property("currentValue") == mode
+                assert obj.findChild(QObject, object_name) is not None
+                assert obj.findChild(QObject, previous_name) is None
+                previous_name = object_name
+
             obj.deleteLater()
         finally:
             bridge.dispose()

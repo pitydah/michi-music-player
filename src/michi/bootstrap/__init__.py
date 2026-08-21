@@ -234,8 +234,8 @@ class ApplicationContainer:
         persistence.start()
         persistence.restore()
 
-        pb = PlaybackBridge(playback)
-        qb = QueueBridge(queue)
+        pb = PlaybackBridge(playback, library)
+        qb = QueueBridge(queue, library)
         lb = graph.bridge
         nb = NavigationBridge(navigation)
         sb = SettingsBridge(settings)

@@ -20,6 +20,7 @@ $RECYCLE.BIN/
 
 # Environment artifacts
 .env*
+.venv/
 *.log
 __pycache__/
 src/michi_music_player.egg-info/

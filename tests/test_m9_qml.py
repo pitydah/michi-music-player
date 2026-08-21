@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from PySide6.QtCore import QObject
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 
@@ -112,3 +113,77 @@ class TestQmlSmoke:
 
     def test_shell(self, qapp):
         _load_qml("shell/AppShell.qml", "AppShell")
+
+    def test_michi_glass_surface(self, qapp):
+        _load_qml("primitives/MichiGlassSurface.qml", "MichiGlassSurface")
+
+    def test_michi_focus_ring(self, qapp):
+        _load_qml("primitives/MichiFocusRing.qml", "MichiFocusRing")
+
+    def test_michi_status_chip(self, qapp):
+        _load_qml("primitives/MichiStatusChip.qml", "MichiStatusChip")
+
+    def test_michi_icon_button(self, qapp):
+        _load_qml("controls/MichiIconButton.qml", "MichiIconButton")
+
+    def test_michi_search_field(self, qapp):
+        _load_qml("controls/MichiSearchField.qml", "MichiSearchField")
+
+    def test_artwork(self, qapp):
+        _load_qml("media/Artwork.qml", "Artwork")
+
+    def test_ui_gallery(self, qapp):
+        _load_qml("dev/MichiUIGallery.qml", "MichiUIGallery")
+
+    def test_michi_entity_row(self, qapp):
+        _load_qml("media/MichiEntityRow.qml", "MichiEntityRow")
+
+    def test_michi_album_row(self, qapp):
+        _load_qml("media/MichiAlbumRow.qml", "MichiAlbumRow")
+
+    def test_queue_panel(self, qapp):
+        _load_qml("components/QueuePanel.qml", "QueuePanel")
+
+    def test_now_playing_bar(self, qapp):
+        _load_qml("player/NowPlayingBar.qml", "NowPlayingBar")
+
+
+def test_now_playing_bar_preserves_landmarks_in_responsive_layout(qapp):
+    """The canonical landmarks remain present without fixed x coordinates."""
+    engine = QQmlEngine()
+    engine.addImportPath(str(QML_DIR))
+    component = QQmlComponent(engine, str(QML_DIR / "player/NowPlayingBar.qml"))
+    errs = "; ".join(error.toString() for error in component.errors())
+    assert component.status() == QQmlComponent.Ready, errs
+    root = component.create()
+    assert root is not None
+    root.setProperty("width", 1920)
+    root.setProperty("height", 154)
+    qapp.processEvents()
+
+    assert root.property("width") == 1920
+    assert root.property("height") == 154
+    assert root.property("compact") is False
+    assert root.property("narrow") is False
+    for object_name in (
+        "trackCard",
+        "trackArtwork",
+        "playbackZone",
+        "timeline",
+        "playPauseButton",
+        "outputZone",
+        "queueButton",
+        "volumeSlider",
+        "qualityBadge",
+        "outputDeviceButton",
+        "audioEngineIndicator",
+    ):
+        item = root.findChild(QObject, object_name)
+        assert item is not None, object_name
+
+    qml = (QML_DIR / "player/NowPlayingBar.qml").read_text()
+    assert "RowLayout" in qml
+    assert "transportOrigin" not in qml
+    assert "x: root.width" not in qml
+
+    root.deleteLater()

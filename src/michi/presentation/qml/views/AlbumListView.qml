@@ -1,80 +1,80 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../media"
 import "../theme"
 
 ListView {
-    id: albumList
+    id: root
     objectName: "albumListView"
+
+    property var albumModel: library.albums
+    property string sortMode: "title"
+    readonly property bool showArtistColumn: width >= 620
+    readonly property bool showYearColumn: width >= 500
+    readonly property bool showTrackCountColumn: width >= 760
+    readonly property bool showDurationColumn: width >= 680
+    readonly property bool showTechnicalColumn: width >= 1040
+        && MichiThemeState.precisionMode
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    model: library.albums
+    model: albumModel
     clip: true
-    spacing: MichiTheme.space8
-    delegate: RowLayout {
-        width: albumList.width
-        height: MichiTheme.controlHeightSmall
-        spacing: MichiTheme.space8
+    spacing: MichiSpacing.xs
+    boundsBehavior: Flickable.StopAtBounds
+    keyNavigationEnabled: true
+    keyNavigationWraps: false
+    activeFocusOnTab: true
+    focus: true
+    cacheBuffer: height
+    reuseItems: true
+    headerPositioning: ListView.OverlayHeader
+    Accessible.role: Accessible.Table
+    Accessible.name: "Albums in list view"
 
-        Image {
-            Layout.preferredWidth: 32
-            Layout.preferredHeight: 32
-            source: modelData.hasArtwork ? "file://" + modelData.artworkPath : ""
-            visible: modelData.hasArtwork
-            fillMode: Image.PreserveAspectFit
+    header: AlbumTableHeader {
+        width: root.width
+        showArtist: root.showArtistColumn
+        showYear: root.showYearColumn
+        showTrackCount: root.showTrackCountColumn
+        showDuration: root.showDurationColumn
+        showTechnical: root.showTechnicalColumn
+        sortMode: root.sortMode
+    }
+
+    Keys.onReturnPressed: {
+        if (currentIndex >= 0 && currentIndex < albumModel.length)
+            library.select_album(albumModel[currentIndex].key)
+    }
+    Keys.onEnterPressed: {
+        if (currentIndex >= 0 && currentIndex < albumModel.length)
+            library.select_album(albumModel[currentIndex].key)
+    }
+
+    ScrollBar.vertical: ScrollBar {
+        policy: ScrollBar.AsNeeded
+        width: MichiSpacing.sm
+    }
+
+    delegate: MichiAlbumRow {
+        required property int index
+        required property var modelData
+        width: root.width
+        album: modelData
+        selected: ListView.isCurrentItem
+        showArtist: root.showArtistColumn
+        showYear: root.showYearColumn
+        showTrackCount: root.showTrackCountColumn
+        showDuration: root.showDurationColumn
+        showTechnical: root.showTechnicalColumn
+        onActiveFocusChanged: {
+            if (activeFocus)
+                root.currentIndex = index
         }
-
-        Text {
-            Layout.fillWidth: true
-            text: modelData.title
-            font.pixelSize: MichiTheme.fontSizeCaption
-            color: MichiTheme.textPrimary
-            elide: Text.ElideRight
-        }
-
-        Text {
-            text: modelData.artist
-            font.pixelSize: MichiTheme.fontSizeCaption
-            color: MichiTheme.textSecondary
-            elide: Text.ElideRight
-        }
-
-        Text {
-            text: modelData.trackCount + " tracks"
-            font.pixelSize: MichiTheme.fontSizeCaption
-            color: MichiTheme.textSecondary
-        }
-
-        Text {
-            // M6-PRODUCTION-INTEGRATION: honest album facts when known
-            // (year, duration, technical summary) — minimal, M9 decides the
-            // premium composition.
-            text: modelData.year > 0 ? modelData.year : ""
-            font.pixelSize: MichiTheme.fontSizeCaption
-            color: MichiTheme.textSecondary
-        }
-
-        Text {
-            text: modelData.durationMs > 0
-                ? Math.floor(modelData.durationMs / 60000) + ":" +
-                    (Math.floor(modelData.durationMs % 60000 / 1000) < 10 ? "0" : "") +
-                    Math.floor(modelData.durationMs % 60000 / 1000)
-                : ""
-            font.pixelSize: MichiTheme.fontSizeCaption
-            color: MichiTheme.textSecondary
-        }
-
-        Text {
-            text: modelData.technicalSummary
-            font.pixelSize: MichiTheme.fontSizeCaption
-            color: MichiTheme.textMuted
-            elide: Text.ElideRight
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: library.select_album(modelData.key)
+        onActivated: {
+            root.currentIndex = index
+            library.select_album(modelData.key)
         }
     }
 }

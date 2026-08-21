@@ -4,7 +4,7 @@ Michi Music Player — phase plan for the clean rebuild. Stack: Python 3.11+, Py
 
 > **Superseded clean-rebuild governance draft**: M0 Foundation v2 governance artifacts of this rebuild (Proposed ADRs D1–D10, dated 2026-08-10) described a C++20/Qt 6 architecture with CMake, CTest, Catch2/doctest, and a `main.cpp` entry point. That anticipated direction was never implemented and is superseded by the Python/PySide6 stack (ADR 0001); it imposes **no active requirements**. It is preserved here only as historical context for reviewers.
 
-Phases M0–M16 remain the roadmap skeleton. M0 (governance foundation) through M11.2E applicable Required-1.0 milestones are TESTED on the current stack, with M7 Search also CLOSED / TESTED / FROZEN; the table below records their verified status. Remaining work follows the "Current Execution Order" in "Future Execution Order".
+Phases M0–M16 remain the roadmap skeleton. M0 (governance foundation) through M11.2E applicable Required-1.0 milestones are TESTED on the current stack, with M7 Search also CLOSED / TESTED / FROZEN; the table below records their verified status. On 2026-08-20 the product owner approved the M9 Premium Presentation System contract before M12. Remaining work follows the "Current Execution Order" in "Future Execution Order".
 
 ## Canonical 1.0 Contract
 
@@ -69,6 +69,7 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 | M7 Search                    | TESTED      | Rich canonical local search CLOSED (M7.0-M7.7): multi-entity (tracks/albums/artists/genres/composers), multi-field, multi-token, accent/case-insensitive, deterministic ranking, unified library projection (M7.0 contract reconciled per docs/M7_SEARCH_MASTER_PLAN.md)                                      | FTS / indexed search Post-1.0 (not a blocker); advanced field syntax/ranges/technical filters future; AI/vector search NOT involved |
 | M8 Navigation                | TESTED     | AppRoute navigation across now_playing/library/queue/settings                                                                                         | —                                                                                                 |
 | M9 UI Foundation             | TESTED     | MichiTheme tokens; MichiButton/MichiPanel/MichiSlider/MichiTextField; AppShell/Sidebar/ContentHost; views                                             | —                                                                                                 |
+| M9 Premium Presentation System | PARTIAL  | UI Design Canon 2.0 architecture, Aurora/smoked-glass foundation, controls, UI Gallery, shell/search and initial Library migration (`docs/M9_PREMIUM_PRESENTATION_SYSTEM.md`) | M9.5–M9.15 closeout and visual/golden verification remain |
 | M10 Settings                 | TESTED     | SettingsService sole owner; volume/muted/last_directory/recent_files persisted; restart gate                                                          | —                                                                                                 |
 | M11.1 Failure Contracts      | TESTED     | Runtime failure contracts; no silent exceptions                                                                                                       | —                                                                                                 |
 | M11.2A Persistence Detection | TESTED     | Read-only `inspect_path`; taxonomy MISSING/HEALTHY/CORRUPT_DATABASE/MALFORMED_DATA/LOCKED/ACCESS_FAILURE/IO_FAILURE/UNKNOWN_FAILURE                   | —                                                                                                 |
@@ -81,15 +82,16 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 
 ### Current Execution Order (canonical)
 
-The ONE canonical execution order after the current baseline (M1–M11.2E + M7 SEARCH TESTED):
+The ONE canonical execution order after the current baseline (M1–M11.2E + M7 SEARCH TESTED) and the 2026-08-20 approved UI scope change:
 
-1. **M12 Performance** — benchmark and tune scan/startup/memory; CI performance gate; resolves TD-009 (async/incremental scan with progress in LibraryState — owned by M6.4 per its contract), TD-004 (markdown link validation), TD-012 (coverage tooling).
-2. **M13 Packaging** — Linux installable artifacts (AppImage/Flatpak/deb), icon suite, desktop integration, CLI entry points. Windows and macOS are Post-1.0 per the canonical contract.
-3. **M14 Beta** — beta channel, opt-in telemetry, feedback loop, triage SLA.
-4. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
-5. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
+1. **M9 Premium Presentation System** — execute `docs/M9_PREMIUM_PRESENTATION_SYSTEM.md`; preserve the tested M4–M8 semantics and keep deferred product capabilities absent.
+2. **M12 Performance** — benchmark and tune scan/startup/memory; CI performance gate; resolves TD-009 (async/incremental scan with progress in LibraryState — owned by M6.4 per its contract), TD-004 (markdown link validation), TD-012 (coverage tooling).
+3. **M13 Packaging** — Linux installable artifacts (AppImage/Flatpak/deb), icon suite, desktop integration, CLI entry points. Windows and macOS are Post-1.0 per the canonical contract.
+4. **M14 Beta** — beta channel, opt-in telemetry, feedback loop, triage SLA.
+5. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
+6. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
 
-**NEXT AUTHORIZED WP: M12 — PERFORMANCE** (sole authority for the next WP; STATUS_MATRIX references this document).
+**NEXT AUTHORIZED WP: M9 — PREMIUM PRESENTATION SYSTEM** (approved 2026-08-20; `STATUS_MATRIX.md` and the M9 implementation contract reference this document).
 
 ### Historical / Superseded execution record
 
@@ -129,7 +131,7 @@ LOCAL-01 through LOCAL-08 were the Local Player Completion work packages (the M6
 
 - **LOCAL-01 through LOCAL-06 — ABSORBED / DONE**: the absorbed local experience work (canonical music model, artwork, albums/artists/genres/folders, PathView, favorites, history, playlists) is delivered or absorbed into the M6.0-M6.8 sequence per docs/M6_LIBRARY_MASTER_PLAN.md (LOCAL-01 ba1532d; LOCAL-02 9b16504; LOCAL-03 e7416ac; LOCAL-04 635b35b; LOCAL-05 938191b; LOCAL-06 ccdbc85).
 - **LOCAL-07 Mix Local — RETIRED AS EXECUTION WP**: its requirements were NEVER specified in this repository (no spec, no openspec change, no contract). The MIX LOCAL product capability remains RETAINED in Product Scope (deterministic, local data, part of the Player, pre-Stable policy); any future implementation requires an explicit contract — no requirements are invented here. NOT required before M12.
-- **LOCAL-08 Premium Player UI Completion — RETIRED AS EXECUTION WP**: its requirements were NEVER specified in this repository. M9 UI Foundation (TESTED) delivers tokens/primitives/shell/base views; any premium refinement is M9-scope future work without a current contract. NOT required before M12.
+- **LOCAL-08 Premium Player UI Completion — SUPERSEDED**: the old package had no executable contract. The approved replacement is `docs/M9_PREMIUM_PRESENTATION_SYSTEM.md`, derived from Michi UI Design Canon 2.0 and scheduled before M12.
 
 Required-for-1.0 gaps (shuffle, repeat, metadata extraction) are **RESOLVED**: shuffle and repeat are TESTED (f93a6a8, a977378, deb5f93) and metadata extraction is TESTED (M6); no Required-1.0 capability gaps remain before the Current Execution Order — the contract rows above record the implemented state.
 

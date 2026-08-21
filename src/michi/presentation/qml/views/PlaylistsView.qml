@@ -1,7 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
+import "../controls"
+import "../media"
+import "../patterns"
 import "../theme"
-import "../ui"
 
 ColumnLayout {
     id: root
@@ -11,25 +13,29 @@ ColumnLayout {
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    spacing: MichiTheme.space8
+    spacing: MichiThemeState.contentGap
 
     ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        spacing: MichiTheme.space8
+        spacing: MichiSpacing.md
         visible: library.selectedPlaylistName === ""
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: MichiTheme.space8
+            spacing: MichiSpacing.sm
 
             MichiTextField {
                 id: newPlaylistInput
                 Layout.fillWidth: true
-                placeholderText: "New playlist..."
+                placeholderText: "New playlist…"
+                accessibleName: "New playlist name"
+                onAccepted: createButton.clicked()
             }
             MichiButton {
+                id: createButton
                 text: "Create"
+                enabled: newPlaylistInput.text.trim().length > 0
                 onClicked: {
                     library.create_playlist(newPlaylistInput.text)
                     newPlaylistInput.text = ""
@@ -37,37 +43,31 @@ ColumnLayout {
             }
         }
 
+        EmptyState {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: library.playlists.length === 0
+            title: "No playlists yet"
+            message: "Create a local playlist to organize tracks without changing the library."
+        }
+
         ListView {
             id: playlistList
             Layout.fillWidth: true
             Layout.fillHeight: true
+            visible: library.playlists.length > 0
             model: library.playlists
             clip: true
-            spacing: MichiTheme.space8
-            delegate: RowLayout {
+            spacing: MichiSpacing.xs
+            boundsBehavior: Flickable.StopAtBounds
+
+            delegate: MichiEntityRow {
+                required property var modelData
                 width: playlistList.width
-                height: MichiTheme.controlHeightSmall
-                spacing: MichiTheme.space8
-
-                Text {
-                    Layout.fillWidth: true
-                    text: modelData.name
-                    font.pixelSize: MichiTheme.fontSizeCaption
-                    color: MichiTheme.textPrimary
-                    elide: Text.ElideRight
-                }
-
-                Text {
-                    text: modelData.trackCount + " tracks"
-                    font.pixelSize: MichiTheme.fontSizeCaption
-                    color: MichiTheme.textSecondary
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: library.select_playlist(modelData.name)
-                }
+                iconName: "queue"
+                title: modelData.name
+                technical: modelData.trackCount + " tracks"
+                onActivated: library.select_playlist(modelData.name)
             }
         }
     }
@@ -75,133 +75,118 @@ ColumnLayout {
     ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        spacing: MichiTheme.space8
+        spacing: MichiSpacing.md
         visible: library.selectedPlaylistName !== ""
 
-        Text {
-            text: "← Back"
-            font.pixelSize: MichiTheme.fontSizeBody
-            color: MichiTheme.textSecondary
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: MichiSpacing.sm
+
+            MichiButton {
+                text: "Back"
+                variant: "ghost"
                 onClicked: library.clear_playlist_selection()
             }
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: MichiTheme.space12
-
-            Text {
+            PageHeader {
                 Layout.fillWidth: true
-                text: library.selectedPlaylistName
-                font.pixelSize: MichiTheme.fontSizeTitle
-                font.weight: MichiTheme.fontWeightBold
-                color: MichiTheme.textPrimary
-                elide: Text.ElideRight
+                title: library.selectedPlaylistName
+                subtitle: library.playlistTrackRows.length + " tracks"
             }
-
-            Text {
+            MichiButton {
                 text: "Play"
-                font.pixelSize: MichiTheme.fontSizeBody
-                color: MichiTheme.warning
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: library.play_selected_playlist()
-                }
+                iconName: "play"
+                enabled: library.playlistTrackRows.length > 0
+                onClicked: library.play_selected_playlist()
             }
-
-            Text {
+            MichiButton {
                 text: "Delete"
-                font.pixelSize: MichiTheme.fontSizeBody
-                color: MichiTheme.textSecondary
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: library.delete_playlist(library.selectedPlaylistName)
-                }
+                variant: "ghost"
+                onClicked: library.delete_playlist(library.selectedPlaylistName)
             }
         }
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: MichiTheme.space8
+            spacing: MichiSpacing.sm
 
             MichiTextField {
                 id: renamePlaylistInput
                 Layout.fillWidth: true
-                placeholderText: "Rename..."
+                placeholderText: "Rename playlist…"
+                accessibleName: "New playlist name"
+                onAccepted: renameButton.clicked()
             }
-            Text {
+            MichiButton {
+                id: renameButton
                 text: "Rename"
-                font.pixelSize: MichiTheme.fontSizeBody
-                color: MichiTheme.textSecondary
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        library.rename_playlist(
-                            library.selectedPlaylistName, renamePlaylistInput.text
-                        )
-                        renamePlaylistInput.text = ""
-                    }
+                variant: "secondary"
+                enabled: renamePlaylistInput.text.trim().length > 0
+                onClicked: {
+                    library.rename_playlist(
+                        library.selectedPlaylistName, renamePlaylistInput.text
+                    )
+                    renamePlaylistInput.text = ""
                 }
             }
+        }
+
+        EmptyState {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: library.playlistTrackRows.length === 0
+            title: "Empty playlist"
+            message: "Use the add button on a track to place it here."
         }
 
         ListView {
             id: playlistTracksList
             Layout.fillWidth: true
             Layout.fillHeight: true
-            model: library.playlistTracks
+            visible: library.playlistTrackRows.length > 0
+            model: library.playlistTrackRows
             clip: true
-            spacing: MichiTheme.space8
-            delegate: RowLayout {
+            spacing: MichiSpacing.xs
+            boundsBehavior: Flickable.StopAtBounds
+            headerPositioning: ListView.InlineHeader
+
+            header: TrackTableHeader {
                 width: playlistTracksList.width
-                height: MichiTheme.controlHeightSmall
-                spacing: MichiTheme.space8
+                actionColumnWidth: 116
+            }
 
-                Text {
-                    text: "▲"
-                    font.pixelSize: MichiTheme.fontSizeCaption
-                    color: MichiTheme.textSecondary
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: library.move_playlist_track(index, index - 1)
-                    }
-                }
+            delegate: RowLayout {
+                required property int index
+                required property var modelData
+                width: playlistTracksList.width
+                spacing: MichiSpacing.xs
 
-                Text {
-                    text: "▼"
-                    font.pixelSize: MichiTheme.fontSizeCaption
-                    color: MichiTheme.textSecondary
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: library.move_playlist_track(index, index + 1)
-                    }
-                }
-
-                Text {
+                TrackRow {
                     Layout.fillWidth: true
-                    text: modelData.displayName
-                    font.pixelSize: MichiTheme.fontSizeCaption
-                    color: MichiTheme.textPrimary
-                    elide: Text.ElideRight
+                    numberText: String(index + 1)
+                    title: modelData.title || modelData.displayName
+                    artist: modelData.artist || ""
+                    album: modelData.album || ""
+                    durationMs: modelData.durationMs || 0
+                    quality: modelData.qualityLabel || ""
+                    playing: playback.currentPath === modelData.path
+                    interactive: false
                 }
-
-                Text {
-                    text: "✕"
-                    font.pixelSize: MichiTheme.fontSizeCaption
-                    color: MichiTheme.textSecondary
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: library.remove_playlist_track(index)
-                    }
+                MichiIconButton {
+                    iconName: "up"
+                    accessibleName: "Move track up"
+                    enabled: index > 0
+                    onClicked: library.move_playlist_track(index, index - 1)
+                }
+                MichiIconButton {
+                    iconName: "down"
+                    accessibleName: "Move track down"
+                    enabled: index + 1 < library.playlistTrackRows.length
+                    onClicked: library.move_playlist_track(index, index + 1)
+                }
+                MichiIconButton {
+                    iconName: "trash"
+                    accessibleName: "Remove from playlist"
+                    onClicked: library.remove_playlist_track(index)
                 }
             }
         }

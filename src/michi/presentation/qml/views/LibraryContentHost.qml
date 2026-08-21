@@ -1,5 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
+import "../controls"
+import "../patterns"
+import "../primitives"
 import "../theme"
 
 ColumnLayout {
@@ -7,10 +10,14 @@ ColumnLayout {
 
     property string currentTab: "songs"
     property string addTargetPath: ""
-    // M6-PRODUCTION-INTEGRATION: albumMode passes through to AlbumsView
-    // (two-way like addTargetPath); the source lives in LibraryView so the
-    // mode survives the AlbumsView recreation on tab switches.
+    // LibraryView owns presentation preferences; recreated tab content only
+    // receives their current projection so controls cannot break bindings.
     property string albumMode: "grid"
+    property string albumSortMode: "title"
+    property bool albumSortDescending: false
+    property string albumFilterMode: "all"
+    property string albumTimelineGrouping: "decade"
+    property real albumZoom: 1.0
     property var _content: null   // the current tab view
 
     // M6.7: explicit per-tab management. The object tree must NOT keep the
@@ -51,49 +58,51 @@ ColumnLayout {
     Layout.fillHeight: true
     spacing: MichiTheme.space8
 
-    Text {
+    ErrorState {
         visible: library.hasDiagnostic
-        text: library.diagnosticMessage
-        color: MichiTheme.warning
-        wrapMode: Text.Wrap
+        title: "Library unavailable"
+        message: library.diagnosticMessage
+        actionText: ""
         Layout.fillWidth: true
+        Layout.preferredHeight: visible ? implicitHeight : 0
     }
 
-    RowLayout {
+    MichiGlassSurface {
         Layout.fillWidth: true
-        spacing: MichiTheme.space12
+        Layout.preferredHeight: visible ? 48 : 0
         visible: addTargetPath !== ""
+        elevation: "subtle"
+        contentPadding: MichiSpacing.sm
+        accented: true
+        accentColor: MichiPalette.auroraPurple
 
-        Text {
-            text: "Add to:"
-            font.pixelSize: MichiTheme.fontSizeCaption
-            color: MichiTheme.textSecondary
-        }
+        RowLayout {
+            anchors.fill: parent
+            spacing: MichiSpacing.sm
+            MichiText {
+                text: "ADD TRACK TO"
+                role: "technical"
+                technical: true
+                color: MichiPalette.auroraPurple
+                font.weight: Font.DemiBold
+            }
 
-        Repeater {
-            model: library.playlists
-            delegate: Text {
-                text: modelData.name
-                font.pixelSize: MichiTheme.fontSizeCaption
-                color: MichiTheme.warning
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
+            Repeater {
+                model: library.playlists
+                delegate: MichiButton {
+                    text: modelData.name
+                    variant: "secondary"
                     onClicked: {
                         library.add_to_playlist(modelData.name, addTargetPath)
                         addTargetPath = ""
                     }
                 }
             }
-        }
 
-        Text {
-            text: "✕"
-            font.pixelSize: MichiTheme.fontSizeCaption
-            color: MichiTheme.textSecondary
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
+            Item { Layout.fillWidth: true }
+            MichiIconButton {
+                iconName: "close"
+                accessibleName: "Cancel playlist selection"
                 onClicked: addTargetPath = ""
             }
         }
@@ -103,6 +112,24 @@ ColumnLayout {
         id: contentArea
         Layout.fillWidth: true
         Layout.fillHeight: true
+        visible: library.fileCount > 0
+    }
+
+    EmptyState {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        visible: library.fileCount === 0
+            && (library.scanStatus === "" || library.scanStatus === "IDLE")
+        title: "No music yet"
+        message: "Choose a music directory above and scan it to build your local library."
+    }
+
+    LoadingState {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        visible: library.fileCount === 0
+            && library.scanStatus !== "" && library.scanStatus !== "IDLE"
+        message: "Building your library…"
     }
 
     Component {
@@ -121,7 +148,11 @@ ColumnLayout {
             addTargetPath: root.addTargetPath
             onAddTargetPathChanged: root.addTargetPath = addTargetPath
             albumMode: root.albumMode
-            onAlbumModeChanged: root.albumMode = albumMode
+            albumSortMode: root.albumSortMode
+            albumSortDescending: root.albumSortDescending
+            albumFilterMode: root.albumFilterMode
+            albumTimelineGrouping: root.albumTimelineGrouping
+            albumZoom: root.albumZoom
         }
     }
 
@@ -129,6 +160,8 @@ ColumnLayout {
         id: artistsViewComponent
         ArtistsView {
             anchors.fill: parent
+            addTargetPath: root.addTargetPath
+            onAddTargetPathChanged: root.addTargetPath = addTargetPath
         }
     }
 

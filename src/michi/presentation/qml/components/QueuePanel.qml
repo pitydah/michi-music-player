@@ -1,76 +1,116 @@
 import QtQuick
 import QtQuick.Layouts
+import "../controls"
+import "../media"
+import "../patterns"
+import "../primitives"
 import "../theme"
-import "../ui"
 
-ColumnLayout {
+MichiGlassSurface {
     id: root
-    spacing: MichiTheme.space6
 
-    property var trackNames: []
+    property var trackRows: []
     property int currentIndex: -1
     property int count: 0
     property bool hasPrev: false
     property bool hasNext: false
+    property string repeatMode: "NONE"
+    property bool shuffleEnabled: false
 
     signal trackClicked(int index)
+    signal moveRequested(int fromIndex, int toIndex)
+    signal removeRequested(int index)
     signal clearClicked()
     signal previousRequested()
     signal nextRequested()
+    signal repeatModeRequested(string mode)
+    signal shuffleRequested(bool enabled)
+    signal closeRequested()
 
-    Text {
-        text: "Queue (" + root.count + ")"
-        font.pixelSize: MichiTheme.fontSizeBodyLarge
-        font.weight: MichiTheme.fontWeightBold
-        color: MichiTheme.textSecondary
-    }
+    elevation: "elevated"
+    accented: true
+    accentColor: MichiPalette.auroraPurple
+    contentPadding: MichiSpacing.lg
 
-    RowLayout {
-        Layout.fillWidth: true
-        spacing: MichiTheme.space6
-        MichiButton { text: "⏮ Prev"; variant: "ghost"; enabled: root.hasPrev; onClicked: root.previousRequested() }
-        MichiButton { text: "Next ⏭"; variant: "ghost"; enabled: root.hasNext; onClicked: root.nextRequested() }
-    }
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: MichiSpacing.md
 
-    ListView {
-        id: queueList
-        Layout.fillWidth: true
-        Layout.fillHeight: true
-        model: root.trackNames
-        clip: true
-
-        delegate: Rectangle {
-            width: queueList.width
-            height: MichiTheme.controlHeightSmall
-            color: {
-                if (index === root.currentIndex) return MichiTheme.surfaceSelected
-                if (mouseArea.containsMouse) return MichiTheme.surfaceHover
-                return "transparent"
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: MichiSpacing.sm
+            PageHeader {
+                Layout.fillWidth: true
+                title: "Queue"
+                subtitle: root.count + (root.count === 1 ? " track" : " tracks")
             }
-            radius: MichiTheme.radiusSmall
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left; anchors.leftMargin: MichiTheme.space8
-                text: (index+1)+". "+modelData
-                color: index === root.currentIndex ? MichiTheme.accent : MichiTheme.textSecondary
-                font.pixelSize: MichiTheme.fontSizeCaption
-                elide: Text.ElideRight
-                width: parent.width - MichiTheme.space16
+            MichiIconButton {
+                iconName: "close"
+                accessibleName: "Close queue"
+                onClicked: root.closeRequested()
             }
-            MouseArea {
-                id: mouseArea
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.trackClicked(index)
+            MichiButton {
+                text: "Clear"
+                variant: "ghost"
+                enabled: root.count > 0
+                onClicked: root.clearClicked()
             }
         }
-    }
 
-    MichiButton {
-        Layout.alignment: Qt.AlignHCenter
-        text: "Clear Queue"
-        variant: "ghost"
-        onClicked: root.clearClicked()
+        EmptyState {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: root.count === 0
+            title: "Queue is empty"
+            message: "Play a track from the library to start listening."
+        }
+
+        ListView {
+            id: queueList
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: root.count > 0
+            model: root.trackRows
+            clip: true
+            spacing: MichiSpacing.xs
+            boundsBehavior: Flickable.StopAtBounds
+
+            delegate: RowLayout {
+                required property int index
+                required property var modelData
+                width: queueList.width
+                spacing: MichiSpacing.xs
+
+                TrackRow {
+                    Layout.fillWidth: true
+                    numberText: String(index + 1)
+                    title: modelData.title
+                    artist: modelData.artist || ""
+                    album: modelData.album || ""
+                    durationMs: modelData.durationMs || 0
+                    playing: index === root.currentIndex
+                    selected: index === root.currentIndex
+                    showRemove: true
+                    showArtistColumn: root.width >= 460
+                    showAlbumColumn: false
+                    showQualityColumn: false
+                    showDurationColumn: root.width >= 390
+                    onActivated: root.trackClicked(index)
+                    onRemoveRequested: root.removeRequested(index)
+                }
+                MichiIconButton {
+                    iconName: "up"
+                    accessibleName: "Move track up"
+                    enabled: index > 0
+                    onClicked: root.moveRequested(index, index - 1)
+                }
+                MichiIconButton {
+                    iconName: "down"
+                    accessibleName: "Move track down"
+                    enabled: index + 1 < root.count
+                    onClicked: root.moveRequested(index, index + 1)
+                }
+            }
+        }
     }
 }

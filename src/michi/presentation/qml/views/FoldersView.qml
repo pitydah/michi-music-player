@@ -1,23 +1,25 @@
 import QtQuick
 import QtQuick.Layouts
+import "../media"
 import "../theme"
 
 ListView {
-    id: foldersList
+    id: root
     objectName: "foldersView"
 
     Layout.fillWidth: true
     Layout.fillHeight: true
     model: library.folders
     clip: true
-    spacing: MichiTheme.space8
-    delegate: Text {
-        width: foldersList.width
-        height: MichiTheme.controlHeightSmall
-        verticalAlignment: Text.AlignVCenter
-        text: modelData.path + " · " + modelData.trackCount + " tracks"
-        font.pixelSize: MichiTheme.fontSizeCaption
-        color: MichiTheme.textSecondary
-        elide: Text.ElideRight
+    spacing: MichiSpacing.xs
+    boundsBehavior: Flickable.StopAtBounds
+
+    delegate: MichiEntityRow {
+        required property var modelData
+        width: root.width
+        iconName: "folder"
+        title: modelData.path
+        technical: modelData.trackCount + " tracks"
+        interactive: false
     }
 }

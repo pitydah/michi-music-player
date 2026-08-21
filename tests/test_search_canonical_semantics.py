@@ -458,6 +458,8 @@ class TestSixViewsShareFilteredAlbumIds:
             # MagazineView exposes the albums model on its inner ListView.
             inner = view.findChild(QObject, "albumMagazineList")
             model = inner.property("model") if inner is not None else []
+        if hasattr(model, "toVariant"):
+            model = model.toVariant()
         keys = {r["key"] for r in (model or [])}
         assert keys == expected_keys, f"{mode} consumed a different album set"
 

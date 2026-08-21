@@ -13,10 +13,15 @@ ApplicationWindow {
     title: "Michi Music Player"
     color: MichiTheme.backgroundBase
 
-    Shortcut { sequence: "Space"; onActivated: playback.status === "playing" ? playback.pause() : playback.play() }
-    Shortcut { sequence: "Left"; onActivated: queue.previous_track() }
-    Shortcut { sequence: "Right"; onActivated: queue.next_track() }
+    Shortcut { sequence: "Space"; onActivated: { MichiAccessibility.inputModality = "keyboard"; playback.status === "playing" ? playback.pause() : playback.play() } }
+    Shortcut { sequence: "Left"; onActivated: { MichiAccessibility.inputModality = "keyboard"; queue.previous_track() } }
+    Shortcut { sequence: "Right"; onActivated: { MichiAccessibility.inputModality = "keyboard"; queue.next_track() } }
     Shortcut { sequence: "Ctrl+Q"; onActivated: window.close() }
+    Shortcut { sequence: "Ctrl+F"; onActivated: { MichiAccessibility.inputModality = "keyboard"; appShell.openSearch() } }
+    Shortcut { sequence: "Ctrl+L"; onActivated: { MichiAccessibility.inputModality = "keyboard"; navigation.navigate("library") } }
+    Shortcut { sequence: "Ctrl+,"; onActivated: { MichiAccessibility.inputModality = "keyboard"; navigation.navigate("settings") } }
+    Shortcut { sequence: "Alt+Left"; onActivated: { MichiAccessibility.inputModality = "keyboard"; appShell.goBack() } }
+    Shortcut { sequence: "Esc"; enabled: navigation.currentRoute === "queue"; onActivated: appShell.goBack() }
     Shortcut { sequence: "Ctrl+1"; onActivated: navigation.navigate("now_playing") }
     Shortcut { sequence: "Ctrl+2"; onActivated: navigation.navigate("library") }
     Shortcut { sequence: "Ctrl+3"; onActivated: navigation.navigate("queue") }
@@ -51,6 +56,8 @@ ApplicationWindow {
     }
 
     AppShell {
+        id: appShell
+        anchors.fill: parent
         currentRoute: navigation.currentRoute
         onNavigationRequested: routeId => navigation.navigate(routeId)
     }

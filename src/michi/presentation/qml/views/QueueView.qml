@@ -1,87 +1,66 @@
 import QtQuick
 import QtQuick.Layouts
-import "../theme"
 import "../components"
+import "../theme"
 
-ColumnLayout {
-    spacing: MichiTheme.space8
+Item {
+    id: root
+    objectName: "queueView"
+    property bool revealed: false
+    signal closeRequested()
 
-    Text {
-        text: "Queue"
-        font.pixelSize: MichiTheme.fontSizeTitle
-        font.weight: MichiTheme.fontWeightBold
-        color: MichiTheme.textPrimary
+    Rectangle {
+        anchors.fill: parent
+        color: MichiSemanticColors.scrim
+        opacity: root.revealed ? 1 : 0
+        Behavior on opacity {
+            enabled: !MichiAccessibility.reducedMotion
+            NumberAnimation { duration: MichiMotion.panel }
+        }
+        MouseArea { anchors.fill: parent; onClicked: root.closeRequested() }
     }
 
     RowLayout {
-        spacing: MichiTheme.space12
+        anchors.fill: parent
+        spacing: MichiSpacing.xl
 
-        Text {
-            text: "Repeat:"
-            font.pixelSize: MichiTheme.fontSizeBody
-            color: MichiTheme.textSecondary
-        }
+        Item { Layout.fillWidth: true }
 
-        Text {
-            text: "None"
-            font.pixelSize: MichiTheme.fontSizeBody
-            font.weight: queue.repeatMode === "NONE" ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
-            color: queue.repeatMode === "NONE" ? MichiTheme.warning : MichiTheme.textSecondary
-
-            MouseArea {
-                anchors.fill: parent
-                onClicked: queue.set_repeat_mode("NONE")
-            }
-        }
-
-        Text {
-            text: "One"
-            font.pixelSize: MichiTheme.fontSizeBody
-            font.weight: queue.repeatMode === "ONE" ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
-            color: queue.repeatMode === "ONE" ? MichiTheme.warning : MichiTheme.textSecondary
-
-            MouseArea {
-                anchors.fill: parent
-                onClicked: queue.set_repeat_mode("ONE")
-            }
-        }
-
-        Text {
-            text: "All"
-            font.pixelSize: MichiTheme.fontSizeBody
-            font.weight: queue.repeatMode === "ALL" ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
-            color: queue.repeatMode === "ALL" ? MichiTheme.warning : MichiTheme.textSecondary
-
-            MouseArea {
-                anchors.fill: parent
-                onClicked: queue.set_repeat_mode("ALL")
-            }
-        }
-
-        Text {
-            text: "Shuffle"
-            font.pixelSize: MichiTheme.fontSizeBody
-            font.weight: queue.shuffleEnabled ? MichiTheme.fontWeightBold : MichiTheme.fontWeightNormal
-            color: queue.shuffleEnabled ? MichiTheme.warning : MichiTheme.textSecondary
-
-            MouseArea {
-                anchors.fill: parent
-                onClicked: queue.set_shuffle_enabled(!queue.shuffleEnabled)
+        Item {
+            Layout.fillHeight: true
+            Layout.preferredWidth: Math.max(360, Math.min(520, root.width * 0.46))
+            QueuePanel {
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: parent.width
+                x: root.revealed ? 0 : 36
+                opacity: root.revealed ? 1 : 0
+                trackRows: queue.trackRows
+                currentIndex: queue.currentIndex
+                count: queue.count
+                hasPrev: queue.hasPrevious
+                hasNext: queue.hasNext
+                repeatMode: queue.repeatMode
+                shuffleEnabled: queue.shuffleEnabled
+                onTrackClicked: index => queue.play_index(index)
+                onMoveRequested: (fromIndex, toIndex) => queue.move_track(fromIndex, toIndex)
+                onRemoveRequested: index => queue.remove_track(index)
+                onClearClicked: queue.clear_queue()
+                onPreviousRequested: queue.previous_track()
+                onNextRequested: queue.next_track()
+                onRepeatModeRequested: mode => queue.set_repeat_mode(mode)
+                onShuffleRequested: enabled => queue.set_shuffle_enabled(enabled)
+                onCloseRequested: root.closeRequested()
+                Behavior on x {
+                    enabled: !MichiAccessibility.reducedMotion
+                    NumberAnimation { duration: MichiMotion.panel; easing.type: MichiMotion.outQuart }
+                }
+                Behavior on opacity {
+                    enabled: !MichiAccessibility.reducedMotion
+                    NumberAnimation { duration: MichiMotion.standard }
+                }
             }
         }
     }
-
-    QueuePanel {
-        Layout.fillWidth: true
-        Layout.fillHeight: true
-        trackNames: queue.trackNames
-        currentIndex: queue.currentIndex
-        count: queue.count
-        hasPrev: queue.hasPrevious
-        hasNext: queue.hasNext
-        onTrackClicked: idx => queue.play_index(idx)
-        onClearClicked: queue.clear_queue()
-        onPreviousRequested: queue.previous_track()
-        onNextRequested: queue.next_track()
-    }
+    Component.onCompleted: root.revealed = true
 }

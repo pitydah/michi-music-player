@@ -1,23 +1,39 @@
 import QtQuick
 import QtQuick.Layouts
+import "../media"
 import "../theme"
 
 ListView {
-    id: historyList
+    id: root
     objectName: "historyView"
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    model: library.historyRows
+    model: library.historyTrackRows
     clip: true
-    spacing: MichiTheme.space8
-    delegate: Text {
-        width: historyList.width
-        height: MichiTheme.controlHeightSmall
-        verticalAlignment: Text.AlignVCenter
-        text: modelData.displayName
-        font.pixelSize: MichiTheme.fontSizeCaption
-        color: MichiTheme.textSecondary
-        elide: Text.ElideRight
+    spacing: MichiSpacing.xs
+    boundsBehavior: Flickable.StopAtBounds
+    headerPositioning: ListView.InlineHeader
+
+    header: TrackTableHeader {
+        width: root.width
+        actionColumnWidth: 32
+    }
+
+    delegate: TrackRow {
+        required property int index
+        required property var modelData
+        width: root.width
+        numberText: String(index + 1)
+        title: modelData.title
+        artist: modelData.artist
+        album: modelData.album
+        durationMs: modelData.durationMs
+        quality: modelData.qualityLabel
+        playing: playback.currentPath === modelData.path
+        favorite: library.favoritePaths.indexOf(modelData.path) !== -1
+        showFavorite: true
+        onActivated: library.activate_path(modelData.path)
+        onFavoriteToggled: library.toggle_favorite(modelData.path)
     }
 }

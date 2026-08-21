@@ -1,5 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
+import "../controls"
+import "../media"
+import "../patterns"
+import "../primitives"
 import "../theme"
 
 ColumnLayout {
@@ -7,133 +11,286 @@ ColumnLayout {
     objectName: "albumDetailView"
 
     property string addTargetPath: ""
+    property var inspectedTrack: null
+    readonly property var inspectorRows: inspectedTrack ? [
+        { label: "Format", value: inspectedTrack.codec || "Unknown" },
+        { label: "Sample rate", value: inspectedTrack.sampleRateHz > 0
+            ? (inspectedTrack.sampleRateHz / 1000) + " kHz" : "Unknown" },
+        { label: "Bit depth", value: inspectedTrack.bitDepth > 0
+            ? inspectedTrack.bitDepth + "-bit" : "Unknown" },
+        { label: "Channels", value: inspectedTrack.channels > 0
+            ? String(inspectedTrack.channels) : "Unknown" },
+        { label: "File size", value: root.formatFileSize(inspectedTrack.fileSize) },
+        { label: "Path", value: inspectedTrack.path }
+    ] : []
 
     visible: library.selectedAlbumKey !== ""
     Layout.fillWidth: true
     Layout.fillHeight: true
-    spacing: MichiTheme.space8
+    spacing: MichiThemeState.contentGap
 
-    function formatDuration(ms) {
-        if (ms <= 0)
-            return ""
-        var totalSeconds = Math.floor(ms / 1000)
-        var minutes = Math.floor(totalSeconds / 60)
-        var seconds = totalSeconds % 60
-        return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
+    onVisibleChanged: if (!visible) inspectedTrack = null
+
+    function formatFileSize(bytes) {
+        if (!bytes || bytes <= 0)
+            return "Unknown"
+        if (bytes >= 1073741824)
+            return (bytes / 1073741824).toFixed(2) + " GB"
+        return (bytes / 1048576).toFixed(1) + " MB"
     }
 
-    Text {
-        text: "← Back"
-        font.pixelSize: MichiTheme.fontSizeBody
-        color: MichiTheme.textSecondary
-        MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: library.clear_album_selection()
-        }
+    function formatDuration(milliseconds) {
+        var seconds = Math.max(0, Math.floor(milliseconds / 1000))
+        var minutes = Math.floor(seconds / 60)
+        var hours = Math.floor(minutes / 60)
+        var remainingMinutes = minutes % 60
+        if (hours > 0)
+            return hours + " hr " + remainingMinutes + " min"
+        return minutes + " min"
     }
 
     RowLayout {
         Layout.fillWidth: true
-        spacing: MichiTheme.space12
+        spacing: MichiSpacing.sm
 
-        Image {
-            source: "file://" + library.albumArtwork
-            visible: library.albumArtwork !== ""
-            Layout.preferredWidth: 120
-            Layout.preferredHeight: 120
-            fillMode: Image.PreserveAspectFit
+        MichiButton {
+            text: "Back"
+            iconName: "back"
+            variant: "ghost"
+            onClicked: library.clear_album_selection()
         }
-
-        ColumnLayout {
+        MichiText {
+            text: "Library"
+            role: "secondary"
+            color: MichiPalette.textMuted
+        }
+        MichiText {
+            text: "›"
+            role: "secondary"
+            color: MichiPalette.textMuted
+        }
+        MichiText {
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            spacing: MichiTheme.space4
+            text: library.albumTitle
+            role: "secondary"
+            color: MichiPalette.textSecondary
+            elide: Text.ElideRight
+        }
+    }
 
-            Text {
-                Layout.fillWidth: true
-                text: library.albumTitle
-                font.pixelSize: MichiTheme.fontSizeTitle
-                font.weight: MichiTheme.fontWeightBold
-                color: MichiTheme.textPrimary
-                elide: Text.ElideRight
+    MichiGlassSurface {
+        objectName: "albumHeroSurface"
+        Layout.fillWidth: true
+        Layout.preferredHeight: heroContent.implicitHeight + MichiSpacing.xl * 2
+        elevation: "elevated"
+        contentPadding: MichiSpacing.xl
+        accented: true
+        accentColor: MichiPalette.auroraBlue
+        textured: true
+
+        RowLayout {
+            id: heroContent
+            anchors.fill: parent
+            spacing: MichiSpacing.xl
+
+            Artwork {
+                sourcePath: library.albumArtwork
+                fallbackText: library.albumTitle
+                Layout.preferredWidth: Math.min(232, Math.max(164, root.width * .19))
+                Layout.preferredHeight: Layout.preferredWidth
+                Layout.alignment: Qt.AlignTop
+                requestedSize: 512
             }
 
-            Text {
+            ColumnLayout {
                 Layout.fillWidth: true
-                text: library.albumArtist
-                font.pixelSize: MichiTheme.fontSizeBody
-                color: MichiTheme.textSecondary
-                elide: Text.ElideRight
+                spacing: MichiSpacing.sm
+
+                MichiText {
+                    Layout.fillWidth: true
+                    text: library.albumTitle
+                    role: "display"
+                    font.weight: Font.DemiBold
+                    elide: Text.ElideRight
+                }
+                MichiText {
+                    Layout.fillWidth: true
+                    text: library.albumArtist
+                    role: "section"
+                    color: MichiPalette.textSecondary
+                    elide: Text.ElideRight
+                }
+                MichiText {
+                    Layout.fillWidth: true
+                    text: [library.albumGenres, library.albumYear > 0
+                        ? library.albumYear : ""].filter(value => value !== "").join(" · ")
+                    role: "secondary"
+                    visible: text.length > 0
+                }
+
+                RowLayout {
+                    spacing: MichiSpacing.sm
+                    AudioQualityBadge { label: library.albumTechnicalSummary }
+                    MichiStatusChip {
+                        text: library.albumTracks.length
+                            + (library.albumTracks.length === 1 ? " track" : " tracks")
+                        tone: "neutral"
+                        dotVisible: false
+                    }
+                    MichiStatusChip {
+                        text: root.formatDuration(library.albumDurationMs)
+                        tone: "neutral"
+                        dotVisible: false
+                        visible: library.albumDurationMs > 0
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
+
+                RowLayout {
+                    spacing: MichiSpacing.sm
+                    MichiButton {
+                        text: "Play album"
+                        iconName: "play"
+                        enabled: library.albumTracks.length > 0
+                        onClicked: library.activate_album_track(0)
+                    }
+                }
+            }
+
+            Rectangle {
+                visible: root.width >= 960
+                Layout.preferredWidth: 1
+                Layout.fillHeight: true
+                Layout.topMargin: MichiSpacing.sm
+                Layout.bottomMargin: MichiSpacing.sm
+                color: MichiSemanticColors.borderSubtle
+            }
+
+            ColumnLayout {
+                visible: root.width >= 960
+                Layout.preferredWidth: 178
+                Layout.alignment: Qt.AlignTop
+                spacing: MichiSpacing.md
+
+                ColumnLayout {
+                    spacing: MichiSpacing.xxs
+                    MichiText {
+                        text: "DURATION"
+                        role: "technical"
+                        technical: true
+                        color: MichiPalette.textMuted
+                    }
+                    MichiText {
+                        text: root.formatDuration(library.albumDurationMs)
+                        role: "secondary"
+                    }
+                }
+                ColumnLayout {
+                    spacing: MichiSpacing.xxs
+                    MichiText {
+                        text: "TRACKS"
+                        role: "technical"
+                        technical: true
+                        color: MichiPalette.textMuted
+                    }
+                    MichiText {
+                        text: library.albumTracks.length
+                        role: "secondary"
+                    }
+                }
+                ColumnLayout {
+                    spacing: MichiSpacing.xxs
+                    MichiText {
+                        text: "LIBRARY QUALITY"
+                        role: "technical"
+                        technical: true
+                        color: MichiPalette.textMuted
+                    }
+                    MichiText {
+                        Layout.fillWidth: true
+                        text: library.albumTechnicalSummary || "Standard"
+                        role: "secondary"
+                        wrapMode: Text.Wrap
+                    }
+                }
             }
         }
     }
 
-    ListView {
-        id: albumTracksList
+    InspectorPanel {
+        Layout.fillWidth: true
+        Layout.preferredHeight: visible ? 210 : 0
+        visible: root.inspectedTrack !== null && root.width < 760
+        title: root.inspectedTrack ? root.inspectedTrack.title : "Track information"
+        rows: root.inspectorRows
+        onCloseRequested: root.inspectedTrack = null
+    }
+
+    RowLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        model: library.albumTracks
-        clip: true
-        delegate: RowLayout {
-            width: albumTracksList.width
-            height: MichiTheme.controlHeightSmall
-            spacing: MichiTheme.space8
+        spacing: MichiSpacing.lg
 
-            Text {
-                Layout.fillWidth: true
-                text: modelData.displayName
-                font.pixelSize: MichiTheme.fontSizeCaption
-                color: MichiTheme.textPrimary
-                elide: Text.ElideRight
-            }
+        MichiGlassSurface {
+            objectName: "albumTrackTableSurface"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            elevation: "subtle"
+            contentPadding: MichiSpacing.sm
+            shadowed: false
+            textured: false
 
-            Text {
-                text: modelData.artist
-                font.pixelSize: MichiTheme.fontSizeCaption
-                color: MichiTheme.textSecondary
-                elide: Text.ElideRight
-            }
-
-            Text {
-                text: formatDuration(modelData.durationMs)
-                font.pixelSize: MichiTheme.fontSizeCaption
-                color: MichiTheme.textSecondary
-            }
-
-            MouseArea {
+            ListView {
+                id: albumTracksList
                 anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: library.activate_album_track(index)
-            }
+                model: library.albumTracks
+                clip: true
+                spacing: MichiSpacing.xs
+                boundsBehavior: Flickable.StopAtBounds
+                headerPositioning: ListView.InlineHeader
 
-            Text {
-                text: library.favoritePaths.indexOf(modelData.path) !== -1 ? "★" : "☆"
-                color: MichiTheme.warning
-                font.pixelSize: MichiTheme.fontSizeCaption
-                Layout.rightMargin: MichiTheme.space8
-            }
-            MouseArea {
-                width: 24
-                height: parent.height
-                cursorShape: Qt.PointingHandCursor
-                Layout.rightMargin: MichiTheme.space8
-                onClicked: library.toggle_favorite(modelData.path)
-            }
+                header: TrackTableHeader {
+                    width: albumTracksList.width
+                    showAlbumColumn: false
+                    actionColumnWidth: 116
+                }
 
-            Text {
-                text: "＋"
-                color: MichiTheme.warning
-                font.pixelSize: MichiTheme.fontSizeCaption
-                Layout.rightMargin: MichiTheme.space8
+                delegate: TrackRow {
+                    required property int index
+                    required property var modelData
+                    width: albumTracksList.width
+                    numberText: modelData.discNumber > 1
+                        ? modelData.discNumber + "." + modelData.trackNumber
+                        : String(modelData.trackNumber > 0
+                            ? modelData.trackNumber : index + 1)
+                    title: modelData.title || modelData.displayName
+                    artist: modelData.artist
+                    showAlbumColumn: false
+                    durationMs: modelData.durationMs
+                    quality: modelData.qualityLabel
+                    playing: playback.currentPath === modelData.path
+                    favorite: library.favoritePaths.indexOf(modelData.path) !== -1
+                    showFavorite: true
+                    showAddToPlaylist: true
+                    showInspector: true
+                    selected: root.inspectedTrack
+                        && root.inspectedTrack.path === modelData.path
+                    onActivated: library.activate_album_track(index)
+                    onFavoriteToggled: library.toggle_favorite(modelData.path)
+                    onAddToPlaylistRequested: root.addTargetPath = modelData.path
+                    onInspectorRequested: root.inspectedTrack = modelData
+                }
             }
-            MouseArea {
-                width: 24
-                height: parent.height
-                cursorShape: Qt.PointingHandCursor
-                Layout.rightMargin: MichiTheme.space8
-                onClicked: addTargetPath = modelData.path
-            }
+        }
+
+        InspectorPanel {
+            Layout.preferredWidth: 320
+            Layout.fillHeight: true
+            visible: root.inspectedTrack !== null && root.width >= 760
+            title: root.inspectedTrack ? root.inspectedTrack.title : "Track information"
+            rows: root.inspectorRows
+            onCloseRequested: root.inspectedTrack = null
         }
     }
 }

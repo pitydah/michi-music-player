@@ -2,7 +2,7 @@
 
 Audio-only desktop music player rebuilt from scratch.
 
-**Status:** advanced pre-alpha clean rebuild. Development has progressed through M11.2A; several Required-1.0 capabilities remain partial (shuffle, repeat, metadata extraction). Component states: `docs/STATUS_MATRIX.md`.
+**Status:** advanced pre-alpha clean rebuild. M1–M11 Required-1.0 contracts are tested; the Premium Presentation System is now being applied before performance and packaging stabilization. Component states: `docs/STATUS_MATRIX.md`.
 
 **Platform:** Linux is the 1.0 target (AppImage/Flatpak/deb at M13). Windows and macOS are Post-1.0 — see `docs/POST_1_0_BACKLOG.md`.
 
@@ -50,14 +50,15 @@ Dependencies flow inward: Presentation → Application → Domain. Infrastructur
 - Queue: add/remove/clear, play by index, next/previous, auto-advance
 - Library: recursive directory scan with extension filter, substring search
 - Navigation: now playing / library / queue / settings screens
-- UI foundation: theme tokens + primitives (MichiButton, MichiPanel, MichiSlider, MichiTextField)
+- UI foundation: Aurora semantic tokens, smoked-glass control surfaces, desktop controls, accessibility/motion contracts, shared artwork and UI gallery
 - Settings persistence (SQLite, WAL): volume, muted, last_directory, recent_files — with restart gate and read-only health detection
 - Failure contracts: explicit runtime errors, best-effort shutdown (first-error-wins)
 
-## Not yet implemented (Required for 1.0)
+## Current implementation focus
 
-- Shuffle, repeat (none/one/all)
-- Basic metadata (title/artist/album/duration) — filename stem shown today
+- M9 Premium Presentation System: complete the canonical desktop UI/UX migration
+- M12 Performance: profile scan/startup/memory and large-library behavior
+- M13–M16: Linux packaging, beta, release candidate, and Stable 1.0
 
 See `docs/MASTER_ROADMAP_1.0.md` for the canonical 1.0 contract and current statuses.
 
@@ -71,6 +72,7 @@ See `docs/MASTER_ROADMAP_1.0.md` for the canonical 1.0 contract and current stat
 - `docs/TECHNICAL_DEBT_REGISTER.md` — active and resolved debt
 - `docs/POST_1_0_BACKLOG.md` — deferred scope
 - `docs/MIGRATION_LEDGER.md` — Legacy evidence disposition
+- `docs/M9_PREMIUM_PRESENTATION_SYSTEM.md` — UI Design Canon 2.0 implementation contract
 - `docs/adr/` — accepted architectural decisions
 
 ## Development

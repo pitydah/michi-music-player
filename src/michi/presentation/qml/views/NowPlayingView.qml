@@ -1,52 +1,56 @@
 import QtQuick
 import QtQuick.Layouts
 import "../theme"
-import "../components"
+import "../controls"
+import "../media"
+import "../patterns"
 
-ColumnLayout {
-    spacing: MichiTheme.space12
+Item {
+    id: root
+    property bool focusMode: false
 
-    Text {
-        Layout.alignment: Qt.AlignHCenter
-        text: "Now Playing"
-        font.pixelSize: MichiTheme.fontSizeTitle
-        font.weight: MichiTheme.fontWeightBold
-        color: MichiTheme.textPrimary
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: MichiTheme.space12
+
+        PageHeader {
+            Layout.fillWidth: true
+            title: "Now Playing"
+            subtitle: playback.fileName !== ""
+                ? "Artwork and metadata for the current track"
+                : "Your current listening context"
+            MichiButton {
+                text: root.focusMode ? "Standard view" : "Focus mode"
+                iconName: root.focusMode ? "library" : "artist"
+                variant: "secondary"
+                enabled: playback.fileName !== ""
+                onClicked: root.focusMode = !root.focusMode
+            }
+        }
+
+        ErrorState {
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? implicitHeight : 0
+            visible: playback.errorMessage !== ""
+            title: "Playback unavailable"
+            message: playback.errorMessage
+            actionText: ""
+        }
+
+        EmptyState {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: playback.fileName === ""
+            title: "Nothing playing"
+            message: "Choose a track from your library. Playback controls remain in the persistent bar below."
+            iconName: "play"
+        }
+
+        ArtworkFocusMode {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: playback.fileName !== ""
+            immersive: root.focusMode
+        }
     }
-
-    NowPlayingPanel {
-        Layout.fillWidth: true
-        fileName: playback.fileName
-        position: playback.position
-        duration: Math.max(playback.duration, 1)
-        statusText: playback.status
-        statusColor: playback.status === "playing" ? MichiTheme.success :
-                     playback.status === "paused" ? MichiTheme.warning : MichiTheme.textMuted
-        seekEnabled: playback.duration > 0
-        onSeekRequested: secs => playback.seek_seconds(secs)
-    }
-
-    PlaybackControls {
-        Layout.alignment: Qt.AlignHCenter
-        canPlay: playback.fileName !== ""
-        canPause: playback.status === "playing"
-        canStop: playback.status !== "stopped"
-        canPrev: queue.hasPrevious
-        canNext: queue.hasNext
-        onPlayClicked: playback.play()
-        onPauseClicked: playback.pause()
-        onStopClicked: playback.stop()
-        onPrevClicked: queue.previous_track()
-        onNextClicked: queue.next_track()
-    }
-
-    VolumeControl {
-        Layout.alignment: Qt.AlignHCenter
-        volume: playback.volume
-        muted: playback.muted
-        onVolumeChangeRequested: v => playback.set_volume(v)
-        onMuteToggleRequested: m => playback.set_muted(m)
-    }
-
-    Item { Layout.fillHeight: true }
 }

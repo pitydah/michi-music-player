@@ -1,19 +1,8 @@
 import QtQuick
-import "../theme"
+import "../primitives" as Primitives
 
-Rectangle {
+Primitives.MichiGlassSurface {
+    default property alias content: root.contentData
     id: root
-
-    default property alias content: contentArea.data
-
-    color: MichiTheme.surfacePrimary
-    radius: MichiTheme.radiusLarge
-    border.color: MichiTheme.borderSubtle
-    border.width: 1
-
-    Item {
-        id: contentArea
-        anchors.fill: parent
-        anchors.margins: MichiTheme.space16
-    }
+    elevation: "standard"
 }
