@@ -275,10 +275,10 @@ class TestSearchParity:
     def test_search_overlay_has_no_library_fallback_for_playlists(self):
         overlay = (QML_DIR / "patterns" / "SearchOverlay.qml").read_text()
         start = overlay.index("var playlistIndex")
-        end = overlay.index('    }\n', start)  # close of activateResult
+        end = overlay.index("    }\n", start)  # close of activateResult
         branch = overlay[start:end]
         assert "open_playlist" in branch
-        assert "navigationRequested(\"library\")" not in branch
+        assert 'navigationRequested("library")' not in branch
 
 
 class TestQmlDialogFlows:
@@ -290,8 +290,7 @@ class TestQmlDialogFlows:
     def test_rename_dialog_error_semantics(self):
         content = (QML_DIR / "shell" / "ContentHost.qml").read_text()
         assert (
-            "playlists.rename_playlist(renameDialog.targetPlaylistId, name)"
-            in content
+            "playlists.rename_playlist(renameDialog.targetPlaylistId, name)" in content
         )
         assert "A playlist with that name already exists" in content
         assert "errorText" in content
