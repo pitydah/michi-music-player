@@ -2,7 +2,9 @@
 
 PlaylistId: immutable, opaque, collision-resistant, serializable,
 name-independent. Service-level identity gates (create/rename/mutations/
-restart/recreate) live in test_m8_playlist_service_identity.py (M8-R1C).
+restart/recreate) are covered by test_m8_playlist_navigation_convergence.py
+(TestGetPlaylistQuery) plus the historical behavior locked in
+test_playlists.py (TestPlaylistService, identity-based API).
 """
 
 import sqlite3

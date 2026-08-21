@@ -56,6 +56,8 @@ Exactly one service owns each state model. Every mutation routes through the own
 | `LibraryState` (+ `TrackRef`)               | `LibraryService`                                                                                                                                     | `domain/library.py`            |
 | `SettingsState`                             | `SettingsService`                                                                                                                                    | `domain/settings.py`           |
 | `AppRoute` / `NavigationState`              | `NavigationService`                                                                                                                                  | `domain/navigation.py`         |
+| Playlist collection (`Playlist`)            | `PlaylistService` (sole authority; name is display-only, `playlist_id` is identity)                                                                  | `domain/playlist.py`           |
+| Pinned/recent (`PlaylistNavigationState`)   | `PlaylistService` (navigation metadata; normalized SAFE-READ at startup, no load writeback)                                                           | `domain/playlist.py`           |
 | `PersistenceHealth` (diagnostic, read-only) | produced by `SQLiteSettingsRepository.inspect_path()`; current production consumer: `SQLiteSettingsRepository.open_for_startup()` (M11.2D routing + M11.2E automatic recovery, TESTED) | `domain/persistence_health.py` |
 
 - **Ingress rule**: no subsystem writes to a state model directly; all mutations are owner method calls.
@@ -78,6 +80,12 @@ Label text           ←  bridge.title (property)       ←  PlaybackState (obse
 - **Projections**: bridges expose state to QML as properties read from owner `.state` objects, treated read-only by convention. State objects are mutable references, not immutable snapshots.
 - **Read-only settings**: `SettingsBridge` exposes state for display only; settings mutations go through `SettingsService` (bootstrap/coordinators), never through QML.
 - Bridges are the only place Qt types and application concepts meet.
+- `PlaylistNavigationCoordinator` (application layer, M8-R1F) is the
+  canonical application seam for the OPEN PLAYLIST product intent:
+  validate against PlaylistService → mark recent → navigate through
+  NavigationService. It is NOT a state authority: it owns no state, no
+  persistence, no Qt; PlaylistService and NavigationService remain the sole
+  owners of their states.
 
 ## AudioPort Boundary
 
