@@ -64,6 +64,7 @@ class ServiceGraph:
     db_path: Path
     library: LibraryService
     bridge: LibraryBridge
+    playlists_bridge: "PlaylistsBridge"
     runner: ThreadScanRunner
     dispatcher: LibraryScanDispatcher
     playlist_service: PlaylistService
@@ -141,12 +142,14 @@ def _build_services(
     scan_relay.done.connect(scan_dispatcher.on_done, Qt.QueuedConnection)
     scan_relay.progress.connect(scan_dispatcher.on_progress, Qt.QueuedConnection)
 
-    lb = LibraryBridge(library, playlist_service=playlist_service)
+    lb = LibraryBridge(library)
+    plb = PlaylistsBridge(playlist_service, library=library)
 
     return ServiceGraph(
         db_path=db_path,
         library=library,
         bridge=lb,
+        playlists_bridge=plb,
         runner=scan_runner,
         dispatcher=scan_dispatcher,
         playlist_service=playlist_service,
