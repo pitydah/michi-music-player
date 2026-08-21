@@ -233,8 +233,12 @@ def test_library_navigation_and_path_selection_follow_the_canon() -> None:
     assert "LibraryTabs {" in toolbar
     assert "onCurrentTabRequested" in library
     assert "LibraryTabs {" not in library
-    for icon in ("track", "album", "artist", "genre", "folder", "playlist"):
+    for icon in ("track", "album", "artist", "genre", "folder"):
         assert f'icon: "{icon}"' in tabs
+    # M9-R1 hierarchy: Playlists is a first-class Shell feature — it is NOT
+    # a Library tab (canonical playlist navigation resolves through
+    # AppRoute.PLAYLISTS, per PLAYLIST-HIERARCHY-01/03).
+    assert 'icon: "playlist"' not in tabs
     assert 'objectName: "pathViewSelectionCard"' in path_view
     assert "width: Math.min(720" in path_view
     assert "anchors.leftMargin: MichiSpacing.xl" not in path_view
