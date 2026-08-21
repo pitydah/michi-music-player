@@ -35,10 +35,13 @@ FakePlaylistsPort is defined here (in-memory, seedable, records every
 save).
 """
 
+import os
 import sqlite3
+import sys
 from pathlib import Path
 
 import pytest
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 from michi.application.library_service import LibraryService
@@ -468,6 +471,15 @@ class TestPlaylistBridge:
             ("B", 0)
         ]
         bridge.dispose()
+
+
+@pytest.fixture(scope="module")
+def qapp():
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    app = QGuiApplication.instance()
+    if app is None:
+        app = QGuiApplication(sys.argv)
+    yield app
 
 
 class TestQmlSmoke:
