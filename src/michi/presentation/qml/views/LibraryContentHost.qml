@@ -45,7 +45,6 @@ ColumnLayout {
             case "favorites": component = favoritesViewComponent; break
             case "history": component = historyViewComponent; break
             case "recently": component = recentlyViewComponent; break
-            case "playlists": component = playlistsViewComponent; break
         }
         if (component)
             _content = component.createObject(contentArea)
@@ -197,15 +196,6 @@ ColumnLayout {
         id: recentlyViewComponent
         RecentlyAddedView {
             anchors.fill: parent
-        }
-    }
-
-    Component {
-        id: playlistsViewComponent
-        PlaylistsView {
-            anchors.fill: parent
-            addTargetPath: root.addTargetPath
-            onAddTargetPathChanged: root.addTargetPath = addTargetPath
         }
     }
 }

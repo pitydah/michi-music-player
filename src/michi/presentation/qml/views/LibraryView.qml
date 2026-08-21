@@ -34,8 +34,6 @@ Item {
             currentTab = "albums"
         else if (library.selectedArtistKey !== "")
             currentTab = "artists"
-        else if (library.selectedPlaylistName !== "")
-            currentTab = "playlists"
     }
 
     Connections {

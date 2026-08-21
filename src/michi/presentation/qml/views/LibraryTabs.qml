@@ -17,8 +17,7 @@ Item {
         { value: "folders", label: "Folders", icon: "folder" },
         { value: "favorites", label: "Favorites", icon: "heart" },
         { value: "history", label: "History", icon: "history" },
-        { value: "recently", label: "Recently Added", icon: "recent" },
-        { value: "playlists", label: "Playlists", icon: "playlist" }
+        { value: "recently", label: "Recently Added", icon: "recent" }
     ]
 
     objectName: "libraryNavigationRail"
