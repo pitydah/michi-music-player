@@ -21,7 +21,7 @@ for 1.0 (Required 1.0) are not repeated here.
 
 | #   | Feature                  | Justification                                                                                                                                                                                                                                                                                | Sizing |
 | --- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| 1   | Playlists                | M4 Queue provides flat track-list ordering; M6 Library provides browsable collection. Named, persisted, user-curated playlists with CRUD, import/export (.m3u, .pls), and sharing exceed the 1.0 core loop. RESCHEDULED (approved scope change 2026-08-16): pre-Beta local work package LOCAL-06 per the reconciled MASTER_ROADMAP_1.0.md — Playlists is a persistent user-curated collection, distinct from Queue and Mix. | L      |
+| 1   | ~~Playlists~~            | RESCHEDULED — REQUIRED-1.0 (2026-08-16 LOCAL-06 pre-Beta; 2026-08-21 product-owner realignment: promoted to first-class navigation, M8-R1 + M9-R1, stable `playlist_id` + backward-compatible migration). Historical entry retained below in "Rescheduled / historical". | —      |
 | 2   | Metadata Editor          | Basic metadata display (title/artist/album/duration) is Required for 1.0. A tag editor additionally requires write-capable codec libraries (ID3v2, Vorbis Comments, APEv2), an undo/redo stack, batch operations, and format-specific validation — beyond the 1.0 playback-and-browse scope. | L      |
 | 3   | Audio Lab                | Real-time audio effects (EQ, compressor, reverb, pitch shift), effect chaining, preset management, and live preview require a signal-processing graph, DSP library integration, and frame-budget analysis not scoped for 1.0.                                                                | XL     |
 | 4   | Disc Lab                 | CD ripping, format transcoding, bit-perfect verification, AccurateRip integration, and cover-art embedding require optical-drive access, multi-format encoder pipelines, and forensic audio tooling deferred past 1.0.                                                                       | XL     |
@@ -50,7 +50,7 @@ realignment of 2026-08-21 — it no longer belongs to this list; see
 | ----------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Crossfade                     | Post-1.0 | Overlapping track transitions require two-buffer mixing; not part of the 1.0 core loop; distinct capability from Gapless.                         | M      |
 | Library index DB              | MOVED TO M6.2 (Required 1.0) | A persisted library index requires schema, incremental sync, and migration work; 1.0 scans the filesystem directly each session. RESCHEDULED (M6 original contract reconciliation 2026-08-18): the persistent library index is REQUIRED for 1.0 — M6.2 (LibraryIndexRepository port + versioned SQLite index, filesystem fingerprint size/mtime_ns, no reparse of unchanged) per docs/M6_LIBRARY_MASTER_PLAN.md. | L      |
-| Cover art                     | Post-1.0 | Artwork pipeline (extraction, caching, rendering) is outside the 1.0 core loop. Justification update (M6 original contract reconciliation 2026-08-18): embedded artwork extraction + per-album-key cache are delivered (LOCAL-02); folder-art fallback + digest-aware cache invalidation remain M6.5; no premium processing.                                                                                                   | M      |
+| ~~Cover art~~                  | MOVED TO M6.5 (Required 1.0, implemented) | Artwork pipeline was originally deferred; the M6 original contract delivered it — embedded artwork extraction + per-album-key cache + folder-art fallback + digest-aware cache invalidation (M6.5 Artwork Pipeline v2, TESTED). Historical entry retained in "Rescheduled / historical". | —      |
 | Full-text indexed search      | Post-1.0 | Substring filter satisfies 1.0; FTS indexing is a performance enhancement.                                                                        | M      |
 | Safe mode                     | Post-1.0 | A `--safe-mode` bypass requires configurable startup paths and degraded-mode contracts deferred past 1.0.                                         | M      |
 | Watchdog                      | Post-1.0 | Audio pipeline stall detection requires monitoring infrastructure deferred past 1.0.                                                              | M      |
@@ -65,3 +65,15 @@ realignment of 2026-08-21 — it no longer belongs to this list; see
    appearing here with deferral rationale.
 3. Backlog grooming (M16 exit) assigns t-shirt sizing and rough priority; formal
    sizing requires a dedicated exploration before admission.
+
+## Rescheduled / historical
+
+Entries that once lived in the deferred tables and were later promoted or
+delivered. Retained for history; they impose no active deferral.
+
+| Capability | Original decision | Resolution |
+| ---------- | ----------------- | ---------- |
+| Gapless playback | Post-1.0 | Promoted to Required-1.0 (2026-08-21, audiophile-first product decision) — owned exclusively by M11.5 (same-format gapless; cross-format boundaries degrade honestly). |
+| Playlists | Post-1.0 (M4/M6 core loop excluded) | RESCHEDULED LOCAL-06 (2026-08-16, pre-Beta local work) → promoted to Required-1.0 first-class navigation (2026-08-21): M8-R1 navigation (stable opaque `playlist_id` + backward-compatible migration) + M9-R1 sidebar/presentation. |
+| Cover art | Post-1.0 | Delivered by the M6 original contract — M6.5 Artwork Pipeline v2 (embedded artwork, front-cover preference, local cover/folder/front fallback, digest-aware cache), TESTED. |
+| Library index DB | Post-1.0 | Delivered as M6.2 Persistent Library Index (Required 1.0) — versioned SQLite, rebuildable cache, incremental scan support. |

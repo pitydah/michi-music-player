@@ -14,8 +14,10 @@ bit-perfect verdict per the M11.4 evidence model.
 
 ## Scope
 
-- Bit-perfect conformance (SOURCE == ENGINE == DEVICE; no conversion/DSP/
-  softvol in path).
+- Bit-perfect conformance (post-lossless-decode signal equality across
+  Container/Codec → Decoded Source Signal → Engine Effective Signal → Device
+  Negotiated Signal; no conversion/DSP/softvol in path; see
+  `docs/M11_4_AUDIOPHILE_OUTPUT_DAC.md` for the four-stage evidence model).
 - No hidden resampling; no hidden channel remix.
 - Bit-depth preservation where backend/device supports it.
 - Automatic sample-rate switching (44.1/48/96/192 source-native).
@@ -43,14 +45,24 @@ bit-perfect verdict per the M11.4 evidence model.
 
 ## Telemetry contract
 
-Expose (for M9-R2 and tests):
+Expose (for M9-R2 and tests) the four-stage signal chain — bit-perfect
+comparisons happen on the signal level AFTER lossless decode, never on
+container/codec names:
 
-- SOURCE: decoder truth (format/rate/bit depth/channels — Michi M6 technical
-  metadata).
-- ENGINE OUTPUT: effective rate/format/channel layout + resampling/remix/DSP/
-  softvol state.
-- DEVICE OUTPUT: negotiated PCM/DSD mode, actual rate/format, DSD transport
-  (NATIVE / DOP / PCM_CONVERSION).
+- CONTAINER/CODEC: file facts — M6 technical metadata is **file facts from
+  the source file**, NOT "decoder truth". It records what the file claims
+  (codec, rate, bit depth, channels).
+- DECODED SOURCE SIGNAL: the signal after lossless decode — the truth of
+  what the source actually is (the comparison reference).
+- ENGINE EFFECTIVE SIGNAL: effective rate/format/channel layout +
+  resampling/remix/DSP/softvol state.
+- DEVICE NEGOTIATED SIGNAL: negotiated PCM/DSD mode, actual rate/format,
+  DSD transport (NATIVE / DOP / PCM_CONVERSION).
+
+The **decoder/engine supplies the runtime truth** (decoded + negotiated
+signal); M6 metadata describes the file. They are distinct evidence sources
+and MUST NOT be conflated.
+
 - Verdict: BitPerfectState VERIFIED / UNVERIFIED / NOT_APPLICABLE / BROKEN.
 - DoP carrier is reported as DoP, never as "PCM conversion".
 

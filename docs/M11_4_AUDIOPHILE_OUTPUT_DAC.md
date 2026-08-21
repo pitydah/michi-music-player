@@ -33,7 +33,16 @@ One canonical DAC model; engines never invent their own.
 ## M11.4 Subphases
 
 - **M11.4A — Device Discovery**: canonical registry with adapters (PipeWire,
-  WirePlumber, ALSA, GStreamer DeviceMonitor).
+  WirePlumber, ALSA, GStreamer DeviceMonitor). **Deduplication rule (fixed
+  before implementation)**: multiple backends observe the SAME physical DAC —
+  the registry merges observations into exactly ONE `AudioDevice` per stable
+  identity (vendor/product/serial/bus-path; ALSA card longname/bus-path as
+  fallback evidence). Each merged device records `provenance` (which backends
+  observed it, with timestamps) and per-backend `bindings` (backend-specific
+  device strings/ids: `hw:0,3`, `node.name`, `device.string`, …). A backend
+  disappearing removes only its binding/provenance, never the canonical
+  device, while at least one backend still observes it. No duplicate devices;
+  no device invented from a single backend's ephemeral id.
 - **M11.4B — Stable DAC Identity**: never persist only `hw:N`/card index
   (ephemeral). Stable identity from vendor, product, serial, bus, path and
   persistent identifiers. Backend-specific device strings stay in adapter
@@ -77,14 +86,26 @@ One canonical DAC model; engines never invent their own.
 
 ## Bit-perfect evidence model
 
-BIT PERFECT = VERIFIED only if:
+BIT PERFECT = VERIFIED only if the **signal format after lossless decode**
+is preserved end-to-end. The comparison chain has FOUR distinct stages — never
+compare container/codec names to PCM names:
 
 ```
-SOURCE FORMAT == ENGINE EFFECTIVE OUTPUT == DEVICE EFFECTIVE OUTPUT
+Container/Codec         e.g. FLAC 24/96      (file facts — M6 technical metadata)
+    ↓ lossless decode
+Decoded Source Signal   e.g. PCM S24_LE 96 kHz stereo   ← comparison reference
+    ↓ engine
+Engine Effective Signal e.g. PCM S24_LE 96 kHz stereo   (resampling/remix/DSP/softvol state)
+    ↓ transport
+Device Negotiated Signal e.g. PCM S24_LE 96 kHz         (hw_params/SPA truth)
 ```
 
-AND resampling OFF, channel remix OFF, DSP OFF, software volume OFF,
-format conversion OFF.
+VERIFIED requires: Decoded Source Signal == Engine Effective Signal == Device
+Negotiated Signal (format, rate, bit depth, channel layout) AND resampling
+OFF, channel remix OFF, DSP OFF, software volume OFF, format conversion OFF.
+A FLAC 24/96 file and an S24_LE 96 kHz engine output ARE bit-perfect — the
+codec name (FLAC) is irrelevant to the comparison; only the post-decode signal
+matters.
 
 Incomplete evidence → UNVERIFIED. Never infer VERIFIED because GStreamer/MPD/
 ALSA/PipeWire/Direct is active — those are configuration conditions, not
