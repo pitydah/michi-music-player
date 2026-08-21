@@ -279,6 +279,8 @@ class PlaylistsBridge(QObject):
         Never raises into QML."""
         if self._playlist_service is None:
             return False
+        if self._playlist_service.get_playlist(playlist_id) is None:
+            return False  # missing playlist is a failure, not a silent no-op
         try:
             self._playlist_service.rename_playlist(playlist_id, new_name)
         except ValueError:

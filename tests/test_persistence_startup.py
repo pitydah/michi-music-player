@@ -878,6 +878,10 @@ class FakeQGuiApplication:
     def setAttribute(*_args, **_kwargs):  # noqa: N802 — Qt API name
         pass
 
+    @staticmethod
+    def instance():
+        return None
+
     def __init__(self, _argv):
         pass
 

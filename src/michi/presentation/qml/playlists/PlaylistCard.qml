@@ -96,17 +96,36 @@ Item {
         }
     }
 
+    // M9-R1I keyboard accessibility: the card surface is focusable and
+    // activates with Enter/Space; internal controls (Play/Pin/More) are
+    // separate controls that never trigger the open action.
     MouseArea {
         id: rootArea
         anchors.fill: parent
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
+        focus: true
+        activeFocusOnTab: true
+        Keys.onReturnPressed: root.openRequested()
+        Keys.onEnterPressed: root.openRequested()
+        Keys.onSpacePressed: root.openRequested()
         onClicked: mouse => {
             if (mouse.button === Qt.RightButton)
                 contextMenu.popup()
             else
                 root.openRequested()
         }
+    }
+
+    // Visible focus state for the card (quiet content surface, no glass).
+    Rectangle {
+        anchors.fill: parent
+        radius: MichiRadius.lg
+        visible: rootArea.activeFocus
+        border.width: 1
+        border.color: MichiPalette.auroraCyan
+        color: "transparent"
+        z: 2
     }
 
     RowLayout {

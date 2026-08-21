@@ -61,10 +61,15 @@ MichiDialog {
             root.errorText = qsTr("Playlist name must not be empty")
             return
         }
-        if (playlists.create_and_open_playlist(name))
+        if (playlists.create_and_open_playlist(name)) {
+            // M9-R1I: deterministic success flow — created/opened, then the
+            // dialog closes (PLAYLISTS/<new id>, Recent rank 0, Detail shows).
             root.playlistCreated(name)
-        else
+            root.close()
+        } else {
             root.errorText = qsTr("A playlist with that name already exists")
+            nameField.forceActiveFocus()
+        }
     }
 
     onOpened: {

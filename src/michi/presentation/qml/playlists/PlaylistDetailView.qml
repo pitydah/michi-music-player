@@ -94,9 +94,13 @@ Item {
             }
         }
 
+        // M9-R1I: only ONE surface owns the body — the track list hides
+        // when empty (no hidden ListView consuming layout space) and the
+        // EmptyState fills the available height exclusively.
         PlaylistTrackList {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            visible: playlists.playlistTrackRows.length > 0
             rows: playlists.playlistTrackRows
             onRemoveTrackRequested: index => root.removeTrackRequested(index)
             onMoveTrackRequested: (f, t) => root.moveTrackRequested(f, t)
@@ -105,7 +109,7 @@ Item {
         EmptyState {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: playlists.playlistTracks.length === 0
+            visible: playlists.playlistTrackRows.length === 0
             title: qsTr("Empty playlist")
             message: qsTr("Add tracks from your library to start collecting them here.")
             iconName: "playlist"

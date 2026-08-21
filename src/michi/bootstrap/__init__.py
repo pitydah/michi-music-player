@@ -193,7 +193,7 @@ class ApplicationContainer:
         QGuiApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
         QGuiApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
-        self._app = QGuiApplication(sys.argv)
+        self._app = QGuiApplication.instance() or QGuiApplication(sys.argv)
         self._app.setApplicationName("Michi Music Player")
         self._app.setApplicationVersion("0.1.0")
         self._app.setOrganizationName("Michi")
