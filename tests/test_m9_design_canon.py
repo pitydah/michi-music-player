@@ -365,7 +365,6 @@ def test_playing_indicator_is_bound_on_library_track_surfaces() -> None:
         "views/RecentlyAddedView.qml",
         "views/AlbumDetailView.qml",
         "views/ArtistDetailView.qml",
-        "views/PlaylistsView.qml",
     ):
         assert "playback.currentPath" in _text(view)
 
@@ -442,7 +441,6 @@ def test_audio_surfaces_share_a_semantic_table_header() -> None:
         "views/RecentlyAddedView.qml",
         "views/AlbumDetailView.qml",
         "views/ArtistDetailView.qml",
-        "views/PlaylistsView.qml",
     ):
         assert "TrackTableHeader" in _text(view)
     row = _text("media/TrackRow.qml")

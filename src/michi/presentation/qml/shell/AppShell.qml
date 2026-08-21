@@ -1,6 +1,8 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import "../controls"
 import "../patterns"
+import "../playlists"
 import "../player"
 import "../theme"
 import "../views"
@@ -74,12 +76,15 @@ Item {
             compact: width < 156 || MichiBreakpoints.isCompact(root.width)
             currentRoute: root.currentRoute
             onNavigationRequested: routeId => root.navigationRequested(routeId)
+            onCreatePlaylistRequested: playlistCreateDialog.open()
         }
 
         ContentHost {
+            id: contentHost
             SplitView.fillWidth: true
             SplitView.minimumWidth: MichiMetrics.contentMinimum
             currentRoute: root.currentRoute === "queue" ? root.lastContentRoute : root.currentRoute
+            onCreatePlaylistRequested: playlistCreateDialog.open()
         }
     }
 
@@ -133,6 +138,13 @@ Item {
         QueueView {
             onCloseRequested: root.navigationRequested(root.lastContentRoute)
         }
+    }
+
+    PlaylistCreateDialog {
+        id: playlistCreateDialog
+        anchors.centerIn: parent
+        visible: false
+        z: 120
     }
 
     SearchOverlay {

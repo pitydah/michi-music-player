@@ -14,6 +14,7 @@ Button {
     property real iconStrokeWidth: 1.7
     readonly property bool primary: variant === "primary"
     readonly property bool ghost: variant === "ghost"
+    readonly property bool danger: variant === "danger"
 
     implicitHeight: MichiMetrics.controlMedium
     implicitWidth: iconOnly ? implicitHeight
@@ -44,6 +45,7 @@ Button {
             visible: !root.iconOnly && text.length > 0
             role: "secondary"
             color: !root.enabled ? MichiPalette.textDisabled
+                : root.danger ? MichiPalette.error
                 : root.primary ? MichiPalette.obsidian
                 : root.selected || root.hovered ? MichiPalette.textPrimary
                 : MichiPalette.textSecondary
@@ -56,14 +58,16 @@ Button {
         id: buttonSurface
         radius: MichiRadius.md
         color: !root.enabled ? MichiPalette.graphite
+            : root.danger ? (root.hovered ? MichiSemanticColors.surfaceHover : MichiSemanticColors.controlSurface)
             : root.primary ? (root.pressed ? MichiSemanticColors.auroraPressed
                 : root.hovered ? MichiSemanticColors.auroraHover : MichiPalette.auroraBlue)
             : root.pressed ? MichiSemanticColors.surfacePressed
             : root.hovered ? MichiSemanticColors.surfaceHover
             : root.selected ? MichiSemanticColors.surfaceSelected
             : root.ghost ? "transparent" : MichiPalette.smoke
-        border.width: root.primary ? 0 : 1
-        border.color: root.selected ? MichiPalette.auroraBlue
+        border.width: root.danger ? 1 : root.primary ? 0 : 1
+        border.color: root.danger ? MichiPalette.error
+            : root.selected ? MichiPalette.auroraBlue
             : root.hovered ? MichiSemanticColors.borderStrong
             : MichiSemanticColors.borderSubtle
         y: root.pressed ? 1 : 0

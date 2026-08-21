@@ -279,6 +279,19 @@ class PlaylistsBridge(QObject):
         except ValueError:
             return
 
+    @Slot(str, result=bool)
+    def create_and_open_playlist(self, name: str) -> bool:
+        """Create + open (M9-R1 workflow): returns True when the playlist was
+        created and opened (route → PLAYLISTS/<new id>, Recent updated)."""
+        if self._playlist_service is None or self._coordinator is None:
+            return False
+        try:
+            playlist = self._playlist_service.create_playlist(name)
+        except ValueError:
+            return False
+        self._coordinator.open_playlist(playlist.playlist_id)
+        return True
+
     @Slot(str)
     def delete_playlist(self, playlist_id: str) -> None:
         if self._playlist_service is None:

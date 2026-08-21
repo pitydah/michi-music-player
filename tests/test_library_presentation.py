@@ -96,7 +96,6 @@ COMPONENT_FILES = [
     "FavoritesView.qml",
     "HistoryView.qml",
     "RecentlyAddedView.qml",
-    "PlaylistsView.qml",
 ]
 
 # Canonical-logic tokens that must never appear in QML (M6.1/M6.6 removed
