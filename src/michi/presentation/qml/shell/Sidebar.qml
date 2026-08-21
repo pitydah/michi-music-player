@@ -25,6 +25,32 @@ MichiGlassSurface {
         { id: "settings", label: "Settings", icon: "settings" }
     ]
 
+    Item {
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        width: 18
+        height: 112
+        opacity: 0.24
+        z: 0
+        Repeater {
+            model: [34, 62, 92, 52]
+            delegate: Rectangle {
+                required property int index
+                required property int modelData
+                x: index * 4
+                y: (parent.height - height) / 2
+                width: 2
+                height: modelData
+                radius: 1
+                gradient: Gradient {
+                    GradientStop { position: 0; color: "transparent" }
+                    GradientStop { position: 0.5; color: MichiPalette.auroraCyan }
+                    GradientStop { position: 1; color: "transparent" }
+                }
+            }
+        }
+    }
+
     Component {
         id: routeDelegate
         ItemDelegate {
@@ -101,17 +127,16 @@ MichiGlassSurface {
     ColumnLayout {
         anchors.fill: parent
         spacing: MichiSpacing.xs
+        z: 1
 
-        Item {
+        MichiGlassSurface {
             Layout.fillWidth: true
             Layout.preferredHeight: 68
-            Rectangle {
-                anchors.fill: parent
-                radius: MichiRadius.lg
-                color: MichiSemanticColors.controlSurface
-                border.width: 1
-                border.color: MichiSemanticColors.borderSubtle
-            }
+            elevation: "subtle"
+            contentPadding: 0
+            textured: true
+            accented: true
+            accentColor: MichiPalette.auroraPurple
             RowLayout {
                 anchors.centerIn: parent
                 spacing: MichiSpacing.sm
@@ -165,13 +190,15 @@ MichiGlassSurface {
             delegate: routeDelegate
         }
 
+        Item { Layout.fillHeight: true }
+
         MichiGlassSurface {
             visible: !root.compact
             Layout.fillWidth: true
-            Layout.preferredHeight: 94
-            Layout.topMargin: MichiSpacing.lg
+            Layout.preferredHeight: 72
+            Layout.bottomMargin: MichiSpacing.xs
             elevation: "subtle"
-            contentPadding: MichiSpacing.md
+            contentPadding: MichiSpacing.sm
             textured: true
             accented: library.fileCount > 0
             accentColor: MichiPalette.auroraCyan
@@ -190,7 +217,7 @@ MichiGlassSurface {
                             ? MichiPalette.auroraGreen : MichiPalette.textMuted
                     }
                     MichiText {
-                        text: "LOCAL LIBRARY"
+                        text: "LOCAL"
                         role: "technical"
                         technical: true
                         color: MichiPalette.textMuted
@@ -200,7 +227,7 @@ MichiGlassSurface {
                 MichiText {
                     text: library.fileCount > 0
                         ? library.fileCount + " tracks" : "Ready to scan"
-                    role: "body"
+                    role: "secondary"
                     font.weight: Font.DemiBold
                 }
                 MichiText {
@@ -208,14 +235,14 @@ MichiGlassSurface {
                         ? library.albumCount + " albums · "
                             + library.artistCount + " artists"
                         : "Your collection stays on this device"
-                    role: "caption"
+                    role: "technical"
+                    technical: true
                     color: MichiPalette.textMuted
                     elide: Text.ElideRight
                     Layout.fillWidth: true
                 }
             }
         }
-        Item { Layout.fillHeight: true }
         Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: MichiSemanticColors.borderSubtle }
         Repeater {
             model: root._bottom_routes

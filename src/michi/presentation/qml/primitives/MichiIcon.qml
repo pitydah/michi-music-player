@@ -116,6 +116,14 @@ Item {
                 line(ctx, w * .25, h * .25, w * .75, h * .75); line(ctx, w * .75, h * .25, w * .25, h * .75)
             } else if (root.name === "add") {
                 line(ctx, cx, h * .22, cx, h * .78); line(ctx, w * .22, cy, w * .78, cy)
+            } else if (root.name === "zoom-out") {
+                ctx.arc(w * .43, h * .43, w * .24, 0, Math.PI * 2); line(ctx, w * .61, h * .61, w * .82, h * .82); line(ctx, w * .29, h * .43, w * .57, h * .43)
+            } else if (root.name === "zoom-in") {
+                ctx.arc(w * .43, h * .43, w * .24, 0, Math.PI * 2); line(ctx, w * .61, h * .61, w * .82, h * .82); line(ctx, w * .29, h * .43, w * .57, h * .43); line(ctx, w * .43, h * .29, w * .43, h * .57)
+            } else if (root.name === "chevron-left") {
+                line(ctx, w * .64, h * .24, w * .36, cy); line(ctx, w * .36, cy, w * .64, h * .76)
+            } else if (root.name === "chevron-right") {
+                line(ctx, w * .36, h * .24, w * .64, cy); line(ctx, w * .64, cy, w * .36, h * .76)
             } else if (root.name === "info") {
                 ctx.arc(cx, cy, w * .32, 0, Math.PI * 2); line(ctx, cx, h * .43, cx, h * .72); ctx.fillRect(cx - 1, h * .27, 2, 2)
             } else if (root.name === "trash") {

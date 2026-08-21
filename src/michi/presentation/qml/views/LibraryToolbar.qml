@@ -14,12 +14,14 @@ MichiGlassSurface {
     property bool albumSortDescending: false
     property string albumFilterMode: "all"
     property string albumTimelineGrouping: "decade"
+    property real albumZoom: 1.0
     property bool sourceExpanded: library.fileCount === 0
     signal currentTabRequested(string tab)
     signal albumSortRequested(string mode)
     signal albumSortDirectionRequested(bool descending)
     signal albumFilterRequested(string mode)
     signal albumTimelineGroupingRequested(string mode)
+    signal albumZoomRequested(real value)
 
     readonly property bool scanning: library.scanStatus !== ""
         && library.scanStatus !== "IDLE"
@@ -59,6 +61,10 @@ MichiGlassSurface {
             undated: "Unknown year", hires: "Hi-Res"
         }
         return labels[albumFilterMode] || "All albums"
+    }
+
+    function zoomLabel() {
+        return Math.round(albumZoom * 100) + "%"
     }
 
     ColumnLayout {
@@ -175,24 +181,107 @@ MichiGlassSurface {
 
             Item { Layout.fillWidth: true }
 
-            MichiButton {
-                id: sortButton
-                visible: root.albumMode !== "timeline"
-                text: root.sortLabel()
-                iconName: "sort"
-                iconOnly: root.width < 1080
-                accessibleName: "Sort albums by " + root.sortLabel()
-                variant: "secondary"
-                onClicked: sortMenu.open()
+            MichiGlassSurface {
+                id: albumSizeSurface
+                objectName: "albumSizeControl"
+                visible: ["grid", "cover", "vinyl"].indexOf(root.albumMode) !== -1
+                Layout.preferredWidth: albumSizeRow.implicitWidth + MichiSpacing.sm
+                Layout.preferredHeight: 38
+                elevation: "subtle"
+                contentPadding: MichiSpacing.xxs
+                textured: true
+                accented: root.albumZoom !== 1.0
+                accentColor: MichiPalette.auroraCyan
+
+                RowLayout {
+                    id: albumSizeRow
+                    anchors.fill: parent
+                    spacing: 0
+                    MichiIconButton {
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                        iconName: "zoom-out"
+                        accessibleName: "Make album artwork smaller"
+                        enabled: root.albumZoom > 0.83
+                        onClicked: root.albumZoomRequested(
+                            root.albumZoom > 1.01 ? 1.0 : 0.82)
+                    }
+                    MichiText {
+                        Layout.preferredWidth: 42
+                        text: root.zoomLabel()
+                        role: "technical"
+                        technical: true
+                        color: root.albumZoom === 1.0
+                            ? MichiPalette.textMuted : MichiPalette.auroraCyan
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                    MichiIconButton {
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                        iconName: "zoom-in"
+                        accessibleName: "Make album artwork larger"
+                        enabled: root.albumZoom < 1.21
+                        onClicked: root.albumZoomRequested(
+                            root.albumZoom < 0.99 ? 1.0 : 1.22)
+                    }
+                }
             }
-            MichiIconButton {
-                visible: root.albumMode !== "timeline"
-                iconName: root.albumSortDescending
-                    ? "sort-descending" : "sort-ascending"
-                accessibleName: root.albumSortDescending
-                    ? "Sort descending" : "Sort ascending"
-                selected: root.albumSortDescending
-                onClicked: root.albumSortDirectionRequested(!root.albumSortDescending)
+
+            MichiGlassSurface {
+                id: organizationSurface
+                objectName: "albumOrganizationControl"
+                Layout.preferredWidth: organizationRow.implicitWidth + MichiSpacing.xs
+                Layout.preferredHeight: 38
+                elevation: "subtle"
+                contentPadding: MichiSpacing.xxs
+                textured: true
+                accented: root.albumFilterMode !== "all"
+                accentColor: MichiPalette.auroraPurple
+
+                RowLayout {
+                    id: organizationRow
+                    anchors.fill: parent
+                    spacing: 0
+                    MichiButton {
+                        id: sortButton
+                        visible: root.albumMode !== "timeline"
+                        Layout.preferredHeight: 32
+                        text: root.sortLabel()
+                        iconName: "sort"
+                        iconOnly: root.width < 1080
+                        accessibleName: "Sort albums by " + root.sortLabel()
+                        variant: "ghost"
+                        onClicked: sortMenu.open()
+                    }
+                    MichiIconButton {
+                        visible: root.albumMode !== "timeline"
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                        iconName: root.albumSortDescending
+                            ? "sort-descending" : "sort-ascending"
+                        accessibleName: root.albumSortDescending
+                            ? "Sort descending" : "Sort ascending"
+                        selected: root.albumSortDescending
+                        onClicked: root.albumSortDirectionRequested(!root.albumSortDescending)
+                    }
+                    Rectangle {
+                        visible: root.albumMode !== "timeline"
+                        Layout.preferredWidth: 1
+                        Layout.preferredHeight: 20
+                        color: MichiSemanticColors.borderSubtle
+                    }
+                    MichiButton {
+                        id: filterButton
+                        Layout.preferredHeight: 32
+                        text: root.filterLabel()
+                        iconName: "filter"
+                        iconOnly: root.width < 1180
+                        accessibleName: "Filter albums: " + root.filterLabel()
+                        selected: root.albumFilterMode !== "all"
+                        variant: "ghost"
+                        onClicked: filterMenu.open()
+                    }
+                }
             }
             MichiSegmentedControl {
                 visible: root.albumMode === "timeline"
@@ -205,16 +294,6 @@ MichiGlassSurface {
                 accessiblePrefix: "Timeline grouping"
                 Accessible.name: "Timeline grouping"
                 onSelected: value => root.albumTimelineGroupingRequested(value)
-            }
-            MichiButton {
-                id: filterButton
-                text: root.filterLabel()
-                iconName: "filter"
-                iconOnly: root.width < 1180
-                accessibleName: "Filter albums: " + root.filterLabel()
-                selected: root.albumFilterMode !== "all"
-                variant: "secondary"
-                onClicked: filterMenu.open()
             }
         }
 

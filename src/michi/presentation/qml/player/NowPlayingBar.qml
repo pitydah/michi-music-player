@@ -84,10 +84,10 @@ Item {
         MichiGlassSurface {
             id: trackCard
             objectName: "trackCard"
-            Layout.preferredWidth: root.narrow ? 82 : root.compact ? 232 : 292
-            Layout.minimumWidth: root.narrow ? 72 : 184
-            Layout.maximumWidth: 300
-            Layout.preferredHeight: 86
+            Layout.preferredWidth: root.narrow ? 88 : root.compact ? 252 : 326
+            Layout.minimumWidth: root.narrow ? 76 : 204
+            Layout.maximumWidth: 334
+            Layout.preferredHeight: 94
             Layout.alignment: Qt.AlignVCenter
             elevation: trackHover.hovered ? "elevated" : "standard"
             contentPadding: 0
@@ -99,13 +99,13 @@ Item {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: 11
+                anchors.margins: 10
                 spacing: 14
 
                 Artwork {
                     objectName: "trackArtwork"
-                    Layout.preferredWidth: 64
-                    Layout.preferredHeight: 64
+                    Layout.preferredWidth: 72
+                    Layout.preferredHeight: 72
                     Layout.alignment: Qt.AlignVCenter
                     radius: 11
                     sourcePath: root.artworkPath
@@ -393,7 +393,9 @@ Item {
                     onMoved: root.volumeRequested(Math.round(value))
 
                     background: Rectangle {
-                        y: volumeSlider.availableHeight / 2 - height / 2
+                        x: volumeSlider.leftPadding
+                        y: volumeSlider.topPadding
+                            + volumeSlider.availableHeight / 2 - height / 2
                         width: volumeSlider.availableWidth
                         height: root.sliderTrackHeight
                         radius: height / 2
@@ -413,9 +415,10 @@ Item {
                         }
                     }
                     handle: Rectangle {
-                        x: volumeSlider.visualPosition
+                        x: volumeSlider.leftPadding + volumeSlider.visualPosition
                             * (volumeSlider.availableWidth - width)
-                        y: volumeSlider.availableHeight / 2 - height / 2
+                        y: volumeSlider.topPadding
+                            + volumeSlider.availableHeight / 2 - height / 2
                         width: 14
                         height: 14
                         radius: 7

@@ -17,6 +17,7 @@ ColumnLayout {
     property bool albumSortDescending: false
     property string albumFilterMode: "all"
     property string albumTimelineGrouping: "decade"
+    property real albumZoom: 1.0
     property var _content: null   // the current tab view
 
     // M6.7: explicit per-tab management. The object tree must NOT keep the
@@ -151,6 +152,7 @@ ColumnLayout {
             albumSortDescending: root.albumSortDescending
             albumFilterMode: root.albumFilterMode
             albumTimelineGrouping: root.albumTimelineGrouping
+            albumZoom: root.albumZoom
         }
     }
 

@@ -22,15 +22,16 @@ Item {
     ]
 
     objectName: "libraryNavigationRail"
-    implicitHeight: MichiMetrics.controlMedium
+    implicitHeight: MichiMetrics.controlLarge
     clip: true
 
-    Rectangle {
+    MichiGlassSurface {
         anchors.fill: parent
-        radius: MichiRadius.md
-        color: MichiSemanticColors.controlSurface
-        border.width: 1
-        border.color: MichiSemanticColors.borderSubtle
+        elevation: "subtle"
+        radius: MichiRadius.lg
+        contentPadding: 0
+        textured: true
+        shadowed: false
     }
 
     function ensureCurrentTabVisible() {
@@ -87,9 +88,9 @@ Item {
                         id: tabContent
                         spacing: MichiSpacing.xs
                         Rectangle {
-                            Layout.preferredWidth: 24
-                            Layout.preferredHeight: 24
-                            radius: 8
+                            Layout.preferredWidth: 28
+                            Layout.preferredHeight: 28
+                            radius: 9
                             color: tabButton.checked
                                 ? MichiSemanticColors.auroraCyanSurface
                                 : tabButton.hovered
@@ -99,8 +100,8 @@ Item {
 
                             MichiIcon {
                                 anchors.centerIn: parent
-                                width: 14
-                                height: 14
+                                width: 16
+                                height: 16
                                 name: tabButton.modelData.icon
                                 iconColor: tabButton.checked
                                     ? MichiPalette.auroraCyan
@@ -112,7 +113,7 @@ Item {
                         }
                         MichiText {
                             text: tabButton.text
-                            role: "secondary"
+                            role: "body"
                             color: tabButton.checked
                                 ? MichiPalette.textPrimary : MichiPalette.textSecondary
                             font.weight: tabButton.checked ? Font.DemiBold : Font.Normal
@@ -120,7 +121,7 @@ Item {
                     }
 
                     background: Rectangle {
-                        radius: MichiRadius.sm
+                        radius: MichiRadius.md
                         color: tabButton.pressed
                             ? MichiSemanticColors.surfacePressed
                             : tabButton.checked
@@ -140,7 +141,7 @@ Item {
                             anchors.bottom: parent.bottom
                             anchors.leftMargin: MichiSpacing.sm
                             anchors.rightMargin: MichiSpacing.sm
-                            height: 2
+                            height: 3
                             radius: 1
                             gradient: Gradient {
                                 orientation: Gradient.Horizontal

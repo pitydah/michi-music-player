@@ -13,6 +13,7 @@ ColumnLayout {
     property bool albumSortDescending: false
     property string albumFilterMode: "all"
     property string albumTimelineGrouping: "decade"
+    property real albumZoom: 1.0
     readonly property var presentationAlbums: buildPresentationAlbums(library.albums)
     readonly property var presentationTimelineAlbums: buildTimelineAlbums(
         library.timelineAlbums, presentationAlbums)
@@ -161,6 +162,7 @@ ColumnLayout {
         AlbumGridView {
             anchors.fill: parent
             albumModel: root.presentationAlbums
+            albumZoom: root.albumZoom
         }
     }
 
@@ -169,6 +171,7 @@ ColumnLayout {
         AlbumPathView {
             anchors.fill: parent
             albumModel: root.presentationAlbums
+            albumZoom: root.albumZoom
         }
     }
 
@@ -177,6 +180,7 @@ ColumnLayout {
         VinylWallView {
             anchors.fill: parent
             albumModel: root.presentationAlbums
+            albumZoom: root.albumZoom
         }
     }
 

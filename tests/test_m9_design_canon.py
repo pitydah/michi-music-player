@@ -236,8 +236,33 @@ def test_library_navigation_and_path_selection_follow_the_canon() -> None:
     for icon in ("track", "album", "artist", "genre", "folder", "playlist"):
         assert f'icon: "{icon}"' in tabs
     assert 'objectName: "pathViewSelectionCard"' in path_view
-    assert "width: Math.min(620" in path_view
+    assert "width: Math.min(720" in path_view
     assert "anchors.leftMargin: MichiSpacing.xl" not in path_view
+    assert "anchors.bottom: parent.bottom" in path_view
+    assert 'text: "Open album"' in path_view
+
+
+def test_album_artwork_zoom_is_real_and_persistent() -> None:
+    library = _text("views/LibraryView.qml")
+    toolbar = _text("views/LibraryToolbar.qml")
+    content = _text("views/LibraryContentHost.qml")
+    albums = _text("views/AlbumsView.qml")
+    grid = _text("views/AlbumGridView.qml")
+    vinyl = _text("views/VinylWallView.qml")
+    path = _text("views/AlbumPathView.qml")
+    icons = _text("primitives/MichiIcon.qml")
+    assert "property real albumZoom: 1.0" in library
+    assert "onAlbumZoomRequested" in library
+    assert 'objectName: "albumSizeControl"' in toolbar
+    assert 'iconName: "zoom-out"' in toolbar
+    assert 'iconName: "zoom-in"' in toolbar
+    assert "albumZoom: root.albumZoom" in content
+    assert albums.count("albumZoom: root.albumZoom") == 3
+    for source in (grid, vinyl, path):
+        assert "property real albumZoom: 1.0" in source
+        assert "albumZoom" in source
+    assert 'root.name === "zoom-out"' in icons
+    assert 'root.name === "zoom-in"' in icons
 
 
 def test_album_grid_and_detail_have_premium_information_hierarchy() -> None:
@@ -265,6 +290,8 @@ def test_transport_microdetails_are_coherent_surfaces() -> None:
     assert 'objectName: "volumeControlSurface"' not in bar
     assert bar.count("height: root.sliderTrackHeight") == 2
     assert "playPauseButton.hovered ? 1.025" in bar
+    assert bar.count("x: volumeSlider.leftPadding") == 2
+    assert bar.count("y: volumeSlider.topPadding") == 2
     repeat_branch = icons.split(
         '} else if (root.name === "repeat" || root.name === "repeat-one") {'
     )[1].split('} else if (root.name === "sliders" || root.name === "equalizer") {')[0]

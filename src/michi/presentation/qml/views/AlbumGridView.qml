@@ -9,10 +9,15 @@ GridView {
     objectName: "albumGridView"
 
     property var albumModel: library.albums
+    property real albumZoom: 1.0
     readonly property int minimumCardWidth: MichiThemeState.density === "compact"
-        ? 154 : MichiThemeState.density === "comfortable" ? 220 : 184
+        ? Math.round(154 * albumZoom)
+        : MichiThemeState.density === "comfortable"
+            ? Math.round(220 * albumZoom) : Math.round(184 * albumZoom)
     readonly property int maximumCardWidth: MichiThemeState.density === "compact"
-        ? 184 : MichiThemeState.density === "comfortable" ? 250 : 216
+        ? Math.round(184 * albumZoom)
+        : MichiThemeState.density === "comfortable"
+            ? Math.round(250 * albumZoom) : Math.round(216 * albumZoom)
     readonly property int cardGap: MichiThemeState.contentGap
     readonly property int columnCount: Math.max(1, Math.floor(
         (width + cardGap) / (minimumCardWidth + cardGap)))

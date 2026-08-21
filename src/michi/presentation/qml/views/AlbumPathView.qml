@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "../controls"
 import "../media"
 import "../primitives"
 import "../theme"
@@ -9,8 +10,10 @@ PathView {
     objectName: "albumCoverView"
 
     property var albumModel: library.albums
+    property real albumZoom: 1.0
     readonly property real coverSize: Math.max(176, Math.min(330,
-        Math.min(width * 0.24, Math.max(176, height - 132))))
+        Math.min(width * 0.24 * albumZoom,
+            Math.max(176, height - 156))))
     readonly property var currentAlbum: count > 0 && currentIndex >= 0
         ? albumModel[Math.min(currentIndex, albumModel.length - 1)] : null
 
@@ -173,13 +176,10 @@ PathView {
         id: detailSurface
         objectName: "pathViewSelectionCard"
         anchors.horizontalCenter: parent.horizontalCenter
-        y: Math.min(albumsPath.height - height - MichiSpacing.md,
-            albumsPath.currentItem
-                ? albumsPath.currentItem.y + albumsPath.currentItem.height
-                    + MichiSpacing.sm
-                : albumsPath.height * 0.72)
-        width: Math.min(620, parent.width - MichiSpacing.xl * 2)
-        height: 66
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: MichiSpacing.lg
+        width: Math.min(720, parent.width - MichiSpacing.xl * 2)
+        height: 76
         elevation: "elevated"
         contentPadding: MichiSpacing.md
         accented: true
@@ -217,6 +217,37 @@ PathView {
                 role: "technical"
                 technical: true
                 color: MichiPalette.auroraCyan
+            }
+            Rectangle {
+                Layout.preferredWidth: 1
+                Layout.preferredHeight: 30
+                color: MichiSemanticColors.borderSubtle
+            }
+            MichiIconButton {
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
+                iconName: "chevron-left"
+                accessibleName: "Previous album"
+                enabled: albumsPath.count > 1
+                onClicked: albumsPath.decrementCurrentIndex()
+            }
+            MichiIconButton {
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
+                iconName: "chevron-right"
+                accessibleName: "Next album"
+                enabled: albumsPath.count > 1
+                onClicked: albumsPath.incrementCurrentIndex()
+            }
+            MichiButton {
+                text: "Open album"
+                iconName: "album"
+                variant: "secondary"
+                accessibleName: "Open selected album"
+                onClicked: {
+                    if (albumsPath.currentAlbum)
+                        library.select_album(albumsPath.currentAlbum.key)
+                }
             }
         }
 

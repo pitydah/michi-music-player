@@ -14,6 +14,7 @@ Item {
     property bool albumSortDescending: false
     property string albumFilterMode: "all"
     property string albumTimelineGrouping: "decade"
+    property real albumZoom: 1.0
 
     readonly property var albumModes: [
         "grid", "cover", "vinyl", "timeline", "magazine", "list"
@@ -22,6 +23,10 @@ Item {
     function requestAlbumMode(mode) {
         if (albumModes.indexOf(mode) !== -1)
             albumMode = mode
+    }
+
+    function requestAlbumZoom(value) {
+        albumZoom = Math.max(0.82, Math.min(1.22, value))
     }
 
     function syncEntitySelection() {
@@ -59,11 +64,13 @@ Item {
             albumSortDescending: root.albumSortDescending
             albumFilterMode: root.albumFilterMode
             albumTimelineGrouping: root.albumTimelineGrouping
+            albumZoom: root.albumZoom
             onCurrentTabRequested: tab => root.currentTab = tab
             onAlbumSortRequested: mode => root.albumSortMode = mode
             onAlbumSortDirectionRequested: descending => root.albumSortDescending = descending
             onAlbumFilterRequested: mode => root.albumFilterMode = mode
             onAlbumTimelineGroupingRequested: mode => root.albumTimelineGrouping = mode
+            onAlbumZoomRequested: value => root.requestAlbumZoom(value)
         }
 
         LibraryContentHost {
@@ -73,6 +80,7 @@ Item {
             albumSortDescending: root.albumSortDescending
             albumFilterMode: root.albumFilterMode
             albumTimelineGrouping: root.albumTimelineGrouping
+            albumZoom: root.albumZoom
             Layout.fillWidth: true
             Layout.fillHeight: true
         }
