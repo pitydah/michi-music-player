@@ -20,7 +20,6 @@ from michi.application.playlist_navigation_coordinator import (
 from michi.application.playlist_service import PlaylistService
 from michi.presentation.library_bridge import LibraryBridge
 from michi.presentation.playlists_bridge import PlaylistsBridge
-from tests.conftest import FakeAudioPort
 from tests.test_library_metadata import FakeExtractor, FakeScanner
 from tests.test_playlists import FakePlaylistsPort, _make_library_and_queue
 
@@ -43,9 +42,6 @@ def _world(tmp_path):
         FakeScanner(paths), extractor=FakeExtractor()
     )
     library.scan(str(tmp_path))
-    from michi.application.playback_service import PlaybackService
-
-    audio = FakeAudioPort()
     service = PlaylistService(queue, FakePlaylistsPort())
     nav = NavigationService()
     coord = PlaylistNavigationCoordinator(service, nav)
