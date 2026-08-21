@@ -390,7 +390,16 @@ class TestPlaylistBridge:
         playlist_service.add_track(trip.playlist_id, p1)
         playlist_service.add_track(trip.playlist_id, p2)
         bridge = LibraryBridge(library, playlist_service)
-        assert bridge.property("playlists") == [{"name": "Road Trip", "trackCount": 2}]
+        assert [
+            (
+                r["name"],
+                r["trackCount"],
+                "playlistId" in r,
+                "pinned" in r,
+                "recentRank" in r,
+            )
+            for r in bridge.property("playlists")
+        ] == [("Road Trip", 2, True, True, True)]
         bridge.select_playlist("Road Trip")
         assert bridge.property("selectedPlaylistName") == "Road Trip"
         assert bridge.property("playlistTracks") == [
@@ -417,7 +426,9 @@ class TestPlaylistBridge:
         bridge = LibraryBridge(library, playlist_service)
 
         bridge.create_playlist("Mix")
-        assert bridge.property("playlists") == [{"name": "Mix", "trackCount": 0}]
+        assert [(r["name"], r["trackCount"]) for r in bridge.property("playlists")] == [
+            ("Mix", 0)
+        ]
         bridge.select_playlist("Mix")
         bridge.add_to_playlist("Mix", str(p1))
         bridge.add_to_playlist("Mix", str(p2))
@@ -462,7 +473,9 @@ class TestPlaylistBridge:
         bridge = LibraryBridge(library, playlist_service)
         bridge.create_playlist("A")
         bridge.rename_playlist("A", "B")
-        assert bridge.property("playlists") == [{"name": "B", "trackCount": 0}]
+        assert [(r["name"], r["trackCount"]) for r in bridge.property("playlists")] == [
+            ("B", 0)
+        ]
         bridge.dispose()
 
 

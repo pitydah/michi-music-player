@@ -265,11 +265,15 @@ class TestProductionComposition:
         graph.bridge.create_playlist("Road")
         graph.bridge.add_to_playlist("Road", str(a))
         graph.bridge.add_to_playlist("Road", str(b))
-        assert graph.bridge.playlists == [{"name": "Road", "trackCount": 2}]
+        assert [(r["name"], r["trackCount"]) for r in graph.bridge.playlists] == [
+            ("Road", 2)
+        ]
 
         _teardown_graph(graph)
         _, graph2 = _make_graph_at(db_path, StatScanner([a, b]), CountingExtractor())
-        assert graph2.bridge.playlists == [{"name": "Road", "trackCount": 2}]
+        assert [(r["name"], r["trackCount"]) for r in graph2.bridge.playlists] == [
+            ("Road", 2)
+        ]
 
     def test_production_bridge_exposes_persisted_playlists(self, tmp_path):
         music, (a,) = _music(tmp_path, ("a.mp3",))
@@ -764,7 +768,9 @@ class TestProductionGolden:
         _wait_terminal(graph2)
         assert extractor2.calls == []  # index reused: zero reparse
         assert str(paths[0]) in graph2.library.state.favorite_paths
-        assert graph2.bridge.playlists == [{"name": "Golden", "trackCount": 3}]
+        assert [(r["name"], r["trackCount"]) for r in graph2.bridge.playlists] == [
+            ("Golden", 3)
+        ]
         assert str(paths[0]) in graph2.library.state.recently_added_paths
 
 

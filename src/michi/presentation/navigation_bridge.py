@@ -28,6 +28,15 @@ class NavigationBridge(QObject):
 
     currentRoute = Property(str, _get_current_route, notify=route_changed)
 
+    def _get_playlist_id(self) -> str:
+        return self._service.state.playlist_id or ""
+
+    playlistId = Property(str, _get_playlist_id, notify=route_changed)
+
     @Slot(str)
     def navigate(self, route_id: str) -> None:
         self._service.navigate(route_id)
+
+    @Slot(str)
+    def navigate_to_playlist(self, playlist_id: str) -> None:
+        self._service.navigate_to_playlist(playlist_id)
