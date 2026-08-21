@@ -64,7 +64,6 @@ class ServiceGraph:
     db_path: Path
     library: LibraryService
     bridge: LibraryBridge
-    playlists_bridge: "PlaylistsBridge"
     runner: ThreadScanRunner
     dispatcher: LibraryScanDispatcher
     playlist_service: PlaylistService
@@ -143,13 +142,11 @@ def _build_services(
     scan_relay.progress.connect(scan_dispatcher.on_progress, Qt.QueuedConnection)
 
     lb = LibraryBridge(library)
-    plb = PlaylistsBridge(playlist_service, library=library)
 
     return ServiceGraph(
         db_path=db_path,
         library=library,
         bridge=lb,
-        playlists_bridge=plb,
         runner=scan_runner,
         dispatcher=scan_dispatcher,
         playlist_service=playlist_service,
@@ -188,6 +185,7 @@ class ApplicationContainer:
         self._pb: PlaybackBridge | None = None
         self._qb: QueueBridge | None = None
         self._lb: LibraryBridge | None = None
+        self._plb: PlaylistsBridge | None = None
         self._nb: NavigationBridge | None = None
         self._sb: SettingsBridge | None = None
 
@@ -260,6 +258,7 @@ class ApplicationContainer:
         plb = PlaylistsBridge(
             playlist_service,
             playlist_navigation=playlist_nav,
+            navigation_service=navigation,
             library=library,
         )
         sb = SettingsBridge(settings)
@@ -289,6 +288,7 @@ class ApplicationContainer:
         self._pb = pb
         self._qb = qb
         self._lb = lb
+        self._plb = plb
         self._nb = nb
         self._sb = sb
         self._engine = engine
@@ -356,7 +356,7 @@ class ApplicationContainer:
         except Exception as exc:
             error = error or exc
 
-        for bridge in (self._pb, self._qb, self._lb, self._nb):
+        for bridge in (self._pb, self._qb, self._lb, self._plb, self._nb):
             try:
                 if bridge:
                     bridge.dispose()
@@ -377,6 +377,7 @@ class ApplicationContainer:
 
         self._engine = None
         self._lb = None
+        self._plb = None
         self._qb = None
         self._pb = None
         self._nb = None
