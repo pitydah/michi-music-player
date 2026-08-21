@@ -129,8 +129,9 @@ def test_playlist_search_is_separate_from_frozen_m7_total(tmp_path) -> None:
     assert bridge.property("searchTotalCount") == 0
     assert bridge.property("searchPlaylistCount") == 1
     assert bridge.property("searchDisplayTotalCount") == 1
-    assert bridge.property("searchPlaylists") == [
-        {"name": "Late Night", "trackCount": 0}
+    rows = bridge.property("searchPlaylists")
+    assert [(r["name"], r["trackCount"], "playlistId" in r) for r in rows] == [
+        ("Late Night", 0, True)
     ]
     bridge.dispose()
 

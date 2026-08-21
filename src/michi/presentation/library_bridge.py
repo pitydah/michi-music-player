@@ -92,6 +92,16 @@ class LibraryBridge(QObject):
                     if make_artist_key(ref.artist.strip() or "Unknown Artist")
                     == self._selected_artist_key
                 ]
+        # M8-R1F: playlist selection is identity-driven; a selected playlist
+        # that disappears (any delete path) clears the selection safely —
+        # no dangling detail state for the future Playlist Detail screen.
+        if (
+            self._selected_playlist_id
+            and self._playlist_service is not None
+            and self._playlist_service.get_playlist(self._selected_playlist_id) is None
+        ):
+            self._selected_playlist_id = ""
+            self._selected_playlist_index = -1
         self.library_changed.emit()
 
     def _get_files(self) -> list[str]:
@@ -134,14 +144,24 @@ class LibraryBridge(QObject):
         return projection.total_count if projection is not None else 0
 
     def _get_search_playlists(self) -> list[dict]:
-        """Local playlist-name matches kept separate from the frozen M7 ranker."""
+        """Local playlist-name matches kept separate from the frozen M7
+        ranker. Rows carry the canonical playlistId (identity), name is
+        display-only — same shape as the main playlists rows (M8-R1F)."""
         if self._playlist_service is None or not self._service.state.search_active:
             return []
         query = " ".join(self._service.state.query.casefold().split())
         if not query:
             return []
+        nav = self._playlist_service.navigation
+        recent_rank = {pid: rank for rank, pid in enumerate(nav.recent_ids)}
         return [
-            {"name": playlist.name, "trackCount": len(playlist.track_paths)}
+            {
+                "playlistId": playlist.playlist_id,
+                "name": playlist.name,
+                "trackCount": len(playlist.track_paths),
+                "pinned": playlist.playlist_id in nav.pinned_ids,
+                "recentRank": recent_rank.get(playlist.playlist_id, -1),
+            }
             for playlist in self._playlist_service.playlists
             if query in " ".join(playlist.name.casefold().split())
         ]
