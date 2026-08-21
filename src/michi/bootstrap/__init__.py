@@ -23,6 +23,9 @@ from michi.application.library_service import LibraryService
 from michi.application.navigation_service import NavigationService
 from michi.application.persistence_coordinator import PersistenceCoordinator
 from michi.application.playback_service import PlaybackService
+from michi.application.playlist_navigation_coordinator import (
+    PlaylistNavigationCoordinator,
+)
 from michi.application.playlist_service import PlaylistService
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
@@ -243,7 +246,11 @@ class ApplicationContainer:
         pb = PlaybackBridge(playback, library)
         qb = QueueBridge(queue, library)
         lb = graph.bridge
-        nb = NavigationBridge(navigation)
+        # M8-R1F: application-level coordination for the OPEN PLAYLIST
+        # product intent (validate → recent → navigate). Not a state
+        # authority: it only orchestrates PlaylistService + NavigationService.
+        playlist_nav = PlaylistNavigationCoordinator(playlist_service, navigation)
+        nb = NavigationBridge(navigation, playlist_navigation=playlist_nav)
         sb = SettingsBridge(settings)
 
         engine = QQmlApplicationEngine()

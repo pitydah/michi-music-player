@@ -1,20 +1,34 @@
-"""QML bridge for navigation — observes NavigationService."""
+"""QML bridge for navigation — observes NavigationService.
+
+M8-R1F: the PRODUCT-FACING open intent (open_playlist / open_all_playlists)
+routes through PlaylistNavigationCoordinator so opens are validated and
+Recent is updated automatically. The raw navigate_to_playlist slot remains
+as a DEPRECATED low-level primitive for tests/compatibility only — no new
+QML code may call it."""
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from michi.application.navigation_service import NavigationService
+from michi.application.playlist_navigation_coordinator import (
+    PlaylistNavigationCoordinator,
+)
 
 
 class NavigationBridge(QObject):
-    """Thin adapter: NavigationService → QML properties, QML intent → service."""
+    """Thin adapter: NavigationService → QML properties, QML intent →
+    coordinator → services."""
 
     route_changed = Signal()
 
     def __init__(
-        self, service: NavigationService, parent: QObject | None = None
+        self,
+        service: NavigationService,
+        parent: QObject | None = None,
+        playlist_navigation: PlaylistNavigationCoordinator | None = None,
     ) -> None:
         super().__init__(parent)
         self._service = service
+        self._coordinator = playlist_navigation
         service.subscribe_changed(self._on_service_changed)
 
     def dispose(self) -> None:
@@ -38,5 +52,19 @@ class NavigationBridge(QObject):
         self._service.navigate(route_id)
 
     @Slot(str)
+    def open_playlist(self, playlist_id: str) -> None:
+        """PRODUCT INTENT: validated open — recent + navigation."""
+        if self._coordinator is not None:
+            self._coordinator.open_playlist(playlist_id)
+
+    @Slot()
+    def open_all_playlists(self) -> None:
+        """PRODUCT INTENT: navigate to PLAYLISTS / All Playlists."""
+        if self._coordinator is not None:
+            self._coordinator.open_all_playlists()
+
+    @Slot(str)
     def navigate_to_playlist(self, playlist_id: str) -> None:
+        """DEPRECATED low-level primitive (no validation, no Recent):
+        kept only for tests/compatibility; do not use from new QML code."""
         self._service.navigate_to_playlist(playlist_id)

@@ -91,6 +91,17 @@ class PlaylistService:
                 return i
         return -1
 
+    def get_playlist(self, playlist_id: str) -> Playlist | None:
+        """Public query: returns the playlist for a valid id, None for an
+        unknown id. No mutation, no notification, no persistence."""
+        index = self._find_by_id(playlist_id)
+        if index < 0:
+            return None
+        return self._playlists[index]
+
+    def contains_playlist(self, playlist_id: str) -> bool:
+        return self._find_by_id(playlist_id) >= 0
+
     # ------------------------------------------------------------------
     # Identity-based public API (canonical)
     # ------------------------------------------------------------------
@@ -233,9 +244,14 @@ class PlaylistService:
 
     def mark_recent(self, playlist_id: str) -> None:
         """MRU semantics: most recently opened/navigated first, bounded by
-        MAX_RECENT_PLAYLISTS, no duplicates. Unknown ids never enter."""
+        MAX_RECENT_PLAYLISTS, no duplicates. Unknown ids never enter.
+
+        Idempotent: opening the already-most-recent playlist is a no-op
+        (no persistence, no notification) — the MRU order did not change."""
         if self._find_by_id(playlist_id) < 0:
             return
+        if self._nav.recent_ids and self._nav.recent_ids[0] == playlist_id:
+            return  # already MRU rank 0: order unchanged
         recent = [i for i in self._nav.recent_ids if i != playlist_id]
         recent.insert(0, playlist_id)
         recent = recent[:MAX_RECENT_PLAYLISTS]
