@@ -64,6 +64,10 @@ Item {
                 ctx.arc(cx, cy, w * .31, -.35, Math.PI * 1.65); line(ctx, cx, cy, cx, h * .3); line(ctx, cx, cy, w * .66, h * .58); line(ctx, w * .18, h * .2, w * .2, h * .4); line(ctx, w * .18, h * .2, w * .38, h * .21)
             } else if (root.name === "playlist") {
                 line(ctx, w * .18, h * .27, w * .58, h * .27); line(ctx, w * .18, h * .48, w * .58, h * .48); line(ctx, w * .18, h * .69, w * .48, h * .69); line(ctx, w * .68, h * .34, w * .68, h * .7); line(ctx, w * .68, h * .34, w * .84, h * .3); ctx.moveTo(w * .68, h * .7); ctx.arc(w * .58, h * .71, w * .1, 0, Math.PI * 2)
+            } else if (root.name === "plus") {
+                line(ctx, cx, h * .3, cx, h * .7); line(ctx, w * .3, cy, w * .7, cy)
+            } else if (root.name === "pin") {
+                line(ctx, w * .3, h * .82, w * .7, h * .82); line(ctx, w * .34, h * .34, w * .34, h * .2); line(ctx, w * .66, h * .34, w * .66, h * .2); ctx.moveTo(w * .34, h * .2); ctx.lineTo(w * .66, h * .2); line(ctx, w * .5, h * .34, w * .5, h * .72); ctx.moveTo(w * .3, h * .72); ctx.lineTo(w * .7, h * .72)
             } else if (root.name === "cat") {
                 ctx.moveTo(w * .22, h * .42); ctx.lineTo(w * .18, h * .16); ctx.lineTo(w * .38, h * .29); ctx.bezierCurveTo(w * .45, h * .24, w * .55, h * .24, w * .62, h * .29); ctx.lineTo(w * .82, h * .16); ctx.lineTo(w * .78, h * .42); ctx.bezierCurveTo(w * .83, h * .72, w * .68, h * .84, cx, h * .84); ctx.bezierCurveTo(w * .32, h * .84, w * .17, h * .72, w * .22, h * .42); ctx.moveTo(w * .34, h * .5); ctx.arc(w * .34, h * .5, 1.2, 0, Math.PI * 2); ctx.moveTo(w * .66, h * .5); ctx.arc(w * .66, h * .5, 1.2, 0, Math.PI * 2); ctx.moveTo(w * .45, h * .64); ctx.lineTo(cx, h * .68); ctx.lineTo(w * .55, h * .64)
             } else if (root.name === "view-grid") {
