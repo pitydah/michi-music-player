@@ -26,38 +26,12 @@ MichiGlassSurface {
         && library.scanStatus !== "COMPLETED"
         && library.scanStatus !== "CANCELLED"
         && library.scanStatus !== "FAILED"
-    readonly property bool precisionRelevant: [
-        "songs", "albums", "favorites", "history", "recently", "playlists"
-    ].indexOf(currentTab) !== -1
-
     elevation: "subtle"
     accented: root.scanning || library.scanStatus === "FAILED"
     accentColor: library.scanStatus === "FAILED"
         ? MichiPalette.error : MichiPalette.auroraCyan
     contentPadding: MichiSpacing.md
     implicitHeight: toolbarContent.implicitHeight + MichiSpacing.md * 2
-
-    function tabLabel() {
-        var labels = {
-            songs: "Songs", albums: "Albums", artists: "Artists",
-            genres: "Genres", folders: "Folders", favorites: "Favorites",
-            history: "History", recently: "Recently added", playlists: "Playlists"
-        }
-        return labels[currentTab] || "Library"
-    }
-
-    function tabCount() {
-        if (currentTab === "songs") return library.songRows.length
-        if (currentTab === "albums") return library.albums.length
-        if (currentTab === "artists") return library.artists.length
-        if (currentTab === "genres") return library.genres.length
-        if (currentTab === "folders") return library.folders.length
-        if (currentTab === "favorites") return library.favoriteTrackRows.length
-        if (currentTab === "history") return library.historyTrackRows.length
-        if (currentTab === "recently") return library.recentlyAddedTrackRows.length
-        if (currentTab === "playlists") return library.playlists.length
-        return 0
-    }
 
     function searchPlaceholder() {
         if (currentTab === "albums") return "Search albums or album artists…"
@@ -166,119 +140,94 @@ MichiGlassSurface {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: MichiSpacing.md
+            spacing: MichiSpacing.sm
+            visible: root.currentTab === "albums"
+                && library.selectedAlbumKey === ""
 
             MichiText {
-                text: root.tabLabel()
-                role: "secondary"
-                font.weight: Font.DemiBold
-                visible: root.width >= 760
+                text: "ALBUM WORKSPACE"
+                role: "technical"
+                technical: true
+                color: MichiPalette.textMuted
+                visible: root.width >= 980
             }
             MichiStatusChip {
-                text: root.tabCount() + (root.tabCount() === 1 ? " item" : " items")
+                text: library.albums.length
+                    + (library.albums.length === 1 ? " album" : " albums")
                 tone: "neutral"
-                visible: root.width >= 660
             }
 
             Item { Layout.fillWidth: true }
 
-            RowLayout {
-                spacing: MichiSpacing.sm
-                visible: root.currentTab === "albums"
-                    && library.selectedAlbumKey === ""
-                MichiButton {
-                    id: sortButton
-                    visible: root.albumMode !== "timeline"
-                    text: root.sortLabel()
-                    iconName: "sort"
-                    iconOnly: root.width < 1220
-                    accessibleName: "Sort albums by " + root.sortLabel()
-                    variant: "secondary"
-                    onClicked: sortMenu.open()
-                }
-                MichiIconButton {
-                    visible: root.albumMode !== "timeline"
-                    iconName: root.albumSortDescending ? "sort-descending" : "sort-ascending"
-                    accessibleName: root.albumSortDescending
-                        ? "Sort descending" : "Sort ascending"
-                    selected: root.albumSortDescending
-                    onClicked: root.albumSortDirectionRequested(!root.albumSortDescending)
-                }
-                MichiSegmentedControl {
-                    visible: root.albumMode === "timeline"
-                    compact: root.width < 1180
-                    model: [
-                        { value: "decade", label: "Decades", icon: "view-timeline" },
-                        { value: "year", label: "Years", icon: "history" }
-                    ]
-                    currentValue: root.albumTimelineGrouping
-                    accessiblePrefix: "Timeline grouping"
-                    Accessible.name: "Timeline grouping"
-                    onSelected: value => root.albumTimelineGroupingRequested(value)
-                }
-                MichiButton {
-                    id: filterButton
-                    text: root.filterLabel()
-                    iconName: "filter"
-                    iconOnly: root.width < 1320
-                    accessibleName: "Filter albums: " + root.filterLabel()
-                    selected: root.albumFilterMode !== "all"
-                    variant: "secondary"
-                    onClicked: filterMenu.open()
-                }
-                MichiText {
-                    visible: root.width >= 1400
-                    text: "VIEW"
-                    role: "technical"
-                    technical: true
-                    color: MichiPalette.textMuted
-                }
-                MichiSegmentedControl {
-                    objectName: "albumViewSwitcher"
-                    compact: true
-                    model: [
-                        { value: "grid", label: "Grid", icon: "view-grid" },
-                        { value: "cover", label: "PathView", icon: "view-path" },
-                        { value: "vinyl", label: "Vinyl Wall", icon: "view-vinyl" },
-                        { value: "timeline", label: "Timeline", icon: "view-timeline" },
-                        { value: "magazine", label: "Magazine", icon: "view-magazine" },
-                        { value: "list", label: "List", icon: "view-list" }
-                    ]
-                    currentValue: root.albumMode
-                    accessiblePrefix: "Album view"
-                    Accessible.name: "Album view"
-                    onSelected: value => root.albumModeRequested(value)
-                }
+            MichiButton {
+                id: sortButton
+                visible: root.albumMode !== "timeline"
+                text: root.sortLabel()
+                iconName: "sort"
+                iconOnly: root.width < 1080
+                accessibleName: "Sort albums by " + root.sortLabel()
+                variant: "secondary"
+                onClicked: sortMenu.open()
+            }
+            MichiIconButton {
+                visible: root.albumMode !== "timeline"
+                iconName: root.albumSortDescending
+                    ? "sort-descending" : "sort-ascending"
+                accessibleName: root.albumSortDescending
+                    ? "Sort descending" : "Sort ascending"
+                selected: root.albumSortDescending
+                onClicked: root.albumSortDirectionRequested(!root.albumSortDescending)
+            }
+            MichiSegmentedControl {
+                visible: root.albumMode === "timeline"
+                compact: root.width < 1080
+                model: [
+                    { value: "decade", label: "Decades", icon: "view-timeline" },
+                    { value: "year", label: "Years", icon: "history" }
+                ]
+                currentValue: root.albumTimelineGrouping
+                accessiblePrefix: "Timeline grouping"
+                Accessible.name: "Timeline grouping"
+                onSelected: value => root.albumTimelineGroupingRequested(value)
+            }
+            MichiButton {
+                id: filterButton
+                text: root.filterLabel()
+                iconName: "filter"
+                iconOnly: root.width < 1180
+                accessibleName: "Filter albums: " + root.filterLabel()
+                selected: root.albumFilterMode !== "all"
+                variant: "secondary"
+                onClicked: filterMenu.open()
             }
 
-            RowLayout {
-                spacing: MichiSpacing.sm
-                visible: root.currentTab !== "albums" || root.width >= 920
-                MichiText {
-                    visible: root.width >= 1180
-                    text: "DENSITY"
-                    role: "technical"
-                    technical: true
-                    color: MichiPalette.textMuted
-                }
-                MichiSegmentedControl {
-                    model: [
-                        { value: "comfortable", label: "Comfortable", icon: "density-comfortable" },
-                        { value: "standard", label: "Standard", icon: "density-standard" },
-                        { value: "compact", label: "Compact", icon: "density-compact" }
-                    ]
-                    currentValue: MichiThemeState.density
-                    compact: root.width < 1180
-                    Accessible.name: "Library density"
-                    onSelected: value => MichiThemeState.density = value
-                }
+            Rectangle {
+                Layout.preferredWidth: 1
+                Layout.preferredHeight: 24
+                color: MichiSemanticColors.borderSubtle
             }
-
-            MichiSwitch {
-                visible: root.precisionRelevant && root.width >= 800
-                text: root.width < 980 ? "Precision" : "Precision metadata"
-                checked: MichiThemeState.precisionMode
-                onToggled: MichiThemeState.precisionMode = checked
+            MichiText {
+                visible: root.width >= 1180
+                text: "VIEW"
+                role: "technical"
+                technical: true
+                color: MichiPalette.textMuted
+            }
+            MichiSegmentedControl {
+                objectName: "albumViewSwitcher"
+                compact: true
+                model: [
+                    { value: "grid", label: "Grid", icon: "view-grid" },
+                    { value: "cover", label: "PathView", icon: "view-path" },
+                    { value: "vinyl", label: "Vinyl Wall", icon: "view-vinyl" },
+                    { value: "timeline", label: "Timeline", icon: "view-timeline" },
+                    { value: "magazine", label: "Magazine", icon: "view-magazine" },
+                    { value: "list", label: "List", icon: "view-list" }
+                ]
+                currentValue: root.albumMode
+                accessiblePrefix: "Album view"
+                Accessible.name: "Album view"
+                onSelected: value => root.albumModeRequested(value)
             }
         }
 

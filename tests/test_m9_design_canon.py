@@ -186,13 +186,40 @@ def test_library_delegates_use_shared_media_rows() -> None:
 
 
 def test_density_precision_and_inspector_are_real_surfaces() -> None:
+    header = _text("views/LibraryHeader.qml")
     toolbar = _text("views/LibraryToolbar.qml")
     album_detail = _text("views/AlbumDetailView.qml")
-    assert "MichiThemeState.density" in toolbar
-    assert "MichiThemeState.precisionMode" in toolbar
+    assert 'objectName: "libraryDensityControl"' in header
+    assert "MichiThemeState.density" in header
+    assert "MichiThemeState.precisionMode" in header
+    assert "MichiThemeState.density" not in toolbar
+    assert "MichiThemeState.precisionMode" not in toolbar
     assert "InspectorPanel" in album_detail
     assert "library.albumTechnicalSummary" in album_detail
     assert 'text: "Add to queue"' not in album_detail
+
+
+def test_library_navigation_and_path_selection_follow_the_canon() -> None:
+    tabs = _text("views/LibraryTabs.qml")
+    path_view = _text("views/AlbumPathView.qml")
+    assert 'objectName: "libraryNavigationRail"' in tabs
+    for icon in ("track", "album", "artist", "genre", "folder", "playlist"):
+        assert f'icon: "{icon}"' in tabs
+    assert 'objectName: "pathViewSelectionCard"' in path_view
+    assert "width: Math.min(620" in path_view
+    assert "anchors.leftMargin: MichiSpacing.xl" not in path_view
+
+
+def test_transport_microdetails_are_coherent_surfaces() -> None:
+    bar = _text("player/NowPlayingBar.qml")
+    icons = _text("primitives/MichiIcon.qml")
+    assert 'objectName: "volumeControlSurface"' in bar
+    assert "height: 5" in bar
+    assert "playPauseButton.hovered ? 1.025" in bar
+    repeat_branch = icons.split(
+        '} else if (root.name === "repeat" || root.name === "repeat-one") {'
+    )[1].split('} else if (root.name === "sliders") {')[0]
+    assert "ctx.arc" not in repeat_branch
 
 
 def test_queue_panel_exposes_existing_m4_intents() -> None:

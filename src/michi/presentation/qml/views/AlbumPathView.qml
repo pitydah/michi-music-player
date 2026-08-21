@@ -142,6 +142,7 @@ PathView {
             anchors.top: artwork.bottom
             anchors.topMargin: MichiSpacing.sm
             text: modelData.title
+            visible: !PathView.isCurrentItem
             role: "body"
             font.weight: PathView.isCurrentItem ? Font.DemiBold : Font.Medium
             color: PathView.isCurrentItem
@@ -168,29 +169,30 @@ PathView {
         }
     }
 
-    Rectangle {
+    MichiGlassSurface {
         id: detailSurface
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.leftMargin: MichiSpacing.xl
-        anchors.rightMargin: MichiSpacing.xl
-        anchors.bottomMargin: MichiSpacing.md
-        height: 72
-        radius: MichiRadius.lg
-        color: MichiSemanticColors.controlSurface
-        border.width: 1
-        border.color: MichiSemanticColors.borderSubtle
+        objectName: "pathViewSelectionCard"
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: Math.min(albumsPath.height - height - MichiSpacing.md,
+            albumsPath.currentItem
+                ? albumsPath.currentItem.y + albumsPath.currentItem.height
+                    + MichiSpacing.sm
+                : albumsPath.height * 0.72)
+        width: Math.min(620, parent.width - MichiSpacing.xl * 2)
+        height: 66
+        elevation: "elevated"
+        contentPadding: MichiSpacing.md
+        accented: true
+        accentColor: MichiPalette.auroraCyan
         visible: albumsPath.currentAlbum !== null
         z: 1000
 
         RowLayout {
             anchors.fill: parent
-            anchors.margins: MichiSpacing.md
             spacing: MichiSpacing.md
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: MichiSpacing.xs
+                spacing: MichiSpacing.xxs
                 MichiText {
                     Layout.fillWidth: true
                     text: albumsPath.currentAlbum ? albumsPath.currentAlbum.title : ""
@@ -209,9 +211,20 @@ PathView {
             }
             MichiText {
                 text: albumsPath.currentAlbum
-                    ? albumsPath.currentAlbum.trackCount + " tracks" : ""
+                    ? albumsPath.currentAlbum.trackCount
+                        + (albumsPath.currentAlbum.trackCount === 1 ? " TRACK" : " TRACKS")
+                    : ""
                 role: "technical"
                 technical: true
+                color: MichiPalette.auroraCyan
+            }
+        }
+
+        Behavior on y {
+            enabled: !MichiAccessibility.reducedMotion
+            NumberAnimation {
+                duration: MichiMotion.standard
+                easing.type: MichiMotion.outCubic
             }
         }
     }

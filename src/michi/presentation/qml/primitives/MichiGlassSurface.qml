@@ -27,7 +27,33 @@ Rectangle {
     border.color: MichiAccessibility.highContrast
         ? MichiSemanticColors.borderStrong
         : root.accented ? MichiSemanticColors.accentBorder(root.accentColor)
+        : root.raised ? MichiSemanticColors.borderStrong
         : MichiSemanticColors.borderSubtle
+
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: 1
+        radius: Math.max(0, root.radius - 1)
+        color: "transparent"
+        border.width: 1
+        border.color: MichiSemanticColors.glassInnerBorder
+    }
+
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.leftMargin: 1
+        anchors.rightMargin: 1
+        anchors.topMargin: 1
+        height: Math.min(parent.height * 0.42, 36)
+        radius: Math.max(0, root.radius - 1)
+        gradient: Gradient {
+            orientation: Gradient.Vertical
+            GradientStop { position: 0; color: MichiSemanticColors.glassSheen }
+            GradientStop { position: 1; color: "transparent" }
+        }
+    }
 
     Rectangle {
         visible: root.accented

@@ -14,6 +14,8 @@ QtObject {
     readonly property color innerHighlight: Qt.rgba(1, 1, 1, 0.045)
     readonly property color innerHighlightStrong: Qt.rgba(1, 1, 1, 0.32)
     readonly property color glassShadow: Qt.rgba(0, 0, 0, 0.22)
+    readonly property color glassInnerBorder: Qt.rgba(1, 1, 1, 0.035)
+    readonly property color glassSheen: Qt.rgba(1, 1, 1, 0.028)
     readonly property color auroraActive: MichiPalette.auroraBlue
     readonly property color auroraHover: "#69B5FF"
     readonly property color auroraPressed: "#378EDB"
@@ -44,14 +46,14 @@ QtObject {
 
     function glassTop(elevated, materialOpacity) {
         return elevated
-            ? Qt.rgba(0.086, 0.102, 0.142, Math.min(1, materialOpacity + 0.05))
-            : Qt.rgba(0.073, 0.087, 0.12, Math.min(1, materialOpacity + 0.02))
+            ? Qt.rgba(0.094, 0.11, 0.151, Math.min(1, materialOpacity + 0.05))
+            : Qt.rgba(0.08, 0.094, 0.129, Math.min(1, materialOpacity + 0.02))
     }
 
     function glassBottom(elevated, materialOpacity) {
         return elevated
-            ? Qt.rgba(0.052, 0.062, 0.088, Math.min(1, materialOpacity + 0.08))
-            : Qt.rgba(0.049, 0.059, 0.083, materialOpacity)
+            ? Qt.rgba(0.057, 0.068, 0.096, Math.min(1, materialOpacity + 0.08))
+            : Qt.rgba(0.052, 0.062, 0.088, materialOpacity)
     }
 
     function accentBorder(accentColor) {

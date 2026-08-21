@@ -44,7 +44,10 @@ Item {
         anchors.fill: parent
         spacing: MichiThemeState.contentGap
 
-        LibraryHeader { Layout.fillWidth: true }
+        LibraryHeader {
+            Layout.fillWidth: true
+            currentTab: root.currentTab
+        }
 
         LibraryToolbar {
             Layout.fillWidth: true
