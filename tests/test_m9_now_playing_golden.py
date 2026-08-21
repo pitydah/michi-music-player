@@ -22,14 +22,17 @@ def test_canonical_reference_is_pinned_verbatim() -> None:
     assert hashlib.sha256(REFERENCE.read_bytes()).hexdigest() == REFERENCE_SHA256
 
 
-def test_qml_declares_the_reference_canvas_and_landmarks() -> None:
-    """Static gate remains useful on hosts that cannot load the Qt runtime."""
+def test_qml_preserves_landmarks_in_a_responsive_three_zone_layout() -> None:
+    """The reference composition scales without pinning the component to 1920 px."""
     qml = QML.read_text()
     required = (
         'objectName: "nowPlayingBar"',
-        "implicitWidth: 1920",
+        "implicitWidth: 800",
         "implicitHeight: 154",
+        "readonly property bool compact",
         'objectName: "trackCard"',
+        'objectName: "playbackZone"',
+        'objectName: "outputZone"',
         'objectName: "timeline"',
         'objectName: "playPauseButton"',
         'objectName: "queueButton"',
@@ -37,3 +40,5 @@ def test_qml_declares_the_reference_canvas_and_landmarks() -> None:
         'objectName: "outputBadge"',
     )
     assert all(fragment in qml for fragment in required)
+    assert "implicitWidth: 1920" not in qml
+    assert "transportOrigin" not in qml

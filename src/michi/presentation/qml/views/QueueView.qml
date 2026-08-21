@@ -28,7 +28,7 @@ Item {
 
         Item {
             Layout.fillHeight: true
-            Layout.preferredWidth: Math.min(560, root.width)
+            Layout.preferredWidth: Math.max(360, Math.min(520, root.width * 0.46))
             QueuePanel {
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom

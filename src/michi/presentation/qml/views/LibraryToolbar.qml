@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../controls"
 import "../primitives"
@@ -9,8 +10,16 @@ MichiGlassSurface {
 
     property string currentTab: "songs"
     property string albumMode: "grid"
+    property string albumSortMode: "title"
+    property bool albumSortDescending: false
+    property string albumFilterMode: "all"
+    property string albumTimelineGrouping: "decade"
     property bool sourceExpanded: library.fileCount === 0
     signal albumModeRequested(string mode)
+    signal albumSortRequested(string mode)
+    signal albumSortDirectionRequested(bool descending)
+    signal albumFilterRequested(string mode)
+    signal albumTimelineGroupingRequested(string mode)
 
     readonly property bool scanning: library.scanStatus !== ""
         && library.scanStatus !== "IDLE"
@@ -57,6 +66,23 @@ MichiGlassSurface {
         if (currentTab === "folders") return "Search folders or paths…"
         if (currentTab === "playlists") return "Search tracks or playlists…"
         return "Search title, artist, album, genre or composer…"
+    }
+
+    function sortLabel() {
+        var labels = {
+            title: "Title", artist: "Album artist", year: "Release year",
+            tracks: "Track count", duration: "Duration"
+        }
+        return labels[albumSortMode] || "Title"
+    }
+
+    function filterLabel() {
+        var labels = {
+            all: "All albums", artwork: "With artwork",
+            missingArtwork: "Missing artwork", dated: "With year",
+            undated: "Unknown year", hires: "Hi-Res"
+        }
+        return labels[albumFilterMode] || "All albums"
     }
 
     ColumnLayout {
@@ -146,10 +172,12 @@ MichiGlassSurface {
                 text: root.tabLabel()
                 role: "secondary"
                 font.weight: Font.DemiBold
+                visible: root.width >= 760
             }
             MichiStatusChip {
                 text: root.tabCount() + (root.tabCount() === 1 ? " item" : " items")
                 tone: "neutral"
+                visible: root.width >= 660
             }
 
             Item { Layout.fillWidth: true }
@@ -158,8 +186,48 @@ MichiGlassSurface {
                 spacing: MichiSpacing.sm
                 visible: root.currentTab === "albums"
                     && library.selectedAlbumKey === ""
+                MichiButton {
+                    id: sortButton
+                    visible: root.albumMode !== "timeline"
+                    text: root.sortLabel()
+                    iconName: "sort"
+                    iconOnly: root.width < 1220
+                    accessibleName: "Sort albums by " + root.sortLabel()
+                    variant: "secondary"
+                    onClicked: sortMenu.open()
+                }
+                MichiIconButton {
+                    visible: root.albumMode !== "timeline"
+                    iconName: root.albumSortDescending ? "sort-descending" : "sort-ascending"
+                    accessibleName: root.albumSortDescending
+                        ? "Sort descending" : "Sort ascending"
+                    selected: root.albumSortDescending
+                    onClicked: root.albumSortDirectionRequested(!root.albumSortDescending)
+                }
+                MichiSegmentedControl {
+                    visible: root.albumMode === "timeline"
+                    compact: root.width < 1180
+                    model: [
+                        { value: "decade", label: "Decades", icon: "view-timeline" },
+                        { value: "year", label: "Years", icon: "history" }
+                    ]
+                    currentValue: root.albumTimelineGrouping
+                    accessiblePrefix: "Timeline grouping"
+                    Accessible.name: "Timeline grouping"
+                    onSelected: value => root.albumTimelineGroupingRequested(value)
+                }
+                MichiButton {
+                    id: filterButton
+                    text: root.filterLabel()
+                    iconName: "filter"
+                    iconOnly: root.width < 1320
+                    accessibleName: "Filter albums: " + root.filterLabel()
+                    selected: root.albumFilterMode !== "all"
+                    variant: "secondary"
+                    onClicked: filterMenu.open()
+                }
                 MichiText {
-                    visible: root.width >= 1080
+                    visible: root.width >= 1400
                     text: "VIEW"
                     role: "technical"
                     technical: true
@@ -177,6 +245,7 @@ MichiGlassSurface {
                         { value: "list", label: "List", icon: "view-list" }
                     ]
                     currentValue: root.albumMode
+                    accessiblePrefix: "Album view"
                     Accessible.name: "Album view"
                     onSelected: value => root.albumModeRequested(value)
                 }
@@ -184,6 +253,7 @@ MichiGlassSurface {
 
             RowLayout {
                 spacing: MichiSpacing.sm
+                visible: root.currentTab !== "albums" || root.width >= 920
                 MichiText {
                     visible: root.width >= 1180
                     text: "DENSITY"
@@ -205,7 +275,7 @@ MichiGlassSurface {
             }
 
             MichiSwitch {
-                visible: root.precisionRelevant
+                visible: root.precisionRelevant && root.width >= 800
                 text: root.width < 980 ? "Precision" : "Precision metadata"
                 checked: MichiThemeState.precisionMode
                 onToggled: MichiThemeState.precisionMode = checked
@@ -215,7 +285,8 @@ MichiGlassSurface {
         RowLayout {
             Layout.fillWidth: true
             spacing: MichiSpacing.sm
-            visible: library.scanStatus !== "" && library.scanStatus !== "IDLE"
+            visible: root.scanning || library.scanStatus === "FAILED"
+                || library.scanStatus === "CANCELLED"
 
             MichiStatusChip {
                 objectName: "scanStatusText"
@@ -267,5 +338,28 @@ MichiGlassSurface {
                 onClicked: library.cancel_scan()
             }
         }
+    }
+
+    MichiMenu {
+        id: sortMenu
+        x: Math.max(0, sortButton.mapToItem(root, 0, 0).x)
+        y: sortButton.mapToItem(root, 0, sortButton.height).y + MichiSpacing.xs
+        MenuItem { text: "Title"; onTriggered: root.albumSortRequested("title") }
+        MenuItem { text: "Album artist"; onTriggered: root.albumSortRequested("artist") }
+        MenuItem { text: "Release year"; onTriggered: root.albumSortRequested("year") }
+        MenuItem { text: "Track count"; onTriggered: root.albumSortRequested("tracks") }
+        MenuItem { text: "Duration"; onTriggered: root.albumSortRequested("duration") }
+    }
+
+    MichiMenu {
+        id: filterMenu
+        x: Math.max(0, filterButton.mapToItem(root, 0, 0).x)
+        y: filterButton.mapToItem(root, 0, filterButton.height).y + MichiSpacing.xs
+        MenuItem { text: "All albums"; onTriggered: root.albumFilterRequested("all") }
+        MenuItem { text: "With artwork"; onTriggered: root.albumFilterRequested("artwork") }
+        MenuItem { text: "Missing artwork"; onTriggered: root.albumFilterRequested("missingArtwork") }
+        MenuItem { text: "With release year"; onTriggered: root.albumFilterRequested("dated") }
+        MenuItem { text: "Unknown release year"; onTriggered: root.albumFilterRequested("undated") }
+        MenuItem { text: "Hi-Res"; onTriggered: root.albumFilterRequested("hires") }
     }
 }

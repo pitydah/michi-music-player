@@ -10,10 +10,13 @@ ColumnLayout {
 
     property string currentTab: "songs"
     property string addTargetPath: ""
-    // M6-PRODUCTION-INTEGRATION: albumMode passes through to AlbumsView
-    // (two-way like addTargetPath); the source lives in LibraryView so the
-    // mode survives the AlbumsView recreation on tab switches.
+    // LibraryView owns presentation preferences; recreated tab content only
+    // receives their current projection so controls cannot break bindings.
     property string albumMode: "grid"
+    property string albumSortMode: "title"
+    property bool albumSortDescending: false
+    property string albumFilterMode: "all"
+    property string albumTimelineGrouping: "decade"
     property var _content: null   // the current tab view
 
     // M6.7: explicit per-tab management. The object tree must NOT keep the
@@ -144,7 +147,10 @@ ColumnLayout {
             addTargetPath: root.addTargetPath
             onAddTargetPathChanged: root.addTargetPath = addTargetPath
             albumMode: root.albumMode
-            onAlbumModeChanged: root.albumMode = albumMode
+            albumSortMode: root.albumSortMode
+            albumSortDescending: root.albumSortDescending
+            albumFilterMode: root.albumFilterMode
+            albumTimelineGrouping: root.albumTimelineGrouping
         }
     }
 

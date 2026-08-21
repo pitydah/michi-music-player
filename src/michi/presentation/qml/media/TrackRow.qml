@@ -24,6 +24,8 @@ Rectangle {
     property bool showRemove: false
     property bool showArtistColumn: true
     property bool showAlbumColumn: true
+    property bool showQualityColumn: MichiThemeState.precisionMode
+    property bool showDurationColumn: true
     signal activated()
     signal favoriteToggled()
     signal addToPlaylistRequested()
@@ -119,8 +121,8 @@ Rectangle {
             visible: root.showAlbumColumn && !MichiThemeState.precisionMode
             elide: Text.ElideRight
         }
-        MichiText { Layout.preferredWidth: 150; text: root.quality; role: "technical"; technical: true; visible: MichiThemeState.precisionMode; elide: Text.ElideRight }
-        MichiText { Layout.preferredWidth: 48; text: root.durationText; role: "technical"; technical: true; horizontalAlignment: Text.AlignRight }
+        MichiText { Layout.preferredWidth: 150; text: root.quality; role: "technical"; technical: true; visible: root.showQualityColumn; elide: Text.ElideRight }
+        MichiText { Layout.preferredWidth: 48; text: root.durationText; role: "technical"; technical: true; visible: root.showDurationColumn; horizontalAlignment: Text.AlignRight }
 
         MichiIconButton {
             visible: root.showFavorite

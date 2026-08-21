@@ -144,17 +144,17 @@ class TestSharedAlbumModel:
             "albumListView",
         ):
             assert f'objectName: "{name}"' in qml, f"{name} missing"
-        # Four list/grid views (cover, grid, vinyl, list) + the magazine
-        # rows all consume the SAME shared model: library.albums.
-        assert qml.count("model: library.albums") == 5
-        # The timeline is the ONLY view bound to the canonical projection.
-        assert qml.count("model: library.timelineAlbums") == 1
-        # The magazine hero comes from library.albums too (the heroAlbum
-        # property moved into MagazineView.qml with the magazine).
-        assert (
-            "readonly property var heroAlbum: "
-            "library.albums.length > 0 ? library.albums[0] : null" in qml
-        )
+        # Each projection exposes one injectable model. AlbumsView owns the
+        # single filtered/sorted presentation projection and passes it to the
+        # five free-order views; timeline receives the canonical chronological
+        # projection after the same filter has been applied.
+        assert qml.count("property var albumModel: library.albums") == 5
+        assert qml.count("property var albumModel: library.timelineAlbums") == 1
+        assert qml.count("albumModel: root.presentationAlbums") == 5
+        assert qml.count("albumModel: root.presentationTimelineAlbums") == 1
+        # The magazine hero is derived from its injected model rather than
+        # owning a separate album collection.
+        assert "readonly property var heroAlbum: albumModel.length" in qml
         # No view-specific album model surfaces anywhere.
         for ident in (
             "gridAlbums",

@@ -122,8 +122,11 @@ def test_package_contains_new_qml_layers() -> None:
 def test_canonical_now_playing_bar_is_shell_bound() -> None:
     bar = _text("player/NowPlayingBar.qml")
     shell = _text("shell/AppShell.qml")
-    assert "implicitWidth: 1920" in bar
+    assert "implicitWidth: 800" in bar
     assert "implicitHeight: 154" in bar
+    assert "readonly property bool compact" in bar
+    assert 'objectName: "playbackZone"' in bar
+    assert 'objectName: "outputZone"' in bar
     assert "NowPlayingBar" in shell
     for projection in (
         "playback.position",
@@ -150,7 +153,8 @@ def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
     assert "MichiIconButton" in content
     assert "property bool revealed" in queue
     assert "Gradient.Horizontal" in now_playing
-    assert 'accessibleName: "Output selection unavailable"' in now_playing
+    assert 'objectName: "outputBadge"' in now_playing
+    assert 'accessibleName: "Output selection unavailable"' not in now_playing
 
 
 def test_search_and_playback_errors_are_actionable_surfaces() -> None:
@@ -263,6 +267,7 @@ def test_premium_library_workspace_is_contextual_and_single_source() -> None:
     toolbar = _text("views/LibraryToolbar.qml")
     albums = _text("views/AlbumsView.qml")
     library = _text("views/LibraryView.qml")
+    segmented = _text("controls/MichiSegmentedControl.qml")
     assert 'objectName: "albumViewSwitcher"' in toolbar
     for icon in (
         "view-grid",
@@ -277,6 +282,10 @@ def test_premium_library_workspace_is_contextual_and_single_source() -> None:
     assert "albumModeRequested" in toolbar
     assert "MichiSegmentedControl {" not in albums
     assert "onAlbumModeRequested" in library
+    assert "albumTimelineGroupingRequested" in toolbar
+    assert 'groupByDecade: root.albumTimelineGrouping === "decade"' in albums
+    assert "sourceComponent: root.componentForMode(root.albumMode)" in albums
+    assert "root.currentValue = modelData.value" not in segmented
 
 
 def test_audio_surfaces_share_a_semantic_table_header() -> None:
@@ -297,14 +306,15 @@ def test_audio_surfaces_share_a_semantic_table_header() -> None:
     assert "MichiSemanticColors.surfaceSelected" in row
 
 
-def test_queue_respects_the_player_and_output_controls_are_distinct() -> None:
+def test_queue_respects_the_player_and_output_status_is_not_duplicated() -> None:
     shell = _text("shell/AppShell.qml")
     bar = _text("player/NowPlayingBar.qml")
     assert shell.count("anchors.bottom: nowPlayingBar.top") >= 2
     assert "Qt.rgba" not in bar
     assert "#" not in bar
-    assert 'iconName: "output-status"' in bar
-    assert 'iconName: "device"' in bar
+    assert bar.count('objectName: "outputBadge"') == 1
+    assert 'objectName: "outputStatusButton"' not in bar
+    assert 'objectName: "deviceButton"' not in bar
 
 
 def test_presentation_colors_are_owned_by_the_theme_layer() -> None:

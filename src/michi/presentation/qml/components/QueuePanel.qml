@@ -57,47 +57,6 @@ MichiGlassSurface {
             }
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: MichiSpacing.sm
-
-            MichiSegmentedControl {
-                Layout.fillWidth: true
-                model: [
-                    { value: "NONE", label: "Repeat off" },
-                    { value: "ONE", label: "Repeat one" },
-                    { value: "ALL", label: "Repeat all" }
-                ]
-                currentValue: root.repeatMode
-                compact: root.width < 430
-                onSelected: mode => root.repeatModeRequested(mode)
-            }
-            MichiSwitch {
-                text: "Shuffle"
-                checked: root.shuffleEnabled
-                onToggled: root.shuffleRequested(checked)
-            }
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: MichiSpacing.sm
-            MichiButton {
-                Layout.fillWidth: true
-                text: "Previous"
-                variant: "secondary"
-                enabled: root.hasPrev
-                onClicked: root.previousRequested()
-            }
-            MichiButton {
-                Layout.fillWidth: true
-                text: "Next"
-                variant: "secondary"
-                enabled: root.hasNext
-                onClicked: root.nextRequested()
-            }
-        }
-
         EmptyState {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -132,6 +91,10 @@ MichiGlassSurface {
                     playing: index === root.currentIndex
                     selected: index === root.currentIndex
                     showRemove: true
+                    showArtistColumn: root.width >= 460
+                    showAlbumColumn: false
+                    showQualityColumn: false
+                    showDurationColumn: root.width >= 390
                     onActivated: root.trackClicked(index)
                     onRemoveRequested: root.removeRequested(index)
                 }

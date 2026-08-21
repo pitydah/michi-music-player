@@ -16,8 +16,7 @@ MichiGlassSurface {
 
     readonly property var _routes: [
         { id: "now_playing", label: "Now Playing", icon: "play" },
-        { id: "library", label: "Library", icon: "library" },
-        { id: "queue", label: "Queue", icon: "queue" }
+        { id: "library", label: "Library", icon: "library" }
     ]
 
     readonly property var _bottom_routes: [
@@ -98,12 +97,13 @@ MichiGlassSurface {
                     color: MichiSemanticColors.auroraPurpleSurface
                     border.width: 1
                     border.color: MichiSemanticColors.auroraPurpleBorder
-                    MichiText {
+                    MichiIcon {
                         anchors.centerIn: parent
-                        text: "M"
-                        role: "secondary"
-                        color: MichiPalette.auroraCyan
-                        font.weight: Font.Bold
+                        width: 18
+                        height: 18
+                        name: "cat"
+                        iconColor: MichiPalette.auroraCyan
+                        strokeWidth: 1.6
                     }
                 }
                 ColumnLayout {

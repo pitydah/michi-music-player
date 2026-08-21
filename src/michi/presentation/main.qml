@@ -8,7 +8,7 @@ ApplicationWindow {
     visible: true
     width: 1100
     height: 700
-    minimumWidth: 1100
+    minimumWidth: 800
     minimumHeight: 480
     title: "Michi Music Player"
     color: MichiTheme.backgroundBase

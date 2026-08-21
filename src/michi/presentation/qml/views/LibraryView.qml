@@ -10,6 +10,19 @@ Item {
     // the tab recreation) — AlbumsView is recreated on every tab switch and
     // must never be the source of a preference we want to preserve.
     property string albumMode: "grid"
+    property string albumSortMode: "title"
+    property bool albumSortDescending: false
+    property string albumFilterMode: "all"
+    property string albumTimelineGrouping: "decade"
+
+    readonly property var albumModes: [
+        "grid", "cover", "vinyl", "timeline", "magazine", "list"
+    ]
+
+    function requestAlbumMode(mode) {
+        if (albumModes.indexOf(mode) !== -1)
+            albumMode = mode
+    }
 
     function syncEntitySelection() {
         if (library.selectedAlbumKey !== "")
@@ -37,7 +50,15 @@ Item {
             Layout.fillWidth: true
             currentTab: root.currentTab
             albumMode: root.albumMode
-            onAlbumModeRequested: mode => root.albumMode = mode
+            albumSortMode: root.albumSortMode
+            albumSortDescending: root.albumSortDescending
+            albumFilterMode: root.albumFilterMode
+            albumTimelineGrouping: root.albumTimelineGrouping
+            onAlbumModeRequested: mode => root.requestAlbumMode(mode)
+            onAlbumSortRequested: mode => root.albumSortMode = mode
+            onAlbumSortDirectionRequested: descending => root.albumSortDescending = descending
+            onAlbumFilterRequested: mode => root.albumFilterMode = mode
+            onAlbumTimelineGroupingRequested: mode => root.albumTimelineGrouping = mode
         }
 
         LibraryTabs {
@@ -49,7 +70,10 @@ Item {
         LibraryContentHost {
             currentTab: root.currentTab
             albumMode: root.albumMode
-            onAlbumModeChanged: root.albumMode = albumMode
+            albumSortMode: root.albumSortMode
+            albumSortDescending: root.albumSortDescending
+            albumFilterMode: root.albumFilterMode
+            albumTimelineGrouping: root.albumTimelineGrouping
             Layout.fillWidth: true
             Layout.fillHeight: true
         }
