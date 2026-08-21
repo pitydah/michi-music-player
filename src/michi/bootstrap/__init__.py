@@ -208,6 +208,12 @@ class ApplicationContainer:
 
         navigation = NavigationService()
 
+        # M8-R1 delete convergence: deleting the playlist that is the active
+        # navigation target converges to PLAYLISTS / All Playlists. The
+        # navigation service stays the sole NavigationState authority; the
+        # hook only forwards the deleted id.
+        playlist_service.set_on_playlist_deleted(navigation.forget_playlist)
+
         # Load persisted preferences once
         s = settings.load()
         playback.restore_volume(s.volume, s.muted)
