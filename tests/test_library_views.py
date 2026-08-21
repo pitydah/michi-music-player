@@ -307,9 +307,14 @@ class TestBridgeViews:
         artists = bridge.property("artists")
         assert isinstance(artists, list) and artists
         assert all(
-            set(r.keys()) == {
-                "key", "name", "trackCount", "albumCount",
-                "hasArtwork", "artworkPath",
+            set(r.keys())
+            == {
+                "key",
+                "name",
+                "trackCount",
+                "albumCount",
+                "hasArtwork",
+                "artworkPath",
             }
             for r in artists
         )
