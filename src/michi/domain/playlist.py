@@ -53,3 +53,36 @@ class PlaylistNavigationState:
 
     pinned_ids: tuple[str, ...] = ()
     recent_ids: tuple[str, ...] = ()
+
+
+def normalize_navigation_state(
+    state: PlaylistNavigationState, valid_ids: tuple[str, ...]
+) -> PlaylistNavigationState:
+    """SAFE READ normalization of persisted navigation metadata against the
+    actual playlist collection (M8-R1F).
+
+    - Preserves the persisted order (no artificial reordering).
+    - Removes ids not present in valid_ids (stale references).
+    - Removes duplicates, keeping the FIRST occurrence.
+    - Truncates recent_ids to MAX_RECENT_PLAYLISTS.
+
+    Pure function: never writes back; callers persist only on the next
+    legitimate navigation metadata mutation."""
+
+    def normalized(ids: tuple[str, ...]) -> tuple[str, ...]:
+        result = []
+        seen: set[str] = set()  # dedupe is per-list (pinned and recent are
+        # independent collections; an id may validly appear in both)
+        for playlist_id in ids:
+            if playlist_id in seen:
+                continue  # duplicate: first occurrence wins
+            if playlist_id not in valid_ids:
+                continue  # stale: references a playlist that no longer exists
+            seen.add(playlist_id)
+            result.append(playlist_id)
+        return tuple(result)
+
+    pinned = normalized(state.pinned_ids)
+    recent = normalized(state.recent_ids)
+    recent = recent[:MAX_RECENT_PLAYLISTS]
+    return PlaylistNavigationState(pinned_ids=pinned, recent_ids=recent)

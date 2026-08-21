@@ -23,6 +23,7 @@ from michi.domain.playlist import (
     Playlist,
     PlaylistNavigationState,
     new_playlist_id,
+    normalize_navigation_state,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,10 +44,17 @@ class PlaylistService:
         self._playlists: list[Playlist] = list(
             playlists_port.load() if playlists_port is not None else ()
         )
-        self._nav = (
+        # M8-R1F: SAFE READ normalization — reconcile persisted pinned/recent
+        # against the actual collection (stale ids pruned, duplicates
+        # first-wins, recent bounded). NO writeback during load: disk may
+        # keep stale payloads until the next legitimate navigation mutation.
+        loaded_nav = (
             playlists_port.load_navigation()
             if playlists_port is not None
             else PlaylistNavigationState()
+        )
+        self._nav = normalize_navigation_state(
+            loaded_nav, tuple(p.playlist_id for p in self._playlists)
         )
         self._subscribers: list[Callable[[], None]] = []
         self._on_playlist_deleted: Callable[[str], None] | None = None
