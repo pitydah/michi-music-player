@@ -14,7 +14,7 @@ objectNames preserved: ``albumGridView``, ``albumCoverView``,
 ``albumVinylView``, ``albumTimelineView``, ``albumMagazineView``,
 ``albumListView`` (in their new files) and the tab views gain
 ``songsView``/``albumsView``/``artistsView``/``genresView``/``foldersView``/
-``favoritesView``/``historyView``/``recentlyView``/``playlistsView`` plus
+``favoritesView``/``historyView``/``recentlyView`` plus
 ``albumDetailView``.
 
 QML rule (M6.1/M6.6): no canonical logic in QML — the bridge adaptation
@@ -56,7 +56,6 @@ TAB_VIEWS = [
     ("favorites", "favoritesView"),
     ("history", "historyView"),
     ("recently", "recentlyView"),
-    ("playlists", "playlistsView"),
 ]
 
 # Albums host albumMode value -> objectName of the projection's root view.
