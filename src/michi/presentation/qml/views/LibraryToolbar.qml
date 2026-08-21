@@ -72,63 +72,101 @@ MichiGlassSurface {
         anchors.fill: parent
         spacing: MichiSpacing.sm
 
-        RowLayout {
+        SplitView {
+            id: navigationSplit
+            objectName: "libraryNavigationSplitView"
             Layout.fillWidth: true
-            spacing: MichiSpacing.sm
+            Layout.preferredHeight: MichiMetrics.controlLarge
+            orientation: Qt.Horizontal
+
+            handle: Item {
+                implicitWidth: 12
+                implicitHeight: navigationSplit.height
+                HoverHandler {
+                    id: navigationHandleHover
+                    cursorShape: Qt.SplitHCursor
+                }
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 4
+                    height: navigationHandleHover.hovered ? 24 : 16
+                    radius: 2
+                    color: navigationHandleHover.hovered
+                        ? MichiSemanticColors.auroraCyanBorder
+                        : MichiSemanticColors.borderSubtle
+                    Behavior on height {
+                        enabled: !MichiAccessibility.reducedMotion
+                        NumberAnimation { duration: MichiMotion.micro }
+                    }
+                }
+            }
 
             LibraryTabs {
                 id: libraryNavigation
-                Layout.fillWidth: true
-                Layout.minimumWidth: 300
-                Layout.preferredHeight: MichiMetrics.controlMedium
+                SplitView.fillWidth: true
+                SplitView.minimumWidth: 300
                 currentTab: root.currentTab
                 onTabRequested: tab => root.currentTabRequested(tab)
             }
 
-            MichiStatusChip {
-                objectName: "searchNoResultsText"
-                visible: library.searchActive && library.searchTotalCount === 0
-                text: "No results"
-                tone: "warning"
-            }
+            Item {
+                id: searchPane
+                objectName: "resizableLibrarySearchPane"
+                SplitView.preferredWidth: root.width >= 1480 ? 640 : 520
+                SplitView.minimumWidth: root.width < 980 ? 360 : 430
+                SplitView.maximumWidth: 760
 
-            MichiStatusChip {
-                visible: library.searchActive && library.searchTotalCount > 0
-                text: library.searchTotalCount + " results"
-                tone: "active"
-            }
+                RowLayout {
+                    anchors.fill: parent
+                    spacing: MichiSpacing.sm
 
-            MichiSearchField {
-                id: searchInput
-                Layout.minimumWidth: 260
-                Layout.preferredWidth: root.width >= 1480 ? 440
-                    : root.width >= 1120 ? 360 : 280
-                Layout.maximumWidth: 460
-                text: library.searchQuery
-                placeholderText: root.searchPlaceholder()
-                onEdited: query => library.search(query)
-                onClearRequested: library.clear_search()
-            }
+                    MichiStatusChip {
+                        objectName: "searchNoResultsText"
+                        visible: library.searchActive
+                            && library.searchTotalCount === 0
+                        text: "No results"
+                        tone: "warning"
+                    }
 
-            MichiIconButton {
-                iconName: "folder"
-                selected: root.sourceExpanded
-                accessibleName: root.sourceExpanded
-                    ? "Hide library source" : "Show library source"
-                onClicked: root.sourceExpanded = !root.sourceExpanded
-            }
+                    MichiStatusChip {
+                        visible: library.searchActive
+                            && library.searchTotalCount > 0
+                        text: library.searchTotalCount + " results"
+                        tone: "active"
+                    }
 
-            MichiButton {
-                text: root.width < 760 ? "Scan" : "Scan library"
-                iconName: "library"
-                iconOnly: root.width < 980
-                accessibleName: "Scan library"
-                enabled: !root.scanning
-                    && (dirInput.text.length > 0 || library.currentDir.length > 0)
-                onClicked: {
-                    var directory = dirInput.text.length > 0
-                        ? dirInput.text : library.currentDir
-                    library.scan(directory)
+                    MichiSearchField {
+                        id: searchInput
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 210
+                        text: library.searchQuery
+                        placeholderText: root.searchPlaceholder()
+                        onEdited: query => library.search(query)
+                        onClearRequested: library.clear_search()
+                    }
+
+                    MichiIconButton {
+                        iconName: "folder"
+                        selected: root.sourceExpanded
+                        accessibleName: root.sourceExpanded
+                            ? "Hide library source" : "Show library source"
+                        onClicked: root.sourceExpanded = !root.sourceExpanded
+                    }
+
+                    MichiButton {
+                        text: root.width < 760 ? "Scan" : "Scan library"
+                        iconName: "library"
+                        iconOnly: root.width < 980
+                        accessibleName: "Scan library"
+                        enabled: !root.scanning
+                            && (dirInput.text.length > 0
+                                || library.currentDir.length > 0)
+                        onClicked: {
+                            var directory = dirInput.text.length > 0
+                                ? dirInput.text : library.currentDir
+                            library.scan(directory)
+                        }
+                    }
                 }
             }
         }
@@ -185,39 +223,52 @@ MichiGlassSurface {
                 id: albumSizeSurface
                 objectName: "albumSizeControl"
                 visible: ["grid", "cover", "vinyl"].indexOf(root.albumMode) !== -1
-                Layout.preferredWidth: albumSizeRow.implicitWidth + MichiSpacing.sm
-                Layout.preferredHeight: 38
-                elevation: "subtle"
+                Layout.preferredWidth: albumSizeRow.implicitWidth + MichiSpacing.md
+                Layout.preferredHeight: 40
+                elevation: "standard"
                 contentPadding: MichiSpacing.xxs
                 textured: true
-                accented: root.albumZoom !== 1.0
-                accentColor: MichiPalette.auroraCyan
+                shadowed: false
+                radius: MichiRadius.lg
 
                 RowLayout {
                     id: albumSizeRow
                     anchors.fill: parent
                     spacing: 0
                     MichiIconButton {
-                        Layout.preferredWidth: 32
-                        Layout.preferredHeight: 32
+                        Layout.preferredWidth: 34
+                        Layout.preferredHeight: 34
                         iconName: "zoom-out"
                         accessibleName: "Make album artwork smaller"
                         enabled: root.albumZoom > 0.83
                         onClicked: root.albumZoomRequested(
                             root.albumZoom > 1.01 ? 1.0 : 0.82)
                     }
-                    MichiText {
-                        Layout.preferredWidth: 42
-                        text: root.zoomLabel()
-                        role: "technical"
-                        technical: true
+                    Rectangle {
+                        Layout.preferredWidth: 52
+                        Layout.preferredHeight: 30
+                        radius: MichiRadius.md
                         color: root.albumZoom === 1.0
-                            ? MichiPalette.textMuted : MichiPalette.auroraCyan
-                        horizontalAlignment: Text.AlignHCenter
+                            ? MichiSemanticColors.controlSurface
+                            : MichiSemanticColors.auroraCyanSurface
+                        border.width: 1
+                        border.color: root.albumZoom === 1.0
+                            ? MichiSemanticColors.borderSubtle
+                            : MichiSemanticColors.auroraCyanBorderSubtle
+                        MichiText {
+                            anchors.centerIn: parent
+                            text: root.zoomLabel()
+                            role: "technical"
+                            technical: true
+                            color: root.albumZoom === 1.0
+                                ? MichiPalette.textSecondary
+                                : MichiPalette.auroraCyan
+                            font.weight: Font.DemiBold
+                        }
                     }
                     MichiIconButton {
-                        Layout.preferredWidth: 32
-                        Layout.preferredHeight: 32
+                        Layout.preferredWidth: 34
+                        Layout.preferredHeight: 34
                         iconName: "zoom-in"
                         accessibleName: "Make album artwork larger"
                         enabled: root.albumZoom < 1.21
@@ -231,12 +282,12 @@ MichiGlassSurface {
                 id: organizationSurface
                 objectName: "albumOrganizationControl"
                 Layout.preferredWidth: organizationRow.implicitWidth + MichiSpacing.xs
-                Layout.preferredHeight: 38
-                elevation: "subtle"
+                Layout.preferredHeight: 40
+                elevation: "standard"
                 contentPadding: MichiSpacing.xxs
                 textured: true
-                accented: root.albumFilterMode !== "all"
-                accentColor: MichiPalette.auroraPurple
+                shadowed: false
+                radius: MichiRadius.lg
 
                 RowLayout {
                     id: organizationRow
@@ -263,12 +314,6 @@ MichiGlassSurface {
                             ? "Sort descending" : "Sort ascending"
                         selected: root.albumSortDescending
                         onClicked: root.albumSortDirectionRequested(!root.albumSortDescending)
-                    }
-                    Rectangle {
-                        visible: root.albumMode !== "timeline"
-                        Layout.preferredWidth: 1
-                        Layout.preferredHeight: 20
-                        color: MichiSemanticColors.borderSubtle
                     }
                     MichiButton {
                         id: filterButton

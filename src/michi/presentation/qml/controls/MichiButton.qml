@@ -10,6 +10,8 @@ Button {
     property string accessibleName: text
     property bool iconOnly: false
     property bool selected: checked
+    property real iconSize: MichiMetrics.iconSmall
+    property real iconStrokeWidth: 1.7
     readonly property bool primary: variant === "primary"
     readonly property bool ghost: variant === "ghost"
 
@@ -30,8 +32,9 @@ Button {
         MichiIcon {
             visible: root.iconName !== ""
             name: root.iconName
-            width: MichiMetrics.iconSmall
+            width: root.iconSize
             height: width
+            strokeWidth: root.iconStrokeWidth
             iconColor: label.color
             anchors.verticalCenter: parent.verticalCenter
         }
@@ -67,7 +70,7 @@ Button {
         scale: root.pressed ? 0.985 : root.hovered ? 1.01 : 1
 
         Rectangle {
-            visible: root.enabled && (root.primary || root.selected)
+            visible: root.enabled && root.primary
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top

@@ -10,7 +10,7 @@ MichiGlassSurface {
     property string currentRoute: ""
     property bool compact: false
     contentPadding: MichiSpacing.sm
-    elevation: "standard"
+    elevation: "elevated"
     shadowed: true
     textured: true
     accented: true
@@ -25,30 +25,29 @@ MichiGlassSurface {
         { id: "settings", label: "Settings", icon: "settings" }
     ]
 
-    Item {
-        anchors.right: parent.right
-        anchors.verticalCenter: parent.verticalCenter
-        width: 18
-        height: 112
-        opacity: 0.24
+    Rectangle {
+        anchors.fill: parent
+        radius: root.radius
+        opacity: 0.62
         z: 0
-        Repeater {
-            model: [34, 62, 92, 52]
-            delegate: Rectangle {
-                required property int index
-                required property int modelData
-                x: index * 4
-                y: (parent.height - height) / 2
-                width: 2
-                height: modelData
-                radius: 1
-                gradient: Gradient {
-                    GradientStop { position: 0; color: "transparent" }
-                    GradientStop { position: 0.5; color: MichiPalette.auroraCyan }
-                    GradientStop { position: 1; color: "transparent" }
-                }
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop {
+                position: 0
+                color: MichiSemanticColors.auroraPurpleSurface
+            }
+            GradientStop { position: 0.46; color: "transparent" }
+            GradientStop {
+                position: 1
+                color: MichiSemanticColors.auroraCyanSurface
             }
         }
+    }
+
+    MichiMaterialTexture {
+        anchors.fill: parent
+        textureOpacity: 0.14
+        z: 0
     }
 
     Component {
@@ -67,8 +66,8 @@ MichiGlassSurface {
                 spacing: MichiSpacing.md
                 Rectangle {
                     Layout.leftMargin: MichiSpacing.md
-                    Layout.preferredWidth: 30
-                    Layout.preferredHeight: 30
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
                     radius: 10
                     color: routeItem._active
                         ? MichiSemanticColors.surfaceSelected
@@ -78,8 +77,9 @@ MichiGlassSurface {
                     MichiIcon {
                         anchors.centerIn: parent
                         name: modelData.icon
-                        width: MichiMetrics.iconSmall
-                        height: MichiMetrics.iconSmall
+                        width: 18
+                        height: 18
+                        strokeWidth: routeItem._active ? 2.0 : 1.8
                         iconColor: routeItem._active ? MichiPalette.auroraCyan
                             : routeItem.hovered ? MichiPalette.textPrimary
                             : MichiPalette.textSecondary
@@ -129,31 +129,34 @@ MichiGlassSurface {
         spacing: MichiSpacing.xs
         z: 1
 
-        MichiGlassSurface {
+        Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 68
-            elevation: "subtle"
-            contentPadding: 0
-            textured: true
-            accented: true
-            accentColor: MichiPalette.auroraPurple
+            Layout.preferredHeight: 72
             RowLayout {
-                anchors.centerIn: parent
-                spacing: MichiSpacing.sm
+                anchors.fill: parent
+                anchors.leftMargin: root.compact ? 8 : MichiSpacing.md
+                anchors.rightMargin: root.compact ? 8 : MichiSpacing.md
+                spacing: MichiSpacing.md
                 Rectangle {
-                    Layout.preferredWidth: 36
-                    Layout.preferredHeight: 36
-                    radius: 12
+                    Layout.preferredWidth: 40
+                    Layout.preferredHeight: 40
+                    radius: 14
                     color: MichiSemanticColors.auroraPurpleSurface
                     border.width: 1
                     border.color: MichiSemanticColors.auroraPurpleBorder
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: 4
+                        radius: 11
+                        color: MichiSemanticColors.auroraCyanSurface
+                    }
                     MichiIcon {
                         anchors.centerIn: parent
-                        width: 21
-                        height: 21
+                        width: 23
+                        height: 23
                         name: "cat"
                         iconColor: MichiPalette.auroraCyan
-                        strokeWidth: 1.6
+                        strokeWidth: 1.9
                     }
                 }
                 ColumnLayout {
@@ -161,8 +164,9 @@ MichiGlassSurface {
                     spacing: 0
                     MichiText {
                         text: "Michi"
-                        role: "section"
+                        role: "title"
                         color: MichiPalette.textPrimary
+                        font.weight: Font.DemiBold
                     }
                     MichiText {
                         text: "LOCAL HI-FI"
@@ -170,6 +174,15 @@ MichiGlassSurface {
                         technical: true
                         color: MichiPalette.textMuted
                     }
+                }
+                Item { Layout.fillWidth: true }
+                Rectangle {
+                    visible: !root.compact
+                    Layout.preferredWidth: 7
+                    Layout.preferredHeight: 7
+                    radius: 4
+                    color: library.fileCount > 0
+                        ? MichiPalette.auroraGreen : MichiPalette.textMuted
                 }
             }
         }
@@ -210,8 +223,8 @@ MichiGlassSurface {
                     Layout.fillWidth: true
                     spacing: MichiSpacing.xs
                     Rectangle {
-                        width: 7
-                        height: 7
+                        Layout.preferredWidth: 7
+                        Layout.preferredHeight: 7
                         radius: 4
                         color: library.fileCount > 0
                             ? MichiPalette.auroraGreen : MichiPalette.textMuted
@@ -243,7 +256,7 @@ MichiGlassSurface {
                 }
             }
         }
-        Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: MichiSemanticColors.borderSubtle }
+        Item { Layout.preferredHeight: MichiSpacing.xs }
         Repeater {
             model: root._bottom_routes
             delegate: routeDelegate

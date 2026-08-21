@@ -75,22 +75,6 @@ GridView {
                 ? MichiPalette.auroraBlue : hover.hovered
                     ? MichiSemanticColors.borderStrong
                     : MichiSemanticColors.borderSubtle
-            Rectangle {
-                visible: vinylTile.selected
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.leftMargin: MichiRadius.lg
-                anchors.rightMargin: MichiRadius.lg
-                height: 2
-                radius: 1
-                gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                    GradientStop { position: 0; color: MichiPalette.auroraBlue }
-                    GradientStop { position: 0.55; color: MichiPalette.auroraCyan }
-                    GradientStop { position: 1; color: MichiPalette.auroraPurple }
-                }
-            }
             MichiFocusRing {
                 visualFocus: vinylTile.activeFocus
                     && MichiAccessibility.keyboardMode

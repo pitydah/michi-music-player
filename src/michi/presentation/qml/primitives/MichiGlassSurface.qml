@@ -7,6 +7,7 @@ Item {
     property string elevation: "standard"
     property int contentPadding: MichiSpacing.lg
     property bool accented: false
+    property bool accentLineVisible: false
     property color accentColor: MichiPalette.auroraBlue
     property bool shadowed: elevation !== "subtle"
     property bool textured: elevation !== "subtle"
@@ -91,7 +92,7 @@ Item {
         }
 
         Rectangle {
-            visible: root.accented
+            visible: root.accented && root.accentLineVisible
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top

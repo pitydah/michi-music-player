@@ -376,7 +376,9 @@ def test_premium_library_workspace_is_contextual_and_single_source() -> None:
     assert "albumViewsVisible" in header
     assert 'currentTab === "albums"' in header
     assert 'objectName: "albumViewSwitcher"' not in toolbar
-    assert "Layout.maximumWidth: 460" in toolbar
+    assert 'objectName: "libraryNavigationSplitView"' in toolbar
+    assert 'objectName: "resizableLibrarySearchPane"' in toolbar
+    assert "SplitView.fillWidth: true" in toolbar
     assert toolbar.index("LibraryTabs {") < toolbar.index("MichiSearchField {")
     assert "compact: true" in header
     for icon in (
@@ -396,6 +398,35 @@ def test_premium_library_workspace_is_contextual_and_single_source() -> None:
     assert 'groupByDecade: root.albumTimelineGrouping === "decade"' in albums
     assert "sourceComponent: root.componentForMode(root.albumMode)" in albums
     assert "root.currentValue = modelData.value" not in segmented
+
+
+def test_precision_pass_uses_resizable_smoked_surfaces_without_accent_rules() -> None:
+    shell = _text("shell/AppShell.qml")
+    sidebar = _text("shell/Sidebar.qml")
+    tabs = _text("views/LibraryTabs.qml")
+    toolbar = _text("views/LibraryToolbar.qml")
+    bar = _text("player/NowPlayingBar.qml")
+    glass = _text("primitives/MichiGlassSurface.qml")
+    button = _text("controls/MichiButton.qml")
+    icon_button = _text("controls/MichiIconButton.qml")
+    assert 'objectName: "workspaceSplitView"' in shell
+    assert 'objectName: "resizableSidebar"' in shell
+    assert "SplitView.minimumWidth: MichiMetrics.sidebarCompact" in shell
+    assert 'elevation: "elevated"' in sidebar
+    assert "MichiMaterialTexture" in sidebar
+    assert "textureOpacity: 0.14" in sidebar
+    assert 'property bool accentLineVisible: false' in glass
+    assert "root.accented && root.accentLineVisible" in glass
+    assert "root.enabled && root.primary" in button
+    assert "anchors.bottom: parent.bottom" not in tabs
+    assert "visible: root.selected" not in icon_button
+    assert 'objectName: "albumSizeControl"' in toolbar
+    quality = bar.split('objectName: "qualityBadge"', 1)[1].split(
+        'objectName: "queueButton"', 1
+    )[0]
+    assert "width: 7" in quality
+    assert "height: 7" in quality
+    assert "GradientStop" not in quality
 
 
 def test_audio_surfaces_share_a_semantic_table_header() -> None:

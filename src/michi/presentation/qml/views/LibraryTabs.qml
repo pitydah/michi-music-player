@@ -100,15 +100,15 @@ Item {
 
                             MichiIcon {
                                 anchors.centerIn: parent
-                                width: 16
-                                height: 16
+                                width: 18
+                                height: 18
                                 name: tabButton.modelData.icon
                                 iconColor: tabButton.checked
                                     ? MichiPalette.auroraCyan
                                     : tabButton.hovered
                                         ? MichiPalette.textPrimary
                                         : MichiPalette.textSecondary
-                                strokeWidth: tabButton.checked ? 1.9 : 1.6
+                                strokeWidth: tabButton.checked ? 2.05 : 1.8
                             }
                         }
                         MichiText {
@@ -134,21 +134,6 @@ Item {
                             : MichiSemanticColors.borderSubtle
                         scale: tabButton.pressed ? 0.98 : 1
 
-                        Rectangle {
-                            visible: tabButton.checked
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.bottom: parent.bottom
-                            anchors.leftMargin: MichiSpacing.sm
-                            anchors.rightMargin: MichiSpacing.sm
-                            height: 3
-                            radius: 1
-                            gradient: Gradient {
-                                orientation: Gradient.Horizontal
-                                GradientStop { position: 0; color: MichiPalette.auroraBlue }
-                                GradientStop { position: 1; color: MichiPalette.auroraCyan }
-                            }
-                        }
                         Behavior on color {
                             enabled: !MichiAccessibility.reducedMotion
                             ColorAnimation { duration: MichiMotion.micro }

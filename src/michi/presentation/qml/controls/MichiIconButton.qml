@@ -34,16 +34,6 @@ Button {
         border.color: root.selected ? MichiPalette.auroraBlue : MichiSemanticColors.borderSubtle
         scale: root.pressed ? 0.92 : root.hovered ? 1.045 : 1
 
-        Rectangle {
-            visible: root.selected
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 3
-            width: 10
-            height: 1
-            radius: 1
-            color: MichiPalette.auroraCyan
-        }
         Behavior on color {
             enabled: !MichiAccessibility.reducedMotion
             ColorAnimation { duration: MichiMotion.micro }

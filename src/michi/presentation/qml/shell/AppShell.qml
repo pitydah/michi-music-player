@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Layouts
+import QtQuick.Controls.Basic
 import "../patterns"
 import "../player"
 import "../theme"
@@ -28,25 +28,57 @@ Item {
         }
     }
 
-    RowLayout {
+    SplitView {
+        id: workspaceSplit
+        objectName: "workspaceSplitView"
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: nowPlayingBar.top
         anchors.margins: MichiMetrics.islandGap
-        spacing: MichiMetrics.islandGap
+        orientation: Qt.Horizontal
+
+        handle: Item {
+            implicitWidth: MichiMetrics.islandGap
+            implicitHeight: workspaceSplit.height
+            HoverHandler {
+                id: workspaceHandleHover
+                cursorShape: Qt.SplitHCursor
+            }
+            Rectangle {
+                anchors.centerIn: parent
+                width: workspaceHandleHover.hovered ? 4 : 2
+                height: workspaceHandleHover.hovered ? 52 : 32
+                radius: width / 2
+                color: workspaceHandleHover.hovered
+                    ? MichiPalette.auroraCyan : MichiSemanticColors.borderSubtle
+                opacity: workspaceHandleHover.hovered ? 0.72 : 0.34
+                Behavior on width {
+                    enabled: !MichiAccessibility.reducedMotion
+                    NumberAnimation { duration: MichiMotion.micro }
+                }
+                Behavior on height {
+                    enabled: !MichiAccessibility.reducedMotion
+                    NumberAnimation { duration: MichiMotion.micro }
+                }
+            }
+        }
 
         Sidebar {
-            Layout.preferredWidth: compact ? MichiMetrics.sidebarCompact : MichiMetrics.sidebarExpanded
-            Layout.fillHeight: true
-            compact: MichiBreakpoints.isCompact(root.width)
+            id: sidebar
+            objectName: "resizableSidebar"
+            SplitView.preferredWidth: MichiBreakpoints.isCompact(root.width)
+                ? MichiMetrics.sidebarCompact : MichiMetrics.sidebarExpanded
+            SplitView.minimumWidth: MichiMetrics.sidebarCompact
+            SplitView.maximumWidth: 296
+            compact: width < 156 || MichiBreakpoints.isCompact(root.width)
             currentRoute: root.currentRoute
             onNavigationRequested: routeId => root.navigationRequested(routeId)
         }
 
         ContentHost {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+            SplitView.fillWidth: true
+            SplitView.minimumWidth: MichiMetrics.contentMinimum
             currentRoute: root.currentRoute === "queue" ? root.lastContentRoute : root.currentRoute
         }
     }

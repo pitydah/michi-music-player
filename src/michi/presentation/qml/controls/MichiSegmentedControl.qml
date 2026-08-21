@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import "../primitives"
 import "../theme"
 
 Rectangle {
@@ -32,6 +31,8 @@ Rectangle {
                 text: segmentedControl.compact ? "" : modelData.label
                 iconName: modelData.icon || ""
                 iconOnly: segmentedControl.compact
+                iconSize: segmentedControl.compact ? 18 : MichiMetrics.iconSmall
+                iconStrokeWidth: segmentedControl.compact ? 1.9 : 1.7
                 accessibleName: (segmentedControl.accessiblePrefix.length > 0
                     ? segmentedControl.accessiblePrefix + ": " : "") + modelData.label
                 variant: "ghost"

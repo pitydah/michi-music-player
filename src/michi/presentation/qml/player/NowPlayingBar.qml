@@ -530,13 +530,11 @@ Item {
                     spacing: MichiSpacing.xs
                     Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
-                        width: 2
-                        height: 14
-                        radius: 1
-                        gradient: Gradient {
-                            GradientStop { position: 0; color: MichiPalette.auroraCyan }
-                            GradientStop { position: 1; color: MichiPalette.auroraPurple }
-                        }
+                        width: 7
+                        height: 7
+                        radius: 4
+                        color: root.hasTrack
+                            ? MichiPalette.auroraGreen : MichiPalette.textMuted
                     }
                     MichiText {
                         anchors.verticalCenter: parent.verticalCenter
