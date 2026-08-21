@@ -27,6 +27,8 @@ MichiGlassSurface {
         && library.scanStatus !== "CANCELLED"
         && library.scanStatus !== "FAILED"
     elevation: "subtle"
+    shadowed: true
+    textured: true
     accented: root.scanning || library.scanStatus === "FAILED"
     accentColor: library.scanStatus === "FAILED"
         ? MichiPalette.error : MichiPalette.auroraCyan

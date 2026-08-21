@@ -22,6 +22,7 @@ where = ["src"]
 michi = [
     "presentation/*.qml",
     "presentation/qml/components/*.qml",
+    "presentation/qml/assets/*.svg",
     "presentation/qml/controls/*.qml",
     "presentation/qml/dev/*.qml",
     "presentation/qml/media/*.qml",

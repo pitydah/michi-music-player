@@ -4,9 +4,9 @@ Implementation contract for **Michi UI Design Canon 2.0 — Feline Hi-Fi Desktop
 
 **Authority:** approved product direction, 2026-08-20.
 **Boundary:** presentation only. M4–M8 domain/application behavior remains frozen.
-**Current work package:** `M9-PREMIUM-07` — `REVIEW` (ultra-premium workspace
-pass over Library navigation, contextual tools, audio tables, shell hierarchy,
-Queue behavior and the geometry-protected NowPlayingBar).
+**Current work package:** `M9-PREMIUM-08` — `REVIEW` (material composition,
+bounded album-card geometry, richer Library information hierarchy and a
+responsive album-detail hero without adding non-portable UI dependencies).
 
 ## Product invariants
 
@@ -153,3 +153,30 @@ server.
   device selection use distinct icons and descriptions. Its local colors,
   along with the refined shell and row states, are sourced from semantic
   tokens rather than hardcoded values.
+
+## M9-PREMIUM-08 material and Library refinement
+
+- The shell uses a low-cost material stack inspired by acrylic systems:
+  directional surface gradients, two restrained shadow layers, inner edge
+  light and a tiny precomposed grain tile. `glassQuality=low` removes grain,
+  preserving a deterministic fallback without runtime shaders.
+- Album cards now use bounded minimum and maximum widths instead of stretching
+  to consume every spare pixel. Grid density changes card geometry while the
+  card keeps artwork square and exposes only real year, track and technical
+  metadata supplied by `LibraryBridge`.
+- Album selection has explicit hover, press, keyboard focus and selected
+  states. Artwork decoding stays asynchronous, cached and source-size bounded.
+- Album detail follows a hero/table hierarchy: breadcrumb and back intent,
+  artwork, identity, quality, duration and track count occupy one elevated
+  surface; the track table remains a quieter subordinate surface.
+- External references were used as evidence, not dependencies:
+  PowerBlur's layer recipe informed material token separation;
+  pyqt-liquidglass was rejected because its glass path is macOS/Qt Widgets
+  specific; Ergosign shader effects were rejected because they require a
+  compiled plugin; Kirigami's bounded cards and adaptive action hierarchy were
+  translated into project-native QML. FluentUI, PyHuskarUI and Rin-UI remain
+  study references only, so Michi does not inherit another design system or
+  runtime theme owner.
+- Native `MultiEffect`/custom shader blur remains behind the M12 profiling gate.
+  Effects are not multiplied across virtualized album delegates; the material
+  treatment must remain usable on software and low-power scenegraph backends.

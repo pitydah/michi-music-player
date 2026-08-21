@@ -10,4 +10,7 @@ QtObject {
     readonly property int standardBlur: 24
     readonly property int elevatedBlur: 32
     readonly property int modalBlur: 40
+    readonly property int shadowNearSpread: 2
+    readonly property int shadowFarSpread: 7
+    readonly property int shadowVerticalOffset: 4
 }

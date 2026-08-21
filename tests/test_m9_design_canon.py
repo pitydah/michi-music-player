@@ -28,6 +28,7 @@ def test_design_system_has_canonical_layers() -> None:
         "primitives/MichiGlassSurface.qml",
         "primitives/MichiFocusRing.qml",
         "primitives/MichiIcon.qml",
+        "primitives/MichiMaterialTexture.qml",
         "primitives/MichiStatusChip.qml",
         "controls/MichiButton.qml",
         "controls/MichiSearchField.qml",
@@ -48,6 +49,23 @@ def test_glass_is_reserved_for_control_surfaces() -> None:
     assert "MichiSemanticColors.backplane" in shell
     assert "MichiPanel" not in library
     assert "MichiGlassSurface" in toolbar
+
+
+def test_material_texture_is_lightweight_packaged_and_quality_aware() -> None:
+    texture = _text("primitives/MichiMaterialTexture.qml")
+    glass = _text("primitives/MichiGlassSurface.qml")
+    surface = _text("primitives/MichiSurface.qml")
+    package = Path("pyproject.toml").read_text()
+    assert (QML / "assets" / "michi-grain.svg").is_file()
+    assert 'source: "../assets/michi-grain.svg"' in texture
+    assert "asynchronous: true" in texture
+    assert "cache: true" in texture
+    assert 'MichiThemeState.glassQuality === "low" ? 0' in texture
+    assert "property bool shadowed" in glass
+    assert "MichiElevation.shadowFarSpread" in glass
+    assert "MichiMaterialTexture" in glass
+    assert "MichiMaterialTexture" in surface
+    assert '"presentation/qml/assets/*.svg"' in package
 
 
 def test_artwork_access_is_centralized() -> None:
@@ -208,6 +226,24 @@ def test_library_navigation_and_path_selection_follow_the_canon() -> None:
     assert 'objectName: "pathViewSelectionCard"' in path_view
     assert "width: Math.min(620" in path_view
     assert "anchors.leftMargin: MichiSpacing.xl" not in path_view
+
+
+def test_album_grid_and_detail_have_premium_information_hierarchy() -> None:
+    grid = _text("views/AlbumGridView.qml")
+    card = _text("media/AlbumCard.qml")
+    detail = _text("views/AlbumDetailView.qml")
+    artwork = _text("media/Artwork.qml")
+    assert "minimumCardWidth" in grid
+    assert "maximumCardWidth" in grid
+    assert "resolvedCardWidth" in grid
+    assert "root.album.technicalSummary" in card
+    assert "root.album.trackCount" in card
+    assert 'objectName: "albumHeroSurface"' in detail
+    assert 'objectName: "albumTrackTableSurface"' in detail
+    assert "library.albumDurationMs" in detail
+    assert "asynchronous: true" in artwork
+    assert "cache: true" in artwork
+    assert "sourceSize.width" in artwork
 
 
 def test_transport_microdetails_are_coherent_surfaces() -> None:

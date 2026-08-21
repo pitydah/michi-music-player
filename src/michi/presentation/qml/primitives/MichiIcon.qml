@@ -44,6 +44,8 @@ Item {
                 ctx.fillRect(w * .22, h * .25, w * .08, h * .5); ctx.moveTo(w * .72, h * .25); ctx.lineTo(w * .34, cy); ctx.lineTo(w * .72, h * .75); ctx.closePath(); ctx.fill(); return
             } else if (root.name === "next") {
                 ctx.fillRect(w * .7, h * .25, w * .08, h * .5); ctx.moveTo(w * .28, h * .25); ctx.lineTo(w * .66, cy); ctx.lineTo(w * .28, h * .75); ctx.closePath(); ctx.fill(); return
+            } else if (root.name === "back") {
+                line(ctx, w * .76, cy, w * .24, cy); line(ctx, w * .24, cy, w * .44, h * .3); line(ctx, w * .24, cy, w * .44, h * .7)
             } else if (root.name === "output-status") {
                 ctx.moveTo(w * .18, h * .42); ctx.lineTo(w * .34, h * .42); ctx.lineTo(w * .52, h * .26); ctx.lineTo(w * .52, h * .74); ctx.lineTo(w * .34, h * .58); ctx.lineTo(w * .18, h * .58); ctx.closePath(); ctx.moveTo(w * .64, h * .4); ctx.arc(w * .57, cy, w * .18, -.65, .65); ctx.moveTo(w * .79, h * .24); ctx.arc(w * .62, cy, w * .3, -.85, .85)
             } else if (root.name === "volume" || root.name === "mute") {

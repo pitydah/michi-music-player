@@ -4,6 +4,10 @@ import QtQuick
 QtObject {
     readonly property color backplane: MichiPalette.obsidian
     readonly property color contentSurface: MichiPalette.graphite
+    readonly property color contentSurfaceTop: Qt.rgba(0.082, 0.098, 0.129, 1)
+    readonly property color contentSurfaceBottom: Qt.rgba(0.055, 0.064, 0.086, 1)
+    readonly property color contentAmbientBlue: Qt.rgba(0.298, 0.651, 1, 0.055)
+    readonly property color contentAmbientPurple: Qt.rgba(0.604, 0.486, 1, 0.04)
     readonly property color controlSurface: Qt.rgba(0.067, 0.078, 0.114, 0.84)
     readonly property color controlSurfaceStrong: Qt.rgba(0.067, 0.078, 0.114, 0.94)
     readonly property color surfaceHover: Qt.rgba(1, 1, 1, 0.055)
@@ -14,6 +18,8 @@ QtObject {
     readonly property color innerHighlight: Qt.rgba(1, 1, 1, 0.045)
     readonly property color innerHighlightStrong: Qt.rgba(1, 1, 1, 0.32)
     readonly property color glassShadow: Qt.rgba(0, 0, 0, 0.22)
+    readonly property color glassShadowNear: Qt.rgba(0, 0, 0, 0.18)
+    readonly property color glassShadowFar: Qt.rgba(0, 0, 0, 0.075)
     readonly property color glassInnerBorder: Qt.rgba(1, 1, 1, 0.035)
     readonly property color glassSheen: Qt.rgba(1, 1, 1, 0.028)
     readonly property color auroraActive: MichiPalette.auroraBlue

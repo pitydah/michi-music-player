@@ -10,15 +10,22 @@ GridView {
 
     property var albumModel: library.albums
     readonly property int minimumCardWidth: MichiThemeState.density === "compact"
-        ? 148 : MichiThemeState.density === "comfortable" ? 212 : 178
-    readonly property int columnCount: Math.max(1, Math.floor(width / minimumCardWidth))
+        ? 154 : MichiThemeState.density === "comfortable" ? 220 : 184
+    readonly property int maximumCardWidth: MichiThemeState.density === "compact"
+        ? 184 : MichiThemeState.density === "comfortable" ? 250 : 216
+    readonly property int cardGap: MichiThemeState.contentGap
+    readonly property int columnCount: Math.max(1, Math.floor(
+        (width + cardGap) / (minimumCardWidth + cardGap)))
+    readonly property real resolvedCardWidth: Math.min(maximumCardWidth,
+        cellWidth - cardGap)
+    readonly property int metadataHeight: MichiThemeState.density === "compact"
+        ? 76 : MichiThemeState.density === "comfortable" ? 108 : 92
 
     Layout.fillWidth: true
     Layout.fillHeight: true
     model: albumModel
     cellWidth: width / columnCount
-    cellHeight: Math.min(292, Math.max(194, cellWidth + (
-        MichiThemeState.density === "compact" ? 42 : 58)))
+    cellHeight: resolvedCardWidth + metadataHeight + cardGap
     clip: true
     boundsBehavior: Flickable.StopAtBounds
     keyNavigationEnabled: true
@@ -55,20 +62,30 @@ GridView {
         width: MichiSpacing.sm
     }
 
-    delegate: AlbumCard {
+    delegate: Item {
+        id: albumCell
         required property int index
         required property var modelData
-        width: albumGrid.cellWidth - MichiThemeState.contentGap
-        height: albumGrid.cellHeight - MichiThemeState.contentGap
-        album: modelData
-        selected: GridView.isCurrentItem
-        onActiveFocusChanged: {
-            if (activeFocus)
-                albumGrid.currentIndex = index
-        }
-        onActivated: {
-            albumGrid.currentIndex = index
-            library.select_album(modelData.key)
+        readonly property bool current: GridView.isCurrentItem
+
+        width: albumGrid.cellWidth
+        height: albumGrid.cellHeight
+
+        AlbumCard {
+            anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: albumGrid.resolvedCardWidth
+            height: parent.height - albumGrid.cardGap
+            album: albumCell.modelData
+            selected: albumCell.current
+            onActiveFocusChanged: {
+                if (activeFocus)
+                    albumGrid.currentIndex = albumCell.index
+            }
+            onActivated: {
+                albumGrid.currentIndex = albumCell.index
+                library.select_album(albumCell.modelData.key)
+            }
         }
     }
 }

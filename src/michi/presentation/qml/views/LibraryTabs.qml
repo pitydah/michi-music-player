@@ -31,6 +31,8 @@ Item {
         width: Math.min(root.width, tabRow.implicitWidth + MichiSpacing.sm * 2)
         contentPadding: MichiSpacing.xs
         elevation: "subtle"
+        shadowed: true
+        textured: true
 
         Flickable {
             anchors.fill: parent
