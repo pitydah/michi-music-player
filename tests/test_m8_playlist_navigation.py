@@ -10,7 +10,6 @@ AppRoute.PLAYLISTS + playlist target semantics:
 - deterministic notifications; idempotent same-target navigation
 """
 
-
 from michi.application.navigation_service import NavigationService
 from michi.application.playlist_service import PlaylistService
 from michi.application.queue_service import QueueService
