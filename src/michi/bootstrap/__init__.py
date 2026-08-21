@@ -43,6 +43,7 @@ from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
 from michi.presentation.library_bridge import LibraryBridge
 from michi.presentation.navigation_bridge import NavigationBridge
 from michi.presentation.playback_bridge import PlaybackBridge
+from michi.presentation.playlists_bridge import PlaylistsBridge
 from michi.presentation.queue_bridge import QueueBridge
 from michi.presentation.settings_bridge import SettingsBridge
 
@@ -251,6 +252,13 @@ class ApplicationContainer:
         # authority: it only orchestrates PlaylistService + NavigationService.
         playlist_nav = PlaylistNavigationCoordinator(playlist_service, navigation)
         nb = NavigationBridge(navigation, playlist_navigation=playlist_nav)
+        # M9-R1: first-class Playlists presentation bridge — canonical
+        # playlist projection lives here, not in LibraryBridge.
+        plb = PlaylistsBridge(
+            playlist_service,
+            playlist_navigation=playlist_nav,
+            library=library,
+        )
         sb = SettingsBridge(settings)
 
         engine = QQmlApplicationEngine()
@@ -260,6 +268,7 @@ class ApplicationContainer:
         ctx.setContextProperty("queue", qb)
         ctx.setContextProperty("library", lb)
         ctx.setContextProperty("navigation", nb)
+        ctx.setContextProperty("playlists", plb)
         ctx.setContextProperty("settingsBridge", sb)
 
         self._backend = backend
