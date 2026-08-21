@@ -29,6 +29,23 @@ M9 MAY be reopened when one of these conditions applies:
 7. an architectural change makes an existing M9 presentation contract obsolete;
 8. another Player milestone has a legitimate presentation dependency.
 
+Product-owner realignment (2026-08-21) pre-authorizes these SCOPED reopenings,
+each still declared with its own REOPEN REASON / SCOPE / TRIGGERING MILESTONE /
+AFFECTED COMPONENTS / NON-GOALS / TEST-ACCEPTANCE GATES / REFREEZE CONDITION:
+
+- **M9-R1 — Playlists Sidebar / Presentation** (trigger: playlists Required-1.0):
+  Playlists section in Sidebar, All Playlists access, bounded pinned/recent
+  quick access, create affordance, canonical Playlist screen presentation,
+  removal of duplicate Playlist presentation authority. NON-GOALS: general M9
+  redesign, new visual language, unrelated Library redesign. Refreeze: M9-R1
+  accepted.
+- **M9-R2 — Audio Output UX** (trigger: M11.3/M11.4 audiophile output):
+  engine selector, DAC selector, Output Profile selector, output state,
+  actual format telemetry, Signal Path, DSD mode, BitPerfectState, hotplug/
+  unavailable/error state. The canonical NowPlayingBar geometry stays
+  protected (reserved `audioEngineIndicator`/`outputZone`/`outputDeviceButton`
+  are activated; transport controls are not moved). Refreeze: M9-R2 accepted.
+
 Every reopening MUST be scoped and MUST declare:
 
 - **REOPEN REASON**

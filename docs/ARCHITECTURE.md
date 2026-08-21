@@ -6,7 +6,7 @@ Product scope note: Michi AI and ecosystem integrations (Audio Lab, Streaming, R
 
 ## Stack
 
-Python 3.11+, PySide6 (Qt 6, Qt Multimedia with FFmpeg backend), QML, SQLite (WAL). Build with setuptools (`python -m build`); tests with pytest; lint/format with Ruff; CI on GitHub Actions (lint, tests with `QT_QPA_PLATFORM=offscreen`, build). No C++ anywhere, no native-code build system, no GStreamer integration. (ADR 0001)
+Python 3.11+, PySide6 (Qt 6, Qt Multimedia with FFmpeg backend), QML, SQLite (WAL). Build with setuptools (`python -m build`); tests with pytest; lint/format with Ruff; CI on GitHub Actions (lint, tests with `QT_QPA_PLATFORM=offscreen`, build). No C++ anywhere, no native-code build system. (ADR 0001 — the original "no GStreamer integration" stack decision is SUPERSEDED by the 2026-08-21 product-owner realignment: GStreamer and a managed MPD become Required-1.0 audio engines behind AudioPort, scheduled M11.3, per docs/M11_3_MULTI_ENGINE_AUDIO_RUNTIME.md; GStreamer/MPD are runtime dependencies, never C++ build targets)
 
 ## Layers and Dependency Direction
 
@@ -88,6 +88,40 @@ Operations: `load`, `play`, `pause`, `resume`, `stop`, `set_volume`, `set_muted`
 - Application services depend on the port only; they never import PySide6 multimedia classes.
 - The backend translates Qt signals into plain callbacks; services stay Qt-free.
 - A fake backend substitutes the port in pure-pytest tests.
+
+### Multi-engine target (M11.3 — product-owner realignment 2026-08-21)
+
+`AudioPort` remains the playback backend boundary. PlaybackService stays the
+sole PlaybackState owner and QueueService the sole QueueState owner; new
+engines adapt TO Michi contracts, never the reverse:
+
+```
+                  AudioPort
+                     │
+          ┌──────────┼──────────┐
+          │          │          │
+          ▼          ▼          ▼
+    QtMultimedia  GStreamer    MPD (managed/private)
+```
+
+- **Qt Multimedia** — REFERENCE / SAFE engine (current backend; desktop-shared
+  only; never a DIRECT bit-perfect VERIFIED claim — honest limitation).
+- **GStreamer** — FULL PIPELINE ENGINE CANDIDATE (ALSA/PipeWire sinks; caps
+  truth for telemetry). No GStreamer types outside infrastructure.
+- **MPD** — MANAGED AUDIO TRANSPORT ENGINE (private instance, generated
+  config). MPD MUST NOT own canonical Michi Queue/Repeat/Shuffle/Playlist
+  semantics; it is an engine behind AudioPort only.
+- Engine switching for 1.0 is performed from a QUIESCENT/STOPPED state
+  (stop → close → init → bind → validate → ready); no seamless handover
+  mid-track. Selection is persisted.
+- **Provisional owners (finalized in M11.3A/M11.4A)**: `AudioEngineService`
+  → AudioEngineState; `AudioOutputService` → AudioOutputState;
+  `AudioDeviceRegistry` → canonical discovered-device projection.
+  Backend-specific device strings live only in adapter bindings; the domain
+  never persists `hw:N`/card-index as canonical identity.
+- **Audio Lab boundary**: a future DSP stage (CamillaDSP-style external
+  process) may insert between Engine and Output Policy AFTER PLAYER STABLE;
+  the architecture leaves the seam, the stage is not implemented.
 
 ## SettingsRepository Boundary
 

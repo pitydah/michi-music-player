@@ -41,12 +41,14 @@ for 1.0 (Required 1.0) are not repeated here.
 
 ## Deferred Capability Decisions (canonical 1.0 contract)
 
-These decisions are recorded in MASTER_ROADMAP_1.0.md. All are Post-1.0.
+These decisions are recorded in MASTER_ROADMAP_1.0.md. All are Post-1.0 except
+as noted. (Gapless playback was promoted to Required-1.0 by the product-owner
+realignment of 2026-08-21 — it no longer belongs to this list; see
+`docs/MASTER_ROADMAP_1.0.md` and `docs/M11_5_AUDIOPHILE_PLAYBACK_GUARANTEES.md`.)
 
 | Capability                    | Decision | Justification                                                                                                                                     | Sizing |
 | ----------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Gapless playback              | Post-1.0 | Seamless track-to-track playback requires buffer look-ahead and sample-accurate scheduling; 1.0 plays tracks with standard transitions.           | M      |
-| Crossfade                     | Post-1.0 | Overlapping track transitions require two-buffer mixing; not part of the 1.0 core loop.                                                           | M      |
+| Crossfade                     | Post-1.0 | Overlapping track transitions require two-buffer mixing; not part of the 1.0 core loop; distinct capability from Gapless.                         | M      |
 | Library index DB              | MOVED TO M6.2 (Required 1.0) | A persisted library index requires schema, incremental sync, and migration work; 1.0 scans the filesystem directly each session. RESCHEDULED (M6 original contract reconciliation 2026-08-18): the persistent library index is REQUIRED for 1.0 — M6.2 (LibraryIndexRepository port + versioned SQLite index, filesystem fingerprint size/mtime_ns, no reparse of unchanged) per docs/M6_LIBRARY_MASTER_PLAN.md. | L      |
 | Cover art                     | Post-1.0 | Artwork pipeline (extraction, caching, rendering) is outside the 1.0 core loop. Justification update (M6 original contract reconciliation 2026-08-18): embedded artwork extraction + per-album-key cache are delivered (LOCAL-02); folder-art fallback + digest-aware cache invalidation remain M6.5; no premium processing.                                                                                                   | M      |
 | Full-text indexed search      | Post-1.0 | Substring filter satisfies 1.0; FTS indexing is a performance enhancement.                                                                        | M      |
