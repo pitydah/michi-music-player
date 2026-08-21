@@ -41,6 +41,15 @@ AFFECTED COMPONENTS / NON-GOALS / TEST-ACCEPTANCE GATES / REFREEZE CONDITION:
   accepted. **STATUS: CLOSED — delivered 2026-08-21 (a87f651..96dd57c); the
   Playlists hierarchy is sealed per PLAYLIST-HIERARCHY-01..06; M9 returned to
   FROZEN.**
+
+  **M9-R1I convergence correction (2026-08-21, b6b8311..6249cb8)**: the
+  `3fdbd33` closeout is HISTORICAL/PREMATURE evidence — the follow-up
+  production-convergence pass made NavigationState.playlist_id the SINGLE
+  detail authority (PlaylistsBridge is projection-only, no local selection),
+  composed exactly ONE production PlaylistsBridge in ApplicationContainer
+  with explicit dispose, sealed search keyboard parity, deterministic
+  create/rename dialog workflows and hardened card accessibility. Final
+  convergence range: b6b8311..6249cb8 (suite 1437 passed). M9 remains FROZEN.
 - **M9-R2 — Audio Output UX** (trigger: M11.3/M11.4 audiophile output):
   engine selector, DAC selector, Output Profile selector, output state,
   actual format telemetry, Signal Path, DSD mode, BitPerfectState, hotplug/
