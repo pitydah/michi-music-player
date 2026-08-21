@@ -789,14 +789,14 @@ class LibraryBridge(QObject):
         if self._selected_playlist == name:
             self._selected_playlist = ""
             self._selected_playlist_index = -1
-        self._playlist_service.delete_playlist(name)
+        self._playlist_service.delete_playlist_by_name(name)
 
     @Slot(str, str)
     def rename_playlist(self, old_name: str, new_name: str) -> None:
         if self._playlist_service is None:
             return
         try:
-            self._playlist_service.rename_playlist(old_name, new_name)
+            self._playlist_service.rename_playlist_by_name(old_name, new_name)
         except ValueError:
             return
         if self._selected_playlist == old_name:
@@ -806,22 +806,24 @@ class LibraryBridge(QObject):
     def add_to_playlist(self, name: str, path: str) -> None:
         if self._playlist_service is None:
             return
-        self._playlist_service.add_track(name, Path(path))
+        self._playlist_service.add_track_by_name(name, Path(path))
 
     @Slot(int)
     def remove_playlist_track(self, index: int) -> None:
         if self._playlist_service is None or not self._selected_playlist:
             return
-        self._playlist_service.remove_track(self._selected_playlist, index)
+        self._playlist_service.remove_track_by_name(self._selected_playlist, index)
 
     @Slot(int, int)
     def move_playlist_track(self, from_index: int, to_index: int) -> None:
         if self._playlist_service is None or not self._selected_playlist:
             return
-        self._playlist_service.move_track(self._selected_playlist, from_index, to_index)
+        self._playlist_service.move_track_by_name(
+            self._selected_playlist, from_index, to_index
+        )
 
     @Slot()
     def play_selected_playlist(self) -> None:
         if self._playlist_service is None or not self._selected_playlist:
             return
-        self._playlist_service.play_playlist(self._selected_playlist)
+        self._playlist_service.play_playlist_by_name(self._selected_playlist)

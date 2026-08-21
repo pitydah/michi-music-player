@@ -8,7 +8,7 @@ from pathlib import Path
 from michi.domain.library import Artwork, LibraryPrefs, TrackMetadata
 from michi.domain.library_index import LibraryIndexEntry
 from michi.domain.playback import PlaybackStatus
-from michi.domain.playlist import Playlist
+from michi.domain.playlist import Playlist, PlaylistNavigationState
 from michi.domain.session import PlaybackSessionSnapshot
 
 
@@ -69,13 +69,29 @@ class LibraryPrefsPort(ABC):
 
 
 class PlaylistsPort(ABC):
-    """Playlist persistence (best effort; load never raises)."""
+    """Playlist persistence (best effort; load never raises).
+
+    M8-R1: playlists persist with stable ids (V2); legacy V1 records decode
+    to deterministic ids. Navigation metadata (pinned/recent) has its own
+    load/save pair. Default no-op implementations keep existing fakes and
+    optional wiring backward compatible."""
 
     @abstractmethod
     def load(self) -> tuple[Playlist, ...]: ...
 
     @abstractmethod
     def save(self, playlists: tuple[Playlist, ...]) -> None: ...
+
+    def load_navigation(self) -> "PlaylistNavigationState":
+        """Pinned/recent state; optional key — absence degrades to empty."""
+        return PlaylistNavigationState()
+
+    def save_navigation(self, state: "PlaylistNavigationState") -> None:
+        """Best-effort persistence of pinned/recent state; default no-op.
+
+        Concrete no-op (not abstract): legacy fakes and optional wiring stay
+        backward compatible without implementing navigation persistence."""
+        del state  # default no-op: navigation persistence is optional
 
 
 class AudioPort(ABC):
