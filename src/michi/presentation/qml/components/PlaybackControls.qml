@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "../controls"
+import "../theme"
 
 RowLayout {
     id: root
