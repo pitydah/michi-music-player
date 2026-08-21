@@ -90,7 +90,7 @@ Item {
                 ctx.moveTo(w * .18, h * .3); ctx.lineTo(w * .31, h * .3); ctx.bezierCurveTo(w * .45, h * .3, w * .53, h * .7, w * .68, h * .7); line(ctx, w * .68, h * .7, w * .82, h * .7); line(ctx, w * .72, h * .6, w * .82, h * .7); line(ctx, w * .72, h * .8, w * .82, h * .7); ctx.moveTo(w * .18, h * .7); ctx.lineTo(w * .31, h * .7); ctx.bezierCurveTo(w * .45, h * .7, w * .53, h * .3, w * .68, h * .3); line(ctx, w * .68, h * .3, w * .82, h * .3); line(ctx, w * .72, h * .2, w * .82, h * .3); line(ctx, w * .72, h * .4, w * .82, h * .3)
             } else if (root.name === "repeat" || root.name === "repeat-one") {
                 ctx.moveTo(w * .2, h * .34); ctx.lineTo(w * .73, h * .34); line(ctx, w * .63, h * .24, w * .73, h * .34); line(ctx, w * .63, h * .44, w * .73, h * .34); ctx.moveTo(w * .8, h * .66); ctx.lineTo(w * .27, h * .66); line(ctx, w * .37, h * .56, w * .27, h * .66); line(ctx, w * .37, h * .76, w * .27, h * .66); if (root.name === "repeat-one") { ctx.stroke(); ctx.beginPath(); ctx.font = Math.round(h * .34) + "px sans-serif"; ctx.fillText("1", w * .45, h * .59); return }
-            } else if (root.name === "sliders") {
+            } else if (root.name === "sliders" || root.name === "equalizer") {
                 line(ctx, w * .27, h * .18, w * .27, h * .82); line(ctx, cx, h * .18, cx, h * .82); line(ctx, w * .73, h * .18, w * .73, h * .82); ctx.moveTo(w * .2, h * .36); ctx.lineTo(w * .34, h * .36); ctx.moveTo(w * .43, h * .62); ctx.lineTo(w * .57, h * .62); ctx.moveTo(w * .66, h * .42); ctx.lineTo(w * .8, h * .42)
             } else if (root.name === "sort") {
                 line(ctx, w * .2, h * .25, w * .68, h * .25); line(ctx, w * .2, cy, w * .56, cy); line(ctx, w * .2, h * .75, w * .44, h * .75); line(ctx, w * .72, h * .22, w * .72, h * .78); line(ctx, w * .62, h * .68, w * .72, h * .78); line(ctx, w * .82, h * .68, w * .72, h * .78)
@@ -100,6 +100,10 @@ Item {
                 line(ctx, cx, h * .22, cx, h * .78); line(ctx, w * .38, h * .66, cx, h * .78); line(ctx, w * .62, h * .66, cx, h * .78)
             } else if (root.name === "filter") {
                 ctx.moveTo(w * .16, h * .22); ctx.lineTo(w * .84, h * .22); ctx.lineTo(w * .59, h * .5); ctx.lineTo(w * .59, h * .76); ctx.lineTo(w * .41, h * .84); ctx.lineTo(w * .41, h * .5); ctx.closePath()
+            } else if (root.name === "audio-output") {
+                ctx.rect(w * .16, h * .2, w * .48, h * .48); line(ctx, w * .3, h * .79, w * .5, h * .79); line(ctx, w * .4, h * .68, w * .4, h * .79); ctx.moveTo(w * .68, h * .38); ctx.arc(w * .61, cy, w * .17, -.65, .65); ctx.moveTo(w * .82, h * .25); ctx.arc(w * .64, cy, w * .29, -.82, .82)
+            } else if (root.name === "audio-engine") {
+                ctx.moveTo(cx, h * .12); ctx.lineTo(w * .78, h * .28); ctx.lineTo(w * .78, h * .66); ctx.lineTo(cx, h * .84); ctx.lineTo(w * .22, h * .66); ctx.lineTo(w * .22, h * .28); ctx.closePath(); ctx.moveTo(w * .3, cy); ctx.bezierCurveTo(w * .38, h * .28, w * .44, h * .72, cx, cy); ctx.bezierCurveTo(w * .58, h * .28, w * .64, h * .72, w * .7, cy)
             } else if (root.name === "device") {
                 ctx.rect(w * .25, h * .15, w * .5, h * .7); ctx.moveTo(w * .4, h * .27); ctx.lineTo(w * .6, h * .27); ctx.arc(cx, h * .58, w * .1, 0, Math.PI * 2); ctx.fillRect(cx - 1, h * .77, 2, 2)
             } else if (root.name === "settings") {

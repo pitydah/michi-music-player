@@ -343,29 +343,39 @@ Item {
             }
         }
 
-        ColumnLayout {
+        GridLayout {
             id: outputZone
             objectName: "outputZone"
-            Layout.preferredWidth: root.compact ? 270 : 318
-            Layout.minimumWidth: 250
-            Layout.maximumWidth: 330
+            columns: 4
+            columnSpacing: MichiSpacing.xs
+            rowSpacing: MichiSpacing.sm
+            Layout.preferredWidth: root.compact ? 286 : 330
+            Layout.minimumWidth: 270
+            Layout.maximumWidth: 350
+            Layout.preferredHeight: root.height - 40
             Layout.fillHeight: true
-            spacing: 8
+            Layout.alignment: Qt.AlignTop
+
+            MichiIconButton {
+                objectName: "muteButton"
+                Layout.row: 0
+                Layout.column: 0
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 34
+                iconName: root.muted || root.volume === 0 ? "mute" : "volume"
+                accessibleName: root.muted ? "Unmute" : "Mute"
+                onClicked: root.muteRequested(!root.muted)
+            }
 
             RowLayout {
                 objectName: "volumeControlRow"
+                Layout.row: 0
+                Layout.column: 1
                 Layout.fillWidth: true
+                Layout.minimumWidth: 130
                 Layout.preferredHeight: 34
                 spacing: MichiSpacing.xs
 
-                MichiIconButton {
-                    objectName: "muteButton"
-                    Layout.preferredWidth: 34
-                    Layout.preferredHeight: 34
-                    iconName: root.muted || root.volume === 0 ? "mute" : "volume"
-                    accessibleName: root.muted ? "Unmute" : "Mute"
-                    onClicked: root.muteRequested(!root.muted)
-                }
                 Slider {
                     id: volumeSlider
                     objectName: "volumeSlider"
@@ -430,83 +440,137 @@ Item {
                 }
                 MichiText {
                     visible: !root.compact
-                    Layout.preferredWidth: 30
+                    Layout.preferredWidth: 34
                     text: Math.round(volumeSlider.value) + "%"
                     role: "technical"
                     technical: true
                     color: MichiPalette.textMuted
                     horizontalAlignment: Text.AlignRight
                 }
-                MichiIconButton {
-                    objectName: "settingsButton"
-                    Layout.preferredWidth: 34
-                    Layout.preferredHeight: 34
-                    iconName: "sliders"
-                    accessibleName: "Audio settings"
-                    onClicked: root.settingsRequested()
+            }
+
+            MichiIconButton {
+                objectName: "settingsButton"
+                Layout.row: 0
+                Layout.column: 2
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 34
+                iconName: "equalizer"
+                accessibleName: "Audio settings"
+                onClicked: root.settingsRequested()
+            }
+
+            MichiIconButton {
+                objectName: "outputDeviceButton"
+                Layout.row: 0
+                Layout.column: 3
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 34
+                iconName: "audio-output"
+                accessibleName: "Output selection unavailable"
+                enabled: false
+                opacity: 0.62
+            }
+
+            Item {
+                id: audioEngineIndicator
+                objectName: "audioEngineIndicator"
+                Layout.row: 1
+                Layout.column: 0
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 34
+                opacity: 0.62
+                Accessible.role: Accessible.StaticText
+                Accessible.name: "Audio engine selection planned"
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: MichiRadius.md
+                    color: engineHover.hovered
+                        ? MichiSemanticColors.surfaceHover : "transparent"
+                    border.width: 1
+                    border.color: engineHover.hovered
+                        ? MichiSemanticColors.borderStrong
+                        : MichiSemanticColors.borderSubtle
                 }
-                MichiIconButton {
-                    objectName: "outputDeviceButton"
-                    Layout.preferredWidth: 34
-                    Layout.preferredHeight: 34
-                    iconName: "device"
-                    accessibleName: "Output selection unavailable"
-                    enabled: false
-                    opacity: 0.62
+                MichiIcon {
+                    anchors.centerIn: parent
+                    width: MichiMetrics.iconMedium
+                    height: width
+                    name: "audio-engine"
+                    iconColor: engineHover.hovered
+                        ? MichiPalette.textSecondary : MichiPalette.textDisabled
+                }
+                HoverHandler { id: engineHover; cursorShape: Qt.ArrowCursor }
+                MichiTooltip {
+                    visible: engineHover.hovered
+                    text: "Audio engine selection · planned integration"
                 }
             }
 
-            RowLayout {
+            Rectangle {
+                id: qualityBadge
+                objectName: "qualityBadge"
+                Layout.row: 1
+                Layout.column: 1
                 Layout.fillWidth: true
-                Layout.fillHeight: true
-                spacing: 12
+                Layout.preferredHeight: 34
+                radius: 13
+                color: MichiSemanticColors.auroraPurpleSurfaceSoft
+                border.width: 1
+                border.color: MichiSemanticColors.auroraPurpleBorderMedium
+                Accessible.role: Accessible.StaticText
+                Accessible.name: "File quality: " + root.qualityText()
 
-                Item { Layout.fillWidth: true }
-
-                MichiIconButton {
-                    objectName: "queueButton"
-                    iconName: "queue"
-                    accessibleName: "Open queue"
-                    onClicked: root.queueRequested()
-                }
-
-                Rectangle {
-                    id: qualityBadge
-                    objectName: "qualityBadge"
-                    Layout.preferredWidth: root.compact ? 156 : 190
-                    Layout.preferredHeight: 34
-                    radius: 13
-                    color: MichiSemanticColors.auroraPurpleSurfaceSoft
-                    border.width: 1
-                    border.color: MichiSemanticColors.auroraPurpleBorderMedium
-                    Accessible.role: Accessible.StaticText
-                    Accessible.name: "File quality: " + root.qualityText()
-
-                    Row {
-                        anchors.centerIn: parent
-                        spacing: MichiSpacing.xs
-                        Rectangle {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 2
-                            height: 14
-                            radius: 1
-                            gradient: Gradient {
-                                GradientStop { position: 0; color: MichiPalette.auroraCyan }
-                                GradientStop { position: 1; color: MichiPalette.auroraPurple }
-                            }
-                        }
-                        MichiText {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: qualityBadge.width - MichiSpacing.xl * 2
-                            text: root.qualityText()
-                            role: "technical"
-                            technical: true
-                            color: MichiPalette.textPrimary
-                            font.weight: Font.DemiBold
-                            elide: Text.ElideRight
+                Row {
+                    anchors.centerIn: parent
+                    spacing: MichiSpacing.xs
+                    Rectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 2
+                        height: 14
+                        radius: 1
+                        gradient: Gradient {
+                            GradientStop { position: 0; color: MichiPalette.auroraCyan }
+                            GradientStop { position: 1; color: MichiPalette.auroraPurple }
                         }
                     }
+                    MichiText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: qualityBadge.width - MichiSpacing.xl * 2
+                        text: root.qualityText()
+                        role: "technical"
+                        technical: true
+                        color: MichiPalette.textPrimary
+                        font.weight: Font.DemiBold
+                        elide: Text.ElideRight
+                    }
                 }
+            }
+
+            MichiIconButton {
+                objectName: "queueButton"
+                Layout.row: 1
+                Layout.column: 2
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 34
+                iconName: "queue"
+                accessibleName: "Open queue"
+                onClicked: root.queueRequested()
+            }
+
+            Item {
+                Layout.row: 1
+                Layout.column: 3
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 34
+            }
+
+            Item {
+                Layout.row: 2
+                Layout.column: 0
+                Layout.columnSpan: 4
+                Layout.fillHeight: true
             }
         }
     }

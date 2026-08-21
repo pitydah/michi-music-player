@@ -33,7 +33,7 @@ PageHeader {
 
     MichiText {
         visible: root.albumViewsVisible && root.width >= 1120
-        text: "VIEW"
+        text: "VIEWS"
         role: "technical"
         technical: true
         color: MichiPalette.textMuted
@@ -44,7 +44,7 @@ PageHeader {
         visible: root.albumViewsVisible
         model: root.albumViewModes
         currentValue: root.albumMode
-        compact: root.width < 1540
+        compact: true
         accessiblePrefix: "Album view"
         Accessible.name: "Album view"
         onSelected: value => root.albumModeRequested(value)
@@ -88,7 +88,7 @@ PageHeader {
 
     MichiSwitch {
         visible: root.precisionRelevant && root.width >= 760
-        text: root.width < 1180 ? "Precision" : "Precision metadata"
+        text: root.width < 1800 ? "Precision" : "Precision metadata"
         checked: MichiThemeState.precisionMode
         onToggled: MichiThemeState.precisionMode = checked
     }

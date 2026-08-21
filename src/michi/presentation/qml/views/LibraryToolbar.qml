@@ -70,16 +70,13 @@ MichiGlassSurface {
             Layout.fillWidth: true
             spacing: MichiSpacing.sm
 
-            MichiSearchField {
-                id: searchInput
-                Layout.minimumWidth: 280
-                Layout.preferredWidth: root.width >= 1480 ? 520
-                    : root.width >= 1120 ? 400 : 300
-                Layout.maximumWidth: 560
-                text: library.searchQuery
-                placeholderText: root.searchPlaceholder()
-                onEdited: query => library.search(query)
-                onClearRequested: library.clear_search()
+            LibraryTabs {
+                id: libraryNavigation
+                Layout.fillWidth: true
+                Layout.minimumWidth: 300
+                Layout.preferredHeight: MichiMetrics.controlMedium
+                currentTab: root.currentTab
+                onTabRequested: tab => root.currentTabRequested(tab)
             }
 
             MichiStatusChip {
@@ -95,13 +92,16 @@ MichiGlassSurface {
                 tone: "active"
             }
 
-            LibraryTabs {
-                id: libraryNavigation
-                Layout.fillWidth: true
-                Layout.minimumWidth: 220
-                Layout.preferredHeight: MichiMetrics.controlMedium
-                currentTab: root.currentTab
-                onTabRequested: tab => root.currentTabRequested(tab)
+            MichiSearchField {
+                id: searchInput
+                Layout.minimumWidth: 260
+                Layout.preferredWidth: root.width >= 1480 ? 440
+                    : root.width >= 1120 ? 360 : 280
+                Layout.maximumWidth: 460
+                text: library.searchQuery
+                placeholderText: root.searchPlaceholder()
+                onEdited: query => library.search(query)
+                onClearRequested: library.clear_search()
             }
 
             MichiIconButton {

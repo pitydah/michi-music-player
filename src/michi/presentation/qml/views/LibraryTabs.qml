@@ -25,6 +25,14 @@ Item {
     implicitHeight: MichiMetrics.controlMedium
     clip: true
 
+    Rectangle {
+        anchors.fill: parent
+        radius: MichiRadius.md
+        color: MichiSemanticColors.controlSurface
+        border.width: 1
+        border.color: MichiSemanticColors.borderSubtle
+    }
+
     function ensureCurrentTabVisible() {
         for (var index = 0; index < tabRepeater.count; index++) {
             var item = tabRepeater.itemAt(index)
@@ -48,6 +56,7 @@ Item {
     Flickable {
         id: navigationFlickable
         anchors.fill: parent
+        anchors.margins: 2
         contentWidth: tabRow.implicitWidth
         contentHeight: height
         clip: true
@@ -57,7 +66,7 @@ Item {
         RowLayout {
             id: tabRow
             height: parent.height
-            spacing: MichiSpacing.xxs
+            spacing: 1
 
             Repeater {
                 id: tabRepeater
@@ -66,7 +75,7 @@ Item {
                     id: tabButton
                     required property var modelData
                     Layout.preferredHeight: tabRow.height
-                    Layout.preferredWidth: tabContent.implicitWidth + MichiSpacing.md * 2
+                    Layout.preferredWidth: tabContent.implicitWidth + MichiSpacing.sm * 2
                     text: modelData.label
                     checked: root.currentTab === modelData.value
                     focusPolicy: Qt.StrongFocus
@@ -77,14 +86,29 @@ Item {
                     contentItem: RowLayout {
                         id: tabContent
                         spacing: MichiSpacing.xs
-                        MichiIcon {
-                            Layout.preferredWidth: MichiMetrics.iconSmall
-                            Layout.preferredHeight: MichiMetrics.iconSmall
-                            name: tabButton.modelData.icon
-                            iconColor: tabButton.checked
-                                ? MichiPalette.auroraCyan
+                        Rectangle {
+                            Layout.preferredWidth: 24
+                            Layout.preferredHeight: 24
+                            radius: 8
+                            color: tabButton.checked
+                                ? MichiSemanticColors.auroraCyanSurface
                                 : tabButton.hovered
-                                    ? MichiPalette.textPrimary : MichiPalette.textSecondary
+                                    ? MichiSemanticColors.surfaceHover : "transparent"
+                            border.width: tabButton.checked ? 1 : 0
+                            border.color: MichiSemanticColors.auroraCyanBorderStrong
+
+                            MichiIcon {
+                                anchors.centerIn: parent
+                                width: 14
+                                height: 14
+                                name: tabButton.modelData.icon
+                                iconColor: tabButton.checked
+                                    ? MichiPalette.auroraCyan
+                                    : tabButton.hovered
+                                        ? MichiPalette.textPrimary
+                                        : MichiPalette.textSecondary
+                                strokeWidth: tabButton.checked ? 1.9 : 1.6
+                            }
                         }
                         MichiText {
                             text: tabButton.text
@@ -96,7 +120,7 @@ Item {
                     }
 
                     background: Rectangle {
-                        radius: MichiRadius.md
+                        radius: MichiRadius.sm
                         color: tabButton.pressed
                             ? MichiSemanticColors.surfacePressed
                             : tabButton.checked
@@ -114,8 +138,8 @@ Item {
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.bottom: parent.bottom
-                            anchors.leftMargin: MichiSpacing.md
-                            anchors.rightMargin: MichiSpacing.md
+                            anchors.leftMargin: MichiSpacing.sm
+                            anchors.rightMargin: MichiSpacing.sm
                             height: 2
                             radius: 1
                             gradient: Gradient {

@@ -174,6 +174,9 @@ def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
     assert 'objectName: "qualityBadge"' in now_playing
     assert now_playing.count('objectName: "outputDeviceButton"') == 1
     assert 'accessibleName: "Output selection unavailable"' in now_playing
+    assert now_playing.count('objectName: "audioEngineIndicator"') == 1
+    assert 'Accessible.name: "Audio engine selection planned"' in now_playing
+    assert 'objectName: "audioEngineButton"' not in now_playing
     assert 'objectName: "outputStatusButton"' not in now_playing
 
 
@@ -264,7 +267,7 @@ def test_transport_microdetails_are_coherent_surfaces() -> None:
     assert "playPauseButton.hovered ? 1.025" in bar
     repeat_branch = icons.split(
         '} else if (root.name === "repeat" || root.name === "repeat-one") {'
-    )[1].split('} else if (root.name === "sliders") {')[0]
+    )[1].split('} else if (root.name === "sliders" || root.name === "equalizer") {')[0]
     assert "ctx.arc" not in repeat_branch
 
 
@@ -346,7 +349,9 @@ def test_premium_library_workspace_is_contextual_and_single_source() -> None:
     assert "albumViewsVisible" in header
     assert 'currentTab === "albums"' in header
     assert 'objectName: "albumViewSwitcher"' not in toolbar
-    assert "Layout.maximumWidth: 560" in toolbar
+    assert "Layout.maximumWidth: 460" in toolbar
+    assert toolbar.index("LibraryTabs {") < toolbar.index("MichiSearchField {")
+    assert "compact: true" in header
     for icon in (
         "view-grid",
         "view-path",
