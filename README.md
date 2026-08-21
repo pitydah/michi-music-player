@@ -2,7 +2,7 @@
 
 Audio-only desktop music player rebuilt from scratch.
 
-**Status:** advanced pre-alpha clean rebuild. M1–M11 Required-1.0 contracts are tested; the M9 Premium Presentation System baseline is delivered (CLOSED / TESTED / FROZEN, PR #204) and the current development direction is M8-R1 Playlists First-Class Navigation, followed by multi-engine audio (Qt Multimedia + GStreamer + MPD) and audiophile output milestones. Component states: `docs/STATUS_MATRIX.md`.
+**Status:** advanced pre-alpha clean rebuild. M1–M11 Required-1.0 contracts are tested; the M9 Premium Presentation System baseline is delivered (CLOSED / TESTED / FROZEN, PR #204) and the current development direction is M11.3 Multi-Engine Audio Runtime (Qt Multimedia + GStreamer + MPD) after the completed playlists milestones. Component states: `docs/STATUS_MATRIX.md`.
 
 **Platform:** Linux is the 1.0 target (AppImage/Flatpak/deb at M13). Windows and macOS are Post-1.0 — see `docs/POST_1_0_BACKLOG.md`.
 
@@ -56,9 +56,9 @@ Dependencies flow inward: Presentation → Application → Domain. Infrastructur
 
 ## Current implementation focus
 
-- M9 Premium Presentation System: CLOSED / TESTED / FROZEN baseline delivered by PR #204 — Michi UI Design Canon 2.0
-- M8-R1 Playlists First-Class Navigation: next authorized WP (then M9-R1 playlists sidebar presentation)
-- M11.3–M11.5: multi-engine audio (Qt Multimedia + GStreamer + MPD), audiophile output/DAC management, playback guarantees (incl. Required-1.0 gapless)
+- M9 Premium Presentation System: CLOSED / TESTED / FROZEN baseline (PR #204) + M9-R1 playlists shell (DONE, refrozen) — Playlists is a first-class Shell feature
+- M11.3 Multi-Engine Audio Runtime: next authorized WP (Qt Multimedia + GStreamer + MPD)
+- M11.4–M11.5: audiophile output/DAC management, playback guarantees (incl. Required-1.0 gapless)
 - M12 Performance, M13 Packaging, M14 Beta, M15 RC, M16 Stable
 
 See `docs/MASTER_ROADMAP_1.0.md` for the canonical 1.0 contract and current statuses.

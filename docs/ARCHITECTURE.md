@@ -80,6 +80,23 @@ Label text           ←  bridge.title (property)       ←  PlaybackState (obse
 - **Projections**: bridges expose state to QML as properties read from owner `.state` objects, treated read-only by convention. State objects are mutable references, not immutable snapshots.
 - **Read-only settings**: `SettingsBridge` exposes state for display only; settings mutations go through `SettingsService` (bootstrap/coordinators), never through QML.
 - Bridges are the only place Qt types and application concepts meet.
+## Playlists hierarchy (M9-R1, sealed)
+
+- **PLAYLIST-HIERARCHY-01**: Playlists is a first-class Shell feature — it is
+  NOT a Library navigation entity.
+- **PLAYLIST-HIERARCHY-02**: Library may invoke Playlist actions (Add-to-
+  Playlist by canonical id) but does not contain Playlists.
+- **PLAYLIST-HIERARCHY-03**: all canonical Playlist navigation resolves
+  through `AppRoute.PLAYLISTS`; QML opens playlists only via the validated
+  `open_playlist` intent (PlaylistNavigationCoordinator).
+- **PLAYLIST-HIERARCHY-04**: Playlist detail = `PLAYLISTS` + playlist_id;
+  All Playlists = `PLAYLISTS` + None. No extra playlist routes.
+- **PLAYLIST-HIERARCHY-05**: `PlaylistsBridge` owns the canonical Playlist
+  presentation projection; `LibraryBridge` does not expose playlist screen
+  state.
+- **PLAYLIST-HIERARCHY-06**: Queue and Playlists remain independent
+  authorities (QueueService / PlaylistService).
+
 - `PlaylistNavigationCoordinator` (application layer, M8-R1F) is the
   canonical application seam for the OPEN PLAYLIST product intent:
   validate against PlaylistService → mark recent → navigate through

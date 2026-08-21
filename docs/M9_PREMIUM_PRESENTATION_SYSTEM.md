@@ -38,7 +38,9 @@ AFFECTED COMPONENTS / NON-GOALS / TEST-ACCEPTANCE GATES / REFREEZE CONDITION:
   quick access, create affordance, canonical Playlist screen presentation,
   removal of duplicate Playlist presentation authority. NON-GOALS: general M9
   redesign, new visual language, unrelated Library redesign. Refreeze: M9-R1
-  accepted.
+  accepted. **STATUS: CLOSED — delivered 2026-08-21 (a87f651..96dd57c); the
+  Playlists hierarchy is sealed per PLAYLIST-HIERARCHY-01..06; M9 returned to
+  FROZEN.**
 - **M9-R2 — Audio Output UX** (trigger: M11.3/M11.4 audiophile output):
   engine selector, DAC selector, Output Profile selector, output state,
   actual format telemetry, Signal Path, DSD mode, BitPerfectState, hotplug/
