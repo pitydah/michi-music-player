@@ -4,9 +4,69 @@ Implementation contract for **Michi UI Design Canon 2.0 — Feline Hi-Fi Desktop
 
 **Authority:** approved product direction, 2026-08-20.
 **Boundary:** presentation only. M4–M8 domain/application behavior remains frozen.
-**Current work package:** `M9-PREMIUM-08` — `REVIEW` (material composition,
-bounded album-card geometry, richer Library information hierarchy and a
-responsive album-detail hero without adding non-portable UI dependencies).
+
+**WORK PACKAGE:** DONE
+**COMPONENT:** FROZEN
+**PR:** #204 MERGED
+**MERGE COMMIT:** 87c534ec2ba8fd5bfebf0f3936ae84c2acf7c05e
+**ACCEPTANCE:** product owner accepted the current baseline to continue the roadmap.
+**CI EVIDENCE:** Michi CI #2158 on the merge head `87c534ec2ba8fd5bfebf0f3936ae84c2acf7c05e` — SUCCESS (1245 passed; lint, Qt/QML suite and sdist+wheel build green). PR head `44158437bc34c9f6293417ccbef319b39d6dcbc0` also verified by Michi CI #2157 (SUCCESS).
+
+## Controlled Reopening Policy
+
+Frozen means **protected from unsolicited change, not immutable**. M9 remains
+CLOSED / TESTED / FROZEN by default, and may be reopened in a controlled and
+scoped way when a later milestone requires presentation work.
+
+M9 MAY be reopened when one of these conditions applies:
+
+1. a reproducible UI/UX regression appears;
+2. a later milestone requires a presentation change;
+3. a new Required-1.0 capability requires UI integration;
+4. M12 performance findings require changes to presentation/QML/materials;
+5. M13 packaging or desktop/platform integration requires UI adaptation;
+6. Beta or RC testing exposes usability, accessibility or interaction defects;
+7. an architectural change makes an existing M9 presentation contract obsolete;
+8. another Player milestone has a legitimate presentation dependency.
+
+Every reopening MUST be scoped and MUST declare:
+
+- **REOPEN REASON**
+- **SCOPE**
+- **TRIGGERING MILESTONE**
+- **AFFECTED COMPONENTS**
+- **NON-GOALS**
+- **TEST / ACCEPTANCE GATES**
+- **REFREEZE CONDITION**
+
+Example: M12 Performance discovers an expensive visual effect → scoped M9
+reopening → replace/tune the visual implementation → tests + acceptance →
+M9 refrozen.
+
+M9 MUST NOT be reopened merely for: aesthetic experimentation, opportunistic
+redesign, trying a newer visual style, replacing a working component without a
+release/product requirement, or endless polishing unrelated to the current
+Stable path. Non-critical visual refinement remains possible later (especially
+after Player Stable), but that does not prevent justified scoped reopening
+before Stable.
+
+### M9 FREEZE POLICY
+
+M9 is CLOSED / TESTED / FROZEN after PR #204.
+
+Frozen means protected from unsolicited change, not immutable.
+
+A later milestone may trigger a scoped M9 reopening when presentation work is
+required to satisfy a functional, performance, packaging, accessibility, Beta,
+RC, architectural, or regression requirement.
+
+Every reopening must declare its triggering milestone, exact scope, non-goals
+and re-freeze gate.
+
+Purely discretionary aesthetic refinement does not justify reopening M9 during
+the current path to Stable.
+
+After the scoped work passes its acceptance gates, M9 returns to FROZEN.
 
 ## Product invariants
 
@@ -29,23 +89,27 @@ responsive album-detail hero without adding non-portable UI dependencies).
 
 ## Delivery map
 
+All M9.0–M9.15 subphases below belong to the accepted PR #204 baseline and are
+DONE within the work package. They are recorded as delivered evidence, not as
+open review items.
+
 | Subphase | State | Evidence in this work package |
 | --- | --- | --- |
-| M9.0 UI architecture freeze | REVIEW | Layered QML tree and compatibility facade |
-| M9.1 Design System 2.0 | REVIEW | Aurora tokens, typography, spacing, metrics, radii, motion, accessibility |
-| M9.2 Desktop controls | REVIEW | Keyboard/focus-aware buttons, fields, segmented controls, menus, dialogs, scrolling |
-| M9.3 UI Gallery | REVIEW | `dev/MichiUIGallery.qml` |
-| M9.4 Application Shell | REVIEW | Floating sidebar/content islands and global search overlay |
-| M9.5 Library premium UX | REVIEW | Shared media rows, runtime density/Precision Mode, six canonical views, common playing state and desktop context actions |
-| M9.6 Album/Artist UX | REVIEW | Responsive album detail, technical inspector, canonical artist detail projection, artist albums/tracks and activation |
+| M9.0 UI architecture freeze | DONE | Layered QML tree and compatibility facade |
+| M9.1 Design System 2.0 | DONE | Aurora tokens, typography, spacing, metrics, radii, motion, accessibility |
+| M9.2 Desktop controls | DONE | Keyboard/focus-aware buttons, fields, segmented controls, menus, dialogs, scrolling |
+| M9.3 UI Gallery | DONE | `dev/MichiUIGallery.qml` |
+| M9.4 Application Shell | DONE | Floating sidebar/content islands and global search overlay |
+| M9.5 Library premium UX | DONE | Shared media rows, runtime density/Precision Mode, six canonical views, common playing state and desktop context actions |
+| M9.6 Album/Artist UX | DONE | Responsive album detail, technical inspector, canonical artist detail projection, artist albums/tracks and activation |
 | M9.7 Playback UX | DONE | Canonical persistent NowPlayingBar with real metadata/artwork, seek, volume, mute, shuffle, repeat, queue and transport; Artwork Focus Mode remains available |
-| M9.8 Search UX | REVIEW | `Ctrl+F`, Escape, Up/Down/Enter and actionable grouped Tracks/Albums/Artists/Playlists; M7 ranking remains frozen |
-| M9.9 Motion | REVIEW | Tokenized durations/easing; permanent vinyl rotation removed |
-| M9.10 Smoked Glass/Aurora | REVIEW | Control-only materiality, semantic Aurora states and High/Normal/Low material quality; expensive real backdrop blur is intentionally gated to M12 profiling |
-| M9.11 Responsive desktop | REVIEW | Compact sidebar, responsive inspectors/artwork, density controls and contextual right Queue drawer |
-| M9.12 Accessibility | REVIEW | Roles/names, keyboard-vs-pointer visual focus, tooltips, PageUp/PageDown, transient scrollbars, high contrast and reduced motion |
-| M9.13 UI performance | REVIEW | Library tabs, album modes, Queue and Focus Mode instantiate on demand; performance profiling remains owned by M12 |
-| M9.14 Capability/error audit | REVIEW | no deferred shells; empty/loading/error and playback failures visible |
+| M9.8 Search UX | DONE | `Ctrl+F`, Escape, Up/Down/Enter and actionable grouped Tracks/Albums/Artists/Playlists; M7 ranking remains frozen |
+| M9.9 Motion | DONE | Tokenized durations/easing; permanent vinyl rotation removed |
+| M9.10 Smoked Glass/Aurora | DONE | Control-only materiality, semantic Aurora states and High/Normal/Low material quality; expensive real backdrop blur is intentionally gated to M12 profiling |
+| M9.11 Responsive desktop | DONE | Compact sidebar, responsive inspectors/artwork, density controls and contextual right Queue drawer |
+| M9.12 Accessibility | DONE | Roles/names, keyboard-vs-pointer visual focus, tooltips, PageUp/PageDown, transient scrollbars, high contrast and reduced motion |
+| M9.13 UI performance | DONE | Library tabs, album modes, Queue and Focus Mode instantiate on demand; performance profiling remains owned by M12 |
+| M9.14 Capability/error audit | DONE | no deferred shells; empty/loading/error and playback failures visible |
 | M9.15 Golden screens | DONE | Project-supplied 1920×154 reference pinned byte-for-byte; production QML landmarks verified at the canonical canvas |
 
 ## Canonical QML layers

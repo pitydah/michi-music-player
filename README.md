@@ -2,7 +2,7 @@
 
 Audio-only desktop music player rebuilt from scratch.
 
-**Status:** advanced pre-alpha clean rebuild. M1–M11 Required-1.0 contracts are tested; the Premium Presentation System is now being applied before performance and packaging stabilization. Component states: `docs/STATUS_MATRIX.md`.
+**Status:** advanced pre-alpha clean rebuild. M1–M11 Required-1.0 contracts are tested; the M9 Premium Presentation System baseline is delivered (CLOSED / TESTED / FROZEN, PR #204) and the current development direction is M12 Performance. Component states: `docs/STATUS_MATRIX.md`.
 
 **Platform:** Linux is the 1.0 target (AppImage/Flatpak/deb at M13). Windows and macOS are Post-1.0 — see `docs/POST_1_0_BACKLOG.md`.
 
@@ -56,7 +56,7 @@ Dependencies flow inward: Presentation → Application → Domain. Infrastructur
 
 ## Current implementation focus
 
-- M9 Premium Presentation System: complete the canonical desktop UI/UX migration
+- M9 Premium Presentation System: CLOSED / TESTED / FROZEN baseline delivered by PR #204 — Michi UI Design Canon 2.0
 - M12 Performance: profile scan/startup/memory and large-library behavior
 - M13–M16: Linux packaging, beta, release candidate, and Stable 1.0
 
