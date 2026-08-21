@@ -1,15 +1,17 @@
 """PlaylistsBridge — canonical presentation projection for the first-class
-Playlists shell feature (M9-R1).
+Playlists shell feature (M9-R1 / M9-R1I).
 
 Owns NO business state. It adapts:
 
 - PlaylistService (collection + pinned/recent + CRUD)
 - PlaylistNavigationCoordinator (validated open intent)
+- NavigationService (the SINGLE current-detail authority — M9-R1I)
 - LibraryService (optional: TrackRef resolution for track rows)
 
-LibraryBridge no longer owns canonical playlist presentation; this bridge
-is the single presentation projection for All Playlists, pinned/recent,
-selection and detail tracks."""
+M9-R1I invariant: NavigationState.playlist_id is the ONE AND ONLY current
+playlist identity. The bridge keeps NO local selection state; every
+selected* projection derives from navigation.state.playlist_id.
+"""
 
 from pathlib import Path
 
@@ -17,6 +19,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from michi.application.audio_quality import make_track_quality_label
 from michi.application.library_service import LibraryService
+from michi.application.navigation_service import NavigationService
 from michi.application.playlist_navigation_coordinator import (
     PlaylistNavigationCoordinator,
 )
@@ -24,8 +27,9 @@ from michi.application.playlist_service import PlaylistService
 
 
 class PlaylistsBridge(QObject):
-    """PlaylistService + coordinator → QML. No playlist business rule lives
-    in QML; selection is identity-driven; name is display-only."""
+    """PlaylistService + coordinator + navigation → QML. No playlist
+    business rule lives in QML; the current playlist is the navigation
+    target; name is display-only."""
 
     playlists_changed = Signal()
 
@@ -33,32 +37,27 @@ class PlaylistsBridge(QObject):
         self,
         playlist_service: PlaylistService | None = None,
         playlist_navigation: PlaylistNavigationCoordinator | None = None,
+        navigation_service: NavigationService | None = None,
         library: LibraryService | None = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._playlist_service = playlist_service
         self._coordinator = playlist_navigation
+        self._navigation = navigation_service
         self._library = library
-        self._selected_playlist_id: str = ""
-        self._selected_playlist_index: int = -1
         if playlist_service is not None:
             playlist_service.subscribe_changed(self._on_service_changed)
+        if navigation_service is not None:
+            navigation_service.subscribe_changed(self._on_service_changed)
 
     def dispose(self) -> None:
         if self._playlist_service is not None:
             self._playlist_service.unsubscribe_changed(self._on_service_changed)
+        if self._navigation is not None:
+            self._navigation.unsubscribe_changed(self._on_service_changed)
 
     def _on_service_changed(self) -> None:
-        # Identity-driven selection: a selected playlist that disappears
-        # (any delete path) clears the selection safely.
-        if (
-            self._selected_playlist_id
-            and self._playlist_service is not None
-            and self._playlist_service.get_playlist(self._selected_playlist_id) is None
-        ):
-            self._selected_playlist_id = ""
-            self._selected_playlist_index = -1
         self.playlists_changed.emit()
 
     # ------------------------------------------------------------------
@@ -104,19 +103,37 @@ class PlaylistsBridge(QObject):
         ranked.sort(key=lambda row: row["recentRank"])
         return ranked
 
+    # ------------------------------------------------------------------
+    # Single navigation truth (M9-R1I): every selected* projection derives
+    # from NavigationState.playlist_id — NO bridge-local selection state.
+    # ------------------------------------------------------------------
+
+    def _current_playlist_id(self) -> str:
+        if self._navigation is None:
+            return ""
+        return self._navigation.state.playlist_id or ""
+
     def _get_selected_playlist_id(self) -> str:
-        return self._selected_playlist_id
+        return self._current_playlist_id()
 
     def _get_selected_playlist_name(self) -> str:
-        if not self._selected_playlist_id or self._playlist_service is None:
+        playlist_id = self._current_playlist_id()
+        if not playlist_id or self._playlist_service is None:
             return ""
-        playlist = self._playlist_service.get_playlist(self._selected_playlist_id)
+        playlist = self._playlist_service.get_playlist(playlist_id)
         return playlist.name if playlist is not None else ""
 
+    def _get_selected_playlist_pinned(self) -> bool:
+        playlist_id = self._current_playlist_id()
+        if not playlist_id or self._playlist_service is None:
+            return False
+        return playlist_id in self._playlist_service.navigation.pinned_ids
+
     def _selected(self):
-        if self._playlist_service is None or not self._selected_playlist_id:
+        playlist_id = self._current_playlist_id()
+        if not playlist_id or self._playlist_service is None:
             return None
-        return self._playlist_service.get_playlist(self._selected_playlist_id)
+        return self._playlist_service.get_playlist(playlist_id)
 
     def _get_playlist_tracks(self) -> list[dict]:
         playlist = self._selected()
@@ -215,6 +232,9 @@ class PlaylistsBridge(QObject):
     selectedPlaylistName = Property(
         str, _get_selected_playlist_name, notify=playlists_changed
     )
+    selectedPlaylistPinned = Property(
+        bool, _get_selected_playlist_pinned, notify=playlists_changed
+    )
     playlistTracks = Property(list, _get_playlist_tracks, notify=playlists_changed)
     playlistTrackRows = Property(
         list, _get_playlist_track_rows, notify=playlists_changed
@@ -229,37 +249,6 @@ class PlaylistsBridge(QObject):
     # ------------------------------------------------------------------
 
     @Slot(str)
-    def select_playlist(self, playlist_id: str) -> None:
-        """Identity-driven selection. Legacy name-based callers resolve via
-        the service compatibility lookup (DEPRECATED path)."""
-        if self._playlist_service is None:
-            return
-        playlist = self._playlist_service.get_playlist(playlist_id)
-        if playlist is None:
-            playlist = next(
-                (p for p in self._playlist_service.playlists if p.name == playlist_id),
-                None,
-            )
-        if playlist is None:
-            return
-        self._selected_playlist_id = playlist.playlist_id
-        self._selected_playlist_index = next(
-            (
-                i
-                for i, p in enumerate(self._playlist_service.playlists)
-                if p.playlist_id == playlist.playlist_id
-            ),
-            -1,
-        )
-        self.playlists_changed.emit()
-
-    @Slot()
-    def clear_playlist_selection(self) -> None:
-        self._selected_playlist_id = ""
-        self._selected_playlist_index = -1
-        self.playlists_changed.emit()
-
-    @Slot(str)
     def open_playlist(self, playlist_id: str) -> None:
         """Validated open (recent + navigation) through the coordinator."""
         if self._coordinator is not None:
@@ -269,15 +258,6 @@ class PlaylistsBridge(QObject):
     def open_all_playlists(self) -> None:
         if self._coordinator is not None:
             self._coordinator.open_all_playlists()
-
-    @Slot(str)
-    def create_playlist(self, name: str) -> None:
-        if self._playlist_service is None:
-            return
-        try:
-            self._playlist_service.create_playlist(name)
-        except ValueError:
-            return
 
     @Slot(str, result=bool)
     def create_and_open_playlist(self, name: str) -> bool:
@@ -292,20 +272,23 @@ class PlaylistsBridge(QObject):
         self._coordinator.open_playlist(playlist.playlist_id)
         return True
 
-    @Slot(str)
-    def delete_playlist(self, playlist_id: str) -> None:
+    @Slot(str, result=bool)
+    def rename_playlist(self, playlist_id: str, new_name: str) -> bool:
+        """Explicit success contract (M9-R1I): True only when the rename
+        succeeded; False for missing playlist / invalid / duplicate name.
+        Never raises into QML."""
         if self._playlist_service is None:
-            return
-        self._playlist_service.delete_playlist(playlist_id)
-
-    @Slot(str, str)
-    def rename_playlist(self, playlist_id: str, new_name: str) -> None:
-        if self._playlist_service is None:
-            return
+            return False
         try:
             self._playlist_service.rename_playlist(playlist_id, new_name)
         except ValueError:
-            return
+            return False
+        return True
+
+    @Slot(str)
+    def delete_playlist(self, playlist_id: str) -> None:
+        if self._playlist_service is not None:
+            self._playlist_service.delete_playlist(playlist_id)
 
     @Slot(str)
     def pin_playlist(self, playlist_id: str) -> None:
@@ -324,27 +307,28 @@ class PlaylistsBridge(QObject):
 
     @Slot(int)
     def remove_track(self, index: int) -> None:
-        if self._playlist_service is not None and self._selected_playlist_id:
-            self._playlist_service.remove_track(self._selected_playlist_id, index)
+        playlist_id = self._current_playlist_id()
+        if self._playlist_service is not None and playlist_id:
+            self._playlist_service.remove_track(playlist_id, index)
 
     @Slot(int, int)
     def move_track(self, from_index: int, to_index: int) -> None:
-        if self._playlist_service is not None and self._selected_playlist_id:
-            self._playlist_service.move_track(
-                self._selected_playlist_id, from_index, to_index
-            )
+        playlist_id = self._current_playlist_id()
+        if self._playlist_service is not None and playlist_id:
+            self._playlist_service.move_track(playlist_id, from_index, to_index)
 
     @Slot()
     def play_selected_playlist(self) -> None:
-        if self._playlist_service is not None and self._selected_playlist_id:
-            self._playlist_service.play_playlist(self._selected_playlist_id)
+        playlist_id = self._current_playlist_id()
+        if self._playlist_service is not None and playlist_id:
+            self._playlist_service.play_playlist(playlist_id)
 
     @Slot(str)
     def play_playlist(self, playlist_id: str) -> None:
         if self._playlist_service is not None:
             self._playlist_service.play_playlist(playlist_id)
 
-    @Slot(str)
+    @Slot(str, str)
     def add_track_to_playlist(self, playlist_id: str, path: str) -> None:
         """Cross-feature (Library → Playlist): add a track by id."""
         if self._playlist_service is not None:

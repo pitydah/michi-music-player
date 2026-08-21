@@ -24,9 +24,10 @@ Item {
     }
 
     // PLAYLIST-HIERARCHY-04: detail = PLAYLISTS + playlist_id; All
-    // Playlists = PLAYLISTS + None. One route, two content surfaces.
+    // Playlists = PLAYLISTS + None. NavigationState decides the screen;
+    // PlaylistsBridge provides content (single navigation truth).
     readonly property bool _playlistDetail: root.currentRoute === "playlists"
-        && playlists.selectedPlaylistId !== ""
+        && navigation.playlistId !== ""
 
     MichiSurface { anchors.fill: parent; level: "content"; radius: MichiRadius.floating }
 
@@ -57,12 +58,17 @@ Item {
                     if (pinned) playlists.pin_playlist(playlistId)
                     else playlists.unpin_playlist(playlistId)
                 }
-                onRenamePlaylistRequested: playlistId => {
-                    playlists.select_playlist(playlistId)
+                // M9-R1I: card dialogs use EPHEMERAL action targets — they
+                // never touch navigation (no select_playlist, no Detail
+                // flash; PLAYLISTS/None stays while renaming/deleting).
+                onRenamePlaylistRequested: (playlistId, playlistName) => {
+                    renameDialog.targetPlaylistId = playlistId
+                    renameDialog.targetPlaylistName = playlistName
                     renameDialog.open()
                 }
-                onDeletePlaylistRequested: playlistId => {
-                    playlists.select_playlist(playlistId)
+                onDeletePlaylistRequested: (playlistId, playlistName) => {
+                    deleteDialog.targetPlaylistId = playlistId
+                    deleteDialog.targetPlaylistName = playlistName
                     deleteDialog.open()
                 }
             }
@@ -72,16 +78,20 @@ Item {
                 objectName: "playlistDetailView"
                 anchors.fill: parent
                 visible: root._playlistDetail
-                playlistId: playlists.selectedPlaylistId
+                playlistId: navigation.playlistId
                 onBackRequested: playlists.open_all_playlists()
                 onPlayRequested: playlists.play_selected_playlist()
                 onTogglePinRequested: {
-                    var row = _pinnedRow()
-                    if (row) playlists.unpin_playlist(row.playlistId)
-                    else playlists.pin_playlist(playlists.selectedPlaylistId)
+                    if (playlists.selectedPlaylistPinned)
+                        playlists.unpin_playlist(playlists.selectedPlaylistId)
+                    else
+                        playlists.pin_playlist(playlists.selectedPlaylistId)
                 }
                 onRenameRequested: (playlistId, newName) => {
-                    playlists.rename_playlist(playlistId, newName)
+                    if (playlists.rename_playlist(playlistId, newName))
+                        renameDialog.close()
+                    else
+                        renameDialog.showError(qsTr("A playlist with that name already exists."))
                 }
                 onDeleteRequested: playlistId => playlists.delete_playlist(playlistId)
                 onRemoveTrackRequested: index => playlists.remove_track(index)
@@ -92,14 +102,21 @@ Item {
         }
     }
 
-    // Rename / delete dialogs shared by All Playlists cards and Detail.
+    // Shared rename dialog — ephemeral action targets for All Playlists
+    // cards; in Detail the target is the navigated playlist.
     MichiDialog {
         id: renameDialog
         objectName: "renamePlaylistDialog"
         title: qsTr("Rename playlist")
         width: 420
         property string errorText: ""
+        property string targetPlaylistId: ""
+        property string targetPlaylistName: ""
         standardButtons: Dialog.NoButton
+
+        function showError(message) {
+            renameDialog.errorText = message
+        }
 
         contentItem: ColumnLayout {
             spacing: MichiSpacing.md
@@ -107,7 +124,7 @@ Item {
                 id: renameField
                 Layout.fillWidth: true
                 placeholderText: qsTr("Playlist name")
-                text: playlists.selectedPlaylistName
+                text: renameDialog.targetPlaylistName
                 onAccepted: renameDialog._submit()
             }
             MichiText {
@@ -138,17 +155,28 @@ Item {
                 renameDialog.errorText = qsTr("Playlist name must not be empty")
                 return
             }
-            playlists.rename_playlist(playlists.selectedPlaylistId, name)
-            renameDialog.close()
+            // M9-R1I explicit contract: only close on real success.
+            if (playlists.rename_playlist(renameDialog.targetPlaylistId, name)) {
+                renameDialog.close()
+            } else {
+                renameDialog.errorText = qsTr("A playlist with that name already exists.")
+            }
         }
-        onOpened: renameField.text = playlists.selectedPlaylistName
+        onOpened: {
+            renameField.text = renameDialog.targetPlaylistName
+            renameDialog.errorText = ""
+            renameField.forceActiveFocus()
+        }
     }
 
+    // Shared delete dialog — same ephemeral target model.
     MichiDialog {
         id: deleteDialog
         objectName: "deletePlaylistDialog"
-        title: qsTr("Delete \u201C" + playlists.selectedPlaylistName + "\u201D?")
+        title: qsTr("Delete \u201C" + deleteDialog.targetPlaylistName + "\u201D?")
         width: 440
+        property string targetPlaylistId: ""
+        property string targetPlaylistName: ""
         standardButtons: Dialog.NoButton
 
         contentItem: ColumnLayout {
@@ -172,20 +200,11 @@ Item {
                     text: qsTr("Delete")
                     variant: "danger"
                     onClicked: {
-                        playlists.delete_playlist(playlists.selectedPlaylistId)
+                        playlists.delete_playlist(deleteDialog.targetPlaylistId)
                         deleteDialog.close()
                     }
                 }
             }
         }
-    }
-
-    function _pinnedRow() {
-        var rows = playlists.playlists
-        for (var i = 0; i < rows.length; i++) {
-            if (rows[i].playlistId === playlists.selectedPlaylistId)
-                return rows[i].pinned ? rows[i] : null
-        }
-        return null
     }
 }

@@ -17,8 +17,8 @@ Item {
     signal openPlaylistRequested(string playlistId)
     signal playPlaylistRequested(string playlistId)
     signal pinPlaylistRequested(string playlistId, bool pinned)
-    signal renamePlaylistRequested(string playlistId)
-    signal deletePlaylistRequested(string playlistId)
+    signal renamePlaylistRequested(string playlistId, string playlistName)
+    signal deletePlaylistRequested(string playlistId, string playlistName)
 
     ColumnLayout {
         anchors.fill: parent
@@ -86,8 +86,10 @@ Item {
                 onOpenRequested: root.openPlaylistRequested(modelData.playlistId)
                 onPlayRequested: root.playPlaylistRequested(modelData.playlistId)
                 onPinToggled: root.pinPlaylistRequested(modelData.playlistId, !modelData.pinned)
-                onRenameRequested: root.renamePlaylistRequested(modelData.playlistId)
-                onDeleteRequested: root.deletePlaylistRequested(modelData.playlistId)
+                onRenameRequested: root.renamePlaylistRequested(
+                    modelData.playlistId, modelData.name)
+                onDeleteRequested: root.deletePlaylistRequested(
+                    modelData.playlistId, modelData.name)
             }
         }
     }

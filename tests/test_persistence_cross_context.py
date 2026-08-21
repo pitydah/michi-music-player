@@ -310,7 +310,7 @@ class TestRecoveryRestoresUserState:
         b.write_bytes(b"x")
         graph = _production_graph(recovered, [a, b])
         assert [
-            (r["name"], r["trackCount"]) for r in graph.playlists_bridge.playlists
+            (p.name, len(p.track_paths)) for p in graph.playlist_service.playlists
         ] == [("Road", 2)]
         assert graph.playlist_service.playlists[0].track_paths == ("A", "B")
         graph.bridge.dispose()
@@ -360,7 +360,7 @@ class TestIndexRecovery:
         # No user state loss in the process (opaque golden paths restored).
         assert "A" in graph.library.state.favorite_paths
         assert [
-            (r["name"], r["trackCount"]) for r in graph.playlists_bridge.playlists
+            (p.name, len(p.track_paths)) for p in graph.playlist_service.playlists
         ] == [("Road", 2)]
         graph.bridge.dispose()
 

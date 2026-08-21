@@ -72,12 +72,11 @@ Item {
             Item { Layout.fillWidth: true }
             MichiIconButton {
                 iconName: "pin"
-                accessibleName: {
-                    var pinned = playlists.playlists.length > 0
-                        && playlists.playlists[0].playlistId === root.playlistId
-                        && playlists.playlists[0].pinned
-                    return pinned ? qsTr("Unpin playlist") : qsTr("Pin playlist")
-                }
+                // M9-R1I: pin state derives from the navigated playlist
+                // (selectedPlaylistPinned projection) — never playlists[0].
+                selected: playlists.selectedPlaylistPinned
+                accessibleName: playlists.selectedPlaylistPinned
+                    ? qsTr("Unpin playlist") : qsTr("Pin playlist")
                 onClicked: root.togglePinRequested()
             }
             MichiButton {
@@ -125,91 +124,4 @@ Item {
         }
     }
 
-    MichiDialog {
-        id: renameDialog
-        objectName: "playlistRenameDialog"
-        title: qsTr("Rename playlist")
-        property string errorText: ""
-        width: 420
-        standardButtons: Dialog.NoButton
-
-        contentItem: ColumnLayout {
-            spacing: MichiSpacing.md
-            MichiTextField {
-                id: renameField
-                objectName: "playlistRenameField"
-                Layout.fillWidth: true
-                placeholderText: qsTr("Playlist name")
-                text: playlists.selectedPlaylistName
-                onAccepted: renameDialog._submit()
-            }
-            MichiText {
-                visible: renameDialog.errorText !== ""
-                text: renameDialog.errorText
-                role: "technical"
-                technical: true
-                color: MichiPalette.error
-            }
-            RowLayout {
-                Layout.alignment: Qt.AlignRight
-                spacing: MichiSpacing.sm
-                MichiButton {
-                    text: qsTr("Cancel")
-                    variant: "ghost"
-                    onClicked: renameDialog.close()
-                }
-                MichiButton {
-                    text: qsTr("Rename")
-                    variant: "primary"
-                    onClicked: renameDialog._submit()
-                }
-            }
-        }
-        function _submit() {
-            var name = renameField.text.trim()
-            if (name === "") {
-                renameDialog.errorText = qsTr("Playlist name must not be empty")
-                return
-            }
-            root.renameRequested(root.playlistId, name)
-            renameDialog.close()
-        }
-    }
-
-    MichiDialog {
-        id: deleteDialog
-        objectName: "playlistDeleteDialog"
-        title: qsTr("Delete \u201C" + playlists.selectedPlaylistName + "\u201D?")
-        width: 440
-        standardButtons: Dialog.NoButton
-
-        contentItem: ColumnLayout {
-            spacing: MichiSpacing.md
-            MichiText {
-                text: qsTr("The playlist will be removed. Music files will remain in your library.")
-                role: "secondary"
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
-                color: MichiPalette.textSecondary
-            }
-            RowLayout {
-                Layout.alignment: Qt.AlignRight
-                spacing: MichiSpacing.sm
-                MichiButton {
-                    text: qsTr("Cancel")
-                    variant: "ghost"
-                    onClicked: deleteDialog.close()
-                }
-                MichiButton {
-                    text: qsTr("Delete")
-                    variant: "danger"
-                    accessibleName: qsTr("Delete playlist")
-                    onClicked: {
-                        root.deleteRequested(root.playlistId)
-                        deleteDialog.close()
-                    }
-                }
-            }
-        }
-    }
 }

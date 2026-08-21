@@ -99,10 +99,9 @@ class TestHierarchy:
         assert "Playlist name must not be empty" in dialog
 
     def test_delete_confirmation_never_implies_file_deletion(self):
+        # M9-R1I: shared dialogs live in ContentHost (single location).
         content = _text("shell/ContentHost.qml")
-        detail = _text("playlists/PlaylistDetailView.qml")
-        for text in (content, detail):
-            assert "Music files will remain in your library" in text
+        assert "Music files will remain in your library" in content
 
     def test_remove_wording(self):
         track_list = _text("playlists/PlaylistTrackList.qml")

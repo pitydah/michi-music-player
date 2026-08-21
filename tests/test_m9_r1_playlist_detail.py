@@ -51,10 +51,14 @@ def _world(tmp_path, with_engine=False):
     pb = PlaylistsBridge(service, playlist_navigation=coord, library=library)
     engine = None
     if with_engine:
+        from michi.presentation.navigation_bridge import NavigationBridge
+
+        nb = NavigationBridge(nav, playlist_navigation=coord)
         engine = QQmlEngine()
         engine.addImportPath(str(QML_DIR))
         engine.rootContext().setContextProperty("library", lb)
         engine.rootContext().setContextProperty("playlists", pb)
+        engine.rootContext().setContextProperty("navigation", nb)
     return engine, service, nav, coord, pb
 
 
@@ -113,9 +117,9 @@ class TestQmlSmoke:
         engine.deleteLater()
 
     def test_playlist_detail_smoke(self, qapp, tmp_path):
-        engine, service, _, _, pb = _world(tmp_path, with_engine=True)
+        engine, service, _, coord, pb = _world(tmp_path, with_engine=True)
         a = service.create_playlist("Jazz")
-        pb.select_playlist(a.playlist_id)
+        coord.open_playlist(a.playlist_id)
         obj = self._load(engine, "playlists/PlaylistDetailView.qml")
         assert obj is not None
         engine.deleteLater()
@@ -133,10 +137,10 @@ class TestQmlSmoke:
         engine.deleteLater()
 
     def test_playlist_track_list_smoke(self, qapp, tmp_path):
-        engine, service, _, _, pb = _world(tmp_path, with_engine=True)
+        engine, service, _, coord, pb = _world(tmp_path, with_engine=True)
         a = service.create_playlist("Jazz")
         service.add_track(a.playlist_id, str(tmp_path / "a.mp3"))
-        pb.select_playlist(a.playlist_id)
+        coord.open_playlist(a.playlist_id)
         obj = self._load(engine, "playlists/PlaylistTrackList.qml")
         assert obj is not None
         engine.deleteLater()

@@ -375,7 +375,9 @@ class TestSqlitePlaylistsRepository:
 
 class TestPlaylistBridge:
     """M9-R1: canonical playlist presentation lives in PlaylistsBridge —
-    LibraryBridge no longer owns playlist projection (hierarchy gate)."""
+    LibraryBridge no longer owns playlist projection (hierarchy gate).
+    M9-R1I: selection IS navigation; the bridge needs the coordinator and
+    the navigation service to project the current detail."""
 
     def _bridge(self, tmp_path, names=("one.mp3", "two.mp3", "three.mp3")):
         paths = _write_tracks(tmp_path, names)
@@ -385,6 +387,28 @@ class TestPlaylistBridge:
         library.scan(str(tmp_path))
         return library, queue, audio, paths
 
+    def _plb(self, queue, library, service=None):
+        from michi.application.navigation_service import NavigationService
+        from michi.application.playlist_navigation_coordinator import (
+            PlaylistNavigationCoordinator,
+        )
+
+        service = (
+            service
+            if service is not None
+            else PlaylistService(queue, playlists_port=FakePlaylistsPort())
+        )
+        nav = NavigationService()
+        service.set_on_playlist_deleted(nav.forget_playlist)
+        coord = PlaylistNavigationCoordinator(service, nav)
+        bridge = PlaylistsBridge(
+            service,
+            playlist_navigation=coord,
+            navigation_service=nav,
+            library=library,
+        )
+        return bridge, coord
+
     def test_bridge_rows_and_selection(self, tmp_path):
         library, queue, _, (p1, p2) = self._bridge(
             tmp_path, names=("one.mp3", "two.mp3")
@@ -393,7 +417,7 @@ class TestPlaylistBridge:
         trip = playlist_service.create_playlist("Road Trip")
         playlist_service.add_track(trip.playlist_id, p1)
         playlist_service.add_track(trip.playlist_id, p2)
-        bridge = PlaylistsBridge(playlist_service, library=library)
+        bridge, _ = self._plb(queue, library, playlist_service)
         assert [
             (
                 r["name"],
@@ -404,13 +428,13 @@ class TestPlaylistBridge:
             )
             for r in bridge.property("playlists")
         ] == [("Road Trip", 2, True, True, True)]
-        bridge.select_playlist(trip.playlist_id)
+        bridge.open_playlist(trip.playlist_id)
         assert bridge.property("selectedPlaylistName") == "Road Trip"
         assert bridge.property("playlistTracks") == [
             {"displayName": "T one", "path": str(p1)},
             {"displayName": "T two", "path": str(p2)},
         ]
-        bridge.clear_playlist_selection()
+        bridge.open_all_playlists()
         assert bridge.property("selectedPlaylistName") == ""
         assert bridge.property("playlistTracks") == []
         bridge.dispose()
@@ -419,7 +443,7 @@ class TestPlaylistBridge:
         library, _, _, _ = self._bridge(tmp_path)
         bridge = PlaylistsBridge()
         assert bridge.property("playlists") == []
-        bridge.select_playlist("Ghost")  # no-op, no crash
+        bridge.open_playlist("Ghost")  # no-op, no crash
         assert bridge.property("selectedPlaylistName") == ""
         assert bridge.property("playlistTracks") == []
         bridge.dispose()
@@ -427,14 +451,14 @@ class TestPlaylistBridge:
     def test_bridge_slots(self, tmp_path):
         library, queue, audio, (p1, p2, p3) = self._bridge(tmp_path)
         playlist_service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
-        bridge = PlaylistsBridge(playlist_service, library=library)
+        bridge, _ = self._plb(queue, library, playlist_service)
 
-        bridge.create_playlist("Mix")
+        bridge.create_and_open_playlist("Mix")
         assert [(r["name"], r["trackCount"]) for r in bridge.property("playlists")] == [
             ("Mix", 0)
         ]
         created = playlist_service.playlists[0]
-        bridge.select_playlist(created.playlist_id)
+        bridge.open_playlist(created.playlist_id)
         bridge.add_track_to_playlist(created.playlist_id, str(p1))
         bridge.add_track_to_playlist(created.playlist_id, str(p2))
         bridge.add_track_to_playlist(created.playlist_id, str(p3))
@@ -463,10 +487,10 @@ class TestPlaylistBridge:
     def test_bridge_rename_slot(self, tmp_path):
         library, queue, _, _ = self._bridge(tmp_path)
         playlist_service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
-        bridge = PlaylistsBridge(playlist_service, library=library)
-        bridge.create_playlist("A")
+        bridge, _ = self._plb(queue, library, playlist_service)
+        bridge.create_and_open_playlist("A")
         created = playlist_service.playlists[0]
-        bridge.rename_playlist(created.playlist_id, "B")
+        assert bridge.rename_playlist(created.playlist_id, "B") is True
         assert [(r["name"], r["trackCount"]) for r in bridge.property("playlists")] == [
             ("B", 0)
         ]

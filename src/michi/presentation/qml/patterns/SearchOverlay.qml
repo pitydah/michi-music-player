@@ -55,9 +55,12 @@ Item {
         }
         var playlistIndex = artistIndex - visibleArtistCount
         if (playlistIndex >= 0 && playlistIndex < visiblePlaylistCount) {
+            // M9-R1I: playlist results open the FIRST-CLASS PLAYLISTS route
+            // (validated open intent) — never fall back to Library. Mouse
+            // and keyboard activation converge to the same state.
             playlists.open_playlist(playlists.searchPlaylists[playlistIndex].playlistId)
             closeRequested()
-            navigationRequested("library")
+            return
         }
     }
 

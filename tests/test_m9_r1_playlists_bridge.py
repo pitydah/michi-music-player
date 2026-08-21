@@ -37,8 +37,14 @@ def _build(tmp_path=None, library=None):
     queue = QueueService(PlaybackService(audio))
     service = PlaylistService(queue, FakePlaylistsPort())
     nav = NavigationService()
+    service.set_on_playlist_deleted(nav.forget_playlist)
     coord = PlaylistNavigationCoordinator(service, nav)
-    bridge = PlaylistsBridge(service, playlist_navigation=coord, library=library)
+    bridge = PlaylistsBridge(
+        service,
+        playlist_navigation=coord,
+        navigation_service=nav,
+        library=library,
+    )
     return service, coord, bridge, nav
 
 
@@ -88,42 +94,65 @@ class TestRows:
 
 
 class TestSelection:
-    def test_select_by_id_and_derived_name(self, tmp_path):
+    """M9-R1I: selection IS navigation — the bridge has no local selection
+    state; every selected* projection derives from NavigationState."""
+
+    def test_open_playlist_drives_selection(self, tmp_path):
         library, _, _, _ = _tracks(tmp_path)
-        service, _, bridge, _ = _build(library=library)
+        service, coord, bridge, nav = _build(library=library)
         a = service.create_playlist("Road Trip")
-        bridge.select_playlist(a.playlist_id)
+        coord.open_playlist(a.playlist_id)
         assert bridge.property("selectedPlaylistId") == a.playlist_id
         assert bridge.property("selectedPlaylistName") == "Road Trip"
 
     def test_rename_updates_name_same_id(self, tmp_path):
         library, _, _, _ = _tracks(tmp_path)
-        service, _, bridge, _ = _build(library=library)
+        service, coord, bridge, nav = _build(library=library)
         a = service.create_playlist("A")
-        bridge.select_playlist(a.playlist_id)
+        coord.open_playlist(a.playlist_id)
         service.rename_playlist(a.playlist_id, "B")
         assert bridge.property("selectedPlaylistId") == a.playlist_id
         assert bridge.property("selectedPlaylistName") == "B"
 
     def test_delete_selected_clears(self, tmp_path):
         library, _, _, _ = _tracks(tmp_path)
-        service, _, bridge, _ = _build(library=library)
+        service, coord, bridge, nav = _build(library=library)
         a = service.create_playlist("A")
-        bridge.select_playlist(a.playlist_id)
+        coord.open_playlist(a.playlist_id)
         service.delete_playlist(a.playlist_id)
         assert bridge.property("selectedPlaylistId") == ""
         assert bridge.property("selectedPlaylistName") == ""
         assert bridge.property("playlistTracks") == []
 
+    def test_open_all_clears_target(self, tmp_path):
+        library, _, _, _ = _tracks(tmp_path)
+        service, coord, bridge, nav = _build(library=library)
+        a = service.create_playlist("A")
+        coord.open_playlist(a.playlist_id)
+        coord.open_all_playlists()
+        assert bridge.property("selectedPlaylistId") == ""
+        assert nav.state.playlist_id is None
+
+    def test_no_bridge_local_selection_api(self):
+        """The obsolete select_playlist/clear_playlist_selection are gone."""
+        import inspect
+
+        from michi.presentation.playlists_bridge import PlaylistsBridge
+
+        src = inspect.getsource(PlaylistsBridge)
+        assert "def select_playlist" not in src
+        assert "def clear_playlist_selection" not in src
+        assert "self._selected_playlist_id" not in src
+
 
 class TestTracks:
     def test_track_rows_projection(self, tmp_path):
         library, _, _, (p1, p2) = _tracks(tmp_path)
-        service, _, bridge, _ = _build(library=library)
+        service, coord, bridge, _ = _build(library=library)
         a = service.create_playlist("A")
         service.add_track(a.playlist_id, p1)
         service.add_track(a.playlist_id, p2)
-        bridge.select_playlist(a.playlist_id)
+        coord.open_playlist(a.playlist_id)
         rows = bridge.property("playlistTrackRows")
         assert [r["path"] for r in rows] == [str(p1), str(p2)]
 
@@ -138,14 +167,14 @@ class TestIntents:
 
     def test_create_playlist(self):
         service, _, bridge, _ = _build()
-        bridge.create_playlist("Jazz")
+        bridge.create_and_open_playlist("Jazz")
         assert len(service.playlists) == 1
         assert service.playlists[0].name == "Jazz"
 
-    def test_create_duplicate_silently_rejected(self):
+    def test_create_duplicate_rejected(self):
         service, _, bridge, _ = _build()
-        bridge.create_playlist("Jazz")
-        bridge.create_playlist("Jazz")  # ValueError swallowed at the bridge
+        bridge.create_and_open_playlist("Jazz")
+        assert bridge.create_and_open_playlist("Jazz") is False
         assert len(service.playlists) == 1
 
     def test_delete_and_pin_unpin(self):
@@ -166,21 +195,21 @@ class TestIntents:
         assert service.playlists[0].track_paths == (str(p1),)
 
     def test_move_and_remove_track(self):
-        service, _, bridge, _ = _build()
+        service, coord, bridge, _ = _build()
         a = service.create_playlist("A")
         service.add_track(a.playlist_id, "/m/a.mp3")
         service.add_track(a.playlist_id, "/m/b.mp3")
-        bridge.select_playlist(a.playlist_id)
+        coord.open_playlist(a.playlist_id)
         bridge.move_track(0, 1)
         assert service.playlists[0].track_paths == ("/m/b.mp3", "/m/a.mp3")
         bridge.remove_track(1)
         assert service.playlists[0].track_paths == ("/m/b.mp3",)
 
     def test_play_selected_and_play_by_id(self):
-        service, _, bridge, _ = _build()
+        service, coord, bridge, _ = _build()
         a = service.create_playlist("A")
         service.add_track(a.playlist_id, "/m/a.mp3")
-        bridge.select_playlist(a.playlist_id)
+        coord.open_playlist(a.playlist_id)
         bridge.play_selected_playlist()
         # queue filled (verified via service-level behavior in M8 tests);
         # here we only assert the intent does not crash and routes to queue
@@ -208,7 +237,7 @@ class TestNoServiceCompat:
         assert bridge.property("pinnedPlaylists") == []
         assert bridge.property("recentPlaylists") == []
         assert bridge.property("selectedPlaylistId") == ""
-        bridge.create_playlist("X")  # no-op
+        bridge.create_and_open_playlist("X")  # no-op
         bridge.delete_playlist("x")  # no-op
         bridge.open_playlist("x")  # no-op
         assert bridge.property("playlistTracks") == []

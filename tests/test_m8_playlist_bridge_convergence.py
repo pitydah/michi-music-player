@@ -45,6 +45,25 @@ def _nav_bridge():
     return service, nav, coord, bridge
 
 
+def _make_bridge(service, library=None):
+    """M9-R1I: selection IS navigation — bridge projects NavigationState."""
+    from michi.application.navigation_service import NavigationService
+    from michi.application.playlist_navigation_coordinator import (
+        PlaylistNavigationCoordinator,
+    )
+
+    nav = NavigationService()
+    service.set_on_playlist_deleted(nav.forget_playlist)
+    coord = PlaylistNavigationCoordinator(service, nav)
+    bridge = PlaylistsBridge(
+        service,
+        playlist_navigation=coord,
+        navigation_service=nav,
+        library=library,
+    )
+    return bridge, coord, nav
+
+
 class TestBridgeOpenIntent:
     def test_open_playlist_valid(self):
         service, nav, _, bridge = _nav_bridge()
@@ -80,7 +99,7 @@ class TestSearchPlaylistIdentity:
         library, queue, _, _ = _tracks(tmp_path)
         service = PlaylistService(queue, FakePlaylistsPort())
         a = service.create_playlist("Road Trip")
-        bridge = PlaylistsBridge(service, library=library)
+        bridge, _, _ = _make_bridge(service, library=library)
         library.search("Road")
         rows = bridge.property("searchPlaylists")
         assert rows and rows[0]["playlistId"] == a.playlist_id
@@ -93,7 +112,7 @@ class TestSearchPlaylistIdentity:
         service = PlaylistService(queue, FakePlaylistsPort())
         a = service.create_playlist("Road Trip")
         service.rename_playlist(a.playlist_id, "Road Trip Long")
-        bridge = PlaylistsBridge(service, library=library)
+        bridge, _, _ = _make_bridge(service, library=library)
         library.search("Road")
         rows = bridge.property("searchPlaylists")
         assert rows[0]["playlistId"] == a.playlist_id
@@ -107,7 +126,7 @@ class TestSearchPlaylistIdentity:
         a = service.create_playlist("Road Trip")
         nav = NavigationService()
         coord = PlaylistNavigationCoordinator(service, nav)
-        bridge = PlaylistsBridge(service, library=library)
+        bridge, _, _ = _make_bridge(service, library=library)
         library.search("Road")
         row = bridge.property("searchPlaylists")[0]
         coord.open_playlist(row["playlistId"])
@@ -121,8 +140,8 @@ class TestBridgeDeleteSelection:
         library, queue, _, _ = _tracks(tmp_path)
         service = PlaylistService(queue, FakePlaylistsPort())
         a = service.create_playlist("A")
-        bridge = PlaylistsBridge(service, library=library)
-        bridge.select_playlist(a.playlist_id)
+        bridge, _, _ = _make_bridge(service, library=library)
+        bridge.open_playlist(a.playlist_id)
         assert bridge.property("selectedPlaylistId") == a.playlist_id
         service.delete_playlist(a.playlist_id)  # service-level delete
         assert bridge.property("selectedPlaylistId") == ""
@@ -134,8 +153,8 @@ class TestBridgeDeleteSelection:
         library, queue, _, _ = _tracks(tmp_path)
         service = PlaylistService(queue, FakePlaylistsPort())
         a = service.create_playlist("A")
-        bridge = PlaylistsBridge(service, library=library)
-        bridge.select_playlist(a.playlist_id)
+        bridge, _, _ = _make_bridge(service, library=library)
+        bridge.open_playlist(a.playlist_id)
         bridge.delete_playlist(a.playlist_id)
         assert bridge.property("selectedPlaylistId") == ""
         assert bridge.property("selectedPlaylistName") == ""
@@ -147,8 +166,8 @@ class TestBridgeDeleteSelection:
         service = PlaylistService(queue, FakePlaylistsPort())
         a = service.create_playlist("A")
         b = service.create_playlist("B")
-        bridge = PlaylistsBridge(service, library=library)
-        bridge.select_playlist(a.playlist_id)
+        bridge, _, _ = _make_bridge(service, library=library)
+        bridge.open_playlist(a.playlist_id)
         service.delete_playlist(b.playlist_id)
         assert bridge.property("selectedPlaylistId") == a.playlist_id
         bridge.dispose()
