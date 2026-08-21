@@ -246,7 +246,7 @@ class TestProductionMalformedGoldens:
         SQLiteSettingsRepository.open_for_startup(db)
         graph = _production_graph(db)
         assert graph.playlist_service.playlists == ()
-        assert graph.bridge.playlists == []
+        assert graph.playlists_bridge.playlists == []
 
     def test_recovery_installs_malformed_prefs_safely(self, tmp_path):
         db = tmp_path / "michi.db"
@@ -264,7 +264,7 @@ class TestProductionMalformedGoldens:
         graph = _production_graph(db)
         assert graph.library.state.favorite_paths == ()
         assert graph.playlist_service.playlists == ()
-        assert graph.bridge.playlists == []
+        assert graph.playlists_bridge.playlists == []
 
 
 def _production_graph(db_path):

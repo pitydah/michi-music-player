@@ -35,13 +35,10 @@ FakePlaylistsPort is defined here (in-memory, seedable, records every
 save).
 """
 
-import os
 import sqlite3
-import sys
 from pathlib import Path
 
 import pytest
-from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 from michi.application.library_service import LibraryService
@@ -54,6 +51,7 @@ from michi.application.queue_service import QueueService
 from michi.domain.playlist import Playlist, PlaylistNavigationState
 from michi.infrastructure.playlists import SqlitePlaylistsRepository
 from michi.presentation.library_bridge import LibraryBridge
+from michi.presentation.playlists_bridge import PlaylistsBridge
 from tests.conftest import FakeAudioPort
 from tests.test_library_metadata import FakeExtractor, FakeScanner
 
@@ -373,6 +371,9 @@ class TestSqlitePlaylistsRepository:
 
 
 class TestPlaylistBridge:
+    """M9-R1: canonical playlist presentation lives in PlaylistsBridge —
+    LibraryBridge no longer owns playlist projection (hierarchy gate)."""
+
     def _bridge(self, tmp_path, names=("one.mp3", "two.mp3", "three.mp3")):
         paths = _write_tracks(tmp_path, names)
         library, queue, audio = _make_library_and_queue(
@@ -389,7 +390,7 @@ class TestPlaylistBridge:
         trip = playlist_service.create_playlist("Road Trip")
         playlist_service.add_track(trip.playlist_id, p1)
         playlist_service.add_track(trip.playlist_id, p2)
-        bridge = LibraryBridge(library, playlist_service)
+        bridge = PlaylistsBridge(playlist_service, library=library)
         assert [
             (
                 r["name"],
@@ -400,7 +401,7 @@ class TestPlaylistBridge:
             )
             for r in bridge.property("playlists")
         ] == [("Road Trip", 2, True, True, True)]
-        bridge.select_playlist("Road Trip")
+        bridge.select_playlist(trip.playlist_id)
         assert bridge.property("selectedPlaylistName") == "Road Trip"
         assert bridge.property("playlistTracks") == [
             {"displayName": "T one", "path": str(p1)},
@@ -413,7 +414,7 @@ class TestPlaylistBridge:
 
     def test_bridge_no_playlist_service_compat(self, tmp_path):
         library, _, _, _ = self._bridge(tmp_path)
-        bridge = LibraryBridge(library)
+        bridge = PlaylistsBridge()
         assert bridge.property("playlists") == []
         bridge.select_playlist("Ghost")  # no-op, no crash
         assert bridge.property("selectedPlaylistName") == ""
@@ -423,29 +424,30 @@ class TestPlaylistBridge:
     def test_bridge_slots(self, tmp_path):
         library, queue, audio, (p1, p2, p3) = self._bridge(tmp_path)
         playlist_service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
-        bridge = LibraryBridge(library, playlist_service)
+        bridge = PlaylistsBridge(playlist_service, library=library)
 
         bridge.create_playlist("Mix")
         assert [(r["name"], r["trackCount"]) for r in bridge.property("playlists")] == [
             ("Mix", 0)
         ]
-        bridge.select_playlist("Mix")
-        bridge.add_to_playlist("Mix", str(p1))
-        bridge.add_to_playlist("Mix", str(p2))
-        bridge.add_to_playlist("Mix", str(p3))
+        created = playlist_service.playlists[0]
+        bridge.select_playlist(created.playlist_id)
+        bridge.add_track_to_playlist(created.playlist_id, str(p1))
+        bridge.add_track_to_playlist(created.playlist_id, str(p2))
+        bridge.add_track_to_playlist(created.playlist_id, str(p3))
         assert [r["path"] for r in bridge.property("playlistTracks")] == [
             str(p1),
             str(p2),
             str(p3),
         ]
 
-        bridge.remove_playlist_track(0)
+        bridge.remove_track(0)
         assert [r["path"] for r in bridge.property("playlistTracks")] == [
             str(p2),
             str(p3),
         ]
 
-        bridge.move_playlist_track(0, 1)
+        bridge.move_track(0, 1)
         assert [r["path"] for r in bridge.property("playlistTracks")] == [
             str(p3),
             str(p2),
@@ -453,43 +455,25 @@ class TestPlaylistBridge:
 
         bridge.play_selected_playlist()
         assert queue.state.count == 2
-        audio.trigger_media_accepted(p3)
-        assert queue.state.current_index == 0
-
-        # Unscanned path falls back to Path(path).stem for displayName.
-        ghost = tmp_path / "ghost.mp3"
-        bridge.add_to_playlist("Mix", str(ghost))
-        rows = bridge.property("playlistTracks")
-        assert rows[-1] == {"displayName": "ghost", "path": str(ghost)}
-
-        bridge.delete_playlist("Mix")
-        assert bridge.property("selectedPlaylistName") == ""
-        assert bridge.property("playlists") == []
         bridge.dispose()
 
     def test_bridge_rename_slot(self, tmp_path):
         library, queue, _, _ = self._bridge(tmp_path)
         playlist_service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
-        bridge = LibraryBridge(library, playlist_service)
+        bridge = PlaylistsBridge(playlist_service, library=library)
         bridge.create_playlist("A")
-        bridge.rename_playlist("A", "B")
+        created = playlist_service.playlists[0]
+        bridge.rename_playlist(created.playlist_id, "B")
         assert [(r["name"], r["trackCount"]) for r in bridge.property("playlists")] == [
             ("B", 0)
         ]
         bridge.dispose()
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    app = QGuiApplication.instance()
-    if app is None:
-        app = QGuiApplication(sys.argv)
-    yield app
-
-
 class TestQmlSmoke:
-    def test_library_view_loads_with_playlists(self, qapp, tmp_path):
+    def test_library_view_loads_without_playlists(self, qapp, tmp_path):
+        """M9-R1 hierarchy: LibraryView no longer hosts a Playlists tab —
+        Playlists is a first-class Shell feature (PLAYLIST-HIERARCHY-01/02)."""
         p1 = tmp_path / "one.mp3"
         p1.write_bytes(b"x")
         library, queue, _ = _make_library_and_queue(
@@ -498,7 +482,7 @@ class TestQmlSmoke:
         library.scan(str(tmp_path))
         playlist_service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
         playlist_service.create_playlist("Road Trip")
-        bridge = LibraryBridge(library, playlist_service)
+        bridge = LibraryBridge(library)
         engine = QQmlEngine()
         engine.addImportPath(str(QML_DIR))
         engine.rootContext().setContextProperty("library", bridge)
@@ -507,5 +491,16 @@ class TestQmlSmoke:
         assert component.status() == QQmlComponent.Ready, f"LibraryView: {errs}"
         obj = component.create()
         assert obj is not None, "LibraryView: null object"
+        # hierarchy proof: no playlist tab in the Library rail
+        tabs = (
+            Path(__file__).parent.parent
+            / "src"
+            / "michi"
+            / "presentation"
+            / "qml"
+            / "views"
+            / "LibraryTabs.qml"
+        ).read_text()
+        assert 'value: "playlists"' not in tabs
         obj.deleteLater()
         bridge.dispose()

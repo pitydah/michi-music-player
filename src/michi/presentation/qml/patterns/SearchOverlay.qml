@@ -12,7 +12,7 @@ Item {
     readonly property int visibleTrackCount: Math.min(6, library.searchTrackCount)
     readonly property int visibleAlbumCount: Math.min(6, library.searchAlbumCount)
     readonly property int visibleArtistCount: Math.min(6, library.searchArtistCount)
-    readonly property int visiblePlaylistCount: Math.min(6, library.searchPlaylistCount)
+    readonly property int visiblePlaylistCount: Math.min(6, playlists.searchPlaylistCount)
     readonly property int actionableResultCount: visibleTrackCount + visibleAlbumCount
         + visibleArtistCount + visiblePlaylistCount
     signal closeRequested()
@@ -55,7 +55,7 @@ Item {
         }
         var playlistIndex = artistIndex - visibleArtistCount
         if (playlistIndex >= 0 && playlistIndex < visiblePlaylistCount) {
-            library.select_playlist(library.searchPlaylists[playlistIndex].name)
+            playlists.open_playlist(playlists.searchPlaylists[playlistIndex].playlistId)
             closeRequested()
             navigationRequested("library")
         }
@@ -112,7 +112,7 @@ Item {
                     + library.searchTrackCount + " tracks · "
                     + library.searchAlbumCount + " albums · "
                     + library.searchArtistCount + " artists · "
-                    + library.searchPlaylistCount + " playlists"
+                    + playlists.searchPlaylistCount + " playlists"
                 tone: "active"
                 Layout.alignment: Qt.AlignLeft
             }
@@ -192,21 +192,23 @@ Item {
                         }
                     }
 
-                    MichiText { text: "Playlists"; role: "section"; visible: library.searchPlaylistCount > 0 }
+                    MichiText { text: "Playlists"; role: "section"; visible: playlists.searchPlaylistCount > 0 }
                     Repeater {
                         model: root.visiblePlaylistCount
                         delegate: MichiEntityRow {
                             required property int index
                             Layout.fillWidth: true
                             iconName: "queue"
-                            title: library.searchPlaylists[index].name
-                            technical: library.searchPlaylists[index].trackCount + " tracks"
+                            title: playlists.searchPlaylists[index].name
+                            technical: playlists.searchPlaylists[index].trackCount + " tracks"
                             selected: root.resultIndex === root.visibleTrackCount
                                 + root.visibleAlbumCount + root.visibleArtistCount + index
                             onActivated: {
-                                library.select_playlist(library.searchPlaylists[index].name)
+                                // M9-R1: playlist result opens the first-class
+                                // PLAYLISTS route (validated + Recent) — never
+                                // Library > Playlists, never name resolution.
+                                playlists.open_playlist(playlists.searchPlaylists[index].playlistId)
                                 root.closeRequested()
-                                root.navigationRequested("library")
                             }
                         }
                     }

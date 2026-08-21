@@ -45,7 +45,7 @@ def _world(tmp_path):
     service = PlaylistService(queue, FakePlaylistsPort())
     nav = NavigationService()
     coord = PlaylistNavigationCoordinator(service, nav)
-    lb = LibraryBridge(library, service)
+    lb = LibraryBridge(library)
     pb = PlaylistsBridge(service, playlist_navigation=coord, library=library)
     engine = QQmlEngine()
     engine.addImportPath(str(QML_DIR))

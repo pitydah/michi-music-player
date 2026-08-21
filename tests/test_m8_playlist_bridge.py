@@ -12,8 +12,8 @@ Contracts:
 
 from michi.application.playlist_service import PlaylistService
 from michi.domain.navigation import AppRoute
-from michi.presentation.library_bridge import LibraryBridge
 from michi.presentation.navigation_bridge import NavigationBridge
+from michi.presentation.playlists_bridge import PlaylistsBridge
 from tests.test_library_metadata import FakeExtractor, FakeScanner
 from tests.test_playlists import FakePlaylistsPort, _make_library_and_queue
 
@@ -39,7 +39,7 @@ class TestPlaylistRows:
         service.create_playlist("Chill")
         service.pin_playlist(a.playlist_id)
         service.mark_recent(a.playlist_id)
-        bridge = LibraryBridge(library, service)
+        bridge = PlaylistsBridge(service, library=library)
         rows = bridge.property("playlists")
         by_name = {r["name"]: r for r in rows}
         assert by_name["Road Trip"]["playlistId"] == a.playlist_id
@@ -54,7 +54,7 @@ class TestPlaylistRows:
         service = PlaylistService(queue, FakePlaylistsPort())
         a = service.create_playlist("Jazz")
         service.rename_playlist(a.playlist_id, "Jazz Nocturno")
-        bridge = LibraryBridge(library, service)
+        bridge = PlaylistsBridge(service, library=library)
         rows = bridge.property("playlists")
         assert rows[0]["name"] == "Jazz Nocturno"
         assert rows[0]["playlistId"] == a.playlist_id
@@ -66,7 +66,7 @@ class TestSelectionByIdentity:
         library, queue, _, _ = _tracks(tmp_path)
         service = PlaylistService(queue, FakePlaylistsPort())
         a = service.create_playlist("Road Trip")
-        bridge = LibraryBridge(library, service)
+        bridge = PlaylistsBridge(service, library=library)
         bridge.select_playlist(a.playlist_id)
         assert bridge.property("selectedPlaylistId") == a.playlist_id
         assert bridge.property("selectedPlaylistName") == "Road Trip"
@@ -76,7 +76,7 @@ class TestSelectionByIdentity:
         library, queue, _, _ = _tracks(tmp_path)
         service = PlaylistService(queue, FakePlaylistsPort())
         a = service.create_playlist("Road Trip")
-        bridge = LibraryBridge(library, service)
+        bridge = PlaylistsBridge(service, library=library)
         bridge.select_playlist(a.playlist_id)
         service.rename_playlist(a.playlist_id, "Road Trip Long")
         assert bridge.property("selectedPlaylistId") == a.playlist_id
@@ -87,14 +87,14 @@ class TestSelectionByIdentity:
         library, queue, _, _ = _tracks(tmp_path)
         service = PlaylistService(queue, FakePlaylistsPort())
         a = service.create_playlist("Legacy")
-        bridge = LibraryBridge(library, service)
+        bridge = PlaylistsBridge(service, library=library)
         bridge.select_playlist("Legacy")  # DEPRECATED compat path
         assert bridge.property("selectedPlaylistId") == a.playlist_id
         bridge.dispose()
 
     def test_unknown_selection_noop(self, tmp_path):
         library, queue, _, _ = _tracks(tmp_path)
-        bridge = LibraryBridge(library, PlaylistService(queue, FakePlaylistsPort()))
+        bridge = PlaylistsBridge(PlaylistService(queue, FakePlaylistsPort()))
         bridge.select_playlist("ghost-id")
         assert bridge.property("selectedPlaylistId") == ""
         assert bridge.property("selectedPlaylistName") == ""
@@ -108,7 +108,7 @@ class TestTracksProjection:
         a = service.create_playlist("Road Trip")
         service.add_track(a.playlist_id, p1)
         service.add_track(a.playlist_id, p2)
-        bridge = LibraryBridge(library, service)
+        bridge = PlaylistsBridge(service, library=library)
         bridge.select_playlist(a.playlist_id)
         assert [r["path"] for r in bridge.property("playlistTracks")] == [
             str(p1),
@@ -124,7 +124,7 @@ class TestTracksProjection:
         a = service.create_playlist("A")
         service.add_track(a.playlist_id, p1)
         service.rename_playlist(a.playlist_id, "B")
-        bridge = LibraryBridge(library, service)
+        bridge = PlaylistsBridge(service, library=library)
         bridge.select_playlist(a.playlist_id)
         assert len(bridge.property("playlistTracks")) == 1
         bridge.dispose()
@@ -133,7 +133,7 @@ class TestTracksProjection:
 class TestNoServiceCompat:
     def test_safe_empty_surface(self, tmp_path):
         library, _, _, _ = _tracks(tmp_path)
-        bridge = LibraryBridge(library)  # no playlist service
+        bridge = PlaylistsBridge()  # no playlist service
         assert bridge.property("playlists") == []
         assert bridge.property("selectedPlaylistId") == ""
         assert bridge.property("selectedPlaylistName") == ""

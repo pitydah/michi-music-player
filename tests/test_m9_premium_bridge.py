@@ -122,18 +122,23 @@ def test_playlist_search_is_separate_from_frozen_m7_total(tmp_path) -> None:
     library, queue, _playback, _audio, _first = _library_world(tmp_path)
     playlists = PlaylistService(queue)
     playlists.create_playlist("Late Night")
-    bridge = LibraryBridge(library, playlists)
+    bridge = LibraryBridge(library)
+    # M9-R1: playlist search projection lives in the PlaylistsBridge.
+    from michi.presentation.playlists_bridge import PlaylistsBridge
+
+    pl_bridge = PlaylistsBridge(playlists, library=library)
 
     bridge.search("late")
 
     assert bridge.property("searchTotalCount") == 0
-    assert bridge.property("searchPlaylistCount") == 1
-    assert bridge.property("searchDisplayTotalCount") == 1
-    rows = bridge.property("searchPlaylists")
+    assert bridge.property("searchDisplayTotalCount") == 0  # M7 entities only
+    rows = pl_bridge.property("searchPlaylists")
     assert [(r["name"], r["trackCount"], "playlistId" in r) for r in rows] == [
         ("Late Night", 0, True)
     ]
+    assert pl_bridge.property("searchPlaylistCount") == 1
     bridge.dispose()
+    pl_bridge.dispose()
 
 
 def test_playback_and_queue_enrich_current_track_from_library(tmp_path) -> None:

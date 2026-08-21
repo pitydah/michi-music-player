@@ -6,7 +6,6 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from michi.application.audio_quality import make_track_quality_label
 from michi.application.library_service import LibraryService
-from michi.application.playlist_service import PlaylistService
 from michi.domain.library import (
     AlbumRef,
     ArtistRef,
@@ -25,28 +24,20 @@ class LibraryBridge(QObject):
     def __init__(
         self,
         service: LibraryService,
-        playlist_service: PlaylistService | None = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._service = service
-        self._playlist_service = playlist_service
         self._selected_album_key: str = ""
         self._selected_album: AlbumRef | None = None
         self._album_track_refs: list[TrackRef] = []
         self._selected_artist_key: str = ""
         self._selected_artist: ArtistRef | None = None
         self._artist_track_refs: list[TrackRef] = []
-        self._selected_playlist_id: str = ""
-        self._selected_playlist_index: int = -1
         service.subscribe_changed(self._on_service_changed)
-        if playlist_service is not None:
-            playlist_service.subscribe_changed(self._on_service_changed)
 
     def dispose(self) -> None:
         self._service.unsubscribe_changed(self._on_service_changed)
-        if self._playlist_service is not None:
-            self._playlist_service.unsubscribe_changed(self._on_service_changed)
 
     def _on_service_changed(self) -> None:
         # M6.6: the selection identity is the canonical album key; a selected
@@ -92,16 +83,6 @@ class LibraryBridge(QObject):
                     if make_artist_key(ref.artist.strip() or "Unknown Artist")
                     == self._selected_artist_key
                 ]
-        # M8-R1F: playlist selection is identity-driven; a selected playlist
-        # that disappears (any delete path) clears the selection safely —
-        # no dangling detail state for the future Playlist Detail screen.
-        if (
-            self._selected_playlist_id
-            and self._playlist_service is not None
-            and self._playlist_service.get_playlist(self._selected_playlist_id) is None
-        ):
-            self._selected_playlist_id = ""
-            self._selected_playlist_index = -1
         self.library_changed.emit()
 
     def _get_files(self) -> list[str]:
@@ -143,34 +124,11 @@ class LibraryBridge(QObject):
         projection = self._service.state.search_projection
         return projection.total_count if projection is not None else 0
 
-    def _get_search_playlists(self) -> list[dict]:
-        """Local playlist-name matches kept separate from the frozen M7
-        ranker. Rows carry the canonical playlistId (identity), name is
-        display-only — same shape as the main playlists rows (M8-R1F)."""
-        if self._playlist_service is None or not self._service.state.search_active:
-            return []
-        query = " ".join(self._service.state.query.casefold().split())
-        if not query:
-            return []
-        nav = self._playlist_service.navigation
-        recent_rank = {pid: rank for rank, pid in enumerate(nav.recent_ids)}
-        return [
-            {
-                "playlistId": playlist.playlist_id,
-                "name": playlist.name,
-                "trackCount": len(playlist.track_paths),
-                "pinned": playlist.playlist_id in nav.pinned_ids,
-                "recentRank": recent_rank.get(playlist.playlist_id, -1),
-            }
-            for playlist in self._playlist_service.playlists
-            if query in " ".join(playlist.name.casefold().split())
-        ]
-
-    def _get_search_playlist_count(self) -> int:
-        return len(self._get_search_playlists())
-
     def _get_search_display_total_count(self) -> int:
-        return self._get_search_total_count() + self._get_search_playlist_count()
+        """M9-R1: playlist results are projected by the PlaylistsBridge; the
+        Library total covers only the M7 entity ranker (the SearchOverlay
+        adds the playlist section count from playlists.searchPlaylistCount)."""
+        return self._get_search_total_count()
 
     def _get_diagnostic_code(self) -> str:
         diagnostic = self._service.state.diagnostic
@@ -504,101 +462,6 @@ class LibraryBridge(QObject):
             self._reference_paths(self._service.state.recently_added_paths)
         )
 
-    def _get_playlists(self) -> list[dict]:
-        if self._playlist_service is None:
-            return []
-        nav = self._playlist_service.navigation
-        recent_rank = {pid: rank for rank, pid in enumerate(nav.recent_ids)}
-        return [
-            {
-                "playlistId": p.playlist_id,
-                "name": p.name,
-                "trackCount": len(p.track_paths),
-                "pinned": p.playlist_id in nav.pinned_ids,
-                "recentRank": recent_rank.get(p.playlist_id, -1),
-            }
-            for p in self._playlist_service.playlists
-        ]
-
-    def _get_selected_playlist_name(self) -> str:
-        if not self._selected_playlist_id or self._playlist_service is None:
-            return ""
-        playlist = next(
-            (
-                p
-                for p in self._playlist_service.playlists
-                if p.playlist_id == self._selected_playlist_id
-            ),
-            None,
-        )
-        return playlist.name if playlist is not None else ""
-
-    def _get_selected_playlist_id(self) -> str:
-        return self._selected_playlist_id
-
-    def _get_playlist_tracks(self) -> list[dict]:
-        if self._playlist_service is None or not self._selected_playlist_id:
-            return []
-        playlist = next(
-            (
-                p
-                for p in self._playlist_service.playlists
-                if p.playlist_id == self._selected_playlist_id
-            ),
-            None,
-        )
-        if playlist is None:
-            return []
-        rows = []
-        for path in playlist.track_paths:
-            ref = self._service.resolve_trackref(Path(path))
-            rows.append(
-                {
-                    "displayName": (
-                        ref.display_name if ref is not None else Path(path).stem
-                    ),
-                    "path": path,
-                }
-            )
-        return rows
-
-    def _get_playlist_track_rows(self) -> list[dict]:
-        if self._playlist_service is None or not self._selected_playlist_id:
-            return []
-        playlist = next(
-            (
-                p
-                for p in self._playlist_service.playlists
-                if p.playlist_id == self._selected_playlist_id
-            ),
-            None,
-        )
-        if playlist is None:
-            return []
-        rows = []
-        for path in playlist.track_paths:
-            ref = self._service.resolve_trackref(Path(path))
-            if ref is not None:
-                rows.append(self._track_row(ref))
-                continue
-            rows.append(
-                {
-                    "displayName": Path(path).stem,
-                    "title": Path(path).stem,
-                    "artist": "",
-                    "album": "",
-                    "durationMs": 0,
-                    "path": path,
-                    "qualityLabel": "",
-                    "codec": "",
-                    "sampleRateHz": 0,
-                    "bitDepth": 0,
-                    "channels": 0,
-                    "fileSize": 0,
-                }
-            )
-        return rows
-
     def _rows_for(self, paths) -> list[dict]:
         rows = []
         for path in paths:
@@ -630,10 +493,6 @@ class LibraryBridge(QObject):
         int, _get_search_composer_count, notify=library_changed
     )
     searchTotalCount = Property(int, _get_search_total_count, notify=library_changed)
-    searchPlaylists = Property(list, _get_search_playlists, notify=library_changed)
-    searchPlaylistCount = Property(
-        int, _get_search_playlist_count, notify=library_changed
-    )
     searchDisplayTotalCount = Property(
         int, _get_search_display_total_count, notify=library_changed
     )
@@ -685,15 +544,6 @@ class LibraryBridge(QObject):
     recentlyAddedTrackRows = Property(
         list, _get_recently_added_track_rows, notify=library_changed
     )
-    playlists = Property(list, _get_playlists, notify=library_changed)
-    selectedPlaylistName = Property(
-        str, _get_selected_playlist_name, notify=library_changed
-    )
-    selectedPlaylistId = Property(
-        str, _get_selected_playlist_id, notify=library_changed
-    )
-    playlistTracks = Property(list, _get_playlist_tracks, notify=library_changed)
-    playlistTrackRows = Property(list, _get_playlist_track_rows, notify=library_changed)
 
     @Slot(str)
     def scan(self, directory: str) -> None:
@@ -786,109 +636,3 @@ class LibraryBridge(QObject):
         if not (0 <= index < len(self._album_track_refs)):
             return
         self._service.activate_track(self._album_track_refs[index])
-
-    @Slot(str)
-    def select_playlist(self, playlist_id: str) -> None:
-        """Identity-driven selection. Legacy name-based callers resolve via
-        the service's compatibility lookup (DEPRECATED path)."""
-        if self._playlist_service is None:
-            return
-        playlist = next(
-            (
-                p
-                for p in self._playlist_service.playlists
-                if p.playlist_id == playlist_id
-            ),
-            None,
-        )
-        if playlist is None:
-            playlist = next(
-                (p for p in self._playlist_service.playlists if p.name == playlist_id),
-                None,
-            )
-        if playlist is None:
-            return
-        self._selected_playlist_id = playlist.playlist_id
-        self._selected_playlist_index = next(
-            (
-                i
-                for i, p in enumerate(self._playlist_service.playlists)
-                if p.playlist_id == playlist.playlist_id
-            ),
-            -1,
-        )
-        self._selected_album_key = ""
-        self._selected_album = None
-        self._album_track_refs = []
-        self._selected_artist_key = ""
-        self._selected_artist = None
-        self._artist_track_refs = []
-        self.library_changed.emit()
-
-    @Slot()
-    def clear_playlist_selection(self) -> None:
-        self._selected_playlist_id = ""
-        self._selected_playlist_index = -1
-        self.library_changed.emit()
-
-    @Slot(str)
-    def create_playlist(self, name: str) -> None:
-        if self._playlist_service is None:
-            return
-        try:
-            self._playlist_service.create_playlist(name)
-        except ValueError:
-            return
-
-    @Slot(str)
-    def delete_playlist(self, name: str) -> None:
-        if self._playlist_service is None:
-            return
-        playlist = next(
-            (p for p in self._playlist_service.playlists if p.name == name), None
-        )
-        if playlist is not None and self._selected_playlist_id == playlist.playlist_id:
-            self._selected_playlist_id = ""
-            self._selected_playlist_index = -1
-        self._playlist_service.delete_playlist_by_name(name)
-
-    @Slot(str, str)
-    def rename_playlist(self, old_name: str, new_name: str) -> None:
-        if self._playlist_service is None:
-            return
-        try:
-            self._playlist_service.rename_playlist_by_name(old_name, new_name)
-        except ValueError:
-            return
-        playlist = next(
-            (p for p in self._playlist_service.playlists if p.name == old_name),
-            None,
-        )
-        if playlist is not None and self._selected_playlist_id == playlist.playlist_id:
-            pass  # id-based selection survives rename (name is display-only)
-
-    @Slot(str, str)
-    def add_to_playlist(self, name: str, path: str) -> None:
-        if self._playlist_service is None:
-            return
-        self._playlist_service.add_track_by_name(name, Path(path))
-
-    @Slot(int)
-    def remove_playlist_track(self, index: int) -> None:
-        if self._playlist_service is None or not self._selected_playlist_id:
-            return
-        self._playlist_service.remove_track(self._selected_playlist_id, index)
-
-    @Slot(int, int)
-    def move_playlist_track(self, from_index: int, to_index: int) -> None:
-        if self._playlist_service is None or not self._selected_playlist_id:
-            return
-        self._playlist_service.move_track(
-            self._selected_playlist_id, from_index, to_index
-        )
-
-    @Slot()
-    def play_selected_playlist(self) -> None:
-        if self._playlist_service is None or not self._selected_playlist_id:
-            return
-        self._playlist_service.play_playlist(self._selected_playlist_id)

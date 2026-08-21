@@ -321,8 +321,10 @@ def test_search_overlay_supports_keyboard_result_navigation() -> None:
     assert "activateResultRequested" in field
     assert "function moveResult" in overlay
     assert "function activateResult" in overlay
-    assert "library.searchPlaylists" in overlay
-    assert "library.select_playlist" in overlay
+    assert (
+        "playlists.searchPlaylists" in overlay
+    )  # M9-R1: playlist projection via PlaylistsBridge
+    assert "playlists.open_playlist" in overlay  # M9-R1: validated open intent
 
 
 def test_artist_detail_focus_mode_and_contextual_queue_are_real() -> None:

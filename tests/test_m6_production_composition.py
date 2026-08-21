@@ -201,7 +201,7 @@ class TestProductionComposition:
         assert isinstance(graph.library._library_index, SqliteLibraryIndexRepository)
         assert graph.library._library_prefs is not None
         assert isinstance(graph.library._library_prefs, SqliteLibraryPrefsRepository)
-        assert graph.bridge._playlist_service is graph.playlist_service
+        assert graph.playlists_bridge._playlist_service is graph.playlist_service
         assert graph.playlist_service is not None
 
     def test_production_unchanged_rescan_zero_extractions(self, tmp_path, qapp):
@@ -262,27 +262,28 @@ class TestProductionComposition:
         extractor = CountingExtractor()
         db_path, graph = _make_graph(tmp_path, StatScanner([a, b]), extractor)
         graph.library.scan(str(music))
-        graph.bridge.create_playlist("Road")
-        graph.bridge.add_to_playlist("Road", str(a))
-        graph.bridge.add_to_playlist("Road", str(b))
-        assert [(r["name"], r["trackCount"]) for r in graph.bridge.playlists] == [
-            ("Road", 2)
-        ]
+        graph.playlists_bridge.create_playlist("Road")
+        road_id = graph.playlist_service.playlists[0].playlist_id
+        graph.playlists_bridge.add_track_to_playlist(road_id, str(a))
+        graph.playlists_bridge.add_track_to_playlist(road_id, str(b))
+        assert [
+            (r["name"], r["trackCount"]) for r in graph.playlists_bridge.playlists
+        ] == [("Road", 2)]
 
         _teardown_graph(graph)
         _, graph2 = _make_graph_at(db_path, StatScanner([a, b]), CountingExtractor())
-        assert [(r["name"], r["trackCount"]) for r in graph2.bridge.playlists] == [
-            ("Road", 2)
-        ]
+        assert [
+            (r["name"], r["trackCount"]) for r in graph2.playlists_bridge.playlists
+        ] == [("Road", 2)]
 
     def test_production_bridge_exposes_persisted_playlists(self, tmp_path):
         music, (a,) = _music(tmp_path, ("a.mp3",))
         extractor = CountingExtractor()
         db_path, graph = _make_graph(tmp_path, StatScanner([a]), extractor)
         graph.library.scan(str(music))
-        graph.bridge.create_playlist("Keep")
-        graph.bridge.add_to_playlist("Keep", str(a))
-        assert graph.bridge.playlists != []  # real service, not a no-op
+        graph.playlists_bridge.create_playlist("Keep")
+        graph.playlists_bridge.add_track_to_playlist("Keep", str(a))
+        assert graph.playlists_bridge.playlists != []  # real service, not a no-op
 
 
 class TestTokenLifecycle:
@@ -734,9 +735,10 @@ class TestProductionGolden:
         # 3. favorite + playlist through the BRIDGE (production surface)
         graph.bridge.toggle_favorite(str(paths[0]))
         assert str(paths[0]) in graph.library.state.favorite_paths
-        graph.bridge.create_playlist("Golden")
+        graph.playlists_bridge.create_playlist("Golden")
+        golden_id = graph.playlist_service.playlists[0].playlist_id
         for p in paths[:3]:
-            graph.bridge.add_to_playlist("Golden", str(p))
+            graph.playlists_bridge.add_track_to_playlist(golden_id, str(p))
 
         # 4. cancel a scan, then a new scan completes (full pipeline)
         graph.library.start_scan(str(music))
@@ -768,9 +770,9 @@ class TestProductionGolden:
         _wait_terminal(graph2)
         assert extractor2.calls == []  # index reused: zero reparse
         assert str(paths[0]) in graph2.library.state.favorite_paths
-        assert [(r["name"], r["trackCount"]) for r in graph2.bridge.playlists] == [
-            ("Golden", 3)
-        ]
+        assert [
+            (r["name"], r["trackCount"]) for r in graph2.playlists_bridge.playlists
+        ] == [("Golden", 3)]
         assert str(paths[0]) in graph2.library.state.recently_added_paths
 
 

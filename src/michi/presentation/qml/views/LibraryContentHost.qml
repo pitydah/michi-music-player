@@ -87,12 +87,14 @@ ColumnLayout {
             }
 
             Repeater {
-                model: library.playlists
+                model: playlists.playlists
                 delegate: MichiButton {
                     text: modelData.name
                     variant: "secondary"
                     onClicked: {
-                        library.add_to_playlist(modelData.name, addTargetPath)
+                        // M9-R1 cross-feature: Library sends tracks to
+                        // Playlists by canonical id (PLAINTLIST-HIERARCHY-02).
+                        playlists.add_track_to_playlist(modelData.playlistId, addTargetPath)
                         addTargetPath = ""
                     }
                 }
