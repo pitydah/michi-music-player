@@ -15,6 +15,7 @@ MichiGlassSurface {
     property string albumFilterMode: "all"
     property string albumTimelineGrouping: "decade"
     property bool sourceExpanded: library.fileCount === 0
+    signal currentTabRequested(string tab)
     signal albumModeRequested(string mode)
     signal albumSortRequested(string mode)
     signal albumSortDirectionRequested(bool descending)
@@ -26,6 +27,16 @@ MichiGlassSurface {
         && library.scanStatus !== "COMPLETED"
         && library.scanStatus !== "CANCELLED"
         && library.scanStatus !== "FAILED"
+    readonly property var albumViewModes: [
+        { value: "grid", label: "Grid", icon: "view-grid" },
+        { value: "cover", label: "PathView", icon: "view-path" },
+        { value: "vinyl", label: "Vinyl Wall", icon: "view-vinyl" },
+        { value: "timeline", label: "Timeline", icon: "view-timeline" },
+        { value: "magazine", label: "Magazine", icon: "view-magazine" },
+        { value: "list", label: "List", icon: "view-list" }
+    ]
+    readonly property var availableViewModes: root.currentTab === "albums"
+        && library.selectedAlbumKey === "" ? root.albumViewModes : []
     elevation: "subtle"
     shadowed: true
     textured: true
@@ -72,7 +83,10 @@ MichiGlassSurface {
 
             MichiSearchField {
                 id: searchInput
-                Layout.fillWidth: true
+                Layout.minimumWidth: 280
+                Layout.preferredWidth: root.width >= 1480 ? 520
+                    : root.width >= 1120 ? 400 : 300
+                Layout.maximumWidth: 560
                 text: library.searchQuery
                 placeholderText: root.searchPlaceholder()
                 onEdited: query => library.search(query)
@@ -92,6 +106,15 @@ MichiGlassSurface {
                 tone: "active"
             }
 
+            LibraryTabs {
+                id: libraryNavigation
+                Layout.fillWidth: true
+                Layout.minimumWidth: 220
+                Layout.preferredHeight: MichiMetrics.controlMedium
+                currentTab: root.currentTab
+                onTabRequested: tab => root.currentTabRequested(tab)
+            }
+
             MichiIconButton {
                 iconName: "folder"
                 selected: root.sourceExpanded
@@ -103,6 +126,8 @@ MichiGlassSurface {
             MichiButton {
                 text: root.width < 760 ? "Scan" : "Scan library"
                 iconName: "library"
+                iconOnly: root.width < 980
+                accessibleName: "Scan library"
                 enabled: !root.scanning
                     && (dirInput.text.length > 0 || library.currentDir.length > 0)
                 onClicked: {
@@ -143,20 +168,41 @@ MichiGlassSurface {
         RowLayout {
             Layout.fillWidth: true
             spacing: MichiSpacing.sm
-            visible: root.currentTab === "albums"
-                && library.selectedAlbumKey === ""
+            visible: root.availableViewModes.length > 1
 
             MichiText {
-                text: "ALBUM WORKSPACE"
+                text: "ALBUMS"
                 role: "technical"
                 technical: true
                 color: MichiPalette.textMuted
-                visible: root.width >= 980
+                visible: root.width >= 1040
             }
             MichiStatusChip {
                 text: library.albums.length
                     + (library.albums.length === 1 ? " album" : " albums")
                 tone: "neutral"
+            }
+
+            Rectangle {
+                Layout.preferredWidth: 1
+                Layout.preferredHeight: 24
+                color: MichiSemanticColors.borderSubtle
+            }
+            MichiText {
+                visible: root.width >= 1180
+                text: "VIEW"
+                role: "technical"
+                technical: true
+                color: MichiPalette.textMuted
+            }
+            MichiSegmentedControl {
+                objectName: "albumViewSwitcher"
+                compact: root.width < 1480
+                model: root.availableViewModes
+                currentValue: root.albumMode
+                accessiblePrefix: "Album view"
+                Accessible.name: "Album view"
+                onSelected: value => root.albumModeRequested(value)
             }
 
             Item { Layout.fillWidth: true }
@@ -201,35 +247,6 @@ MichiGlassSurface {
                 selected: root.albumFilterMode !== "all"
                 variant: "secondary"
                 onClicked: filterMenu.open()
-            }
-
-            Rectangle {
-                Layout.preferredWidth: 1
-                Layout.preferredHeight: 24
-                color: MichiSemanticColors.borderSubtle
-            }
-            MichiText {
-                visible: root.width >= 1180
-                text: "VIEW"
-                role: "technical"
-                technical: true
-                color: MichiPalette.textMuted
-            }
-            MichiSegmentedControl {
-                objectName: "albumViewSwitcher"
-                compact: true
-                model: [
-                    { value: "grid", label: "Grid", icon: "view-grid" },
-                    { value: "cover", label: "PathView", icon: "view-path" },
-                    { value: "vinyl", label: "Vinyl Wall", icon: "view-vinyl" },
-                    { value: "timeline", label: "Timeline", icon: "view-timeline" },
-                    { value: "magazine", label: "Magazine", icon: "view-magazine" },
-                    { value: "list", label: "List", icon: "view-list" }
-                ]
-                currentValue: root.albumMode
-                accessiblePrefix: "Album view"
-                Accessible.name: "Album view"
-                onSelected: value => root.albumModeRequested(value)
             }
         }
 

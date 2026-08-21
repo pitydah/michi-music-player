@@ -2,7 +2,7 @@
 
 Target contract (M6.7 master plan §47-52): ``LibraryView.qml`` becomes a
 PURE ORCHESTRATION component (``LibraryPage``) composing
-``LibraryHeader`` + ``LibraryToolbar`` + ``LibraryTabs`` +
+``LibraryHeader`` + ``LibraryToolbar`` (with embedded ``LibraryTabs``) +
 ``LibraryContentHost``. The six album projections, the tab contents and the
 album detail are NOT inline in ``LibraryView.qml`` anymore — they live in
 their own component files, instantiated ON DEMAND through the host's
@@ -164,8 +164,8 @@ def qapp():
 class TestLibraryPageOrchestration:
     def test_library_page_loads(self, qapp, tmp_path):
         """The orchestration root compiles and instantiates with the default
-        Songs tab (LibraryHeader + LibraryToolbar + LibraryTabs +
-        LibraryContentHost compose eagerly)."""
+        Songs tab (LibraryHeader + LibraryToolbar, including its embedded
+        LibraryTabs, + LibraryContentHost compose eagerly)."""
         bridge, engine, component = _load_library_view(tmp_path)
         try:
             errs = "; ".join(e.toString() for e in component.errors())

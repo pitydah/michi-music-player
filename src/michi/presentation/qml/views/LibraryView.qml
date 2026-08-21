@@ -57,17 +57,12 @@ Item {
             albumSortDescending: root.albumSortDescending
             albumFilterMode: root.albumFilterMode
             albumTimelineGrouping: root.albumTimelineGrouping
+            onCurrentTabRequested: tab => root.currentTab = tab
             onAlbumModeRequested: mode => root.requestAlbumMode(mode)
             onAlbumSortRequested: mode => root.albumSortMode = mode
             onAlbumSortDirectionRequested: descending => root.albumSortDescending = descending
             onAlbumFilterRequested: mode => root.albumFilterMode = mode
             onAlbumTimelineGroupingRequested: mode => root.albumTimelineGrouping = mode
-        }
-
-        LibraryTabs {
-            Layout.fillWidth: true
-            currentTab: root.currentTab
-            onCurrentTabChanged: root.currentTab = currentTab
         }
 
         LibraryContentHost {

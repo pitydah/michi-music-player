@@ -59,6 +59,7 @@ Item {
         height: 154
         trackTitle: playback.title
         artist: playback.artist
+        album: playback.album
         qualityLabel: playback.qualityLabel
         formatLabel: playback.formatLabel
         artworkPath: playback.artworkPath

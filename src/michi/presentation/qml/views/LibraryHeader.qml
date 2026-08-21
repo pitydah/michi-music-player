@@ -20,7 +20,7 @@ PageHeader {
         : "Your local music collection"
 
     MichiText {
-        visible: root.width >= 1120
+        visible: root.width >= 920
         text: "DENSITY"
         role: "technical"
         technical: true
@@ -35,7 +35,7 @@ PageHeader {
             { value: "compact", label: "Compact", icon: "density-compact" }
         ]
         currentValue: MichiThemeState.density
-        compact: root.width < 1120
+        compact: true
         accessiblePrefix: "Library density"
         Accessible.name: "Library density"
         onSelected: value => MichiThemeState.density = value

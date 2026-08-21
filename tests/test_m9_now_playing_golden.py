@@ -37,7 +37,7 @@ def test_qml_preserves_landmarks_in_a_responsive_three_zone_layout() -> None:
         'objectName: "playPauseButton"',
         'objectName: "queueButton"',
         'objectName: "volumeSlider"',
-        'objectName: "outputBadge"',
+        'objectName: "qualityBadge"',
     )
     assert all(fragment in qml for fragment in required)
     assert "implicitWidth: 1920" not in qml

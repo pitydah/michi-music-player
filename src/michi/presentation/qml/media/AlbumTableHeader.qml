@@ -13,6 +13,13 @@ Rectangle {
     property string sortMode: "title"
     signal sortRequested(string mode)
 
+    readonly property real titleColumnRatio: root.showTechnical ? 0.34 : 0.45
+    readonly property int titleColumnWidth: Math.min(
+        root.showTechnical ? 560 : 720,
+        Math.max(220, Math.round(root.width * root.titleColumnRatio)))
+    readonly property int artistColumnWidth: Math.min(
+        300, Math.max(150, Math.round(root.width * 0.20)))
+
     implicitHeight: MichiMetrics.controlMedium
     color: MichiSemanticColors.controlSurfaceStrong
     border.width: 1
@@ -29,7 +36,8 @@ Rectangle {
             Layout.preferredWidth: MichiThemeState.density === "comfortable" ? 40 : 34
         }
         MichiText {
-            Layout.fillWidth: true
+            Layout.preferredWidth: root.titleColumnWidth
+            Layout.maximumWidth: root.titleColumnWidth
             text: "ALBUM"
             role: "technical"
             technical: true
@@ -38,7 +46,9 @@ Rectangle {
         }
         MichiText {
             visible: root.showArtist
-            Layout.preferredWidth: 170
+            Layout.fillWidth: true
+            Layout.minimumWidth: 150
+            Layout.preferredWidth: root.artistColumnWidth
             text: "ALBUM ARTIST"
             role: "technical"
             technical: true

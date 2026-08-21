@@ -15,6 +15,13 @@ Rectangle {
     property bool showTechnical: MichiThemeState.precisionMode
     signal activated()
 
+    readonly property real titleColumnRatio: root.showTechnical ? 0.34 : 0.45
+    readonly property int titleColumnWidth: Math.min(
+        root.showTechnical ? 560 : 720,
+        Math.max(220, Math.round(root.width * root.titleColumnRatio)))
+    readonly property int artistColumnWidth: Math.min(
+        300, Math.max(150, Math.round(root.width * 0.20)))
+
     implicitHeight: Math.max(MichiThemeState.rowHeight, 44)
     radius: MichiRadius.sm
     color: root.selected ? MichiSemanticColors.surfaceSelected
@@ -61,7 +68,8 @@ Rectangle {
         }
 
         MichiText {
-            Layout.fillWidth: true
+            Layout.preferredWidth: root.titleColumnWidth
+            Layout.maximumWidth: root.titleColumnWidth
             text: root.album ? root.album.title : ""
             role: "body"
             font.weight: root.selected ? Font.DemiBold : Font.Medium
@@ -69,8 +77,9 @@ Rectangle {
         }
         MichiText {
             visible: root.showArtist
-            Layout.preferredWidth: 170
-            Layout.minimumWidth: 96
+            Layout.fillWidth: true
+            Layout.minimumWidth: 150
+            Layout.preferredWidth: root.artistColumnWidth
             text: root.album ? root.album.artist : ""
             role: "secondary"
             elide: Text.ElideRight

@@ -171,7 +171,7 @@ def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
     assert "MichiIconButton" in content
     assert "property bool revealed" in queue
     assert "Gradient.Horizontal" in now_playing
-    assert 'objectName: "outputBadge"' in now_playing
+    assert 'objectName: "qualityBadge"' in now_playing
     assert 'accessibleName: "Output selection unavailable"' not in now_playing
 
 
@@ -209,6 +209,7 @@ def test_density_precision_and_inspector_are_real_surfaces() -> None:
     album_detail = _text("views/AlbumDetailView.qml")
     assert 'objectName: "libraryDensityControl"' in header
     assert "MichiThemeState.density" in header
+    assert "compact: true" in header
     assert "MichiThemeState.precisionMode" in header
     assert "MichiThemeState.density" not in toolbar
     assert "MichiThemeState.precisionMode" not in toolbar
@@ -219,8 +220,16 @@ def test_density_precision_and_inspector_are_real_surfaces() -> None:
 
 def test_library_navigation_and_path_selection_follow_the_canon() -> None:
     tabs = _text("views/LibraryTabs.qml")
+    toolbar = _text("views/LibraryToolbar.qml")
+    library = _text("views/LibraryView.qml")
     path_view = _text("views/AlbumPathView.qml")
     assert 'objectName: "libraryNavigationRail"' in tabs
+    assert "signal tabRequested(string tab)" in tabs
+    assert "root.tabRequested(modelData.value)" in tabs
+    assert "ensureCurrentTabVisible" in tabs
+    assert "LibraryTabs {" in toolbar
+    assert "onCurrentTabRequested" in library
+    assert "LibraryTabs {" not in library
     for icon in ("track", "album", "artist", "genre", "folder", "playlist"):
         assert f'icon: "{icon}"' in tabs
     assert 'objectName: "pathViewSelectionCard"' in path_view
@@ -249,8 +258,9 @@ def test_album_grid_and_detail_have_premium_information_hierarchy() -> None:
 def test_transport_microdetails_are_coherent_surfaces() -> None:
     bar = _text("player/NowPlayingBar.qml")
     icons = _text("primitives/MichiIcon.qml")
-    assert 'objectName: "volumeControlSurface"' in bar
-    assert "height: 5" in bar
+    assert 'objectName: "volumeControlRow"' in bar
+    assert 'objectName: "volumeControlSurface"' not in bar
+    assert bar.count("height: root.sliderTrackHeight") == 2
     assert "playPauseButton.hovered ? 1.025" in bar
     repeat_branch = icons.split(
         '} else if (root.name === "repeat" || root.name === "repeat-one") {'
@@ -332,6 +342,9 @@ def test_premium_library_workspace_is_contextual_and_single_source() -> None:
     library = _text("views/LibraryView.qml")
     segmented = _text("controls/MichiSegmentedControl.qml")
     assert 'objectName: "albumViewSwitcher"' in toolbar
+    assert "availableViewModes" in toolbar
+    assert 'root.currentTab === "albums"' in toolbar
+    assert "Layout.maximumWidth: 560" in toolbar
     for icon in (
         "view-grid",
         "view-path",
@@ -369,13 +382,26 @@ def test_audio_surfaces_share_a_semantic_table_header() -> None:
     assert "MichiSemanticColors.surfaceSelected" in row
 
 
-def test_queue_respects_the_player_and_output_status_is_not_duplicated() -> None:
+def test_album_table_header_and_rows_share_responsive_columns() -> None:
+    header = _text("media/AlbumTableHeader.qml")
+    row = _text("media/MichiAlbumRow.qml")
+    for source in (header, row):
+        assert "titleColumnRatio" in source
+        assert "titleColumnWidth" in source
+        assert "artistColumnWidth" in source
+        assert "Layout.minimumWidth: 150" in source
+
+
+def test_queue_respects_the_player_and_quality_status_is_not_duplicated() -> None:
     shell = _text("shell/AppShell.qml")
     bar = _text("player/NowPlayingBar.qml")
     assert shell.count("anchors.bottom: nowPlayingBar.top") >= 2
     assert "Qt.rgba" not in bar
     assert "#" not in bar
-    assert bar.count('objectName: "outputBadge"') == 1
+    assert bar.count('objectName: "qualityBadge"') == 1
+    assert "album: playback.album" in shell
+    assert "root.qualityText()" in bar
+    assert '"LOCAL · "' not in bar
     assert 'objectName: "outputStatusButton"' not in bar
     assert 'objectName: "deviceButton"' not in bar
 

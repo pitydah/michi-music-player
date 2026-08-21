@@ -98,12 +98,12 @@ server.
   persistent NowPlayingBar, so entering the route never creates a second player.
 - `player/NowPlayingBar.qml` preserves the supplied geometry and control
   distribution while binding only to real playback/Queue capabilities. The
-  fixed local-output controls are explicitly unavailable; the badge reports
-  the real local source and file format.
+  technical badge reports the canonical quality projection for the current
+  file without implying output selection, bit-perfect or Hi-Res state.
 - The supplied reference lives at
   `tests/golden/now_playing_bar_reference.png`; its checksum and 1920×154
   canvas are pinned, while the runtime QML smoke gate asserts measured track,
-  timeline, transport, Queue, volume, and output-badge landmarks.
+  timeline, transport, Queue, volume, and quality-badge landmarks.
 - Every animation path is reduced-motion aware. Custom media delegates
   distinguish pointer focus from keyboard visual focus.
 - Static canon/golden/bridge gates: **24 passed**. Ruff check/format and package build
@@ -149,10 +149,10 @@ server.
   Settings uses the shared page header and a centered desktop content width.
 - Queue is constrained above the persistent NowPlayingBar, so opening the
   contextual drawer can never create or obscure a second transport surface.
-- NowPlayingBar keeps its canonical geometry while local-output status and
-  device selection use distinct icons and descriptions. Its local colors,
-  along with the refined shell and row states, are sourced from semantic
-  tokens rather than hardcoded values.
+- NowPlayingBar keeps its canonical geometry while metadata, transport,
+  technical quality and volume remain distinct semantic zones. Its local
+  colors, along with the refined shell and row states, are sourced from
+  semantic tokens rather than hardcoded values.
 
 ## M9-PREMIUM-08 material and Library refinement
 
@@ -180,3 +180,25 @@ server.
 - Native `MultiEffect`/custom shader blur remains behind the M12 profiling gate.
   Effects are not multiplied across virtualized album delegates; the material
   treatment must remain usable on software and low-power scenegraph backends.
+
+## M9-PREMIUM-09 Library control hierarchy
+
+- Library section navigation is embedded in the primary toolbar rather than
+  occupying a second floating surface. It remains a dedicated component and
+  emits intents instead of mutating its parent-owned selection binding.
+- Search uses bounded responsive geometry. At wide desktop widths it leaves
+  room for all section tabs; at the minimum supported window size the tab rail
+  scrolls horizontally and Scan collapses to an accessible icon-only action.
+- The album view selector is driven by the active Library context. Its six
+  canonical modes gain labels on wide layouts and compact to icon buttons at
+  narrower breakpoints; sections with one implemented projection do not show
+  a meaningless selector.
+- Density remains global but is visually compact in the header. Every segment
+  preserves its accessible label, tooltip, focus ring and medium control hit
+  target.
+- NowPlayingBar identity is title, artist and album. Technical quality moves to
+  the right-side badge using `qualityLabel`, while the volume rail loses its
+  nested glass card and shares the timeline's track height and gradient.
+- Album list title and artist columns use matched responsive proportions in
+  both header and rows, avoiding the previous oversized empty title span while
+  keeping year, track count, duration and precision metadata aligned.

@@ -12,6 +12,7 @@ Item {
 
     property string trackTitle: ""
     property string artist: ""
+    property string album: ""
     property string qualityLabel: ""
     property string formatLabel: ""
     property string artworkPath: ""
@@ -29,6 +30,7 @@ Item {
     readonly property bool compact: width < 1320
     readonly property bool narrow: width < 980
     readonly property int horizontalInset: compact ? 20 : 38
+    readonly property int sliderTrackHeight: 6
 
     signal playPauseRequested()
     signal previousRequested()
@@ -146,10 +148,11 @@ Item {
                     MichiText {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 18
-                        text: root.qualityLabel.length > 0 ? root.qualityLabel : "Local library"
+                        text: root.hasTrack
+                            ? (root.album.length > 0 ? root.album : "Unknown album")
+                            : "Local library"
                         role: "caption"
                         color: MichiPalette.textMuted
-                        font.capitalization: Font.AllUppercase
                         elide: Text.ElideRight
                         verticalAlignment: Text.AlignVCenter
                     }
@@ -208,8 +211,8 @@ Item {
                         x: timeline.leftPadding
                         y: timeline.topPadding + timeline.availableHeight / 2 - height / 2
                         width: timeline.availableWidth
-                        height: 8
-                        radius: 4
+                        height: root.sliderTrackHeight
+                        radius: height / 2
                         color: MichiPalette.smokeRaised
                         border.width: 1
                         border.color: MichiSemanticColors.borderSubtle
@@ -361,99 +364,94 @@ Item {
             Layout.fillHeight: true
             spacing: 8
 
-            MichiGlassSurface {
-                objectName: "volumeControlSurface"
+            RowLayout {
+                objectName: "volumeControlRow"
                 Layout.fillWidth: true
                 Layout.preferredHeight: 44
-                elevation: "subtle"
-                contentPadding: MichiSpacing.xs
+                spacing: MichiSpacing.xs
 
-                RowLayout {
-                    anchors.fill: parent
-                    spacing: MichiSpacing.xs
+                MichiIconButton {
+                    objectName: "muteButton"
+                    iconName: root.muted || root.volume === 0 ? "mute" : "volume"
+                    accessibleName: root.muted ? "Unmute" : "Mute"
+                    onClicked: root.muteRequested(!root.muted)
+                }
+                Slider {
+                    id: volumeSlider
+                    objectName: "volumeSlider"
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 72
+                    Layout.preferredHeight: 28
+                    from: 0
+                    to: 100
+                    value: root.volume
+                    focusPolicy: Qt.StrongFocus
+                    hoverEnabled: true
+                    Accessible.role: Accessible.Slider
+                    Accessible.name: "Volume"
+                    Accessible.description: Math.round(value) + " percent"
+                    onMoved: root.volumeRequested(Math.round(value))
 
-                    MichiIconButton {
-                        objectName: "muteButton"
-                        iconName: root.muted || root.volume === 0 ? "mute" : "volume"
-                        accessibleName: root.muted ? "Unmute" : "Mute"
-                        onClicked: root.muteRequested(!root.muted)
+                    background: Rectangle {
+                        y: volumeSlider.availableHeight / 2 - height / 2
+                        width: volumeSlider.availableWidth
+                        height: root.sliderTrackHeight
+                        radius: height / 2
+                        color: MichiPalette.smokeRaised
+                        border.width: 1
+                        border.color: MichiSemanticColors.borderSubtle
+                        Rectangle {
+                            width: volumeSlider.visualPosition * parent.width
+                            height: parent.height
+                            radius: parent.radius
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0; color: MichiPalette.auroraBlue }
+                                GradientStop { position: 0.72; color: MichiPalette.auroraCyan }
+                                GradientStop { position: 1; color: MichiPalette.auroraPurple }
+                            }
+                        }
                     }
-                    Slider {
-                        id: volumeSlider
-                        objectName: "volumeSlider"
-                        Layout.fillWidth: true
-                        Layout.minimumWidth: 72
-                        Layout.preferredHeight: 28
-                        from: 0
-                        to: 100
-                        value: root.volume
-                        focusPolicy: Qt.StrongFocus
-                        hoverEnabled: true
-                        Accessible.role: Accessible.Slider
-                        Accessible.name: "Volume"
-                        Accessible.description: Math.round(value) + " percent"
-                        onMoved: root.volumeRequested(Math.round(value))
-
-                        background: Rectangle {
-                            y: volumeSlider.availableHeight / 2 - height / 2
-                            width: volumeSlider.availableWidth
-                            height: 5
-                            radius: 3
-                            color: MichiPalette.smokeRaised
+                    handle: Rectangle {
+                        x: volumeSlider.visualPosition
+                            * (volumeSlider.availableWidth - width)
+                        y: volumeSlider.availableHeight / 2 - height / 2
+                        width: 14
+                        height: 14
+                        radius: 7
+                        color: MichiPalette.textPrimary
+                        border.width: 2
+                        border.color: volumeSlider.visualFocus
+                            || volumeSlider.hovered
+                            ? MichiPalette.auroraCyan : MichiPalette.auroraPurple
+                        Rectangle {
+                            anchors.centerIn: parent
+                            width: 20
+                            height: 20
+                            radius: 10
+                            color: "transparent"
                             border.width: 1
-                            border.color: MichiSemanticColors.borderSubtle
-                            Rectangle {
-                                width: volumeSlider.visualPosition * parent.width
-                                height: parent.height
-                                radius: parent.radius
-                                gradient: Gradient {
-                                    orientation: Gradient.Horizontal
-                                    GradientStop { position: 0; color: MichiPalette.auroraBlue }
-                                    GradientStop { position: 1; color: MichiPalette.auroraPurple }
-                                }
-                            }
+                            border.color: MichiSemanticColors.auroraCyanBorder
+                            visible: volumeSlider.hovered
+                                || volumeSlider.pressed || volumeSlider.visualFocus
                         }
-                        handle: Rectangle {
-                            x: volumeSlider.visualPosition
-                                * (volumeSlider.availableWidth - width)
-                            y: volumeSlider.availableHeight / 2 - height / 2
-                            width: 14
-                            height: 14
-                            radius: 7
-                            color: MichiPalette.textPrimary
-                            border.width: 2
-                            border.color: volumeSlider.visualFocus
-                                || volumeSlider.hovered
-                                ? MichiPalette.auroraCyan : MichiPalette.auroraPurple
-                            Rectangle {
-                                anchors.centerIn: parent
-                                width: 20
-                                height: 20
-                                radius: 10
-                                color: "transparent"
-                                border.width: 1
-                                border.color: MichiSemanticColors.auroraCyanBorder
-                                visible: volumeSlider.hovered
-                                    || volumeSlider.pressed || volumeSlider.visualFocus
-                            }
-                            MichiFocusRing { visualFocus: volumeSlider.visualFocus }
-                        }
+                        MichiFocusRing { visualFocus: volumeSlider.visualFocus }
                     }
-                    MichiText {
-                        visible: !root.compact
-                        Layout.preferredWidth: 30
-                        text: Math.round(volumeSlider.value) + "%"
-                        role: "technical"
-                        technical: true
-                        color: MichiPalette.textMuted
-                        horizontalAlignment: Text.AlignRight
-                    }
-                    MichiIconButton {
-                        objectName: "settingsButton"
-                        iconName: "sliders"
-                        accessibleName: "Audio settings"
-                        onClicked: root.settingsRequested()
-                    }
+                }
+                MichiText {
+                    visible: !root.compact
+                    Layout.preferredWidth: 30
+                    text: Math.round(volumeSlider.value) + "%"
+                    role: "technical"
+                    technical: true
+                    color: MichiPalette.textMuted
+                    horizontalAlignment: Text.AlignRight
+                }
+                MichiIconButton {
+                    objectName: "settingsButton"
+                    iconName: "sliders"
+                    accessibleName: "Audio settings"
+                    onClicked: root.settingsRequested()
                 }
             }
 
@@ -472,29 +470,34 @@ Item {
                 }
 
                 Rectangle {
-                    id: outputBadge
-                    objectName: "outputBadge"
-                    Layout.preferredWidth: root.compact ? 126 : 150
+                    id: qualityBadge
+                    objectName: "qualityBadge"
+                    Layout.preferredWidth: root.compact ? 156 : 190
                     Layout.preferredHeight: 34
                     radius: 13
                     color: MichiSemanticColors.auroraPurpleSurfaceSoft
                     border.width: 1
                     border.color: MichiSemanticColors.auroraPurpleBorderMedium
+                    Accessible.role: Accessible.StaticText
+                    Accessible.name: "File quality: " + root.qualityText()
 
                     Row {
                         anchors.centerIn: parent
-                        spacing: 6
+                        spacing: MichiSpacing.xs
                         Rectangle {
                             anchors.verticalCenter: parent.verticalCenter
-                            width: 8
-                            height: 8
-                            radius: 4
-                            color: root.hasTrack
-                                ? MichiPalette.auroraGreen : MichiPalette.textMuted
+                            width: 2
+                            height: 14
+                            radius: 1
+                            gradient: Gradient {
+                                GradientStop { position: 0; color: MichiPalette.auroraCyan }
+                                GradientStop { position: 1; color: MichiPalette.auroraPurple }
+                            }
                         }
                         MichiText {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: outputText()
+                            width: qualityBadge.width - MichiSpacing.xl * 2
+                            text: root.qualityText()
                             role: "technical"
                             technical: true
                             color: MichiPalette.textPrimary
@@ -514,8 +517,12 @@ Item {
         return minutes + ":" + (remainder < 10 ? "0" : "") + remainder
     }
 
-    function outputText() {
-        return root.formatLabel.length > 0 ? "LOCAL · " + root.formatLabel : "LOCAL"
+    function qualityText() {
+        if (root.qualityLabel.length > 0)
+            return root.qualityLabel
+        if (root.formatLabel.length > 0)
+            return root.formatLabel
+        return root.hasTrack ? "QUALITY —" : "NO TRACK"
     }
 
     function nextRepeatMode(mode) {
