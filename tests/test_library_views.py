@@ -275,6 +275,10 @@ class TestBridgeViews:
             }
             assert row["hasArtwork"] is True
             assert row["artworkPath"] == str(cache.paths[row["key"]])
+        artist_rows = bridge.property("artists")
+        assert artist_rows
+        assert all(row["hasArtwork"] is True for row in artist_rows)
+        assert all(row["artworkPath"] for row in artist_rows)
         bridge.dispose()
         # Without a provider/cache: hasArtwork False and artworkPath "".
         bare, *_ = _make_library(
@@ -303,9 +307,13 @@ class TestBridgeViews:
         artists = bridge.property("artists")
         assert isinstance(artists, list) and artists
         assert all(
-            set(r.keys()) == {"key", "name", "trackCount", "albumCount"}
+            set(r.keys()) == {
+                "key", "name", "trackCount", "albumCount",
+                "hasArtwork", "artworkPath",
+            }
             for r in artists
         )
+        assert all(r["hasArtwork"] is False and r["artworkPath"] == "" for r in artists)
         genres = bridge.property("genres")
         assert isinstance(genres, list) and genres
         assert all(set(r.keys()) == {"key", "name", "trackCount"} for r in genres)

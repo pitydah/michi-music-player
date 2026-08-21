@@ -11,6 +11,8 @@ MichiGlassSurface {
     property bool compact: false
     contentPadding: MichiSpacing.sm
     elevation: "standard"
+    shadowed: true
+    textured: true
     accented: true
     accentColor: MichiPalette.auroraPurple
 
@@ -37,13 +39,25 @@ MichiGlassSurface {
 
             contentItem: RowLayout {
                 spacing: MichiSpacing.md
-                MichiIcon {
+                Rectangle {
                     Layout.leftMargin: MichiSpacing.md
-                    name: modelData.icon
-                    Layout.preferredWidth: MichiMetrics.iconMedium
-                    Layout.preferredHeight: MichiMetrics.iconMedium
-                    iconColor: routeItem._active ? MichiPalette.auroraBlue
-                        : routeItem.hovered ? MichiPalette.textPrimary : MichiPalette.textSecondary
+                    Layout.preferredWidth: 30
+                    Layout.preferredHeight: 30
+                    radius: 10
+                    color: routeItem._active
+                        ? MichiSemanticColors.surfaceSelected
+                        : routeItem.hovered ? MichiSemanticColors.controlSurface : "transparent"
+                    border.width: routeItem._active ? 1 : 0
+                    border.color: MichiSemanticColors.auroraCyanBorderSubtle
+                    MichiIcon {
+                        anchors.centerIn: parent
+                        name: modelData.icon
+                        width: MichiMetrics.iconSmall
+                        height: MichiMetrics.iconSmall
+                        iconColor: routeItem._active ? MichiPalette.auroraCyan
+                            : routeItem.hovered ? MichiPalette.textPrimary
+                            : MichiPalette.textSecondary
+                    }
                 }
                 MichiText {
                     visible: !root.compact
@@ -66,9 +80,13 @@ MichiGlassSurface {
                     anchors.left: parent.left
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
-                    width: 2
-                    radius: 1
-                    color: MichiPalette.auroraCyan
+                    width: 3
+                    radius: 2
+                    gradient: Gradient {
+                        GradientStop { position: 0; color: MichiPalette.auroraBlue }
+                        GradientStop { position: 0.5; color: MichiPalette.auroraCyan }
+                        GradientStop { position: 1; color: MichiPalette.auroraPurple }
+                    }
                 }
                 Behavior on color {
                     enabled: !MichiAccessibility.reducedMotion
@@ -86,21 +104,28 @@ MichiGlassSurface {
 
         Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 54
+            Layout.preferredHeight: 68
+            Rectangle {
+                anchors.fill: parent
+                radius: MichiRadius.lg
+                color: MichiSemanticColors.controlSurface
+                border.width: 1
+                border.color: MichiSemanticColors.borderSubtle
+            }
             RowLayout {
                 anchors.centerIn: parent
                 spacing: MichiSpacing.sm
                 Rectangle {
-                    Layout.preferredWidth: 28
-                    Layout.preferredHeight: 28
-                    radius: MichiRadius.md
+                    Layout.preferredWidth: 36
+                    Layout.preferredHeight: 36
+                    radius: 12
                     color: MichiSemanticColors.auroraPurpleSurface
                     border.width: 1
                     border.color: MichiSemanticColors.auroraPurpleBorder
                     MichiIcon {
                         anchors.centerIn: parent
-                        width: 18
-                        height: 18
+                        width: 21
+                        height: 21
                         name: "cat"
                         iconColor: MichiPalette.auroraCyan
                         strokeWidth: 1.6
@@ -138,6 +163,57 @@ MichiGlassSurface {
         Repeater {
             model: root._routes
             delegate: routeDelegate
+        }
+
+        MichiGlassSurface {
+            visible: !root.compact
+            Layout.fillWidth: true
+            Layout.preferredHeight: 94
+            Layout.topMargin: MichiSpacing.lg
+            elevation: "subtle"
+            contentPadding: MichiSpacing.md
+            textured: true
+            accented: library.fileCount > 0
+            accentColor: MichiPalette.auroraCyan
+
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: MichiSpacing.xs
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: MichiSpacing.xs
+                    Rectangle {
+                        width: 7
+                        height: 7
+                        radius: 4
+                        color: library.fileCount > 0
+                            ? MichiPalette.auroraGreen : MichiPalette.textMuted
+                    }
+                    MichiText {
+                        text: "LOCAL LIBRARY"
+                        role: "technical"
+                        technical: true
+                        color: MichiPalette.textMuted
+                    }
+                    Item { Layout.fillWidth: true }
+                }
+                MichiText {
+                    text: library.fileCount > 0
+                        ? library.fileCount + " tracks" : "Ready to scan"
+                    role: "body"
+                    font.weight: Font.DemiBold
+                }
+                MichiText {
+                    text: library.fileCount > 0
+                        ? library.albumCount + " albums · "
+                            + library.artistCount + " artists"
+                        : "Your collection stays on this device"
+                    role: "caption"
+                    color: MichiPalette.textMuted
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
+            }
         }
         Item { Layout.fillHeight: true }
         Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: MichiSemanticColors.borderSubtle }

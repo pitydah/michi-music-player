@@ -16,7 +16,6 @@ MichiGlassSurface {
     property string albumTimelineGrouping: "decade"
     property bool sourceExpanded: library.fileCount === 0
     signal currentTabRequested(string tab)
-    signal albumModeRequested(string mode)
     signal albumSortRequested(string mode)
     signal albumSortDirectionRequested(bool descending)
     signal albumFilterRequested(string mode)
@@ -27,16 +26,6 @@ MichiGlassSurface {
         && library.scanStatus !== "COMPLETED"
         && library.scanStatus !== "CANCELLED"
         && library.scanStatus !== "FAILED"
-    readonly property var albumViewModes: [
-        { value: "grid", label: "Grid", icon: "view-grid" },
-        { value: "cover", label: "PathView", icon: "view-path" },
-        { value: "vinyl", label: "Vinyl Wall", icon: "view-vinyl" },
-        { value: "timeline", label: "Timeline", icon: "view-timeline" },
-        { value: "magazine", label: "Magazine", icon: "view-magazine" },
-        { value: "list", label: "List", icon: "view-list" }
-    ]
-    readonly property var availableViewModes: root.currentTab === "albums"
-        && library.selectedAlbumKey === "" ? root.albumViewModes : []
     elevation: "subtle"
     shadowed: true
     textured: true
@@ -168,7 +157,8 @@ MichiGlassSurface {
         RowLayout {
             Layout.fillWidth: true
             spacing: MichiSpacing.sm
-            visible: root.availableViewModes.length > 1
+            visible: root.currentTab === "albums"
+                && library.selectedAlbumKey === ""
 
             MichiText {
                 text: "ALBUMS"
@@ -181,28 +171,6 @@ MichiGlassSurface {
                 text: library.albums.length
                     + (library.albums.length === 1 ? " album" : " albums")
                 tone: "neutral"
-            }
-
-            Rectangle {
-                Layout.preferredWidth: 1
-                Layout.preferredHeight: 24
-                color: MichiSemanticColors.borderSubtle
-            }
-            MichiText {
-                visible: root.width >= 1180
-                text: "VIEW"
-                role: "technical"
-                technical: true
-                color: MichiPalette.textMuted
-            }
-            MichiSegmentedControl {
-                objectName: "albumViewSwitcher"
-                compact: root.width < 1480
-                model: root.availableViewModes
-                currentValue: root.albumMode
-                accessiblePrefix: "Album view"
-                Accessible.name: "Album view"
-                onSelected: value => root.albumModeRequested(value)
             }
 
             Item { Layout.fillWidth: true }

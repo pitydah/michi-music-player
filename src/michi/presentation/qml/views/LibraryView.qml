@@ -47,6 +47,8 @@ Item {
         LibraryHeader {
             Layout.fillWidth: true
             currentTab: root.currentTab
+            albumMode: root.albumMode
+            onAlbumModeRequested: mode => root.requestAlbumMode(mode)
         }
 
         LibraryToolbar {
@@ -58,7 +60,6 @@ Item {
             albumFilterMode: root.albumFilterMode
             albumTimelineGrouping: root.albumTimelineGrouping
             onCurrentTabRequested: tab => root.currentTab = tab
-            onAlbumModeRequested: mode => root.requestAlbumMode(mode)
             onAlbumSortRequested: mode => root.albumSortMode = mode
             onAlbumSortDirectionRequested: descending => root.albumSortDescending = descending
             onAlbumFilterRequested: mode => root.albumFilterMode = mode

@@ -172,7 +172,9 @@ def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
     assert "property bool revealed" in queue
     assert "Gradient.Horizontal" in now_playing
     assert 'objectName: "qualityBadge"' in now_playing
-    assert 'accessibleName: "Output selection unavailable"' not in now_playing
+    assert now_playing.count('objectName: "outputDeviceButton"') == 1
+    assert 'accessibleName: "Output selection unavailable"' in now_playing
+    assert 'objectName: "outputStatusButton"' not in now_playing
 
 
 def test_search_and_playback_errors_are_actionable_surfaces() -> None:
@@ -194,11 +196,9 @@ def test_library_delegates_use_shared_media_rows() -> None:
     )
     for view in track_views:
         assert "delegate: TrackRow" in _text(view)
-    for view in (
-        "views/ArtistsView.qml",
-        "views/GenresView.qml",
-        "views/FoldersView.qml",
-    ):
+    assert "ArtistCard {" in _text("views/ArtistsView.qml")
+    assert 'objectName: "artistGridView"' in _text("views/ArtistsView.qml")
+    for view in ("views/GenresView.qml", "views/FoldersView.qml"):
         assert "delegate: MichiEntityRow" in _text(view)
     assert "delegate: MichiAlbumRow" in _text("views/AlbumListView.qml")
 
@@ -337,13 +337,15 @@ def test_playing_indicator_is_bound_on_library_track_surfaces() -> None:
 
 
 def test_premium_library_workspace_is_contextual_and_single_source() -> None:
+    header = _text("views/LibraryHeader.qml")
     toolbar = _text("views/LibraryToolbar.qml")
     albums = _text("views/AlbumsView.qml")
     library = _text("views/LibraryView.qml")
     segmented = _text("controls/MichiSegmentedControl.qml")
-    assert 'objectName: "albumViewSwitcher"' in toolbar
-    assert "availableViewModes" in toolbar
-    assert 'root.currentTab === "albums"' in toolbar
+    assert 'objectName: "albumViewSwitcher"' in header
+    assert "albumViewsVisible" in header
+    assert 'currentTab === "albums"' in header
+    assert 'objectName: "albumViewSwitcher"' not in toolbar
     assert "Layout.maximumWidth: 560" in toolbar
     for icon in (
         "view-grid",
@@ -353,9 +355,9 @@ def test_premium_library_workspace_is_contextual_and_single_source() -> None:
         "view-magazine",
         "view-list",
     ):
-        assert f'icon: "{icon}"' in toolbar
+        assert f'icon: "{icon}"' in header
     assert "sourceExpanded" in toolbar
-    assert "albumModeRequested" in toolbar
+    assert "albumModeRequested" in header
     assert "MichiSegmentedControl {" not in albums
     assert "onAlbumModeRequested" in library
     assert "albumTimelineGroupingRequested" in toolbar

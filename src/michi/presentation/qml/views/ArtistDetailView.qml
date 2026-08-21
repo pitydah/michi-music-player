@@ -22,13 +22,20 @@ ColumnLayout {
             Layout.preferredWidth: 92
             Layout.preferredHeight: 92
             radius: 46
-            color: MichiSemanticColors.controlSurfaceStrong
-            MichiIcon {
-                anchors.centerIn: parent
-                name: "artist"
-                width: 32
-                height: 32
-                iconColor: MichiPalette.auroraCyan
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0; color: MichiPalette.auroraBlue }
+                GradientStop { position: 0.5; color: MichiPalette.auroraCyan }
+                GradientStop { position: 1; color: MichiPalette.auroraPurple }
+            }
+            Artwork {
+                anchors.fill: parent
+                anchors.margins: 3
+                radius: width / 2
+                requestedSize: 192
+                sourcePath: library.artistAlbums.length > 0
+                    ? library.artistAlbums[0].artworkPath : ""
+                fallbackText: library.artistName
             }
         }
 

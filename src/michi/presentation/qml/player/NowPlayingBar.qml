@@ -81,29 +81,21 @@ Item {
         anchors.bottomMargin: 20
         spacing: root.compact ? 16 : 30
 
-        Rectangle {
+        MichiGlassSurface {
             id: trackCard
             objectName: "trackCard"
-            Layout.preferredWidth: root.narrow ? 82 : root.compact ? 220 : 270
+            Layout.preferredWidth: root.narrow ? 82 : root.compact ? 232 : 292
             Layout.minimumWidth: root.narrow ? 72 : 184
-            Layout.maximumWidth: 270
+            Layout.maximumWidth: 300
             Layout.preferredHeight: 86
             Layout.alignment: Qt.AlignVCenter
+            elevation: trackHover.hovered ? "elevated" : "standard"
+            contentPadding: 0
+            shadowed: true
+            textured: true
+            accented: root.hasTrack
+            accentColor: MichiPalette.auroraCyan
             radius: 17
-            color: MichiSemanticColors.controlSurface
-            gradient: Gradient {
-                orientation: Gradient.Vertical
-                GradientStop {
-                    position: 0
-                    color: trackHover.hovered
-                        ? MichiPalette.trackSurfaceHover : MichiPalette.trackSurfaceTop
-                }
-                GradientStop { position: 1; color: MichiPalette.trackSurfaceBottom }
-            }
-            border.width: 1
-            border.color: trackHover.hovered
-                ? MichiSemanticColors.auroraCyanBorderStrong
-                : MichiSemanticColors.auroraPurpleBorderSoft
 
             RowLayout {
                 anchors.fill: parent
@@ -161,10 +153,6 @@ Item {
 
             TapHandler { onTapped: root.nowPlayingRequested() }
             HoverHandler { id: trackHover; cursorShape: Qt.PointingHandCursor }
-            Behavior on border.color {
-                enabled: !MichiAccessibility.reducedMotion
-                ColorAnimation { duration: MichiMotion.micro }
-            }
         }
 
         ColumnLayout {
@@ -358,20 +346,22 @@ Item {
         ColumnLayout {
             id: outputZone
             objectName: "outputZone"
-            Layout.preferredWidth: root.compact ? 248 : 286
-            Layout.minimumWidth: 224
-            Layout.maximumWidth: 300
+            Layout.preferredWidth: root.compact ? 270 : 318
+            Layout.minimumWidth: 250
+            Layout.maximumWidth: 330
             Layout.fillHeight: true
             spacing: 8
 
             RowLayout {
                 objectName: "volumeControlRow"
                 Layout.fillWidth: true
-                Layout.preferredHeight: 44
+                Layout.preferredHeight: 34
                 spacing: MichiSpacing.xs
 
                 MichiIconButton {
                     objectName: "muteButton"
+                    Layout.preferredWidth: 34
+                    Layout.preferredHeight: 34
                     iconName: root.muted || root.volume === 0 ? "mute" : "volume"
                     accessibleName: root.muted ? "Unmute" : "Mute"
                     onClicked: root.muteRequested(!root.muted)
@@ -449,9 +439,20 @@ Item {
                 }
                 MichiIconButton {
                     objectName: "settingsButton"
+                    Layout.preferredWidth: 34
+                    Layout.preferredHeight: 34
                     iconName: "sliders"
                     accessibleName: "Audio settings"
                     onClicked: root.settingsRequested()
+                }
+                MichiIconButton {
+                    objectName: "outputDeviceButton"
+                    Layout.preferredWidth: 34
+                    Layout.preferredHeight: 34
+                    iconName: "device"
+                    accessibleName: "Output selection unavailable"
+                    enabled: false
+                    opacity: 0.62
                 }
             }
 

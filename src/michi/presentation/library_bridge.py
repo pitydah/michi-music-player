@@ -246,12 +246,25 @@ class LibraryBridge(QObject):
             if self._service.state.search_active
             else self._service.state.artists
         )
+        # The domain intentionally owns no speculative artist portraits.  Use
+        # the first canonical album artwork as an honest visual representative
+        # and let QML render an initial when the local library has none.
+        artwork_by_artist: dict[str, str] = {}
+        for album in self._service.state.albums:
+            artist_key = make_artist_key(album.artist.strip() or "Unknown Artist")
+            if artist_key in artwork_by_artist or not album.has_artwork:
+                continue
+            artwork_path = self._service.artwork_path_for(album.key) or ""
+            if artwork_path:
+                artwork_by_artist[artist_key] = artwork_path
         return [
             {
                 "key": a.key,
                 "name": a.name,
                 "trackCount": a.track_count,
                 "albumCount": a.album_count,
+                "hasArtwork": a.key in artwork_by_artist,
+                "artworkPath": artwork_by_artist.get(a.key, ""),
             }
             for a in artists
         ]
