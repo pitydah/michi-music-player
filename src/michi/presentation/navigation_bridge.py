@@ -1,10 +1,9 @@
 """QML bridge for navigation — observes NavigationService.
 
-M8-R1F: the PRODUCT-FACING open intent (open_playlist / open_all_playlists)
-routes through PlaylistNavigationCoordinator so opens are validated and
-Recent is updated automatically. The raw navigate_to_playlist slot remains
-as a DEPRECATED low-level primitive for tests/compatibility only — no new
-QML code may call it."""
+M9-R1: the ONLY product-facing playlist intents are open_playlist /
+open_all_playlists, routed through PlaylistNavigationCoordinator (validated
+opens + automatic Recent). There is NO public navigate_to_playlist slot:
+the low-level primitive exists only inside the coordinator."""
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
@@ -62,9 +61,3 @@ class NavigationBridge(QObject):
         """PRODUCT INTENT: navigate to PLAYLISTS / All Playlists."""
         if self._coordinator is not None:
             self._coordinator.open_all_playlists()
-
-    @Slot(str)
-    def navigate_to_playlist(self, playlist_id: str) -> None:
-        """DEPRECATED low-level primitive (no validation, no Recent):
-        kept only for tests/compatibility; do not use from new QML code."""
-        self._service.navigate_to_playlist(playlist_id)

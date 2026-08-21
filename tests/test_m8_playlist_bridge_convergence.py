@@ -70,10 +70,9 @@ class TestBridgeOpenIntent:
         assert nav.state.playlist_id is None
         assert service.navigation.recent_ids == (a.playlist_id,)
 
-    def test_raw_navigate_slot_still_works_deprecated(self):
+    def test_raw_navigate_slot_is_sealed(self):
         _, nav, _, bridge = _nav_bridge()
-        bridge.navigate_to_playlist("id-1")  # DEPRECATED primitive
-        assert nav.state.playlist_id == "id-1"
+        assert not hasattr(bridge, "navigate_to_playlist")
 
 
 class TestSearchPlaylistIdentity:

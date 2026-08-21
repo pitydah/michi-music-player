@@ -170,12 +170,13 @@ class TestNavigationBridge:
         assert bridge.property("playlistId") == "id-77"
         bridge.dispose()
 
-    def test_slot_navigate_to_playlist(self):
+    def test_no_raw_navigate_slot(self):
+        """M9-R1 seal: the raw navigate_to_playlist slot is NOT public."""
         from michi.application.navigation_service import NavigationService
 
         service = NavigationService()
         bridge = NavigationBridge(service)
-        bridge.navigate_to_playlist("id-1")
-        assert service.state.playlist_id == "id-1"
-        assert service.state.current_route == AppRoute.PLAYLISTS
+        assert not hasattr(bridge, "navigate_to_playlist")
+        assert hasattr(bridge, "open_playlist")
+        assert hasattr(bridge, "open_all_playlists")
         bridge.dispose()
