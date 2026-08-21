@@ -32,7 +32,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QCoreApplication, QMetaObject, QObject
+from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject, QObject, Qt
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 
@@ -246,14 +246,14 @@ class TestLibraryPageOrchestration:
         finally:
             bridge.dispose()
 
-    def test_album_view_switcher_click_drives_the_loaded_projection(
+    def test_album_view_switcher_event_drives_the_loaded_projection(
         self, qapp, tmp_path
     ):
         """The user-facing selector is the integration contract.
 
         A selected-looking segment must never diverge from the projection
-        owned by LibraryView/AlbumsView.  Invoke the real button signal rather
-        than assigning albumMode directly so the full event chain is covered.
+        owned by LibraryView/AlbumsView. Emit the public selector event rather
+        than assigning albumMode directly so the full ownership chain runs.
         """
         bridge, engine, component = _load_library_view(tmp_path)
         try:
@@ -266,16 +266,21 @@ class TestLibraryPageOrchestration:
 
             host = obj.findChild(QObject, "albumsView")
             assert host is not None
+            switcher = obj.findChild(QObject, "albumViewSwitcher")
+            assert switcher is not None
             previous_name = "albumGridView"
             for mode, object_name in ALBUM_MODES[1:]:
-                button = obj.findChild(QObject, f"albumViewSwitcher-{mode}")
-                assert button is not None, f"selector button missing for {mode!r}"
-                assert QMetaObject.invokeMethod(button, "clicked")
+                assert QMetaObject.invokeMethod(
+                    switcher,
+                    "selected",
+                    Qt.DirectConnection,
+                    Q_ARG(str, mode),
+                )
                 _process_events()
 
                 assert obj.property("albumMode") == mode
                 assert host.property("albumMode") == mode
-                assert bool(button.property("selected"))
+                assert switcher.property("currentValue") == mode
                 assert obj.findChild(QObject, object_name) is not None
                 assert obj.findChild(QObject, previous_name) is None
                 previous_name = object_name
