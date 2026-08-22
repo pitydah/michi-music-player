@@ -469,6 +469,68 @@ def resolve_album_identity(
 
 
 # ---------------------------------------------------------------------------
+# 3b. PERSISTENT EXTERNAL IDENTITY AUTHORITY (R1)
+# ---------------------------------------------------------------------------
+
+
+class MatchMethod(Enum):
+    """Provenance of a resolved external identity (R1).
+
+    EMBEDDED_HINT — the file itself claimed the external id;
+    AUTO — Michi resolved it from structural evidence;
+    MANUAL — the user explicitly selected it. MANUAL is authoritative
+    over automatic re-resolution and is NEVER represented by
+    fabricating identity hints."""
+
+    EMBEDDED_HINT = auto()
+    AUTO = auto()
+    MANUAL = auto()
+
+
+class IdentityStatus(Enum):
+    """Persistent identity state (R1). Only RESOLVED identities are
+    persisted; the other states document why a mapping is absent when a
+    future UI needs it. A candidate is NEVER persisted as resolved when
+    the domain gate returned AMBIGUOUS."""
+
+    RESOLVED = auto()
+    AMBIGUOUS = auto()
+    IDENTITY_CONFLICT = auto()
+    NOT_FOUND = auto()
+
+
+@dataclass(frozen=True)
+class ArtistExternalIdentity:
+    """Durable external identity authority for ONE local artist key.
+
+    Separate from knowledge: the mapping survives knowledge deletion.
+    Never added to ArtistRef."""
+
+    local_artist_key: str
+    external_artist_id: str
+    status: IdentityStatus = IdentityStatus.RESOLVED
+    match_method: MatchMethod = MatchMethod.AUTO
+    manually_confirmed: bool = False
+    resolved_at: str = ""
+
+
+@dataclass(frozen=True)
+class AlbumExternalIdentity:
+    """Durable external identity authority for ONE local album key.
+
+    ``release_id`` stays "" unless edition-identifying evidence exists.
+    Never added to AlbumRef."""
+
+    local_album_key: str
+    release_group_id: str
+    release_id: str = ""
+    status: IdentityStatus = IdentityStatus.RESOLVED
+    match_method: MatchMethod = MatchMethod.AUTO
+    manually_confirmed: bool = False
+    resolved_at: str = ""
+
+
+# ---------------------------------------------------------------------------
 # 4. EXTERNAL KNOWLEDGE / ENRICHMENT PROFILES
 # ---------------------------------------------------------------------------
 
