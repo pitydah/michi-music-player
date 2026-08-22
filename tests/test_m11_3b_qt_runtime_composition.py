@@ -391,10 +391,11 @@ class TestProductiveComposition:
                 graph.audio_engine_registry.can_activate(AudioEngineId.QT_MULTIMEDIA)
                 is True
             )
-            assert (
-                graph.audio_engine_registry.can_activate(AudioEngineId.GSTREAMER)
-                is False
-            )
+            # M11.3C: GStreamer implemented=True — can_activate es
+            # runtime-dependent (GI presente)
+            assert graph.audio_engine_registry.can_activate(
+                AudioEngineId.GSTREAMER
+            ) == graph.audio_engine_registry.is_available(AudioEngineId.GSTREAMER)
             assert graph.audio_engine_registry.can_activate(AudioEngineId.MPD) is False
         finally:
             graph.qt_engine_provider.close()
