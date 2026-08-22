@@ -156,18 +156,24 @@ class FilesystemEnrichmentAssetStore(EnrichmentAssetStorePort):
 
     @staticmethod
     def validate(record: EnrichmentAssetRecord, data: bytes) -> tuple[int, int] | None:
-        """Shared validation pipeline: id -> size -> MIME -> magic ->
-        decode. Returns (width, height) or None (reject)."""
+        """Shared validation pipeline: id -> size -> declared-MIME policy
+        -> magic -> decode. Returns (width, height) or None (reject).
+
+        R1 MIME POLICY: ``mime_type == ""`` means UNKNOWN — the sniffed
+        canonical MIME decides. A non-empty declared MIME must MATCH the
+        sniffed content exactly, otherwise reject."""
         if not _validate_asset_id(record.asset_id):
             return None
         if not data:
             return None
         if len(data) > MAX_EXTERNAL_IMAGE_BYTES:
             return None
-        if record.mime_type not in ALLOWED_IMAGE_MIME_TYPES:
-            return None
         sniffed = _sniff_mime(data)
-        if sniffed is None or sniffed != record.mime_type:
+        if sniffed is None:
+            return None
+        if sniffed not in ALLOWED_IMAGE_MIME_TYPES:
+            return None
+        if record.mime_type and record.mime_type != sniffed:
             # Declared MIME and actual content disagree: reject.
             return None
         return _decode_dimensions(data)
@@ -185,12 +191,13 @@ class FilesystemEnrichmentAssetStore(EnrichmentAssetStorePort):
             return None
         width, height = dimensions
         checksum = _sha256(data)
-        object_name = f"{checksum}.{_MIME_EXTENSION[record.mime_type]}"
+        canonical_mime = _sniff_mime(data)
+        object_name = f"{checksum}.{_MIME_EXTENSION[canonical_mime]}"
         completed = EnrichmentAssetRecord(
             asset_id=record.asset_id,
             entity_kind=record.entity_kind,
             external_entity_id=record.external_entity_id,
-            mime_type=record.mime_type,
+            mime_type=canonical_mime,
             checksum=checksum,
             provider=record.provider,
             source_url=record.source_url,
