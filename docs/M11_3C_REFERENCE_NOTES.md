@@ -46,13 +46,20 @@ implementa ahora).
 
 - `generation` por fuente: `load()` incrementa; todo mensaje de una generación
   anterior se IGNORA (acceptance/rejection/EOS/state/duration/position/error).
-- `close()` invalida la generación y detiene el pump antes de `set_state(NULL)`.
+- `close()` invalida la generación y ejecuta el teardown terminal ANTES de detener el pump (ver Teardown order).
 
-## Teardown order
+## Teardown order (M11.3C-R6.2 current truth)
 
-1. invalidar generación; 2. detener pump/context; 3. remover bus watch;
-4. `pipeline.set_state(NULL)`; 5. liberar referencias; 6. sin callbacks tras
-close (guard post-close).
+1. marcar port closed e invalidar la generación;
+2. detach del bus watch (best-effort — su fallo se registra, no corta);
+3. `pipeline.set_state(NULL)` — SIEMPRE intentado aunque el detach haya
+   fallado (non-negotiable);
+4. limpieza del timer;
+5. quit/join del pump (timeout → ownership retenido + error secundario);
+6. liberar SOLO los recursos realmente muertos; pipeline retenido si NULL
+   falló; bookkeeping del watch retenido si su remoción falló;
+7. FIRST-ERROR-WINS: el primer fallo cronológico es el autoritativo;
+8. sin callbacks tras close (guard post-close).
 
 ## Thread-affinity contract
 
@@ -227,3 +234,26 @@ Michi-nativos.
   → PLAYING again, single acceptance, close clean.
 - Code-validation evidence: full suite 1745 passed at CODE_VALIDATED_HEAD
   04a5063 (1 pre-existing conditional skip: M11.3B Qt-runtime).
+
+
+## M11.3C-R6.2 terminal runtime truth seal
+
+- Playback-state authority restored: state_of() now unpacks the
+  parse_state_changed() TUPLE — PyGObject returns (old, new, pending), so
+  the previous `.new` attribute access always raised and the real
+  STATE_CHANGED signal was silently dropped: with the real runtime the
+  adapter never published any PlaybackStatus even though the pipeline was
+  physically PLAYING (pipeline.get_state() worked; the productive
+  contract did not). Provenance stays strict: top-level pipeline
+  STATE_CHANGED accepted, child-element state changes ignored (verified
+  with real GI — same wrapper identity for the pipeline, children
+  rejected).
+- Real gate: AudioPort callbacks now deliver PLAYING → STOPPED → PLAYING
+  over a real playbin3 + fakesink WAV (get_state kept as diagnostics).
+- Two-phase load_and_play: PHASE 1 load() keeps the AudioLoadError
+  disposition; PHASE 2 play() failure after a successful load(B) never
+  restores previous A acceptance/intent (accepted=intent=False, STOPPED,
+  logical file_path = last committed track; late media_accepted(B)
+  ignored; play() reloads A canonically).
+- Code-validation evidence: full suite 1749 passed at CODE_VALIDATED_HEAD
+  2328591 (1 pre-existing conditional skip: M11.3B Qt-runtime).
