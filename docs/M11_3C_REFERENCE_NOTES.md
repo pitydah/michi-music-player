@@ -298,3 +298,25 @@ Michi-nativos.
   canonical AudioPort exception contract — never leak ambiguous success.
 - Code-validation evidence: full suite 1763 passed at CODE_VALIDATED_HEAD
   963419b (1 pre-existing conditional skip: M11.3B Qt-runtime).
+
+
+## M11.3C-R6.5 owner-thread generation commit & event provenance seal
+
+- FINAL CONCURRENCY MODEL: GLib PUMP = backend observation ONLY
+  (translate → immutable _GstEvent with captured generation → enqueue via
+  ONE canonical sig_event); QT OWNER = AudioPort semantic authority
+  (recheck closed + generation AT the commit point → commit → publish).
+  The pump no longer mutates any semantic field; the generation check is
+  authoritative at commit, so queued stale events can never cross the
+  AudioPort boundary.
+- ASYNC_DONE commits acceptance on the owner thread (identity before
+  media_accepted; duplicate idempotent). PLAYING observed before
+  acceptance is deferred generation-scoped and published only after the
+  acceptance commit, revalidating intent/generation after reentrant
+  media_accepted callbacks. EOS before acceptance deferred (STOPPED →
+  EOM after acceptance, discarded on invalidation). DURATION_CHANGED and
+  position are owner-resolved against the CURRENT pipeline — never for
+  pending media. _invalidate_generation() centralizes advances and
+  clears deferred observations; accepted stop/replay keeps generation.
+- Code-validation evidence: full suite 1783 passed at CODE_VALIDATED_HEAD
+  ccd4e55 (1 pre-existing conditional skip: M11.3B Qt-runtime).

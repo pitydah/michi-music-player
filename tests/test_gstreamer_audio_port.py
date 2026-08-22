@@ -333,8 +333,12 @@ def _msg(port, msg_type, pipeline, error_text=None, new_state=None):
 def _deliver(port, message, generation):
     """Entrega directa (test seam) + procesa la cola Qt: en producción el
     pump emite con QueuedConnection explícito; en tests el hilo del owner
-    debe drenar la cola para que los callbacks lleguen."""
-    port._process_message(message, generation)
+    debe drenar la cola para que los callbacks lleguen.
+
+    El captured_pipeline del seam es el pipeline VIGENTE del port (el
+    callback del watch captura ese pipeline en producción); los mensajes
+    de pipelines AÑOS (stale) se descartan por la generación primero."""
+    port._process_message(message, generation, port._pipeline)
     for _ in range(5):
         QCoreApplication.processEvents()
 
@@ -549,8 +553,12 @@ class TestStateProvenance:
         port.subscribe_playback_state_changed(lambda s: states.append(s))
         port.load(Path("/m/a.flac"))
         pipeline = bindings.pipelines[-1]
-        msg, gen = msg_state(port, pipeline, _FakeState.PLAYING)
+        # M11.3C-R6.5: PLAYING nunca es autoritativo antes de la aceptación
+        # del media — aceptar primero, luego el STATE_CHANGED PLAYING
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
         _deliver(port, msg, gen)
+        msg2, gen2 = msg_state(port, pipeline, _FakeState.PLAYING)
+        _deliver(port, msg2, gen2)
         assert states == [PlaybackStatus.PLAYING]
         port.close()
 
@@ -2796,6 +2804,432 @@ class TestGStreamerFalsePathConvergence:
         port.close()
 
 
+class TestOwnerThreadProvenanceSeal:
+    """M11.3C-R6.5: GLib pump = observación; Qt owner = commit semántico.
+    La generación se revalida EN el commit point — un evento encolado que
+    sobrevive a una invalidación muere en el owner."""
+
+    # -- helpers ------------------------------------------------------
+
+    def _pump_translate(self, port, message, generation):
+        """Simula el pump: traduce y encola el evento SIN drenar la cola Qt
+        (el owner aún no lo procesó)."""
+        port._process_message(message, generation, port._pipeline)
+
+    def _drain(self):
+        for _ in range(8):
+            QCoreApplication.processEvents()
+
+    def _a_playing(self, bindings):
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        return port, pipeline_a
+
+    # -- T1/T2: ASYNC_DONE encolado antes del fallo de B ------------------
+
+    def test_t1_queued_async_done_dies_after_playing_false(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._a_playing(bindings)
+        port.load(Path("/m/b.flac"))
+        pipeline_b = bindings.pipelines[-1]
+        accepted = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        # ASYNC_DONE de B traducido por el pump, SIN entregar al owner
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_b)
+        self._pump_translate(port, msg, gen)
+        # el pump ya no commitea: B sigue pendiente
+        assert port._pending_path == Path("/m/b.flac")
+        assert port._current_path is None
+        # PLAYING → FAILURE: B terminal, generación invalidada
+        bindings.failed_states.add(_FakeState.PLAYING)
+        with pytest.raises(RuntimeError, match="failed to enter PLAYING"):
+            port.play()
+        # el owner procesa la cola: el ASYNC_DONE encolado muere (gen stale)
+        self._drain()
+        assert accepted == []
+        assert port._current_path is None
+        assert port._pending_path is None
+        port.close()
+
+    def test_t2_queued_async_done_dies_after_playing_raise(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._a_playing(bindings)
+        port.load(Path("/m/b.flac"))
+        pipeline_b = bindings.pipelines[-1]
+        accepted = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_b)
+        self._pump_translate(port, msg, gen)
+        assert port._pending_path == Path("/m/b.flac")
+        bindings.arm_exception_stage = "set_state_playing"
+        bindings.arm_exception = RuntimeError("synthetic play failure")
+        with pytest.raises(RuntimeError, match="play failure"):
+            port.play()
+        self._drain()
+        assert accepted == []
+        assert port._current_path is None
+        port.close()
+
+    # -- T3-T6: eventos encolados antes de la invalidación -----------------
+
+    @pytest.mark.parametrize(
+        "kind",
+        ["duration", "playing", "eos", "error"],
+    )
+    def test_t3_t6_queued_events_die_after_invalidation(self, qapp, kind):
+        bindings = FakeBindings()
+        port, _ = self._a_playing(bindings)
+        port.load(Path("/m/b.flac"))
+        pipeline_b = bindings.pipelines[-1]
+        generation_b = port._generation
+        self._drain()  # drenar el STOPPED de la convergencia del load(B)
+        accepted, states, durations, eoms, rejected = [], [], [], [], []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.subscribe_duration_changed(lambda ms: durations.append(ms))
+        port.subscribe_end_of_media(lambda: eoms.append(1))
+        port.subscribe_media_rejected(lambda p, r: rejected.append((p, r)))
+        # evento de B traducido y ENCOLADO
+        if kind == "duration":
+            m, g = _msg(port, _FakeMsgType.DURATION_CHANGED, pipeline_b)
+        elif kind == "playing":
+            m, g = msg_state(port, pipeline_b, _FakeState.PLAYING)
+        elif kind == "eos":
+            m, g = _msg(port, _FakeMsgType.EOS, pipeline_b)
+        else:
+            m, g = _msg(port, _FakeMsgType.ERROR, pipeline_b, error_text="late b")
+        self._pump_translate(port, m, g)
+        # invalidación de B (fallo de PLAYING)
+        bindings.failed_states.add(_FakeState.PLAYING)
+        with pytest.raises(RuntimeError, match="failed to enter PLAYING"):
+            port.play()
+        self._drain()
+        assert accepted == []
+        assert states == []
+        assert durations == []
+        assert eoms == []
+        assert rejected == []
+        assert port._current_path is None
+        assert port._generation == generation_b + 1
+        port.close()
+
+    # -- T7: posición con candidato pendiente ------------------------------
+
+    def test_t7_position_tick_with_pending_candidate(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._a_playing(bindings)
+        port.load(Path("/m/b.flac"))
+        positions = []
+        port.subscribe_position_changed(lambda ms: positions.append(ms))
+        port._poll_position()  # timer tick encolado
+        self._drain()
+        assert positions == []  # nunca posición para media pendiente
+        port.close()
+
+    # -- T8: ASYNC_DONE duplicado ------------------------------------------
+
+    def test_t8_duplicate_async_done_single_acceptance(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline = bindings.pipelines[-1]
+        accepted = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+        _deliver(port, msg, gen)
+        msg2, gen2 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+        _deliver(port, msg2, gen2)  # duplicado → idempotente
+        assert accepted == [Path("/m/a.flac")]
+        assert port._current_path == Path("/m/a.flac")
+        assert port._pending_path is None
+        port.close()
+
+    # -- T9/T10: orden PLAYING vs ASYNC_DONE --------------------------------
+
+    def test_t9_playing_before_async_done_deferred(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline = bindings.pipelines[-1]
+        events = []
+        port.subscribe_media_accepted(lambda p: events.append(f"acc:{p.name}"))
+        port.subscribe_playback_state_changed(lambda s: events.append(str(s)))
+        port.play()  # intención de reproducción (flujo realista)
+        # PLAYING observado ANTES de la aceptación
+        m, g = msg_state(port, pipeline, _FakeState.PLAYING)
+        self._pump_translate(port, m, g)
+        self._drain()
+        assert events == []  # diferido, sin PLAYING temprano
+        # ASYNC_DONE commitea y publica la secuencia correcta
+        m2, g2 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+        self._pump_translate(port, m2, g2)
+        self._drain()
+        acc_idx = events.index("acc:a.flac")
+        playing_idx = next(
+            i for i, e in enumerate(events) if e == "PlaybackStatus.PLAYING"
+        )
+        assert acc_idx < playing_idx  # aceptación ANTES de PLAYING
+        assert port._current_state == PlaybackStatus.PLAYING
+        port.close()
+
+    def test_t10_async_done_before_playing(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline = bindings.pipelines[-1]
+        events = []
+        port.subscribe_media_accepted(lambda p: events.append(f"acc:{p.name}"))
+        port.subscribe_playback_state_changed(lambda s: events.append(str(s)))
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+        _deliver(port, msg, gen)
+        m2, g2 = msg_state(port, pipeline, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        acc_idx = events.index("acc:a.flac")
+        playing_idx = next(
+            i for i, e in enumerate(events) if e == "PlaybackStatus.PLAYING"
+        )
+        assert acc_idx < playing_idx  # mismo resultado coherente
+        port.close()
+
+    # -- T11: duración antes de la aceptación -------------------------------
+
+    def test_t11_duration_before_acceptance_deferred(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline = bindings.pipelines[-1]
+        durations = []
+        port.subscribe_duration_changed(lambda ms: durations.append(ms))
+        m, g = _msg(port, _FakeMsgType.DURATION_CHANGED, pipeline)
+        self._pump_translate(port, m, g)
+        self._drain()
+        assert durations == []  # sin duración antes de la aceptación
+        # tras la aceptación, la duración se refresca
+        m2, g2 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+        _deliver(port, m2, g2)
+        self._drain()
+        assert durations == [5000]
+        port.close()
+
+    # -- T12/T13: EOS antes de la aceptación --------------------------------
+
+    def test_t12_eos_before_acceptance_deferred(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline = bindings.pipelines[-1]
+        eoms = []
+        port.subscribe_end_of_media(lambda: eoms.append(1))
+        port.play()  # intención de play (pendiente B con preroll)
+        m, g = _msg(port, _FakeMsgType.EOS, pipeline)
+        self._pump_translate(port, m, g)
+        self._drain()
+        assert eoms == []  # sin EOM antes de la aceptación
+        # aceptación → STOPPED → EOM
+        m2, g2 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+        _deliver(port, m2, g2)
+        self._drain()
+        assert eoms == [1]
+        assert port._current_state == PlaybackStatus.STOPPED
+        port.close()
+
+    def test_t13_deferred_eos_discarded_on_invalidation(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._a_playing(bindings)
+        port.load(Path("/m/b.flac"))
+        pipeline_b = bindings.pipelines[-1]
+        eoms = []
+        port.subscribe_end_of_media(lambda: eoms.append(1))
+        port.play()
+        m, g = _msg(port, _FakeMsgType.EOS, pipeline_b)
+        self._pump_translate(port, m, g)
+        self._drain()
+        assert eoms == []  # EOS diferido (B pendiente)
+        # invalidación de B antes de la aceptación → deferred descartado
+        bindings.failed_states.add(_FakeState.PLAYING)
+        with pytest.raises(RuntimeError, match="failed to enter PLAYING"):
+            port.play()
+        m2, g2 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_b)
+        self._pump_translate(port, m2, g2)  # stale por generación
+        self._drain()
+        assert eoms == []
+        assert port._current_path is None
+        port.close()
+
+    # -- T14: ERROR luego ASYNC_DONE ----------------------------------------
+
+    def test_t14_error_then_async_done_no_resurrection(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline = bindings.pipelines[-1]
+        accepted = []
+        rejected = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.subscribe_media_rejected(lambda p, r: rejected.append((p, r)))
+        m, g = _msg(port, _FakeMsgType.ERROR, pipeline, error_text="boom")
+        _deliver(port, m, g)
+        assert rejected == [(Path("/m/a.flac"), "boom")]
+        m2, g2 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+        _deliver(port, m2, g2)
+        assert accepted == []  # sin resurrección tras el rechazo
+        assert port._current_path is None
+        port.close()
+
+    # -- T15: supersession B → C --------------------------------------------
+
+    def test_t15_queued_b_acceptance_dies_on_supersession(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._a_playing(bindings)
+        port.load(Path("/m/b.flac"))
+        pipeline_b = bindings.pipelines[-1]
+        accepted = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        m, g = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_b)
+        self._pump_translate(port, m, g)  # encolado, sin entregar
+        # supersesión: load(C) invalida la generación de B
+        port.load(Path("/m/c.flac"))
+        self._drain()
+        assert accepted == []  # B nunca aceptado
+        assert port._pending_path == Path("/m/c.flac")
+        assert port._current_path is None
+        port.close()
+
+    # -- T16: stop de pending con eventos encolados -------------------------
+
+    def test_t16_stop_pending_kills_queued_b_events(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._a_playing(bindings)
+        port.load(Path("/m/b.flac"))
+        pipeline_b = bindings.pipelines[-1]
+        self._drain()  # drenar el STOPPED de la convergencia del load(B)
+        accepted, states, eoms = [], [], []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.subscribe_end_of_media(lambda: eoms.append(1))
+        for msg_type in (_FakeMsgType.ASYNC_DONE, _FakeMsgType.EOS):
+            m, g = _msg(port, msg_type, pipeline_b)
+            self._pump_translate(port, m, g)
+        port.stop()  # cancelación del pending: generación invalidada
+        self._drain()
+        assert accepted == []
+        assert states == []
+        assert eoms == []
+        assert port._current_path is None
+        port.close()
+
+    # -- T17: close con eventos encolados ------------------------------------
+
+    def test_t17_close_kills_queued_events(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._a_playing(bindings)
+        port.load(Path("/m/b.flac"))
+        pipeline_b = bindings.pipelines[-1]
+        accepted, states, eoms = [], [], []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.subscribe_end_of_media(lambda: eoms.append(1))
+        m, g = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_b)
+        self._pump_translate(port, m, g)
+        port.close()
+        self._drain()
+        assert accepted == []
+        assert states == []
+        assert eoms == []
+        port.close()
+
+    # -- T18/T19: reentrancy en el callback de aceptación -------------------
+
+    def test_t18_accept_callback_loads_c_no_deferred_playing_leak(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        states = []
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+
+        def on_accepted(path):
+            # reentrancy: el subscriber carga C inmediatamente
+            port.load(Path("/m/c.flac"))
+
+        port.subscribe_media_accepted(on_accepted)
+        # PLAYING observado antes de la aceptación (se difiere)
+        m, g = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        self._pump_translate(port, m, g)
+        # aceptación → el callback hace load(C) → generación cambia
+        m2, g2 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, m2, g2)
+        self._drain()
+        # el deferred PLAYING de A re-encolado muere (gen stale)
+        assert PlaybackStatus.PLAYING not in states
+        assert port._current_path is None
+        assert port._pending_path == Path("/m/c.flac")
+        port.close()
+
+    def test_t19_accept_callback_stops_no_late_playing(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        states = []
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+
+        def on_accepted(path):
+            port.stop()
+
+        port.subscribe_media_accepted(on_accepted)
+        m, g = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        self._pump_translate(port, m, g)
+        m2, g2 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, m2, g2)
+        self._drain()
+        # el stop del callback cancela el deferred PLAYING; el source
+        # aceptado A queda retenido (contrato accepted-stop de R6)
+        assert PlaybackStatus.PLAYING not in states
+        assert port._current_path == Path("/m/a.flac")
+        assert port._current_state == PlaybackStatus.STOPPED
+        port.close()
+
+    # -- T20: thread affinity ------------------------------------------------
+
+    def test_t20_public_callbacks_run_on_owner_thread(self, qapp):
+        import threading
+
+        bindings = FakeBindings()
+        port = _port(bindings)
+        owner_thread = threading.get_ident()
+        callback_threads = []
+        port.subscribe_media_accepted(
+            lambda p: callback_threads.append(threading.get_ident())
+        )
+        port.subscribe_playback_state_changed(
+            lambda s: callback_threads.append(threading.get_ident())
+        )
+        port.subscribe_end_of_media(
+            lambda: callback_threads.append(threading.get_ident())
+        )
+        port.load(Path("/m/a.flac"))
+        pipeline = bindings.pipelines[-1]
+        pump_thread = port._pump  # el pump real existe (fake run_loop)
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+        _deliver(port, msg, gen)
+        m2, g2 = msg_state(port, pipeline, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        port.play()
+        m3, g3 = _msg(port, _FakeMsgType.EOS, pipeline)
+        _deliver(port, m3, g3)
+        assert callback_threads, "callbacks esperados"
+        assert all(t == owner_thread for t in callback_threads)
+        assert pump_thread is not None  # pump en thread separado
+        port.close()
+
+
 @pytest.mark.gstreamer_runtime
 class TestRealRuntimeSmoke:
     """P2-01/P1-04: smoke real de GI/GStreamer — SKIP truthful solo con
@@ -3026,8 +3460,13 @@ class TestRealRuntimeSmoke:
         port = GStreamerAudioPort(bindings)
         accepted = []
         states = []
-        port.subscribe_media_accepted(lambda p: accepted.append(p))
-        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        order = []  # M11.3C-R6.5: orden de eventos públicos (determinístico)
+        port.subscribe_media_accepted(
+            lambda p: (accepted.append(p), order.append("acc"))
+        )
+        port.subscribe_playback_state_changed(
+            lambda s: (states.append(s), order.append(str(s)))
+        )
 
         def wait_for(predicate, what):
             deadline = time.monotonic() + 3.0
@@ -3073,6 +3512,8 @@ class TestRealRuntimeSmoke:
         stopped = [i for i, s in enumerate(states) if s == PlaybackStatus.STOPPED]
         assert len(playing) == 2 and len(stopped) == 1
         assert playing[0] < stopped[0] < playing[1]
+        # M11.3C-R6.5: la aceptación precede al primer PLAYING público
+        assert order.index("acc") < order.index("PlaybackStatus.PLAYING")
         port.close()
         assert port._pipeline is None
         assert port._pump is None
