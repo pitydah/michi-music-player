@@ -101,7 +101,11 @@ class TestIdentityPersistence:
         repo.clear_identities()
         assert repo.load_artist_identity("k") is None
 
-    def test_malformed_identity_row_skipped(self, tmp_path):
+    def test_malformed_identity_row_raises(self, tmp_path):
+        """R3.1: malformed identity authority is CORRUPTION — it raises,
+        never silently degrades to 'no identity exists'."""
+        from michi.application.enrichment_ports import EnrichmentStorageError
+
         db_path = tmp_path / "enrichment.db"
         repo = SqliteEnrichmentRepository(db_path)
         conn = sqlite3.connect(str(db_path))
@@ -113,8 +117,10 @@ class TestIdentityPersistence:
             conn.commit()
         finally:
             conn.close()
-        assert repo.load_artist_identity("bad-key") is None
-        assert repo.load_artist_identities() == ()
+        with pytest.raises(EnrichmentStorageError):
+            repo.load_artist_identity("bad-key")
+        with pytest.raises(EnrichmentStorageError):
+            repo.load_artist_identities()
 
 
 class TestSchemaMigration:
