@@ -3,6 +3,11 @@
 Status: implemented. Scope: structural firewall + fail-closed identity gates.
 No network providers, no tag extraction, no UI wiring — those are later WPs.
 
+> **M6.9A-R1 supersedes parts of this document.** R1 hardened the identity
+> semantics (typed role carriers, entity-specific evidence, structural
+> gates, persistent identity authority, provenance, asset validation).
+> See `docs/M6_9A_R1_IDENTITY_SEMANTICS.md` for the current contract.
+
 ## Problem
 
 Michi Legacy suffered architectural corruption because local file metadata,
