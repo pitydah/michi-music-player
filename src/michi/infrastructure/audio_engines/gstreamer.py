@@ -310,8 +310,12 @@ class GStreamerAudioPort(AudioPort):
             self._bindings.pop_thread_default(self._context)
 
     def _attach_pipeline_sources(self, pipeline, bus, generation: int) -> None:
-        """Attach the bus GSource and the single position timer to the
-        CUSTOM context. The bus callback CAPTURES the generation."""
+        """Instala el bus watch y el timer de posición en el context custom.
+
+        El bus se instala con Gst.Bus.add_watch() (GstBusFunc correcta en
+        PyGObject) mientras el context del pump es thread-default; el timer
+        de posición es un GSource GLib explícito attachado al mismo context.
+        El callback del bus captura la generación vigente."""
 
         def on_bus_message(bus_, message, user_data=None):
             self._process_message(message, generation)
@@ -375,34 +379,46 @@ class GStreamerAudioPort(AudioPort):
         # dueño (pipeline + bus observables) y NO se crea B.
         if not self._try_stop_pipeline():
             raise RuntimeError("pipeline anterior no pudo transicionar a NULL")
-        # PHASE B — ARM NEW: el commit point (teardown OK de A) ya pasó.
+        # CONVERGENCIA (M11.3C-R6): el teardown del source activo A dejó el
+        # transporte STOPPED. Converger AHORA (no depender de un
+        # STATE_CHANGED del pipeline viejo ya desacoplado) para que un fallo
+        # posterior del ARM de B no deje un PLAYING falso en la app.
+        self._deliver_state_if(PlaybackStatus.STOPPED)
+        # PHASE B — ARM NEW (M11.3C-R6 exception-atomic): el commit point
+        # (teardown OK de A) ya pasó. CUALQUIER excepción normal durante la
+        # construcción/configuración/attach/preroll-request del pipeline B
+        # dispara un rollback best-effort y re-lanza la excepción ORIGINAL
+        # como primaria (los fallos de limpieza son secundarios).
         self._generation += 1
         self._pending_path = Path(file_path)
         self._current_path = None
         self._eos_emitted = False
         self._pending_play = False
-        self._ensure_pump()
-        pipeline = self._bindings.make_playbin3()
-        if pipeline is None:
-            raise RuntimeError("playbin3 no disponible")
-        self._pipeline = pipeline
-        self._bindings.set_volume(pipeline, self._volume)
-        self._bindings.set_muted(pipeline, self._muted)
-        self._bus = self._bindings.get_bus(pipeline)
-        self._bindings.set_uri(pipeline, Path(file_path).resolve().as_uri())
-        if self._bindings.supports_pump():
-            self._attach_pipeline_sources(pipeline, self._bus, self._generation)
-        else:
-            # test seam: mensajes entregados manualmente
-            self._bus_source = None
-            self._bus_source_attached = False
-        # preroll: ASYNC_DONE (generación vigente) = evidencia de aceptación.
-        # Fallo síncrono del preroll → failure-atomic: rechazo PRIMERO (el
-        # evento semántico primario), luego limpieza del pipeline fallido.
-        # Si el NULL de limpieza TAMBIÉN falla: retener el pipeline fallido
-        # (NUNCA fingir que la limpieza tuvo éxito) y propagar el error de
-        # limpieza al caller.
-        if not self._request_state(self._bindings.STATE.PAUSED):
+        timer_before = self._timer_source
+        paused_accepted = False
+        try:
+            self._ensure_pump()
+            pipeline = self._bindings.make_playbin3()
+            if pipeline is None:
+                raise RuntimeError("playbin3 no disponible")
+            self._pipeline = pipeline
+            self._bindings.set_volume(pipeline, self._volume)
+            self._bindings.set_muted(pipeline, self._muted)
+            self._bus = self._bindings.get_bus(pipeline)
+            self._bindings.set_uri(pipeline, Path(file_path).resolve().as_uri())
+            if self._bindings.supports_pump():
+                self._attach_pipeline_sources(pipeline, self._bus, self._generation)
+            else:
+                # test seam: mensajes entregados manualmente
+                self._bus_source = None
+                self._bus_source_attached = False
+            # preroll request: un RAISE aquí es un ARM exception (rollback);
+            # un False controlado es el preroll failure path (abajo)
+            paused_accepted = self._request_state(self._bindings.STATE.PAUSED)
+        except Exception as arm_exc:  # noqa: BLE001 — ARM transaction boundary
+            self._rollback_failed_arm(arm_exc, timer_before)
+            raise arm_exc
+        if not paused_accepted:
             reason = "GStreamer failed to enter PAUSED during preroll"
             candidate = self._pending_path
             self._pending_path = None
@@ -694,12 +710,21 @@ class GStreamerAudioPort(AudioPort):
         msg_type = self._bindings.message_type(message)
         mt = self._bindings.MESSAGE_TYPE
         if msg_type == mt.EOS:
+            # EOS = fin natural del media ACTUAL (M11.3C-R6 P1-02): converge
+            # a STOPPED antes del EOM y retiene la fuente para replay. El
+            # guard _pending_play evita que un EOS tardío (ya encolado antes
+            # de un stop explícito del usuario) cree un fin natural falso.
             if (
                 self._pending_path is None
                 and self._current_path is not None
+                and self._pending_play
                 and not self._eos_emitted
             ):
                 self._eos_emitted = True
+                self._pending_play = False
+                # orden: STOPPED (convergencia) ANTES de EOM (QueueService
+                # decide el siguiente load/repeat sobre estado ya convergido)
+                self._deliver_state_if(PlaybackStatus.STOPPED)
                 self._bridge.sig_eom.emit()
         elif msg_type == mt.ERROR:
             # child-element errors are valid for the current graph
