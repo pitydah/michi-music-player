@@ -228,6 +228,13 @@ Item {
             // Selection on click; playback on double-click / Enter
             onClicked: root.trackSelected(index)
             onDoubleClicked: root.playTrackRequested(index)
+            // Keyboard navigation feedback: arrow keys move the ListView
+            // currentIndex, so the focused row must also become the visible
+            // selected row (otherwise the cursor moves invisibly)
+            onActiveFocusChanged: {
+                if (activeFocus)
+                    root.trackSelected(index)
+            }
             Keys.onReturnPressed: root.playTrackRequested(index)
             Keys.onEnterPressed: root.playTrackRequested(index)
             Keys.onUpPressed: event => {

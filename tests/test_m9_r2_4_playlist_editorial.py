@@ -206,3 +206,17 @@ def test_hero_fades_in_on_open():
     assert "opacity: 0" in hero
     assert "Behavior on opacity" in hero
     assert "Component.onCompleted: opacity = 1" in hero
+
+
+# ── Audit pass (qt-ui-design checklist) ───────────────────────────────────────
+
+
+def test_keyboard_navigation_updates_visible_selection():
+    table = read("playlists/PlaylistTrackList.qml")
+    # arrow-key navigation moves currentIndex invisibly unless the focused
+    # row also becomes the selected row — audit fix
+    assert "onActiveFocusChanged: {" in table
+    assert "root.trackSelected(index)" in table
+    # both keyboard paths (row keys + list keys) reproduce from the index
+    assert "Keys.onReturnPressed: root.playTrackRequested(index)" in table
+    assert "root.playTrackRequested(currentIndex)" in table
