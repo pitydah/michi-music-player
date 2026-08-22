@@ -26,7 +26,7 @@ from michi.domain.enrichment import (
     LocalAlbumEvidence,
 )
 from michi.domain.library import TrackMetadata, TrackRef, build_music_model
-from michi.infrastructure.enrichment_repository import SqliteKnowledgeRepository
+from michi.infrastructure.enrichment_repository import SqliteEnrichmentRepository
 from michi.infrastructure.library_index import SqliteLibraryIndexRepository
 
 
@@ -122,12 +122,14 @@ def index_rows(db_path: Path) -> list:
 
 def build_service(tmp_path: Path, artist_provider=None, album_provider=None):
     resolver = FakeIdentityResolver()
-    enrichment_repo = SqliteKnowledgeRepository(tmp_path / "enrichment.db")
+    enrichment_repo = SqliteEnrichmentRepository(tmp_path / "enrichment.db")
+    identity_repo = SqliteEnrichmentRepository(tmp_path / "enrichment.db")
     service = EnrichmentService(
         resolver=resolver,
         artist_provider=artist_provider or FakeArtistProvider(),
         album_provider=album_provider or FakeAlbumProvider(),
         repository=enrichment_repo,
+        identity_repository=identity_repo,
     )
     return service, enrichment_repo
 
@@ -229,7 +231,8 @@ class TestExternalProfilesNeverTouchLocalMetadata:
             resolver=FakeIdentityResolver(),
             artist_provider=FakeArtistProvider(),
             album_provider=FakeAlbumProvider(),
-            repository=SqliteKnowledgeRepository(tmp_path / "enrichment.db"),
+            repository=SqliteEnrichmentRepository(tmp_path / "enrichment.db"),
+            identity_repository=SqliteEnrichmentRepository(tmp_path / "enrichment.db"),
             asset_store=external_store,
         )
         outcome = service.request_artist_enrichment(artist_evidence("mb-a"))
@@ -268,7 +271,7 @@ class TestLibraryIndexIsolation:
         service.deliver_artist_profile(
             outcome.request, service._artist_provider.fetch_profile("artist a", "mb-a")
         )
-        enrichment_repo.clear()
+        enrichment_repo.clear_knowledge()
         assert enrichment_repo.load_artist_profiles() == ()
         assert index_rows(tmp_path / "library.db") == rows_before
         assert len(library_repo.load_all()) == 2
@@ -282,7 +285,7 @@ class TestLibraryIndexIsolation:
         )
         # "Rebuild": delete enrichment.db and repopulate from scratch.
         (tmp_path / "enrichment.db").unlink()
-        rebuilt = SqliteKnowledgeRepository(tmp_path / "enrichment.db")
+        rebuilt = SqliteEnrichmentRepository(tmp_path / "enrichment.db")
         rebuilt.save_artist_profile(
             service._artist_provider.fetch_profile("artist a", "mb-a")
         )
@@ -341,7 +344,8 @@ class TestEntityOwnershipAtRest:
             resolver=resolver,
             artist_provider=FakeArtistProvider(),
             album_provider=FakeAlbumProvider(),
-            repository=SqliteKnowledgeRepository(tmp_path / "enrichment.db"),
+            repository=SqliteEnrichmentRepository(tmp_path / "enrichment.db"),
+            identity_repository=SqliteEnrichmentRepository(tmp_path / "enrichment.db"),
         )
         evidence = ArtistIdentityEvidence(
             local_artist_key="john williams",
@@ -350,7 +354,7 @@ class TestEntityOwnershipAtRest:
         )
         outcome = service.request_artist_enrichment(evidence)
         assert outcome.request is None
-        repo = SqliteKnowledgeRepository(tmp_path / "enrichment.db")
+        repo = SqliteEnrichmentRepository(tmp_path / "enrichment.db")
         assert repo.load_artist_profiles() == ()
 
 
