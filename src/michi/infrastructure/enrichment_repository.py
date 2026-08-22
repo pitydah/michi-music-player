@@ -131,16 +131,29 @@ def _decode_v1_payload(
 def _transform_v1_artist(payload: dict) -> str | None:
     """v1 artist -> current shape. ``source`` -> provenance.provider;
     ``generation`` DROPPED (async lifecycle is not knowledge); nothing
-    else is fabricated."""
+    else is fabricated.
+
+    R3 BIOGRAPHY PROVENANCE: when the historical profile carries a
+    non-empty biography AND a non-empty source, that source context
+    truthfully applies to the biography as well —
+    ``biography_provenance.provider`` is preserved. Unsupported fields
+    (source_url / language / license / ...) stay unknown."""
+    source = payload["source"]
+    biography = payload["biography"]
     profile = ArtistKnowledgeProfile(
         local_artist_key=payload["local_artist_key"],
         external_artist_id=payload["external_artist_id"],
-        biography=payload["biography"],
+        biography=biography,
         external_genres=tuple(payload["external_genres"]),
         begin_year=payload["begin_year"],
         end_year=payload["end_year"],
         artwork_asset_id=payload["artwork_asset_id"],
-        provenance=KnowledgeProvenance(provider=payload["source"]),
+        provenance=KnowledgeProvenance(provider=source),
+        biography_provenance=(
+            KnowledgeProvenance(provider=source)
+            if biography and source
+            else KnowledgeProvenance()
+        ),
     )
     return encode_artist_profile(profile)
 
@@ -240,25 +253,58 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
         )
 
     def _ensure_schema(self) -> None:
+        """R3 NON-MUTATING SCHEMA DISCOVERY.
+
+        The database state is determined BEFORE anything is created:
+        - brand-new empty database -> initialize current schema;
+        - enrichment tables WITHOUT version metadata -> corrupt, fail;
+        - v1/v2 -> transactional migration;
+        - v3 -> VALIDATE the structural shape (no silent repair);
+        - future (> current), non-numeric, negative or zero version ->
+          EnrichmentSchemaError WITHOUT touching the database.
+        """
         conn = self._connect()
         try:
-            self._create_knowledge_tables(conn)
-            conn.execute(
-                "CREATE TABLE IF NOT EXISTS enrichment_meta ("
-                "key TEXT PRIMARY KEY, value TEXT NOT NULL)"
-            )
-            row = conn.execute(
-                "SELECT value FROM enrichment_meta WHERE key = ?", (_VERSION_KEY,)
+            meta = conn.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='table' AND name='enrichment_meta'"
             ).fetchone()
-            raw = row[0] if row is not None else None
-            if raw is None:
+            if meta is None:
+                existing = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name IN ('artist_knowledge', 'album_knowledge', "
+                    "'artist_identity', 'album_identity')"
+                ).fetchall()
+                if existing:
+                    raise EnrichmentSchemaError(
+                        "enrichment tables exist without version metadata"
+                    )
+                self._create_knowledge_tables(conn)
+                conn.execute(
+                    "CREATE TABLE enrichment_meta ("
+                    "key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+                )
                 self._create_identity_tables_v3(conn)
                 conn.execute(
                     "INSERT INTO enrichment_meta(key, value) VALUES(?, ?)",
                     (_VERSION_KEY, str(CURRENT_ENRICHMENT_SCHEMA)),
                 )
                 return
-            version = int(raw) if str(raw).isdigit() else 0
+            row = conn.execute(
+                "SELECT value FROM enrichment_meta WHERE key = ?", (_VERSION_KEY,)
+            ).fetchone()
+            if row is None:
+                raise EnrichmentSchemaError(
+                    "enrichment_meta exists without a version row"
+                )
+            raw = row[0]
+            if not str(raw).isdigit() or int(raw) <= 0:
+                # Non-numeric, empty, negative or zero: malformed metadata
+                # is NEVER rewritten and never upgraded.
+                raise EnrichmentSchemaError(
+                    f"invalid enrichment schema version: {raw!r}"
+                )
+            version = int(raw)
             if version > CURRENT_ENRICHMENT_SCHEMA:
                 raise EnrichmentSchemaError(
                     f"enrichment schema version {version} is newer "
@@ -280,15 +326,49 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
                         conn.execute("ROLLBACK")
                     raise
                 return
-            # version 0 or 3: idempotent — ensure the v3 shape exists.
-            self._create_identity_tables_v3(conn)
-            if version == 0:
-                conn.execute(
-                    "UPDATE enrichment_meta SET value = ? WHERE key = ?",
-                    (str(CURRENT_ENRICHMENT_SCHEMA), _VERSION_KEY),
-                )
+            # version == CURRENT: validate, NEVER auto-repair.
+            self._validate_current_schema(conn)
+        except sqlite3.Error as exc:
+            raise EnrichmentSchemaError(
+                f"enrichment schema bootstrap failed: {exc}"
+            ) from exc
         finally:
             conn.close()
+
+    @staticmethod
+    def _validate_current_schema(conn) -> None:
+        """R3 fail-closed current-schema validation: required tables AND
+        required columns must exist. A corrupt current-version database
+        is rejected — identity tables are USER AUTHORITY and are never
+        silently recreated empty."""
+        required = {
+            "artist_identity": (
+                "local_artist_key",
+                "external_artist_id",
+                "status",
+                "match_method",
+                "resolved_at",
+            ),
+            "album_identity": (
+                "local_album_key",
+                "release_group_id",
+                "release_id",
+                "status",
+                "match_method",
+                "resolved_at",
+            ),
+            "artist_knowledge": ("local_artist_key", "profile"),
+            "album_knowledge": ("local_album_key", "profile"),
+            "enrichment_meta": ("key", "value"),
+        }
+        for table, columns in required.items():
+            info = conn.execute(f"PRAGMA table_info({table})").fetchall()
+            if not info:
+                raise EnrichmentSchemaError(f"missing table {table}")
+            actual = {row[1] for row in info}
+            missing = [c for c in columns if c not in actual]
+            if missing:
+                raise EnrichmentSchemaError(f"table {table} missing columns: {missing}")
 
     def _migrate_v1_knowledge(self, conn) -> None:
         """REAL v1 data transformation (R2): rewrite every valid v1
@@ -380,8 +460,9 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
                 return 0
             return int(row[0]) if str(row[0]).isdigit() else 0
         except sqlite3.Error as exc:
-            logger.warning("enrichment version read failed: %s", exc)
-            return 0
+            raise EnrichmentStorageError(
+                f"enrichment version read failed: {exc}"
+            ) from exc
 
     # -- identity authority (truthful writes) --------------------------------
 
@@ -503,8 +584,7 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("enrichment artist identity load failed: %s", exc)
-            return None
+            raise EnrichmentStorageError(f"artist identity load failed: {exc}") from exc
         if row is None:
             return None
         identity = self._artist_identity_from_row(row)
@@ -526,8 +606,7 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("enrichment album identity load failed: %s", exc)
-            return None
+            raise EnrichmentStorageError(f"album identity load failed: {exc}") from exc
         if row is None:
             return None
         identity = self._album_identity_from_row(row)
@@ -548,8 +627,9 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("enrichment artist identity load all failed: %s", exc)
-            return ()
+            raise EnrichmentStorageError(
+                f"artist identity load all failed: {exc}"
+            ) from exc
         identities = []
         for row in rows:
             identity = self._artist_identity_from_row(row)
@@ -569,8 +649,9 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("enrichment album identity load all failed: %s", exc)
-            return ()
+            raise EnrichmentStorageError(
+                f"album identity load all failed: {exc}"
+            ) from exc
         identities = []
         for row in rows:
             identity = self._album_identity_from_row(row)
@@ -579,14 +660,22 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
         return tuple(identities)
 
     def clear_identities(self) -> None:
-        """Remove ALL identity authority rows (explicit, never accidental:
-        the generic clear() of M6.9A no longer exists). Truthful: raises
+        """R3 TRANSACTIONAL: both identity tables are cleared atomically
+        (BEGIN / COMMIT / ROLLBACK) — a failure can never leave a
+        partially cleared identity authority. Truthful: raises
         EnrichmentStorageError on failure."""
         try:
             conn = self._connect()
             try:
-                conn.execute("DELETE FROM artist_identity")
-                conn.execute("DELETE FROM album_identity")
+                conn.execute("BEGIN")
+                try:
+                    conn.execute("DELETE FROM artist_identity")
+                    conn.execute("DELETE FROM album_identity")
+                    conn.execute("COMMIT")
+                except Exception:
+                    with contextlib.suppress(sqlite3.Error):
+                        conn.execute("ROLLBACK")
+                    raise
             finally:
                 conn.close()
         except sqlite3.Error as exc:
@@ -608,7 +697,9 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("enrichment artist save failed: %s", exc)
+            raise EnrichmentStorageError(
+                f"artist knowledge save failed: {exc}"
+            ) from exc
 
     def save_album_profile(self, profile: AlbumKnowledgeProfile) -> None:
         try:
@@ -624,7 +715,7 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("enrichment album save failed: %s", exc)
+            raise EnrichmentStorageError(f"album knowledge save failed: {exc}") from exc
 
     def delete_artist_profile(self, local_artist_key: str) -> None:
         self._delete_knowledge("artist_knowledge", "local_artist_key", local_artist_key)
@@ -640,7 +731,7 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("enrichment knowledge delete failed: %s", exc)
+            raise EnrichmentStorageError(f"{table} delete failed: {exc}") from exc
 
     def load_artist_profile(
         self, local_artist_key: str
@@ -655,8 +746,9 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("enrichment artist load failed: %s", exc)
-            return None
+            raise EnrichmentStorageError(
+                f"artist knowledge load failed: {exc}"
+            ) from exc
         if row is None:
             return None
         profile = decode_artist_profile(row[0])
@@ -683,8 +775,7 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("enrichment album load failed: %s", exc)
-            return None
+            raise EnrichmentStorageError(f"album knowledge load failed: {exc}") from exc
         if row is None:
             return None
         profile = decode_album_profile(row[0])
@@ -711,8 +802,9 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("enrichment artist load all failed: %s", exc)
-            return ()
+            raise EnrichmentStorageError(
+                f"artist knowledge load all failed: {exc}"
+            ) from exc
         profiles = []
         for key, raw in rows:
             profile = decode_artist_profile(raw)
@@ -736,8 +828,9 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("enrichment album load all failed: %s", exc)
-            return ()
+            raise EnrichmentStorageError(
+                f"album knowledge load all failed: {exc}"
+            ) from exc
         profiles = []
         for key, raw in rows:
             profile = decode_album_profile(raw)
@@ -752,16 +845,26 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
 
     def clear_knowledge(self) -> None:
         """Clear DOWNLOADED KNOWLEDGE only — the identity authority rows
-        (including manual mappings) are preserved (R1/R2)."""
+        (including manual mappings) are preserved (R1/R2).
+
+        R3 TRANSACTIONAL: both knowledge tables are cleared atomically;
+        failures raise EnrichmentStorageError (never a fake success)."""
         try:
             conn = self._connect()
             try:
-                conn.execute("DELETE FROM artist_knowledge")
-                conn.execute("DELETE FROM album_knowledge")
+                conn.execute("BEGIN")
+                try:
+                    conn.execute("DELETE FROM artist_knowledge")
+                    conn.execute("DELETE FROM album_knowledge")
+                    conn.execute("COMMIT")
+                except Exception:
+                    with contextlib.suppress(sqlite3.Error):
+                        conn.execute("ROLLBACK")
+                    raise
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("enrichment knowledge clear failed: %s", exc)
+            raise EnrichmentStorageError(f"knowledge clear failed: {exc}") from exc
 
 
 # Backward-compatible alias: M6.9A named this class SqliteKnowledgeRepository.
