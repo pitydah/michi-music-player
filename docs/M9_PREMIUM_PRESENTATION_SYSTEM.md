@@ -71,8 +71,9 @@ AFFECTED COMPONENTS / NON-GOALS / TEST-ACCEPTANCE GATES / REFREEZE CONDITION:
   - documentation closeout: f713a89
   - QML error-capture refinement: 79f764f (intermediate test-harness step)
   - SearchOverlay lazy-binding + real-chain dynamic-gate hardening: e4af323
-  - final P2 hardening (stable repeater locator, closed-overlay gates,
-    lazy-binding regression): ccb4500..
+  - M9-R1K P2 hardening implementation: ccb4500441d17ca5c633f29c6e9311b1042bcd6d
+  - M9-R1K documentation closeout: 48d38e6a62befd2a295c556cda0a65b9e0beb601
+  - M9-R1L final QA (real open→focus→close focus gate): 6af09b200075c85fca72fa263be183f68529ca6d
 - **M9-R2 — Audio Output UX** (trigger: M11.3/M11.4 audiophile output):
   engine selector, DAC selector, Output Profile selector, output state,
   actual format telemetry, Signal Path, DSD mode, BitPerfectState, hotplug/
