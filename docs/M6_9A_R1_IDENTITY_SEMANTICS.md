@@ -1,8 +1,11 @@
 # M6.9A-R1 — Identity Semantics Hardening
 
-Status: implemented. Scope: identity-semantics corrections on the M6.9A
-enrichment foundation. NO network providers, NO tag extraction, NO
-presentation, NO bootstrap wiring — those remain later authorized WPs.
+Status: implemented; reconstructed cleanly on current main by M6.9A-R2.
+
+> **M6.9A-R2 supersedes parts of this document** (album artist gate,
+> request invalidation, identity transitions, truthful persistence,
+> schema 3, manifest-based assets). See
+> `docs/M6_9A_R2_ENRICHMENT_CONVERGENCE.md` for the current contract.
 
 ## Corrections applied
 

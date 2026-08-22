@@ -331,3 +331,46 @@ class TestR1IdentityVsKnowledgeGates:
                 for name, _ in inspect.getmembers(port)
                 if name.startswith("clear")
             )
+
+
+class TestR2StructuralGates:
+    """R2 §79: no absolute asset paths, release variant correlation,
+    ledger invalidation API, no redundant manual state."""
+
+    def test_asset_record_has_no_absolute_path_field(self):
+        from michi.domain.enrichment import EnrichmentAssetRecord
+
+        fields = set(EnrichmentAssetRecord.__dataclass_fields__)
+        assert "local_path" not in fields
+        assert "managed_object" in fields
+
+    def test_request_carries_release_variant(self):
+        from michi.domain.enrichment import EnrichmentRequest
+
+        assert "external_variant_id" in EnrichmentRequest.__dataclass_fields__
+
+    def test_ledger_exposes_invalidation_api(self):
+        from michi.domain.enrichment import EnrichmentRequestLedger
+
+        assert callable(EnrichmentRequestLedger.invalidate)
+        assert callable(EnrichmentRequestLedger.invalidate_all)
+
+    def test_identity_records_have_no_redundant_manual_state(self):
+        from michi.domain.enrichment import (
+            AlbumExternalIdentity,
+            ArtistExternalIdentity,
+        )
+
+        for model in (ArtistExternalIdentity, AlbumExternalIdentity):
+            assert "manually_confirmed" not in model.__dataclass_fields__
+
+    def test_album_candidate_carries_artist_credit_names(self):
+        from michi.domain.enrichment import ReleaseGroupCandidate
+
+        assert "artist_credit_names" in ReleaseGroupCandidate.__dataclass_fields__
+
+    def test_service_exposes_knowledge_read_authority(self):
+        from michi.application.enrichment_service import EnrichmentService
+
+        assert callable(EnrichmentService.get_artist_knowledge)
+        assert callable(EnrichmentService.get_album_knowledge)
