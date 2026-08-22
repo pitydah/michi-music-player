@@ -189,11 +189,19 @@ class FilesystemEnrichmentAssetStore(EnrichmentAssetStorePort):
         return completed
 
     def _write_object(self, object_name: str, data: bytes) -> bool:
+        """Content-addressed object write. R3: an EXISTING object is
+        verified against its content hash — a corrupted file is replaced
+        atomically from the validated new payload; the filename alone is
+        never trusted."""
         try:
             self._objects.mkdir(parents=True, exist_ok=True)
             target = self._objects / object_name
-            if target.exists():
-                return True  # immutable, already present
+            if target.exists() and (
+                _sha256(target.read_bytes()) == object_name.split(".", 1)[0]
+            ):
+                return True  # verified immutable object: reuse
+            # Corrupted content: rewrite atomically (old bytes are
+            # already invalid; the replacement is the validated data).
             temp = self._objects / f".{object_name}.{uuid4().hex}.tmp"
             temp.write_bytes(data)
             os.replace(temp, target)
