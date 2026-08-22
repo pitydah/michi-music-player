@@ -17,10 +17,11 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 
 from michi.domain.enrichment import (
+    AlbumIdentityEvidence,
     AlbumKnowledgeProfile,
     ArtistCandidate,
+    ArtistIdentityEvidence,
     ArtistKnowledgeProfile,
-    IdentityEvidence,
     ReleaseEditionCandidate,
     ReleaseGroupCandidate,
 )
@@ -38,21 +39,25 @@ class ExternalIdentityResolverPort(ABC):
 
     The resolver only FINDS candidates; the fail-closed gates
     (``resolve_artist_identity`` / ``resolve_album_identity``) live in the
-    pure domain and decide AMBIGUOUS / IDENTITY_CONFLICT / NO_MATCH."""
+    pure domain and decide AMBIGUOUS / IDENTITY_CONFLICT / NO_MATCH.
+
+    R1: entity-specific evidence — artists receive
+    ``ArtistIdentityEvidence``, albums receive ``AlbumIdentityEvidence``.
+    The two are never interchangeable."""
 
     @abstractmethod
     def find_artist_candidates(
-        self, evidence: IdentityEvidence
+        self, evidence: ArtistIdentityEvidence
     ) -> tuple[ArtistCandidate, ...]: ...
 
     @abstractmethod
     def find_release_group_candidates(
-        self, evidence: IdentityEvidence
+        self, evidence: AlbumIdentityEvidence
     ) -> tuple[ReleaseGroupCandidate, ...]: ...
 
     @abstractmethod
     def find_release_edition_candidates(
-        self, evidence: IdentityEvidence
+        self, evidence: AlbumIdentityEvidence
     ) -> tuple[ReleaseEditionCandidate, ...]: ...
 
 

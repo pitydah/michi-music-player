@@ -16,10 +16,11 @@ from michi.application.enrichment_ports import (
 )
 from michi.application.ports import LibraryIndexRepository
 from michi.domain.enrichment import (
+    AlbumIdentityEvidence,
     AlbumKnowledgeProfile,
     ArtistCandidate,
+    ArtistIdentityEvidence,
     ArtistKnowledgeProfile,
-    IdentityEvidence,
     ReleaseEditionCandidate,
     ReleaseGroupCandidate,
 )
@@ -32,24 +33,24 @@ class FakeIdentityResolver(ExternalIdentityResolverPort):
         self._artists = tuple(artists)
         self._groups = tuple(groups)
         self._editions = tuple(editions)
-        self.artist_evidence: list[IdentityEvidence] = []
-        self.group_evidence: list[IdentityEvidence] = []
-        self.edition_evidence: list[IdentityEvidence] = []
+        self.artist_evidence: list[ArtistIdentityEvidence] = []
+        self.group_evidence: list[AlbumIdentityEvidence] = []
+        self.edition_evidence: list[AlbumIdentityEvidence] = []
 
     def find_artist_candidates(
-        self, evidence: IdentityEvidence
+        self, evidence: ArtistIdentityEvidence
     ) -> tuple[ArtistCandidate, ...]:
         self.artist_evidence.append(evidence)
         return self._artists
 
     def find_release_group_candidates(
-        self, evidence: IdentityEvidence
+        self, evidence: AlbumIdentityEvidence
     ) -> tuple[ReleaseGroupCandidate, ...]:
         self.group_evidence.append(evidence)
         return self._groups
 
     def find_release_edition_candidates(
-        self, evidence: IdentityEvidence
+        self, evidence: AlbumIdentityEvidence
     ) -> tuple[ReleaseEditionCandidate, ...]:
         self.edition_evidence.append(evidence)
         return self._editions
