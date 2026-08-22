@@ -123,9 +123,10 @@ PathView {
             radius: MichiRadius.lg
             color: "transparent"
             border.width: PathView.isCurrentItem ? 2 : 1
-            border.color: PathView.isCurrentItem
-                ? MichiPalette.auroraBlue : MichiSemanticColors.borderSubtle
-            opacity: PathView.isCurrentItem || hover.hovered ? 1 : 0.55
+            border.color: tap.pressed ? MichiPalette.auroraCyan
+                : PathView.isCurrentItem
+                    ? MichiPalette.auroraBlue : MichiSemanticColors.borderSubtle
+            opacity: PathView.isCurrentItem || hover.hovered || tap.pressed ? 1 : 0.55
         }
 
         Artwork {
@@ -168,11 +169,16 @@ PathView {
         }
 
         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
-        MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: albumsPath.currentIndex = pathAlbum.index
-            onDoubleClicked: library.select_album(modelData.key)
+        // TapHandler (not MouseArea): it claims only the tap, leaving the
+        // PathView drag/flick intact when the gesture starts on a cover.
+        // Click selects + keeps keyboard focus; double-click opens.
+        TapHandler {
+            id: tap
+            onTapped: {
+                albumsPath.currentIndex = pathAlbum.index
+                pathAlbum.forceActiveFocus()
+            }
+            onDoubleTapped: library.select_album(modelData.key)
         }
 
         Behavior on scale {

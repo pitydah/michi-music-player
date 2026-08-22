@@ -199,3 +199,30 @@ def test_queue_view_dismisses_with_escape_and_animation():
     assert "enabled: root.revealed" in content
     assert "Accessible.role: Accessible.Dialog" in content
     assert "root.forceActiveFocus()" in content
+
+
+# ── Phase 2: immersive views (cover-flow, vinyl wall, timeline) ───────────────
+
+
+def test_cover_flow_tap_preserves_drag_and_focus():
+    content = read("views/AlbumPathView.qml")
+    assert "TapHandler" in content
+    assert "onDoubleTapped: library.select_album(modelData.key)" in content
+    assert "pathAlbum.forceActiveFocus()" in content
+    assert "tap.pressed ? MichiPalette.auroraCyan" in content
+    assert "MouseArea {" not in content
+
+
+def test_vinyl_wall_first_tap_selects_second_opens():
+    content = read("views/VinylWallView.qml")
+    assert "var wasCurrent = albumVinyl.currentIndex === vinylTile.index" in content
+    assert "if (wasCurrent)" in content
+
+
+def test_timeline_reuses_items_and_aligns_to_grid():
+    content = read("views/TimelineView.qml")
+    assert "reuseItems: true" in content
+    assert "anchors.leftMargin: 20" in content
+    assert "anchors.leftMargin: 28" in content
+    assert "color: MichiPalette.obsidian" in content
+    assert "Behavior on color" in content

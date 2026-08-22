@@ -19,6 +19,7 @@ ListView {
     boundsBehavior: Flickable.StopAtBounds
     spacing: MichiSpacing.xs
     cacheBuffer: height
+    reuseItems: true
     keyNavigationEnabled: true
     keyNavigationWraps: false
     activeFocusOnTab: true
@@ -51,9 +52,16 @@ ListView {
         height: 48
         z: 4
 
+        // Opaque base so the floating inline label covers rows scrolling
+        // underneath instead of letting them show through.
+        Rectangle {
+            anchors.fill: parent
+            color: MichiPalette.obsidian
+        }
+
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 21
+            anchors.leftMargin: 20
             anchors.rightMargin: MichiSpacing.lg
             spacing: MichiSpacing.md
 
@@ -118,6 +126,10 @@ ListView {
             border.color: timelineRow.selected
                 ? MichiSemanticColors.auroraBorderSubtle
                 : MichiSemanticColors.borderSubtle
+            Behavior on color {
+                enabled: !MichiAccessibility.reducedMotion
+                ColorAnimation { duration: MichiMotion.micro }
+            }
             MichiFocusRing {
                 visualFocus: timelineRow.activeFocus
                     && MichiAccessibility.keyboardMode
@@ -129,7 +141,7 @@ ListView {
             anchors.top: parent.top
             anchors.bottom: parent.bottom
             anchors.left: parent.left
-            anchors.leftMargin: 27
+            anchors.leftMargin: 28
             width: 1
             color: MichiSemanticColors.borderStrong
         }

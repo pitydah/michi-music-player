@@ -202,10 +202,15 @@ GridView {
 
         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
         TapHandler {
+            id: vinylTap
+            // First tap selects (showing the rich selected state: disc
+            // offset, cyan label); tapping the already-selected tile opens.
             onTapped: {
+                var wasCurrent = albumVinyl.currentIndex === vinylTile.index
                 albumVinyl.currentIndex = vinylTile.index
                 vinylTile.forceActiveFocus()
-                library.select_album(modelData.key)
+                if (wasCurrent)
+                    library.select_album(modelData.key)
             }
         }
         Keys.onReturnPressed: library.select_album(modelData.key)

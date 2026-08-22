@@ -67,6 +67,12 @@ ErrorState gains "Retry scan" action; LoadingState excludes FAILED/CANCELLED.
 `revealed` and animates its exit before teardown; Clear queue now requires a
 `MichiDialog` confirmation.
 
+**Commit C (done):** items 4 + 5 + 22 — cover-flow covers use TapHandler
+(keeps PathView drag, pressed feedback, focus retention, double-click opens);
+vinyl wall first tap selects / second tap opens; timeline adds `reuseItems`,
+4px-grid margins (20/28/48), an opaque floating section header, and animated
+row background.
+
 ## Phase 3 — 🟠 WARNING: visual consistency & copy (~5 h)
 
 | # | Finding | Evidence | Fix | Effort |
