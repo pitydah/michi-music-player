@@ -174,7 +174,9 @@ Audit finding: the grain was mathematically invisible (18 sub-pixel SVG dots,
   the 64px SVG asset; tile opacity 0.22 / 0.36 (was 0.09/0.16);
   `tileSeed` per surface (14 surfaces decorrelated) via `MichiGlassSurface`
 - **R2** sheen 0.028 → 0.06, height 0.42→0.5, cap 36→56
-- **R3** specular glint (radial white 0.055/0.09) top-left — `glassGlint` tokens
+- **R3** specular glint — the brand cat-head silhouette (Canvas path:
+  two pointed ears over a rounded face, x=50-symmetric) as the light catch,
+  filled with a radial glow (0.07/0.09) — `glassGlint` tokens
 - **R4** rim highlight 0.045 → 0.075; bottom shadow 0.22 → 0.26
 - **R5** real backdrop blur: `MultiEffect` (QtQuick.Effects) over a
   `ShaderEffectSource` of the window, gated to `glassQuality === "high"` and

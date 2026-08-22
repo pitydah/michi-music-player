@@ -105,19 +105,50 @@ Item {
             visible: root.textured && opacity > 0
         }
 
-        // ── Specular glint: the diagonal light catch that sells "glass" ──
-        Rectangle {
+        // ── Specular glint: the brand cat-head silhouette as the light
+        // catch — a radial glow shaped like Michi's head, not a circle ──
+        Canvas {
+            id: glintCanvas
             anchors.top: parent.top
             anchors.left: parent.left
             width: Math.min(parent.width, parent.height) * 0.6
-            height: width
-            radius: width / 2
-            gradient: Gradient {
-                orientation: Gradient.Radial
-                GradientStop { position: 0; color: MichiAccessibility.highContrast
-                    ? MichiSemanticColors.glassGlintStrong : MichiSemanticColors.glassGlint }
-                GradientStop { position: 1; color: "transparent" }
+            height: width * 0.8
+            visible: parent.width > 0
+
+            onPaint: {
+                var ctx = getContext("2d")
+                ctx.clearRect(0, 0, width, height)
+                // Cat-head silhouette in a ~100x80 viewBox, scaled to the
+                // surface: two pointed ears over a rounded face.
+                var s = width / 100
+                ctx.save()
+                ctx.scale(s, s)
+                ctx.beginPath()
+                ctx.moveTo(30, 24)
+                ctx.quadraticCurveTo(22, 10, 16, 6)    // left ear tip
+                ctx.quadraticCurveTo(24, 14, 32, 18)   // inner left ear
+                ctx.quadraticCurveTo(24, 20, 22, 28)   // left cheek
+                ctx.quadraticCurveTo(20, 58, 50, 62)   // chin
+                ctx.quadraticCurveTo(80, 58, 78, 28)   // right cheek
+                ctx.quadraticCurveTo(76, 20, 68, 18)   // inner right ear base
+                ctx.quadraticCurveTo(76, 14, 84, 6)    // right ear tip
+                ctx.quadraticCurveTo(78, 10, 70, 24)   // outer right ear
+                ctx.quadraticCurveTo(60, 20, 50, 20)   // crown right
+                ctx.quadraticCurveTo(40, 20, 30, 24)   // crown left
+                ctx.closePath()
+                // Radial glow from the face center, fading to nothing —
+                // the silhouette reads as a reflection, not a logo.
+                var glow = ctx.createRadialGradient(50, 38, 4, 50, 38, 44)
+                glow.addColorStop(0, MichiAccessibility.highContrast
+                    ? MichiSemanticColors.glassGlintStrong : MichiSemanticColors.glassGlint)
+                glow.addColorStop(1, "rgba(255,255,255,0)")
+                ctx.fillStyle = glow
+                ctx.fill()
+                ctx.restore()
             }
+
+            onWidthChanged: requestPaint()
+            Component.onCompleted: requestPaint()
         }
 
         Rectangle {

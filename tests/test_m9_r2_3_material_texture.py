@@ -79,11 +79,15 @@ def test_backdrop_blur_uses_multi_effect_gated_to_high_quality():
 def test_sheen_glint_and_rim_are_tokens_and_present():
     colors = read("theme/MichiSemanticColors.qml")
     assert "glassSheen: Qt.rgba(1, 1, 1, 0.06)" in colors
-    assert "glassGlint: Qt.rgba(1, 1, 1, 0.055)" in colors
+    assert "glassGlint: Qt.rgba(1, 1, 1, 0.07)" in colors
     assert "glassGlintStrong" in colors
     assert "innerHighlight: Qt.rgba(1, 1, 1, 0.075)" in colors
     assert "glassShadow: Qt.rgba(0, 0, 0, 0.26)" in colors
     glass = read("primitives/MichiGlassSurface.qml")
-    assert "Gradient.Radial" in glass
+    # the specular glint is the brand cat-head silhouette, not a circle
+    assert "cat-head silhouette" in glass
+    assert "left ear tip" in glass
+    assert "right ear tip" in glass
+    assert "createRadialGradient(50, 38, 4, 50, 38, 44)" in glass
     assert "MichiSemanticColors.glassGlint" in glass
     assert "parent.height * 0.5, 56" in glass

@@ -22,7 +22,7 @@ QtObject {
     readonly property color glassShadowFar: Qt.rgba(0, 0, 0, 0.075)
     readonly property color glassInnerBorder: Qt.rgba(1, 1, 1, 0.035)
     readonly property color glassSheen: Qt.rgba(1, 1, 1, 0.06)
-    readonly property color glassGlint: Qt.rgba(1, 1, 1, 0.055)
+    readonly property color glassGlint: Qt.rgba(1, 1, 1, 0.07)
     readonly property color glassGlintStrong: Qt.rgba(1, 1, 1, 0.09)
     readonly property color auroraActive: MichiPalette.auroraBlue
     readonly property color auroraHover: "#69B5FF"
