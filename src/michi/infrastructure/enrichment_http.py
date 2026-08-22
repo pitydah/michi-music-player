@@ -19,6 +19,7 @@ import urllib.request
 from urllib.parse import urlsplit
 
 from michi.application.enrichment_ports import (
+    EnrichmentHttpStatusError,
     EnrichmentProviderError,
     HttpRequest,
     HttpResponse,
@@ -84,17 +85,6 @@ def validate_provider_url(url: str) -> None:
         raise ValueError(f"provider URL has no hostname: {url!r}")
     if not is_allowed_host(host):
         raise ValueError(f"provider host not allowlisted: {host!r}")
-
-
-class EnrichmentHttpStatusError(EnrichmentProviderError):
-    """Narrow transport error carrying the provider HTTP status (M6.9):
-    enables the bounded retry policy (429/502/503/504) without leaking
-    urllib exceptions."""
-
-    def __init__(self, status_code: int, headers: dict[str, str], message: str) -> None:
-        super().__init__(message)
-        self.status_code = status_code
-        self.headers = headers
 
 
 class _ValidatingRedirectHandler(urllib.request.HTTPRedirectHandler):

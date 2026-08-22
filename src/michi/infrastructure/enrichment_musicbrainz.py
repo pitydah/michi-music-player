@@ -17,6 +17,7 @@ import time
 from urllib.parse import quote
 
 from michi.application.enrichment_ports import (
+    EnrichmentHttpStatusError,
     EnrichmentProviderError,
     ExternalIdentityResolverPort,
     HttpRequest,
@@ -32,10 +33,7 @@ from michi.domain.enrichment import (
     ReleaseGroupCandidate,
     dedupe_identity_ids,
 )
-from michi.infrastructure.enrichment_http import (
-    EnrichmentHttpStatusError,
-    MusicBrainzRateLimiter,
-)
+from michi.infrastructure.enrichment_http import MusicBrainzRateLimiter
 from michi.infrastructure.enrichment_provider_cache import (
     DEFAULT_TTLS_SECONDS,
 )
