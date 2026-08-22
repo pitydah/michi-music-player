@@ -71,7 +71,19 @@ class AudioEngineRegistry:
         return self.provider(engine_id).probe()
 
     def is_available(self, engine_id: AudioEngineId) -> bool:
+        """RUNTIME AVAILABILITY ONLY (dependency detectable on this machine).
+
+        MUST NOT be used as the engine-selection gate — selection uses
+        can_activate()."""
         return self.provider(engine_id).probe().available
+
+    def can_activate(self, engine_id: AudioEngineId) -> bool:
+        """Canonical future activation gate: AVAILABLE AND IMPLEMENTED."""
+        return self.provider(engine_id).probe().can_activate
+
+    def activation_blocker(self, engine_id: AudioEngineId) -> str | None:
+        """Exact blocker reason (unavailable_reason / implementation_reason)."""
+        return self.provider(engine_id).probe().activation_blocker
 
     def provider(self, engine_id: AudioEngineId) -> AudioEngineProviderPort:
         try:

@@ -6,9 +6,12 @@ import os
 import pytest
 from PySide6.QtGui import QGuiApplication
 
-from michi.application.audio_engine_registry import AudioEngineRegistry
+from michi.application.audio_engine_registry import (
+    AudioEngineProviderPort,
+    AudioEngineRegistry,
+)
 from michi.application.audio_engine_service import AudioEngineService
-from michi.domain.audio_engine import AudioEngineId
+from michi.domain.audio_engine import AudioEngineDescriptor, AudioEngineId
 from michi.infrastructure.audio_engines.providers import (
     GStreamerEngineProvider,
     MpdEngineProvider,
@@ -102,6 +105,55 @@ class TestMpdProvider:
         assert "shutil.which" in probe_src
         assert "subprocess" not in probe_src
         assert "Popen" not in probe_src
+
+
+class TestProviderActivation:
+    def test_qt_can_activate(self):
+        desc = QtEngineProvider().probe()
+        assert desc.can_activate is True
+        assert desc.activation_blocker is None
+
+    def test_gstreamer_blocked_by_implementation(self):
+        desc = GStreamerEngineProvider().probe()
+        assert desc.implemented is False
+        assert desc.can_activate is False
+        assert desc.implementation_reason is not None
+        assert "M11.3C" in desc.implementation_reason
+
+    def test_mpd_blocked_by_implementation(self):
+        desc = MpdEngineProvider().probe()
+        assert desc.implemented is False
+        assert desc.can_activate is False
+        assert desc.implementation_reason is not None
+        assert "M11.3D" in desc.implementation_reason
+
+    def test_missing_dependency_unavailable_reason(self):
+        class Missing(AudioEngineProviderPort):
+            @property
+            def engine_id(self):
+                return AudioEngineId.GSTREAMER
+
+            def probe(self):
+                return AudioEngineDescriptor(
+                    engine_id=self.engine_id,
+                    display_name="GStreamer",
+                    available=False,
+                    unavailable_reason="gi/Gst typelib no disponible",
+                    implemented=False,
+                    implementation_reason="adapter pendiente (M11.3C)",
+                )
+
+            def open(self):
+                raise NotImplementedError
+
+            def close(self):
+                pass
+
+        desc = Missing().probe()
+        assert desc.available is False
+        assert desc.can_activate is False
+        assert "typelib" in desc.unavailable_reason
+        assert desc.activation_blocker == desc.unavailable_reason
 
 
 class TestProviderComposition:

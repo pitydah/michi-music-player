@@ -93,6 +93,71 @@ class TestDescriptor:
             assert not hasattr(AudioEngineState(), forbidden)
 
 
+class TestActivationSemantics:
+    """AVAILABLE != IMPLEMENTED != ACTIVATABLE — regression-locked."""
+
+    def test_available_not_implemented_not_activatable(self):
+        desc = AudioEngineDescriptor(
+            engine_id=AudioEngineId.GSTREAMER,
+            display_name="GStreamer",
+            available=True,
+            implemented=False,
+            implementation_reason="adapter pendiente (M11.3C)",
+        )
+        assert desc.available is True
+        assert desc.implemented is False
+        assert desc.can_activate is False
+        assert "M11.3C" in desc.activation_blocker
+
+    def test_unavailable_implemented_not_activatable(self):
+        desc = AudioEngineDescriptor(
+            engine_id=AudioEngineId.MPD,
+            display_name="MPD",
+            available=False,
+            unavailable_reason="mpd executable no encontrado",
+            implemented=True,
+        )
+        assert desc.can_activate is False
+        assert "mpd" in desc.activation_blocker
+
+    def test_available_implemented_activatable(self):
+        desc = AudioEngineDescriptor(
+            engine_id=AudioEngineId.QT_MULTIMEDIA,
+            display_name="Qt Multimedia",
+            available=True,
+            implemented=True,
+        )
+        assert desc.can_activate is True
+        assert desc.activation_blocker is None
+
+    def test_can_activate_implies_no_blocker(self):
+        desc = AudioEngineDescriptor(
+            engine_id=AudioEngineId.QT_MULTIMEDIA,
+            display_name="Qt",
+            available=True,
+            implemented=True,
+        )
+        assert desc.can_activate is True
+        assert desc.activation_blocker is None
+
+    def test_unavailable_default_reason(self):
+        desc = AudioEngineDescriptor(
+            engine_id=AudioEngineId.GSTREAMER,
+            display_name="GStreamer",
+            available=False,
+        )
+        assert desc.activation_blocker == "runtime unavailable"
+
+    def test_unimplemented_default_reason(self):
+        desc = AudioEngineDescriptor(
+            engine_id=AudioEngineId.GSTREAMER,
+            display_name="GStreamer",
+            available=True,
+            implemented=False,
+        )
+        assert desc.activation_blocker == "engine adapter not implemented"
+
+
 class TestStateImmutability:
     def test_state_is_frozen(self):
         state = AudioEngineState()
@@ -104,6 +169,24 @@ class TestStateImmutability:
 
     def test_default_active_is_none(self):
         assert AudioEngineState().active_engine_id is None
+
+    def test_initial_lifecycle_is_uninitialized(self):
+        """Startup before activation — NOT 'Qt unavailable'."""
+        state = AudioEngineState()
+        assert state.lifecycle == AudioEngineLifecycle.UNINITIALIZED
+        assert AudioEngineLifecycle.UNINITIALIZED.value == "uninitialized"
+
+    def test_lifecycle_is_engine_slot_not_playback(self):
+        """The lifecycle axis never describes PlaybackStatus."""
+        assert AudioEngineLifecycle.UNINITIALIZED not in PlaybackStatus
+        assert AudioEngineLifecycle.READY.value == "ready"
+        # READY + STOPPED playback is a valid combination (documented)
+        state = AudioEngineState(
+            selected_engine_id=AudioEngineId.QT_MULTIMEDIA,
+            active_engine_id=AudioEngineId.QT_MULTIMEDIA,
+            lifecycle=AudioEngineLifecycle.READY,
+        )
+        assert state.lifecycle == AudioEngineLifecycle.READY
 
 
 class TestDomainPurity:

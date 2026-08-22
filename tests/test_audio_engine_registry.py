@@ -113,6 +113,59 @@ class TestRegistry:
         assert registry.is_available(AudioEngineId.GSTREAMER) is False
 
 
+class TestActivationGates:
+    def test_is_available_differs_from_can_activate(self):
+        """Installed-but-not-implemented: runtime present, activation NO."""
+        registry = AudioEngineRegistry(
+            [
+                FakeProvider(AudioEngineId.QT_MULTIMEDIA, available=True),
+                # instalado pero adaptador NO implementado
+                FakeProvider(AudioEngineId.GSTREAMER, available=True)
+                if False
+                else _UnimplementedProvider(),
+            ]
+        )
+        assert registry.is_available(AudioEngineId.GSTREAMER) is True
+        assert registry.can_activate(AudioEngineId.GSTREAMER) is False
+
+    def test_can_activate_qt_true(self):
+        from michi.infrastructure.audio_engines.providers import QtEngineProvider
+
+        registry = AudioEngineRegistry([QtEngineProvider()])
+        assert registry.can_activate(AudioEngineId.QT_MULTIMEDIA) is True
+
+    def test_activation_blocker_reason(self):
+        from michi.infrastructure.audio_engines.providers import (
+            GStreamerEngineProvider,
+        )
+
+        registry = AudioEngineRegistry([GStreamerEngineProvider()])
+        blocker = registry.activation_blocker(AudioEngineId.GSTREAMER)
+        assert blocker is not None
+        assert "M11.3C" in blocker
+
+
+class _UnimplementedProvider(AudioEngineProviderPort):
+    @property
+    def engine_id(self):
+        return AudioEngineId.GSTREAMER
+
+    def probe(self):
+        return AudioEngineDescriptor(
+            engine_id=self.engine_id,
+            display_name="GStreamer",
+            available=True,
+            implemented=False,
+            implementation_reason="adapter pendiente (M11.3C)",
+        )
+
+    def open(self):
+        raise NotImplementedError
+
+    def close(self):
+        pass
+
+
 class TestProviderContract:
     def test_probe_must_not_activate(self):
         """probe() reports truth; it must not open/start anything."""

@@ -16,11 +16,23 @@ class AudioEngineId(Enum):
 
 
 class AudioEngineLifecycle(Enum):
-    """Engine runtime lifecycle — deliberately distinct from PlaybackStatus.
+    """Engine RUNTIME SLOT lifecycle — deliberately distinct from
+    PlaybackStatus and from the SELECTED descriptor.
 
-    engine READY + playback STOPPED is valid; engine READY + playback PLAYING
-    is valid; engine FAILED + playback STOPPED is valid."""
+    UNINITIALIZED = startup before any activation (initial state).
+    UNAVAILABLE   = the activation layer recognized the target cannot
+                    activate (dependency missing).
+    AVAILABLE     = an activatable engine is recognized but not yet
+                    READY/bound.
+    INITIALIZING  = target initialization underway.
+    READY         = transport bound and validated.
+    FAILED        = activation/startup failed (error_message set).
+    CLOSING       = teardown in progress.
 
+    engine READY + playback STOPPED is valid; engine FAILED + playback
+    STOPPED is valid. The lifecycle axis NEVER describes PlaybackStatus."""
+
+    UNINITIALIZED = "uninitialized"
     UNAVAILABLE = "unavailable"
     AVAILABLE = "available"
     INITIALIZING = "initializing"
@@ -57,9 +69,26 @@ class AudioEngineDescriptor:
     available: bool
     unavailable_reason: str | None = None
     implemented: bool = True
+    implementation_reason: str | None = None
     capabilities: AudioEngineCapabilities = field(
         default_factory=AudioEngineCapabilities
     )
+
+    @property
+    def can_activate(self) -> bool:
+        """ACTIVATABLE = AVAILABLE AND IMPLEMENTED.
+
+        RUNTIME PRESENT != IMPLEMENTATION READY != ACTIVATABLE."""
+        return self.available and self.implemented
+
+    @property
+    def activation_blocker(self) -> str | None:
+        """Exact reason why the engine cannot be activated, or None."""
+        if not self.available:
+            return self.unavailable_reason or "runtime unavailable"
+        if not self.implemented:
+            return self.implementation_reason or "engine adapter not implemented"
+        return None
 
 
 @dataclass(frozen=True)
@@ -73,7 +102,7 @@ class AudioEngineState:
 
     selected_engine_id: AudioEngineId = AudioEngineId.QT_MULTIMEDIA
     active_engine_id: AudioEngineId | None = None
-    lifecycle: AudioEngineLifecycle = AudioEngineLifecycle.UNAVAILABLE
+    lifecycle: AudioEngineLifecycle = AudioEngineLifecycle.UNINITIALIZED
     switching_to: AudioEngineId | None = None
     error_message: str | None = None
     fallback_from: AudioEngineId | None = None

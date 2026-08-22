@@ -6,7 +6,11 @@ subprocess, no socket, no SQLite. Runtime switching belongs to M11.3F."""
 from collections.abc import Callable
 
 from michi.application.audio_engine_registry import AudioEngineRegistry
-from michi.domain.audio_engine import AudioEngineId, AudioEngineState
+from michi.domain.audio_engine import (
+    AudioEngineId,
+    AudioEngineLifecycle,
+    AudioEngineState,
+)
 
 
 class AudioEngineService:
@@ -20,6 +24,7 @@ class AudioEngineService:
         self._state = AudioEngineState(
             selected_engine_id=AudioEngineId.QT_MULTIMEDIA,
             active_engine_id=None,
+            lifecycle=AudioEngineLifecycle.UNINITIALIZED,
         )
         self._subscribers: list[Callable[[], None]] = []
 

@@ -88,7 +88,7 @@ class GStreamerEngineProvider(AudioEngineProviderPort):
             available=available,
             unavailable_reason=reason,
             implemented=False,
-            # transport capabilities are nominal until M11.3C
+            implementation_reason=_GSTREAMER_NOT_IMPLEMENTED,
         )
 
     def open(self) -> AudioPort:
@@ -121,6 +121,7 @@ class MpdEngineProvider(AudioEngineProviderPort):
             available=available,
             unavailable_reason=reason,
             implemented=False,
+            implementation_reason=_MPD_NOT_IMPLEMENTED,
         )
 
     def open(self) -> AudioPort:
