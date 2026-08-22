@@ -17,9 +17,11 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 
 from michi.domain.enrichment import (
+    AlbumExternalIdentity,
     AlbumIdentityEvidence,
     AlbumKnowledgeProfile,
     ArtistCandidate,
+    ArtistExternalIdentity,
     ArtistIdentityEvidence,
     ArtistKnowledgeProfile,
     ReleaseEditionCandidate,
@@ -94,13 +96,22 @@ class KnowledgeRepositoryPort(ABC):
     The repository owns its own storage (enrichment.db). It MUST NEVER
     touch library_index / library_meta tables and never share the
     canonical library index database semantics. Best effort: sqlite
-    errors are logged, never raised."""
+    errors are logged, never raised.
+
+    R1: knowledge != identity. This port owns ONLY downloaded knowledge.
+    Identity authority lives in ``IdentityRepositoryPort``."""
 
     @abstractmethod
     def save_artist_profile(self, profile: ArtistKnowledgeProfile) -> None: ...
 
     @abstractmethod
     def save_album_profile(self, profile: AlbumKnowledgeProfile) -> None: ...
+
+    @abstractmethod
+    def delete_artist_profile(self, local_artist_key: str) -> None: ...
+
+    @abstractmethod
+    def delete_album_profile(self, local_album_key: str) -> None: ...
 
     @abstractmethod
     def load_artist_profile(
@@ -119,10 +130,49 @@ class KnowledgeRepositoryPort(ABC):
     def load_album_profiles(self) -> tuple[AlbumKnowledgeProfile, ...]: ...
 
     @abstractmethod
-    def clear(self) -> None: ...
+    def clear_knowledge(self) -> None: ...
 
     @abstractmethod
     def version(self) -> int: ...
+
+
+class IdentityRepositoryPort(ABC):
+    """Persistence of the external identity authority (R1) — enrichment.db.
+
+    IDENTITY != KNOWLEDGE: resolved/manual mappings live here and survive
+    knowledge deletion. Only ``reset_*_identity`` (or
+    ``clear_identities``) removes them. Never raises on sqlite errors."""
+
+    @abstractmethod
+    def save_artist_identity(self, identity: ArtistExternalIdentity) -> None: ...
+
+    @abstractmethod
+    def save_album_identity(self, identity: AlbumExternalIdentity) -> None: ...
+
+    @abstractmethod
+    def delete_artist_identity(self, local_artist_key: str) -> None: ...
+
+    @abstractmethod
+    def delete_album_identity(self, local_album_key: str) -> None: ...
+
+    @abstractmethod
+    def load_artist_identity(
+        self, local_artist_key: str
+    ) -> ArtistExternalIdentity | None: ...
+
+    @abstractmethod
+    def load_album_identity(
+        self, local_album_key: str
+    ) -> AlbumExternalIdentity | None: ...
+
+    @abstractmethod
+    def load_artist_identities(self) -> tuple[ArtistExternalIdentity, ...]: ...
+
+    @abstractmethod
+    def load_album_identities(self) -> tuple[AlbumExternalIdentity, ...]: ...
+
+    @abstractmethod
+    def clear_identities(self) -> None: ...
 
 
 class EnrichmentAssetStorePort(ABC):
