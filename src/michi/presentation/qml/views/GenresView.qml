@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import "../media"
 import "../theme"
 
+// GenresView — Audiophile Genre navigation with direct search filtering
 ListView {
     id: root
     objectName: "genresView"
@@ -20,6 +21,7 @@ ListView {
         iconName: "genre"
         title: modelData.name
         technical: modelData.trackCount + (modelData.trackCount === 1 ? " track" : " tracks")
-        interactive: false
+        interactive: true
+        onActivated: library.search(modelData.name)
     }
 }

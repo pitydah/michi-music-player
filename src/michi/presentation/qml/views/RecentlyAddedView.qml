@@ -1,8 +1,10 @@
 import QtQuick
 import QtQuick.Layouts
 import "../media"
+import "../primitives"
 import "../theme"
 
+// RecentlyAddedView — Recently imported tracks with temporal section headers
 ListView {
     id: root
     objectName: "recentlyView"

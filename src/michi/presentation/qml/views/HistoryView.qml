@@ -1,8 +1,10 @@
 import QtQuick
 import QtQuick.Layouts
 import "../media"
+import "../primitives"
 import "../theme"
 
+// HistoryView — Track playback history with intelligent temporal section headers
 ListView {
     id: root
     objectName: "historyView"

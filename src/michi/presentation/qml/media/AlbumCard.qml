@@ -80,18 +80,25 @@ Item {
 
                 Rectangle {
                     anchors.centerIn: parent
-                    width: 42
-                    height: 38
-                    radius: MichiRadius.md
+                    width: 46
+                    height: 46
+                    radius: 23
                     visible: hover.hovered || root.activeFocus
-                    color: MichiSemanticColors.controlSurfaceStrong
+                    color: MichiSemanticColors.scrimStrong
                     border.width: 1
                     border.color: MichiSemanticColors.auroraCyanBorder
                     scale: tap.pressed ? 0.94 : 1
+                    opacity: hover.hovered || root.activeFocus ? 1 : 0
+
+                    Behavior on opacity {
+                        enabled: !MichiAccessibility.reducedMotion
+                        NumberAnimation { duration: MichiMotion.micro }
+                    }
+
                     MichiIcon {
                         anchors.centerIn: parent
-                        width: MichiMetrics.iconLarge
-                        height: width
+                        width: 20
+                        height: 20
                         name: "play"
                         iconColor: MichiPalette.auroraCyan
                     }

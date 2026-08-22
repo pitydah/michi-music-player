@@ -93,13 +93,28 @@ ColumnLayout {
             anchors.fill: parent
             spacing: MichiSpacing.xl
 
-            Artwork {
-                sourcePath: library.albumArtwork
-                fallbackText: library.albumTitle
-                Layout.preferredWidth: Math.min(232, Math.max(164, root.width * .19))
+            Item {
+                Layout.preferredWidth: Math.min(240, Math.max(190, root.width * .20))
                 Layout.preferredHeight: Layout.preferredWidth
                 Layout.alignment: Qt.AlignTop
-                requestedSize: 512
+
+                // Deep Drop Shadow
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    radius: MichiRadius.lg + 4
+                    color: MichiSemanticColors.glassShadowFar
+                    opacity: 0.85
+                    z: -1
+                }
+
+                Artwork {
+                    anchors.fill: parent
+                    sourcePath: library.albumArtwork
+                    fallbackText: library.albumTitle
+                    requestedSize: 512
+                    radius: MichiRadius.lg
+                }
             }
 
             ColumnLayout {
@@ -148,12 +163,28 @@ ColumnLayout {
                 Item { Layout.fillHeight: true }
 
                 RowLayout {
-                    spacing: MichiSpacing.sm
+                    spacing: MichiSpacing.md
+
                     MichiButton {
                         text: "Play album"
+                        variant: "primary"
                         iconName: "play"
                         enabled: library.albumTracks.length > 0
                         onClicked: library.activate_album_track(0)
+                    }
+
+                    MichiButton {
+                        text: "Shuffle"
+                        variant: "secondary"
+                        iconName: "shuffle"
+                        enabled: library.albumTracks.length > 0
+                        onClicked: {
+                            if (typeof playback !== "undefined" && playback) {
+                                playback.shuffle = true
+                            }
+                            var randomIndex = Math.floor(Math.random() * library.albumTracks.length)
+                            library.activate_album_track(randomIndex)
+                        }
                     }
                 }
             }
