@@ -68,10 +68,10 @@ GridView {
             anchors.fill: parent
             radius: MichiRadius.lg
             color: vinylTile.selected ? MichiSemanticColors.surfaceSelected
-                : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
-            border.width: vinylTile.selected || hover.hovered ? 1 : 0
+                : hover.hovered ? MichiSemanticColors.surfaceHover : MichiSemanticColors.contentSurface
+            border.width: 1
             border.color: vinylTile.selected
-                ? MichiPalette.auroraCyan : MichiSemanticColors.borderSubtle
+                ? MichiPalette.auroraCyan : hover.hovered ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
             MichiFocusRing {
                 visualFocus: vinylTile.activeFocus
                     && MichiAccessibility.keyboardMode
@@ -95,9 +95,19 @@ GridView {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.horizontalCenterOffset: hover.hovered || vinylTile.selected
                     ? width * 0.16 : width * 0.04
-                color: MichiPalette.graphite
+                color: MichiPalette.graphiteRaised
                 border.width: 1
-                border.color: MichiSemanticColors.borderSubtle
+                border.color: MichiSemanticColors.borderStrong
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    radius: width / 2
+                    color: "transparent"
+                    border.width: 1
+                    border.color: MichiSemanticColors.innerHighlight
+                    opacity: 0.5
+                }
 
                 Repeater {
                     model: 3
@@ -109,19 +119,19 @@ GridView {
                         color: "transparent"
                         border.width: 1
                         border.color: MichiSemanticColors.borderSubtle
-                        opacity: 0.6
+                        opacity: 0.7
                     }
                 }
 
                 Rectangle {
                     anchors.centerIn: parent
-                    width: parent.width * 0.30
+                    width: parent.width * 0.32
                     height: width
                     radius: width / 2
                     color: vinylTile.selected
-                        ? MichiPalette.auroraPurple : MichiPalette.smokeRaised
+                        ? MichiPalette.auroraCyan : MichiPalette.auroraPurpleSurface
                     border.width: 1
-                    border.color: MichiSemanticColors.borderSubtle
+                    border.color: MichiSemanticColors.innerHighlight
                     Rectangle {
                         anchors.centerIn: parent
                         width: MichiSpacing.xs

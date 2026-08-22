@@ -139,6 +139,19 @@ PathView {
             requestedSize: Math.round(width * Screen.devicePixelRatio)
         }
 
+        // Ground reflection / floor shadow under cover
+        Rectangle {
+            anchors.top: artwork.bottom
+            anchors.horizontalCenter: artwork.horizontalCenter
+            anchors.topMargin: 4
+            width: albumsPath.coverSize * 0.88
+            height: 10
+            radius: 5
+            color: MichiSemanticColors.glassShadowFar
+            opacity: PathView.isCurrentItem ? 0.75 : 0.35
+            z: -1
+        }
+
         MichiText {
             anchors.left: parent.left
             anchors.right: parent.right
@@ -238,6 +251,18 @@ PathView {
                 accessibleName: "Next album"
                 enabled: albumsPath.count > 1
                 onClicked: albumsPath.incrementCurrentIndex()
+            }
+            MichiButton {
+                text: "Play"
+                iconName: "play"
+                variant: "primary"
+                accessibleName: "Play selected album"
+                onClicked: {
+                    if (albumsPath.currentAlbum) {
+                        library.select_album(albumsPath.currentAlbum.key)
+                        library.play_all()
+                    }
+                }
             }
             MichiButton {
                 text: "Open album"

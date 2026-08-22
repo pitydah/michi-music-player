@@ -8,6 +8,7 @@ Rectangle {
 
     property bool showArtistColumn: true
     property bool showAlbumColumn: true
+    property bool showArtwork: true
     property int actionColumnWidth: 0
 
     implicitHeight: 30
@@ -30,6 +31,11 @@ Rectangle {
             technical: true
             color: MichiPalette.textMuted
             horizontalAlignment: Text.AlignHCenter
+        }
+        Item {
+            visible: root.showArtwork
+            Layout.preferredWidth: MichiThemeState.density === "comfortable" ? 36 : 30
+            Layout.preferredHeight: Layout.preferredWidth
         }
         MichiText {
             Layout.fillWidth: true

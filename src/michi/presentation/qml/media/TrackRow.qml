@@ -26,6 +26,8 @@ Rectangle {
     property bool showAlbumColumn: true
     property bool showQualityColumn: MichiThemeState.precisionMode
     property bool showDurationColumn: true
+    property string artworkPath: ""
+    property bool showArtwork: true
     signal activated()
     signal favoriteToggled()
     signal addToPlaylistRequested()
@@ -33,7 +35,7 @@ Rectangle {
     signal removeRequested()
     readonly property string durationText: duration.length > 0
         ? duration : formatDuration(durationMs)
-    implicitHeight: MichiThemeState.rowHeight
+    implicitHeight: showArtwork ? Math.max(MichiThemeState.rowHeight, 44) : MichiThemeState.rowHeight
     color: selected || playing ? MichiSemanticColors.surfaceSelected
         : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
     radius: MichiRadius.sm
@@ -99,6 +101,16 @@ Rectangle {
                 role: "technical"
                 technical: true
             }
+        }
+        Artwork {
+            visible: root.showArtwork
+            Layout.preferredWidth: MichiThemeState.density === "comfortable" ? 36 : 30
+            Layout.preferredHeight: Layout.preferredWidth
+            Layout.alignment: Qt.AlignVCenter
+            sourcePath: root.artworkPath
+            fallbackText: root.album || root.title || "T"
+            radius: MichiRadius.xs
+            requestedSize: Math.round((MichiThemeState.density === "comfortable" ? 36 : 30) * Screen.devicePixelRatio)
         }
         MichiText {
             Layout.fillWidth: true

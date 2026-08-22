@@ -19,7 +19,7 @@ ListView {
         width: root.width
         iconName: "genre"
         title: modelData.name
-        technical: modelData.trackCount + " tracks"
+        technical: modelData.trackCount + (modelData.trackCount === 1 ? " track" : " tracks")
         interactive: false
     }
 }

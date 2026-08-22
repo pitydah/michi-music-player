@@ -53,15 +53,15 @@ ListView {
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: MichiSpacing.md
+            anchors.leftMargin: 21
             anchors.rightMargin: MichiSpacing.lg
             spacing: MichiSpacing.md
 
             Rectangle {
-                Layout.preferredWidth: 12
-                Layout.preferredHeight: 12
-                radius: 6
-                color: MichiPalette.auroraBlue
+                Layout.preferredWidth: 14
+                Layout.preferredHeight: 14
+                radius: 7
+                color: MichiPalette.auroraCyan
                 border.width: 2
                 border.color: MichiPalette.obsidian
             }
@@ -155,9 +155,10 @@ ListView {
                 sourcePath: modelData.hasArtwork ? modelData.artworkPath : ""
                 fallbackText: modelData.title
                 requestedSize: Math.round(width * Screen.devicePixelRatio)
+                radius: MichiRadius.sm
             }
             ColumnLayout {
-                Layout.fillWidth: true
+                Layout.preferredWidth: Math.min(380, timelineRow.width * 0.35)
                 spacing: MichiSpacing.xxs
                 MichiText {
                     Layout.fillWidth: true
@@ -174,11 +175,26 @@ ListView {
                 }
             }
             MichiText {
-                text: modelData.year > 0 ? String(modelData.year) : "Unknown"
+                text: modelData.year > 0 ? String(modelData.year) : "—"
                 role: "technical"
                 technical: true
                 color: modelData.year > 0
                     ? MichiPalette.auroraCyan : MichiPalette.textMuted
+            }
+            MichiText {
+                visible: modelData.trackCount > 0
+                text: modelData.trackCount + (modelData.trackCount === 1 ? " track" : " tracks")
+                role: "technical"
+                technical: true
+                color: MichiPalette.textMuted
+            }
+            Item { Layout.fillWidth: true }
+            MichiText {
+                visible: modelData.technicalSummary ? (modelData.technicalSummary.length > 0) : false
+                text: modelData.technicalSummary || ""
+                role: "technical"
+                technical: true
+                color: MichiPalette.textMuted
             }
         }
 
