@@ -62,8 +62,12 @@ PROBE → CAN_ACTIVATE → INITIALIZING → OPEN → ROUTER BIND → VALIDATE �
 - Pre-init blocker (probe can_activate False): UNAVAILABLE, active None,
   provider.open NEVER called, router unbound.
 - Post-init failure (open/bind/validation): cleanup (router unbind +
-  provider close best effort) then FAILED, active None, original error
-  re-raised (first-error-wins). No half-initialized runtime.
+  provider close best effort — each step suppresses secondary errors) then
+  FAILED, active None, ORIGINAL error re-raised (bare raise, first-error-wins
+  guaranteed even if router.unbind() itself raises). Secondary cleanup
+  failures are diagnostic-only and NEVER replace the primary failure.
+  No half-initialized runtime; FAILED state is guaranteed regardless of
+  cleanup outcome.
 - Registry identity: `registry.provider(QT_MULTIMEDIA) is qt_provider` —
   exactly ONE canonical Qt provider per service graph.
 
