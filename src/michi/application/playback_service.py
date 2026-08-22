@@ -155,9 +155,21 @@ class PlaybackService:
         with the rejected path and message. A new request supersedes the
         previous pending candidate without invoking any callback for it.
         `stop()` cancels the pending request and invokes `on_cancelled` at
-        most once with the pending path. Synchronous backend failures
-        propagate, leave no pending candidate behind, and restore the
-        previous intent/acceptance flags.
+        most once with the pending path.
+
+        Synchronous failure dispositions (M11.3C-R6.2/R6.3):
+        A. LOAD failure with previous source preserved
+           (AudioLoadError(previous_source_preserved=True) or legacy
+           generic exception): restore the previous intent/acceptance.
+        B. LOAD failure with previous source NOT preserved
+           (AudioLoadError(previous_source_preserved=False)): do NOT
+           restore backend acceptance; converge to STOPPED; the previous
+           logical identity remains only as a recoverable logical track.
+        C. PLAY failure after a successful LOAD: the previous backend
+           acceptance is NOT restored (the backend already crossed the
+           load commit point); the candidate is terminalized, status
+           converges to STOPPED, and a later play() reloads the last
+           committed logical track through the canonical path.
         """
         previous_intent = self._intent
         previous_accepted = self._accepted

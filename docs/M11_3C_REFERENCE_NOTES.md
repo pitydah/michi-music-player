@@ -257,3 +257,44 @@ Michi-nativos.
   ignored; play() reloads A canonically).
 - Code-validation evidence: full suite 1749 passed at CODE_VALIDATED_HEAD
   2328591 (1 pre-existing conditional skip: M11.3B Qt-runtime).
+
+
+## M11.3C-R6.3 post-play-failure backend ownership seal
+
+- GStreamerAudioPort.play() over a PENDING candidate: a RAISE of the
+  PLAYING request now terminates the candidate IN THE BACKEND
+  (failure-atomic): candidate generation invalidated, pending/current
+  identity cleared, best-effort NULL + bus-watch teardown, original play
+  exception primary (cleanup errors secondary; truthful retryable
+  ownership retained when physical cleanup fails). Play() over an
+  ACCEPTED source (incl. EOS replay) still never cancels or unloads.
+- The three-layer equality after a play failure is sealed:
+  PlaybackService logical truth = AudioPort semantic truth = backend
+  ownership truth — late B events (ASYNC_DONE, STATE_CHANGED, EOS,
+  DURATION_CHANGED, ERROR) die at the AudioPort by generation; position
+  polling projects nothing for B; play() later recovers the last
+  committed logical track to PLAYING.
+- state_of() logs unexpected parse failures (P2 hardening; no silent
+  None). Code-validation evidence: full suite 1755 passed at
+  CODE_VALIDATED_HEAD ab8f84e (1 pre-existing conditional skip: M11.3B
+  Qt-runtime).
+
+
+## M11.3C-R6.4 state-change failure return convergence seal
+
+- Final synchronous transport rule: for a PENDING candidate, a PLAYING
+  command failure is terminal whether it arrives as a Python exception OR
+  as Gst.StateChangeReturn.FAILURE (False) — FAILURE return IS FAILURE.
+  Both channels converge on the same terminalization (generation
+  invalidation → semantic identity cleared → best-effort physical
+  teardown → primary play failure raised; secondary cleanup problems are
+  logged with truthful retryable ownership).
+- For an ACCEPTED source (incl. EOS replay), a rejected PLAYING request
+  does not destroy source ownership — the source remains loaded and
+  retryable.
+- This closes the last GStreamer failure-signalling gap before MPD: an
+  engine adapter must normalize backend-native failure (GStreamer
+  StateChangeReturn / MPD ACK / socket errors / timeouts) into the
+  canonical AudioPort exception contract — never leak ambiguous success.
+- Code-validation evidence: full suite 1763 passed at CODE_VALIDATED_HEAD
+  963419b (1 pre-existing conditional skip: M11.3B Qt-runtime).

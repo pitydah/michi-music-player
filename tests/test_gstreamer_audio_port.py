@@ -2311,6 +2311,491 @@ class TestGStreamerPlaybackDisposition:
         port.close()
 
 
+class TestPostPlayFailureOwnership:
+    """M11.3C-R6.3 P1-01: tras un RAISE del request PLAYING sobre un
+    candidato PENDING, el backend cancela B failure-atomic — la igualdad
+    logical/AudioPort/backend queda sellada y los eventos tardíos de B
+    mueren en el AudioPort."""
+
+    def _a_accepted_and_pending_b(self, bindings):
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        # B: load OK (armado, preroll OK) sin aceptación aún
+        port.load(Path("/m/b.flac"))
+        return port, bindings
+
+    def test_play_failure_cancels_pending_candidate(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._a_accepted_and_pending_b(bindings)
+        pipeline_b = bindings.pipelines[-1]
+        bus_b = port._bus
+        generation_b = port._generation
+        bindings.arm_exception_stage = "set_state_playing"
+        bindings.arm_exception = RuntimeError("synthetic play failure")
+        with pytest.raises(RuntimeError, match="play failure"):
+            port.play()
+        # B terminal en el backend (cleanup exitoso)
+        assert port._pending_path is None
+        assert port._current_path is None
+        assert port._pending_play is False
+        assert port._generation == generation_b + 1  # generación invalidada
+        assert port._pipeline is None  # pipeline B liberado
+        assert port._bus is None
+        assert port._bus_source is None
+        assert bus_b.watch_installed is False  # watch B removido
+        assert pipeline_b.state == _FakeState.NULL
+        port.close()
+
+    def test_late_b_events_ignored_at_audioport(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._a_accepted_and_pending_b(bindings)
+        pipeline_b = bindings.pipelines[-1]
+        generation_b = port._generation
+        bindings.arm_exception_stage = "set_state_playing"
+        bindings.arm_exception = RuntimeError("synthetic play failure")
+        with pytest.raises(RuntimeError):
+            port.play()
+        # drenar la cola: el STOPPED de la convergencia del load(B) quedó
+        # encolado ANTES de suscribir — no debe contar como evento tardío
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        accepted = []
+        states = []
+        positions = []
+        durations = []
+        eoms = []
+        rejected = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.subscribe_position_changed(lambda ms: positions.append(ms))
+        port.subscribe_duration_changed(lambda ms: durations.append(ms))
+        port.subscribe_end_of_media(lambda: eoms.append(1))
+        port.subscribe_media_rejected(lambda p, r: rejected.append((p, r)))
+        # eventos tardíos de B con la generación CAPTURADA por su bus
+        # (generation_b = la del load(B), ya invalidada por la cancelación)
+        for msg_type in (
+            _FakeMsgType.ASYNC_DONE,
+            _FakeMsgType.EOS,
+            _FakeMsgType.DURATION_CHANGED,
+            _FakeMsgType.ERROR,
+        ):
+            m = FakeMessage(msg_type, pipeline_b, error_text="late b error")
+            _deliver(port, m, generation_b)
+        m2 = FakeMessage(
+            _FakeMsgType.STATE_CHANGED, pipeline_b, new_state=_FakeState.PLAYING
+        )
+        _deliver(port, m2, generation_b)
+        m3 = FakeMessage(
+            _FakeMsgType.STATE_CHANGED, pipeline_b, new_state=_FakeState.PAUSED
+        )
+        _deliver(port, m3, generation_b)
+        assert accepted == []  # sin media_accepted(B)
+        assert states == []  # sin state updates
+        assert positions == []
+        assert durations == []
+        assert eoms == []  # sin EOM
+        assert rejected == []  # sin rejection de A
+        assert port._current_path is None
+        assert port._generation == generation_b + 1  # B stale por generación
+        port.close()
+
+    def test_position_poll_after_play_failure_projects_nothing(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._a_accepted_and_pending_b(bindings)
+        bindings.arm_exception_stage = "set_state_playing"
+        bindings.arm_exception = RuntimeError("synthetic play failure")
+        with pytest.raises(RuntimeError):
+            port.play()
+        positions = []
+        port.subscribe_position_changed(lambda ms: positions.append(ms))
+        port._poll_position()  # seam del timer
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        assert positions == []  # B nunca se proyecta
+        port.close()
+
+    def test_cleanup_failure_retains_retryable_ownership(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._a_accepted_and_pending_b(bindings)
+        pipeline_b = bindings.pipelines[-1]
+        bindings.arm_exception_stage = "set_state_playing"
+        bindings.arm_exception = RuntimeError("synthetic play failure")
+        bindings.failed_states.add(_FakeState.NULL)  # cleanup NULL falla
+        with pytest.raises(RuntimeError, match="play failure"):
+            port.play()
+        # la excepción ORIGINAL del play sigue siendo primaria
+        assert port._generation == 3  # B stale SIEMPRE (aunque cleanup falle)
+        assert port._pending_path is None
+        assert port._current_path is None
+        # ownership residual retenido como ancla retryable (NO media válida)
+        assert port._pipeline is pipeline_b
+        assert port._bus is not None
+        # close() posterior limpia el ancla
+        bindings.failed_states.clear()
+        port.close()
+        assert port._pipeline is None
+        assert port._bus_source is None
+
+    def test_accepted_source_play_failure_does_not_cancel(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        # play() extra sobre la fuente aceptada con raise → NO cancela A
+        bindings.arm_exception_stage = "set_state_playing"
+        bindings.arm_exception = RuntimeError("synthetic play failure")
+        with pytest.raises(RuntimeError, match="play failure"):
+            port.play()
+        assert port._current_path == Path("/m/a.flac")  # A retenida
+        assert port._pipeline is pipeline_a
+        assert port._generation == 1  # sin invalidación
+        assert port._pending_play is True  # intención de A preservada (CASO B)
+        bindings.arm_exception_stage = None
+        port.close()
+
+
+class TestGStreamerPostPlayFailureConvergence:
+    """M11.3C-R6.3 full-stack: load(B) OK + play(B) raise → las tres capas
+    convergen; late B events no contaminan; play() recupera A a PLAYING."""
+
+    def test_full_stack_convergence_and_recovery(self, qapp):
+        from michi.application.playback_service import PlaybackService
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+        # A committed y PLAYING
+        svc.load_and_play(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        assert svc._accepted is True
+        # B: load OK + play RAISE
+        bindings.arm_exception_stage = "set_state_playing"
+        bindings.arm_exception = RuntimeError("synthetic play failure")
+        with pytest.raises(RuntimeError, match="play failure"):
+            svc.load_and_play(Path("/m/b.flac"))
+        pipeline_b = bindings.pipelines[-1]
+        # PlaybackService convergido
+        assert svc.state.file_path == Path("/m/a.flac")
+        assert svc._accepted is False
+        assert svc._intent is False
+        assert svc.state.status == PlaybackStatus.STOPPED
+        assert svc._pending_path is None
+        # backend convergido: B sin media ni pending ni generación vigente
+        assert port._pending_path is None
+        assert port._current_path is None
+        assert port._pipeline is None
+        assert port._generation == 3  # load(A)=1, load(B)=2, cancel=3 → B stale
+        # late B events (con la generación capturada por B) → todo ignorado
+        for _ in range(5):
+            QCoreApplication.processEvents()  # drenar el STOPPED de la
+            # convergencia del load(B) (encolado antes de suscribir)
+        accepted = []
+        states = []
+        positions = []
+        durations = []
+        eoms = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.subscribe_position_changed(lambda ms: positions.append(ms))
+        port.subscribe_duration_changed(lambda ms: durations.append(ms))
+        port.subscribe_end_of_media(lambda: eoms.append(1))
+        gen_b = 2  # generación capturada por el bus de B (stale desde el cancel)
+        msg3 = FakeMessage(_FakeMsgType.ASYNC_DONE, pipeline_b)
+        _deliver(port, msg3, gen_b)
+        m4 = FakeMessage(
+            _FakeMsgType.STATE_CHANGED, pipeline_b, new_state=_FakeState.PLAYING
+        )
+        _deliver(port, m4, gen_b)
+        m5 = FakeMessage(_FakeMsgType.EOS, pipeline_b)
+        _deliver(port, m5, gen_b)
+        m6 = FakeMessage(_FakeMsgType.DURATION_CHANGED, pipeline_b)
+        _deliver(port, m6, gen_b)
+        assert svc.state.file_path == Path("/m/a.flac")
+        assert svc.state.status == PlaybackStatus.STOPPED
+        assert accepted == []
+        assert states == []
+        assert positions == []
+        assert durations == []
+        assert eoms == []
+        # recovery: play() recarga A canónicamente → PLAYING
+        bindings.arm_exception_stage = None
+        svc.play()
+        assert port._pending_path == Path("/m/a.flac")
+        pipeline_a2 = bindings.pipelines[-1]
+        m7, g7 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a2)
+        _deliver(port, m7, g7)
+        assert svc._accepted is True
+        assert svc.state.file_path == Path("/m/a.flac")
+        port.play()
+        m8, g8 = msg_state(port, pipeline_a2, _FakeState.PLAYING)
+        _deliver(port, m8, g8)
+        assert svc.state.status == PlaybackStatus.PLAYING
+        assert svc._intent is True
+        port.close()
+
+
+class TestStateFailureReturnConvergence:
+    """M11.3C-R6.4 P1-01: el retorno Gst.StateChangeReturn.FAILURE (False)
+    del request PLAYING sobre un candidato PENDING es TAN terminal como el
+    RAISE — FAILURE return IS FAILURE. El source aceptado y el EOS replay
+    conservan su semántica retryable."""
+
+    def _a_accepted_and_pending_b(self, bindings):
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        port.load(Path("/m/b.flac"))
+        return port, bindings
+
+    def test_pending_playing_false_terminalizes_b(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._a_accepted_and_pending_b(bindings)
+        pipeline_b = bindings.pipelines[-1]
+        bus_b = port._bus
+        generation_b = port._generation
+        bindings.failed_states.add(_FakeState.PLAYING)  # FAILURE return
+        with pytest.raises(RuntimeError, match="failed to enter PLAYING"):
+            port.play()
+        assert port._pending_path is None
+        assert port._current_path is None
+        assert port._pending_play is False
+        assert port._generation == generation_b + 1  # B stale
+        assert port._pipeline is None
+        assert port._bus is None
+        assert port._bus_source is None
+        assert pipeline_b.state == _FakeState.NULL
+        assert bus_b.watch_installed is False
+        port.close()
+
+    def test_late_b_events_after_false_path_ignored(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._a_accepted_and_pending_b(bindings)
+        pipeline_b = bindings.pipelines[-1]
+        generation_b = port._generation
+        bindings.failed_states.add(_FakeState.PLAYING)
+        with pytest.raises(RuntimeError, match="failed to enter PLAYING"):
+            port.play()
+        for _ in range(5):
+            QCoreApplication.processEvents()  # drenar el STOPPED encolado
+        accepted = []
+        states = []
+        positions = []
+        durations = []
+        eoms = []
+        rejected = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.subscribe_position_changed(lambda ms: positions.append(ms))
+        port.subscribe_duration_changed(lambda ms: durations.append(ms))
+        port.subscribe_end_of_media(lambda: eoms.append(1))
+        port.subscribe_media_rejected(lambda p, r: rejected.append((p, r)))
+        for msg_type in (
+            _FakeMsgType.ASYNC_DONE,
+            _FakeMsgType.EOS,
+            _FakeMsgType.DURATION_CHANGED,
+            _FakeMsgType.ERROR,
+        ):
+            m = FakeMessage(msg_type, pipeline_b, error_text="late b error")
+            _deliver(port, m, generation_b)
+        m2 = FakeMessage(
+            _FakeMsgType.STATE_CHANGED, pipeline_b, new_state=_FakeState.PLAYING
+        )
+        _deliver(port, m2, generation_b)
+        m3 = FakeMessage(
+            _FakeMsgType.STATE_CHANGED, pipeline_b, new_state=_FakeState.PAUSED
+        )
+        _deliver(port, m3, generation_b)
+        assert accepted == []
+        assert states == []
+        assert positions == []
+        assert durations == []
+        assert eoms == []
+        assert rejected == []
+        assert port._current_path is None
+        port.close()
+
+    def test_position_poll_after_false_path(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._a_accepted_and_pending_b(bindings)
+        bindings.failed_states.add(_FakeState.PLAYING)
+        with pytest.raises(RuntimeError, match="failed to enter PLAYING"):
+            port.play()
+        positions = []
+        port.subscribe_position_changed(lambda ms: positions.append(ms))
+        port._poll_position()
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        assert positions == []  # B nunca se proyecta
+        port.close()
+
+    def test_false_path_cleanup_null_failure_retains_anchor(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._a_accepted_and_pending_b(bindings)
+        pipeline_b = bindings.pipelines[-1]
+        bindings.failed_states.update({_FakeState.PLAYING, _FakeState.NULL})
+        with pytest.raises(RuntimeError, match="failed to enter PLAYING"):
+            port.play()
+        # la falla de PLAYING es PRIMARIA; el NULL cleanup falló (secundario)
+        assert port._generation == 3  # B stale SIEMPRE
+        assert port._pending_path is None
+        assert port._current_path is None
+        assert port._pending_play is False
+        assert port._pipeline is pipeline_b  # ancla retryable
+        assert port._bus is not None
+        # close() posterior limpia el ancla
+        bindings.failed_states.clear()
+        port.close()
+        assert port._pipeline is None
+        assert port._bus_source is None
+
+    def test_false_path_bus_detach_failure_retains_anchor(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._a_accepted_and_pending_b(bindings)
+        pipeline_b = bindings.pipelines[-1]
+        bindings.failed_states.add(_FakeState.PLAYING)
+        bus_b = port._bus  # el flag se copia en get_bus durante load(B)
+        bus_b.fail_remove_watch = True  # NULL OK + remove FAIL
+        with pytest.raises(RuntimeError, match="failed to enter PLAYING"):
+            port.play()
+        assert port._generation == 3  # B stale
+        assert port._pending_path is None
+        assert port._current_path is None
+        # NULL OK pero detach falló → pipeline retenido como ancla (R6.1)
+        assert port._pipeline is pipeline_b
+        assert port._bus_source is not None
+        # close() con el fallo removido limpia
+        bus_b.fail_remove_watch = False
+        port.close()
+        assert port._pipeline is None
+        assert port._bus_source is None
+
+    def test_accepted_source_playing_false_retryable(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        generation_before = port._generation
+        # PLAYING → False sobre la fuente ACEPTADA: sin cancelación
+        bindings.failed_states.add(_FakeState.PLAYING)
+        port.play()
+        assert port._current_path == Path("/m/a.flac")  # A retenida
+        assert port._pipeline is pipeline_a
+        assert port._generation == generation_before  # sin invalidación
+        assert port._pending_play is True  # intención de A preservada
+        # retry con éxito: la intención se commitea (el estado PLAYING ya
+        # era el vigente — idempotente, sin re-emisión necesaria)
+        bindings.failed_states.clear()
+        port.play()
+        assert port._pending_play is True
+        assert port._current_path == Path("/m/a.flac")
+        port.close()
+
+    def test_eos_replay_playing_false_retryable(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        eos, eg = _msg(port, _FakeMsgType.EOS, pipeline_a)
+        _deliver(port, eos, eg)
+        assert port._eos_emitted is True
+        generation_before = port._generation
+        # EOS replay: NULL OK + PLAYING → False: retryable, sin cancelación
+        bindings.failed_states.add(_FakeState.PLAYING)
+        port.play()
+        assert port._eos_emitted is True  # marcador retenido
+        assert port._pending_play is False
+        assert port._current_path == Path("/m/a.flac")
+        assert port._generation == generation_before
+        assert port._pipeline is pipeline_a
+        # retry con éxito
+        bindings.failed_states.clear()
+        port.play()
+        assert port._eos_emitted is False
+        assert len(bindings.pipelines) == 1  # mismo pipeline, sin reload
+        port.close()
+
+
+class TestGStreamerFalsePathConvergence:
+    """M11.3C-R6.4 full-stack: load(B) OK + PLAYING returns FAILURE →
+    convergencia en las tres capas + recovery A a PLAYING."""
+
+    def test_full_stack_convergence_and_recovery(self, qapp):
+        from michi.application.playback_service import PlaybackService
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+        svc.load_and_play(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        assert svc._accepted is True
+        # B: load OK + PLAYING → FAILURE (False)
+        bindings.failed_states.add(_FakeState.PLAYING)
+        with pytest.raises(RuntimeError, match="failed to enter PLAYING"):
+            svc.load_and_play(Path("/m/b.flac"))
+        # PlaybackService convergido (R6.2 PHASE 2)
+        assert svc.state.file_path == Path("/m/a.flac")
+        assert svc._accepted is False
+        assert svc._intent is False
+        assert svc.state.status == PlaybackStatus.STOPPED
+        assert svc._pending_path is None
+        # backend convergido: B muerto/stale
+        assert port._pending_path is None
+        assert port._current_path is None
+        assert port._pipeline is None
+        assert port._generation == 3  # load(A)=1, load(B)=2, cancel=3
+        # recovery: play() recarga A canónicamente → PLAYING
+        bindings.failed_states.clear()
+        svc.play()
+        assert port._pending_path == Path("/m/a.flac")
+        pipeline_a2 = bindings.pipelines[-1]
+        m3, g3 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a2)
+        _deliver(port, m3, g3)
+        assert svc._accepted is True
+        assert svc.state.file_path == Path("/m/a.flac")
+        port.play()
+        m4, g4 = msg_state(port, pipeline_a2, _FakeState.PLAYING)
+        _deliver(port, m4, g4)
+        assert svc._intent is True
+        assert svc.state.status == PlaybackStatus.PLAYING
+        port.close()
+
+
 @pytest.mark.gstreamer_runtime
 class TestRealRuntimeSmoke:
     """P2-01/P1-04: smoke real de GI/GStreamer — SKIP truthful solo con
