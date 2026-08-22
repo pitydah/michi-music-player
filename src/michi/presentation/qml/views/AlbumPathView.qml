@@ -114,6 +114,7 @@ PathView {
         z: PathView.isCurrentItem ? 100 : Math.round(PathView.itemDepth || 0)
         Accessible.role: Accessible.Button
         Accessible.name: modelData.title + " by " + modelData.artist
+        Accessible.selected: PathView.isCurrentItem
         Accessible.description: PathView.isCurrentItem
             ? "Selected album. Enter to open" : "Select album"
 
@@ -234,7 +235,7 @@ PathView {
             MichiText {
                 text: albumsPath.currentAlbum
                     ? albumsPath.currentAlbum.trackCount
-                        + (albumsPath.currentAlbum.trackCount === 1 ? " TRACK" : " TRACKS")
+                        + (albumsPath.currentAlbum.trackCount === 1 ? " track" : " tracks")
                     : ""
                 role: "technical"
                 technical: true

@@ -191,7 +191,9 @@ Item {
 
         MichiText {
             text: root.playlistName
-            role: "cardTitle"
+            // "section" (18px) — "cardTitle" is not a defined MichiText role
+            // and silently fell back to body 14px
+            role: "section"
             elide: Text.ElideRight
             font.weight: Font.DemiBold
             Layout.fillWidth: true
@@ -216,6 +218,8 @@ Item {
                 height: 6
                 radius: 3
                 color: MichiPalette.auroraCyan
+                Accessible.role: Accessible.StaticText
+                Accessible.name: "Pinned playlist"
             }
         }
     }

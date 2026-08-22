@@ -177,6 +177,9 @@ MichiGlassSurface {
                     radius: 4
                     color: (typeof library !== "undefined" && library && library.fileCount > 0)
                         ? MichiPalette.auroraGreen : MichiPalette.textMuted
+                    Accessible.role: Accessible.StaticText
+                    Accessible.name: (typeof library !== "undefined" && library && library.fileCount > 0)
+                        ? "Library ready" : "Library empty"
                 }
             }
         }

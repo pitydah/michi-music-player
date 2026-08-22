@@ -81,6 +81,14 @@ detail metadata no longer duplicated at ≥960px (chips <960, stats column
 ≥960). Item 8 (badge geometry) deferred — the deviating badge lives in the
 excluded Now Playing surface.
 
+**Commit E (done):** items 11 + 13 + 14 + part of 24 — copy fixes
+(" track"/" tracks" lowercase in cover-flow, `qsTr("Delete \"%1\"?")` no
+longer concatenates, "Rename…"/"Delete…" ellipsis); PlaylistCard title role
+fixed (`cardTitle` → `section`, was silently falling back to body 14px);
+status dots (pinned, library-ready) expose Accessible names;
+`Accessible.selected` on timeline/vinyl/path delegates (QueueView
+`Accessible.dialog` was already added in Commit B).
+
 ## Phase 3 — 🟠 WARNING: visual consistency & copy (~5 h)
 
 | # | Finding | Evidence | Fix | Effort |

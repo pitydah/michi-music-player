@@ -385,11 +385,11 @@ Item {
                         onTriggered: playlists.remove_custom_cover(modelData.playlistId)
                     }
                     MenuItem {
-                        text: qsTr("Rename")
+                        text: qsTr("Rename…")
                         onTriggered: root.renamePlaylistRequested(modelData.playlistId, modelData.name)
                     }
                     MenuItem {
-                        text: qsTr("Delete")
+                        text: qsTr("Delete…")
                         onTriggered: root.deletePlaylistRequested(modelData.playlistId, modelData.name)
                     }
                 }

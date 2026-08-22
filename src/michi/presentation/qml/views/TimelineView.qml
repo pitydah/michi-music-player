@@ -114,6 +114,7 @@ ListView {
         activeFocusOnTab: true
         Accessible.role: Accessible.Button
         Accessible.name: modelData.title + " by " + modelData.artist
+        Accessible.selected: timelineRow.selected
 
         Rectangle {
             anchors.fill: parent

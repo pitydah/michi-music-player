@@ -266,3 +266,46 @@ def test_album_detail_no_duplicated_metadata_at_wide_widths():
     content = read("views/AlbumDetailView.qml")
     assert "visible: root.width < 960" in content
     assert content.count("root.width >= 960") >= 1
+
+
+# ── Phase 3: copy and fine accessibility ──────────────────────────────────────
+
+
+def test_playlist_card_title_role_is_valid():
+    content = read("playlists/PlaylistCard.qml")
+    assert 'role: "section"' in content
+    assert 'role: "cardTitle"' not in content
+
+
+def test_status_dots_have_accessible_names():
+    assert 'Accessible.name: "Pinned playlist"' in read("playlists/PlaylistCard.qml")
+    assert "Accessible.name:" in read("shell/Sidebar.qml")
+    assert "Library ready" in read("shell/Sidebar.qml")
+
+
+def test_copy_uses_lowercase_tracks_and_placeholder_quotes():
+    assert '" track" : " tracks"' in read(
+        "views/AlbumPathView.qml"
+    ) or '" track" : " tracks"' in read("views/AlbumPathView.qml")
+    content = read("views/AlbumPathView.qml")
+    assert (
+        '" track" : " tracks"' in content
+        or 'trackCount === 1 ? " track" : " tracks"' in content
+    )
+    assert 'TRACKS"' not in content
+    host = read("shell/ContentHost.qml")
+    assert 'qsTr("Delete \\"%1\\"?"' in host
+
+
+def test_rename_delete_menu_items_have_ellipsis():
+    content = read("playlists/PlaylistsView.qml")
+    assert 'qsTr("Rename…")' in content
+    assert 'qsTr("Delete…")' in content
+
+
+def test_immersive_delegates_expose_selected_state():
+    assert "Accessible.selected: timelineRow.selected" in read("views/TimelineView.qml")
+    assert "Accessible.selected: vinylTile.selected" in read("views/VinylWallView.qml")
+    assert "Accessible.selected: PathView.isCurrentItem" in read(
+        "views/AlbumPathView.qml"
+    )

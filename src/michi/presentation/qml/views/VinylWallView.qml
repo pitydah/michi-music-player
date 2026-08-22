@@ -60,6 +60,7 @@ GridView {
         activeFocusOnTab: true
         Accessible.role: Accessible.Button
         Accessible.name: modelData.title + " by " + modelData.artist
+        Accessible.selected: vinylTile.selected
         Accessible.description: "Open album"
 
         Rectangle {
