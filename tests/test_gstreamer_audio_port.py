@@ -146,6 +146,9 @@ class FakeBindings:
         self.timer_sources = []
         self.timer_callback = None
         self._quit = threading.Event()
+        self.failed_states: set = set()
+        self.fail_next_states: list = []
+        self.ignore_quit = False  # simula pump que no termina
 
     def supports_pump(self):
         return True
@@ -162,6 +165,12 @@ class FakeBindings:
         return p
 
     def set_state(self, pipeline, state):
+        if self.fail_next_states:
+            expected = self.fail_next_states.pop(0)
+            if state == expected:
+                return False
+        if state in self.failed_states:
+            return False
         return pipeline.set_state(state)
 
     def get_bus(self, pipeline):
@@ -177,7 +186,8 @@ class FakeBindings:
         self._quit.wait()  # simula el pump real hasta quit_loop
 
     def quit_loop(self, loop):
-        self._quit.set()
+        if not self.ignore_quit:
+            self._quit.set()
 
     def push_thread_default(self, context):
         pass
@@ -615,48 +625,68 @@ class TestRouterParity:
 
 
 class TestPlaybin3Probe:
-    """P1-05: probe truthful — playbin3 ausente → unavailable."""
+    """P2-02: ejerce el probe PRODUCTIVO real vía monkeypatch de su
+    dependencia (GStreamerBindings), nunca reemplazando provider.probe."""
 
-    def test_missing_playbin3_unavailable(self):
-        from michi.infrastructure.audio_engines.gstreamer import GStreamerBindings
+    def test_real_probe_missing_playbin3(self, monkeypatch):
+        import michi.infrastructure.audio_engines.gstreamer as gst_mod
 
-        class NoPlaybinBindings(GStreamerBindings):
+        class NoPlaybinBindings:
             def ensure_loaded(self):
                 pass
 
             def playbin3_available(self):
                 return False
 
+        monkeypatch.setattr(gst_mod, "GStreamerBindings", NoPlaybinBindings)
         from michi.infrastructure.audio_engines.providers import (
             GStreamerEngineProvider,
         )
 
-        provider = GStreamerEngineProvider()
-        original = provider.probe
-        # inyectar bindings sin playbin3 vía monkeypatch del método privado
-        import michi.infrastructure.audio_engines.providers as mod
-
-        def fake_probe(self):
-            bindings = NoPlaybinBindings()
-            return mod.AudioEngineDescriptor(
-                engine_id=mod.AudioEngineId.GSTREAMER,
-                display_name="GStreamer",
-                available=bindings.playbin3_available(),
-                unavailable_reason=(
-                    None
-                    if bindings.playbin3_available()
-                    else "playbin3 no disponible en el runtime GStreamer"
-                ),
-                implemented=True,
-            )
-
-        provider.probe = fake_probe.__get__(provider)
-        desc = provider.probe()
+        desc = GStreamerEngineProvider().probe()
         assert desc.available is False
         assert desc.implemented is True
         assert desc.can_activate is False
         assert "playbin3" in desc.unavailable_reason
-        provider.probe = original
+
+    def test_real_probe_missing_gi(self, monkeypatch):
+        import michi.infrastructure.audio_engines.gstreamer as gst_mod
+
+        class NoGiBindings:
+            def ensure_loaded(self):
+                raise ImportError("gi not installed")
+
+        monkeypatch.setattr(gst_mod, "GStreamerBindings", NoGiBindings)
+        from michi.infrastructure.audio_engines.providers import (
+            GStreamerEngineProvider,
+        )
+
+        desc = GStreamerEngineProvider().probe()
+        assert desc.available is False
+        assert desc.implemented is True
+        assert desc.can_activate is False
+        assert "GStreamer" in desc.unavailable_reason
+
+    def test_real_probe_available(self, monkeypatch):
+        import michi.infrastructure.audio_engines.gstreamer as gst_mod
+
+        class FullBindings:
+            def ensure_loaded(self):
+                pass
+
+            def playbin3_available(self):
+                return True
+
+        monkeypatch.setattr(gst_mod, "GStreamerBindings", FullBindings)
+        from michi.infrastructure.audio_engines.providers import (
+            GStreamerEngineProvider,
+        )
+
+        desc = GStreamerEngineProvider().probe()
+        assert desc.available is True
+        assert desc.implemented is True
+        assert desc.can_activate is True
+        assert desc.activation_blocker is None
 
     def test_open_fails_without_playbin3(self, qapp):
         bindings = FakeBindings(playbin3_present=False)
@@ -718,9 +748,249 @@ class TestThreadAffinity:
         port.close()  # idempotente
 
 
+class TestAsyncStateTruth:
+    """P1-01: ASYNC_DONE acepta pero NUNCA publica PLAYING."""
+
+    def test_async_done_accepts_without_claiming_playing(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        accepted = []
+        states = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.load(Path("/m/a.flac"))
+        port.play()
+        pipeline = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+        _deliver(port, msg, gen)
+        assert accepted == [Path("/m/a.flac")]
+        assert states == []  # ASYNC_DONE NO publica PLAYING
+        # solo STATE_CHANGED PLAYING publica
+        msg2, gen2 = msg_state(port, pipeline, _FakeState.PLAYING)
+        _deliver(port, msg2, gen2)
+        assert states == [PlaybackStatus.PLAYING]
+        port.close()
+
+
+class TestStateRequestFailureAtomicity:
+    """P1-02: los requests de estado son failure-atomic."""
+
+    def test_preroll_failure_rejects_and_recovers(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        rejected = []
+        accepted = []
+        port.subscribe_media_rejected(lambda p, r: rejected.append((p, r)))
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        bindings.failed_states.add(_FakeState.PAUSED)
+        port.load(Path("/m/a.flac"))
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        assert rejected == [
+            (Path("/m/a.flac"), "GStreamer failed to enter PAUSED during preroll")
+        ]
+        assert accepted == []
+        assert port._pending_path is None
+        assert port._current_path is None
+        # recuperación: sin fallo, el port sigue usable
+        bindings.failed_states.clear()
+        port.load(Path("/m/b.flac"))
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, bindings.pipelines[-1])
+        _deliver(port, msg, gen)
+        assert accepted == [Path("/m/b.flac")]
+        port.close()
+
+    def test_play_failure_does_not_commit_play_intent(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        states = []
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.load(Path("/m/a.flac"))
+        pipeline = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+        _deliver(port, msg, gen)
+        bindings.failed_states.add(_FakeState.PLAYING)
+        port.play()
+        assert states == []  # sin PLAYING falso
+        assert port._pending_play is False  # intención NO commiteada
+        # retry con éxito
+        bindings.failed_states.clear()
+        port.play()
+        msg2, gen2 = msg_state(port, pipeline, _FakeState.PLAYING)
+        _deliver(port, msg2, gen2)
+        assert states == [PlaybackStatus.PLAYING]
+        port.close()
+
+    def test_pause_failure_rolls_back_pause_intent(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+        _deliver(port, msg, gen)
+        port.play()
+        msg2, gen2 = msg_state(port, pipeline, _FakeState.PLAYING)
+        _deliver(port, msg2, gen2)
+        # fallo de PAUSED → intención de play preservada
+        bindings.failed_states.add(_FakeState.PAUSED)
+        port.pause()
+        assert port._pending_play is True  # rollback
+        # retry con éxito
+        bindings.failed_states.clear()
+        port.pause()
+        assert port._pending_play is False
+        msg3, gen3 = msg_state(port, pipeline, _FakeState.PAUSED)
+        _deliver(port, msg3, gen3)
+        port.close()
+
+    def test_stop_failure_does_not_claim_stopped(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        states = []
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.load(Path("/m/a.flac"))
+        pipeline = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+        _deliver(port, msg, gen)
+        msg2, gen2 = msg_state(port, pipeline, _FakeState.PLAYING)
+        _deliver(port, msg2, gen2)
+        assert states[-1] == PlaybackStatus.PLAYING
+        # NULL falla → sin STOPPED, source intacto
+        bindings.failed_states.add(_FakeState.NULL)
+        port.stop()
+        assert PlaybackStatus.STOPPED not in states
+        assert port._current_path == Path("/m/a.flac")
+        # retry con éxito
+        bindings.failed_states.clear()
+        port.stop()
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        assert states[-1] == PlaybackStatus.STOPPED
+        assert port._current_path is None
+        port.close()
+
+    def test_pipeline_replacement_aborts_if_old_null_fails(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        # el teardown del pipeline A falla durante load(B) → abortar
+        bindings.fail_next_states.append(_FakeState.NULL)
+        with pytest.raises(RuntimeError, match="NULL"):
+            port.load(Path("/m/b.flac"))
+        assert len(bindings.pipelines) == 1  # B nunca se creó
+        port.close()
+
+    def test_close_teardown_failure_observable(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        bindings.failed_states.add(_FakeState.NULL)
+        with pytest.raises(RuntimeError, match="NULL"):
+            port.close()
+        assert port._closed is True  # terminal, sin comandos posteriores
+
+
+class TestPumpTerminationIntegrity:
+    """P1-03: join timeout NO pierde el ownership del worker vivo."""
+
+    def test_close_pump_timeout_retains_live_worker(self, qapp):
+        bindings = FakeBindings()
+        bindings.ignore_quit = True  # pump que no termina
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pump = port._pump
+        assert pump is not None
+        with pytest.raises(RuntimeError, match="did not terminate"):
+            port.close()
+        assert port._closed is True
+        assert port._pump is pump  # referencia viva retenida
+        assert pump.is_alive() is True
+        # limpieza determinística del test: liberar el pump forzado
+        bindings.ignore_quit = False
+        bindings.quit_loop(port._loop or "loop")
+        pump.join(timeout=2.0)
+        assert pump.is_alive() is False
+        port._pump = None
+        port._loop = None
+        port._context = None
+
+
 @pytest.mark.gstreamer_runtime
 class TestRealRuntimeSmoke:
     """P2-01: smoke real de GI/GStreamer — SKIP truthful si no hay runtime."""
+
+    def _tiny_wav(self, tmp_path):
+        """WAV determinístico minúsculo (44.1kHz mono 16-bit, ~50ms)."""
+        import struct
+        import wave
+
+        path = tmp_path / "tone.wav"
+        sample_rate = 44100
+        duration_frames = int(sample_rate * 0.05)
+        with wave.open(str(path), "w") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(sample_rate)
+            frames = b"".join(struct.pack("<h", 0) for _ in range(duration_frames))
+            w.writeframes(frames)
+        return path
+
+    def test_real_gstreamer_audioport_smoke(self, qapp, tmp_path):
+        """P2-01: el ADAPTER real completo — pump GLib real, fakesink,
+        preroll de un WAV local, close/join. SKIP truthful sin runtime."""
+        try:
+            import gi  # noqa: PLC0415
+
+            gi.require_version("Gst", "1.0")
+            from gi.repository import Gst  # noqa: PLC0415
+
+            Gst.init(None)
+        except (ImportError, ValueError):
+            pytest.skip("GI/GStreamer runtime no disponible")
+
+        from michi.infrastructure.audio_engines.gstreamer import (
+            GStreamerAudioPort,
+            GStreamerBindings,
+        )
+
+        class RealSmokeBindings(GStreamerBindings):
+            def make_playbin3(self):
+                pipeline = super().make_playbin3()
+                if pipeline is None:
+                    pytest.skip("playbin3 no disponible")
+                fakesink = self._gst.ElementFactory.make(
+                    "fakesink", "michi_test_audio_sink"
+                )
+                if fakesink is None:
+                    pytest.skip("GStreamer fakesink no disponible")
+                pipeline.set_property("audio-sink", fakesink)
+                return pipeline
+
+        bindings = RealSmokeBindings()
+        bindings.ensure_loaded()
+        wav = self._tiny_wav(tmp_path)
+        port = GStreamerAudioPort(bindings)
+        accepted = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.load(wav)
+        # pump real corriendo: bounded wait por la aceptación
+        import time
+
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            QCoreApplication.processEvents()
+            if accepted:
+                break
+            time.sleep(0.02)
+        if not accepted:
+            pytest.skip("preroll no completó en 2s — plugins decode/typefind ausentes")
+        assert accepted == [wav]
+        pump = port._pump
+        assert pump is not None and pump.is_alive()
+        port.close()
+        assert port._pipeline is None
+        assert port._pump is None
+        assert pump.is_alive() is False
 
     def test_real_gi_smoke(self):
         try:

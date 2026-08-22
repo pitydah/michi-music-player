@@ -330,8 +330,11 @@ class GStreamerAudioPort(AudioPort):
         self._bindings.ensure_loaded()
         if not self._bindings.playbin3_available():
             raise RuntimeError("playbin3 no disponible en el runtime GStreamer")
-        # pipeline NUEVO por fuente; el pump sobrevive
-        self._teardown_pipeline()
+        # pipeline NUEVO por fuente; el pump sobrevive. Si el teardown del
+        # pipeline ANTERIOR falló (NULL FAILURE), abortar: nunca dos
+        # pipelines productivos simultáneos.
+        if not self._teardown_pipeline():
+            raise RuntimeError("pipeline anterior no pudo transicionar a NULL")
         self._ensure_pump()
         pipeline = self._bindings.make_playbin3()
         if pipeline is None:
@@ -347,20 +350,37 @@ class GStreamerAudioPort(AudioPort):
             # test seam: mensajes entregados manualmente
             self._bus_source = None
             self._bus_source_attached = False
-        # preroll: ASYNC_DONE (generación vigente) = evidencia de aceptación
-        self._bindings.set_state(pipeline, self._bindings.STATE.PAUSED)
+        # preroll: ASYNC_DONE (generación vigente) = evidencia de aceptación.
+        # Fallo síncrono del preroll → failure-atomic: rechazo, teardown
+        # best-effort del pipeline fallido, port reutilizable.
+        if not self._request_state(self._bindings.STATE.PAUSED):
+            reason = "GStreamer failed to enter PAUSED during preroll"
+            candidate = self._pending_path
+            self._pending_path = None
+            self._current_path = None
+            self._pending_play = False
+            self._detach_pipeline_sources()
+            self._bindings.set_state(pipeline, self._bindings.STATE.NULL)
+            self._pipeline = None
+            if candidate is not None:
+                self._bridge.sig_rej.emit(candidate, reason)
+            return
 
     def play(self) -> None:
         if self._closed or self._pipeline is None:
             return
-        self._pending_play = True
-        self._bindings.set_state(self._pipeline, self._bindings.STATE.PLAYING)
+        if self._request_state(self._bindings.STATE.PLAYING):
+            self._pending_play = True
+        # si falla: la intención NO se commitea; sin estado falso
 
     def pause(self) -> None:
         if self._closed or self._pipeline is None:
             return
-        self._pending_play = False
-        self._bindings.set_state(self._pipeline, self._bindings.STATE.PAUSED)
+        previous_intent = self._pending_play
+        if self._request_state(self._bindings.STATE.PAUSED):
+            self._pending_play = False
+        else:
+            self._pending_play = previous_intent  # rollback de intención
 
     def resume(self) -> None:
         self.play()
@@ -368,11 +388,14 @@ class GStreamerAudioPort(AudioPort):
     def stop(self) -> None:
         if self._closed or self._pipeline is None:
             return
+        if not self._request_state(self._bindings.STATE.NULL):
+            # NULL falló: no publicar STOPPED, no limpiar el source como si
+            # el stop hubiera tenido éxito; el estado sigue diagnosticable
+            return
         self._generation += 1  # cancela aceptaciones pendientes en vuelo
         self._pending_play = False
         self._pending_path = None
         self._current_path = None
-        self._bindings.set_state(self._pipeline, self._bindings.STATE.NULL)
         if self._current_state is not PlaybackStatus.STOPPED:
             self._current_state = PlaybackStatus.STOPPED
             self._bridge.sig_state.emit(PlaybackStatus.STOPPED)
@@ -418,18 +441,28 @@ class GStreamerAudioPort(AudioPort):
             return
         self._closed = True
         self._generation += 1  # invalidate any in-flight message
-        self._teardown_pipeline()
+        teardown_error = None
+        if not self._teardown_pipeline():
+            teardown_error = RuntimeError(
+                "pipeline no pudo transicionar a NULL durante close"
+            )
         # destroy timer + sources
         if self._timer_source is not None:
             self._bindings.destroy_source(self._timer_source)
             self._timer_source = None
+        pump_error = None
         if self._pump is not None:
             if self._loop is not None:
                 self._bindings.quit_loop(self._loop)
             self._pump.join(timeout=2.0)
-            self._pump = None
-            self._loop = None
-            self._context = None
+            if self._pump.is_alive():
+                # NUNCA perder el ownership mientras el thread viva:
+                # retener referencias y reportar (R2 P1-03)
+                pump_error = RuntimeError("GStreamer pump thread did not terminate")
+            else:
+                self._pump = None
+                self._loop = None
+                self._context = None
         self._pending_path = None
         self._current_path = None
         self._eom = []
@@ -438,13 +471,22 @@ class GStreamerAudioPort(AudioPort):
         self._acc = []
         self._rej = []
         self._pst = []
+        if pump_error is not None:
+            raise pump_error
+        if teardown_error is not None:
+            raise teardown_error
 
-    def _teardown_pipeline(self) -> None:
+    def _teardown_pipeline(self) -> bool:
+        """Teardown del pipeline actual. Devuelve True si el pipeline fue
+        llevado a NULL con éxito (o no había pipeline); False si el request
+        NULL devolvió FAILURE (el pipeline queda retenido para diagnóstico)."""
         if self._pipeline is None:
-            return
+            return True
         self._detach_pipeline_sources()
-        self._bindings.set_state(self._pipeline, self._bindings.STATE.NULL)
-        self._pipeline = None
+        ok = self._bindings.set_state(self._pipeline, self._bindings.STATE.NULL)
+        if ok:
+            self._pipeline = None
+        return ok
 
     # ------------------------------------------------------------------
     # bus message translation — TYPE-AWARE provenance (M11.3C-R1)
@@ -461,6 +503,8 @@ class GStreamerAudioPort(AudioPort):
         """
         if self._closed:
             return
+        if message is None:
+            return  # bus source teardown puede entregar un mensaje null
         if captured_generation != self._generation:
             return  # stale source / old pipeline
         msg_type = self._bindings.message_type(message)
@@ -482,12 +526,13 @@ class GStreamerAudioPort(AudioPort):
                 self._current_path = None
                 self._bridge.sig_rej.emit(candidate, reason)
         elif msg_type == mt.ASYNC_DONE:
+            # COMMAND = intención; ASYNC_DONE = aceptación del media/transición
+            # asíncrona completada. NUNCA publica PLAYING: el estado runtime
+            # solo proviene de STATE_CHANGED (R2).
             if self._pending_path is not None:
                 self._current_path = self._pending_path
                 self._pending_path = None
                 self._bridge.sig_acc.emit(self._current_path)
-                if self._pending_play:
-                    self._deliver_state_if(PlaybackStatus.PLAYING)
         elif msg_type == mt.STATE_CHANGED:
             # top-level pipeline only (children transition constantly)
             if self._bindings.message_is_from_pipeline(message, self._pipeline):
@@ -509,6 +554,13 @@ class GStreamerAudioPort(AudioPort):
                 self._deliver_state_if(PlaybackStatus.PAUSED)
         elif state in (self._bindings.STATE.NULL, self._bindings.STATE.READY):
             self._deliver_state_if(PlaybackStatus.STOPPED)
+
+    def _request_state(self, state) -> bool:
+        """State request failure-atomic: devuelve True solo si GStreamer
+        aceptó la transición (no FAILURE)."""
+        if self._pipeline is None:
+            return False
+        return self._bindings.set_state(self._pipeline, state)
 
     def _deliver_state_if(self, status: PlaybackStatus) -> None:
         if self._current_state is status:
