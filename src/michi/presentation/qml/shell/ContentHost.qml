@@ -87,13 +87,19 @@ Item {
                     else
                         playlists.pin_playlist(playlists.selectedPlaylistId)
                 }
-                onRenameRequested: (playlistId, newName) => {
-                    if (playlists.rename_playlist(playlistId, newName))
-                        renameDialog.close()
-                    else
-                        renameDialog.showError(qsTr("A playlist with that name already exists."))
+                // M9-R1J: the shared dialogs are the canonical interaction
+                // boundary — the Detail emits intents; ContentHost routes
+                // them into the SAME dialogs used by All Playlists cards.
+                onRenameRequested: (playlistId, playlistName) => {
+                    renameDialog.targetPlaylistId = playlistId
+                    renameDialog.targetPlaylistName = playlistName
+                    renameDialog.open()
                 }
-                onDeleteRequested: playlistId => playlists.delete_playlist(playlistId)
+                onDeleteRequested: (playlistId, playlistName) => {
+                    deleteDialog.targetPlaylistId = playlistId
+                    deleteDialog.targetPlaylistName = playlistName
+                    deleteDialog.open()
+                }
                 onRemoveTrackRequested: index => playlists.remove_track(index)
                 onMoveTrackRequested: (fromIndex, toIndex) => {
                     playlists.move_track(fromIndex, toIndex)
@@ -122,6 +128,7 @@ Item {
             spacing: MichiSpacing.md
             MichiTextField {
                 id: renameField
+                objectName: "playlistRenameField"
                 Layout.fillWidth: true
                 placeholderText: qsTr("Playlist name")
                 text: renameDialog.targetPlaylistName
@@ -199,12 +206,13 @@ Item {
                 MichiButton {
                     text: qsTr("Delete")
                     variant: "danger"
-                    onClicked: {
-                        playlists.delete_playlist(deleteDialog.targetPlaylistId)
-                        deleteDialog.close()
-                    }
+                    onClicked: deleteDialog._confirm()
                 }
             }
+        }
+        function _confirm() {
+            playlists.delete_playlist(deleteDialog.targetPlaylistId)
+            deleteDialog.close()
         }
     }
 }

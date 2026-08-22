@@ -17,8 +17,10 @@ Item {
     signal backRequested()
     signal playRequested()
     signal togglePinRequested()
-    signal renameRequested(string playlistId, string newName)
-    signal deleteRequested(string playlistId)
+    // M9-R1J: presentation-intent emitters only — dialogs live in the
+    // Shell (ContentHost); the Detail NEVER opens dialogs itself.
+    signal renameRequested(string playlistId, string playlistName)
+    signal deleteRequested(string playlistId, string playlistName)
     signal removeTrackRequested(int index)
     signal moveTrackRequested(int fromIndex, int toIndex)
 
@@ -119,12 +121,16 @@ Item {
     MichiMenu {
         id: detailMenu
         MenuItem {
+            objectName: "playlistDetailRenameAction"
             text: qsTr("Rename")
-            onTriggered: renameDialog.open()
+            onTriggered: root.renameRequested(
+                root.playlistId, playlists.selectedPlaylistName)
         }
         MenuItem {
+            objectName: "playlistDetailDeleteAction"
             text: qsTr("Delete playlist")
-            onTriggered: deleteDialog.open()
+            onTriggered: root.deleteRequested(
+                root.playlistId, playlists.selectedPlaylistName)
         }
     }
 

@@ -50,14 +50,24 @@ class PlaylistsBridge(QObject):
             playlist_service.subscribe_changed(self._on_service_changed)
         if navigation_service is not None:
             navigation_service.subscribe_changed(self._on_service_changed)
+        if library is not None:
+            library.subscribe_changed(self._on_library_changed)
 
     def dispose(self) -> None:
         if self._playlist_service is not None:
             self._playlist_service.unsubscribe_changed(self._on_service_changed)
         if self._navigation is not None:
             self._navigation.unsubscribe_changed(self._on_service_changed)
+        if self._library is not None:
+            self._library.unsubscribe_changed(self._on_library_changed)
 
     def _on_service_changed(self) -> None:
+        self.playlists_changed.emit()
+
+    def _on_library_changed(self) -> None:
+        """M9-R1J: playlist search projection reads LibraryService search
+        state (query/active) and track metadata — react to library changes
+        so searchPlaylists/searchPlaylistCount/playlistTrackRows recompute."""
         self.playlists_changed.emit()
 
     # ------------------------------------------------------------------
@@ -272,7 +282,7 @@ class PlaylistsBridge(QObject):
         self._coordinator.open_playlist(playlist.playlist_id)
         return True
 
-    @Slot(str, result=bool)
+    @Slot(str, str, result=bool)
     def rename_playlist(self, playlist_id: str, new_name: str) -> bool:
         """Explicit success contract (M9-R1I): True only when the rename
         succeeded; False for missing playlist / invalid / duplicate name.
