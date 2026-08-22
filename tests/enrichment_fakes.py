@@ -261,7 +261,7 @@ class RecordingAssetStore(EnrichmentAssetStorePort):
             **{
                 **asdict(record),
                 "checksum": hashlib.sha256(data).hexdigest(),
-                "local_path": f"/enrichment/assets/{record.asset_id}",
+                "managed_object": f"objects/{hashlib.sha256(data).hexdigest()}.jpg",
             }
         )
         self.records[record.asset_id] = completed
