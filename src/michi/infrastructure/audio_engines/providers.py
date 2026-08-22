@@ -8,7 +8,11 @@ dependency availability (installed) from implementation readiness
 
 from michi.application.audio_engine_registry import AudioEngineProviderPort
 from michi.application.ports import AudioPort
-from michi.domain.audio_engine import AudioEngineDescriptor, AudioEngineId
+from michi.domain.audio_engine import (
+    AudioEngineCapabilities,
+    AudioEngineDescriptor,
+    AudioEngineId,
+)
 
 _QT_MULTIMEDIA_DISPLAY = "Qt Multimedia"
 _GSTREAMER_DISPLAY = "GStreamer"
@@ -95,11 +99,12 @@ class QtEngineProvider(AudioEngineProviderPort):
 
 
 class GStreamerEngineProvider(AudioEngineProviderPort):
-    """Availability probe for GStreamer via PyGObject/GI (lazy, optional).
+    """GStreamer provider (M11.3C): implemented = True, availability is
+    runtime-dependent (GI/GStreamer installed). gi is never imported at
+    module import time — the base Michi wheel stays usable without it."""
 
-    The GStreamer AudioPort adapter is NOT implemented in M11.3A (M11.3C
-    owns it). gi is never imported at module import time — the base Michi
-    wheel must stay usable without GI/GStreamer."""
+    def __init__(self) -> None:
+        self._port: AudioPort | None = None
 
     @property
     def engine_id(self) -> AudioEngineId:
@@ -109,11 +114,11 @@ class GStreamerEngineProvider(AudioEngineProviderPort):
         available = False
         reason = None
         try:
-            import gi  # noqa: PLC0415 - lazy optional system capability
+            from michi.infrastructure.audio_engines.gstreamer import (
+                GStreamerBindings,
+            )
 
-            gi.require_version("Gst", "1.0")
-            from gi.repository import Gst  # noqa: PLC0415,F401
-
+            GStreamerBindings().ensure_loaded()
             available = True
         except (ImportError, ValueError) as exc:
             reason = f"PyGObject/GStreamer no disponible: {exc}"
@@ -122,15 +127,38 @@ class GStreamerEngineProvider(AudioEngineProviderPort):
             display_name=_GSTREAMER_DISPLAY,
             available=available,
             unavailable_reason=reason,
-            implemented=False,
-            implementation_reason=_GSTREAMER_NOT_IMPLEMENTED,
+            implemented=True,
+            capabilities=AudioEngineCapabilities(
+                local_file_playback=True,
+                seek=True,
+                pause=True,
+                volume=True,
+                mute=True,
+            ),
         )
 
     def open(self) -> AudioPort:
-        raise NotImplementedError("GStreamer AudioPort adapter pendiente (M11.3C)")
+        """Deterministic: repeated open returns the SAME owned port until
+        close()."""
+        if self._port is not None:
+            return self._port
+        from michi.infrastructure.audio_engines.gstreamer import (
+            GStreamerAudioPort,
+        )
+
+        port = GStreamerAudioPort()
+        self._port = port
+        return port
 
     def close(self) -> None:
-        pass
+        """Idempotent, exception-safe: ownership released in finally."""
+        port = self._port
+        if port is None:
+            return
+        try:
+            port.close()
+        finally:
+            self._port = None
 
 
 class MpdEngineProvider(AudioEngineProviderPort):

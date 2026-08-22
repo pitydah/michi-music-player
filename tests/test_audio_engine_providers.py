@@ -120,15 +120,29 @@ class TestGStreamerProvider:
     def test_probe_is_lazy_and_truthful(self):
         desc = GStreamerEngineProvider().probe()
         assert desc.engine_id == AudioEngineId.GSTREAMER
-        # truthful: available only when gi/Gst 1.0 loads; implemented=False
-        # (the adapter belongs to M11.3C) regardless of availability
-        assert desc.implemented is False
+        # M11.3C: implemented=True; available solo cuando gi/Gst 1.0 carga
+        assert desc.implemented is True
         if not desc.available:
             assert desc.unavailable_reason is not None
 
-    def test_open_not_implemented_in_a(self):
-        with pytest.raises(NotImplementedError):
-            GStreamerEngineProvider().open()
+    def test_open_returns_audio_port(self, qapp):
+        from michi.application.ports import AudioPort
+
+        provider = GStreamerEngineProvider()
+        port = provider.open()
+        assert isinstance(port, AudioPort)
+        provider.close()
+
+    def test_ownership_deterministic(self, qapp):
+        provider = GStreamerEngineProvider()
+        first = provider.open()
+        second = provider.open()
+        assert first is second  # same owned port until close
+        provider.close()
+        provider.close()  # idempotent
+        third = provider.open()
+        assert third is not first  # fresh adapter after close
+        provider.close()
 
     def test_no_gi_import_at_module_time(self):
         """gi must never be imported by shared modules at import time."""
@@ -178,12 +192,16 @@ class TestProviderActivation:
         assert desc.can_activate is True
         assert desc.activation_blocker is None
 
-    def test_gstreamer_blocked_by_implementation(self):
+    def test_gstreamer_implemented_runtime_dependent(self):
+        """M11.3C: implemented=True; can_activate = available (GI runtime)."""
         desc = GStreamerEngineProvider().probe()
-        assert desc.implemented is False
-        assert desc.can_activate is False
-        assert desc.implementation_reason is not None
-        assert "M11.3C" in desc.implementation_reason
+        assert desc.implemented is True
+        assert desc.can_activate == desc.available
+        assert desc.capabilities.local_file_playback is True
+        assert desc.capabilities.seek is True
+        assert desc.capabilities.pause is True
+        assert desc.capabilities.volume is True
+        assert desc.capabilities.mute is True
 
     def test_mpd_blocked_by_implementation(self):
         desc = MpdEngineProvider().probe()
@@ -204,8 +222,7 @@ class TestProviderActivation:
                     display_name="GStreamer",
                     available=False,
                     unavailable_reason="gi/Gst typelib no disponible",
-                    implemented=False,
-                    implementation_reason="adapter pendiente (M11.3C)",
+                    implemented=True,
                 )
 
             def open(self):
@@ -216,6 +233,7 @@ class TestProviderActivation:
 
         desc = Missing().probe()
         assert desc.available is False
+        assert desc.implemented is True
         assert desc.can_activate is False
         assert "typelib" in desc.unavailable_reason
         assert desc.activation_blocker == desc.unavailable_reason
@@ -239,7 +257,8 @@ class TestProviderComposition:
         assert descriptors[0].available is True  # Qt reference
         # GStreamer/MPD: installed status varies by machine; implemented is
         # always False in M11.3A
-        assert all(d.implemented is False for d in descriptors[1:])
+        assert descriptors[1].implemented is True  # GStreamer (M11.3C)
+        assert descriptors[2].implemented is False  # MPD (M11.3D)
 
 
 class TestAudioEngineService:
