@@ -85,13 +85,35 @@ class FakePipeline:
 
 
 class FakeBus:
+    """Modela la ownership del bus watch como Gst.Bus (M11.3C-R4).
+
+    add_watch instala un watch y devuelve un id sintético; remove_watch()
+    NO recibe id (paridad con el contrato real) y devuelve False si no hay
+    watch instalado o si fail_remove_watch está activo."""
+
     def __init__(self, pipeline):
         self.pipeline = pipeline
         self.sources_created = 0
+        self.watch_installed = False
+        self.watch_callback = None
+        self.remove_watch_count = 0
+        self.fail_remove_watch = False
 
     def create_watch(self):
         self.sources_created += 1
         return FakeSource()
+
+    def add_watch(self, priority, callback):
+        self.watch_installed = True
+        self.watch_callback = callback
+        return 42  # id sintético (bookkeeping only)
+
+    def remove_watch(self):
+        if self.fail_remove_watch or not self.watch_installed:
+            return False
+        self.watch_installed = False
+        self.remove_watch_count += 1
+        return True
 
 
 class FakeSource:
@@ -200,13 +222,17 @@ class FakeBindings:
         pass
 
     def create_bus_source(self, bus, callback, context=None):
-        source = bus.create_watch()
-        source.set_callback(callback)
-        return source
+        """Paridad fake/real (M11.3C-R4): instala el watch vía add_watch y
+        devuelve el id sintético (bookkeeping only)."""
+        return bus.add_watch(0, callback)
 
-    def remove_bus_watch(self, bus, source):
-        if source is not None:
-            source.destroy()
+    def remove_bus_watch(self, bus) -> bool:
+        """Misma forma que GStreamerBindings.remove_bus_watch(bus): un solo
+        argumento; si el productivo llamara con un id extra, esto reventaría
+        con TypeError (paridad de firma)."""
+        if bus is None:
+            return True
+        return bus.remove_watch()
 
     def attach_source(self, source, context):
         return source.attach(context)
@@ -376,11 +402,13 @@ class TestSinglePump:
         bindings = FakeBindings()
         port = _port(bindings)
         port.load(Path("/m/a.flac"))
-        old_source = port._bus_source
+        bus_a = port._bus
+        assert bus_a.watch_installed is True
         port.load(Path("/m/b.flac"))
-        assert old_source.destroyed is True  # fuente vieja destruida
-        assert port._bus_source is not None
-        assert port._bus_source.destroyed is False  # fuente nueva viva
+        assert bus_a.watch_installed is False  # watch de A removido
+        assert bus_a.remove_watch_count == 1
+        assert port._bus is not None
+        assert port._bus.watch_installed is True  # watch de B vivo
         port.close()
 
     def test_close_terminates_pump(self, qapp):
@@ -942,7 +970,7 @@ class TestLoadReplacementTransaction:
         bindings = FakeBindings()
         port, old_pipeline = self._port_playing_a(bindings)
         old_generation = port._generation
-        old_bus_source = port._bus_source
+        old_bus = port._bus
         old_current_path = port._current_path
         old_pending_play = port._pending_play
         old_current_state = port._current_state
@@ -956,9 +984,10 @@ class TestLoadReplacementTransaction:
         assert port._generation == old_generation  # sin avance falso
         assert port._pending_play is old_pending_play  # intención de play intacta
         assert port._current_state is old_current_state == PlaybackStatus.PLAYING
-        # el bus viejo sigue attachado y observable
-        assert port._bus_source is old_bus_source
-        assert old_bus_source.destroyed is False
+        # el bus viejo sigue attachado y observable (watch vivo)
+        assert port._bus is old_bus
+        assert old_bus.watch_installed is True
+        assert old_bus.remove_watch_count == 0
         assert len(bindings.pipelines) == 1  # B nunca se creó
         port.close()
 
@@ -974,13 +1003,16 @@ class TestLoadReplacementTransaction:
     def test_failed_replacement_preserves_old_bus_source(self, qapp):
         bindings = FakeBindings()
         port, _ = self._port_playing_a(bindings)
-        old_bus_source = port._bus_source
+        old_bus = port._bus
+        old_watch_id = port._bus_source
         bindings.fail_next_states.append(_FakeState.NULL)
         with pytest.raises(RuntimeError, match="NULL"):
             port.load(Path("/m/b.flac"))
         # pipeline vivo sin bus = zombie: prohibido en reemplazo normal
-        assert port._bus_source is old_bus_source
-        assert old_bus_source.destroyed is False
+        assert port._bus is old_bus
+        assert port._bus_source == old_watch_id
+        assert old_bus.watch_installed is True
+        assert old_bus.remove_watch_count == 0
         port.close()
 
     def test_replacement_recovers_after_null_failure(self, qapp):
@@ -1155,6 +1187,123 @@ class TestRealSmokeTruthfulSeam:
         assert "boom" in detail2
 
 
+class TestBusWatchLifecycleSeal:
+    """M11.3C-R4: Gst.Bus.remove_watch() contract — NO watch-id argument;
+    el ciclo de vida del watch (install/remove) debe ser exacto y las
+    fallas de remoción deben ser observables (sin suppress silencioso)."""
+
+    @staticmethod
+    def _buses_of(port, bindings):
+        return [p.get_bus() for p in bindings.pipelines]
+
+    def test_signature_parity_no_watch_id(self):
+        import inspect
+
+        params = list(inspect.signature(FakeBindings.remove_bus_watch).parameters)
+        assert params == ["self", "bus"]  # paridad con GStreamerBindings
+        # el camino productivo debe fallar ruidosamente si alguien reintroduce
+        # el id: la firma del fake no acepta un segundo argumento
+        with pytest.raises(TypeError):
+            FakeBindings().remove_bus_watch("somebus", 42)
+
+    def test_single_load_close_removes_watch_once(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        bus_a = port._bus
+        assert bus_a.watch_installed is True
+        port.close()
+        assert bus_a.remove_watch_count == 1
+        assert bus_a.watch_installed is False
+
+    def test_a_to_b_removes_a_watch(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        bus_a = port._bus
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, bindings.pipelines[-1])
+        _deliver(port, msg, gen)
+        port.load(Path("/m/b.flac"))
+        bus_b = port._bus
+        assert bus_a.remove_watch_count == 1
+        assert bus_a.watch_installed is False
+        assert bus_b.watch_installed is True
+        # exactamente UN watch activo a la vez
+        active = sum(b.watch_installed for b in self._buses_of(port, bindings))
+        assert active == 1
+        port.close()
+
+    def test_a_b_c_close_full_lifecycle(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        for name in ("a", "b", "c"):
+            port.load(Path(f"/m/{name}.flac"))
+            msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, bindings.pipelines[-1])
+            _deliver(port, msg, gen)
+        buses = self._buses_of(port, bindings)
+        assert buses[0].remove_watch_count == 1  # A removido al armar B
+        assert buses[1].remove_watch_count == 1  # B removido al armar C
+        assert buses[0].watch_installed is False
+        assert buses[1].watch_installed is False
+        assert buses[2].watch_installed is True  # C vivo
+        port.close()
+        assert buses[2].remove_watch_count == 1  # C removido en close
+        assert buses[2].watch_installed is False
+        assert sum(b.watch_installed for b in buses) == 0  # 0 watches activos
+
+    def test_remove_failure_during_replacement(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        bus_a = port._bus
+        bus_a.fail_remove_watch = True
+        with pytest.raises(RuntimeError, match="bus watch"):
+            port.load(Path("/m/b.flac"))
+        # NO se arma B: ni pipeline ni watch nuevos
+        assert len(bindings.pipelines) == 1
+        assert bus_a.watch_installed is True  # bookkeeping retenido
+        assert bus_a.remove_watch_count == 0
+        assert port._pipeline is bindings.pipelines[0]
+        # A ya no está productivamente reproduciendo (NULL OK antes del
+        # fallo de remoción) — pero no hay estado falso de B: A sigue como
+        # fuente pendiente canónica (la transacción abortó sin mutarla)
+        assert port._pending_path == Path("/m/a.flac")
+        assert port._current_path is None
+
+    def test_retry_close_after_remove_failure(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        bus_a = port._bus
+        bus_a.fail_remove_watch = True
+        with pytest.raises(RuntimeError, match="bus watch"):
+            port.load(Path("/m/b.flac"))
+        # el fallo fue transitorio: close() debe poder limpiar sin crash
+        bus_a.fail_remove_watch = False
+        port.close()
+        assert bus_a.remove_watch_count == 1
+        assert bus_a.watch_installed is False
+        assert port._pipeline is None
+
+    def test_close_remove_failure_is_first_error(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        bus_a = port._bus
+        bus_a.fail_remove_watch = True
+        with pytest.raises(RuntimeError, match="bus watch"):
+            port.close()
+        assert port._closed is True
+        # el fallo de remoción (cronológicamente primero en el teardown
+        # terminal) es el error primario; el pipeline queda retenido
+        assert port._pipeline is bindings.pipelines[0]
+        assert port._pump is None  # la limpieza del pump continuó
+        # liberación manual del bookkeeping retenido para salir limpio
+        bus_a.fail_remove_watch = False
+        port._detach_pipeline_sources()
+        port._pipeline = None
+
+
 @pytest.mark.gstreamer_runtime
 class TestRealRuntimeSmoke:
     """P2-01/P1-04: smoke real de GI/GStreamer — SKIP truthful solo con
@@ -1249,6 +1398,85 @@ class TestRealRuntimeSmoke:
         assert port._pump is None
         assert pump.is_alive() is False
 
+    def test_real_repeated_watch_lifecycle(self, qapp, tmp_path):
+        """M11.3C-R4: ciclo REAL repetido add_watch/remove_watch con
+        Gst.Bus real — load(A)→load(B)→load(C)→close sin watches viejos."""
+        try:
+            import gi  # noqa: PLC0415
+
+            gi.require_version("Gst", "1.0")
+            from gi.repository import Gst  # noqa: PLC0415
+
+            Gst.init(None)
+        except (ImportError, ValueError):
+            pytest.skip("GI/GStreamer runtime no disponible")
+
+        from michi.infrastructure.audio_engines.gstreamer import (
+            GStreamerAudioPort,
+            GStreamerBindings,
+            _probe_missing_runtime_dependencies,
+        )
+
+        class TrackingRealBindings(GStreamerBindings):
+            add_count = 0
+            remove_count = 0
+
+            def create_bus_source(self, bus, callback, context=None):
+                watch_id = super().create_bus_source(bus, callback, context)
+                TrackingRealBindings.add_count += 1
+                return watch_id
+
+            def remove_bus_watch(self, bus):
+                result = super().remove_bus_watch(bus)
+                if result:
+                    TrackingRealBindings.remove_count += 1
+                return result
+
+            def make_playbin3(self):
+                pipeline = super().make_playbin3()
+                if pipeline is None:
+                    pytest.skip("playbin3 no disponible")
+                fakesink = self._gst.ElementFactory.make(
+                    "fakesink", "michi_test_audio_sink"
+                )
+                pipeline.set_property("audio-sink", fakesink)
+                return pipeline
+
+        bindings = TrackingRealBindings()
+        bindings.ensure_loaded()
+        missing = _probe_missing_runtime_dependencies(bindings)
+        if missing is not None:
+            pytest.skip(f"dependency absent: {missing} element factory not available")
+        wav = self._tiny_wav(tmp_path)
+        port = GStreamerAudioPort(bindings)
+        accepted = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        import time
+
+        for i, _name in enumerate(("a", "b", "c")):
+            accepted.clear()
+            port.load(wav)
+            deadline = time.monotonic() + 2.0
+            while time.monotonic() < deadline:
+                QCoreApplication.processEvents()
+                if accepted:
+                    break
+                time.sleep(0.02)
+            if not accepted:
+                pytest.fail(
+                    f"Real GStreamerAudioPort did not accept the WAV on the "
+                    f"{i + 1}-th replacement within 2 seconds despite required "
+                    f"runtime factories being available"
+                )
+            # tras cada reemplazo: un watch viejo removido, el nuevo vivo
+            assert TrackingRealBindings.add_count == i + 1
+            assert TrackingRealBindings.remove_count == i
+        port.close()
+        assert TrackingRealBindings.add_count == 3
+        assert TrackingRealBindings.remove_count == 3
+        assert port._pipeline is None
+        assert port._bus is None
+
     def test_real_gi_smoke(self):
         try:
             import gi  # noqa: PLC0415
@@ -1280,7 +1508,12 @@ class TestRealRuntimeSmoke:
             return True
 
         watch_id = bindings.create_bus_source(bus, on_bus, ctx)
-        bindings.remove_bus_watch(bus, watch_id)
+        assert watch_id is not None
+        # M11.3C-R4: Gst.Bus.remove_watch() NO acepta watch-id
+        removed = bindings.remove_bus_watch(bus)
+        assert removed is True
+        # M11.3C-R4: remove_watch() sin watch instalado devuelve False (bool)
+        assert bindings.remove_bus_watch(bus) is False
         # teardown real
         bindings.set_state(pipeline, bindings.STATE.NULL)
         assert pipeline.get_state(0).state == Gst.State.NULL
