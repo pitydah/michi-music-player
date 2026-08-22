@@ -87,7 +87,9 @@ class TestNoNetworkInCanonicalScan:
         # activity (behavioral proof lives in test_m6_9f_coordinator).
         import michi.application.enrichment_coordinator as coordinator_module
 
-        source = inspect.getsource(coordinator_module.EnrichmentCoordinator.enrich_artist)
+        source = inspect.getsource(
+            coordinator_module.EnrichmentCoordinator.enrich_artist
+        )
         assert "self._enabled()" in source
         assert "self._executor.submit" in source
 
