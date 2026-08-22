@@ -48,6 +48,12 @@ logger = logging.getLogger(__name__)
 # documented, tested. Never allow unlimited downloaded blobs.
 MAX_EXTERNAL_IMAGE_BYTES = 10 * 1024 * 1024
 
+# R3.1 DECODE-BOMB PROTECTION: a compressed byte limit is not enough —
+# decoded geometry is bounded BEFORE the full image is allocated.
+MAX_EXTERNAL_IMAGE_WIDTH = 8192
+MAX_EXTERNAL_IMAGE_HEIGHT = 8192
+MAX_EXTERNAL_IMAGE_PIXELS = 20_000_000
+
 ALLOWED_IMAGE_MIME_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
 
 # Declared MIME -> magic-byte format used for content-type verification.
@@ -87,10 +93,22 @@ def _sniff_mime(data: bytes) -> str | None:
     return None
 
 
+def _dimensions_allowed(width: int, height: int) -> bool:
+    """R3.1 pure dimension policy: positive, bounded per axis and by
+    total pixel count. Rejects decode bombs before allocation."""
+    return (
+        width > 0
+        and height > 0
+        and width <= MAX_EXTERNAL_IMAGE_WIDTH
+        and height <= MAX_EXTERNAL_IMAGE_HEIGHT
+        and width * height <= MAX_EXTERNAL_IMAGE_PIXELS
+    )
+
+
 def _decode_dimensions(data: bytes) -> tuple[int, int] | None:
     """Decodable-image validation (narrow, no Pillow): QImageReader must
-    actually read the payload. Unsupported/corrupt images -> None
-    (fail-closed)."""
+    actually read the payload. R3.1: HEADER geometry is validated BEFORE
+    the full decode, and the decoded geometry is rechecked after."""
     reader = QImageReader()
     reader.setDecideFormatFromContent(True)
     buffer = QBuffer()
@@ -100,8 +118,15 @@ def _decode_dimensions(data: bytes) -> tuple[int, int] | None:
     reader.setDevice(buffer)
     if not reader.canRead():
         return None
+    header = reader.size()
+    if not _dimensions_allowed(header.width(), header.height()):
+        # Rejected from the header alone: never allocate the full image.
+        return None
     image = reader.read()
     if image.isNull():
+        return None
+    if not _dimensions_allowed(image.width(), image.height()):
+        # Header and decoded geometry must both satisfy policy.
         return None
     return image.width(), image.height()
 
