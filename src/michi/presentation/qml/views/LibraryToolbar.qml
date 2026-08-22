@@ -47,7 +47,7 @@ MichiGlassSurface {
             orientation: Qt.Horizontal
 
             handle: Item {
-                implicitWidth: 12
+                implicitWidth: 16
                 implicitHeight: navigationSplit.height
                 HoverHandler {
                     id: navigationHandleHover
@@ -55,16 +55,11 @@ MichiGlassSurface {
                 }
                 Rectangle {
                     anchors.centerIn: parent
-                    width: 4
-                    height: navigationHandleHover.hovered ? 24 : 16
-                    radius: 2
+                    width: 1
+                    height: 20
                     color: navigationHandleHover.hovered
                         ? MichiSemanticColors.auroraCyanBorder
                         : MichiSemanticColors.borderSubtle
-                    Behavior on height {
-                        enabled: !MichiAccessibility.reducedMotion
-                        NumberAnimation { duration: MichiMotion.micro }
-                    }
                 }
             }
 
@@ -142,6 +137,7 @@ MichiGlassSurface {
                     MichiButton {
                         text: root.width < 760 ? "Scan" : "Scan library"
                         iconName: "library"
+                        variant: "secondary"
                         iconOnly: root.width < 980
                         accessibleName: "Scan library"
                         enabled: !root.scanning

@@ -23,13 +23,12 @@ Item {
     implicitHeight: MichiMetrics.controlLarge
     clip: true
 
-    MichiGlassSurface {
+    Rectangle {
         anchors.fill: parent
-        elevation: "subtle"
         radius: MichiRadius.lg
-        contentPadding: 0
-        textured: true
-        shadowed: false
+        color: MichiPalette.smoke
+        border.width: 1
+        border.color: MichiSemanticColors.borderSubtle
     }
 
     function ensureCurrentTabVisible() {
@@ -55,7 +54,7 @@ Item {
     Flickable {
         id: navigationFlickable
         anchors.fill: parent
-        anchors.margins: 2
+        anchors.margins: 3
         contentWidth: tabRow.implicitWidth
         contentHeight: height
         clip: true
@@ -65,7 +64,7 @@ Item {
         RowLayout {
             id: tabRow
             height: parent.height
-            spacing: 2
+            spacing: MichiSpacing.xs
 
             Repeater {
                 id: tabRepeater
@@ -76,7 +75,6 @@ Item {
                     required property var modelData
                     Layout.preferredHeight: tabRow.height
                     Layout.preferredWidth: tabContent.implicitWidth + MichiSpacing.md * 2
-                    Layout.leftMargin: (index === 3 || index === 4) ? MichiSpacing.md : 0
                     text: modelData.label
                     checked: root.currentTab === modelData.value
                     focusPolicy: Qt.StrongFocus
@@ -96,7 +94,7 @@ Item {
                                 : tabButton.hovered
                                     ? MichiPalette.textPrimary
                                     : MichiPalette.textSecondary
-                            strokeWidth: tabButton.checked ? 2.0 : 1.7
+                            strokeWidth: tabButton.checked ? 1.8 : 1.5
                         }
                         MichiText {
                             text: tabButton.text
