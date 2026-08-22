@@ -18,9 +18,12 @@ from enrichment_fakes import (
 
 from michi.application.enrichment_service import EnrichmentService
 from michi.domain.enrichment import (
+    AlbumIdentityEvidence,
+    AlbumIdentityHints,
+    ArtistIdentityEvidence,
+    ArtistIdentityHints,
     DeliveryVerdict,
-    ExternalIdentityHints,
-    IdentityEvidence,
+    LocalAlbumEvidence,
 )
 from michi.domain.library import TrackMetadata, TrackRef, build_music_model
 from michi.infrastructure.enrichment_repository import SqliteKnowledgeRepository
@@ -129,9 +132,23 @@ def build_service(tmp_path: Path, artist_provider=None, album_provider=None):
     return service, enrichment_repo
 
 
-def artist_evidence(mbid: str) -> IdentityEvidence:
-    return IdentityEvidence(
-        identity_hints=ExternalIdentityHints(musicbrainz_artist_ids=(mbid,))
+def artist_evidence(mbid: str, name: str = "Artist A") -> ArtistIdentityEvidence:
+    return ArtistIdentityEvidence(
+        local_artist_key=name.casefold(),
+        local_artist_name=name,
+        known_albums=(LocalAlbumEvidence("Album X", 1980),),
+        identity_hints=ArtistIdentityHints(artist_ids=(mbid,)),
+    )
+
+
+def album_evidence(rg_id: str, key: str = "album-x-key") -> AlbumIdentityEvidence:
+    return AlbumIdentityEvidence(
+        local_album_key=key,
+        local_album_title="Album X",
+        local_album_artist_key="artist a",
+        local_album_artist_name="Artist A",
+        local_year=1980,
+        identity_hints=AlbumIdentityHints(release_group_ids=(rg_id,)),
     )
 
 
@@ -139,7 +156,7 @@ class TestExternalProfilesNeverTouchLocalMetadata:
     def test_artist_profile_never_changes_track_artist(self, tmp_path):
         service, repo = build_service(tmp_path)
         tracks, model_before = library_snapshot()
-        outcome = service.request_artist_enrichment("artist a", artist_evidence("mb-a"))
+        outcome = service.request_artist_enrichment(artist_evidence("mb-a"))
         profile = service._artist_provider.fetch_profile("artist a", "mb-a")
         assert (
             service.deliver_artist_profile(outcome.request, profile)
@@ -153,10 +170,7 @@ class TestExternalProfilesNeverTouchLocalMetadata:
     def test_album_profile_never_changes_track_album(self, tmp_path):
         service, repo = build_service(tmp_path)
         tracks, model_before = library_snapshot()
-        evidence = IdentityEvidence(
-            identity_hints=ExternalIdentityHints(musicbrainz_release_group_id="rg-x")
-        )
-        outcome = service.request_album_enrichment("album-x-key", evidence)
+        outcome = service.request_album_enrichment(album_evidence("rg-x"))
         profile = service._album_provider.fetch_profile("album-x-key", "rg-x")
         assert (
             service.deliver_album_profile(outcome.request, profile)
@@ -170,10 +184,7 @@ class TestExternalProfilesNeverTouchLocalMetadata:
     def test_external_first_release_date_never_changes_track_year(self, tmp_path):
         service, _ = build_service(tmp_path)
         tracks, model_before = library_snapshot()
-        evidence = IdentityEvidence(
-            identity_hints=ExternalIdentityHints(musicbrainz_release_group_id="rg-x")
-        )
-        outcome = service.request_album_enrichment("album-x-key", evidence)
+        outcome = service.request_album_enrichment(album_evidence("rg-x"))
         profile = service._album_provider.fetch_profile("album-x-key", "rg-x")
         # External knowledge claims a different first release year.
         profile = type(profile)(
@@ -188,7 +199,7 @@ class TestExternalProfilesNeverTouchLocalMetadata:
     def test_external_genres_never_change_local_genre_refs(self, tmp_path):
         service, _ = build_service(tmp_path)
         tracks, model_before = library_snapshot()
-        outcome = service.request_artist_enrichment("artist a", artist_evidence("mb-a"))
+        outcome = service.request_artist_enrichment(artist_evidence("mb-a"))
         profile = service._artist_provider.fetch_profile("artist a", "mb-a")
         profile = type(profile)(
             **{**profile.__dict__, "external_genres": ("Jazz", "Ambient")}
@@ -221,7 +232,7 @@ class TestExternalProfilesNeverTouchLocalMetadata:
             repository=SqliteKnowledgeRepository(tmp_path / "enrichment.db"),
             asset_store=external_store,
         )
-        outcome = service.request_artist_enrichment("artist a", artist_evidence("mb-a"))
+        outcome = service.request_artist_enrichment(artist_evidence("mb-a"))
         profile = service._artist_provider.fetch_profile("artist a", "mb-a")
         service.deliver_artist_profile(outcome.request, profile)
         external_store.store(profile.artwork_asset_id, b"external-bytes", "image/jpeg")
@@ -238,7 +249,7 @@ class TestLibraryIndexIsolation:
         service, _ = build_service(tmp_path)
         for generation in (0, 1, 2):  # initial + refreshes
             outcome = service.request_artist_enrichment(
-                "artist a", artist_evidence("mb-a"), generation=generation
+                artist_evidence("mb-a"), generation=generation
             )
             profile = service._artist_provider.fetch_profile("artist a", "mb-a")
             assert (
@@ -253,7 +264,7 @@ class TestLibraryIndexIsolation:
         library_repo = populate_library_index(tmp_path, canonical_tracks())
         rows_before = index_rows(tmp_path / "library.db")
         service, enrichment_repo = build_service(tmp_path)
-        outcome = service.request_artist_enrichment("artist a", artist_evidence("mb-a"))
+        outcome = service.request_artist_enrichment(artist_evidence("mb-a"))
         service.deliver_artist_profile(
             outcome.request, service._artist_provider.fetch_profile("artist a", "mb-a")
         )
@@ -265,7 +276,7 @@ class TestLibraryIndexIsolation:
     def test_rebuilding_enrichment_db_changes_zero_track_refs(self, tmp_path):
         tracks, model_before = library_snapshot()
         service, _ = build_service(tmp_path)
-        outcome = service.request_artist_enrichment("artist a", artist_evidence("mb-a"))
+        outcome = service.request_artist_enrichment(artist_evidence("mb-a"))
         service.deliver_artist_profile(
             outcome.request, service._artist_provider.fetch_profile("artist a", "mb-a")
         )
@@ -283,11 +294,9 @@ class TestLibraryIndexIsolation:
 class TestEntityOwnershipAtRest:
     def test_out_of_order_artists_never_cross_ownership(self, tmp_path):
         service, repo = build_service(tmp_path)
-        outcome_a = service.request_artist_enrichment(
-            "artist a", artist_evidence("mb-a")
-        )
+        outcome_a = service.request_artist_enrichment(artist_evidence("mb-a"))
         outcome_b = service.request_artist_enrichment(
-            "artist b", artist_evidence("mb-b")
+            artist_evidence("mb-b", name="Artist B")
         )
         profile_b = service._artist_provider.fetch_profile("artist b", "mb-b")
         profile_a = service._artist_provider.fetch_profile("artist a", "mb-a")
@@ -307,14 +316,12 @@ class TestEntityOwnershipAtRest:
 
     def test_out_of_order_albums_never_cross_ownership(self, tmp_path):
         service, repo = build_service(tmp_path)
-        evidence_a = IdentityEvidence(
-            identity_hints=ExternalIdentityHints(musicbrainz_release_group_id="rg-a")
+        outcome_a = service.request_album_enrichment(
+            album_evidence("rg-a", key="album-key-a")
         )
-        evidence_b = IdentityEvidence(
-            identity_hints=ExternalIdentityHints(musicbrainz_release_group_id="rg-b")
+        outcome_b = service.request_album_enrichment(
+            album_evidence("rg-b", key="album-key-b")
         )
-        outcome_a = service.request_album_enrichment("album-key-a", evidence_a)
-        outcome_b = service.request_album_enrichment("album-key-b", evidence_b)
         profile_b = service._album_provider.fetch_profile("album-key-b", "rg-b")
         profile_a = service._album_provider.fetch_profile("album-key-a", "rg-a")
         service.deliver_album_profile(outcome_b.request, profile_b)
@@ -336,8 +343,12 @@ class TestEntityOwnershipAtRest:
             album_provider=FakeAlbumProvider(),
             repository=SqliteKnowledgeRepository(tmp_path / "enrichment.db"),
         )
-        evidence = IdentityEvidence(local_album_titles=("Same Title",))
-        outcome = service.request_artist_enrichment("john williams", evidence)
+        evidence = ArtistIdentityEvidence(
+            local_artist_key="john williams",
+            local_artist_name="John Williams",
+            known_albums=(LocalAlbumEvidence("Same Title", 0),),
+        )
+        outcome = service.request_artist_enrichment(evidence)
         assert outcome.request is None
         repo = SqliteKnowledgeRepository(tmp_path / "enrichment.db")
         assert repo.load_artist_profiles() == ()
@@ -350,7 +361,7 @@ class TestManualMatchAndFailure:
         rows_before = index_rows(tmp_path / "library.db")
         service, repo = build_service(tmp_path)
         # Manual match: user explicitly provides the identity hint.
-        outcome = service.request_artist_enrichment("artist a", artist_evidence("mb-a"))
+        outcome = service.request_artist_enrichment(artist_evidence("mb-a"))
         assert outcome.request is not None
         profile = service._artist_provider.fetch_profile("artist a", "mb-a")
         service.deliver_artist_profile(outcome.request, profile)
@@ -373,7 +384,7 @@ class TestManualMatchAndFailure:
                 raise EnrichmentProviderError("boom")
 
         service, repo = build_service(tmp_path, artist_provider=FailingProvider())
-        outcome = service.request_artist_enrichment("artist a", artist_evidence("mb-a"))
+        outcome = service.request_artist_enrichment(artist_evidence("mb-a"))
         assert (
             service.deliver_artist_failure(outcome.request) is DeliveryVerdict.COMMITTED
         )
@@ -392,7 +403,7 @@ class TestManualMatchAndFailure:
         service, repo = build_service(
             tmp_path, artist_provider=FakeArtistProvider(offline=True)
         )
-        outcome = service.request_artist_enrichment("artist a", artist_evidence("mb-a"))
+        outcome = service.request_artist_enrichment(artist_evidence("mb-a"))
         try:
             service._artist_provider.fetch_profile("artist a", "mb-a")
             raised = False
