@@ -28,7 +28,7 @@ MichiGlassSurface {
     signal shuffleRequested(bool enabled)
     signal closeRequested()
 
-    elevation: "elevated"
+    elevation: "subtle"
     accented: true
     accentColor: MichiPalette.auroraPurple
     contentPadding: MichiSpacing.lg
@@ -110,18 +110,23 @@ MichiGlassSurface {
                     onActivated: root.trackClicked(index)
                     onRemoveRequested: root.removeRequested(index)
                 }
+                // Reorder affordances reveal on row hover, matching the
+                // row's own hover-reveal trash (TrackRow opacity pattern).
                 MichiIconButton {
                     iconName: "up"
                     accessibleName: "Move track up"
                     enabled: index > 0
+                    opacity: queueRow.hovered || queueList.isCurrentItem ? 1 : 0.18
                     onClicked: root.moveRequested(index, index - 1)
                 }
                 MichiIconButton {
                     iconName: "down"
                     accessibleName: "Move track down"
                     enabled: index + 1 < root.count
+                    opacity: queueRow.hovered || queueList.isCurrentItem ? 1 : 0.18
                     onClicked: root.moveRequested(index, index + 1)
                 }
+                HoverHandler { id: queueRow }
             }
         }
     }

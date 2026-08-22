@@ -89,6 +89,16 @@ status dots (pinned, library-ready) expose Accessible names;
 `Accessible.selected` on timeline/vinyl/path delegates (QueueView
 `Accessible.dialog` was already added in Commit B).
 
+**Commit F (done):** items 23 + 25 — queue reorder buttons reveal on row
+hover (matching TrackRow's trash), queue drawer glass → `subtle`; dead
+`Behavior on y` removed from cover-flow card; 36px buttons → `controlMedium`;
+legacy `ui/` wrapper layer (`MichiButton/Panel/Slider/TextField`) and unused
+`AsyncStateView` deleted — SettingsView migrated to real controls
+(`Controls.MichiButton/MichiTextField/MichiSlider`, `MichiGlassSurface`).
+`MichiDivider` kept (single SearchOverlay use dimensions it). Note:
+`components/NowPlayingPanel.qml` still imports `../ui` — dead code reserved
+for the Now Playing redesign.
+
 ## Phase 3 — 🟠 WARNING: visual consistency & copy (~5 h)
 
 | # | Finding | Evidence | Fix | Effort |

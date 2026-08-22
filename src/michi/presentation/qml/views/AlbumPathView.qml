@@ -247,16 +247,16 @@ PathView {
                 color: MichiSemanticColors.borderSubtle
             }
             MichiIconButton {
-                Layout.preferredWidth: 36
-                Layout.preferredHeight: 36
+                Layout.preferredWidth: MichiMetrics.controlMedium
+                Layout.preferredHeight: MichiMetrics.controlMedium
                 iconName: "chevron-left"
                 accessibleName: "Previous album"
                 enabled: albumsPath.count > 1
                 onClicked: albumsPath.decrementCurrentIndex()
             }
             MichiIconButton {
-                Layout.preferredWidth: 36
-                Layout.preferredHeight: 36
+                Layout.preferredWidth: MichiMetrics.controlMedium
+                Layout.preferredHeight: MichiMetrics.controlMedium
                 iconName: "chevron-right"
                 accessibleName: "Next album"
                 enabled: albumsPath.count > 1
@@ -283,14 +283,6 @@ PathView {
                     if (albumsPath.currentAlbum)
                         library.select_album(albumsPath.currentAlbum.key)
                 }
-            }
-        }
-
-        Behavior on y {
-            enabled: !MichiAccessibility.reducedMotion
-            NumberAnimation {
-                duration: MichiMotion.standard
-                easing.type: MichiMotion.outCubic
             }
         }
     }

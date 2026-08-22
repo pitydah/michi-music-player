@@ -309,3 +309,32 @@ def test_immersive_delegates_expose_selected_state():
     assert "Accessible.selected: PathView.isCurrentItem" in read(
         "views/AlbumPathView.qml"
     )
+
+
+# ── Phase 5: queue affordances and dead-code removal ─────────────────────────
+
+
+def test_queue_reorder_buttons_reveal_on_hover():
+    content = read("components/QueuePanel.qml")
+    assert "queueRow.hovered || queueList.isCurrentItem ? 1 : 0.18" in content
+    assert 'elevation: "subtle"' in content
+
+
+def test_legacy_ui_wrappers_removed():
+    qml_root = Path("src/michi/presentation/qml")
+    for rel in (
+        "ui/MichiButton.qml",
+        "ui/MichiPanel.qml",
+        "ui/MichiSlider.qml",
+        "ui/MichiTextField.qml",
+        "patterns/AsyncStateView.qml",
+    ):
+        assert not Path(qml_root, rel).exists(), rel
+
+
+def test_settings_view_uses_real_controls():
+    content = read("views/SettingsView.qml")
+    assert 'import "../ui"' not in content
+    assert "Controls.MichiTextField" in content
+    assert "Controls.MichiButton" in content
+    assert "MichiGlassSurface {" in content

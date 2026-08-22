@@ -33,7 +33,6 @@ def test_design_system_has_canonical_layers() -> None:
         "controls/MichiButton.qml",
         "controls/MichiSearchField.qml",
         "controls/MichiSegmentedControl.qml",
-        "patterns/AsyncStateView.qml",
         "patterns/SearchOverlay.qml",
         "media/Artwork.qml",
         "media/MichiPlayingIndicator.qml",

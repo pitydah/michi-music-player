@@ -2,8 +2,8 @@ import QtQuick
 import QtQuick.Layouts
 import "../controls" as Controls
 import "../patterns"
+import "../primitives"
 import "../theme"
-import "../ui"
 
 Item {
     Flickable {
@@ -24,7 +24,7 @@ Item {
             }
 
             // ── Playback ────────────────────────────────────
-            MichiPanel {
+            MichiGlassSurface {
                 id: appearancePanel
                 objectName: "appearanceSettingsPanel"
                 Layout.fillWidth: true
@@ -86,7 +86,7 @@ Item {
             }
 
             // ── Playback ────────────────────────────────────
-            MichiPanel {
+            MichiGlassSurface {
                 id: playbackPanel
                 objectName: "playbackSettingsPanel"
                 Layout.fillWidth: true
@@ -118,7 +118,7 @@ Item {
                             Layout.preferredWidth: 80
                         }
 
-                        MichiSlider {
+                        Controls.MichiSlider {
                             Layout.fillWidth: true
                             from: 0; to: 100
                             value: playback.volume
@@ -145,7 +145,7 @@ Item {
                             Layout.preferredWidth: 80
                         }
 
-                        MichiButton {
+                        Controls.MichiButton {
                             text: playback.muted ? "Unmute" : "Mute"
                             variant: "secondary"
                             checkable: true
@@ -158,7 +158,7 @@ Item {
             }
 
             // ── Library ─────────────────────────────────────
-            MichiPanel {
+            MichiGlassSurface {
                 id: libraryPanel
                 objectName: "librarySettingsPanel"
                 Layout.fillWidth: true
@@ -189,14 +189,14 @@ Item {
                         Layout.fillWidth: true
                         spacing: MichiTheme.space8
 
-                        MichiTextField {
+                        Controls.MichiTextField {
                             Layout.fillWidth: true
                             text: library.currentDir
                             placeholderText: "No folder set"
                             readOnly: true
                         }
 
-                        MichiButton {
+                        Controls.MichiButton {
                             text: "Open Library"
                             variant: "secondary"
                             onClicked: navigation.navigate("library")
