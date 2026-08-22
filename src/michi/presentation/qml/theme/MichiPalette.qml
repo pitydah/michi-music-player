@@ -12,6 +12,10 @@ QtObject {
     readonly property color trackSurfaceBottom: "#0D1018"
     readonly property color smoke: "#1F232A"
     readonly property color smokeRaised: "#282D36"
+    // Playlist editorial hero — deep, low-saturation blue atmosphere
+    readonly property color playlistHeroTop: "#152A45"
+    readonly property color playlistHeroMid: "#13243D"
+    readonly property color playlistHeroBottom: "#0A0D14"
     readonly property color textPrimary: "#ECEEF3"
     // High-contrast mode lifts the secondary tiers so all functional text
     // exceeds 7:1 on obsidian (borders/opacity alone are not enough).

@@ -270,8 +270,16 @@ class PlaylistService:
             self._queue.add(Path(path))
 
     def play_playlist_now(self, playlist_id: str) -> None:
-        """Plays this playlist immediately: clears queue, adds tracks,
-        and starts playback at track 0.
+        """Plays this playlist immediately from its first track."""
+        self.play_playlist_from(playlist_id, 0)
+
+    def play_playlist_from(self, playlist_id: str, start_index: int) -> None:
+        """Plays this playlist starting at the given track index.
+
+        The queue is a *consequence* of starting playback (cleared, filled
+        with the playlist, playback begins at start_index) — callers in the
+        UI select and play a track directly; they never operate on the queue
+        as a navigation prerequisite.
         """
         index = self._find_by_id(playlist_id)
         if index < 0:
@@ -279,10 +287,11 @@ class PlaylistService:
         tracks = self._playlists[index].track_paths
         if not tracks:
             return
+        start_index = max(0, min(start_index, len(tracks) - 1))
         self._queue.clear()
         for path in tracks:
             self._queue.add(Path(path))
-        self._queue.play_index(0)
+        self._queue.play_index(start_index)
 
     def play_playlist(self, playlist_id: str) -> None:
         """Legacy compatibility: adds tracks and starts if queue was empty."""

@@ -154,6 +154,37 @@ Playing strings remain untranslated (out of scope). Canon tests updated.
 | 24 | `Accessible.selected` on timeline/vinyl/path delegates; `Accessible.dialog` on QueueView | `TimelineView:109`, `VinylWallView:63`, `QueueView` | 45 min |
 | 25 | Dead `Behavior on y`; hardcoded 36px buttons; `MichiDivider` magic width; unused `AsyncStateView`/`ui/*` | `AlbumPathView:279-285,240-254` | 30 min |
 
+## Editorial playlist page redesign (M9-R2.4, done)
+
+Spec-driven redesign of the playlist route content (mockup reference;
+Sidebar / global top bar / NowPlayingBar untouched):
+
+- **PlaylistHero** (`playlists/PlaylistHero.qml`, new): atmospheric
+  low-saturation blue gradient (`playlistHeroTop/Mid/Bottom` tokens
+  #152A45/#13243D/#0A0D14), dominant 136px square cover (custom /
+  2x2 mosaic / quiet placeholder) with a faint diffuse shadow, eyebrow
+  "PLAYLIST" (10-11px, tracking), display title (30px DemiBold), compact
+  metadata + 2-line description cap, discrete actions (Play 36px accent,
+  Shuffle/Pin/More 28px)
+- **PlaylistTrackList** (redesigned): dense 50px editorial table —
+  hover +0.035 / selected +0.06 / hairline divider tokens
+  (`rowHover`/`rowSelected`/`rowDivider`), distinct selected vs playing
+  (accent title + MichiPlayingIndicator), click selects, double-click /
+  Enter plays from that track, context actions hover-revealed,
+  `reuseItems`, full keyboard nav
+- **PlaylistDetailView** (redesigned page): hero scrolls away, sticky
+  quiet column header fades in by scroll progress, responsive columns
+  (>1200 all, 900-1200 +album, 700-900 artist only, <700 grouped),
+  integrated empty state ("This playlist is empty" + Add Music →
+  navigates to Library), glass card hero removed
+- **No queue coupling**: `play_track(index)` bridge →
+  `play_playlist_from(id, index)` service (queue rebuilt as a
+  consequence of playback); `selectedPlaylistDescription` property
+  exposed for the future description field
+- Canon tests updated (cover a11y now in PlaylistHero, empty-detail
+  layout); new `test_m9_r2_4_playlist_editorial.py` (9 tests) +
+  2 bridge tests for play-from-index
+
 ## Out of scope (do not touch)
 
 - Now Playing surface: `views/NowPlayingView.qml`, `media/ArtworkFocusMode.qml`,

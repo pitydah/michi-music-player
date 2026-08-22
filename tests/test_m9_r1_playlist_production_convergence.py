@@ -194,8 +194,11 @@ class TestPinAccessibility:
 class TestEmptyDetail:
     def test_empty_detail_qml_layout(self):
         detail = (QML_DIR / "playlists" / "PlaylistDetailView.qml").read_text()
-        assert "visible: playlists.playlistTrackRows.length > 0" in detail
+        # editorial redesign: hero always visible; the tracks area shows the
+        # quiet empty prompt when there are no rows
         assert "visible: playlists.playlistTrackRows.length === 0" in detail
+        assert "This playlist is empty" in detail
+        assert "Add Music" in detail
 
 
 class TestCardKeyboard:

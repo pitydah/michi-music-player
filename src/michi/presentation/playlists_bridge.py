@@ -199,6 +199,11 @@ class PlaylistsBridge(QObject):
             return []
         return self._mosaic_for_paths(playlist.track_paths)
 
+    def _get_selected_playlist_description(self) -> str:
+        # Editorial description field — not yet modeled in the domain;
+        # expose the property so the hero binding stays forward-compatible.
+        return ""
+
     def _get_selected_playlist_pinned(self) -> bool:
         playlist_id = self._current_playlist_id()
         if not playlist_id or self._playlist_service is None:
@@ -326,6 +331,9 @@ class PlaylistsBridge(QObject):
     selectedPlaylistMosaicArtworkPaths = Property(
         list, _get_selected_playlist_mosaic_artworks, notify=playlists_changed
     )
+    selectedPlaylistDescription = Property(
+        str, _get_selected_playlist_description, notify=playlists_changed
+    )
     playlistTracks = Property(list, _get_playlist_tracks, notify=playlists_changed)
     playlistTrackRows = Property(
         list, _get_playlist_track_rows, notify=playlists_changed
@@ -439,6 +447,18 @@ class PlaylistsBridge(QObject):
     @Slot()
     def play_selected_playlist(self) -> None:
         self.play_selected_playlist_now()
+
+    @Slot(int)
+    def play_track(self, index: int) -> None:
+        """Play the selected playlist from the given track index.
+
+        UI-level: selecting a track in a playlist and playing it must not
+        require queue operations — the queue is rebuilt as a consequence
+        of starting playback (playlist service owns that).
+        """
+        playlist_id = self._current_playlist_id()
+        if self._playlist_service is not None and playlist_id:
+            self._playlist_service.play_playlist_from(playlist_id, index)
 
     @Slot(str)
     def play_playlist(self, playlist_id: str) -> None:

@@ -81,6 +81,13 @@ Item {
                 playlistId: navigation.playlistId
                 onBackRequested: playlists.open_all_playlists()
                 onPlayRequested: playlists.play_selected_playlist()
+                onShuffleRequested: {
+                    if (typeof playback !== "undefined" && playback)
+                        playback.shuffle = true
+                    playlists.play_selected_playlist()
+                }
+                onPlayTrackRequested: index => playlists.play_track(index)
+                onAddMusicRequested: navigation.navigate("library")
                 onTogglePinRequested: {
                     if (playlists.selectedPlaylistPinned)
                         playlists.unpin_playlist(playlists.selectedPlaylistId)
