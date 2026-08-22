@@ -53,8 +53,7 @@ def _app_version() -> str:
 
 
 USER_AGENT = (
-    f"MichiMusicPlayer/{_app_version()} "
-    "(https://github.com/pitydah/michi-music-player)"
+    f"MichiMusicPlayer/{_app_version()} (https://github.com/pitydah/michi-music-player)"
 )
 
 
@@ -87,6 +86,17 @@ def validate_provider_url(url: str) -> None:
         raise ValueError(f"provider host not allowlisted: {host!r}")
 
 
+class EnrichmentHttpStatusError(EnrichmentProviderError):
+    """Narrow transport error carrying the provider HTTP status (M6.9):
+    enables the bounded retry policy (429/502/503/504) without leaking
+    urllib exceptions."""
+
+    def __init__(self, status_code: int, headers: dict[str, str], message: str) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.headers = headers
+
+
 class _ValidatingRedirectHandler(urllib.request.HTTPRedirectHandler):
     """Rejects redirects that leave the https + allowlist contract."""
 
@@ -94,9 +104,7 @@ class _ValidatingRedirectHandler(urllib.request.HTTPRedirectHandler):
         try:
             validate_provider_url(newurl)
         except ValueError as exc:
-            raise EnrichmentProviderError(
-                f"provider redirect rejected: {exc}"
-            ) from exc
+            raise EnrichmentProviderError(f"provider redirect rejected: {exc}") from exc
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
@@ -121,14 +129,14 @@ class UrllibHttpTransport(HttpTransportPort):
         headers = dict(request.headers)
         headers.setdefault("User-Agent", USER_AGENT)
         headers.setdefault("Accept", "application/json")
-        req = urllib.request.Request(
-            request.url, headers=headers, method="GET"
-        )
+        req = urllib.request.Request(request.url, headers=headers, method="GET")
         try:
             response = self._opener.open(req, timeout=request.timeout_seconds)
         except urllib.error.HTTPError as exc:
-            raise EnrichmentProviderError(
-                f"provider HTTP {exc.code} for {request.url}"
+            raise EnrichmentHttpStatusError(
+                exc.code,
+                {k.lower(): v for k, v in (exc.headers or {}).items()},
+                f"provider HTTP {exc.code} for {request.url}",
             ) from exc
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             raise EnrichmentProviderError(
@@ -147,9 +155,7 @@ class UrllibHttpTransport(HttpTransportPort):
             validate_provider_url(final_url)
         except ValueError as exc:
             response.close()
-            raise EnrichmentProviderError(
-                f"provider final URL invalid: {exc}"
-            ) from exc
+            raise EnrichmentProviderError(f"provider final URL invalid: {exc}") from exc
         response_headers = {k.lower(): v for k, v in response.headers.items()}
         response.close()
         return HttpResponse(
