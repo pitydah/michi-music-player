@@ -128,7 +128,7 @@ Item {
             }
 
             MichiIconButton {
-                iconName: "sliders"
+                iconName: "more"
                 accessibleName: qsTr("More options")
                 onClicked: detailMenu.popup()
             }

@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../controls"
 import "../patterns"
@@ -13,8 +14,9 @@ Item {
 
     objectName: "playlistsView"
     property string searchQuery: ""
-    property string sortMode: "name" // "name", "tracks", "recent", "pinned"
+    property string sortMode: "name" // "name", "name_desc", "tracks", "duration", "pinned", "recent"
     property string displayMode: "grid" // "grid" | "list"
+    property string pendingCoverPlaylistId: ""
 
     signal createPlaylistRequested()
     signal openPlaylistRequested(string playlistId)
@@ -22,6 +24,19 @@ Item {
     signal pinPlaylistRequested(string playlistId, bool pinned)
     signal renamePlaylistRequested(string playlistId, string playlistName)
     signal deletePlaylistRequested(string playlistId, string playlistName)
+
+    FileDialog {
+        id: coverDialog
+        title: qsTr("Select Playlist Cover Image")
+        nameFilters: ["Image files (*.png *.jpg *.jpeg *.webp)"]
+        onAccepted: {
+            if (root.pendingCoverPlaylistId) {
+                var path = selectedFile.toString()
+                playlists.set_custom_cover(root.pendingCoverPlaylistId, path)
+                root.pendingCoverPlaylistId = ""
+            }
+        }
+    }
 
     readonly property var filteredPlaylists: {
         var list = (playlists.playlists || []).slice()
@@ -31,8 +46,12 @@ Item {
         }
         if (root.sortMode === "name") {
             list.sort((a, b) => a.name.localeCompare(b.name))
+        } else if (root.sortMode === "name_desc") {
+            list.sort((a, b) => b.name.localeCompare(a.name))
         } else if (root.sortMode === "tracks") {
             list.sort((a, b) => b.trackCount - a.trackCount)
+        } else if (root.sortMode === "duration") {
+            list.sort((a, b) => (b.durationMs || 0) - (a.durationMs || 0))
         } else if (root.sortMode === "pinned") {
             list.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
         } else if (root.sortMode === "recent") {
@@ -71,50 +90,10 @@ Item {
                     color: MichiPalette.textPrimary
                 }
                 MichiText {
-                    text: (playlists.playlists ? playlists.playlists.length : 0) + " playlists"
+                    text: (playlists.playlists ? playlists.playlists.length : 0) + " " + qsTr("playlists")
                     role: "technical"
                     technical: true
                     color: MichiPalette.textSecondary
-                }
-            }
-
-            Item { Layout.preferredWidth: MichiSpacing.md }
-
-            MichiSearchField {
-                id: searchInput
-                Layout.preferredWidth: 240
-                Layout.preferredHeight: 36
-                placeholderText: qsTr("Filter playlists…")
-                text: root.searchQuery
-                onEdited: query => root.searchQuery = query
-                onClearRequested: root.searchQuery = ""
-            }
-
-            MichiComboBox {
-                id: sortBox
-                Layout.preferredWidth: 150
-                Layout.preferredHeight: 36
-                model: ["Name", "Track count", "Pinned first", "Recently played"]
-                currentIndex: 0
-                onActivated: {
-                    var modes = ["name", "tracks", "pinned", "recent"]
-                    root.sortMode = modes[currentIndex]
-                }
-            }
-
-            RowLayout {
-                spacing: 2
-                MichiIconButton {
-                    iconName: "view-grid"
-                    selected: root.displayMode === "grid"
-                    accessibleName: qsTr("Grid view")
-                    onClicked: root.displayMode = "grid"
-                }
-                MichiIconButton {
-                    iconName: "view-list"
-                    selected: root.displayMode === "list"
-                    accessibleName: qsTr("List view")
-                    onClicked: root.displayMode = "list"
                 }
             }
 
@@ -122,10 +101,62 @@ Item {
 
             MichiButton {
                 text: qsTr("New Playlist")
-                variant: "primary"
                 iconName: "plus"
-                accessibleName: qsTr("Create playlist")
+                variant: "primary"
+                accessibleName: qsTr("Create new playlist")
                 onClicked: root.createPlaylistRequested()
+            }
+        }
+
+        // Toolbar: Search + Sort + View Mode Switcher
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: MichiSpacing.md
+
+            MichiSearchField {
+                id: searchField
+                placeholderText: qsTr("Search playlists…")
+                Layout.preferredWidth: Math.min(320, Math.max(220, root.width * 0.35))
+                text: root.searchQuery
+                onTextChanged: root.searchQuery = text
+            }
+
+            MichiComboBox {
+                id: sortCombo
+                Layout.preferredWidth: 150
+                model: [
+                    qsTr("Name A–Z"),
+                    qsTr("Name Z–A"),
+                    qsTr("Track Count"),
+                    qsTr("Duration"),
+                    qsTr("Pinned First"),
+                    qsTr("Recently Opened")
+                ]
+                onCurrentIndexChanged: {
+                    var modes = ["name", "name_desc", "tracks", "duration", "pinned", "recent"]
+                    if (currentIndex >= 0 && currentIndex < modes.length)
+                        root.sortMode = modes[currentIndex]
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+
+            RowLayout {
+                spacing: MichiSpacing.xxs
+
+                MichiIconButton {
+                    iconName: "view-grid"
+                    selected: root.displayMode === "grid"
+                    accessibleName: qsTr("Grid view")
+                    onClicked: root.displayMode = "grid"
+                }
+
+                MichiIconButton {
+                    iconName: "view-list"
+                    selected: root.displayMode === "list"
+                    accessibleName: qsTr("List view")
+                    onClicked: root.displayMode = "list"
+                }
             }
         }
 
@@ -174,6 +205,10 @@ Item {
                 onOpenRequested: root.openPlaylistRequested(modelData.playlistId)
                 onPlayRequested: root.playPlaylistRequested(modelData.playlistId)
                 onPinToggled: root.pinPlaylistRequested(modelData.playlistId, !modelData.pinned)
+                onChangeCoverRequested: {
+                    root.pendingCoverPlaylistId = modelData.playlistId
+                    coverDialog.open()
+                }
                 onRenameRequested: root.renamePlaylistRequested(
                     modelData.playlistId, modelData.name)
                 onDeleteRequested: root.deletePlaylistRequested(
@@ -264,6 +299,52 @@ Item {
                             ? qsTr("Unpin ") + modelData.name
                             : qsTr("Pin ") + modelData.name
                         onClicked: root.pinPlaylistRequested(modelData.playlistId, !modelData.pinned)
+                    }
+
+                    MichiIconButton {
+                        iconName: "more"
+                        accessibleName: qsTr("More options for ") + modelData.name
+                        onClicked: listRowMenu.popup()
+                    }
+                }
+
+                MichiMenu {
+                    id: listRowMenu
+                    MenuItem {
+                        text: qsTr("Open")
+                        onTriggered: root.openPlaylistRequested(modelData.playlistId)
+                    }
+                    MenuItem {
+                        text: qsTr("Play Now")
+                        onTriggered: root.playPlaylistRequested(modelData.playlistId)
+                    }
+                    MenuItem {
+                        text: qsTr("Add to Queue")
+                        onTriggered: playlists.enqueue_playlist(modelData.playlistId)
+                    }
+                    MenuItem {
+                        text: modelData.pinned ? qsTr("Unpin") : qsTr("Pin")
+                        onTriggered: root.pinPlaylistRequested(modelData.playlistId, !modelData.pinned)
+                    }
+                    MenuItem {
+                        text: qsTr("Change Cover…")
+                        onTriggered: {
+                            root.pendingCoverPlaylistId = modelData.playlistId
+                            coverDialog.open()
+                        }
+                    }
+                    MenuItem {
+                        text: qsTr("Use Automatic Mosaic")
+                        visible: (modelData.customCoverPath || "") !== ""
+                        onTriggered: playlists.remove_custom_cover(modelData.playlistId)
+                    }
+                    MenuItem {
+                        text: qsTr("Rename")
+                        onTriggered: root.renamePlaylistRequested(modelData.playlistId, modelData.name)
+                    }
+                    MenuItem {
+                        text: qsTr("Delete")
+                        onTriggered: root.deletePlaylistRequested(modelData.playlistId, modelData.name)
                     }
                 }
 

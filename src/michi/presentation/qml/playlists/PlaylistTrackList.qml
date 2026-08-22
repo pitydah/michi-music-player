@@ -77,9 +77,26 @@ Item {
                     color: MichiPalette.textMuted
                 }
                 MichiIconButton {
-                    iconName: "sliders"
+                    iconName: "more"
                     accessibleName: qsTr("More options for ") + modelData.title
                     onClicked: trackMenu.popup()
+                }
+            }
+
+            Keys.onUpPressed: event => {
+                if (event.modifiers & Qt.AltModifier) {
+                    if (index > 0) {
+                        root.moveTrackRequested(index, index - 1)
+                        event.accepted = true
+                    }
+                }
+            }
+            Keys.onDownPressed: event => {
+                if (event.modifiers & Qt.AltModifier) {
+                    if (index < root.rows.length - 1) {
+                        root.moveTrackRequested(index, index + 1)
+                        event.accepted = true
+                    }
                 }
             }
 

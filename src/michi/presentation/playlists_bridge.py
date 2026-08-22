@@ -15,21 +15,23 @@ selected* projection derives from navigation.state.playlist_id.
 
 from pathlib import Path
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 
-from michi.application.audio_quality import make_track_quality_label
 from michi.application.library_service import LibraryService
 from michi.application.navigation_service import NavigationService
 from michi.application.playlist_navigation_coordinator import (
     PlaylistNavigationCoordinator,
 )
 from michi.application.playlist_service import PlaylistService
+from michi.domain.library import make_track_quality_label
 
 
 class PlaylistsBridge(QObject):
-    """PlaylistService + coordinator + navigation → QML. No playlist
-    business rule lives in QML; the current playlist is the navigation
-    target; name is display-only."""
+    """Exposes playlist and playlist-navigation state to QML (M8-R1E → M9-R2).
+
+    Pure presentation adapter: owns NO domain state, runs NO business logic,
+    never mutates on property read, never touches disk or private service internals.
+    """
 
     playlists_changed = Signal()
 
@@ -38,22 +40,26 @@ class PlaylistsBridge(QObject):
         playlist_service: PlaylistService | None = None,
         playlist_navigation: PlaylistNavigationCoordinator | None = None,
         navigation_service: NavigationService | None = None,
-        library: LibraryService | None = None,
+        library_service: LibraryService | None = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._playlist_service = playlist_service
         self._coordinator = playlist_navigation
         self._navigation = navigation_service
-        self._library = library
-        if playlist_service is not None:
-            playlist_service.subscribe_changed(self._on_service_changed)
-        if navigation_service is not None:
-            navigation_service.subscribe_changed(self._on_service_changed)
-        if library is not None:
-            library.subscribe_changed(self._on_library_changed)
+        self._library = library_service
+        self._track_artwork_cache: dict[str, str] = {}
+        self._track_duration_cache: dict[str, int] = {}
+
+        if self._playlist_service is not None:
+            self._playlist_service.subscribe_changed(self._on_service_changed)
+        if self._navigation is not None:
+            self._navigation.subscribe_changed(self._on_service_changed)
+        if self._library is not None:
+            self._library.subscribe_changed(self._on_library_changed)
 
     def dispose(self) -> None:
+        """Lifecycle clean-up: unhook service subscriptions."""
         if self._playlist_service is not None:
             self._playlist_service.unsubscribe_changed(self._on_service_changed)
         if self._navigation is not None:
@@ -62,12 +68,16 @@ class PlaylistsBridge(QObject):
             self._library.unsubscribe_changed(self._on_library_changed)
 
     def _on_service_changed(self) -> None:
+        self._track_artwork_cache.clear()
+        self._track_duration_cache.clear()
         self.playlists_changed.emit()
 
     def _on_library_changed(self) -> None:
         """M9-R1J: playlist search projection reads LibraryService search
         state (query/active) and track metadata — react to library changes
         so searchPlaylists/searchPlaylistCount/playlistTrackRows recompute."""
+        self._track_artwork_cache.clear()
+        self._track_duration_cache.clear()
         self.playlists_changed.emit()
 
     # ------------------------------------------------------------------
@@ -75,10 +85,15 @@ class PlaylistsBridge(QObject):
     def _artwork_for_path(self, path_str: str) -> str:
         if self._library is None:
             return ""
+        if path_str in self._track_artwork_cache:
+            return self._track_artwork_cache[path_str]
+        art = ""
         for a in self._library.state.albums:
             if path_str in a.track_paths:
-                return self._library.artwork_path_for(a.key) or ""
-        return ""
+                art = self._library.artwork_path_for(a.key) or ""
+                break
+        self._track_artwork_cache[path_str] = art
+        return art
 
     def _mosaic_for_paths(self, track_paths: tuple[str, ...]) -> list[str]:
         if self._library is None:
@@ -99,9 +114,13 @@ class PlaylistsBridge(QObject):
             return 0
         total = 0
         for path_str in track_paths:
-            ref = self._library.resolve_trackref(Path(path_str))
-            if ref is not None:
-                total += ref.duration_ms
+            if path_str in self._track_duration_cache:
+                total += self._track_duration_cache[path_str]
+            else:
+                ref = self._library.resolve_trackref(Path(path_str))
+                d = ref.duration_ms if ref is not None else 0
+                self._track_duration_cache[path_str] = d
+                total += d
         return total
 
     def _rows(self) -> list[dict]:
@@ -369,8 +388,13 @@ class PlaylistsBridge(QObject):
 
     @Slot(str, str)
     def set_custom_cover(self, playlist_id: str, path: str) -> None:
+        if not path:
+            return
+        local_path = path
+        if "://" in path:
+            local_path = QUrl(path).toLocalFile()
         if self._playlist_service is not None:
-            self._playlist_service.set_custom_cover(playlist_id, path)
+            self._playlist_service.set_custom_cover(playlist_id, local_path)
 
     @Slot(str)
     def remove_custom_cover(self, playlist_id: str) -> None:
@@ -395,32 +419,42 @@ class PlaylistsBridge(QObject):
             self._playlist_service.move_track(playlist_id, from_index, to_index)
 
     @Slot()
-    def play_selected_playlist(self) -> None:
+    def play_selected_playlist_now(self) -> None:
         playlist_id = self._current_playlist_id()
         if self._playlist_service is not None and playlist_id:
-            self._playlist_service.play_playlist(playlist_id)
+            self._playlist_service.play_playlist_now(playlist_id)
+
+    @Slot(str)
+    def play_playlist_now(self, playlist_id: str) -> None:
+        if self._playlist_service is not None:
+            self._playlist_service.play_playlist_now(playlist_id)
+
+    @Slot()
+    def play_selected_playlist(self) -> None:
+        self.play_selected_playlist_now()
 
     @Slot(str)
     def play_playlist(self, playlist_id: str) -> None:
+        self.play_playlist_now(playlist_id)
+
+    @Slot(str)
+    def enqueue_playlist(self, playlist_id: str) -> None:
         if self._playlist_service is not None:
-            self._playlist_service.play_playlist(playlist_id)
+            self._playlist_service.enqueue_playlist(playlist_id)
+
+    @Slot()
+    def enqueue_selected_playlist(self) -> None:
+        pid = self._current_playlist_id()
+        if pid:
+            self.enqueue_playlist(pid)
 
     @Slot(str)
     def queue_playlist(self, playlist_id: str) -> None:
-        if (
-            self._playlist_service is not None
-            and getattr(self._playlist_service, "_queue", None) is not None
-        ):
-            p = self._playlist_service.get_playlist(playlist_id)
-            if p is not None:
-                for path in p.track_paths:
-                    self._playlist_service._queue.add(Path(path))
+        self.enqueue_playlist(playlist_id)
 
     @Slot()
     def queue_selected_playlist(self) -> None:
-        pid = self._current_playlist_id()
-        if pid:
-            self.queue_playlist(pid)
+        self.enqueue_selected_playlist()
 
     @Slot(str, str)
     def add_track_to_playlist(self, playlist_id: str, path: str) -> None:

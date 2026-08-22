@@ -94,6 +94,21 @@ class PlaylistsPort(ABC):
         del state  # default no-op: navigation persistence is optional
 
 
+class PlaylistArtworkStorePort(ABC):
+    """Boundary for user-supplied playlist artwork storage (M9-R2.1).
+    Managed copies reside inside application data storage."""
+
+    @abstractmethod
+    def store_cover(self, playlist_id: str, source_path: Path | str) -> str | None:
+        """Copies source image atomically to managed storage. Returns managed path."""
+        ...
+
+    @abstractmethod
+    def delete_cover(self, playlist_id: str) -> None:
+        """Deletes any managed cover file for the given playlist id."""
+        ...
+
+
 class AudioPort(ABC):
     """Abstract audio backend. Infrastructure implements this."""
 

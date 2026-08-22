@@ -16,7 +16,7 @@ import logging
 from collections.abc import Callable
 from pathlib import Path
 
-from michi.application.ports import PlaylistsPort
+from michi.application.ports import PlaylistArtworkStorePort, PlaylistsPort
 from michi.application.queue_service import QueueService
 from michi.domain.playlist import (
     MAX_RECENT_PLAYLISTS,
@@ -38,9 +38,11 @@ class PlaylistService:
         self,
         queue_service: QueueService,
         playlists_port: PlaylistsPort | None = None,
+        artwork_store: PlaylistArtworkStorePort | None = None,
     ) -> None:
         self._queue = queue_service
         self._port = playlists_port
+        self._artwork_store = artwork_store
         self._playlists: list[Playlist] = list(
             playlists_port.load() if playlists_port is not None else ()
         )
@@ -130,6 +132,8 @@ class PlaylistService:
         index = self._find_by_id(playlist_id)
         if index < 0:
             return
+        if self._artwork_store is not None:
+            self._artwork_store.delete_cover(playlist_id)
         del self._playlists[index]
         # Prune navigation metadata (never dangling ids).
         self._nav = PlaylistNavigationState(
@@ -218,24 +222,70 @@ class PlaylistService:
         self._persist()
         self._notify()
 
-    def set_custom_cover(self, playlist_id: str, cover_path: str) -> None:
+    def set_custom_cover(
+        self, playlist_id: str, cover_path: Path | str
+    ) -> str | None:
+        """Sets managed custom cover. Validates, copies to app storage and persists."""
         index = self._find_by_id(playlist_id)
         if index < 0:
-            return
+            return None
+        managed_path = str(cover_path)
+        if self._artwork_store is not None:
+            stored = self._artwork_store.store_cover(playlist_id, cover_path)
+            if stored is None:
+                return None
+            managed_path = stored
         playlist = self._playlists[index]
         self._playlists[index] = Playlist(
             playlist_id=playlist.playlist_id,
             name=playlist.name,
             track_paths=playlist.track_paths,
-            custom_cover_path=cover_path,
+            custom_cover_path=managed_path,
+        )
+        self._persist()
+        self._notify()
+        return managed_path
+
+    def remove_custom_cover(self, playlist_id: str) -> None:
+        """Removes custom cover, deletes managed file and reverts to auto mosaic."""
+        index = self._find_by_id(playlist_id)
+        if index < 0:
+            return
+        if self._artwork_store is not None:
+            self._artwork_store.delete_cover(playlist_id)
+        playlist = self._playlists[index]
+        self._playlists[index] = Playlist(
+            playlist_id=playlist.playlist_id,
+            name=playlist.name,
+            track_paths=playlist.track_paths,
+            custom_cover_path="",
         )
         self._persist()
         self._notify()
 
-    def remove_custom_cover(self, playlist_id: str) -> None:
-        self.set_custom_cover(playlist_id, "")
+    def enqueue_playlist(self, playlist_id: str) -> None:
+        """Adds all playlist tracks to the existing queue without altering playback."""
+        index = self._find_by_id(playlist_id)
+        if index < 0:
+            return
+        for path in self._playlists[index].track_paths:
+            self._queue.add(Path(path))
+
+    def play_playlist_now(self, playlist_id: str) -> None:
+        """Plays this playlist immediately: clears queue, adds tracks, and starts playback at track 0."""
+        index = self._find_by_id(playlist_id)
+        if index < 0:
+            return
+        tracks = self._playlists[index].track_paths
+        if not tracks:
+            return
+        self._queue.clear()
+        for path in tracks:
+            self._queue.add(Path(path))
+        self._queue.play_index(0)
 
     def play_playlist(self, playlist_id: str) -> None:
+        """Legacy compatibility: adds tracks and starts if queue was empty."""
         index = self._find_by_id(playlist_id)
         if index < 0:
             return

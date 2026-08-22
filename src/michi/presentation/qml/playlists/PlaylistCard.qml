@@ -21,6 +21,7 @@ Item {
     signal openRequested()
     signal playRequested()
     signal pinToggled()
+    signal changeCoverRequested()
     signal renameRequested()
     signal deleteRequested()
 
@@ -64,91 +65,68 @@ Item {
             radius: MichiRadius.md
         }
 
-        ColumnLayout {
+        MichiText {
+            text: root.playlistName
+            role: "cardTitle"
+            elide: Text.ElideRight
             Layout.fillWidth: true
-            spacing: 2
+            color: MichiPalette.textPrimary
+        }
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: MichiSpacing.xs
-                MichiText {
-                    text: root.playlistName
-                    role: "secondary"
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
-                    color: MichiPalette.textPrimary
-                    font.weight: Font.DemiBold
-                }
-                MichiIcon {
-                    visible: root.pinned
-                    name: "pin"
-                    width: 13
-                    height: 13
-                    iconColor: MichiPalette.auroraCyan
-                }
-            }
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: MichiSpacing.xs
 
             MichiText {
                 text: root.trackCount + (root.trackCount === 1 ? " track" : " tracks")
                     + (root.durationMs > 0 ? " · " + root.formatTime(root.durationMs) : "")
-                role: "technical"
-                technical: true
+                role: "secondary"
+                elide: Text.ElideRight
                 color: MichiPalette.textSecondary
+                Layout.fillWidth: true
+            }
+
+            Rectangle {
+                visible: root.pinned
+                width: 6
+                height: 6
+                radius: 3
+                color: MichiPalette.auroraCyan
             }
         }
     }
 
-    // M9-R1I keyboard accessibility
     MouseArea {
         id: rootArea
         anchors.fill: parent
         hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
         acceptedButtons: Qt.LeftButton | Qt.RightButton
-        activeFocusOnTab: true
-        Keys.onReturnPressed: root.openRequested()
-        Keys.onEnterPressed: root.openRequested()
-        Keys.onSpacePressed: root.openRequested()
         onClicked: mouse => {
-            if (mouse.button === Qt.RightButton)
+            if (mouse.button === Qt.RightButton) {
                 contextMenu.popup()
-            else
+            } else {
                 root.openRequested()
+            }
         }
     }
 
-    // Visible focus state
-    Rectangle {
-        anchors.fill: parent
-        radius: MichiRadius.lg
-        visible: rootArea.activeFocus
-        border.width: 1
-        border.color: MichiPalette.auroraCyan
-        color: "transparent"
-        z: 2
-    }
-
+    // Hover quick actions (desktop quietness: only visible on card hover)
     RowLayout {
-        anchors.top: parent.top
         anchors.right: parent.right
-        anchors.topMargin: MichiSpacing.md
-        anchors.rightMargin: MichiSpacing.md
+        anchors.bottom: parent.bottom
+        anchors.margins: MichiSpacing.sm
         spacing: MichiSpacing.xs
-        z: 3
+        visible: rootArea.hovered
 
         MichiIconButton {
             iconName: "play"
             accessibleName: qsTr("Play ") + root.playlistName
             onClicked: root.playRequested()
         }
+
         MichiIconButton {
-            iconName: root.pinned ? "pin" : "circle"
-            accessibleName: root.pinned
-                ? qsTr("Unpin ") + root.playlistName
-                : qsTr("Pin ") + root.playlistName
-            onClicked: root.pinToggled()
-        }
-        MichiIconButton {
-            iconName: "sliders"
+            iconName: "more"
             accessibleName: qsTr("More options for ") + root.playlistName
             onClicked: contextMenu.popup()
         }
@@ -161,16 +139,20 @@ Item {
             onTriggered: root.openRequested()
         }
         MenuItem {
-            text: qsTr("Play")
+            text: qsTr("Play Now")
             onTriggered: root.playRequested()
         }
         MenuItem {
             text: qsTr("Add to Queue")
-            onTriggered: playlists.queue_playlist(root.playlistId)
+            onTriggered: playlists.enqueue_playlist(root.playlistId)
         }
         MenuItem {
             text: root.pinned ? qsTr("Unpin") : qsTr("Pin")
             onTriggered: root.pinToggled()
+        }
+        MenuItem {
+            text: qsTr("Change Cover…")
+            onTriggered: root.changeCoverRequested()
         }
         MenuItem {
             text: qsTr("Use Automatic Mosaic")
