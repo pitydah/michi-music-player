@@ -13,6 +13,10 @@ Item {
     readonly property int visibleAlbumCount: Math.min(6, library.searchAlbumCount)
     readonly property int visibleArtistCount: Math.min(6, library.searchArtistCount)
     readonly property int visiblePlaylistCount: Math.min(6, playlists.searchPlaylistCount)
+    // M9-R1J: M7 total + playlist local projection = the UI total. This is
+    // PRESENTATION AGGREGATION — LibraryBridge total stays M7-only.
+    readonly property int combinedResultCount:
+        library.searchDisplayTotalCount + playlists.searchPlaylistCount
     readonly property int actionableResultCount: visibleTrackCount + visibleAlbumCount
         + visibleArtistCount + visiblePlaylistCount
     signal closeRequested()
@@ -111,7 +115,7 @@ Item {
             }
             MichiStatusChip {
                 visible: library.searchActive
-                text: library.searchDisplayTotalCount + " results · "
+                text: root.combinedResultCount + " results · "
                     + library.searchTrackCount + " tracks · "
                     + library.searchAlbumCount + " albums · "
                     + library.searchArtistCount + " artists · "
@@ -122,7 +126,7 @@ Item {
             MichiDivider { Layout.fillWidth: true }
             EmptyState {
                 Layout.fillWidth: true; Layout.fillHeight: true
-                visible: !library.searchActive || library.searchDisplayTotalCount === 0
+                visible: !library.searchActive || root.combinedResultCount === 0
                 title: library.searchActive ? "No results" : "Search your library"
                 message: library.searchActive
                     ? "Try a title, artist, album, playlist, genre or composer."
@@ -131,7 +135,7 @@ Item {
             MichiScrollView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                visible: library.searchActive && library.searchDisplayTotalCount > 0
+                visible: library.searchActive && root.combinedResultCount > 0
                 contentWidth: availableWidth
 
                 ColumnLayout {

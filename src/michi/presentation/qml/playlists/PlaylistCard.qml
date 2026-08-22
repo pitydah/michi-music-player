@@ -104,7 +104,9 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
-        focus: true
+        // M9-R1J: no focus:true on every GridView delegate — cards become
+        // focusable only through Tab (activeFocusOnTab), never claiming
+        // initial focus by merely existing.
         activeFocusOnTab: true
         Keys.onReturnPressed: root.openRequested()
         Keys.onEnterPressed: root.openRequested()
