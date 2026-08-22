@@ -53,6 +53,24 @@ Item {
     readonly property bool showAlbum: root.width >= 900
     readonly property bool showFormat: root.width > 1200
 
+    // Hero as a Component (ListView.header requires QQmlComponent — an
+    // instantiated Item cannot be assigned). Bindings are null-safe: the
+    // header can be instantiated before the bridge context resolves, and
+    // they re-evaluate on playlists_changed (verified in runtime harness).
+    Component {
+        id: heroComponent
+        PlaylistHero {
+            objectName: "playlistHero"
+            playlistName: playlists ? playlists.selectedPlaylistName : ""
+            trackCount: playlists ? playlists.playlistTracks.length : 0
+            durationMs: playlists ? playlists.selectedPlaylistDurationMs : 0
+            description: playlists ? (playlists.selectedPlaylistDescription || "") : ""
+            customCoverPath: playlists ? (playlists.selectedPlaylistCustomCoverPath || "") : ""
+            mosaicArtworkPaths: playlists ? (playlists.selectedPlaylistMosaicArtworkPaths || []) : []
+            pinned: playlists ? playlists.selectedPlaylistPinned : false
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -170,28 +188,24 @@ Item {
                 showAlbumColumn: root.width >= 900
                 showFormatColumn: root.width > 1200
                 narrow: root.width < 700
-
-                heroHeader: PlaylistHero {
-                    width: trackList.width
-                    playlistName: playlists.selectedPlaylistName
-                    trackCount: playlists.playlistTracks.length
-                    durationMs: playlists.selectedPlaylistDurationMs
-                    description: playlists.selectedPlaylistDescription || ""
-                    customCoverPath: playlists.selectedPlaylistCustomCoverPath || ""
-                    mosaicArtworkPaths: playlists.selectedPlaylistMosaicArtworkPaths || []
-                    pinned: playlists.selectedPlaylistPinned
-                    onPlayRequested: root.playRequested()
-                    onShuffleRequested: root.shuffleRequested()
-                    onMoreRequested: detailMenu.popup()
-                    onChangeCoverRequested: coverDialog.open()
-                    onTogglePinRequested: root.togglePinRequested()
-                    onAddTracksRequested: root.addMusicRequested()
-                }
+                heroComponent: heroComponent
 
                 onTrackSelected: index => root.selectedIndex = index
                 onPlayTrackRequested: index => root.playTrackRequested(index)
                 onRemoveTrackRequested: index => root.removeTrackRequested(index)
                 onMoveTrackRequested: (f, t) => root.moveTrackRequested(f, t)
+            }
+
+            // Hero signal wiring (created lazily inside the ListView)
+            Connections {
+                target: trackList.headerItem
+                enabled: trackList.headerItem !== null
+                function onPlayRequested() { root.playRequested() }
+                function onShuffleRequested() { root.shuffleRequested() }
+                function onMoreRequested() { detailMenu.popup() }
+                function onChangeCoverRequested() { coverDialog.open() }
+                function onTogglePinRequested() { root.togglePinRequested() }
+                function onAddTracksRequested() { root.addMusicRequested() }
             }
 
             // Empty state — hero stays, tracks area shows a quiet prompt

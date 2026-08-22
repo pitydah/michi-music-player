@@ -16,7 +16,13 @@ Item {
 
     property var rows: []
     property int selectedIndex: -1
-    property var heroHeader: null          // PlaylistHero (scrolls with the list)
+    // The header must be a COMPONENT: ListView.header assigns to its
+    // internal QQmlComponent slot — passing a pre-instantiated Item (typed
+    // var or Item) fails with "Unable to assign ... to QQmlComponent" and
+    // the header silently never appears. The page instantiates the
+    // PlaylistHero inside a Component and wires its signals via
+    // Connections on headerItem.
+    property Component heroComponent: null
     property bool showArtistColumn: true
     property bool showAlbumColumn: true
     property bool showFormatColumn: false
@@ -32,6 +38,7 @@ Item {
 
     ListView {
         id: trackList
+        objectName: "playlistTrackList"
         anchors.fill: parent
         model: root.rows
         clip: true
@@ -43,7 +50,7 @@ Item {
         keyNavigationWraps: false
         activeFocusOnTab: true
         focus: true
-        header: root.heroHeader
+        header: root.heroComponent
         headerPositioning: ListView.InlineHeader
         Accessible.role: Accessible.List
         Accessible.name: qsTr("Playlist tracks")

@@ -10,6 +10,7 @@ import "../theme"
 // flows into the track table below.
 Item {
     id: root
+    objectName: "playlistHero"
 
     property string playlistName: ""
     property int trackCount: 0

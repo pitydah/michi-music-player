@@ -113,7 +113,7 @@ def test_page_keeps_hero_and_integrates_empty_state():
 def test_page_connects_play_track_and_shuffle():
     page = read("playlists/PlaylistDetailView.qml")
     assert "onPlayTrackRequested: index => root.playTrackRequested(index)" in page
-    assert "onShuffleRequested: root.shuffleRequested()" in page
+    assert "function onShuffleRequested() { root.shuffleRequested() }" in page
     host = read("shell/ContentHost.qml")
     assert "playlists.play_track(index)" in host
     assert "onShuffleRequested" in host
@@ -129,11 +129,11 @@ def test_hero_self_sizes_and_page_never_collapses_it():
     assert "implicitHeight: Math.max(240, Math.min(300," in hero
     assert "(parent ? parent.height : 600) * 0.36)" in hero
     page = read("playlists/PlaylistDetailView.qml")
-    assert "implicitHeight: root.heroHeight" not in page
-    assert (
-        "implicitHeight:"
-        not in page.split("heroHeader: PlaylistHero {")[1].split("playlistName:")[0]
-    )
+    # the hero is instantiated inside a Component (ListView.header requires
+    # QQmlComponent) with null-safe bridge bindings that re-evaluate on
+    # playlists_changed — regression guard for the collapsed header
+    assert "heroComponent: heroComponent" in page
+    assert 'playlistName: playlists ? playlists.selectedPlaylistName : ""' in page
 
 
 # ── M9-R2.5 spec-compliance lot (M1-M6) ───────────────────────────────────────
@@ -184,7 +184,7 @@ def test_add_tracks_action_in_hero():
     hero = read("playlists/PlaylistHero.qml")
     page = read("playlists/PlaylistDetailView.qml")
     assert 'qsTr("Add tracks")' in hero
-    assert "onAddTracksRequested: root.addMusicRequested()" in page
+    assert "function onAddTracksRequested() { root.addMusicRequested() }" in page
 
 
 def test_row_favorite_and_pressed_state():
