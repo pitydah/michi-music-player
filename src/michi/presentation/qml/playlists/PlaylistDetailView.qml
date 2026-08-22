@@ -44,30 +44,46 @@ Item {
 
     // Hero occupies ~30-40% of the first visible screen
     readonly property real heroHeight: Math.max(240, Math.min(300, root.height * 0.36))
-    // Sticky column header fades in as the hero scrolls away (null-safe:
-    // trackList is constructed after the sticky bar, so the binding must
-    // tolerate the early evaluation window).
+    // Sticky column header — completely hidden over the hero (the in-flow
+    // header below the hero shows the labels there); fades in with the
+    // backplane once the hero scrolls away
     readonly property real stickyHeaderOpacity: trackList
-        ? Math.max(0, Math.min(1, trackList.contentY / Math.max(1, root.heroHeight))) : 0
+        ? Math.max(0, Math.min(1, (trackList.contentY - (root.heroHeight - 44)) / 44)) : 0
     readonly property bool showArtist: root.width >= 700
     readonly property bool showAlbum: root.width >= 900
     readonly property bool showFormat: root.width > 1200
 
     // Hero as a Component (ListView.header requires QQmlComponent — an
-    // instantiated Item cannot be assigned). Bindings are null-safe: the
-    // header can be instantiated before the bridge context resolves, and
-    // they re-evaluate on playlists_changed (verified in runtime harness).
+    // instantiated Item cannot be assigned). The wrapper scrolls away as a
+    // unit: the editorial hero on top, the quiet column header below it
+    // (it only "sticks" via the separate overlay once the hero leaves).
+    // Bindings are null-safe: the header can be instantiated before the
+    // bridge context resolves, and they re-evaluate on playlists_changed.
     Component {
         id: heroComponent
-        PlaylistHero {
-            objectName: "playlistHero"
-            playlistName: playlists ? playlists.selectedPlaylistName : ""
-            trackCount: playlists ? playlists.playlistTracks.length : 0
-            durationMs: playlists ? playlists.selectedPlaylistDurationMs : 0
-            description: playlists ? (playlists.selectedPlaylistDescription || "") : ""
-            customCoverPath: playlists ? (playlists.selectedPlaylistCustomCoverPath || "") : ""
-            mosaicArtworkPaths: playlists ? (playlists.selectedPlaylistMosaicArtworkPaths || []) : []
-            pinned: playlists ? playlists.selectedPlaylistPinned : false
+        Item {
+            implicitHeight: heroItem.implicitHeight + MichiMetrics.controlSmall
+
+            PlaylistHero {
+                id: heroItem
+                objectName: "playlistHero"
+                width: parent.width
+                playlistName: playlists ? playlists.selectedPlaylistName : ""
+                trackCount: playlists ? playlists.playlistTracks.length : 0
+                durationMs: playlists ? playlists.selectedPlaylistDurationMs : 0
+                description: playlists ? (playlists.selectedPlaylistDescription || "") : ""
+                customCoverPath: playlists ? (playlists.selectedPlaylistCustomCoverPath || "") : ""
+                mosaicArtworkPaths: playlists ? (playlists.selectedPlaylistMosaicArtworkPaths || []) : []
+                pinned: playlists ? playlists.selectedPlaylistPinned : false
+            }
+
+            PlaylistColumnHeader {
+                anchors.top: heroItem.bottom
+                width: parent.width
+                showArtist: width >= 700
+                showAlbum: width >= 900
+                showFormat: width > 1200
+            }
         }
     }
 
@@ -97,9 +113,8 @@ Item {
             Layout.fillHeight: true
             clip: true
 
-            // Sticky column header — labels always visible (quiet, per
-            // spec); the backplane fades in only while the hero scrolls
-            // away so rows never show through once sticky
+            // Sticky column header — fades in (labels + backplane) only
+            // while the hero scrolls away; hidden over the hero itself
             Rectangle {
                 id: columnHeaderBar
                 anchors.top: parent.top
@@ -107,75 +122,19 @@ Item {
                 anchors.right: parent.right
                 height: 34
                 z: 5
-                color: "transparent"
+                color: MichiSemanticColors.backplane
+                opacity: root.stickyHeaderOpacity
                 clip: true
-
-                Rectangle {
-                    anchors.fill: parent
-                    color: MichiSemanticColors.backplane
-                    opacity: root.stickyHeaderOpacity
-                    Behavior on opacity {
-                        enabled: !MichiAccessibility.reducedMotion
-                        NumberAnimation { duration: MichiMotion.standard; easing.type: MichiMotion.outCubic }
-                    }
+                Behavior on opacity {
+                    enabled: !MichiAccessibility.reducedMotion
+                    NumberAnimation { duration: MichiMotion.standard; easing.type: MichiMotion.outCubic }
                 }
-                RowLayout {
+
+                PlaylistColumnHeader {
                     anchors.fill: parent
-                    anchors.leftMargin: MichiSpacing.md
-                    anchors.rightMargin: MichiSpacing.sm
-                    spacing: MichiSpacing.md
-                    Item { Layout.preferredWidth: 36 }
-                    Item { Layout.preferredWidth: 36 }
-                    MichiText {
-                        Layout.preferredWidth: root.width * 0.36
-                        Layout.minimumWidth: 120
-                        text: qsTr("TITLE")
-                        role: "micro"
-                        color: MichiPalette.textSecondary
-                        opacity: 0.4
-                        font.weight: Font.DemiBold
-                    }
-                    MichiText {
-                        visible: root.showArtist
-                        Layout.preferredWidth: root.width * 0.2
-                        Layout.minimumWidth: 90
-                        Layout.maximumWidth: 240
-                        text: qsTr("ARTIST")
-                        role: "micro"
-                        color: MichiPalette.textSecondary
-                        opacity: 0.4
-                        font.weight: Font.DemiBold
-                    }
-                    MichiText {
-                        visible: root.showAlbum
-                        Layout.preferredWidth: root.width * 0.2
-                        Layout.minimumWidth: 90
-                        Layout.maximumWidth: 240
-                        text: qsTr("ALBUM")
-                        role: "micro"
-                        color: MichiPalette.textSecondary
-                        opacity: 0.4
-                        font.weight: Font.DemiBold
-                    }
-                    MichiText {
-                        visible: root.showFormat
-                        Layout.preferredWidth: 72
-                        text: qsTr("FORMAT")
-                        role: "micro"
-                        color: MichiPalette.textSecondary
-                        opacity: 0.4
-                        font.weight: Font.DemiBold
-                    }
-                    MichiText {
-                        Layout.preferredWidth: 54
-                        text: qsTr("TIME")
-                        role: "micro"
-                        color: MichiPalette.textSecondary
-                        opacity: 0.4
-                        font.weight: Font.DemiBold
-                        horizontalAlignment: Text.AlignRight
-                    }
-                    Item { Layout.preferredWidth: 68 }
+                    showArtist: root.showArtist
+                    showAlbum: root.showAlbum
+                    showFormat: root.showFormat
                 }
             }
 

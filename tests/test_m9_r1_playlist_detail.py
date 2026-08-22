@@ -218,10 +218,12 @@ class TestEditorialHeroRuntime:
 
         track_list = page.findChild(type(page), "playlistTrackList")
         assert track_list is not None, "track list not found"
-        hero = track_list.property("headerItem")
-        assert hero is not None, "hero header was never instantiated"
-        assert hero.property("height") > 0, "hero collapsed to zero height"
-        # live data injected by the page Bindings
+        header = track_list.property("headerItem")
+        assert header is not None, "hero header was never instantiated"
+        assert header.property("height") > 0, "hero collapsed to zero height"
+        hero = page.findChild(type(page), "playlistHero")
+        assert hero is not None, "playlist hero missing inside the header"
+        # live data via the null-safe Component bindings
         assert hero.property("playlistName") == "Jazz"
         # fade-in (MichiMotion.panel = 220ms) must have completed
         assert hero.property("opacity") > 0.9, (

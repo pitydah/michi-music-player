@@ -164,11 +164,15 @@ def test_row_metadata_uses_technical_scale():
 
 
 def test_column_header_always_visible_backplane_fades():
+    header = read("playlists/PlaylistColumnHeader.qml")
+    assert 'role: "micro"' in header
+    assert "opacity: 0.4" in header
     page = read("playlists/PlaylistDetailView.qml")
-    assert 'role: "micro"' in page
-    assert "opacity: 0.4" in page
-    # labels stay; only the sticky backplane fades with the scroll
+    # the column header lives in-flow below the hero (scrolls away) and
+    # the sticky overlay fades in with its backplane while the hero leaves
+    assert "PlaylistColumnHeader {" in page
     assert "opacity: root.stickyHeaderOpacity" in page
+    assert "showArtist: width >= 700" in page
 
 
 def test_format_column_beyond_1200():
