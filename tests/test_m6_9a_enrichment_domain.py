@@ -55,11 +55,12 @@ def artist_candidate(external_id, name="", albums=(), disambiguation=""):
     )
 
 
-def group_candidate(rg_id, title="", artist_credits=(), first_release_year=0):
+def group_candidate(rg_id, title="", artist_credits=(), names=(), first_release_year=0):
     return ReleaseGroupCandidate(
         release_group_id=rg_id,
         title=title,
         artist_credit_external_ids=tuple(artist_credits),
+        artist_credit_names=tuple(names),
         first_release_year=first_release_year,
     )
 
@@ -351,6 +352,8 @@ class TestAlbumIdentityGate:
         assert resolution.status is IdentityResolutionStatus.AMBIGUOUS
 
     def test_year_alone_never_resolves_group(self):
+        # R3: even a unique title match resolves NOTHING without artist
+        # compatibility evidence (year can never supply it).
         resolution = resolve_album_identity(
             [
                 group_candidate("rg-a", title="Kind of Blue", first_release_year=1959),
@@ -359,11 +362,7 @@ class TestAlbumIdentityGate:
             [],
             album_evidence(title="Kind of Blue", year=1970),
         )
-        # Title matches rg-a but year coincides with rg-b: title gate
-        # decides; rg-a wins via the required title match (year mismatch
-        # only drops corroboration, never resolves rg-b).
-        assert resolution.status is IdentityResolutionStatus.RESOLVED
-        assert resolution.release_group_id == "rg-a"
+        assert resolution.status is IdentityResolutionStatus.AMBIGUOUS
 
     def test_release_group_hint_resolves_group_only(self):
         resolution = resolve_album_identity(
@@ -436,9 +435,9 @@ class TestAlbumIdentityGate:
 
     def test_edition_never_resolves_without_release_hint(self):
         resolution = resolve_album_identity(
-            [group_candidate("rg-a", title="Kind of Blue")],
+            [group_candidate("rg-a", title="Kind of Blue", names=("Miles Davis",))],
             [ReleaseEditionCandidate(release_id="rel-1", release_group_id="rg-a")],
-            album_evidence(title="Kind of Blue"),
+            album_evidence(title="Kind of Blue", artist_name="Miles Davis"),
         )
         assert resolution.status is IdentityResolutionStatus.RESOLVED
         assert resolution.release_group_id == "rg-a"
@@ -458,13 +457,45 @@ class TestAlbumIdentityGate:
         assert resolution.release_group_id == "rg-a"
         assert resolution.release_id == "rel-1"
 
-    def test_release_hint_from_wrong_group_does_not_set_edition(self):
+    def test_release_hint_wrong_group_is_identity_conflict(self):
+        # R3 CASE C: the hinted release provably belongs to a DIFFERENT
+        # group — the contradiction is never silently dropped.
         resolution = resolve_album_identity(
             [group_candidate("rg-a")],
             [ReleaseEditionCandidate(release_id="rel-9", release_group_id="rg-other")],
             album_evidence(
                 hints=AlbumIdentityHints(
                     release_group_ids=("rg-a",), release_ids=("rel-9",)
+                )
+            ),
+        )
+        assert resolution.status is IdentityResolutionStatus.IDENTITY_CONFLICT
+        assert resolution.release_id == ""
+
+    def test_release_hint_without_edition_evidence_not_assigned(self):
+        # R3 CASE A: no edition candidates -> the release hint is NOT
+        # corroborated; the group may resolve, the edition never does.
+        resolution = resolve_album_identity(
+            [group_candidate("rg-a")],
+            [],
+            album_evidence(
+                hints=AlbumIdentityHints(
+                    release_group_ids=("rg-a",), release_ids=("rel-x",)
+                )
+            ),
+        )
+        assert resolution.status is IdentityResolutionStatus.RESOLVED
+        assert resolution.release_group_id == "rg-a"
+        assert resolution.release_id == ""
+
+    def test_release_hint_no_matching_candidate_not_assigned(self):
+        # R3 CASE D: edition candidates exist but none matches the hint.
+        resolution = resolve_album_identity(
+            [group_candidate("rg-a")],
+            [ReleaseEditionCandidate(release_id="rel-other", release_group_id="rg-a")],
+            album_evidence(
+                hints=AlbumIdentityHints(
+                    release_group_ids=("rg-a",), release_ids=("rel-x",)
                 )
             ),
         )
