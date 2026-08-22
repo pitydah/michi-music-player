@@ -1,18 +1,35 @@
-"""SQLite enrichment repository (M6.9A-R1) — enrichment.db EXCLUSIVELY.
+"""SQLite enrichment repository (M6.9A-R2) — enrichment.db EXCLUSIVELY.
 
 M6.9A LIBRARY INDEX FIREWALL: enrichment owns its own database file and
 its own tables. The canonical ``library_index`` / ``library_meta`` tables
 are NEVER touched — no shared schema, no shared version key, no
 cross-writes. External knowledge can never enter the library index.
 
-R1: ONE schema owner (this class implements BOTH ``KnowledgeRepositoryPort``
+ONE schema owner (this class implements BOTH ``KnowledgeRepositoryPort``
 and ``IdentityRepositoryPort`` — identity authority and downloaded
-knowledge are different TABLES, same database). Schema 2 adds
-``artist_identity`` / ``album_identity``; migration 1 -> 2 is
-transactional and preserves existing knowledge profiles.
+knowledge are different TABLES, same database).
+
+R2 SCHEMA 3 + REAL MIGRATION CHAIN:
+
+- v1 (M6.9A): knowledge profiles carry ``source`` + ``generation``
+  (historical shape, decoders below) and NO identity tables.
+- v2 (R1): identity tables (with the legacy ``manually_confirmed``
+  column) + provenance-shaped knowledge.
+- v3 (R2): identity tables WITHOUT the redundant boolean; MANUAL
+  authority is MatchMethod only.
+
+Migrations are TRANSACTIONAL and perform REAL data transformation:
+v1 knowledge rows are rewritten into the current shape (``source`` ->
+provenance.provider; ``generation`` DROPPED — async lifecycle is not
+knowledge; release-level facts without a release identity are dropped —
+never invented). Malformed rows are skipped/deleted deterministically
+(enrichment is a cache; identity authority and the canonical library are
+never harmed). v2 identity rows are normalized into the v3 shape.
+Newer schemas fail closed.
 """
 
 import contextlib
+import json
 import logging
 import sqlite3
 from pathlib import Path
@@ -28,6 +45,7 @@ from michi.domain.enrichment import (
     ArtistExternalIdentity,
     ArtistKnowledgeProfile,
     IdentityStatus,
+    KnowledgeProvenance,
     MatchMethod,
     decode_album_profile,
     decode_artist_profile,
@@ -37,7 +55,7 @@ from michi.domain.enrichment import (
 
 logger = logging.getLogger(__name__)
 
-CURRENT_ENRICHMENT_SCHEMA = 2
+CURRENT_ENRICHMENT_SCHEMA = 3
 _VERSION_KEY = "enrichment_schema_version"
 
 
@@ -45,10 +63,114 @@ class EnrichmentSchemaError(RuntimeError):
     """The enrichment database schema is newer than this build supports."""
 
 
+# ---------------------------------------------------------------------------
+# HISTORICAL V1 CODECS (M6.9A, commit 1556e66) — literal field sets.
+# NEVER generated with the current encoder: these must survive model
+# changes forever so real v1 databases keep migrating correctly.
+# ---------------------------------------------------------------------------
+
+_V1_ARTIST_STR_FIELDS = {
+    "local_artist_key",
+    "external_artist_id",
+    "biography",
+    "artwork_asset_id",
+    "source",
+}
+_V1_ARTIST_FIELDS = _V1_ARTIST_STR_FIELDS | {
+    "external_genres",
+    "begin_year",
+    "end_year",
+    "generation",
+}
+_V1_ALBUM_STR_FIELDS = {
+    "local_album_key",
+    "release_group_id",
+    "release_id",
+    "label",
+    "artwork_asset_id",
+    "source",
+}
+_V1_ALBUM_FIELDS = _V1_ALBUM_STR_FIELDS | {
+    "external_genres",
+    "first_release_year",
+    "release_year",
+    "generation",
+}
+
+
+def _decode_v1_payload(
+    raw: str, str_fields: set[str], all_fields: set[str]
+) -> dict | None:
+    """Strict decode of a historical v1 profile payload."""
+    try:
+        payload = json.loads(raw)
+    except ValueError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    out: dict = {}
+    for name in all_fields:
+        if name not in payload:
+            return None  # missing historical field
+        value = payload[name]
+        if name in str_fields:
+            if not isinstance(value, str):
+                return None
+        elif name == "external_genres":
+            if not isinstance(value, list) or not all(
+                isinstance(item, str) for item in value
+            ):
+                return None
+        else:  # int fields (begin_year/end_year/generation/...)
+            if isinstance(value, bool) or not isinstance(value, int):
+                return None
+        out[name] = value
+    return out
+
+
+def _transform_v1_artist(payload: dict) -> str | None:
+    """v1 artist -> current shape. ``source`` -> provenance.provider;
+    ``generation`` DROPPED (async lifecycle is not knowledge); nothing
+    else is fabricated."""
+    profile = ArtistKnowledgeProfile(
+        local_artist_key=payload["local_artist_key"],
+        external_artist_id=payload["external_artist_id"],
+        biography=payload["biography"],
+        external_genres=tuple(payload["external_genres"]),
+        begin_year=payload["begin_year"],
+        end_year=payload["end_year"],
+        artwork_asset_id=payload["artwork_asset_id"],
+        provenance=KnowledgeProvenance(provider=payload["source"]),
+    )
+    return encode_artist_profile(profile)
+
+
+def _transform_v1_album(payload: dict) -> str | None:
+    """v1 album -> current shape. ``source`` -> provenance.provider;
+    ``generation`` DROPPED; release-level facts (release_year/label)
+    without a release identity are DROPPED — never invent a release_id."""
+    release_id = payload["release_id"]
+    profile = AlbumKnowledgeProfile(
+        local_album_key=payload["local_album_key"],
+        release_group_id=payload["release_group_id"],
+        release_id=release_id,
+        external_genres=tuple(payload["external_genres"]),
+        first_release_year=payload["first_release_year"],
+        release_year=payload["release_year"] if release_id else 0,
+        label=payload["label"] if release_id else "",
+        artwork_asset_id=payload["artwork_asset_id"],
+        provenance=KnowledgeProvenance(provider=payload["source"]),
+    )
+    return encode_album_profile(profile)
+
+
 class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort):
-    """Single schema authority for enrichment.db (best effort: sqlite
-    errors are logged, never raised — enrichment failure must never hurt
-    the canonical library)."""
+    """Single schema authority for enrichment.db.
+
+    R2 TRUTHFUL PERSISTENCE: identity WRITES raise
+    ``EnrichmentStorageError`` on failure. Knowledge writes remain
+    best-effort (documented cache semantics) — a failed knowledge write
+    never hurts the canonical library."""
 
     def __init__(self, db_path: Path) -> None:
         self._db_path = db_path
@@ -59,19 +181,68 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
 
     # -- schema (single owner) ----------------------------------------------
 
+    @staticmethod
+    def _create_knowledge_tables(conn) -> None:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS artist_knowledge ("
+            "local_artist_key TEXT PRIMARY KEY,"
+            "profile TEXT NOT NULL)"
+        )
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS album_knowledge ("
+            "local_album_key TEXT PRIMARY KEY,"
+            "profile TEXT NOT NULL)"
+        )
+
+    @staticmethod
+    def _create_identity_tables_v3(conn) -> None:
+        """Schema 3 identity tables: NO redundant manually_confirmed."""
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS artist_identity ("
+            "local_artist_key TEXT PRIMARY KEY,"
+            "external_artist_id TEXT NOT NULL,"
+            "status TEXT NOT NULL,"
+            "match_method TEXT NOT NULL,"
+            "resolved_at TEXT NOT NULL)"
+        )
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS album_identity ("
+            "local_album_key TEXT PRIMARY KEY,"
+            "release_group_id TEXT NOT NULL,"
+            "release_id TEXT NOT NULL,"
+            "status TEXT NOT NULL,"
+            "match_method TEXT NOT NULL,"
+            "resolved_at TEXT NOT NULL)"
+        )
+
+    @staticmethod
+    def _create_identity_tables_v2(conn) -> None:
+        """Schema 2 identity tables (R1 shape, legacy boolean column) —
+        only used to build REAL v2 migration fixtures in tests."""
+        conn.execute(
+            "CREATE TABLE artist_identity ("
+            "local_artist_key TEXT PRIMARY KEY,"
+            "external_artist_id TEXT NOT NULL,"
+            "status TEXT NOT NULL,"
+            "match_method TEXT NOT NULL,"
+            "manually_confirmed INTEGER NOT NULL,"
+            "resolved_at TEXT NOT NULL)"
+        )
+        conn.execute(
+            "CREATE TABLE album_identity ("
+            "local_album_key TEXT PRIMARY KEY,"
+            "release_group_id TEXT NOT NULL,"
+            "release_id TEXT NOT NULL,"
+            "status TEXT NOT NULL,"
+            "match_method TEXT NOT NULL,"
+            "manually_confirmed INTEGER NOT NULL,"
+            "resolved_at TEXT NOT NULL)"
+        )
+
     def _ensure_schema(self) -> None:
         conn = self._connect()
         try:
-            conn.execute(
-                "CREATE TABLE IF NOT EXISTS artist_knowledge ("
-                "local_artist_key TEXT PRIMARY KEY,"
-                "profile TEXT NOT NULL)"
-            )
-            conn.execute(
-                "CREATE TABLE IF NOT EXISTS album_knowledge ("
-                "local_album_key TEXT PRIMARY KEY,"
-                "profile TEXT NOT NULL)"
-            )
+            self._create_knowledge_tables(conn)
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS enrichment_meta ("
                 "key TEXT PRIMARY KEY, value TEXT NOT NULL)"
@@ -81,7 +252,7 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             ).fetchone()
             raw = row[0] if row is not None else None
             if raw is None:
-                self._create_identity_tables(conn)
+                self._create_identity_tables_v3(conn)
                 conn.execute(
                     "INSERT INTO enrichment_meta(key, value) VALUES(?, ?)",
                     (_VERSION_KEY, str(CURRENT_ENRICHMENT_SCHEMA)),
@@ -93,13 +264,12 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
                     f"enrichment schema version {version} is newer "
                     f"than supported {CURRENT_ENRICHMENT_SCHEMA}"
                 )
-            if version == 1:
-                # MIGRATION 1 -> 2 (R1): add identity tables; knowledge
-                # profiles survive. Transactional — a failure never
-                # leaves the schema half-migrated.
+            if version in (1, 2):
                 conn.execute("BEGIN")
                 try:
-                    self._create_identity_tables(conn)
+                    if version == 1:
+                        self._migrate_v1_knowledge(conn)
+                    self._migrate_v2_identities(conn)
                     conn.execute(
                         "UPDATE enrichment_meta SET value = ? WHERE key = ?",
                         (str(CURRENT_ENRICHMENT_SCHEMA), _VERSION_KEY),
@@ -110,8 +280,8 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
                         conn.execute("ROLLBACK")
                     raise
                 return
-            # version 0 or 2: idempotent — ensure identity tables exist.
-            self._create_identity_tables(conn)
+            # version 0 or 3: idempotent — ensure the v3 shape exists.
+            self._create_identity_tables_v3(conn)
             if version == 0:
                 conn.execute(
                     "UPDATE enrichment_meta SET value = ? WHERE key = ?",
@@ -120,27 +290,82 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
         finally:
             conn.close()
 
+    def _migrate_v1_knowledge(self, conn) -> None:
+        """REAL v1 data transformation (R2): rewrite every valid v1
+        profile into the current shape; malformed rows are DELETED
+        (deterministic fail-safe — enrichment is a cache; the identity
+        authority and the canonical library are never touched)."""
+        for table, key_column, decoder_fields, transform in (
+            (
+                "artist_knowledge",
+                "local_artist_key",
+                (_V1_ARTIST_STR_FIELDS, _V1_ARTIST_FIELDS),
+                _transform_v1_artist,
+            ),
+            (
+                "album_knowledge",
+                "local_album_key",
+                (_V1_ALBUM_STR_FIELDS, _V1_ALBUM_FIELDS),
+                _transform_v1_album,
+            ),
+        ):
+            rows = conn.execute(f"SELECT {key_column}, profile FROM {table}").fetchall()
+            for key, raw_profile in rows:
+                payload = _decode_v1_payload(raw_profile, *decoder_fields)
+                if payload is None:
+                    conn.execute(f"DELETE FROM {table} WHERE {key_column} = ?", (key,))
+                    continue
+                transformed = transform(payload)
+                if transformed is None:
+                    conn.execute(f"DELETE FROM {table} WHERE {key_column} = ?", (key,))
+                    continue
+                conn.execute(
+                    f"UPDATE {table} SET profile = ? WHERE {key_column} = ?",
+                    (transformed, key),
+                )
+
     @staticmethod
-    def _create_identity_tables(conn) -> None:
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS artist_identity ("
-            "local_artist_key TEXT PRIMARY KEY,"
-            "external_artist_id TEXT NOT NULL,"
-            "status TEXT NOT NULL,"
-            "match_method TEXT NOT NULL,"
-            "manually_confirmed INTEGER NOT NULL,"
-            "resolved_at TEXT NOT NULL)"
-        )
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS album_identity ("
-            "local_album_key TEXT PRIMARY KEY,"
-            "release_group_id TEXT NOT NULL,"
-            "release_id TEXT NOT NULL,"
-            "status TEXT NOT NULL,"
-            "match_method TEXT NOT NULL,"
-            "manually_confirmed INTEGER NOT NULL,"
-            "resolved_at TEXT NOT NULL)"
-        )
+    def _migrate_v2_identities(conn) -> None:
+        """v2 -> v3: rebuild identity tables WITHOUT the legacy boolean
+        (MANUAL authority = MatchMethod only). Rows are preserved. A v1
+        database has NO identity tables: the v3 shape is created fresh."""
+        exists = conn.execute(
+            "SELECT name FROM sqlite_master "
+            "WHERE type='table' AND name='artist_identity'"
+        ).fetchone()
+        if exists is None:
+            SqliteEnrichmentRepository._create_identity_tables_v3(conn)
+            return
+        for table, columns in (
+            (
+                "artist_identity",
+                "local_artist_key, external_artist_id, status, "
+                "match_method, resolved_at",
+            ),
+            (
+                "album_identity",
+                "local_album_key, release_group_id, release_id, "
+                "status, match_method, resolved_at",
+            ),
+        ):
+            conn.execute(f"DROP TABLE IF EXISTS {table}_v3")
+            conn.execute(
+                f"CREATE TABLE {table}_v3 ("
+                + (
+                    "local_artist_key TEXT PRIMARY KEY,"
+                    "external_artist_id TEXT NOT NULL,"
+                    if table == "artist_identity"
+                    else "local_album_key TEXT PRIMARY KEY,"
+                    "release_group_id TEXT NOT NULL,"
+                    "release_id TEXT NOT NULL,"
+                )
+                + "status TEXT NOT NULL,"
+                "match_method TEXT NOT NULL,"
+                "resolved_at TEXT NOT NULL)"
+            )
+            conn.execute(f"INSERT INTO {table}_v3 SELECT {columns} FROM {table}")
+            conn.execute(f"DROP TABLE {table}")
+            conn.execute(f"ALTER TABLE {table}_v3 RENAME TO {table}")
 
     def version(self) -> int:
         try:
@@ -158,13 +383,11 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             logger.warning("enrichment version read failed: %s", exc)
             return 0
 
-    # -- identity authority ------------------------------------------------
+    # -- identity authority (truthful writes) --------------------------------
 
     @staticmethod
     def _artist_identity_from_row(row) -> ArtistExternalIdentity | None:
-        # Schema 2 rows carry the legacy manually_confirmed column; R2
-        # normalizes it away: MANUAL authority comes ONLY from MatchMethod.
-        key, external_id, status, method, _confirmed, resolved_at = row
+        key, external_id, status, method, resolved_at = row
         try:
             return ArtistExternalIdentity(
                 local_artist_key=key,
@@ -179,7 +402,7 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
 
     @staticmethod
     def _album_identity_from_row(row) -> AlbumExternalIdentity | None:
-        key, rg_id, release_id, status, method, _confirmed, resolved_at = row
+        key, rg_id, release_id, status, method, resolved_at = row
         try:
             return AlbumExternalIdentity(
                 local_album_key=key,
@@ -199,20 +422,18 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             try:
                 conn.execute(
                     "INSERT INTO artist_identity(local_artist_key, "
-                    "external_artist_id, status, match_method, "
-                    "manually_confirmed, resolved_at) VALUES(?, ?, ?, ?, ?, ?) "
+                    "external_artist_id, status, match_method, resolved_at) "
+                    "VALUES(?, ?, ?, ?, ?) "
                     "ON CONFLICT(local_artist_key) DO UPDATE SET "
                     "external_artist_id = excluded.external_artist_id, "
                     "status = excluded.status, "
                     "match_method = excluded.match_method, "
-                    "manually_confirmed = excluded.manually_confirmed, "
                     "resolved_at = excluded.resolved_at",
                     (
                         identity.local_artist_key,
                         identity.external_artist_id,
                         identity.status.name,
                         identity.match_method.name,
-                        int(identity.match_method is MatchMethod.MANUAL),
                         identity.resolved_at,
                     ),
                 )
@@ -228,13 +449,12 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
                 conn.execute(
                     "INSERT INTO album_identity(local_album_key, "
                     "release_group_id, release_id, status, match_method, "
-                    "manually_confirmed, resolved_at) VALUES(?, ?, ?, ?, ?, ?, ?) "
+                    "resolved_at) VALUES(?, ?, ?, ?, ?, ?) "
                     "ON CONFLICT(local_album_key) DO UPDATE SET "
                     "release_group_id = excluded.release_group_id, "
                     "release_id = excluded.release_id, "
                     "status = excluded.status, "
                     "match_method = excluded.match_method, "
-                    "manually_confirmed = excluded.manually_confirmed, "
                     "resolved_at = excluded.resolved_at",
                     (
                         identity.local_album_key,
@@ -242,7 +462,6 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
                         identity.release_id,
                         identity.status.name,
                         identity.match_method.name,
-                        int(identity.match_method is MatchMethod.MANUAL),
                         identity.resolved_at,
                     ),
                 )
@@ -277,7 +496,7 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             try:
                 row = conn.execute(
                     "SELECT local_artist_key, external_artist_id, status, "
-                    "match_method, manually_confirmed, resolved_at "
+                    "match_method, resolved_at "
                     "FROM artist_identity WHERE local_artist_key = ?",
                     (local_artist_key,),
                 ).fetchone()
@@ -300,7 +519,7 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             try:
                 row = conn.execute(
                     "SELECT local_album_key, release_group_id, release_id, "
-                    "status, match_method, manually_confirmed, resolved_at "
+                    "status, match_method, resolved_at "
                     "FROM album_identity WHERE local_album_key = ?",
                     (local_album_key,),
                 ).fetchone()
@@ -323,7 +542,7 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             try:
                 rows = conn.execute(
                     "SELECT local_artist_key, external_artist_id, status, "
-                    "match_method, manually_confirmed, resolved_at "
+                    "match_method, resolved_at "
                     "FROM artist_identity ORDER BY local_artist_key"
                 ).fetchall()
             finally:
@@ -344,7 +563,7 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             try:
                 rows = conn.execute(
                     "SELECT local_album_key, release_group_id, release_id, "
-                    "status, match_method, manually_confirmed, resolved_at "
+                    "status, match_method, resolved_at "
                     "FROM album_identity ORDER BY local_album_key"
                 ).fetchall()
             finally:
@@ -361,7 +580,8 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
 
     def clear_identities(self) -> None:
         """Remove ALL identity authority rows (explicit, never accidental:
-        the generic clear() of M6.9A no longer exists)."""
+        the generic clear() of M6.9A no longer exists). Truthful: raises
+        EnrichmentStorageError on failure."""
         try:
             conn = self._connect()
             try:
@@ -372,7 +592,7 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
         except sqlite3.Error as exc:
             raise EnrichmentStorageError(f"identity clear failed: {exc}") from exc
 
-    # -- knowledge (downloaded) ---------------------------------------------
+    # -- knowledge (downloaded, best-effort cache) ---------------------------
 
     def save_artist_profile(self, profile: ArtistKnowledgeProfile) -> None:
         try:
@@ -407,10 +627,20 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             logger.warning("enrichment album save failed: %s", exc)
 
     def delete_artist_profile(self, local_artist_key: str) -> None:
-        self._delete("artist_knowledge", "local_artist_key", local_artist_key)
+        self._delete_knowledge("artist_knowledge", "local_artist_key", local_artist_key)
 
     def delete_album_profile(self, local_album_key: str) -> None:
-        self._delete("album_knowledge", "local_album_key", local_album_key)
+        self._delete_knowledge("album_knowledge", "local_album_key", local_album_key)
+
+    def _delete_knowledge(self, table: str, column: str, key: str) -> None:
+        try:
+            conn = self._connect()
+            try:
+                conn.execute(f"DELETE FROM {table} WHERE {column} = ?", (key,))
+            finally:
+                conn.close()
+        except sqlite3.Error as exc:
+            logger.warning("enrichment knowledge delete failed: %s", exc)
 
     def load_artist_profile(
         self, local_artist_key: str
@@ -522,7 +752,7 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
 
     def clear_knowledge(self) -> None:
         """Clear DOWNLOADED KNOWLEDGE only — the identity authority rows
-        (including manual mappings) are preserved (R1)."""
+        (including manual mappings) are preserved (R1/R2)."""
         try:
             conn = self._connect()
             try:
