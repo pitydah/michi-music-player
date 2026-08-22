@@ -374,3 +374,42 @@ class TestR2StructuralGates:
 
         assert callable(EnrichmentService.get_artist_knowledge)
         assert callable(EnrichmentService.get_album_knowledge)
+
+
+class TestR3StructuralGates:
+    """R3: STORAGE_FAILED verdict, truthful read/write port contracts,
+    transactional-clear presence, no stale path terminology."""
+
+    def test_delivery_verdict_has_storage_failed(self):
+        from michi.domain.enrichment import DeliveryVerdict
+
+        assert hasattr(DeliveryVerdict, "STORAGE_FAILED")
+
+    def test_identity_port_docs_require_truthful_reads(self):
+        import inspect
+
+        from michi.application.enrichment_ports import IdentityRepositoryPort
+
+        doc = inspect.getdoc(IdentityRepositoryPort) or ""
+        assert "EnrichmentStorageError" in doc
+
+    def test_knowledge_port_docs_require_truthful_writes(self):
+        import inspect
+
+        from michi.application.enrichment_ports import KnowledgeRepositoryPort
+
+        doc = inspect.getdoc(KnowledgeRepositoryPort) or ""
+        assert "EnrichmentStorageError" in doc
+
+    def test_no_stale_local_path_terminology_in_ports(self):
+        from pathlib import Path
+
+        source = Path("src/michi/application/enrichment_ports.py").read_text()
+        assert "local_path" not in source
+        assert "managed_object" in source
+
+    def test_clear_operations_transactional_markers(self):
+        from pathlib import Path
+
+        source = Path("src/michi/infrastructure/enrichment_repository.py").read_text()
+        assert "ROLLBACK" in source
