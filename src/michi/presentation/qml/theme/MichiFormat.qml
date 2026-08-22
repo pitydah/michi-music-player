@@ -6,10 +6,11 @@ import QtQuick
 // so format rules (and future QLocale support) live in one place.
 QtObject {
     // m:ss for <1h, h:mm:ss for ≥1h. Empty string for non-positive input.
+    // floor (not round): durations never display more than they really are.
     function formatDuration(ms) {
         if (!ms || ms <= 0)
             return ""
-        var totalSeconds = Math.round(ms / 1000)
+        var totalSeconds = Math.floor(ms / 1000)
         var hours = Math.floor(totalSeconds / 3600)
         var minutes = Math.floor((totalSeconds % 3600) / 60)
         var seconds = totalSeconds % 60
