@@ -178,6 +178,13 @@ class FakeBindings:
         self.null_request_count = 0  # requests STATE.NULL emitidos
         self.fail_remove_watch = False  # buses nuevos heredan el fallo
         self.remove_watch_exception: Exception | None = None  # o la excepción
+        # inyección de excepciones de ARM (M11.3C-R6 P1-03, TEST ONLY)
+        self.arm_exception_stage: str | None = None
+        self.arm_exception: Exception | None = None
+
+    def _raise_if_arm_stage(self, stage):
+        if self.arm_exception_stage == stage:
+            raise self.arm_exception or ValueError(f"synthetic arm failure: {stage}")
 
     def supports_pump(self):
         return True
@@ -192,6 +199,7 @@ class FakeBindings:
         return None if name in self.missing_factories else object()
 
     def make_playbin3(self):
+        self._raise_if_arm_stage("make_playbin3")
         p = FakePipeline(f"P{len(self.pipelines)}")
         self.pipelines.append(p)
         return p
@@ -199,6 +207,8 @@ class FakeBindings:
     def set_state(self, pipeline, state):
         if state == _FakeState.NULL:
             self.null_request_count += 1
+        if state == _FakeState.PAUSED:
+            self._raise_if_arm_stage("set_state_paused")
         if self.fail_next_states:
             expected = self.fail_next_states.pop(0)
             if state == expected:
@@ -208,12 +218,14 @@ class FakeBindings:
         return pipeline.set_state(state)
 
     def get_bus(self, pipeline):
+        self._raise_if_arm_stage("get_bus")
         bus = pipeline.get_bus()
         bus.fail_remove_watch = self.fail_remove_watch
         bus.remove_watch_exception = self.remove_watch_exception
         return bus
 
     def create_context(self):
+        self._raise_if_arm_stage("ensure_pump")
         return "ctx"
 
     def create_loop(self, context):
@@ -235,6 +247,7 @@ class FakeBindings:
     def create_bus_source(self, bus, callback, context=None):
         """Paridad fake/real (M11.3C-R4): instala el watch vía add_watch y
         devuelve el id sintético (bookkeeping only)."""
+        self._raise_if_arm_stage("create_bus_source")
         return bus.add_watch(0, callback)
 
     def remove_bus_watch(self, bus) -> bool:
@@ -246,6 +259,7 @@ class FakeBindings:
         return bus.remove_watch()
 
     def attach_source(self, source, context):
+        self._raise_if_arm_stage("attach_source")
         return source.attach(context)
 
     def destroy_source(self, source):
@@ -253,6 +267,7 @@ class FakeBindings:
             source.destroy()
 
     def create_timeout_source(self, interval_ms, callback):
+        self._raise_if_arm_stage("create_timeout_source")
         source = FakeSource()
         source.set_callback(callback)
         self.timer_sources.append(source)
@@ -272,12 +287,15 @@ class FakeBindings:
         return pipeline.seek_simple(None, None, position_ns)
 
     def set_uri(self, pipeline, uri):
+        self._raise_if_arm_stage("set_uri")
         pipeline.set_property("uri", uri)
 
-    def set_volume(self, pipeline, value):
-        pipeline.set_property("volume", value)
+    def set_volume(self, pipeline, volume):
+        self._raise_if_arm_stage("set_volume")
+        pipeline.set_property("volume", volume)
 
     def set_muted(self, pipeline, muted):
+        self._raise_if_arm_stage("set_muted")
         pipeline.set_property("mute", muted)
 
     def message_type(self, message):
@@ -634,8 +652,12 @@ class TestTeardown:
         bindings = FakeBindings()
         port = _port(bindings)
         port.load(Path("/m/a.flac"))
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, bindings.pipelines[-1])
+        _deliver(port, msg, gen)
         port.stop()
+        # M11.3C-R6: la fuente aceptada permanece cargada tras stop
         assert port._pipeline is not None
+        assert port._current_path == Path("/m/a.flac")
         assert port.duration() == 5000
         port.close()
 
@@ -659,15 +681,17 @@ class TestRouterParity:
         _deliver(port, m1, g1)
         m2, g2 = _msg(port, _FakeMsgType.DURATION_CHANGED, pipeline)
         _deliver(port, m2, g2)
-        m3, g3 = _msg(port, _FakeMsgType.EOS, pipeline)
-        _deliver(port, m3, g3)
+        port.play()
         m4, g4 = msg_state(port, pipeline, _FakeState.PLAYING)
         _deliver(port, m4, g4)
-        assert events == ["acc:a.flac", "dur:5000", "eom", "st"]
+        m3, g3 = _msg(port, _FakeMsgType.EOS, pipeline)
+        _deliver(port, m3, g3)
+        # M11.3C-R6: EOS converge a STOPPED (st) ANTES de EOM (eom)
+        assert events == ["acc:a.flac", "dur:5000", "st", "st", "eom"]
         router.unbind()
         m5, g5 = _msg(port, _FakeMsgType.EOS, pipeline)
         _deliver(port, m5, g5)
-        assert events == ["acc:a.flac", "dur:5000", "eom", "st"]
+        assert events == ["acc:a.flac", "dur:5000", "st", "st", "eom"]
         port.close()
 
 
@@ -913,7 +937,8 @@ class TestStateRequestFailureAtomicity:
         for _ in range(5):
             QCoreApplication.processEvents()
         assert states[-1] == PlaybackStatus.STOPPED
-        assert port._current_path is None
+        # M11.3C-R6: la fuente aceptada permanece cargada tras stop
+        assert port._current_path == Path("/m/a.flac")
         port.close()
 
     def test_pipeline_replacement_aborts_if_old_null_fails(self, qapp):
@@ -1606,6 +1631,445 @@ class TestCleanupExceptionBoundary:
         bus.remove_watch_exception = None
         port.close()
         assert port._pipeline is None
+
+
+class TestAcceptedStopReplay:
+    """M11.3C-R6 P1-01: stop sobre una fuente ACEPTADA detiene el transporte
+    sin descargar la fuente — replay sin load, generación/bus intactos."""
+
+    def _accepted_playing(self, bindings):
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        return port, pipeline
+
+    def test_accepted_stop_retains_source_and_generation(self, qapp):
+        bindings = FakeBindings()
+        port, pipeline = self._accepted_playing(bindings)
+        generation_before = port._generation
+        bus_before = port._bus
+        states = []
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.stop()
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        assert states[-1] == PlaybackStatus.STOPPED
+        assert port._current_path == Path("/m/a.flac")  # A retenida
+        assert port._generation == generation_before  # generación intacta
+        assert port._pipeline is pipeline  # mismo pipeline
+        assert port._bus is bus_before  # mismo bus
+        assert bus_before.watch_installed is True  # watch sigue instalado
+        assert port._pending_play is False
+        port.close()
+
+    def test_stop_then_play_delivers_playing(self, qapp):
+        bindings = FakeBindings()
+        port, pipeline = self._accepted_playing(bindings)
+        states = []
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.stop()
+        port.play()
+        m, g = msg_state(port, pipeline, _FakeState.PLAYING)
+        _deliver(port, m, g)
+        assert states[-1] == PlaybackStatus.PLAYING  # generación N válida
+        assert port._current_path == Path("/m/a.flac")
+        port.close()
+
+    def test_stop_then_resume_delivers_playing(self, qapp):
+        bindings = FakeBindings()
+        port, pipeline = self._accepted_playing(bindings)
+        states = []
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.stop()
+        port.resume()
+        m, g = msg_state(port, pipeline, _FakeState.PLAYING)
+        _deliver(port, m, g)
+        assert states[-1] == PlaybackStatus.PLAYING
+        port.close()
+
+    def test_position_polling_after_stop_play(self, qapp):
+        bindings = FakeBindings()
+        port, pipeline = self._accepted_playing(bindings)
+        positions = []
+        port.subscribe_position_changed(lambda ms: positions.append(ms))
+        port.stop()
+        port.play()
+        m, g = msg_state(port, pipeline, _FakeState.PLAYING)
+        _deliver(port, m, g)
+        port._poll_position()  # seam del timer: current_path retenido
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        assert len(positions) == 1  # posición entregada para A tras replay
+        port.close()
+
+    def test_stop_null_failure_keeps_identity_and_generation(self, qapp):
+        bindings = FakeBindings()
+        port, pipeline = self._accepted_playing(bindings)
+        generation_before = port._generation
+        states = []
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        bindings.failed_states.add(_FakeState.NULL)
+        port.stop()
+        assert PlaybackStatus.STOPPED not in states  # sin claim falso
+        assert port._current_path == Path("/m/a.flac")
+        assert port._generation == generation_before
+        assert port._pipeline is pipeline
+        bindings.failed_states.discard(_FakeState.NULL)
+        port.close()
+
+
+class TestPendingStopCancellation:
+    """M11.3C-R6 P1-01: stop sobre un candidato PENDIENTE = cancelación."""
+
+    def test_stop_cancels_pending_candidate(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/b.flac"))  # preroll pendiente, sin ASYNC_DONE aún
+        pipeline_b = bindings.pipelines[-1]
+        bus_b = port._bus
+        assert port._pending_path == Path("/m/b.flac")
+        accepted = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.stop()
+        assert port._pending_path is None  # candidato cancelado
+        assert port._current_path is None
+        assert port._pipeline is None  # pipeline candidato liberado
+        assert bus_b.watch_installed is False  # watch liberado
+        # late ASYNC_DONE (generación vieja) → ignorado
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_b)
+        _deliver(port, msg, gen)
+        assert accepted == []
+        assert port._current_path is None
+        port.close()
+
+    def test_play_after_cancelled_pending_does_not_resurrect(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/b.flac"))
+        port.stop()
+        states = []
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.play()  # sin pipeline: no-op, no resucita B
+        assert port._pipeline is None
+        assert states == []
+        assert port._current_path is None
+        port.close()
+
+
+class TestEosConvergence:
+    """M11.3C-R6 P1-02: EOS converge a STOPPED, EOM una vez por ciclo,
+    replay same-source definido; late EOS tras stop explícito ignorado."""
+
+    def _playing_a(self, bindings):
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        return port, pipeline
+
+    def test_eos_converges_stopped_and_emits_eom_once(self, qapp):
+        bindings = FakeBindings()
+        port, pipeline = self._playing_a(bindings)
+        states = []
+        eoms = []
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.subscribe_end_of_media(lambda: eoms.append(1))
+        m, g = _msg(port, _FakeMsgType.EOS, pipeline)
+        _deliver(port, m, g)
+        assert states[-1] == PlaybackStatus.STOPPED  # convergencia
+        assert eoms == [1]  # EOM exactamente una vez
+        assert port._current_path == Path("/m/a.flac")  # fuente retenida
+        # EOS duplicado del mismo ciclo → sin segundo EOM
+        m2, g2 = _msg(port, _FakeMsgType.EOS, pipeline)
+        _deliver(port, m2, g2)
+        assert eoms == [1]
+        port.close()
+
+    def test_play_after_eos_replays_same_source(self, qapp):
+        bindings = FakeBindings()
+        port, pipeline = self._playing_a(bindings)
+        states = []
+        eoms = []
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.subscribe_end_of_media(lambda: eoms.append(1))
+        m, g = _msg(port, _FakeMsgType.EOS, pipeline)
+        _deliver(port, m, g)
+        assert eoms == [1]
+        # replay: play() reinicia NULL→PLAYING sin pipeline nuevo
+        port.play()
+        assert port._eos_emitted is False  # marcador reseteado tras éxito
+        m2, g2 = msg_state(port, pipeline, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        assert states[-1] == PlaybackStatus.PLAYING
+        assert len(bindings.pipelines) == 1  # mismo pipeline, sin reload
+        # segundo EOS → segundo EOM (total 2)
+        m3, g3 = _msg(port, _FakeMsgType.EOS, pipeline)
+        _deliver(port, m3, g3)
+        assert eoms == [1, 1]
+        assert states[-1] == PlaybackStatus.STOPPED
+        port.close()
+
+    def test_eos_replay_null_failure_retryable(self, qapp):
+        bindings = FakeBindings()
+        port, pipeline = self._playing_a(bindings)
+        eoms = []
+        port.subscribe_end_of_media(lambda: eoms.append(1))
+        m, g = _msg(port, _FakeMsgType.EOS, pipeline)
+        _deliver(port, m, g)
+        bindings.failed_states.add(_FakeState.NULL)
+        port.play()
+        assert port._eos_emitted is True  # retryable
+        assert port._pending_play is False
+        # retry con éxito
+        bindings.failed_states.clear()
+        port.play()
+        assert port._eos_emitted is False
+        port.close()
+
+    def test_eos_replay_playing_failure_retryable(self, qapp):
+        bindings = FakeBindings()
+        port, pipeline = self._playing_a(bindings)
+        eoms = []
+        port.subscribe_end_of_media(lambda: eoms.append(1))
+        m, g = _msg(port, _FakeMsgType.EOS, pipeline)
+        _deliver(port, m, g)
+        bindings.failed_states.add(_FakeState.PLAYING)
+        port.play()  # NULL OK, PLAYING FAIL
+        assert port._eos_emitted is True  # no reseteado: retryable
+        assert port._pending_play is False
+        bindings.failed_states.clear()
+        port.play()
+        assert port._eos_emitted is False
+        port.close()
+
+    def test_late_eos_after_explicit_stop_ignored(self, qapp):
+        bindings = FakeBindings()
+        port, pipeline = self._playing_a(bindings)
+        eoms = []
+        port.subscribe_end_of_media(lambda: eoms.append(1))
+        # EOS encolado antes del stop explícito; el stop gana
+        port.stop()
+        m, g = _msg(port, _FakeMsgType.EOS, pipeline)
+        _deliver(port, m, g)
+        assert eoms == []  # sin EOM falso
+        assert port._current_state == PlaybackStatus.STOPPED  # ya stop
+        assert port._pending_play is False
+        port.close()
+
+
+class TestArmTransaction:
+    """M11.3C-R6 P1-03: el ARM del pipeline nuevo es exception-atomic —
+    cualquier excepción deja el adapter coherente y la excepción ORIGINAL
+    es la primaria."""
+
+    ARM_STAGES = [
+        "make_playbin3",
+        "set_volume",
+        "set_muted",
+        "get_bus",
+        "set_uri",
+        "ensure_pump",
+        "create_bus_source",
+        "create_timeout_source",
+        "attach_source",
+        "set_state_paused",
+    ]
+
+    @pytest.mark.parametrize("stage", ARM_STAGES)
+    def test_arm_exception_leaves_adapter_coherent(self, qapp, stage):
+        bindings = FakeBindings()
+        bindings.arm_exception_stage = stage
+        bindings.arm_exception = ValueError(f"synthetic arm failure: {stage}")
+        port = _port(bindings)
+        accepted = []
+        states = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        with pytest.raises(ValueError, match=f"arm failure: {stage}"):
+            port.load(Path("/m/b.flac"))
+        # sin candidato fantasma, sin media falsa
+        assert port._pending_path is None
+        assert port._current_path is None
+        assert port._pending_play is False
+        assert accepted == []
+        assert states == []
+        # el port puede cerrarse limpiamente
+        port.close()
+
+    def test_arm_failure_after_watch_attached_invalidates_generation(self, qapp):
+        bindings = FakeBindings()
+        bindings.arm_exception_stage = "attach_source"
+        port = _port(bindings)
+        with pytest.raises(ValueError, match="attach_source"):
+            port.load(Path("/m/b.flac"))
+        bus_b = bindings.pipelines[-1].get_bus()
+        assert bus_b.watch_installed is False  # watch removido en rollback
+        # late mensaje del candidato fallido (generación vieja) → ignorado
+        accepted = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, bindings.pipelines[-1])
+        _deliver(port, msg, gen)
+        assert accepted == []
+        assert port._current_path is None
+        port.close()
+
+    def test_arm_retry_after_failure(self, qapp):
+        bindings = FakeBindings()
+        bindings.arm_exception_stage = "set_uri"
+        port = _port(bindings)
+        with pytest.raises(ValueError, match="set_uri"):
+            port.load(Path("/m/b.flac"))
+        # retry: el port sigue usable
+        bindings.arm_exception_stage = None
+        accepted = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.load(Path("/m/c.flac"))
+        pipeline_c = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_c)
+        _deliver(port, msg, gen)
+        assert accepted == [Path("/m/c.flac")]
+        port.play()
+        m2, g2 = msg_state(port, pipeline_c, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        port.close()
+
+    def test_arm_failure_after_old_source_playing_converges_stopped(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        # A aceptada y PLAYING
+        port.load(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        states = []
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        # B arma falla en set_uri (después del teardown de A)
+        bindings.arm_exception_stage = "set_uri"
+        with pytest.raises(ValueError, match="set_uri"):
+            port.load(Path("/m/b.flac"))
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        assert states[-1] == PlaybackStatus.STOPPED  # sin PLAYING falso
+        assert port._current_path is None
+        assert port._pending_path is None
+        assert port._current_state == PlaybackStatus.STOPPED
+        port.close()
+
+    def test_arm_failure_timer_does_not_poison_next_load(self, qapp):
+        bindings = FakeBindings()
+        bindings.arm_exception_stage = "attach_source"  # timer creado y falla
+        port = _port(bindings)
+        with pytest.raises(ValueError, match="attach_source"):
+            port.load(Path("/m/b.flac"))
+        # el timer creado por el arm fallido se destruyó
+        assert port._timer_source is None
+        # retry exitoso: el timer nuevo se attacha normalmente
+        bindings.arm_exception_stage = None
+        port.load(Path("/m/c.flac"))
+        assert port._timer_source is not None
+        assert port._timer_source.attached is True
+        port.close()
+
+    def test_arm_exception_null_cleanup_failure_keeps_primary(self, qapp):
+        bindings = FakeBindings()
+        bindings.arm_exception_stage = "set_uri"
+        bindings.failed_states.add(_FakeState.NULL)  # cleanup NULL falla
+        bindings.fail_remove_watch = True  # y el remove del watch falla
+        port = _port(bindings)
+        with pytest.raises(ValueError, match="set_uri"):
+            port.load(Path("/m/b.flac"))
+        # la excepción ORIGINAL del arm sigue siendo primaria
+        assert port._pending_path is None
+        assert port._current_path is None
+        # pipeline retenido (NULL cleanup falló) para diagnóstico/close
+        assert port._pipeline is not None
+        # close() posterior limpia el bookkeeping retenido
+        bindings.failed_states.clear()
+        bindings.fail_remove_watch = False
+        port.close()
+        assert port._pipeline is None
+
+
+class TestGStreamerQueueIntegration:
+    """M11.3C-R6: GStreamerAudioPort (FakeBindings) → PlaybackService →
+    QueueService — auto-advance por EOS del adapter real."""
+
+    def test_eos_advances_to_b_exactly_once(self, qapp):
+        from michi.application.coordinator import PlaybackCoordinator
+        from michi.application.playback_service import PlaybackService
+        from michi.application.queue_service import QueueService
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+        q = QueueService(svc)
+        q.add(Path("/m/a.flac"))
+        q.add(Path("/m/b.flac"))
+        q.play_index(0)
+        coord = PlaybackCoordinator(port, q, svc)
+        coord.start()
+        # A aceptada vía el adapter real
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        assert q.state.current_index == 0
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        # EOS → STOPPED + EOM → Queue pide B exactamente una vez
+        eos, eg = _msg(port, _FakeMsgType.EOS, pipeline_a)
+        _deliver(port, eos, eg)
+        assert q.state.current_index == 0  # B pending, no commiteado
+        assert len(bindings.pipelines) == 2  # B armado exactamente una vez
+        # B aceptada
+        pipeline_b = bindings.pipelines[-1]
+        m3, g3 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_b)
+        _deliver(port, m3, g3)
+        assert q.state.current_index == 1
+        port.close()
+
+    def test_repeat_one_requests_a_exactly_once(self, qapp):
+        from michi.application.coordinator import PlaybackCoordinator
+        from michi.application.playback_service import PlaybackService
+        from michi.application.queue_service import QueueService
+        from michi.domain.queue import RepeatMode
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+        q = QueueService(svc)
+        q.add(Path("/m/a.flac"))
+        q.set_repeat_mode(RepeatMode.ONE)
+        q.play_index(0)
+        coord = PlaybackCoordinator(port, q, svc)
+        coord.start()
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        eos, eg = _msg(port, _FakeMsgType.EOS, pipeline_a)
+        _deliver(port, eos, eg)
+        assert len(bindings.pipelines) == 2  # A pedida exactamente una vez
+        pipeline_a2 = bindings.pipelines[-1]
+        m3, g3 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a2)
+        _deliver(port, m3, g3)
+        assert q.state.current_index == 0
+        assert svc.state.file_path == Path("/m/a.flac")
+        port.close()
 
 
 @pytest.mark.gstreamer_runtime
