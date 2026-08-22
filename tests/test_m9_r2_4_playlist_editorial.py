@@ -134,3 +134,71 @@ def test_hero_self_sizes_and_page_never_collapses_it():
         "implicitHeight:"
         not in page.split("heroHeader: PlaylistHero {")[1].split("playlistName:")[0]
     )
+
+
+# ── M9-R2.5 spec-compliance lot (M1-M6) ───────────────────────────────────────
+
+
+def test_micro_type_role_exists_for_10px_labels():
+    typography = read("theme/MichiTypography.qml")
+    assert "readonly property int micro: 10" in typography
+    text = read("primitives/MichiText.qml")
+    assert 'role === "micro" ? MichiTypography.micro' in text
+    assert 'role === "micro" ? 0.35 : 0' in text  # uppercase tracking
+
+
+def test_hero_type_scale_matches_spec():
+    hero = read("playlists/PlaylistHero.qml")
+    # eyebrow 10-11px (caption), metadata 11-12px (technical)
+    assert 'role: "caption"' in hero
+    assert "font.letterSpacing: 1.4" in hero
+    assert 'role: "technical"' in hero
+    assert "opacity: 0.65" in hero
+
+
+def test_row_metadata_uses_technical_scale():
+    table = read("playlists/PlaylistTrackList.qml")
+    # artist/album at 12px technical (spec 11-12), title stays body 14
+    assert 'role: "technical"' in table
+    assert 'role: "body"' in table
+
+
+def test_column_header_always_visible_backplane_fades():
+    page = read("playlists/PlaylistDetailView.qml")
+    assert 'role: "micro"' in page
+    assert "opacity: 0.4" in page
+    # labels stay; only the sticky backplane fades with the scroll
+    assert "opacity: root.stickyHeaderOpacity" in page
+
+
+def test_format_column_beyond_1200():
+    page = read("playlists/PlaylistDetailView.qml")
+    table = read("playlists/PlaylistTrackList.qml")
+    assert "readonly property bool showFormat: root.width > 1200" in page
+    assert "showFormatColumn: root.width > 1200" in page
+    assert "property bool showFormatColumn: false" in table
+    assert "modelData.qualityLabel" in table
+
+
+def test_add_tracks_action_in_hero():
+    hero = read("playlists/PlaylistHero.qml")
+    page = read("playlists/PlaylistDetailView.qml")
+    assert 'qsTr("Add tracks")' in hero
+    assert "onAddTracksRequested: root.addMusicRequested()" in page
+
+
+def test_row_favorite_and_pressed_state():
+    table = read("playlists/PlaylistTrackList.qml")
+    assert 'iconName: "heart"' in table
+    assert "library.favoritePaths.indexOf(modelData.path) !== -1" in table
+    assert "library.toggle_favorite(modelData.path)" in table
+    assert "trackItem.pressed ? MichiSemanticColors.surfacePressed" in table
+    # more hit target 32px (spec 32-36)
+    assert "Layout.preferredWidth: 32" in table
+
+
+def test_hero_fades_in_on_open():
+    hero = read("playlists/PlaylistHero.qml")
+    assert "opacity: 0" in hero
+    assert "Behavior on opacity" in hero
+    assert "Component.onCompleted: opacity = 1" in hero

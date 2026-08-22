@@ -51,6 +51,7 @@ Item {
         ? Math.max(0, Math.min(1, trackList.contentY / Math.max(1, root.heroHeight))) : 0
     readonly property bool showArtist: root.width >= 700
     readonly property bool showAlbum: root.width >= 900
+    readonly property bool showFormat: root.width > 1200
 
     ColumnLayout {
         anchors.fill: parent
@@ -78,7 +79,9 @@ Item {
             Layout.fillHeight: true
             clip: true
 
-            // Sticky column header — fades in as the hero scrolls away
+            // Sticky column header — labels always visible (quiet, per
+            // spec); the backplane fades in only while the hero scrolls
+            // away so rows never show through once sticky
             Rectangle {
                 id: columnHeaderBar
                 anchors.top: parent.top
@@ -87,13 +90,16 @@ Item {
                 height: 34
                 z: 5
                 color: "transparent"
-                opacity: root.stickyHeaderOpacity
                 clip: true
 
-                // Backplane so rows never show through once sticky
                 Rectangle {
                     anchors.fill: parent
                     color: MichiSemanticColors.backplane
+                    opacity: root.stickyHeaderOpacity
+                    Behavior on opacity {
+                        enabled: !MichiAccessibility.reducedMotion
+                        NumberAnimation { duration: MichiMotion.standard; easing.type: MichiMotion.outCubic }
+                    }
                 }
                 RowLayout {
                     anchors.fill: parent
@@ -106,12 +112,10 @@ Item {
                         Layout.preferredWidth: root.width * 0.36
                         Layout.minimumWidth: 120
                         text: qsTr("TITLE")
-                        role: "technical"
-                        technical: true
+                        role: "micro"
                         color: MichiPalette.textSecondary
-                        opacity: 0.45
+                        opacity: 0.4
                         font.weight: Font.DemiBold
-                        font.letterSpacing: 0.8
                     }
                     MichiText {
                         visible: root.showArtist
@@ -119,12 +123,10 @@ Item {
                         Layout.minimumWidth: 90
                         Layout.maximumWidth: 240
                         text: qsTr("ARTIST")
-                        role: "technical"
-                        technical: true
+                        role: "micro"
                         color: MichiPalette.textSecondary
-                        opacity: 0.45
+                        opacity: 0.4
                         font.weight: Font.DemiBold
-                        font.letterSpacing: 0.8
                     }
                     MichiText {
                         visible: root.showAlbum
@@ -132,25 +134,30 @@ Item {
                         Layout.minimumWidth: 90
                         Layout.maximumWidth: 240
                         text: qsTr("ALBUM")
-                        role: "technical"
-                        technical: true
+                        role: "micro"
                         color: MichiPalette.textSecondary
-                        opacity: 0.45
+                        opacity: 0.4
                         font.weight: Font.DemiBold
-                        font.letterSpacing: 0.8
+                    }
+                    MichiText {
+                        visible: root.showFormat
+                        Layout.preferredWidth: 72
+                        text: qsTr("FORMAT")
+                        role: "micro"
+                        color: MichiPalette.textSecondary
+                        opacity: 0.4
+                        font.weight: Font.DemiBold
                     }
                     MichiText {
                         Layout.preferredWidth: 54
                         text: qsTr("TIME")
-                        role: "technical"
-                        technical: true
+                        role: "micro"
                         color: MichiPalette.textSecondary
-                        opacity: 0.45
+                        opacity: 0.4
                         font.weight: Font.DemiBold
-                        font.letterSpacing: 0.8
                         horizontalAlignment: Text.AlignRight
                     }
-                    Item { Layout.preferredWidth: MichiMetrics.controlSmall }
+                    Item { Layout.preferredWidth: 68 }
                 }
             }
 
@@ -161,6 +168,7 @@ Item {
                 selectedIndex: root.selectedIndex
                 showArtistColumn: root.width >= 700
                 showAlbumColumn: root.width >= 900
+                showFormatColumn: root.width > 1200
                 narrow: root.width < 700
 
                 heroHeader: PlaylistHero {
@@ -177,6 +185,7 @@ Item {
                     onMoreRequested: detailMenu.popup()
                     onChangeCoverRequested: coverDialog.open()
                     onTogglePinRequested: root.togglePinRequested()
+                    onAddTracksRequested: root.addMusicRequested()
                 }
 
                 onTrackSelected: index => root.selectedIndex = index

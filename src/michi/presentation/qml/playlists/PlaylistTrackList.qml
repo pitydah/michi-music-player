@@ -19,6 +19,7 @@ Item {
     property var heroHeader: null          // PlaylistHero (scrolls with the list)
     property bool showArtistColumn: true
     property bool showAlbumColumn: true
+    property bool showFormatColumn: false
     property bool narrow: false            // <700px: title/artist grouped
 
     signal playTrackRequested(int index)
@@ -146,7 +147,7 @@ Item {
                     Layout.minimumWidth: 90
                     Layout.maximumWidth: 240
                     text: modelData.artist || "—"
-                    role: "secondary"
+                    role: "technical"
                     color: MichiPalette.textSecondary
                     opacity: 0.65
                     elide: Text.ElideRight
@@ -158,9 +159,19 @@ Item {
                     Layout.minimumWidth: 90
                     Layout.maximumWidth: 240
                     text: modelData.album || "—"
-                    role: "secondary"
+                    role: "technical"
                     color: MichiPalette.textSecondary
                     opacity: 0.6
+                    elide: Text.ElideRight
+                }
+
+                MichiText {
+                    visible: root.showFormatColumn
+                    Layout.preferredWidth: 72
+                    text: (modelData.qualityLabel && modelData.qualityLabel !== "")
+                        ? modelData.qualityLabel : ""
+                    role: "technical"
+                    color: MichiPalette.textMuted
                     elide: Text.ElideRight
                 }
 
@@ -175,8 +186,27 @@ Item {
 
                 // Context actions — quiet until the row is hovered/focused
                 MichiIconButton {
-                    Layout.preferredWidth: MichiMetrics.controlSmall
-                    Layout.preferredHeight: MichiMetrics.controlSmall
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
+                    iconName: "heart"
+                    accessibleName: typeof library !== "undefined" && library
+                        && library.favoritePaths.indexOf(modelData.path) !== -1
+                        ? qsTr("Remove from favorites") : qsTr("Add to favorites")
+                    selected: typeof library !== "undefined" && library
+                        && library.favoritePaths.indexOf(modelData.path) !== -1
+                    opacity: trackItem.hovered || trackItem.visualFocus ? 1 : 0
+                    Behavior on opacity {
+                        enabled: !MichiAccessibility.reducedMotion
+                        NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
+                    }
+                    onClicked: {
+                        if (typeof library !== "undefined" && library)
+                            library.toggle_favorite(modelData.path)
+                    }
+                }
+                MichiIconButton {
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
                     iconName: "more"
                     accessibleName: qsTr("More options for ") + modelData.title
                     opacity: trackItem.hovered || trackItem.visualFocus ? 1 : 0
@@ -210,13 +240,15 @@ Item {
                 }
             }
 
-            // Quiet states: normal transparent, hover +0.035, selected +0.06
+            // Quiet states: normal transparent, hover +0.035, selected +0.06,
+            // pressed adds the standard press surface
             background: Rectangle {
                 radius: 5
-                color: trackItem.isSelected
-                    ? MichiSemanticColors.rowSelected
-                    : trackItem.hovered || trackItem.visualFocus
-                        ? MichiSemanticColors.rowHover : "transparent"
+                color: trackItem.pressed ? MichiSemanticColors.surfacePressed
+                    : trackItem.isSelected
+                        ? MichiSemanticColors.rowSelected
+                        : trackItem.hovered || trackItem.visualFocus
+                            ? MichiSemanticColors.rowHover : "transparent"
                 Behavior on color {
                     enabled: !MichiAccessibility.reducedMotion
                     ColorAnimation { duration: MichiMotion.micro }

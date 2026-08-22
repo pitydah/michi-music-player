@@ -25,6 +25,7 @@ Item {
     signal moreRequested()
     signal changeCoverRequested()
     signal togglePinRequested()
+    signal addTracksRequested()
 
     // Editorial header height (~30-40% of the first screen). Self-sized
     // from the hosting view (the ListView header's parent) — the page must
@@ -32,6 +33,14 @@ Item {
     // hero, so any page-root reference in a property binding would collapse
     // the header to zero height.
     implicitHeight: Math.max(240, Math.min(300, (parent ? parent.height : 600) * 0.36))
+
+    // Quiet entrance fade when the route opens (reduced-motion gated)
+    opacity: 0
+    Behavior on opacity {
+        enabled: !MichiAccessibility.reducedMotion
+        NumberAnimation { duration: MichiMotion.panel; easing.type: MichiMotion.outCubic }
+    }
+    Component.onCompleted: opacity = 1
 
     // Atmospheric depth only — never a saturated glow
     Rectangle {
@@ -120,11 +129,10 @@ Item {
             Layout.alignment: Qt.AlignVCenter
             spacing: MichiSpacing.sm
 
-            // Eyebrow: quiet uppercase type label
+            // Eyebrow: quiet uppercase type label (10-11px per spec)
             MichiText {
                 text: qsTr("PLAYLIST")
-                role: "technical"
-                technical: true
+                role: "caption"
                 color: MichiPalette.textSecondary
                 opacity: 0.62
                 font.weight: Font.DemiBold
@@ -141,7 +149,7 @@ Item {
                 elide: Text.ElideRight
             }
 
-            // Compact secondary metadata
+            // Compact secondary metadata (11-12px per spec)
             MichiText {
                 Layout.fillWidth: true
                 text: {
@@ -154,7 +162,7 @@ Item {
                         parts.push(qsTr("Empty playlist"))
                     return parts.join(" · ")
                 }
-                role: "secondary"
+                role: "technical"
                 color: MichiPalette.textSecondary
                 opacity: 0.65
             }
@@ -194,6 +202,15 @@ Item {
                     accessibleName: qsTr("Shuffle playlist")
                     enabled: root.hasTracks
                     onClicked: root.shuffleRequested()
+                }
+                MichiButton {
+                    visible: root.hasTracks
+                    text: qsTr("Add tracks")
+                    iconName: "plus"
+                    variant: "ghost"
+                    implicitHeight: 30
+                    accessibleName: qsTr("Add tracks from library")
+                    onClicked: root.addTracksRequested()
                 }
                 MichiIconButton {
                     implicitWidth: 28

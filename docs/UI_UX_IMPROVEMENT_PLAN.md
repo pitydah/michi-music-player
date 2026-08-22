@@ -185,6 +185,25 @@ Sidebar / global top bar / NowPlayingBar untouched):
   layout); new `test_m9_r2_4_playlist_editorial.py` (9 tests) +
   2 bridge tests for play-from-index
 
+## Playlist spec-compliance lot (M9-R2.5, done)
+
+Audit against the editorial-playlist spec closed the remaining gaps:
+
+- **M6 typography**: new `micro` role (10px, tracking 0.35, tnum) in
+  MichiTypography/MichiText; eyebrow → caption (11px), hero metadata and
+  row artist/album → technical (12px), column header → micro (10px) —
+  spec sizes without hardcoding
+- **M1** column header labels always visible; only the sticky backplane
+  fades in with scroll progress (short playlists now show column titles)
+- **M2** FORMAT column >1200px (qualityLabel, header + row)
+- **M3** "Add tracks" ghost action in the hero (with tracks) → Library
+- **M4** heart/favorite per row (hover-reveal, favoritePaths state,
+  toggle_favorite)
+- **M5** pressed state on rows (surfacePressed)
+- **M8** hero entrance fade (panel, reduced-motion gated)
+- D5 fixed: row context buttons 28 → 32px (spec 32-36)
+- 9 new structural tests (18 total in test_m9_r2_4)
+
 ## Out of scope (do not touch)
 
 - Now Playing surface: `views/NowPlayingView.qml`, `media/ArtworkFocusMode.qml`,
