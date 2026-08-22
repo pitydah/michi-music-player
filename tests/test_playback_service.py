@@ -413,6 +413,9 @@ class TestCommandIntentAndLifecycleGuard:
     def test_play_failure_inside_load_and_play_restores_state(
         self, playback_service, fake_audio, monkeypatch
     ):
+        # M11.3C-R6.2: un fallo de play() tras un load(B) EXITOSO NO
+        # restaura la aceptación de A (el backend ya cruzó load(B)): la
+        # identidad lógica A se conserva, la autoridad backend no.
         self._play_a(playback_service, fake_audio)
 
         def failing_play():
@@ -423,9 +426,10 @@ class TestCommandIntentAndLifecycleGuard:
             playback_service.load_and_play(Path("/tmp/b.mp3"))
         fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
         assert playback_service.state.file_path == Path("/tmp/a.mp3")
-        assert playback_service.state.status == PlaybackStatus.PLAYING
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        assert playback_service._accepted is False
         fake_audio.trigger_playback_state(PlaybackStatus.PAUSED)
-        assert playback_service.state.status == PlaybackStatus.PAUSED
+        assert playback_service.state.status == PlaybackStatus.STOPPED
 
     def test_play_failure_from_false_intent_blocks_late_playing(
         self, playback_service, fake_audio, monkeypatch
@@ -1042,3 +1046,66 @@ class TestLoadDisposition:
         assert playback_service.state.file_path == Path("/m/a.flac")
         assert playback_service._pending_path is None
         assert playback_service._resume_prepared_pending is False
+
+
+class TestTwoPhaseLoadAndPlay:
+    """M11.3C-R6.2 P1-02: load_and_play separa LOAD de PLAY — un fallo de
+    play() tras un load(B) exitoso NO restaura la aceptación de A."""
+
+    def _accept_a(self, playback_service, fake_audio):
+        playback_service.load_and_play(Path("/m/a.flac"))
+        fake_audio.trigger_media_accepted(Path("/m/a.flac"))
+        assert playback_service._accepted is True
+
+    def test_play_failure_after_successful_load_does_not_restore_a(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        self._accept_a(playback_service, fake_audio)
+        # load(B) OK (normal) + play() RAISE (excepción normal del backend)
+        monkeypatch.setattr(
+            fake_audio, "play", lambda: (_ for _ in ()).throw(RuntimeError("boom"))
+        )
+        with pytest.raises(RuntimeError, match="boom"):
+            playback_service.load_and_play(Path("/m/b.flac"))
+        # A NO se restaura: el backend ya cruzó load(B)
+        assert playback_service._accepted is False
+        assert playback_service._intent is False
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        assert playback_service.state.file_path == Path("/m/a.flac")
+        assert playback_service._pending_path is None
+
+    def test_late_b_acceptance_ignored_after_play_failure(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        self._accept_a(playback_service, fake_audio)
+        monkeypatch.setattr(
+            fake_audio, "play", lambda: (_ for _ in ()).throw(RuntimeError("boom"))
+        )
+        with pytest.raises(RuntimeError):
+            playback_service.load_and_play(Path("/m/b.flac"))
+        # media_accepted(B) tardío NO puede committear B (pending terminalizado)
+        fake_audio.trigger_media_accepted(Path("/m/b.flac"))
+        assert playback_service.state.file_path == Path("/m/a.flac")
+        assert playback_service._accepted is False
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+    def test_play_recovers_a_after_play_failure(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        self._accept_a(playback_service, fake_audio)
+        load_calls = []
+
+        def failing_play():
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr(fake_audio, "play", failing_play)
+        monkeypatch.setattr(fake_audio, "load", lambda p: load_calls.append(p))
+        with pytest.raises(RuntimeError):
+            playback_service.load_and_play(Path("/m/b.flac"))
+        # play() recarga A por el camino canónico (load_and_play)
+        monkeypatch.setattr(fake_audio, "play", lambda: None)
+        playback_service.play()
+        assert load_calls[-1] == Path("/m/a.flac")  # load(A) pedido de nuevo
+        fake_audio.trigger_media_accepted(Path("/m/a.flac"))
+        assert playback_service._accepted is True
+        assert playback_service.state.file_path == Path("/m/a.flac")

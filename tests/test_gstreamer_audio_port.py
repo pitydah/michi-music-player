@@ -209,6 +209,8 @@ class FakeBindings:
             self.null_request_count += 1
         if state == _FakeState.PAUSED:
             self._raise_if_arm_stage("set_state_paused")
+        if state == _FakeState.PLAYING:
+            self._raise_if_arm_stage("set_state_playing")
         if self.fail_next_states:
             expected = self.fail_next_states.pop(0)
             if state == expected:
@@ -2263,6 +2265,51 @@ class TestGStreamerPlaybackDisposition:
         assert svc._accepted is True
         port.close()
 
+    def test_play_phase_failure_converges_playback(self, qapp):
+        """M11.3C-R6.2 P1-02 full-stack: load(B) OK + play(B) raise →
+        sin aceptación falsa de A, sin late-commit de B, play() recarga A."""
+        from michi.application.playback_service import PlaybackService
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+        # A aceptada y PLAYING
+        svc.load_and_play(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        assert svc._accepted is True
+        # B: load OK (armado, preroll OK) + request PLAYING RAISE
+        bindings.arm_exception_stage = "set_state_playing"
+        bindings.arm_exception = RuntimeError("synthetic play failure")
+        with pytest.raises(RuntimeError, match="play failure"):
+            svc.load_and_play(Path("/m/b.flac"))
+        # PlaybackService: identidad lógica A, sin autoridad backend
+        assert svc.state.file_path == Path("/m/a.flac")
+        assert svc._accepted is False
+        assert svc._intent is False
+        assert svc.state.status == PlaybackStatus.STOPPED
+        assert svc._pending_path is None
+        # late media_accepted(B) → ignorado (B nunca committea)
+        bindings.arm_exception_stage = None
+        pipeline_b = bindings.pipelines[-1]
+        m3, g3 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_b)
+        _deliver(port, m3, g3)
+        assert svc.state.file_path == Path("/m/a.flac")
+        assert svc._accepted is False
+        # play() recarga A por el camino canónico → PLAYING
+        svc.play()
+        assert port._pending_path == Path("/m/a.flac")
+        pipeline_a2 = bindings.pipelines[-1]
+        m4, g4 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a2)
+        _deliver(port, m4, g4)
+        assert svc._accepted is True
+        assert svc.state.file_path == Path("/m/a.flac")
+        port.close()
+
 
 @pytest.mark.gstreamer_runtime
 class TestRealRuntimeSmoke:
@@ -2438,14 +2485,12 @@ class TestRealRuntimeSmoke:
         assert port._bus is None
 
     def test_real_stop_play_replay(self, qapp, tmp_path):
-        """M11.3C-R6.1: gate REAL stop→play — la fuente aceptada sobrevive
-        al stop y reproduce de nuevo (mismo pipeline, sin reload).
+        """M11.3C-R6.2 P1-01: gate REAL de autoridad de estado — los
+        callbacks PRODUCTIVOS del AudioPort deben entregar
 
-        Verifica la verdad del RUNTIME real: en este entorno el playbin3 +
-        fakesink emite un único STATE_CHANGED top-level (el bus no entrega
-        PLAYING observable), así que el gate observa el estado REAL del
-        pipeline (get_state) más el accept del adapter y los comandos sin
-        break de generación/bus."""
+            PLAYING → STOPPED → PLAYING
+
+        (nunca solo pipeline.get_state(); get_state queda como diagnóstico)."""
         try:
             import gi  # noqa: PLC0415
 
@@ -2458,6 +2503,7 @@ class TestRealRuntimeSmoke:
 
         import time
 
+        from michi.domain.playback import PlaybackStatus
         from michi.infrastructure.audio_engines.gstreamer import (
             GStreamerAudioPort,
             GStreamerBindings,
@@ -2494,7 +2540,9 @@ class TestRealRuntimeSmoke:
 
         port = GStreamerAudioPort(bindings)
         accepted = []
+        states = []
         port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
 
         def wait_for(predicate, what):
             deadline = time.monotonic() + 3.0
@@ -2510,28 +2558,36 @@ class TestRealRuntimeSmoke:
         pipeline = port._pipeline
         assert pipeline is not None
         assert len(accepted) == 1
-        # primer play → el pipeline REAL llega a PLAYING
+        # primer play → callback PRODUCTIVO PLAYING (no solo get_state)
         port.play()
-        assert wait_for(
-            lambda: pipeline.get_state(0).state == Gst.State.PLAYING, "PLAYING"
-        ), f"no real PLAYING (state={pipeline.get_state(0).state})"
-        assert port._pending_play is True
-        # stop → NULL real, fuente retenida (mismo pipeline, misma generación)
+        assert wait_for(lambda: PlaybackStatus.PLAYING in states, "callback PLAYING"), (
+            f"no productive PLAYING callback (states={states}, "
+            f"pipeline={pipeline.get_state(0).state})"
+        )
+        # stop → callback/estado canónico STOPPED, fuente retenida
         generation_before = port._generation
         port.stop()
-        assert wait_for(
-            lambda: pipeline.get_state(0).state == Gst.State.NULL, "NULL"
-        ), f"no real NULL (state={pipeline.get_state(0).state})"
+        assert wait_for(lambda: PlaybackStatus.STOPPED in states, "callback STOPPED"), (
+            f"no canonical STOPPED (states={states}, "
+            f"pipeline={pipeline.get_state(0).state})"
+        )
         assert port._current_path == wav  # fuente retenida
         assert port._pipeline is pipeline  # mismo pipeline
         assert port._generation == generation_before  # generación intacta
-        # segundo play → PLAYING otra vez (replay sin reload)
+        # segundo play → callback PRODUCTIVO PLAYING otra vez (replay)
         port.play()
         assert wait_for(
-            lambda: pipeline.get_state(0).state == Gst.State.PLAYING, "rePLAYING"
-        ), f"no real re-PLAYING (state={pipeline.get_state(0).state})"
-        assert port._pending_play is True
+            lambda: states.count(PlaybackStatus.PLAYING) >= 2, "callback rePLAYING"
+        ), (
+            f"no second productive PLAYING (states={states}, "
+            f"pipeline={pipeline.get_state(0).state})"
+        )
         assert len(accepted) == 1  # sin segundo media_accepted
+        # la secuencia productiva completa es PLAYING → STOPPED → PLAYING
+        playing = [i for i, s in enumerate(states) if s == PlaybackStatus.PLAYING]
+        stopped = [i for i, s in enumerate(states) if s == PlaybackStatus.STOPPED]
+        assert len(playing) == 2 and len(stopped) == 1
+        assert playing[0] < stopped[0] < playing[1]
         port.close()
         assert port._pipeline is None
         assert port._pump is None
