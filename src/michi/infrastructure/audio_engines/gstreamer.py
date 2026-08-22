@@ -65,8 +65,12 @@ class GStreamerBindings:
 
     def playbin3_available(self) -> bool:
         """playbin3 factory exists in the installed runtime."""
+        return self.element_factory_find("playbin3") is not None
+
+    def element_factory_find(self, name):
+        """ElementFactory.find del runtime real (None si la factory falta)."""
         self.ensure_loaded()
-        return self._gst.ElementFactory.find("playbin3") is not None
+        return self._gst.ElementFactory.find(name)
 
     # ------------------------------------------------------------------
     # pipeline / bus surface (objects are opaque; duck-typed)
@@ -103,11 +107,32 @@ class GStreamerBindings:
     def pop_thread_default(self, context):
         context.pop_thread_default()
 
-    def create_bus_source(self, bus, callback):
-        """GSource del bus attachado EXPLÍCITAMENTE al contexto custom."""
-        source = bus.create_watch()
-        source.set_callback(callback, None, None)
-        return source
+    def create_bus_source(self, bus, callback, context=None) -> int:
+        """Bus watch canónico attachado al context indicado.
+
+        M11.3C-R3: bus.create_watch()+source.set_callback() NUNCA entrega
+        el message en PyGObject — el dispatch de GstBusSource invoca la
+        GSourceFunc como (user_data) y el mensaje se pierde (llega None),
+        silenciando TODO el runtime real. bus.add_watch() registra la
+        GstBusFunc con el marshaller correcto; ejecutado con el
+        thread-default del context custom (el pump), el source queda
+        attachado a ESE context y el pump lo despacha. Devuelve el watch
+        id; quitar con remove_bus_watch()."""
+        self.ensure_loaded()
+        if context is not None:
+            context.push_thread_default()
+        try:
+            return bus.add_watch(self._glib.PRIORITY_DEFAULT, callback)
+        finally:
+            if context is not None:
+                context.pop_thread_default()
+
+    def remove_bus_watch(self, bus, watch_id) -> None:
+        from contextlib import suppress
+
+        if watch_id is not None:
+            with suppress(Exception):
+                bus.remove_watch(watch_id)
 
     def attach_source(self, source, context) -> int:
         return source.attach(context)
@@ -283,8 +308,9 @@ class GStreamerAudioPort(AudioPort):
             self._process_message(message, generation)
             return True  # keep source
 
-        self._bus_source = self._bindings.create_bus_source(bus, on_bus_message)
-        self._bindings.attach_source(self._bus_source, self._context)
+        self._bus_source = self._bindings.create_bus_source(
+            bus, on_bus_message, self._context
+        )
         self._bus_source_attached = True
         if self._timer_source is None:
 
@@ -299,7 +325,7 @@ class GStreamerAudioPort(AudioPort):
 
     def _detach_pipeline_sources(self) -> None:
         if self._bus_source is not None:
-            self._bindings.destroy_source(self._bus_source)
+            self._bindings.remove_bus_watch(self._bus, self._bus_source)
             self._bus_source = None
             self._bus_source_attached = False
         self._bus = None
@@ -322,19 +348,22 @@ class GStreamerAudioPort(AudioPort):
     def load(self, file_path: Path) -> None:
         if self._closed:
             return
+        self._bindings.ensure_loaded()
+        if not self._bindings.playbin3_available():
+            raise RuntimeError("playbin3 no disponible en el runtime GStreamer")
+        # PHASE A — REPLACE OLD (M11.3C-R3 transactional): la fuente actual
+        # sigue siendo canónica HASTA que el teardown tenga éxito. NINGUNA
+        # mutación de estado (generation/pending/current/pending_play) antes
+        # del commit point: si el pipeline A no llega a NULL, A permanece
+        # dueño (pipeline + bus observables) y NO se crea B.
+        if not self._try_stop_pipeline():
+            raise RuntimeError("pipeline anterior no pudo transicionar a NULL")
+        # PHASE B — ARM NEW: el commit point (teardown OK de A) ya pasó.
         self._generation += 1
         self._pending_path = Path(file_path)
         self._current_path = None
         self._eos_emitted = False
         self._pending_play = False
-        self._bindings.ensure_loaded()
-        if not self._bindings.playbin3_available():
-            raise RuntimeError("playbin3 no disponible en el runtime GStreamer")
-        # pipeline NUEVO por fuente; el pump sobrevive. Si el teardown del
-        # pipeline ANTERIOR falló (NULL FAILURE), abortar: nunca dos
-        # pipelines productivos simultáneos.
-        if not self._teardown_pipeline():
-            raise RuntimeError("pipeline anterior no pudo transicionar a NULL")
         self._ensure_pump()
         pipeline = self._bindings.make_playbin3()
         if pipeline is None:
@@ -351,19 +380,32 @@ class GStreamerAudioPort(AudioPort):
             self._bus_source = None
             self._bus_source_attached = False
         # preroll: ASYNC_DONE (generación vigente) = evidencia de aceptación.
-        # Fallo síncrono del preroll → failure-atomic: rechazo, teardown
-        # best-effort del pipeline fallido, port reutilizable.
+        # Fallo síncrono del preroll → failure-atomic: rechazo PRIMERO (el
+        # evento semántico primario), luego limpieza del pipeline fallido.
+        # Si el NULL de limpieza TAMBIÉN falla: retener el pipeline fallido
+        # (NUNCA fingir que la limpieza tuvo éxito) y propagar el error de
+        # limpieza al caller.
         if not self._request_state(self._bindings.STATE.PAUSED):
             reason = "GStreamer failed to enter PAUSED during preroll"
             candidate = self._pending_path
             self._pending_path = None
             self._current_path = None
             self._pending_play = False
-            self._detach_pipeline_sources()
-            self._bindings.set_state(pipeline, self._bindings.STATE.NULL)
-            self._pipeline = None
+            self._eos_emitted = False
             if candidate is not None:
                 self._bridge.sig_rej.emit(candidate, reason)
+            if self._bindings.set_state(pipeline, self._bindings.STATE.NULL):
+                self._detach_pipeline_sources()
+                self._pipeline = None
+            else:
+                # double failure: el pipeline fallido queda retenido (close()
+                # podrá limpiarlo); su bus se desacopla para que ningún
+                # mensaje suelto pueda leerse como aceptación.
+                self._detach_pipeline_sources()
+                raise RuntimeError(
+                    "pipeline fallido no pudo transicionar a NULL durante la "
+                    "limpieza de preroll"
+                )
             return
 
     def play(self) -> None:
@@ -441,16 +483,19 @@ class GStreamerAudioPort(AudioPort):
             return
         self._closed = True
         self._generation += 1  # invalidate any in-flight message
-        teardown_error = None
-        if not self._teardown_pipeline():
-            teardown_error = RuntimeError(
+        # FIRST-ERROR-WINS (M11.3C-R3): la secuencia canónica es 1) invalidar
+        # generación, 2) teardown del pipeline, 3) limpieza de sources,
+        # 4) quit del pump, 5) join. La PRIMERA falla cronológica es la
+        # autoritativa; las posteriores NUNCA reemplazan a la primaria.
+        primary_error = None
+        if not self._teardown_pipeline_terminal():
+            primary_error = RuntimeError(
                 "pipeline no pudo transicionar a NULL durante close"
             )
         # destroy timer + sources
         if self._timer_source is not None:
             self._bindings.destroy_source(self._timer_source)
             self._timer_source = None
-        pump_error = None
         if self._pump is not None:
             if self._loop is not None:
                 self._bindings.quit_loop(self._loop)
@@ -459,6 +504,10 @@ class GStreamerAudioPort(AudioPort):
                 # NUNCA perder el ownership mientras el thread viva:
                 # retener referencias y reportar (R2 P1-03)
                 pump_error = RuntimeError("GStreamer pump thread did not terminate")
+                if primary_error is None:
+                    primary_error = pump_error
+                # si ya hay un error primario (teardown), el timeout del
+                # pump queda como falla secundaria: NO lo reemplaza.
             else:
                 self._pump = None
                 self._loop = None
@@ -471,22 +520,37 @@ class GStreamerAudioPort(AudioPort):
         self._acc = []
         self._rej = []
         self._pst = []
-        if pump_error is not None:
-            raise pump_error
-        if teardown_error is not None:
-            raise teardown_error
+        if primary_error is not None:
+            raise primary_error
 
-    def _teardown_pipeline(self) -> bool:
-        """Teardown del pipeline actual. Devuelve True si el pipeline fue
-        llevado a NULL con éxito (o no había pipeline); False si el request
-        NULL devolvió FAILURE (el pipeline queda retenido para diagnóstico)."""
+    def _try_stop_pipeline(self) -> bool:
+        """Reemplazo normal (load): NULL PRIMERO, detach SOLO tras éxito.
+
+        Orden conceptual: NULL success → detach source → clear ownership.
+        Si el request NULL devuelve FAILURE, el pipeline ANTERIOR permanece
+        dueño con su bus source attachado (observabilidad intacta) y la
+        generación/current_path siguen válidos — nunca un pipeline vivo sin
+        su bus. Devuelve True si llegó a NULL (o no había pipeline)."""
+        if self._pipeline is None:
+            return True
+        if not self._bindings.set_state(self._pipeline, self._bindings.STATE.NULL):
+            return False
+        self._detach_pipeline_sources()
+        self._pipeline = None
+        return True
+
+    def _teardown_pipeline_terminal(self) -> bool:
+        """Teardown TERMINAL (close): el detach de fuentes es aceptable
+        aunque NULL luego falle (port._closed, sin callbacks futuros), pero
+        la referencia al pipeline se retiene si NULL falla. Devuelve True si
+        llegó a NULL (o no había pipeline)."""
         if self._pipeline is None:
             return True
         self._detach_pipeline_sources()
-        ok = self._bindings.set_state(self._pipeline, self._bindings.STATE.NULL)
-        if ok:
-            self._pipeline = None
-        return ok
+        if not self._bindings.set_state(self._pipeline, self._bindings.STATE.NULL):
+            return False
+        self._pipeline = None
+        return True
 
     # ------------------------------------------------------------------
     # bus message translation — TYPE-AWARE provenance (M11.3C-R1)
@@ -647,3 +711,44 @@ class GStreamerAudioPort(AudioPort):
     def unsubscribe_playback_state_changed(self, cb) -> None:
         if cb in self._pst:
             self._pst.remove(cb)
+
+
+# ---------------------------------------------------------------------------
+# Real-runtime smoke helpers (M11.3C-R3) — truthful SKIP/FAIL classification
+# ---------------------------------------------------------------------------
+
+
+def _probe_missing_runtime_dependencies(bindings) -> str | None:
+    """First mandatory test-runtime factory absent from the real runtime.
+
+    The real adapter smoke may SKIP only when a dependency is PROVEN
+    missing before running the runtime expectation: a bare timeout does not
+    prove missing plugins (M11.3C-R3 P1-04)."""
+    for name in ("playbin3", "fakesink", "typefind", "wavparse"):
+        if bindings.element_factory_find(name) is None:
+            return name
+    return None
+
+
+def _smoke_outcome(missing_dependency, accepted, rejected) -> tuple:
+    """Truthful real-smoke classification (testable seam, no real waits).
+
+    - ("skip", dep) when a dependency is proven absent;
+    - ("fail", reason) when dependencies exist but the real runtime did not
+      accept (rejected, or acceptance timeout);
+    - ("pass", None) otherwise.
+    """
+    if missing_dependency is not None:
+        return ("skip", missing_dependency)
+    if rejected:
+        return (
+            "fail",
+            f"Real GStreamerAudioPort rejected smoke WAV: {rejected[0][1]}",
+        )
+    if not accepted:
+        return (
+            "fail",
+            "Real GStreamerAudioPort did not accept the WAV within 2 seconds "
+            "despite required runtime factories being available",
+        )
+    return ("pass", None)
