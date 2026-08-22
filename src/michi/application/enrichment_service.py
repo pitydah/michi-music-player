@@ -1,4 +1,4 @@
-"""Enrichment coordination service — M6.9A/R1 async-correlation firewall.
+"""Enrichment coordination service — M6.9A/R1/R2 async-correlation firewall.
 
 The service is the ONLY application-side entry point for enrichment. It
 depends EXCLUSIVELY on the enrichment bounded contexts (identity resolver,
@@ -8,17 +8,22 @@ library ports (LibraryIndexRepository, MetadataExtractorPort,
 ArtworkCachePort, any tag writer) — reverse propagation from external
 knowledge into local metadata is structurally impossible.
 
-R1 additions:
+R1: identity authority persisted separately from knowledge; MANUAL
+mappings override automatic re-resolution and survive clear_knowledge().
 
-- Identity authority: resolved identities persist SEPARATELY from
-  downloaded knowledge; MANUAL mappings are authoritative over automatic
-  re-resolution and survive ``clear_knowledge()``.
-- ``confirm_*_identity`` / ``reset_*_identity`` touch ONLY the external
-  identity authority (never local file tags).
-- Identity changes invalidate the associated knowledge profile (a stale
-  biography can never be shown under a new identity).
-- Delivery is additionally guarded by the CURRENT persisted identity:
-  a result whose external id no longer matches the authority is STALE.
+R2:
+- Identity transitions are CENTRALIZED (_persist_*_identity_transition):
+  ANY identity change (AUTO / EMBEDDED_HINT / MANUAL) invalidates the
+  pending request and deletes the stale knowledge profile BEFORE the new
+  identity becomes durable. Same-external-id MatchMethod changes preserve
+  knowledge. Album identity compares the (release_group_id, release_id)
+  tuple.
+- reset_*_identity / clear_identities INVALIDATE pending requests first;
+  a late result can never repopulate knowledge after reset/clear.
+- Delivery requires the CURRENT persisted identity to EXIST and match —
+  a result without a current identity is STALE (defense-in-depth).
+- Album requests correlate the release EDITION (external_variant_id);
+  release-level knowledge can never commit against the wrong edition.
 """
 
 import logging
@@ -73,7 +78,7 @@ def _utc_now_iso() -> str:
 
 
 class EnrichmentService:
-    """Fail-closed enrichment coordinator (M6.9A + R1).
+    """Fail-closed enrichment coordinator (M6.9A + R1 + R2).
 
     Never uses mutable global/current entity fields: every pending
     operation is correlated through the immutable ``EnrichmentRequest``
@@ -99,6 +104,43 @@ class EnrichmentService:
         self._ledger = EnrichmentRequestLedger()
 
     # ------------------------------------------------------------------
+    # IDENTITY TRANSITIONS (R2 — centralized, atomic semantics)
+    # ------------------------------------------------------------------
+
+    def _persist_artist_identity_transition(self, new: ArtistExternalIdentity) -> None:
+        """R2: persist an artist identity with stale-knowledge semantics.
+
+        If the external id CHANGED: invalidate the pending request and
+        delete the stale knowledge profile BEFORE persisting. Same id with
+        a different MatchMethod (e.g. AUTO -> MANUAL) preserves knowledge.
+        """
+        key = new.local_artist_key
+        existing = self._identity_repository.load_artist_identity(key)
+        if (
+            existing is not None
+            and existing.external_artist_id != new.external_artist_id
+        ):
+            self._ledger.invalidate(EnrichmentEntityKind.ARTIST, key)
+            self._repository.delete_artist_profile(key)
+        self._identity_repository.save_artist_identity(new)
+
+    def _persist_album_identity_transition(self, new: AlbumExternalIdentity) -> None:
+        """R2: persist an album identity with stale-knowledge semantics.
+
+        The album identity is the TUPLE (release_group_id, release_id):
+        if EITHER changes, the pending request is invalidated and the
+        stale knowledge profile deleted BEFORE persisting."""
+        key = new.local_album_key
+        existing = self._identity_repository.load_album_identity(key)
+        if existing is not None and (
+            existing.release_group_id != new.release_group_id
+            or existing.release_id != new.release_id
+        ):
+            self._ledger.invalidate(EnrichmentEntityKind.ALBUM, key)
+            self._repository.delete_album_profile(key)
+        self._identity_repository.save_album_identity(new)
+
+    # ------------------------------------------------------------------
     # ARTIST ENRICHMENT
     # ------------------------------------------------------------------
 
@@ -111,8 +153,10 @@ class EnrichmentService:
         register the pending async request.
 
         R1: a persisted MANUAL mapping is authoritative — it short-circuits
-        automatic re-resolution. AUTO/EMBEDDED_HINT resolutions are
-        persisted into the identity authority (identity != knowledge)."""
+        automatic re-resolution.
+        R2: AUTO/EMBEDDED_HINT identity CHANGES go through the centralized
+        transition (stale knowledge deleted, pending request invalidated)
+        and the request is registered only AFTER the identity persisted."""
         local_key = evidence.local_artist_key
         existing = self._identity_repository.load_artist_identity(local_key)
         if existing is not None and existing.match_method is MatchMethod.MANUAL:
@@ -124,6 +168,7 @@ class EnrichmentService:
                 EnrichmentEntityKind.ARTIST,
                 local_key,
                 existing.external_artist_id,
+                "",
                 generation,
             )
             return EnrichmentRequestOutcome(resolution=resolution, request=request)
@@ -137,7 +182,7 @@ class EnrichmentService:
             if evidence.identity_hints.artist_ids
             else MatchMethod.AUTO
         )
-        self._identity_repository.save_artist_identity(
+        self._persist_artist_identity_transition(
             ArtistExternalIdentity(
                 local_artist_key=local_key,
                 external_artist_id=resolution.external_entity_id,
@@ -151,6 +196,7 @@ class EnrichmentService:
             EnrichmentEntityKind.ARTIST,
             local_key,
             resolution.external_entity_id,
+            "",
             generation,
         )
         return EnrichmentRequestOutcome(resolution=resolution, request=request)
@@ -159,8 +205,8 @@ class EnrichmentService:
         self, request: EnrichmentRequest, profile: ArtistKnowledgeProfile
     ) -> DeliveryVerdict:
         """Commit an artist result ONLY if it matches its immutable request
-        context AND the current identity authority. Out-of-order/stale/
-        unknown/mismatched deliveries are discarded."""
+        context AND the current identity authority. R2: a MISSING current
+        identity is STALE too (defense-in-depth on top of invalidation)."""
         if request.entity_kind is not EnrichmentEntityKind.ARTIST:
             return DeliveryVerdict.MISMATCHED
         if profile.external_artist_id != request.external_entity_id:
@@ -170,11 +216,8 @@ class EnrichmentService:
         current = self._identity_repository.load_artist_identity(
             request.local_entity_key
         )
-        if (
-            current is not None
-            and current.external_artist_id != request.external_entity_id
-        ):
-            # Identity changed while the request was in flight: discard.
+        if current is None or current.external_artist_id != request.external_entity_id:
+            # Identity missing (reset/clear) or changed: discard.
             return DeliveryVerdict.STALE
         verdict = self._ledger.deliver(request)
         if verdict is not DeliveryVerdict.COMMITTED:
@@ -184,8 +227,8 @@ class EnrichmentService:
 
     def deliver_artist_failure(self, request: EnrichmentRequest) -> DeliveryVerdict:
         """Close a pending ARTIST request after provider failure — with
-        ZERO repository writes. R1: the request kind is checked — an
-        album request is NEVER consumed here."""
+        ZERO repository writes. Kind-checked: an album request is NEVER
+        consumed here."""
         if request.entity_kind is not EnrichmentEntityKind.ARTIST:
             return DeliveryVerdict.MISMATCHED
         return self._ledger.deliver(request)
@@ -202,9 +245,9 @@ class EnrichmentService:
         """Resolve the album identity (release GROUP gate) and register
         the pending request.
 
-        R1: a persisted MANUAL album mapping is authoritative; the
-        already-resolved artist identity (when present) is injected into
-        the evidence so artist-credit compatibility constrains matching."""
+        R2: the request carries the release EDITION (external_variant_id)
+        when one exists; identity changes go through the centralized
+        (release_group_id, release_id) tuple transition."""
         local_key = evidence.local_album_key
         existing = self._identity_repository.load_album_identity(local_key)
         if existing is not None and existing.match_method is MatchMethod.MANUAL:
@@ -217,6 +260,7 @@ class EnrichmentService:
                 EnrichmentEntityKind.ALBUM,
                 local_key,
                 existing.release_group_id,
+                existing.release_id,
                 generation,
             )
             return EnrichmentRequestOutcome(resolution=resolution, request=request)
@@ -244,7 +288,7 @@ class EnrichmentService:
             if evidence.identity_hints.release_group_ids
             else MatchMethod.AUTO
         )
-        self._identity_repository.save_album_identity(
+        self._persist_album_identity_transition(
             AlbumExternalIdentity(
                 local_album_key=local_key,
                 release_group_id=resolution.release_group_id,
@@ -259,6 +303,7 @@ class EnrichmentService:
             EnrichmentEntityKind.ALBUM,
             local_key,
             resolution.release_group_id,
+            resolution.release_id,
             generation,
         )
         return EnrichmentRequestOutcome(resolution=resolution, request=request)
@@ -267,10 +312,16 @@ class EnrichmentService:
         self, request: EnrichmentRequest, profile: AlbumKnowledgeProfile
     ) -> DeliveryVerdict:
         """Commit an album result ONLY if it matches its immutable request
-        context AND the current identity authority."""
+        context AND the current identity authority.
+
+        R2 RELEASE-EDITION CORRELATION: the profile's release_id must
+        equal the request's release variant exactly — release-level
+        knowledge can never commit against the wrong edition."""
         if request.entity_kind is not EnrichmentEntityKind.ALBUM:
             return DeliveryVerdict.MISMATCHED
         if profile.release_group_id != request.external_entity_id:
+            return DeliveryVerdict.MISMATCHED
+        if profile.release_id != request.external_variant_id:
             return DeliveryVerdict.MISMATCHED
         if profile.local_album_key != request.local_entity_key:
             return DeliveryVerdict.MISMATCHED
@@ -278,8 +329,9 @@ class EnrichmentService:
             request.local_entity_key
         )
         if (
-            current is not None
-            and current.release_group_id != request.external_entity_id
+            current is None
+            or current.release_group_id != request.external_entity_id
+            or current.release_id != request.external_variant_id
         ):
             return DeliveryVerdict.STALE
         verdict = self._ledger.deliver(request)
@@ -290,27 +342,23 @@ class EnrichmentService:
 
     def deliver_album_failure(self, request: EnrichmentRequest) -> DeliveryVerdict:
         """Close a pending ALBUM request after provider failure — ZERO
-        repository writes. R1: kind-checked (never consumes an artist
+        repository writes. Kind-checked (never consumes an artist
         request)."""
         if request.entity_kind is not EnrichmentEntityKind.ALBUM:
             return DeliveryVerdict.MISMATCHED
         return self._ledger.deliver(request)
 
     # ------------------------------------------------------------------
-    # MANUAL IDENTITY AUTHORITY (R1)
+    # MANUAL IDENTITY AUTHORITY (R1 + R2 transitions)
     # ------------------------------------------------------------------
 
     def confirm_artist_identity(
         self, local_artist_key: str, external_artist_id: str
     ) -> ArtistExternalIdentity:
-        """Explicit user confirmation: persist a MANUAL mapping.
-
-        If the mapping CHANGES the external id, the associated knowledge
-        profile is deleted — a stale biography/photo can never be shown
-        under the new identity. Local file tags are NEVER touched."""
-        previous = self._identity_repository.load_artist_identity(local_artist_key)
-        if previous is not None and previous.external_artist_id != external_artist_id:
-            self._repository.delete_artist_profile(local_artist_key)
+        """Explicit user confirmation: persist a MANUAL mapping through the
+        centralized transition (an identity CHANGE invalidates pending
+        requests and deletes stale knowledge; a same-id method change does
+        not). Local file tags are NEVER touched."""
         identity = ArtistExternalIdentity(
             local_artist_key=local_artist_key,
             external_artist_id=external_artist_id,
@@ -319,13 +367,14 @@ class EnrichmentService:
             manually_confirmed=True,
             resolved_at=_utc_now_iso(),
         )
-        self._identity_repository.save_artist_identity(identity)
+        self._persist_artist_identity_transition(identity)
         return identity
 
     def reset_artist_identity(self, local_artist_key: str) -> None:
-        """Remove the artist identity mapping AND its associated knowledge
-        (R1 contract: resetting identity clears knowledge for that entity
-        so nothing displays under an unresolved identity)."""
+        """R2 order: invalidate the pending request FIRST (runtime
+        safety), then delete the durable identity, then the associated
+        knowledge. A late result can never commit after reset."""
+        self._ledger.invalidate(EnrichmentEntityKind.ARTIST, local_artist_key)
         self._identity_repository.delete_artist_identity(local_artist_key)
         self._repository.delete_artist_profile(local_artist_key)
 
@@ -335,11 +384,9 @@ class EnrichmentService:
         release_group_id: str,
         release_id: str = "",
     ) -> AlbumExternalIdentity:
-        """Explicit user confirmation for an album (release group, and
-        optionally one specific release edition)."""
-        previous = self._identity_repository.load_album_identity(local_album_key)
-        if previous is not None and previous.release_group_id != release_group_id:
-            self._repository.delete_album_profile(local_album_key)
+        """Explicit user confirmation for an album (release group and
+        optionally one specific release edition), via the centralized
+        (release_group_id, release_id) tuple transition."""
         identity = AlbumExternalIdentity(
             local_album_key=local_album_key,
             release_group_id=release_group_id,
@@ -349,16 +396,18 @@ class EnrichmentService:
             manually_confirmed=True,
             resolved_at=_utc_now_iso(),
         )
-        self._identity_repository.save_album_identity(identity)
+        self._persist_album_identity_transition(identity)
         return identity
 
     def reset_album_identity(self, local_album_key: str) -> None:
-        """Remove the album identity mapping AND its associated knowledge."""
+        """R2: invalidate the pending request FIRST, then delete identity
+        and knowledge."""
+        self._ledger.invalidate(EnrichmentEntityKind.ALBUM, local_album_key)
         self._identity_repository.delete_album_identity(local_album_key)
         self._repository.delete_album_profile(local_album_key)
 
     # ------------------------------------------------------------------
-    # CLEAR SEMANTICS (R1)
+    # CLEAR SEMANTICS (R1 + R2)
     # ------------------------------------------------------------------
 
     def clear_knowledge(self) -> None:
@@ -367,9 +416,45 @@ class EnrichmentService:
         self._repository.clear_knowledge()
 
     def clear_identities(self) -> None:
-        """Delete the whole identity authority (explicit; never called by
-        knowledge clearing)."""
+        """R2 safest public contract: invalidate ALL pending requests,
+        clear the identity authority, clear active knowledge. No old
+        request can repopulate anything after this call."""
+        self._ledger.invalidate_all()
         self._identity_repository.clear_identities()
+        self._repository.clear_knowledge()
+
+    # ------------------------------------------------------------------
+    # KNOWLEDGE READ AUTHORITY (R2 — no orphan knowledge presentation)
+    # ------------------------------------------------------------------
+
+    def get_artist_knowledge(
+        self, local_artist_key: str
+    ) -> ArtistKnowledgeProfile | None:
+        """Knowledge is valid ONLY under the CURRENT resolved identity:
+        a profile whose external id differs (or whose identity is missing)
+        is never returned — stale rows are invisible to presentation."""
+        identity = self._identity_repository.load_artist_identity(local_artist_key)
+        if identity is None:
+            return None
+        profile = self._repository.load_artist_profile(local_artist_key)
+        if profile is None or profile.external_artist_id != identity.external_artist_id:
+            return None
+        return profile
+
+    def get_album_knowledge(self, local_album_key: str) -> AlbumKnowledgeProfile | None:
+        """Album knowledge is valid ONLY when both the release GROUP and
+        the release EDITION match the current identity."""
+        identity = self._identity_repository.load_album_identity(local_album_key)
+        if identity is None:
+            return None
+        profile = self._repository.load_album_profile(local_album_key)
+        if profile is None:
+            return None
+        if profile.release_group_id != identity.release_group_id:
+            return None
+        if profile.release_id != identity.release_id:
+            return None
+        return profile
 
     # ------------------------------------------------------------------
 
@@ -382,6 +467,7 @@ class EnrichmentService:
         entity_kind: EnrichmentEntityKind,
         local_entity_key: str,
         external_entity_id: str,
+        external_variant_id: str,
         generation: int,
     ) -> EnrichmentRequest:
         request = EnrichmentRequest(
@@ -389,6 +475,7 @@ class EnrichmentService:
             entity_kind=entity_kind,
             local_entity_key=local_entity_key,
             external_entity_id=external_entity_id,
+            external_variant_id=external_variant_id,
             generation=generation,
         )
         self._ledger.register(request)

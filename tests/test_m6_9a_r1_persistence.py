@@ -295,7 +295,7 @@ class TestManualIdentityAuthority:
         assert identity_repo.load_artist_identity("artist a") is not None
         assert identity_repo.load_album_identity("album a") is not None
 
-    def test_clear_identities_removes_mappings_only(self, tmp_path):
+    def test_clear_identities_clears_mappings_and_knowledge(self, tmp_path):
         db_path = tmp_path / "enrichment.db"
         repo = SqliteEnrichmentRepository(db_path)
         identity_repo = SqliteEnrichmentRepository(db_path)
@@ -314,9 +314,11 @@ class TestManualIdentityAuthority:
             outcome.request,
             service._artist_provider.fetch_profile("artist a", "mb-manual"),
         )
+        # R2 contract: clear_identities = invalidate requests + clear
+        # identity authority + clear active knowledge (no orphan rows).
         service.clear_identities()
         assert identity_repo.load_artist_identity("artist a") is None
-        assert repo.load_artist_profile("artist a") is not None
+        assert repo.load_artist_profile("artist a") is None
 
 
 class TestMatchMethodProvenance:

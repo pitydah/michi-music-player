@@ -194,17 +194,21 @@ class TestPermutationDeterminism:
             ReleaseGroupCandidate(
                 release_group_id="rg-a",
                 title="Greatest Hits",
+                artist_credit_names=("Artist A",),
                 first_release_year=1980,
             ),
             ReleaseGroupCandidate(
                 release_group_id="rg-b",
                 title="Greatest Hits",
+                artist_credit_names=("Artist B",),
                 first_release_year=1990,
             ),
         ]
+        # R2: the ARTIST gate selects rg-a; year only corroborates.
         evidence = AlbumIdentityEvidence(
             local_album_key="album-a",
             local_album_title="Greatest Hits",
+            local_album_artist_name="Artist A",
             local_year=1980,
         )
         expected = resolve_album_identity(candidates, [], evidence)
