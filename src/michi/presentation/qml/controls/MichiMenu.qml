@@ -19,8 +19,8 @@ Menu {
         }
         background: Rectangle {
             radius: MichiRadius.sm
-            color: menuItem.highlighted ? MichiSemanticColors.surfaceSelected : "transparent"
+            color: menuItem.highlighted ? MichiSemanticColors.surfaceHover : "transparent"
         }
     }
-    background: MichiGlassSurface { elevation: "elevated"; contentPadding: 0 }
+    background: MichiGlassSurface { elevation: "elevated"; contentPadding: 0; radius: MichiRadius.md }
 }

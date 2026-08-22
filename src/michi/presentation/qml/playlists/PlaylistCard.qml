@@ -27,8 +27,23 @@ Item {
 
     implicitHeight: 220
     implicitWidth: 200
+    focus: false
+    activeFocusOnTab: true
     Accessible.role: Accessible.Button
     Accessible.name: playlistName + ", " + trackCount + " tracks"
+
+    Keys.onReturnPressed: {
+        MichiAccessibility.noteKeyboard()
+        root.openRequested()
+    }
+    Keys.onEnterPressed: {
+        MichiAccessibility.noteKeyboard()
+        root.openRequested()
+    }
+    Keys.onSpacePressed: {
+        MichiAccessibility.noteKeyboard()
+        root.openRequested()
+    }
 
     function formatTime(ms) {
         if (!ms || ms <= 0) return ""
@@ -38,13 +53,24 @@ Item {
         return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
     }
 
+    HoverHandler { id: hoverHandler }
+    TapHandler {
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        onTapped: function(eventPoint, button) {
+            if (button === Qt.RightButton) {
+                contextMenu.popup()
+            } else {
+                root.openRequested()
+            }
+        }
+    }
+
     Rectangle {
         anchors.fill: parent
         radius: MichiRadius.lg
-        color: rootArea.hovered
+        color: hoverHandler.hovered
             ? MichiSemanticColors.surfaceHover : MichiSemanticColors.contentSurface
-        border.width: rootArea.pressed ? 1 : 0
-        border.color: MichiSemanticColors.borderSubtle
+        border.width: 0
         Behavior on color {
             enabled: !MichiAccessibility.reducedMotion
             ColorAnimation { duration: MichiMotion.micro }
@@ -69,8 +95,8 @@ Item {
             text: root.playlistName
             role: "cardTitle"
             elide: Text.ElideRight
+            font.weight: Font.DemiBold
             Layout.fillWidth: true
-            color: MichiPalette.textPrimary
         }
 
         RowLayout {
@@ -96,28 +122,13 @@ Item {
         }
     }
 
-    MouseArea {
-        id: rootArea
-        anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
-        onClicked: mouse => {
-            if (mouse.button === Qt.RightButton) {
-                contextMenu.popup()
-            } else {
-                root.openRequested()
-            }
-        }
-    }
-
     // Hover quick actions (desktop quietness: only visible on card hover)
     RowLayout {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.margins: MichiSpacing.sm
         spacing: MichiSpacing.xs
-        visible: rootArea.hovered
+        visible: hoverHandler.hovered
 
         MichiIconButton {
             iconName: "play"

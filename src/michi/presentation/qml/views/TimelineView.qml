@@ -45,27 +45,27 @@ ListView {
         width: MichiSpacing.sm
     }
 
-    section.delegate: Rectangle {
+    section.delegate: Item {
         required property string section
         width: albumTimeline.width
-        height: 44
+        height: 48
         z: 4
-        color: MichiSemanticColors.controlSurfaceStrong
-        border.width: 1
-        border.color: MichiSemanticColors.borderSubtle
-        radius: MichiRadius.md
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: MichiSpacing.lg
+            anchors.leftMargin: MichiSpacing.md
             anchors.rightMargin: MichiSpacing.lg
             spacing: MichiSpacing.md
+
             Rectangle {
-                Layout.preferredWidth: MichiSpacing.sm
-                Layout.preferredHeight: MichiSpacing.sm
-                radius: width / 2
+                Layout.preferredWidth: 12
+                Layout.preferredHeight: 12
+                radius: 6
                 color: MichiPalette.auroraBlue
+                border.width: 2
+                border.color: MichiPalette.obsidian
             }
+
             MichiText {
                 text: {
                     if (albumTimeline.groupByDecade) {
@@ -78,8 +78,15 @@ ListView {
                 }
                 role: "section"
                 font.weight: Font.Bold
+                color: MichiPalette.textPrimary
             }
-            Item { Layout.fillWidth: true }
+
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: MichiSemanticColors.borderSubtle
+            }
+
             MichiText {
                 text: albumTimeline.groupByDecade ? "DECADE" : "YEAR"
                 role: "technical"

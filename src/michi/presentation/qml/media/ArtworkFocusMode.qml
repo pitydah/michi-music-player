@@ -13,13 +13,13 @@ ColumnLayout {
 
     Artwork {
         Layout.alignment: Qt.AlignHCenter
-        Layout.preferredWidth: Math.min(root.immersive ? 520 : 400,
-                                        Math.max(root.immersive ? 280 : 220,
-                                                 root.width * (root.immersive ? .52 : .40)))
+        Layout.preferredWidth: Math.min(root.immersive ? 500 : 420,
+                                        Math.max(280, root.width * (root.immersive ? 0.50 : 0.42)))
         Layout.preferredHeight: Layout.preferredWidth
         sourcePath: playback.artworkPath
         fallbackText: playback.title
         requestedSize: Math.round(width * Screen.devicePixelRatio)
+        radius: MichiRadius.lg
     }
 
     ColumnLayout {

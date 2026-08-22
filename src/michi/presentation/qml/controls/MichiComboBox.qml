@@ -41,7 +41,7 @@ ComboBox {
         text: modelData
         highlighted: root.highlightedIndex === index
         contentItem: MichiText { text: option.text; role: "secondary"; color: option.highlighted ? MichiPalette.textPrimary : MichiPalette.textSecondary }
-        background: Rectangle { color: option.highlighted ? MichiSemanticColors.surfaceSelected : "transparent"; radius: MichiRadius.sm }
+        background: Rectangle { color: option.highlighted ? MichiSemanticColors.surfaceHover : "transparent"; radius: MichiRadius.sm }
     }
     popup: Popup {
         y: root.height + MichiSpacing.xs
@@ -54,6 +54,6 @@ ComboBox {
             model: root.popup.visible ? root.delegateModel : null
             currentIndex: root.highlightedIndex
         }
-        background: MichiGlassSurface { elevation: "elevated"; contentPadding: 0 }
+        background: MichiGlassSurface { elevation: "elevated"; contentPadding: 0; radius: MichiRadius.md }
     }
 }

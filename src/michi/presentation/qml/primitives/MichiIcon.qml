@@ -131,12 +131,18 @@ Item {
                 ctx.arc(12, 12, 4, 0, Math.PI * 2)
                 ctx.moveTo(13, 12)
                 ctx.arc(12, 12, 1, 0, Math.PI * 2)
-            } else if (root.name === "recent" || root.name === "history") {
+            } else if (root.name === "history") {
                 ctx.arc(12, 12, 7.5, -0.3, Math.PI * 1.65)
                 line(ctx, 12, 12, 12, 7.5)
-                line(ctx, 12, 12, 16, 14)
+                line(ctx, 12, 12, 15.5, 13.5)
                 line(ctx, 4.5, 4.5, 5, 9)
                 line(ctx, 4.5, 4.5, 9, 4.8)
+            } else if (root.name === "recent") {
+                ctx.arc(10.5, 12, 6.5, 0, Math.PI * 2)
+                line(ctx, 10.5, 12, 10.5, 8.5)
+                line(ctx, 10.5, 12, 13.5, 12)
+                line(ctx, 19, 6.5, 19, 11.5)
+                line(ctx, 16.5, 9, 21.5, 9)
             } else if (root.name === "playlist") {
                 line(ctx, 4, 6.5, 13.5, 6.5)
                 line(ctx, 4, 11.5, 13.5, 11.5)
@@ -179,19 +185,15 @@ Item {
                 ctx.rect(4.5, 13.5, 6, 6)
                 ctx.rect(13.5, 13.5, 6, 6)
             } else if (root.name === "view-path") {
-                ctx.rect(7.5, 4.5, 9, 15)
-                line(ctx, 3.5, 7.5, 6.5, 6.5)
-                line(ctx, 3.5, 7.5, 3.5, 16.5)
-                line(ctx, 3.5, 16.5, 6.5, 17.5)
-                line(ctx, 20.5, 7.5, 17.5, 6.5)
-                line(ctx, 20.5, 7.5, 20.5, 16.5)
-                line(ctx, 20.5, 16.5, 17.5, 17.5)
+                ctx.rect(8, 5, 8, 14)
+                ctx.rect(3, 7.5, 3.5, 9)
+                ctx.rect(17.5, 7.5, 3.5, 9)
             } else if (root.name === "view-vinyl") {
-                ctx.arc(12, 12, 7.5, 0, Math.PI * 2)
-                ctx.moveTo(15, 12)
-                ctx.arc(12, 12, 3, 0, Math.PI * 2)
-                ctx.moveTo(13, 12)
-                ctx.arc(12, 12, 1, 0, Math.PI * 2)
+                ctx.rect(3.5, 4.5, 11, 15)
+                ctx.moveTo(17, 6.5)
+                ctx.arc(14.5, 12, 6.5, -0.95, 0.95)
+                ctx.moveTo(15.5, 12)
+                ctx.arc(14.5, 12, 1, 0, Math.PI * 2)
             } else if (root.name === "view-timeline") {
                 line(ctx, 7, 3.5, 7, 20.5)
                 ctx.moveTo(8.5, 6.5)

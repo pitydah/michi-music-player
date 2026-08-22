@@ -36,7 +36,13 @@ PageHeader {
 
     readonly property bool hasNonDefaultOptions: MichiThemeState.density !== "standard"
         || MichiThemeState.precisionMode
-        || (root.currentTab === "albums" && (root.albumZoom !== 1.0 || root.albumSortMode !== "title" || root.albumFilterMode !== "all"))
+        || (root.currentTab === "albums" && (
+            root.albumZoom !== 1.0
+            || root.albumSortMode !== "title"
+            || root.albumSortDescending === true
+            || root.albumFilterMode !== "all"
+            || root.albumTimelineGrouping !== "decade"
+        ))
 
     title: "Library"
     subtitle: (typeof library !== "undefined" && library && library.fileCount > 0)

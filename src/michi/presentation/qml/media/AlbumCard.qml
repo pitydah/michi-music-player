@@ -31,28 +31,26 @@ Item {
         return details.join(" · ")
     }
 
-    MichiGlassSurface {
+    Rectangle {
         anchors.fill: parent
-        elevation: "subtle"
-        contentPadding: MichiSpacing.sm
-        accented: root.selected || hover.hovered
-        accentColor: root.selected ? MichiPalette.auroraCyan : MichiPalette.auroraBlue
-        shadowed: root.selected || hover.hovered
-        textured: false
+        radius: MichiRadius.lg
+        color: tap.pressed
+            ? MichiSemanticColors.surfacePressed
+            : hover.hovered
+                ? MichiSemanticColors.surfaceHover
+                : root.selected
+                    ? MichiSemanticColors.surfaceSelected : MichiSemanticColors.contentSurface
+        border.width: root.selected ? 1 : 0
+        border.color: MichiSemanticColors.auroraCyanBorderSubtle
 
-        Rectangle {
-            anchors.fill: parent
-            color: tap.pressed ? MichiSemanticColors.surfacePressed
-                : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
-            radius: root.selected ? MichiRadius.lg : MichiRadius.md
-            Behavior on color {
-                enabled: !MichiAccessibility.reducedMotion
-                ColorAnimation { duration: MichiMotion.micro }
-            }
+        Behavior on color {
+            enabled: !MichiAccessibility.reducedMotion
+            ColorAnimation { duration: MichiMotion.micro }
         }
 
         ColumnLayout {
             anchors.fill: parent
+            anchors.margins: MichiSpacing.sm
             spacing: MichiSpacing.sm
 
             Item {
@@ -129,8 +127,8 @@ Item {
                 }
                 MichiText {
                     Layout.fillWidth: true
-                    visible: root.album && root.album.technicalSummary.length > 0
-                    text: root.album ? root.album.technicalSummary : ""
+                    visible: root.album && root.album.technicalSummary ? (root.album.technicalSummary.length > 0) : false
+                    text: root.album && root.album.technicalSummary ? root.album.technicalSummary : ""
                     role: "technical"
                     technical: true
                     color: root.selected ? MichiPalette.auroraCyan : MichiPalette.textMuted

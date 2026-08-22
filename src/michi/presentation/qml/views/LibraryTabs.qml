@@ -72,9 +72,11 @@ Item {
                 model: root.tabs
                 delegate: TabButton {
                     id: tabButton
+                    required property int index
                     required property var modelData
                     Layout.preferredHeight: tabRow.height
                     Layout.preferredWidth: tabContent.implicitWidth + MichiSpacing.md * 2
+                    Layout.leftMargin: (index === 3 || index === 4) ? MichiSpacing.md : 0
                     text: modelData.label
                     checked: root.currentTab === modelData.value
                     focusPolicy: Qt.StrongFocus
@@ -113,15 +115,13 @@ Item {
                                 ? MichiSemanticColors.surfaceSelected
                                 : tabButton.hovered
                                     ? MichiSemanticColors.surfaceHover : "transparent"
-                        border.width: tabButton.checked ? 1 : 0
-                        border.color: MichiSemanticColors.auroraCyanBorderSubtle
 
                         // Bottom Aurora indicator cue
                         Rectangle {
                             visible: tabButton.checked
                             y: parent.height - 2
                             anchors.horizontalCenter: parent.horizontalCenter
-                            width: Math.min(parent.width - 16, 32)
+                            width: Math.min(parent.width - 16, 28)
                             height: 2
                             radius: 1
                             color: MichiPalette.auroraCyan

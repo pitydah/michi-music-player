@@ -17,13 +17,13 @@ from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 
+from michi.application.audio_quality import make_track_quality_label
 from michi.application.library_service import LibraryService
 from michi.application.navigation_service import NavigationService
 from michi.application.playlist_navigation_coordinator import (
     PlaylistNavigationCoordinator,
 )
 from michi.application.playlist_service import PlaylistService
-from michi.domain.library import make_track_quality_label
 
 
 class PlaylistsBridge(QObject):
@@ -41,13 +41,14 @@ class PlaylistsBridge(QObject):
         playlist_navigation: PlaylistNavigationCoordinator | None = None,
         navigation_service: NavigationService | None = None,
         library_service: LibraryService | None = None,
+        library: LibraryService | None = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._playlist_service = playlist_service
         self._coordinator = playlist_navigation
         self._navigation = navigation_service
-        self._library = library_service
+        self._library = library_service if library_service is not None else library
         self._track_artwork_cache: dict[str, str] = {}
         self._track_duration_cache: dict[str, int] = {}
 

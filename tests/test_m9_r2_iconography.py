@@ -54,6 +54,21 @@ def test_equalizer_is_distinct_from_sliders() -> None:
     assert "6, 4, 6, 20" in branch  # Sliders rails
 
 
+def test_history_is_distinct_from_recent() -> None:
+    icon_src = _text("primitives/MichiIcon.qml")
+    assert 'root.name === "history"' in icon_src
+    assert 'root.name === "recent"' in icon_src
+    # History has counterclockwise arrow arc, recent has clock plus badge
+    assert "19, 6.5, 19, 11.5" in icon_src
+
+
+def test_view_vinyl_has_sleeve_and_disc() -> None:
+    icon_src = _text("primitives/MichiIcon.qml")
+    assert 'root.name === "view-vinyl"' in icon_src
+    # Sleeve rectangle + exposed record arc
+    assert "ctx.rect(3.5, 4.5, 11, 15)" in icon_src
+
+
 def test_ui_gallery_has_iconography_section_with_sizes() -> None:
     gallery_src = _text("dev/MichiUIGallery.qml")
     assert "Iconography" in gallery_src

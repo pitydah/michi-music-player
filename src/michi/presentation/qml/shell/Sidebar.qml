@@ -30,7 +30,7 @@ MichiGlassSurface {
     Rectangle {
         anchors.fill: parent
         radius: root.radius
-        opacity: 0.62
+        opacity: 0.20
         z: 0
         gradient: Gradient {
             orientation: Gradient.Horizontal
@@ -70,12 +70,10 @@ MichiGlassSurface {
                     Layout.leftMargin: MichiSpacing.md
                     Layout.preferredWidth: 32
                     Layout.preferredHeight: 32
-                    radius: 10
+                    radius: 8
                     color: routeItem._active
                         ? MichiSemanticColors.surfaceSelected
                         : routeItem.hovered ? MichiSemanticColors.controlSurface : "transparent"
-                    border.width: routeItem._active ? 1 : 0
-                    border.color: MichiSemanticColors.auroraCyanBorderSubtle
                     MichiIcon {
                         anchors.centerIn: parent
                         name: modelData.icon
@@ -101,8 +99,6 @@ MichiGlassSurface {
                 color: routeItem.pressed ? MichiSemanticColors.surfacePressed
                     : routeItem._active ? MichiSemanticColors.surfaceSelected
                     : routeItem.hovered || routeItem.visualFocus ? MichiSemanticColors.surfaceHover : "transparent"
-                border.width: routeItem._active ? 1 : 0
-                border.color: MichiSemanticColors.auroraBorderSubtle
                 Rectangle {
                     visible: routeItem._active
                     anchors.left: parent.left

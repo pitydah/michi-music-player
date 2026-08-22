@@ -222,9 +222,7 @@ class PlaylistService:
         self._persist()
         self._notify()
 
-    def set_custom_cover(
-        self, playlist_id: str, cover_path: Path | str
-    ) -> str | None:
+    def set_custom_cover(self, playlist_id: str, cover_path: Path | str) -> str | None:
         """Sets managed custom cover. Validates, copies to app storage and persists."""
         index = self._find_by_id(playlist_id)
         if index < 0:
@@ -272,7 +270,9 @@ class PlaylistService:
             self._queue.add(Path(path))
 
     def play_playlist_now(self, playlist_id: str) -> None:
-        """Plays this playlist immediately: clears queue, adds tracks, and starts playback at track 0."""
+        """Plays this playlist immediately: clears queue, adds tracks,
+        and starts playback at track 0.
+        """
         index = self._find_by_id(playlist_id)
         if index < 0:
             return
