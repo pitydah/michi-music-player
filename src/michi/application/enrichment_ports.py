@@ -14,6 +14,8 @@ modify the metadata extraction boundary.
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 from michi.domain.enrichment import (
@@ -25,6 +27,7 @@ from michi.domain.enrichment import (
     ArtistIdentityEvidence,
     ArtistKnowledgeProfile,
     EnrichmentAssetRecord,
+    ExternalIdentityHints,
     ReleaseEditionCandidate,
     ReleaseGroupCandidate,
 )
@@ -234,3 +237,100 @@ class EnrichmentAssetStorePort(ABC):
 
     @abstractmethod
     def clear(self) -> None: ...
+
+
+@dataclass(frozen=True)
+class HttpRequest:
+    """Immutable enrichment HTTP request (M6.9B). GET only for M6.9."""
+
+    url: str
+    method: str = "GET"
+    headers: tuple[tuple[str, str], ...] = ()
+    timeout_seconds: float = 10.0
+
+
+@dataclass(frozen=True)
+class HttpResponse:
+    """Immutable enrichment HTTP response (M6.9B)."""
+
+    status_code: int
+    headers: dict[str, str]
+    body: bytes
+    final_url: str
+
+
+class HttpTransportPort(ABC):
+    """Provider HTTP boundary (M6.9B) — enrichment-specific, never the
+    generic application ports. HTTPS only, host-allowlisted, bounded."""
+
+    @abstractmethod
+    def get(self, request: HttpRequest) -> HttpResponse: ...
+
+
+class IdentityHintExtractorPort(ABC):
+    """READ-ONLY extraction of external identity hints embedded in local
+    audio tags (M6.9D). NEVER writes tags; NEVER part of the canonical
+    MetadataExtractor."""
+
+    @abstractmethod
+    def extract_hints(self, file_path: Path) -> ExternalIdentityHints: ...
+
+
+class EnrichmentExecutorPort(ABC):
+    """Off-UI-thread execution boundary (M6.9F). All provider work runs
+    here — never on the Qt UI thread."""
+
+    @abstractmethod
+    def submit(self, work: Callable[[], None]) -> None: ...
+
+    @abstractmethod
+    def shutdown(self, wait: bool = True) -> None: ...
+
+
+class ProviderCacheEntry:
+    """Decoded provider-cache payload (M6.9B)."""
+
+    def __init__(
+        self,
+        provider: str,
+        url: str,
+        status_code: int,
+        body: bytes,
+        retrieved_at: float,
+        expires_at: float,
+        etag: str = "",
+        last_modified: str = "",
+    ) -> None:
+        self.provider = provider
+        self.url = url
+        self.status_code = status_code
+        self.body = body
+        self.retrieved_at = retrieved_at
+        self.expires_at = expires_at
+        self.etag = etag
+        self.last_modified = last_modified
+
+
+class ProviderCachePort(ABC):
+    """Provider-response cache (M6.9B) — SEPARATE storage authority,
+    never enrichment.db (schema 3 stays frozen)."""
+
+    @abstractmethod
+    def get(self, provider: str, url: str) -> ProviderCacheEntry | None: ...
+
+    @abstractmethod
+    def get_stale(self, provider: str, url: str) -> ProviderCacheEntry | None: ...
+
+    @abstractmethod
+    def put(
+        self,
+        provider: str,
+        url: str,
+        response: HttpResponse,
+        ttl_seconds: float,
+        etag: str = "",
+        last_modified: str = "",
+    ) -> None: ...
+
+    @abstractmethod
+    def remove_expired(self, older_than_days: int = 90) -> int: ...
