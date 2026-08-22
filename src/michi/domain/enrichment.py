@@ -373,18 +373,22 @@ def resolve_album_identity(
     - without hints, the candidate release-group TITLE must match the
       local album title under canonical normalization — a matching year
       alone is NEVER sufficient (title is a required gate);
-    - R2 ARTIST GATE: title + year never identifies the artist. When the
-      artist external id is resolved, only candidates whose artist credits
-      INCLUDE it survive; otherwise the local album-artist NAME must match
-      a candidate credit name; candidates that cannot prove compatibility
-      are excluded (fail-closed). Without ANY artist information, common-
-      title duplicates stay AMBIGUOUS — year never chooses across artists;
+    - R2/R3 ARTIST GATE: title + year never identifies the artist. When
+      the artist external id is resolved, only candidates whose artist
+      credits INCLUDE it survive; otherwise the local album-artist NAME
+      must match a candidate credit name; candidates that cannot prove
+      compatibility are excluded (fail-closed).
+    - R3 NO-ARTIST GATE: WITHOUT any artist compatibility evidence,
+      automatic resolution is FORBIDDEN — even a single unique title
+      match stays AMBIGUOUS. Only an explicit release-group hint may
+      bypass the artist gate;
     - ``first_release_year`` corroborates ONLY among candidates that
       already passed title + artist gates (documented same-artist
       duplicate case); it never creates a match;
     - the release EDITION (``release_id``) stays "" unless a release id
-      hint corroborated against the resolved release group exists.
-      Title/year can never infer an edition.
+      hint is CORROBORATED by an edition candidate inside the resolved
+      release group (R3); a hinted release provably belonging to another
+      group is IDENTITY_CONFLICT; title/year can never infer an edition.
     """
     rg_hints = evidence.identity_hints.release_group_ids
     release_hints = evidence.identity_hints.release_ids
@@ -443,19 +447,21 @@ def resolve_album_identity(
             ]
             if not eligible:
                 return AlbumIdentityResolution(status=IdentityResolutionStatus.NO_MATCH)
+        else:
+            # R3 NO-ARTIST GATE: automatic album resolution REQUIRES artist
+            # compatibility evidence (external id or credit name). A single
+            # unique title match is not identity proof — even one candidate
+            # stays AMBIGUOUS. Only an explicit release-group hint may
+            # bypass this gate.
+            return AlbumIdentityResolution(
+                status=IdentityResolutionStatus.AMBIGUOUS,
+                candidate_ids=tuple(sorted(c.release_group_id for c in eligible)),
+            )
         if len(eligible) > 1:
             # Duplicates remain ONLY when the artist gate verified the
-            # same artist (or no artist gate existed at all). Without ANY
-            # artist information, common-title duplicates stay AMBIGUOUS —
-            # year is NEVER cross-artist identity (R2).
-            if not resolved_artist and not local_artist_name:
-                return AlbumIdentityResolution(
-                    status=IdentityResolutionStatus.AMBIGUOUS,
-                    candidate_ids=tuple(sorted(c.release_group_id for c in eligible)),
-                )
-            # Verified same-artist duplicates: year MAY corroborate
-            # (documented R2 semantics — title + artist compatibility
-            # gates already established identity).
+            # same artist. Year MAY corroborate (documented R2 semantics —
+            # title + artist compatibility gates already established
+            # identity); ties stay AMBIGUOUS.
             scored: list[tuple[int, str]] = []
             for candidate in eligible:
                 year_corroboration = (
@@ -481,19 +487,34 @@ def resolve_album_identity(
     release_id = ""
     if len(release_hints) == 1:
         hint_release = release_hints[0]
+        # R3 RELEASE CORROBORATION: a Release id is edition-specific and
+        # must be correlated to the resolved Release Group.
         if not edition_candidates:
-            release_id = hint_release
+            # CASE A: no edition evidence -> never assign (a lone hint is
+            # not corroboration).
+            release_id = ""
         else:
-            corroborated = [
+            matches = [
                 edition
                 for edition in edition_candidates
                 if edition.release_id == hint_release
-                and (
-                    not release_group_id or edition.release_group_id == release_group_id
-                )
             ]
-            if corroborated:
+            if not matches:
+                # CASE D: no candidate corroborates the hinted release.
+                release_id = ""
+            elif any(
+                edition.release_group_id == release_group_id for edition in matches
+            ):
+                # CASE B: corroborated within the resolved group.
                 release_id = hint_release
+            else:
+                # CASE C: the hinted release provably belongs to a
+                # DIFFERENT group — a contradiction is never silently
+                # dropped.
+                return AlbumIdentityResolution(
+                    status=IdentityResolutionStatus.IDENTITY_CONFLICT,
+                    candidate_ids=(hint_release,),
+                )
     return AlbumIdentityResolution(
         status=IdentityResolutionStatus.RESOLVED,
         release_group_id=release_group_id,
@@ -710,12 +731,17 @@ class EnrichmentRequest:
 
 
 class DeliveryVerdict(Enum):
-    """Commit decision for a delivered async enrichment result."""
+    """Commit decision for a delivered async enrichment result.
+
+    R3: COMMITTED means the profile was ACTUALLY persisted — a failed
+    persistence write yields STORAGE_FAILED (terminal; the request is
+    consumed and never resurrected automatically)."""
 
     COMMITTED = auto()
     STALE = auto()
     UNKNOWN = auto()
     MISMATCHED = auto()
+    STORAGE_FAILED = auto()
 
 
 class EnrichmentRequestLedger:
