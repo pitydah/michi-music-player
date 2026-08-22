@@ -56,6 +56,7 @@ from michi.domain.enrichment import (
     IdentityResolutionStatus,
     IdentityStatus,
     MatchMethod,
+    dedupe_identity_ids,
     resolve_album_identity,
     resolve_artist_identity,
 )
@@ -103,6 +104,66 @@ class EnrichmentService:
         self._identity_repository = identity_repository
         self._asset_store = asset_store
         self._ledger = EnrichmentRequestLedger()
+
+    # ------------------------------------------------------------------
+    # IDENTITY AUTHORITY POLICY (R3.1 — MANUAL > EMBEDDED_HINT > AUTO)
+    # ------------------------------------------------------------------
+
+    def _revoke_artist_identity(self, local_artist_key: str) -> None:
+        """R3.1: a non-MANUAL identity is evidence-dependent. When the
+        fresh resolution no longer supports it, invalidate the pending
+        request and remove the durable identity + knowledge. MANUAL
+        authority is NEVER revoked here."""
+        self._ledger.invalidate(EnrichmentEntityKind.ARTIST, local_artist_key)
+        existing = self._identity_repository.load_artist_identity(local_artist_key)
+        if existing is None or existing.match_method is MatchMethod.MANUAL:
+            return
+        self._identity_repository.delete_artist_identity(local_artist_key)
+        self._repository.delete_artist_profile(local_artist_key)
+
+    def _revoke_album_identity(self, local_album_key: str) -> None:
+        """R3.1 album equivalent of the AUTO/EMBEDDED revocation policy."""
+        self._ledger.invalidate(EnrichmentEntityKind.ALBUM, local_album_key)
+        existing = self._identity_repository.load_album_identity(local_album_key)
+        if existing is None or existing.match_method is MatchMethod.MANUAL:
+            return
+        self._identity_repository.delete_album_identity(local_album_key)
+        self._repository.delete_album_profile(local_album_key)
+
+    def _short_circuit_artist(
+        self, existing: ArtistExternalIdentity, generation: int
+    ) -> EnrichmentRequestOutcome:
+        """Reuse a persisted identity as the request authority without
+        touching the resolver (MANUAL and hint-less EMBEDDED_HINT)."""
+        resolution = IdentityResolution(
+            status=IdentityResolutionStatus.RESOLVED,
+            external_entity_id=existing.external_artist_id,
+        )
+        request = self._register(
+            EnrichmentEntityKind.ARTIST,
+            existing.local_artist_key,
+            existing.external_artist_id,
+            "",
+            generation,
+        )
+        return EnrichmentRequestOutcome(resolution=resolution, request=request)
+
+    def _short_circuit_album(
+        self, existing: AlbumExternalIdentity, generation: int
+    ) -> EnrichmentRequestOutcome:
+        resolution = AlbumIdentityResolution(
+            status=IdentityResolutionStatus.RESOLVED,
+            release_group_id=existing.release_group_id,
+            release_id=existing.release_id,
+        )
+        request = self._register(
+            EnrichmentEntityKind.ALBUM,
+            existing.local_album_key,
+            existing.release_group_id,
+            existing.release_id,
+            generation,
+        )
+        return EnrichmentRequestOutcome(resolution=resolution, request=request)
 
     # ------------------------------------------------------------------
     # IDENTITY TRANSITIONS (R2 — centralized, atomic semantics)
@@ -153,36 +214,38 @@ class EnrichmentService:
         """Resolve the artist identity (homonym + conflict gates) and
         register the pending async request.
 
-        R1: a persisted MANUAL mapping is authoritative — it short-circuits
-        automatic re-resolution.
-        R2: AUTO/EMBEDDED_HINT identity CHANGES go through the centralized
-        transition (stale knowledge deleted, pending request invalidated)
-        and the request is registered only AFTER the identity persisted."""
+        R3.1 MATCH AUTHORITY (MANUAL > EMBEDDED_HINT > AUTO):
+        - MANUAL: sticky — short-circuits resolution entirely;
+        - EMBEDDED_HINT: a persisted embedded mapping is stronger than
+          inferred AUTO evidence — without NEW explicit same-role hints
+          it is reused directly; new explicit hints decide via the
+          normal gates (same -> retained, different -> transition,
+          multiple distinct -> IDENTITY_CONFLICT + revocation);
+        - AUTO: evidence-dependent — a fresh non-RESOLVED outcome
+          (AMBIGUOUS / IDENTITY_CONFLICT / NO_MATCH) REVOKES the old
+          AUTO identity and hides its knowledge."""
         local_key = evidence.local_artist_key
         existing = self._identity_repository.load_artist_identity(local_key)
         if existing is not None and existing.match_method is MatchMethod.MANUAL:
-            resolution = IdentityResolution(
-                status=IdentityResolutionStatus.RESOLVED,
-                external_entity_id=existing.external_artist_id,
-            )
-            request = self._register(
-                EnrichmentEntityKind.ARTIST,
-                local_key,
-                existing.external_artist_id,
-                "",
-                generation,
-            )
-            return EnrichmentRequestOutcome(resolution=resolution, request=request)
+            return self._short_circuit_artist(existing, generation)
+        current_hints = dedupe_identity_ids(evidence.identity_hints.artist_ids)
+        if (
+            existing is not None
+            and existing.match_method is MatchMethod.EMBEDDED_HINT
+            and not current_hints
+        ):
+            # Weaker AUTO evidence must never replace a persisted
+            # embedded identity: reuse it without resolving.
+            return self._short_circuit_artist(existing, generation)
 
         candidates = self._resolver.find_artist_candidates(evidence)
         resolution = resolve_artist_identity(candidates, evidence)
         if resolution.status is not IdentityResolutionStatus.RESOLVED:
+            # R3.1: evidence no longer supports the old automatic
+            # mapping — revoke it (ledger first, then durable deletion).
+            self._revoke_artist_identity(local_key)
             return EnrichmentRequestOutcome(resolution=resolution, request=None)
-        method = (
-            MatchMethod.EMBEDDED_HINT
-            if evidence.identity_hints.artist_ids
-            else MatchMethod.AUTO
-        )
+        method = MatchMethod.EMBEDDED_HINT if current_hints else MatchMethod.AUTO
         self._persist_artist_identity_transition(
             ArtistExternalIdentity(
                 local_artist_key=local_key,
@@ -254,25 +317,24 @@ class EnrichmentService:
         """Resolve the album identity (release GROUP gate) and register
         the pending request.
 
-        R2: the request carries the release EDITION (external_variant_id)
-        when one exists; identity changes go through the centralized
-        (release_group_id, release_id) tuple transition."""
+        R3.1: the same authority precedence applies — MANUAL sticky;
+        a persisted EMBEDDED_HINT release-group mapping is reused when
+        the current request carries no new explicit release-group hint;
+        AUTO mappings are revoked when fresh evidence becomes
+        AMBIGUOUS / IDENTITY_CONFLICT / NO_MATCH."""
         local_key = evidence.local_album_key
         existing = self._identity_repository.load_album_identity(local_key)
         if existing is not None and existing.match_method is MatchMethod.MANUAL:
-            resolution = AlbumIdentityResolution(
-                status=IdentityResolutionStatus.RESOLVED,
-                release_group_id=existing.release_group_id,
-                release_id=existing.release_id,
-            )
-            request = self._register(
-                EnrichmentEntityKind.ALBUM,
-                local_key,
-                existing.release_group_id,
-                existing.release_id,
-                generation,
-            )
-            return EnrichmentRequestOutcome(resolution=resolution, request=request)
+            return self._short_circuit_album(existing, generation)
+        current_rg_hints = dedupe_identity_ids(
+            evidence.identity_hints.release_group_ids
+        )
+        if (
+            existing is not None
+            and existing.match_method is MatchMethod.EMBEDDED_HINT
+            and not current_rg_hints
+        ):
+            return self._short_circuit_album(existing, generation)
 
         if not evidence.resolved_artist_external_id and evidence.local_album_artist_key:
             artist_identity = self._identity_repository.load_artist_identity(
@@ -289,14 +351,12 @@ class EnrichmentService:
             group_candidates, edition_candidates, evidence
         )
         if resolution.status is not IdentityResolutionStatus.RESOLVED:
+            self._revoke_album_identity(local_key)
             return EnrichmentRequestOutcome(resolution=resolution, request=None)
         if not resolution.release_group_id:
+            self._revoke_album_identity(local_key)
             return EnrichmentRequestOutcome(resolution=resolution, request=None)
-        method = (
-            MatchMethod.EMBEDDED_HINT
-            if evidence.identity_hints.release_group_ids
-            else MatchMethod.AUTO
-        )
+        method = MatchMethod.EMBEDDED_HINT if current_rg_hints else MatchMethod.AUTO
         self._persist_album_identity_transition(
             AlbumExternalIdentity(
                 local_album_key=local_key,

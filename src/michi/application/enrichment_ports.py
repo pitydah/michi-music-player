@@ -38,12 +38,15 @@ class EnrichmentProviderError(RuntimeError):
 
 
 class EnrichmentStorageError(RuntimeError):
-    """A durable enrichment storage write FAILED (R2).
+    """Normalized enrichment persistence/storage access failure (R2/R3).
 
-    The identity authority must never fail silently: identity saves,
-    deletes and clears raise this normalized error so the Application can
-    observe the failure. sqlite3.Error never crosses the infrastructure/
-    application boundary. The canonical library is never affected."""
+    Raised for OPERATIONAL storage failures across the enrichment
+    boundary: identity reads, identity writes, knowledge reads,
+    knowledge writes, deletes, clears and version reads. Also raised
+    for corrupt/malformed persistent IDENTITY rows (corruption must
+    never look like "no identity exists"). sqlite3.Error never crosses
+    the infrastructure/application boundary. The canonical library is
+    never affected."""
 
 
 class ExternalIdentityResolverPort(ABC):
