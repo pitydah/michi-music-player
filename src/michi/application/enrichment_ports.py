@@ -17,10 +17,14 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 
 from michi.domain.enrichment import (
+    AlbumExternalIdentity,
+    AlbumIdentityEvidence,
     AlbumKnowledgeProfile,
     ArtistCandidate,
+    ArtistExternalIdentity,
+    ArtistIdentityEvidence,
     ArtistKnowledgeProfile,
-    IdentityEvidence,
+    EnrichmentAssetRecord,
     ReleaseEditionCandidate,
     ReleaseGroupCandidate,
 )
@@ -33,26 +37,39 @@ class EnrichmentProviderError(RuntimeError):
     caller discards the request and the local library stays untouched."""
 
 
+class EnrichmentStorageError(RuntimeError):
+    """A durable enrichment storage write FAILED (R2).
+
+    The identity authority must never fail silently: identity saves,
+    deletes and clears raise this normalized error so the Application can
+    observe the failure. sqlite3.Error never crosses the infrastructure/
+    application boundary. The canonical library is never affected."""
+
+
 class ExternalIdentityResolverPort(ABC):
     """Resolves local identity evidence into external identity candidates.
 
     The resolver only FINDS candidates; the fail-closed gates
     (``resolve_artist_identity`` / ``resolve_album_identity``) live in the
-    pure domain and decide AMBIGUOUS / IDENTITY_CONFLICT / NO_MATCH."""
+    pure domain and decide AMBIGUOUS / IDENTITY_CONFLICT / NO_MATCH.
+
+    R1: entity-specific evidence — artists receive
+    ``ArtistIdentityEvidence``, albums receive ``AlbumIdentityEvidence``.
+    The two are never interchangeable."""
 
     @abstractmethod
     def find_artist_candidates(
-        self, evidence: IdentityEvidence
+        self, evidence: ArtistIdentityEvidence
     ) -> tuple[ArtistCandidate, ...]: ...
 
     @abstractmethod
     def find_release_group_candidates(
-        self, evidence: IdentityEvidence
+        self, evidence: AlbumIdentityEvidence
     ) -> tuple[ReleaseGroupCandidate, ...]: ...
 
     @abstractmethod
     def find_release_edition_candidates(
-        self, evidence: IdentityEvidence
+        self, evidence: AlbumIdentityEvidence
     ) -> tuple[ReleaseEditionCandidate, ...]: ...
 
 
@@ -89,13 +106,22 @@ class KnowledgeRepositoryPort(ABC):
     The repository owns its own storage (enrichment.db). It MUST NEVER
     touch library_index / library_meta tables and never share the
     canonical library index database semantics. Best effort: sqlite
-    errors are logged, never raised."""
+    errors are logged, never raised.
+
+    R1: knowledge != identity. This port owns ONLY downloaded knowledge.
+    Identity authority lives in ``IdentityRepositoryPort``."""
 
     @abstractmethod
     def save_artist_profile(self, profile: ArtistKnowledgeProfile) -> None: ...
 
     @abstractmethod
     def save_album_profile(self, profile: AlbumKnowledgeProfile) -> None: ...
+
+    @abstractmethod
+    def delete_artist_profile(self, local_artist_key: str) -> None: ...
+
+    @abstractmethod
+    def delete_album_profile(self, local_album_key: str) -> None: ...
 
     @abstractmethod
     def load_artist_profile(
@@ -114,10 +140,54 @@ class KnowledgeRepositoryPort(ABC):
     def load_album_profiles(self) -> tuple[AlbumKnowledgeProfile, ...]: ...
 
     @abstractmethod
-    def clear(self) -> None: ...
+    def clear_knowledge(self) -> None: ...
 
     @abstractmethod
     def version(self) -> int: ...
+
+
+class IdentityRepositoryPort(ABC):
+    """Persistence of the external identity authority (R1/R2) —
+    enrichment.db.
+
+    IDENTITY != KNOWLEDGE: resolved/manual mappings live here and survive
+    knowledge deletion. Only ``reset_*_identity`` (or
+    ``clear_identities``) removes them.
+
+    R2 TRUTHFUL PERSISTENCE: identity WRITES (save/delete/clear) raise
+    ``EnrichmentStorageError`` on failure — never silent. Reads degrade
+    to None (fail-closed presentation)."""
+
+    @abstractmethod
+    def save_artist_identity(self, identity: ArtistExternalIdentity) -> None: ...
+
+    @abstractmethod
+    def save_album_identity(self, identity: AlbumExternalIdentity) -> None: ...
+
+    @abstractmethod
+    def delete_artist_identity(self, local_artist_key: str) -> None: ...
+
+    @abstractmethod
+    def delete_album_identity(self, local_album_key: str) -> None: ...
+
+    @abstractmethod
+    def load_artist_identity(
+        self, local_artist_key: str
+    ) -> ArtistExternalIdentity | None: ...
+
+    @abstractmethod
+    def load_album_identity(
+        self, local_album_key: str
+    ) -> AlbumExternalIdentity | None: ...
+
+    @abstractmethod
+    def load_artist_identities(self) -> tuple[ArtistExternalIdentity, ...]: ...
+
+    @abstractmethod
+    def load_album_identities(self) -> tuple[AlbumExternalIdentity, ...]: ...
+
+    @abstractmethod
+    def clear_identities(self) -> None: ...
 
 
 class EnrichmentAssetStorePort(ABC):
@@ -126,14 +196,28 @@ class EnrichmentAssetStorePort(ABC):
     A THIRD artwork authority (M6.9A): LOCAL (embedded/folder) artwork and
     USER artwork keep their own stores; external downloads go HERE only.
     Must never reuse or mutate the canonical local artwork cache and never
-    write downloaded bytes into audio files."""
+    write downloaded bytes into audio files.
+
+    R1 hardening contract (before any network provider exists):
+    - size bound (one constant), image MIME allowlist, decode validation
+    - strict asset-id validation (never remote titles as paths)
+    - atomic writes (no partial visible assets), sha256 checksum
+    - provenance rides in the ``EnrichmentAssetRecord``
+    """
 
     @abstractmethod
-    def store(self, asset_id: str, data: bytes, mime_type: str) -> str | None:
-        """Persist asset bytes; returns the stored path (None on failure)."""
+    def store(
+        self, record: EnrichmentAssetRecord, data: bytes
+    ) -> EnrichmentAssetRecord | None:
+        """Validate + persist asset bytes; returns the COMPLETED record
+        (checksum / dimensions / local_path filled) or None when any
+        validation step fails — a failure never leaves a partial asset."""
 
     @abstractmethod
     def path_for(self, asset_id: str) -> Path | None: ...
+
+    @abstractmethod
+    def record_for(self, asset_id: str) -> EnrichmentAssetRecord | None: ...
 
     @abstractmethod
     def clear(self) -> None: ...
