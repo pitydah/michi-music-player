@@ -50,6 +50,20 @@ AFFECTED COMPONENTS / NON-GOALS / TEST-ACCEPTANCE GATES / REFREEZE CONDITION:
   with explicit dispose, sealed search keyboard parity, deterministic
   create/rename dialog workflows and hardened card accessibility. Final
   convergence range: b6b8311..6249cb8 (suite 1437 passed). M9 remains FROZEN.
+
+  **M9-R1J interaction & search reactivity seal (2026-08-21, 6ee9e12..7d78fab,
+  suite 1449 passed)**: Detail rename/delete route through the shared shell
+  dialogs via semantic intents (PlaylistDetailView never opens dialogs nor
+  references their ids); PlaylistsBridge now observes LibraryService
+  (symmetrically disposed) making playlist search fully reactive;
+  SearchOverlay aggregates M7 total + playlist local count
+  (combinedResultCount — playlist-only searches render and activate);
+  PlaylistCard no longer claims delegate focus. Dynamic QML interaction gates
+  added (real menu-intent execution, ReferenceError guard) — they caught a
+  real production defect: the rename_playlist QML slot was declared
+  `@Slot(str, result=bool)` (missing the second arg) so QML renames would
+  have failed at runtime; corrected to `@Slot(str, str, result=bool)`.
+  M9 remains FROZEN.
 - **M9-R2 — Audio Output UX** (trigger: M11.3/M11.4 audiophile output):
   engine selector, DAC selector, Output Profile selector, output state,
   actual format telemetry, Signal Path, DSD mode, BitPerfectState, hotplug/
