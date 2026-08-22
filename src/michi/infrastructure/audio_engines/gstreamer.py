@@ -423,7 +423,10 @@ class GStreamerAudioPort(AudioPort):
                 )
             try:
                 self._detach_pipeline_sources()
-            except RuntimeError as exc:
+            except Exception as exc:  # noqa: BLE001 — deliberate best-effort
+                # cleanup boundary: ANY normal infrastructure exception must
+                # be recorded, never allowed to replace the primary cleanup
+                # error. BaseException is NOT caught.
                 if primary_cleanup_error is None:
                     primary_cleanup_error = exc
                 # si el NULL ya falló, el error del bus queda como falla
@@ -577,7 +580,10 @@ class GStreamerAudioPort(AudioPort):
         first_error = None
         try:
             self._detach_pipeline_sources()
-        except RuntimeError as exc:
+        except Exception as exc:  # noqa: BLE001 — deliberate best-effort
+            # cleanup boundary: ANY normal infrastructure exception (TypeError,
+            # ValueError, GLib.Error, ...) must be recorded so the NULL
+            # request is still attempted. BaseException is NOT caught.
             first_error = exc  # bus watch removal failure (o watch sin bus)
         # NON-NEGOTIABLE: el request NULL se intenta aunque el detach falle
         try:
