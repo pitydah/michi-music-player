@@ -112,20 +112,37 @@ Item {
             requestedSize: Math.round(Math.max(root.width, root.height) * Screen.devicePixelRatio)
         }
 
-        // Case 6: Fallback (Empty / 0 tracks)
+        // Case 6: Fallback (Empty / 0 tracks or no embedded covers)
         Rectangle {
             anchors.fill: parent
             visible: root.customCoverPath === "" && (!root.mosaicArtworkPaths || root.mosaicArtworkPaths.length === 0)
             radius: root.radius
-            color: MichiSemanticColors.auroraPurpleSurface
+            gradient: Gradient {
+                orientation: Gradient.Vertical
+                GradientStop { position: 0; color: MichiPalette.playerSurfaceTop }
+                GradientStop { position: 1; color: MichiPalette.obsidianDeep }
+            }
             border.width: 1
-            border.color: MichiSemanticColors.auroraPurpleBorder
+            border.color: MichiSemanticColors.borderSubtle
 
+            // Large subtle initial monogram in background
+            MichiText {
+                anchors.centerIn: parent
+                text: root.fallbackText.length > 0 ? root.fallbackText.charAt(0).toUpperCase() : "P"
+                font.pixelSize: Math.round(root.width * 0.48)
+                font.weight: Font.Bold
+                color: MichiSemanticColors.innerHighlight
+                opacity: 0.25
+                visible: root.width >= 80
+            }
+
+            // Clean playlist icon in center
             MichiIcon {
                 anchors.centerIn: parent
-                width: Math.min(root.width * 0.45, 36)
+                width: Math.min(root.width * 0.36, 40)
                 height: width
                 name: "playlist"
+                strokeWidth: 1.5
                 iconColor: MichiPalette.auroraCyan
             }
         }

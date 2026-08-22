@@ -48,6 +48,8 @@ Item {
                 technical: true
                 color: MichiPalette.textMuted
                 Layout.fillWidth: true
+                Layout.preferredWidth: 340
+                Layout.minimumWidth: 180
             }
 
             MichiText {
@@ -55,7 +57,9 @@ Item {
                 role: "technical"
                 technical: true
                 color: MichiPalette.textMuted
-                Layout.preferredWidth: Math.min(220, root.width * 0.25)
+                Layout.fillWidth: true
+                Layout.preferredWidth: 260
+                Layout.minimumWidth: 140
             }
 
             MichiText {
@@ -63,7 +67,7 @@ Item {
                 role: "technical"
                 technical: true
                 color: MichiPalette.textMuted
-                Layout.preferredWidth: 60
+                Layout.preferredWidth: 64
                 horizontalAlignment: Text.AlignRight
             }
 
@@ -114,11 +118,14 @@ Item {
                         Layout.preferredWidth: 36
                         Layout.preferredHeight: 36
                         sourcePath: modelData.artworkPath || ""
+                        fallbackText: modelData.title || modelData.displayName || "T"
                         radius: MichiRadius.sm
                     }
 
                     ColumnLayout {
                         Layout.fillWidth: true
+                        Layout.preferredWidth: 340
+                        Layout.minimumWidth: 180
                         spacing: 1
                         Layout.alignment: Qt.AlignVCenter
 
@@ -141,10 +148,12 @@ Item {
                     }
 
                     MichiText {
-                        text: modelData.album
+                        text: modelData.album || "—"
                         role: "secondary"
                         elide: Text.ElideRight
-                        Layout.preferredWidth: Math.min(220, root.width * 0.25)
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 260
+                        Layout.minimumWidth: 140
                         color: MichiPalette.textSecondary
                     }
 
@@ -152,7 +161,7 @@ Item {
                         text: modelData.durationMs > 0 ? root.formatTime(modelData.durationMs) : ""
                         role: "technical"
                         technical: true
-                        Layout.preferredWidth: 60
+                        Layout.preferredWidth: 64
                         horizontalAlignment: Text.AlignRight
                         color: MichiPalette.textMuted
                     }

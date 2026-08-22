@@ -18,11 +18,21 @@ Rectangle {
         anchors.fill: parent
         color: MichiPalette.smokeRaised
         visible: !root.hasArtwork || root.failed
+        MichiIcon {
+            anchors.centerIn: parent
+            width: Math.min(parent.width * 0.5, 20)
+            height: width
+            name: "album"
+            iconColor: MichiPalette.textMuted
+            visible: root.fallbackText === "?" || root.fallbackText === ""
+        }
         MichiText {
             anchors.centerIn: parent
-            text: root.fallbackText.length > 0 ? root.fallbackText.charAt(0).toUpperCase() : "?"
-            role: "title"
+            text: root.fallbackText.length > 0 ? root.fallbackText.charAt(0).toUpperCase() : ""
+            role: root.width > 48 ? "title" : "caption"
+            font.weight: Font.DemiBold
             color: MichiPalette.textMuted
+            visible: root.fallbackText !== "?" && root.fallbackText !== ""
         }
     }
     Image {

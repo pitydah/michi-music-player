@@ -70,7 +70,9 @@ Item {
         radius: MichiRadius.lg
         color: hoverHandler.hovered
             ? MichiSemanticColors.surfaceHover : MichiSemanticColors.contentSurface
-        border.width: 0
+        border.width: 1
+        border.color: hoverHandler.hovered
+            ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
         Behavior on color {
             enabled: !MichiAccessibility.reducedMotion
             ColorAnimation { duration: MichiMotion.micro }

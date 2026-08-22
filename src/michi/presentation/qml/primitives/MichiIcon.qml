@@ -160,14 +160,11 @@ Item {
                 line(ctx, 12, 5, 12, 19)
                 line(ctx, 5, 12, 19, 12)
             } else if (root.name === "pin") {
-                line(ctx, 8, 4, 16, 4)
-                line(ctx, 9.5, 4, 9.5, 8.5)
-                line(ctx, 14.5, 4, 14.5, 8.5)
-                line(ctx, 6.5, 8.5, 17.5, 8.5)
-                line(ctx, 6.5, 8.5, 10.5, 13.5)
-                line(ctx, 17.5, 8.5, 13.5, 13.5)
-                line(ctx, 10.5, 13.5, 13.5, 13.5)
-                line(ctx, 12, 13.5, 12, 20.5)
+                line(ctx, 8, 4.5, 16, 4.5)
+                line(ctx, 9.5, 4.5, 9.5, 12)
+                line(ctx, 14.5, 4.5, 14.5, 12)
+                line(ctx, 6.5, 12, 17.5, 12)
+                line(ctx, 12, 12, 12, 19.5)
             } else if (root.name === "cat") {
                 // Minimalist Japanese feline crest / modernist geometric emblem
                 ctx.moveTo(4.5, 9)

@@ -90,7 +90,10 @@ Item {
                     color: MichiPalette.textPrimary
                 }
                 MichiText {
-                    text: (playlists.playlists ? playlists.playlists.length : 0) + " " + qsTr("playlists")
+                    text: {
+                        var count = playlists.playlists ? playlists.playlists.length : 0
+                        return count + " " + (count === 1 ? qsTr("playlist") : qsTr("playlists"))
+                    }
                     role: "technical"
                     technical: true
                     color: MichiPalette.textSecondary
