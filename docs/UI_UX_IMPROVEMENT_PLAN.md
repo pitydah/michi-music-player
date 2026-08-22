@@ -163,6 +163,26 @@ Playing strings remain untranslated (out of scope). Canon tests updated.
 - Font-scaling hardening of fixed-height rows (PlaylistCard 220, cards 240/286,
   mini-player 94, chips 24): revisit after the Now Playing redesign.
 
+## Material composition overhaul (M9-R2.3, done)
+
+Audit finding: the grain was mathematically invisible (18 sub-pixel SVG dots,
+0.28% coverage, 1.3–4.5% effective opacity) and the glass had no volume
+(sheen 2.8%, no blur). Overhauled in one commit:
+
+- **R1/R7** `MichiMaterialTexture`: procedural deterministic 128px grain
+  (mulberry32 + seed, ~260 gaussian dots, ~5% coverage, smooth AA) replaces
+  the 64px SVG asset; tile opacity 0.22 / 0.36 (was 0.09/0.16);
+  `tileSeed` per surface (14 surfaces decorrelated) via `MichiGlassSurface`
+- **R2** sheen 0.028 → 0.06, height 0.42→0.5, cap 36→56
+- **R3** specular glint (radial white 0.055/0.09) top-left — `glassGlint` tokens
+- **R4** rim highlight 0.045 → 0.075; bottom shadow 0.22 → 0.26
+- **R5** real backdrop blur: `MultiEffect` (QtQuick.Effects) over a
+  `ShaderEffectSource` of the window, gated to `glassQuality === "high"` and
+  non-subtle elevations, using the orphaned `MichiElevation` blur tokens;
+  tinted gradient layered above the blur (opacity 0.88)
+- Canon: `michi-grain.svg` removed; color tokens stay theme-owned;
+  `test_m9_r2_3_material_texture.py` (4 structural tests)
+
 ## Management notes
 
 - **Branch debt**: `antigravity/m9-r2-ui-ux-refinement` is 20 commits behind

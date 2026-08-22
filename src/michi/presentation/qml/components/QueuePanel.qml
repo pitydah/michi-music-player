@@ -29,6 +29,8 @@ MichiGlassSurface {
     signal closeRequested()
 
     elevation: "subtle"
+
+    tileSeed: 7
     accented: true
     accentColor: MichiPalette.auroraPurple
     contentPadding: MichiSpacing.lg

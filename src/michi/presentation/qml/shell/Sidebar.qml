@@ -12,6 +12,7 @@ MichiGlassSurface {
     property bool compact: false
     contentPadding: MichiSpacing.sm
     elevation: "elevated"
+    tileSeed: 1
     shadowed: true
     textured: true
     accented: true

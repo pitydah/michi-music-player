@@ -18,6 +18,7 @@ MichiGlassSurface {
         && library.scanStatus !== "CANCELLED"
         && library.scanStatus !== "FAILED"
     elevation: "subtle"
+    tileSeed: 2
     shadowed: true
     textured: true
     accented: root.scanning || ((typeof library !== "undefined" && library) && library.scanStatus === "FAILED")

@@ -21,6 +21,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.preferredHeight: artistHeroContent.implicitHeight + MichiSpacing.xl * 2
         elevation: "elevated"
+        tileSeed: 6
         contentPadding: MichiSpacing.xl
         accented: true
         accentColor: MichiPalette.auroraBlue

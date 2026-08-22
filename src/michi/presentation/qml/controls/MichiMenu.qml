@@ -44,5 +44,5 @@ Menu {
             HoverHandler { cursorShape: Qt.PointingHandCursor }
         }
     }
-    background: MichiGlassSurface { elevation: "elevated"; contentPadding: 0; radius: MichiRadius.md }
+    background: MichiGlassSurface { elevation: "elevated"; contentPadding: 0; radius: MichiRadius.md; tileSeed: 9 }
 }

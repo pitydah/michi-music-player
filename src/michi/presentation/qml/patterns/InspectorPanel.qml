@@ -10,6 +10,7 @@ MichiGlassSurface {
     property var rows: []
     signal closeRequested()
     elevation: "elevated"
+    tileSeed: 14
     accented: true
     accentColor: MichiPalette.auroraCyan
     implicitWidth: 320

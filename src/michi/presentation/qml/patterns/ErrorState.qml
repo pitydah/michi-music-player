@@ -11,6 +11,7 @@ MichiGlassSurface {
     property string actionText: qsTr("Try again")
     signal actionRequested()
     elevation: "elevated"
+    tileSeed: 13
     accented: true
     accentColor: MichiPalette.error
     implicitHeight: contentColumn.implicitHeight + MichiSpacing.xl * 2

@@ -28,7 +28,7 @@ Dialog {
             easing.type: MichiMotion.outCubic
         }
     }
-    background: MichiGlassSurface { elevation: "modal"; contentPadding: 0 }
+    background: MichiGlassSurface { elevation: "modal"; contentPadding: 0; tileSeed: 10 }
     header: Item {
         implicitHeight: dialogTitle.implicitHeight + MichiSpacing.lg * 2
         MichiText {

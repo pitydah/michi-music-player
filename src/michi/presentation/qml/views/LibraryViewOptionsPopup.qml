@@ -29,6 +29,7 @@ Popup {
 
     background: MichiGlassSurface {
         elevation: "modal"
+        tileSeed: 4
         radius: MichiRadius.lg
         shadowed: true
         textured: true
