@@ -42,7 +42,21 @@ def qapp():
 
 
 class _QmlErrors:
-    """Captures QML runtime warnings so tests can fail on real errors."""
+    """Captures QML runtime warnings so tests can fail on real errors.
+
+    Only records errors from the surfaces under test — teardown noise from
+    OTHER components (bindings re-evaluated during engine destruction)
+    cannot pollute the gates."""
+
+    WATCHED = (
+        "ContentHost.qml",
+        "PlaylistDetailView.qml",
+        "PlaylistCard.qml",
+        "PlaylistCreateDialog.qml",
+        "PlaylistTrackList.qml",
+        "PlaylistsView.qml",
+        "SearchOverlay.qml",
+    )
 
     def __init__(self):
         from PySide6.QtCore import qInstallMessageHandler
@@ -52,7 +66,8 @@ class _QmlErrors:
 
         def handler(msg_type, context, message):
             text = str(message)
-            if any(
+            file_name = str(getattr(context, "file", "") or "")
+            if any(w in file_name for w in self.WATCHED) and any(
                 token in text
                 for token in (
                     "ReferenceError",
