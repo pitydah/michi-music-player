@@ -153,6 +153,10 @@ class TestMusicBrainzArtistResolution:
             "https://musicbrainz.org/ws/2/release-group/?artist=",
             json_response({"release-groups": []}),
         )
+        transport.route(
+            "https://musicbrainz.org/ws/2/release-group/?artist=",
+            json_response({"release-groups": []}),
+        )
         resolver = self._resolver(transport)
         evidence = ArtistIdentityEvidence(
             local_artist_key="jw", local_artist_name="John Williams"
