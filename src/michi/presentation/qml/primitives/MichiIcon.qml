@@ -81,34 +81,23 @@ Item {
                 line(ctx, 18, 12, 6, 12)
                 line(ctx, 11, 6.5, 6, 12)
                 line(ctx, 11, 17.5, 6, 12)
-            } else if (root.name === "output-status") {
-                ctx.moveTo(4.5, 10)
-                ctx.lineTo(8, 10)
-                ctx.lineTo(12.5, 6)
-                ctx.lineTo(12.5, 18)
-                ctx.lineTo(8, 14)
-                ctx.lineTo(4.5, 14)
+            } else if (root.name === "output-status" || root.name === "volume" || root.name === "mute") {
+                // High-End Acoustic Transducer / Volume Horn
+                ctx.moveTo(4, 9.5)
+                ctx.lineTo(7.5, 9.5)
+                ctx.lineTo(12, 5.5)
+                ctx.lineTo(12, 18.5)
+                ctx.lineTo(7.5, 14.5)
+                ctx.lineTo(4, 14.5)
                 ctx.closePath()
-                ctx.moveTo(15.5, 9.5)
-                ctx.arc(12.5, 12, 4.5, -0.65, 0.65)
-                ctx.moveTo(18.5, 6.5)
-                ctx.arc(12.5, 12, 7.5, -0.82, 0.82)
-            } else if (root.name === "volume" || root.name === "mute") {
-                ctx.moveTo(4.5, 10)
-                ctx.lineTo(8, 10)
-                ctx.lineTo(12.5, 6)
-                ctx.lineTo(12.5, 18)
-                ctx.lineTo(8, 14)
-                ctx.lineTo(4.5, 14)
-                ctx.closePath()
-                if (root.name === "volume") {
-                    ctx.moveTo(15.5, 9.5)
-                    ctx.arc(12.5, 12, 4.5, -0.65, 0.65)
-                    ctx.moveTo(18.5, 6.5)
-                    ctx.arc(12.5, 12, 7.5, -0.82, 0.82)
+                if (root.name === "mute") {
+                    line(ctx, 15, 9, 20, 15)
+                    line(ctx, 20, 9, 15, 15)
                 } else {
-                    line(ctx, 15.5, 9, 19.5, 15)
-                    line(ctx, 19.5, 9, 15.5, 15)
+                    ctx.moveTo(15, 9)
+                    ctx.arc(12, 12, 4.5, -0.7, 0.7)
+                    ctx.moveTo(18, 6.5)
+                    ctx.arc(12, 12, 8, -0.75, 0.75)
                 }
             } else if (root.name === "search") {
                 ctx.arc(10.5, 10.5, 5.5, 0, Math.PI * 2)
@@ -233,16 +222,14 @@ Item {
                 line(ctx, 5, 14.5, 19, 14.5)
                 line(ctx, 5, 19, 19, 19)
             } else if (root.name === "queue") {
-                line(ctx, 4.5, 6.5, 17.5, 6.5)
-                line(ctx, 4.5, 11.5, 17.5, 11.5)
-                line(ctx, 4.5, 16.5, 13, 16.5)
-                ctx.moveTo(15.5, 14.5)
-                ctx.lineTo(19.5, 16.5)
-                ctx.lineTo(15.5, 18.5)
+                // Precision play queue with tier lines and play indicator
+                line(ctx, 4, 6.5, 20, 6.5)
+                line(ctx, 4, 11.5, 13, 11.5)
+                line(ctx, 4, 16.5, 11, 16.5)
+                ctx.moveTo(15.5, 11.5)
+                ctx.lineTo(20.5, 14.5)
+                ctx.lineTo(15.5, 17.5)
                 ctx.closePath()
-                ctx.fill()
-                ctx.restore()
-                return
             } else if (root.name === "shuffle") {
                 ctx.moveTo(4, 7)
                 ctx.lineTo(7.5, 7)
@@ -278,10 +265,13 @@ Item {
                 }
             } else if (root.name === "sliders" || root.name === "equalizer") {
                 if (root.name === "equalizer") {
+                    // Audiophile 4-band precision spectrum bars
                     line(ctx, 5.5, 19, 5.5, 11)
                     line(ctx, 9.5, 19, 9.5, 6)
                     line(ctx, 14.5, 19, 14.5, 13)
                     line(ctx, 18.5, 19, 18.5, 8)
+                    // Precision baseline
+                    line(ctx, 3.5, 20, 20.5, 20)
                 } else {
                     line(ctx, 6, 4, 6, 20)
                     line(ctx, 12, 4, 12, 20)
@@ -314,14 +304,14 @@ Item {
                 ctx.lineTo(10, 12.5)
                 ctx.closePath()
             } else if (root.name === "audio-output") {
-                // Hi-Fi monitor speaker and terminal radiator
-                ctx.rect(4.5, 4.5, 11, 15)
-                ctx.moveTo(12.5, 9)
-                ctx.arc(10, 9, 2.5, 0, Math.PI * 2)
-                ctx.moveTo(14, 15)
-                ctx.arc(10, 15, 4, 0, Math.PI * 2)
-                ctx.moveTo(18, 9.5)
-                ctx.arc(15, 12, 4, -0.65, 0.65)
+                // Studio Reference Monitor Speaker
+                ctx.rect(5, 3.5, 14, 17)
+                ctx.moveTo(14, 7.5)
+                ctx.arc(12, 7.5, 2, 0, Math.PI * 2)
+                ctx.moveTo(16, 14.5)
+                ctx.arc(12, 14.5, 4, 0, Math.PI * 2)
+                ctx.moveTo(13.2, 14.5)
+                ctx.arc(12, 14.5, 1.2, 0, Math.PI * 2)
             } else if (root.name === "audio-engine") {
                 // Discrete DAC microchip with pure sinusoidal waveform
                 ctx.rect(5.5, 5.5, 13, 13)
