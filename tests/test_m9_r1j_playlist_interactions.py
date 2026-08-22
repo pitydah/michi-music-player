@@ -184,6 +184,10 @@ def _load(engine, rel, errors):
     if not hasattr(engine, "_held_components"):
         engine._held_components = []
     engine._held_components.append(component)
+    # descartar el ruido del teardown PENDIENTE de tests anteriores (sus
+    # deleteLater asíncronos se procesan dentro de este test y emiten
+    # "of null" al destruir engines ajenos)
+    errors.drain()
     runtime = errors.drain()
     assert runtime == [], f"{rel}: runtime errors: {runtime}"
     return obj
@@ -545,6 +549,82 @@ class TestLazyBindingRegression:
         finally:
             errors.restore()
             engine.deleteLater()
+
+
+class TestSearchOverlayFocusLifecycle:
+    """M9-R1L: REAL open→focus→close→release sequence inside a real
+    QQuickWindow (activeFocus is only meaningful with a window)."""
+
+    def _focus_within(self, item, window):
+        """True si el activeFocusItem de la window es `item` o un descendiente."""
+        focus_item = window.activeFocusItem()
+        if focus_item is None:
+            return False
+        probe = focus_item
+        while probe is not None:
+            if probe is item:
+                return True
+            probe = probe.parentItem()
+        return False
+
+    def _window_with_overlay(self, tmp_path):
+        from PySide6.QtQuick import QQuickWindow
+
+        world = _world(tmp_path)
+        engine = _engine(world)
+        errors = _QmlErrors()
+        overlay = _load(engine, "patterns/SearchOverlay.qml", errors)
+        window = QQuickWindow()
+        window.resize(900, 700)
+        overlay.setParentItem(window.contentItem())
+        window.show()
+        _process()
+        return world, engine, errors, overlay, window
+
+    def test_search_overlay_releases_focus_after_close(self, tmp_path, qapp):
+        world, engine, errors, overlay, window = self._window_with_overlay(tmp_path)
+        try:
+            # A-D: initial closed state
+            assert overlay.property("opened") is False
+            assert overlay.property("enabled") is False
+            assert overlay.property("opacity") == 0.0
+
+            # E-F: open — the production onOpenedChanged path focuses the input
+            overlay.setProperty("opened", True)
+            _process()
+            inp = _find_item(overlay, "searchOverlayInput")
+            assert inp is not None
+            # G: the Search input becomes the active focus target through the
+            # productive route (onOpenedChanged → forceActiveFocus +
+            # forceInputFocus). MichiSearchField focuses its INNER TextField,
+            # so the focused item is a descendant of searchOverlayInput.
+            focused_inside = False
+            for _ in range(3):
+                _process()
+                if self._focus_within(inp, window):
+                    focused_inside = True
+                    break
+            assert focused_inside, "Search input no obtiene foco al abrir"
+
+            # H-I: close — the input must NOT remain the active focus target
+            overlay.setProperty("opened", False)
+            _process()
+            assert overlay.property("enabled") is False
+            assert overlay.property("opacity") == 0.0
+            assert not self._focus_within(inp, window), (
+                "Search input retiene foco tras cerrar el overlay"
+            )
+
+            runtime = errors.drain()
+            assert runtime == []
+        finally:
+            errors.restore()
+            window.deleteLater()
+            engine.deleteLater()
+            # drain the deferred teardown with the DEFAULT handler so its
+            # "of null" messages cannot leak into the next test's capture
+            for _ in range(5):
+                _process()
 
 
 class TestCardFocus:
