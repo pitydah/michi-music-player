@@ -17,6 +17,7 @@ def read(rel_path: str) -> str:
 
 # ── P0: keyboard accessibility ────────────────────────────────────────────────
 
+
 def test_global_transport_shortcuts_gated_on_focus():
     content = read("../main.qml")
     assert "enabled: !activeFocusControl" in content
@@ -57,6 +58,7 @@ def test_playlist_cover_change_is_keyboard_accessible():
 
 # ── P1: contrast ──────────────────────────────────────────────────────────────
 
+
 def _relative_luminance(hex_color: str) -> float:
     value = hex_color.lstrip("#")
     channels = [int(value[i : i + 2], 16) / 255 for i in (0, 2, 4)]
@@ -79,9 +81,7 @@ def _contrast_ratio(foreground: str, background: str) -> float:
 def test_text_muted_meets_wcag_aa_on_primary_surfaces():
     palette = read("theme/MichiPalette.qml")
     muted = next(
-        line.split('"')[1]
-        for line in palette.splitlines()
-        if "textMuted:" in line
+        line.split('"')[1] for line in palette.splitlines() if "textMuted:" in line
     )
     assert muted == "#8A90A0"
     for surface in ("#090B11", "#14171C", "#1F232A"):
@@ -91,6 +91,7 @@ def test_text_muted_meets_wcag_aa_on_primary_surfaces():
 
 
 # ── P1: empty states and library CTA ──────────────────────────────────────────
+
 
 def test_flat_views_have_empty_states():
     for rel_path, icon in [
@@ -109,7 +110,7 @@ def test_flat_views_have_empty_states():
 
 def test_empty_library_has_scan_cta():
     content = read("views/LibraryContentHost.qml")
-    assert "actionText: \"Choose Music Folder\"" in content
+    assert 'actionText: "Choose Music Folder"' in content
     assert "onActionRequested: root.scanRequested()" in content
     toolbar = read("views/LibraryToolbar.qml")
     assert "function performScan()" in toolbar
@@ -118,6 +119,7 @@ def test_empty_library_has_scan_cta():
 
 
 # ── P1: touch targets ─────────────────────────────────────────────────────────
+
 
 def test_track_row_action_buttons_at_control_medium():
     content = read("media/TrackRow.qml")
@@ -148,6 +150,7 @@ def test_flat_lists_have_scrollbars():
 
 
 # ── P2: table header consistency and click-to-sort ────────────────────────────
+
 
 def test_track_table_header_height_matches_rows():
     content = read("media/TrackTableHeader.qml")
