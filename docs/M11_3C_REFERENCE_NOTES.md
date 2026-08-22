@@ -102,3 +102,32 @@ Michi-nativos.
   worker retains its references and raises instead of being silently lost.
 - Real adapter smoke: GStreamerAudioPort with real GI (custom MainContext/
   bus GSource/fakesink) — SKIP truthful when local plugins lack WAV decode.
+
+## M11.3C-R3 final failure-atomicity seal
+
+- load() is TRANSACTIONAL (PHASE A REPLACE OLD / PHASE B ARM NEW): the old
+  pipeline stays canonical until its NULL teardown succeeds; a failed
+  replacement preserves old pipeline + bus observability + current_path +
+  generation + play intent and never creates the new pipeline (commit
+  point = successful NULL of the old pipeline, not entry into load()).
+- Preroll failure cleanup is failure-atomic: the candidate is rejected
+  FIRST (primary semantic event); NULL cleanup success releases the failed
+  pipeline; NULL cleanup failure RETAINS pipeline ownership (never pretend
+  cleanup succeeded) and raises the cleanup error to the caller — close()
+  can still clean the retained pipeline later.
+- close() is FIRST-ERROR-WINS: the chronologically first failure (pipeline
+  teardown before pump shutdown) is authoritative; a later pump timeout
+  never replaces it.
+- Real bus watch fixed: create_watch()+set_callback() silently dropped
+  every real message in PyGObject (GstBusSource dispatch calls the
+  GSourceFunc as (user_data) — the message arrived as None and was
+  discarded behind the message-None guard, silencing the whole real
+  runtime). The canonical bus.add_watch (GstBusFunc marshaller) attached to
+  the pump context via push_thread_default restores real delivery: the real
+  adapter smoke now PASSES end-to-end (real playbin3 + fakesink + WAV
+  preroll + real pump + close/join).
+- Real smoke is TRUTHFUL: SKIP only with a dependency proven absent via
+  ElementFactory preflight (named factory), FAIL on timeout/rejection when
+  all mandatory factories are present. Code-validation evidence: full suite
+  1681 passed at CODE_VALIDATED_HEAD c20360d (1 pre-existing conditional
+  skip: M11.3B Qt-runtime).

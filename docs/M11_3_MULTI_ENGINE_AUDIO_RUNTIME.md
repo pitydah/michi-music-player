@@ -1,7 +1,7 @@
 # M11.3 — Multi-Engine Audio Runtime (contract)
 
 Implementation contract for the multi-engine audio runtime. Status: **IN
-PROGRESS — M11.3A + M11.3B + M11.3C DONE / TESTED / FROZEN (+ M11.3C-R1 runtime convergence + M11.3C-R2 final runtime truth seal)** (authorized by
+PROGRESS — M11.3A + M11.3B + M11.3C DONE / TESTED / FROZEN (+ M11.3C-R1 runtime convergence + M11.3C-R2 final runtime truth seal + M11.3C-R3 final failure-atomicity seal)** (authorized by
 the 2026-08-21 product-owner realignment; foundation 2026-08-22, productive
 Qt runtime 2026-08-22, GStreamer adapter 2026-08-22). This document defines
 the M11.3 contracts and records implementation status for each subphase.
@@ -28,7 +28,7 @@ the M11.3 contracts and records implementation status for each subphase.
 | M11.3A registry | IMPLEMENTED / TESTED |
 | M11.3A AudioEngineService | IMPLEMENTED FOUNDATION — NO SWITCHING YET |
 | Qt provider | IMPLEMENTED — **PRODUCTIVE REFERENCE ENGINE (M11.3B + M11.3B-R1)**; single canonical provider (registry identity), transactional startup, backend ownership + exception-safe close |
-| GStreamer provider | **IMPLEMENTED (M11.3C + M11.3C-R1 + M11.3C-R2)** — R2: ASYNC_DONE acepta sin publicar PLAYING (estado solo por STATE_CHANGED), state requests failure-atomic (preroll/play/pause/stop/teardown), pump join-timeout retiene ownership, real adapter smoke (fakesink), probe real ejercitado por monkeypatch.  operational GStreamerAudioPort (playbin3), lazy GI runtime; R1: symbolic Gst.State semantics (no raw ints), ONE GLib MainContext/MainLoop/pump per port with explicit GSource attach (bus.create_watch + timeout_source_new), generation-aware TYPE-BASED provenance (child-element errors accepted; stale generations ignored), truthful probe (GI + Gst + playbin3 factory); availability runtime-dependent; NOT default |
+| GStreamer provider | **IMPLEMENTED (M11.3C + M11.3C-R1 + M11.3C-R2 + M11.3C-R3)** — R3: load() transactional (old pipeline canonical hasta NULL exitoso; replacement fallido preserva pipeline/bus/generation/intención y nunca crea B), preroll cleanup failure-atomic (NULL fallido retiene ownership + raise), close first-error-wins (teardown antes que pump), bus watch real via bus.add_watch (create_watch+set_callback perdía TODO mensaje real), smoke real truthful (SKIP solo con dependency probada ausente; timeout con deps = FAIL). R2: ASYNC_DONE acepta sin publicar PLAYING (estado solo por STATE_CHANGED), state requests failure-atomic (preroll/play/pause/stop/teardown), pump join-timeout retiene ownership, real adapter smoke (fakesink), probe real ejercitado por monkeypatch.  operational GStreamerAudioPort (playbin3), lazy GI runtime; R1: symbolic Gst.State semantics (no raw ints), ONE GLib MainContext/MainLoop/pump per port with explicit GSource attach (bus.create_watch + timeout_source_new), generation-aware TYPE-BASED provenance (child-element errors accepted; stale generations ignored), truthful probe (GI + Gst + playbin3 factory); availability runtime-dependent; NOT default |
 | MPD provider | PROBE ONLY — managed adapter M11.3D |
 | Engine availability runtime | foundation now — full discovery M11.3E |
 | Selection / persistence | M11.3F |
