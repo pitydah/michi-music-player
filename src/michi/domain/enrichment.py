@@ -45,8 +45,11 @@ def _normalize_identity_text(raw: str) -> str:
     return " ".join(raw.casefold().split())
 
 
-def _dedupe(values: Sequence[str]) -> tuple[str, ...]:
-    """Distinct non-empty values preserving first-seen order."""
+def dedupe_identity_ids(values: Sequence[str]) -> tuple[str, ...]:
+    """R3.1: normalize same-role identity hints — distinct non-empty
+    values preserving first-seen order. Repeated observations of the
+    SAME id ("A", "A") are one identity; distinct ids are a conflict.
+    NEVER called across roles (track artist != album artist)."""
     seen: list[str] = []
     for value in values:
         if value and value not in seen:
@@ -96,7 +99,7 @@ class ArtistIdentityHints:
     @classmethod
     def from_file_hints(cls, raw: ExternalIdentityHints) -> "ArtistIdentityHints":
         """Project ONLY the track-artist role from raw file hints."""
-        return cls(artist_ids=_dedupe(raw.musicbrainz_artist_ids))
+        return cls(artist_ids=dedupe_identity_ids(raw.musicbrainz_artist_ids))
 
 
 @dataclass(frozen=True)
@@ -123,7 +126,7 @@ class AlbumIdentityHints:
             release_ids=(
                 (raw.musicbrainz_release_id,) if raw.musicbrainz_release_id else ()
             ),
-            album_artist_ids=_dedupe(raw.musicbrainz_album_artist_ids),
+            album_artist_ids=dedupe_identity_ids(raw.musicbrainz_album_artist_ids),
         )
 
 
@@ -281,7 +284,7 @@ def resolve_artist_identity(
       title matches break by year corroboration; remaining ties stay
       AMBIGUOUS. Candidate order never influences the verdict.
     """
-    hints = evidence.identity_hints.artist_ids
+    hints = dedupe_identity_ids(evidence.identity_hints.artist_ids)
     if len(hints) > 1:
         return IdentityResolution(
             status=IdentityResolutionStatus.IDENTITY_CONFLICT,
@@ -390,8 +393,8 @@ def resolve_album_identity(
       release group (R3); a hinted release provably belonging to another
       group is IDENTITY_CONFLICT; title/year can never infer an edition.
     """
-    rg_hints = evidence.identity_hints.release_group_ids
-    release_hints = evidence.identity_hints.release_ids
+    rg_hints = dedupe_identity_ids(evidence.identity_hints.release_group_ids)
+    release_hints = dedupe_identity_ids(evidence.identity_hints.release_ids)
     if len(rg_hints) > 1:
         return AlbumIdentityResolution(
             status=IdentityResolutionStatus.IDENTITY_CONFLICT,
@@ -562,7 +565,12 @@ class ArtistExternalIdentity:
 
     R2: the manual authority is expressed EXCLUSIVELY by
     ``match_method == MatchMethod.MANUAL`` — the redundant
-    ``manually_confirmed`` boolean was removed (schema 3)."""
+    ``manually_confirmed`` boolean was removed (schema 3).
+
+    R3.1 INVARIANTS: persistent identity rows represent RESOLVED
+    mappings ONLY — AMBIGUOUS / IDENTITY_CONFLICT / NOT_FOUND are
+    resolution OUTCOMES, never persistent records. Impossible
+    constructions raise ValueError."""
 
     local_artist_key: str
     external_artist_id: str
@@ -570,13 +578,30 @@ class ArtistExternalIdentity:
     match_method: MatchMethod = MatchMethod.AUTO
     resolved_at: str = ""
 
+    def __post_init__(self) -> None:
+        if not self.local_artist_key:
+            raise ValueError("local_artist_key must not be empty")
+        if not self.external_artist_id:
+            raise ValueError("external_artist_id must not be empty")
+        if self.status is not IdentityStatus.RESOLVED:
+            raise ValueError(
+                "persistent identity rows are RESOLVED mappings only; "
+                f"got {self.status.name}"
+            )
+        if not isinstance(self.match_method, MatchMethod):
+            raise ValueError("match_method must be a valid MatchMethod")
+
 
 @dataclass(frozen=True)
 class AlbumExternalIdentity:
     """Durable external identity authority for ONE local album key.
 
     ``release_id`` stays "" unless edition-identifying evidence exists.
-    Never added to AlbumRef."""
+    Never added to AlbumRef.
+
+    R3.1 INVARIANTS: RESOLVED mappings only; local key and release group
+    non-empty; ``release_id`` MAY be empty (Release Group is the minimum
+    external album identity)."""
 
     local_album_key: str
     release_group_id: str
@@ -584,6 +609,19 @@ class AlbumExternalIdentity:
     status: IdentityStatus = IdentityStatus.RESOLVED
     match_method: MatchMethod = MatchMethod.AUTO
     resolved_at: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.local_album_key:
+            raise ValueError("local_album_key must not be empty")
+        if not self.release_group_id:
+            raise ValueError("release_group_id must not be empty")
+        if self.status is not IdentityStatus.RESOLVED:
+            raise ValueError(
+                "persistent identity rows are RESOLVED mappings only; "
+                f"got {self.status.name}"
+            )
+        if not isinstance(self.match_method, MatchMethod):
+            raise ValueError("match_method must be a valid MatchMethod")
 
 
 # ---------------------------------------------------------------------------
