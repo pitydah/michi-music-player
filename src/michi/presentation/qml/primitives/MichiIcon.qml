@@ -114,35 +114,35 @@ Item {
                 ctx.arc(10.5, 10.5, 5.5, 0, Math.PI * 2)
                 line(ctx, 14.5, 14.5, 19.5, 19.5)
             } else if (root.name === "library") {
-                // Audiophile vinyl crate / tape archive sleeve with sliding record
-                ctx.rect(3.5, 4.5, 11, 15)
-                ctx.moveTo(17, 6.5)
-                ctx.arc(14.5, 12, 6.5, -0.95, 0.95)
-                ctx.moveTo(15.5, 12)
-                ctx.arc(14.5, 12, 1, 0, Math.PI * 2)
-                line(ctx, 6.5, 8.5, 11.5, 8.5)
-                line(ctx, 6.5, 12, 10.5, 12)
+                // Precision vinyl archive crate / shelf
+                ctx.rect(4.5, 4.5, 15, 15)
+                line(ctx, 9.5, 4.5, 9.5, 19.5)
+                line(ctx, 14.5, 4.5, 14.5, 19.5)
+                line(ctx, 4.5, 14.5, 9.5, 14.5)
+                line(ctx, 9.5, 9.5, 14.5, 9.5)
             } else if (root.name === "track") {
-                line(ctx, 11, 5, 11, 16)
-                line(ctx, 11, 5, 18.5, 3.5)
-                line(ctx, 18.5, 3.5, 18.5, 14)
-                ctx.moveTo(11, 16)
-                ctx.arc(8, 16.5, 3, 0, Math.PI * 2)
-                ctx.moveTo(18.5, 14)
-                ctx.arc(15.5, 14.5, 3, 0, Math.PI * 2)
+                // Modern musical note with clean stem and head
+                line(ctx, 14, 5, 14, 15.5)
+                line(ctx, 14, 5, 19, 7)
+                line(ctx, 19, 7, 19, 10.5)
+                ctx.moveTo(14, 15.5)
+                ctx.arc(10.5, 15.5, 3.5, 0, Math.PI * 2)
             } else if (root.name === "album") {
+                // Sleek album sleeve with central vinyl disc
                 ctx.rect(4, 4, 16, 16)
                 ctx.moveTo(16, 12)
                 ctx.arc(12, 12, 4, 0, Math.PI * 2)
-                ctx.moveTo(13, 12)
-                ctx.arc(12, 12, 1, 0, Math.PI * 2)
+                ctx.moveTo(13.5, 12)
+                ctx.arc(12, 12, 1.5, 0, Math.PI * 2)
             } else if (root.name === "history") {
-                ctx.arc(12, 12, 7.5, -0.3, Math.PI * 1.65)
-                line(ctx, 12, 12, 12, 7.5)
-                line(ctx, 12, 12, 15.5, 13.5)
-                line(ctx, 4.5, 4.5, 5, 9)
-                line(ctx, 4.5, 4.5, 9, 4.8)
+                // Precision clock with circular return arrow
+                ctx.arc(12, 12, 7.5, -0.3, Math.PI * 1.6)
+                line(ctx, 12, 12, 12, 8)
+                line(ctx, 12, 12, 15.5, 12)
+                line(ctx, 5.5, 4.5, 5.5, 9)
+                line(ctx, 5.5, 4.5, 10, 4.5)
             } else if (root.name === "recent") {
+                // Precision clock with distinct plus badge
                 ctx.arc(10.5, 12, 6.5, 0, Math.PI * 2)
                 line(ctx, 10.5, 12, 10.5, 8.5)
                 line(ctx, 10.5, 12, 13.5, 12)
@@ -395,26 +395,29 @@ Item {
                 line(ctx, 6, 9.5, 12, 15.5)
                 line(ctx, 12, 15.5, 18, 9.5)
             } else if (root.name === "folder") {
+                // Modern file folder with clean tab
                 ctx.moveTo(4, 7)
-                ctx.lineTo(9.5, 7)
-                ctx.lineTo(11.5, 9.5)
+                ctx.lineTo(9, 7)
+                ctx.lineTo(11, 9.5)
                 ctx.lineTo(20, 9.5)
                 ctx.lineTo(20, 18)
                 ctx.lineTo(4, 18)
                 ctx.closePath()
             } else if (root.name === "artist") {
+                // Precision user portrait
                 ctx.arc(12, 8, 3.5, 0, Math.PI * 2)
                 ctx.moveTo(18.5, 19.5)
                 ctx.arc(12, 19.5, 6.5, Math.PI, Math.PI * 2)
             } else if (root.name === "genre") {
-                ctx.moveTo(4.5, 7.5)
-                ctx.lineTo(14.5, 7.5)
-                ctx.lineTo(19.5, 12)
-                ctx.lineTo(14.5, 16.5)
-                ctx.lineTo(4.5, 16.5)
+                // Minimalist metadata / price tag with circular eyelet
+                ctx.moveTo(5, 7.5)
+                ctx.lineTo(13.5, 7.5)
+                ctx.lineTo(19, 13)
+                ctx.lineTo(13.5, 18.5)
+                ctx.lineTo(5, 18.5)
                 ctx.closePath()
-                ctx.moveTo(8.5, 12)
-                ctx.arc(7.5, 12, 1, 0, Math.PI * 2)
+                ctx.moveTo(9.5, 13)
+                ctx.arc(8.5, 13, 1, 0, Math.PI * 2)
             } else if (root.name === "more") {
                 ctx.arc(6, 12, 1.5, 0, Math.PI * 2)
                 ctx.moveTo(13.5, 12)

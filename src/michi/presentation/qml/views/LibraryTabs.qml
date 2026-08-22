@@ -115,17 +115,8 @@ Item {
                                 ? MichiSemanticColors.surfaceSelected
                                 : tabButton.hovered
                                     ? MichiSemanticColors.surfaceHover : "transparent"
-
-                        // Bottom Aurora indicator cue
-                        Rectangle {
-                            visible: tabButton.checked
-                            y: parent.height - 2
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            width: Math.min(parent.width - 16, 28)
-                            height: 2
-                            radius: 1
-                            color: MichiPalette.auroraCyan
-                        }
+                        border.width: tabButton.checked ? 1 : 0
+                        border.color: MichiSemanticColors.auroraCyanBorderSubtle
 
                         Behavior on color {
                             enabled: !MichiAccessibility.reducedMotion
