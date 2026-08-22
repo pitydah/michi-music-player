@@ -62,9 +62,13 @@ ColumnLayout {
 
     ErrorState {
         visible: library.hasDiagnostic
-        title: "Library unavailable"
-        message: library.diagnosticMessage
-        actionText: ""
+            || (library.scanStatus === "FAILED" && library.fileCount === 0)
+        title: library.hasDiagnostic ? "Library unavailable" : "Scan failed"
+        message: library.hasDiagnostic
+            ? library.diagnosticMessage
+            : "The library could not be scanned. Check your music folder and try again."
+        actionText: "Retry scan"
+        onActionRequested: root.scanRequested()
         Layout.fillWidth: true
         Layout.preferredHeight: visible ? implicitHeight : 0
     }
@@ -134,8 +138,12 @@ ColumnLayout {
     LoadingState {
         Layout.fillWidth: true
         Layout.fillHeight: true
+        // FAILED/CANCELLED must NOT spin forever: the ErrorState (above)
+        // covers FAILED with a retry, and CANCELLED returns to the
+        // EmptyState prompt.
         visible: library.fileCount === 0
             && library.scanStatus !== "" && library.scanStatus !== "IDLE"
+            && library.scanStatus !== "FAILED" && library.scanStatus !== "CANCELLED"
         message: "Building your library…"
     }
 
