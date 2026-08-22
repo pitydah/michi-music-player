@@ -142,7 +142,9 @@ class TestActivationGates:
         registry = AudioEngineRegistry([GStreamerEngineProvider()])
         blocker = registry.activation_blocker(AudioEngineId.GSTREAMER)
         assert blocker is not None
-        assert "M11.3C" in blocker
+        # truthful cause: en un entorno sin GI el blocker es el reason de
+        # dependencia; con GI instalado es el reason de implementación
+        assert ("M11.3C" in blocker) or ("no disponible" in blocker)
 
 
 class _UnimplementedProvider(AudioEngineProviderPort):
