@@ -20,7 +20,7 @@ MichiMenu {
         enabled: root.canPlay
         onTriggered: root.playRequested()
     }
-    MenuSeparator { visible: root.canFavorite || root.canAddToPlaylist }
+    MichiSeparator { visible: root.canFavorite || root.canAddToPlaylist }
     MenuItem {
         text: root.favorite ? "Remove from favorites" : "Add to favorites"
         visible: root.canFavorite
@@ -31,7 +31,7 @@ MichiMenu {
         visible: root.canAddToPlaylist
         onTriggered: root.addToPlaylistRequested()
     }
-    MenuSeparator { visible: root.canInspect || root.canRemove }
+    MichiSeparator { visible: root.canInspect || root.canRemove }
     MenuItem {
         text: "Properties"
         visible: root.canInspect

@@ -258,11 +258,18 @@ Item {
                 line(ctx, 9, 18, 6.5, 15.5)
                 if (root.name === "repeat-one") {
                     ctx.stroke()
+                    // "1" as vector lines so it scales with the icon size
+                    // (the old hardcoded 8px fillText shrank to ~5px at
+                    // iconSmall and broke the font family)
                     ctx.beginPath()
-                    ctx.font = "bold 8px sans-serif"
-                    ctx.textAlign = "center"
-                    ctx.textBaseline = "middle"
-                    ctx.fillText("1", 12, 12)
+                    ctx.moveTo(12.5, 7.5)
+                    ctx.lineTo(12.5, 15.5)
+                    ctx.lineTo(9.8, 13.8)
+                    ctx.lineTo(9.8, 15.4)
+                    ctx.lineTo(15.2, 15.4)
+                    ctx.lineTo(15.2, 13.8)
+                    ctx.lineTo(12.5, 15.5)
+                    ctx.stroke()
                     ctx.restore()
                     return
                 }
@@ -371,6 +378,9 @@ Item {
             } else if (root.name === "chevron-right") {
                 line(ctx, 9, 6, 15, 12)
                 line(ctx, 15, 12, 9, 18)
+            } else if (root.name === "chevron-down") {
+                line(ctx, 6, 9, 12, 15)
+                line(ctx, 12, 15, 18, 9)
             } else if (root.name === "info") {
                 ctx.arc(12, 12, 7.5, 0, Math.PI * 2)
                 line(ctx, 12, 10.5, 12, 16.5)

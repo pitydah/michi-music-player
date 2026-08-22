@@ -36,9 +36,9 @@ Rectangle {
         : "Album"
     Accessible.description: "Open album"
 
-    Keys.onEnterPressed: root.activated()
-    Keys.onReturnPressed: root.activated()
-    Keys.onSpacePressed: root.activated()
+    Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); root.activated() }
+    Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); root.activated() }
+    Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); root.activated() }
 
     function formatDuration(ms) {
         if (ms <= 0)
@@ -124,6 +124,7 @@ Rectangle {
     HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
     TapHandler {
         onTapped: {
+            MichiAccessibility.notePointer()
             root.forceActiveFocus()
             root.activated()
         }
@@ -134,5 +135,10 @@ Rectangle {
     Behavior on color {
         enabled: !MichiAccessibility.reducedMotion
         ColorAnimation { duration: MichiMotion.micro }
+    }
+    // Smooth the 0↔1 border toggle instead of popping it
+    Behavior on border.width {
+        enabled: !MichiAccessibility.reducedMotion
+        NumberAnimation { duration: MichiMotion.micro }
     }
 }
