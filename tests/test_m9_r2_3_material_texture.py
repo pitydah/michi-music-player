@@ -84,10 +84,11 @@ def test_sheen_glint_and_rim_are_tokens_and_present():
     assert "innerHighlight: Qt.rgba(1, 1, 1, 0.075)" in colors
     assert "glassShadow: Qt.rgba(0, 0, 0, 0.26)" in colors
     glass = read("primitives/MichiGlassSurface.qml")
-    # the specular glint is the brand cat-head silhouette, not a circle
-    assert "cat-head silhouette" in glass
-    assert "left ear tip" in glass
-    assert "right ear tip" in glass
-    assert "createRadialGradient(50, 38, 4, 50, 38, 44)" in glass
+    # the specular glint is the brand cat silhouette (SVG vector path),
+    # not a circle
+    assert "import QtQuick.Shapes" in glass
+    assert "PathSvg" in glass
+    assert "RadialGradient" in glass
+    assert "M78.013 0.298" in glass  # start of the normalized cat path
     assert "MichiSemanticColors.glassGlint" in glass
     assert "parent.height * 0.5, 56" in glass
