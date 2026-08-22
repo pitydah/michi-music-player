@@ -191,9 +191,7 @@ class TestEventRouting:
         router.subscribe_position_changed(lambda ms: events.append(f"pos:{ms}"))
         router.subscribe_media_accepted(lambda p: events.append(f"acc:{p.name}"))
         router.subscribe_media_rejected(lambda p, r: events.append(f"rej:{p.name}:{r}"))
-        router.subscribe_playback_state_changed(
-            lambda s: events.append(f"st:{s.name}")
-        )
+        router.subscribe_playback_state_changed(lambda s: events.append(f"st:{s.name}"))
         return router, events
 
     def test_events_flow_from_bound_backend(self):
