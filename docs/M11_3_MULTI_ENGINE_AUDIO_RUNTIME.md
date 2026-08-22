@@ -186,9 +186,11 @@ acceptance/error callbacks. M11.3 does NOT add "engine-capability" or
   socket) vs external dependency — the decision considers packaging surface
   and protocol stability; M11.3A fixes it before adapter code.
 - **M11.3F — Engine Selection + Persistence**: 1.0 switches from
-  QUIESCENT/STOPPED: STOP → close active engine → initialize target → bind
-  output → validate → ready. No seamless handover while playing. Selection
-  persisted.
+  QUIESCENT/STOPPED with the canonical sequence:
+  VERIFY QUIESCENT → STOP → router UNBIND/DETACH → close active provider →
+  open target provider → bind target AudioPort into router → validate
+  transport → READY. There is NO "bind output": output/device binding
+  belongs to M11.4. No seamless handover while playing. Selection persisted.
 - **M11.3G — Lifecycle / Failure / Convergence**: pending media, rejection,
   stop, resume preparation, Queue convergence, engine startup failure, engine
   unavailable, target init failure, clean fallback, shutdown,
