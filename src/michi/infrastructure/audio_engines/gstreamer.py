@@ -440,6 +440,20 @@ class GStreamerAudioPort(AudioPort):
     def play(self) -> None:
         if self._closed or self._pipeline is None:
             return
+        if self._eos_emitted:
+            # REPLAY desde EOS (M11.3C-R6 P1-02): un pipeline en EOS no
+            # reinicia solo con PLAYING — restart controlado NULL → PLAYING,
+            # sin pipeline nuevo ni segundo media_accepted (la fuente ya fue
+            # aceptada). Failure-atomic: el marcador EOS se resetea SOLO
+            # cuando el request PLAYING tuvo éxito (retryable en ambos
+            # fallos).
+            if not self._request_state(self._bindings.STATE.NULL):
+                return  # _eos_emitted queda True; retry posterior posible
+            if not self._request_state(self._bindings.STATE.PLAYING):
+                return  # sin intención commiteada; retry posterior posible
+            self._pending_play = True
+            self._eos_emitted = False
+            return
         if self._request_state(self._bindings.STATE.PLAYING):
             self._pending_play = True
         # si falla: la intención NO se commitea; sin estado falso
@@ -459,17 +473,29 @@ class GStreamerAudioPort(AudioPort):
     def stop(self) -> None:
         if self._closed or self._pipeline is None:
             return
-        if not self._request_state(self._bindings.STATE.NULL):
-            # NULL falló: no publicar STOPPED, no limpiar el source como si
-            # el stop hubiera tenido éxito; el estado sigue diagnosticable
-            return
-        self._generation += 1  # cancela aceptaciones pendientes en vuelo
-        self._pending_play = False
-        self._pending_path = None
-        self._current_path = None
-        if self._current_state is not PlaybackStatus.STOPPED:
-            self._current_state = PlaybackStatus.STOPPED
-            self._bridge.sig_state.emit(PlaybackStatus.STOPPED)
+        if self._pending_path is not None and self._current_path is None:
+            # CASE A — PENDING CANDIDATE (M11.3C-R6): stop = CANCEL del
+            # candidato no aceptado. El pipeline candidato se libera y la
+            # generación se invalida (mata aceptaciones tardías).
+            if not self._try_stop_pipeline():
+                return  # teardown del candidato falló: no fingir cancelación
+            self._generation += 1
+            self._pending_path = None
+            self._pending_play = False
+            self._eos_emitted = False
+        else:
+            # CASE B — ACCEPTED SOURCE (M11.3C-R6): stop = detener el
+            # transporte, NO descargar la fuente. La fuente aceptada A
+            # permanece cargada: current_path/generación/pipeline/bus watch
+            # intactos → play()/resume() funcionan sin un nuevo load.
+            if not self._request_state(self._bindings.STATE.NULL):
+                # NULL falló: no publicar STOPPED, no limpiar el source como
+                # si el stop hubiera tenido éxito; el estado sigue
+                # diagnosticable (R2 failure atomicity)
+                return
+            self._pending_play = False
+            self._eos_emitted = False  # stop explícito resetea el marcador EOS
+        self._deliver_state_if(PlaybackStatus.STOPPED)
 
     def set_volume(self, value: int) -> None:
         self._volume = value / 100.0
@@ -566,6 +592,48 @@ class GStreamerAudioPort(AudioPort):
         self._detach_pipeline_sources()
         self._pipeline = None
         return True
+
+    def _rollback_failed_arm(self, primary_exc, timer_before) -> None:
+        """Rollback best-effort de un ARM de pipeline fallido (M11.3C-R6).
+
+        El error ORIGINAL del arm (primary_exc) es la autoridad y lo
+        re-lanza el caller; los fallos de limpieza aquí son SECUNDARIOS y
+        nunca lo reemplazan. Deja el adapter coherente: sin candidato
+        fantasma, sin watch huérfano, sin timer roto, sin ownership perdido.
+        """
+        # 1. invalidar la generación del candidato fallido: cualquier
+        #    callback del bus ya attachado queda stale (captured != current)
+        self._generation += 1
+        # 2. identidad semántica del candidato: sin media falsa
+        self._pending_path = None
+        self._current_path = None
+        self._pending_play = False
+        self._eos_emitted = False
+        # 3. timer creado POR ESTE arm que nunca quedó válido/reutilizable:
+        #    no dejar _timer_source != None con un timer nunca attachado
+        if timer_before is None and self._timer_source is not None:
+            self._bindings.destroy_source(self._timer_source)
+            self._timer_source = None
+        # 4. NULL best-effort del pipeline candidato (si existe)
+        null_ok = True
+        if self._pipeline is not None:
+            try:
+                null_ok = self._bindings.set_state(
+                    self._pipeline, self._bindings.STATE.NULL
+                )
+            except Exception:  # noqa: BLE001 — best-effort rollback
+                null_ok = False
+        # 5. detach del bus watch best-effort (si se instaló); si falla, el
+        #    bookkeeping queda retenido y close() podrá reintentar
+        try:  # noqa: SIM105 — no se usa suppress: la limpieza pendiente debe
+            # seguir siendo observable en el bookkeeping del bus
+            self._detach_pipeline_sources()
+        except Exception:  # noqa: BLE001 — best-effort rollback
+            pass
+        # 6. ownership truthful: liberar el pipeline solo si el NULL
+        #    realmente completó; si no, retener para diagnóstico/close
+        if null_ok:
+            self._pipeline = None
 
     def _teardown_pipeline_terminal(self) -> Exception | None:
         """Teardown TERMINAL best-effort (close). Devuelve el PRIMER error
