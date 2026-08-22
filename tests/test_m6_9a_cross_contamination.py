@@ -13,6 +13,7 @@ from enrichment_fakes import (
     FakeAlbumProvider,
     FakeArtistProvider,
     FakeIdentityResolver,
+    RecordingAssetStore,
     RecordingLibraryIndexRepository,
 )
 
@@ -23,6 +24,7 @@ from michi.domain.enrichment import (
     ArtistIdentityEvidence,
     ArtistIdentityHints,
     DeliveryVerdict,
+    EnrichmentEntityKind,
     LocalAlbumEvidence,
 )
 from michi.domain.library import TrackMetadata, TrackRef, build_music_model
@@ -188,9 +190,16 @@ class TestExternalProfilesNeverTouchLocalMetadata:
         tracks, model_before = library_snapshot()
         outcome = service.request_album_enrichment(album_evidence("rg-x"))
         profile = service._album_provider.fetch_profile("album-x-key", "rg-x")
-        # External knowledge claims a different first release year.
+        # External knowledge claims a different first release year AND a
+        # different specific-release year (release facts ride the profile,
+        # never the local model).
         profile = type(profile)(
-            **{**profile.__dict__, "first_release_year": 1950, "release_year": 1951}
+            **{
+                **profile.__dict__,
+                "first_release_year": 1950,
+                "release_id": "rel-1",
+                "release_year": 1951,
+            }
         )
         service.deliver_album_profile(outcome.request, profile)
         tracks_after, model_after = library_snapshot()
@@ -213,9 +222,7 @@ class TestExternalProfilesNeverTouchLocalMetadata:
 
     def test_external_artwork_never_replaces_local_artwork(self, tmp_path):
         from michi.application.ports import ArtworkCachePort
-        from michi.infrastructure.enrichment_assets import (
-            FilesystemEnrichmentAssetStore,
-        )
+        from michi.domain.enrichment import EnrichmentAssetRecord
 
         class SpyArtworkCache(ArtworkCachePort):
             def __init__(self):
@@ -226,7 +233,7 @@ class TestExternalProfilesNeverTouchLocalMetadata:
                 return None
 
         local_cache = SpyArtworkCache()
-        external_store = FilesystemEnrichmentAssetStore(tmp_path / "enrichment-assets")
+        external_store = RecordingAssetStore()
         service = EnrichmentService(
             resolver=FakeIdentityResolver(),
             artist_provider=FakeArtistProvider(),
@@ -238,8 +245,17 @@ class TestExternalProfilesNeverTouchLocalMetadata:
         outcome = service.request_artist_enrichment(artist_evidence("mb-a"))
         profile = service._artist_provider.fetch_profile("artist a", "mb-a")
         service.deliver_artist_profile(outcome.request, profile)
-        external_store.store(profile.artwork_asset_id, b"external-bytes", "image/jpeg")
+        stored = external_store.store(
+            EnrichmentAssetRecord(
+                asset_id=profile.artwork_asset_id,
+                entity_kind=EnrichmentEntityKind.ARTIST,
+                external_entity_id="mb-a",
+                mime_type="image/jpeg",
+            ),
+            b"external-bytes",
+        )
         # External artwork landed ONLY in the enrichment asset store.
+        assert stored is not None
         assert local_cache.calls == []
         assert external_store.path_for(profile.artwork_asset_id) is not None
 

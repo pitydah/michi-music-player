@@ -24,6 +24,7 @@ from michi.domain.enrichment import (
     ArtistExternalIdentity,
     ArtistIdentityEvidence,
     ArtistKnowledgeProfile,
+    EnrichmentAssetRecord,
     ReleaseEditionCandidate,
     ReleaseGroupCandidate,
 )
@@ -181,14 +182,28 @@ class EnrichmentAssetStorePort(ABC):
     A THIRD artwork authority (M6.9A): LOCAL (embedded/folder) artwork and
     USER artwork keep their own stores; external downloads go HERE only.
     Must never reuse or mutate the canonical local artwork cache and never
-    write downloaded bytes into audio files."""
+    write downloaded bytes into audio files.
+
+    R1 hardening contract (before any network provider exists):
+    - size bound (one constant), image MIME allowlist, decode validation
+    - strict asset-id validation (never remote titles as paths)
+    - atomic writes (no partial visible assets), sha256 checksum
+    - provenance rides in the ``EnrichmentAssetRecord``
+    """
 
     @abstractmethod
-    def store(self, asset_id: str, data: bytes, mime_type: str) -> str | None:
-        """Persist asset bytes; returns the stored path (None on failure)."""
+    def store(
+        self, record: EnrichmentAssetRecord, data: bytes
+    ) -> EnrichmentAssetRecord | None:
+        """Validate + persist asset bytes; returns the COMPLETED record
+        (checksum / dimensions / local_path filled) or None when any
+        validation step fails — a failure never leaves a partial asset."""
 
     @abstractmethod
     def path_for(self, asset_id: str) -> Path | None: ...
+
+    @abstractmethod
+    def record_for(self, asset_id: str) -> EnrichmentAssetRecord | None: ...
 
     @abstractmethod
     def clear(self) -> None: ...
