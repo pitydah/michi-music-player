@@ -27,7 +27,7 @@ implementation status for each subphase.
 | M11.3A AudioTransportRouter | IMPLEMENTED / TESTED — **PRODUCTIVELY WIRED (M11.3B)** |
 | M11.3A registry | IMPLEMENTED / TESTED |
 | M11.3A AudioEngineService | IMPLEMENTED FOUNDATION — NO SWITCHING YET |
-| Qt provider | IMPLEMENTED — **PRODUCTIVE REFERENCE ENGINE (M11.3B)**; backend ownership + exception-safe close |
+| Qt provider | IMPLEMENTED — **PRODUCTIVE REFERENCE ENGINE (M11.3B + M11.3B-R1)**; single canonical provider (registry identity), transactional startup, backend ownership + exception-safe close |
 | GStreamer provider | PROBE ONLY — adapter M11.3C |
 | MPD provider | PROBE ONLY — managed adapter M11.3D |
 | Engine availability runtime | foundation now — full discovery M11.3E |
@@ -54,6 +54,18 @@ adapters behind the same router.
 STOP → router detach/unbind → provider close → target provider open →
 router bind → validation. The router MUST detach BEFORE the provider closes;
 never close a provider while the router remains intentionally attached.
+
+## Canonical Qt reference startup (M11.3B-R1)
+
+PROBE → CAN_ACTIVATE → INITIALIZING → OPEN → ROUTER BIND → VALIDATE → READY.
+
+- Pre-init blocker (probe can_activate False): UNAVAILABLE, active None,
+  provider.open NEVER called, router unbound.
+- Post-init failure (open/bind/validation): cleanup (router unbind +
+  provider close best effort) then FAILED, active None, original error
+  re-raised (first-error-wins). No half-initialized runtime.
+- Registry identity: `registry.provider(QT_MULTIMEDIA) is qt_provider` —
+  exactly ONE canonical Qt provider per service graph.
 
 ## Stable router architecture (M11.3A)
 
