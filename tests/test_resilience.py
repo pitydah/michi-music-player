@@ -200,7 +200,6 @@ class TestApplicationContainerShutdown:
 
         coord = StopSpy()
         prefs = StopSpy()
-        backend = StopSpy()
         router = StopSpy()
         provider = StopSpy()
         engine = DeleteLaterSpy()
@@ -217,7 +216,6 @@ class TestApplicationContainerShutdown:
         container._qb = qb
         container._lb = lb
         container._nb = nb
-        container._backend = backend
         container._audio_router = router
         container._qt_engine_provider = provider
         container._engine = engine
@@ -235,13 +233,11 @@ class TestApplicationContainerShutdown:
         assert engine.calls >= 1
         assert container._pb is None
         assert container._settings is None
-        assert container._backend is None
 
     def test_shutdown_continues_after_dispose_failure(self):
         container = ApplicationContainer()
         coord = StopSpy()
         prefs = StopSpy()
-        backend = StopSpy()
         router = StopSpy()
         provider = StopSpy()
         engine = DeleteLaterSpy()
@@ -263,7 +259,6 @@ class TestApplicationContainerShutdown:
         container._qb = qb
         container._lb = lb
         container._nb = nb
-        container._backend = backend
         container._audio_router = router
         container._qt_engine_provider = provider
         container._engine = engine
@@ -302,7 +297,6 @@ class TestApplicationContainerShutdown:
         container._qb = qb
         container._lb = lb
         container._nb = nb
-        container._backend = backend
         container._audio_router = router
         container._qt_engine_provider = provider
         container._engine = engine
@@ -329,7 +323,6 @@ class TestApplicationContainerShutdown:
         container._lb = DisposeSpy()
         container._nb = DisposeSpy()
         container._sb = object()
-        container._backend = StopSpy()
         container._engine = DeleteLaterSpy()
         container.shutdown()
         assert container._sb is None
@@ -354,7 +347,6 @@ class TestApplicationContainerShutdown:
 
         coord = StopSpy()
         prefs = StopSpy()
-        backend = StopSpy()
         router = StopSpy()
         provider = StopSpy()
         engine = DeleteLaterSpy()
@@ -371,7 +363,6 @@ class TestApplicationContainerShutdown:
         container._qb = qb
         container._lb = lb
         container._nb = nb
-        container._backend = backend
         container._audio_router = router
         container._qt_engine_provider = provider
         container._engine = engine
@@ -386,4 +377,3 @@ class TestApplicationContainerShutdown:
         assert provider.calls == 1  # M11.3B: provider close idempotente
         assert engine.calls == 1
         assert container._pb is None
-        assert container._backend is None

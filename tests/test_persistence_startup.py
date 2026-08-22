@@ -923,6 +923,16 @@ class TestBootstrapStartup:
             def __init__(self):
                 pass
 
+            def probe(self):
+                from michi.domain.audio_engine import AudioEngineDescriptor
+
+                return AudioEngineDescriptor(
+                    engine_id=self.engine_id,
+                    display_name="Qt Multimedia",
+                    available=True,
+                    implemented=True,
+                )
+
             def open(self):
                 events.append("backend")
                 raise BackendBoomError("stop here")

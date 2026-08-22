@@ -44,7 +44,9 @@ from michi.infrastructure.library_index import SqliteLibraryIndexRepository
 from michi.infrastructure.library_prefs import SqliteLibraryPrefsRepository
 from michi.infrastructure.metadata_extractor import InfrastructureMetadataExtractor
 from michi.infrastructure.playlists import SqlitePlaylistsRepository
-from michi.infrastructure.qt_backend import QtMultimediaBackend
+from michi.infrastructure.qt_backend import (
+    QtMultimediaBackend as QtMultimediaBackend,  # noqa: F401 — re-export histórico para tests
+)
 from michi.infrastructure.scan_dispatcher import LibraryScanDispatcher
 from michi.infrastructure.scan_runner import ScanRelay, ThreadScanRunner
 from michi.infrastructure.session_repository import SqliteSessionRepository
@@ -82,7 +84,9 @@ class ServiceGraph:
     relay: ScanRelay
     queue: QueueService
     playback: PlaybackService
-    backend: object
+    # NON-AUTHORITY / OBSERVABILITY ONLY: the concrete port bound inside the
+    # router (test handle / introspection). Ownership lives in the provider.
+    bound_audio_port: object
     audio_router: AudioTransportRouter
     audio_engine_registry: AudioEngineRegistry
     audio_engine_service: AudioEngineService
@@ -91,6 +95,57 @@ class ServiceGraph:
     metadata_extractor: object
     artwork_provider: object
     artwork_cache: object
+
+
+def _initialize_reference_audio_runtime(
+    qt_provider,
+    registry,
+    engine_service,
+    router,
+    *,
+    injected_backend=None,
+):
+    """Canonical reference-engine startup transaction (M11.3B-R1).
+
+    PROBE → CAN_ACTIVATE → INITIALIZING → OPEN → ROUTER BIND → VALIDATE →
+    READY. Pre-init blockers converge to UNAVAILABLE; post-init failures
+    clean up (router unbind + provider close best effort) and converge to
+    FAILED, then re-raise the ORIGINAL error (first-error-wins).
+
+    ``injected_backend`` is the TEST seam: a fake AudioPort bound through
+    the SAME router (topology parity) but NOT owned by the provider (its
+    ownership stays with the test). Returns the bound concrete port.
+    """
+    descriptor = registry.descriptor(AudioEngineId.QT_MULTIMEDIA)
+    if not descriptor.can_activate:
+        engine_service.mark_unavailable(
+            AudioEngineId.QT_MULTIMEDIA, descriptor.activation_blocker
+        )
+        raise RuntimeError(
+            f"Qt reference engine no activable: {descriptor.activation_blocker}"
+        )
+
+    engine_service.mark_initializing(AudioEngineId.QT_MULTIMEDIA)
+    provider_owned = injected_backend is None
+    try:
+        backend = qt_provider.open() if provider_owned else injected_backend
+        router.bind(AudioEngineId.QT_MULTIMEDIA, backend)
+        # validate transport: bound identity + concrete target
+        if router.bound_engine_id != AudioEngineId.QT_MULTIMEDIA:
+            raise RuntimeError("router bind validation failed")
+    except Exception as original:
+        try:
+            router.unbind()
+        finally:
+            if provider_owned:
+                from contextlib import suppress
+
+                with suppress(Exception):
+                    qt_provider.close()  # best-effort secondary evidence
+        engine_service.mark_failed(AudioEngineId.QT_MULTIMEDIA, str(original))
+        raise original
+    engine_service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+    return backend
 
 
 def _build_services(
@@ -113,21 +168,25 @@ def _build_services(
     tests). All library persistence is real: SqliteLibraryIndexRepository,
     SqliteLibraryPrefsRepository, SqlitePlaylistsRepository.
     """
-    # M11.3B: productive multi-engine runtime wiring — the canonical
-    # transport injected into PlaybackService/PlaybackCoordinator is the
-    # AudioTransportRouter (stable identity). The Qt engine is the
-    # reference provider; tests may inject a fake backend which is bound
-    # through the SAME router (TEST GRAPH == PRODUCTION GRAPH).
+    # M11.3B-R1: ONE canonical Qt provider instance — the SAME object is
+    # registered in the registry AND used as the productive provider
+    # (registry.provider(QT) is qt_provider). The reference engine startup
+    # runs the canonical lifecycle transaction (probe → can_activate →
+    # INITIALIZING → open → bind → validate → READY) with honest failure
+    # convergence (UNAVAILABLE pre-init / FAILED post-init + cleanup).
     qt_provider = QtEngineProvider()
-    registry = AudioEngineRegistry(
-        [QtEngineProvider(), GStreamerEngineProvider(), MpdEngineProvider()]
-    )
+    gstreamer_provider = GStreamerEngineProvider()
+    mpd_provider = MpdEngineProvider()
+    registry = AudioEngineRegistry([qt_provider, gstreamer_provider, mpd_provider])
     engine_service = AudioEngineService(registry)
     router = AudioTransportRouter()
-    if backend is None:
-        backend = qt_provider.open()
-    router.bind(AudioEngineId.QT_MULTIMEDIA, backend)
-    engine_service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+    backend = _initialize_reference_audio_runtime(
+        qt_provider,
+        registry,
+        engine_service,
+        router,
+        injected_backend=backend,
+    )
     if scanner is None:
         scanner = FilesystemLibraryScanner()
     if metadata_extractor is None:
@@ -182,7 +241,7 @@ def _build_services(
         relay=scan_relay,
         queue=queue,
         playback=playback,
-        backend=backend,
+        bound_audio_port=backend,
         audio_router=router,
         audio_engine_registry=registry,
         audio_engine_service=engine_service,
@@ -200,7 +259,6 @@ class ApplicationContainer:
     def __init__(self) -> None:
         self._app: QGuiApplication | None = None
         self._engine: QQmlApplicationEngine | None = None
-        self._backend: QtMultimediaBackend | None = None
         self._audio_router: AudioTransportRouter | None = None
         self._qt_engine_provider: QtEngineProvider | None = None
         self._settings: SettingsService | None = None
@@ -233,7 +291,6 @@ class ApplicationContainer:
         db_path = _data_dir() / "michi.db"
         repo = SQLiteSettingsRepository.open_for_startup(db_path)
         graph = _build_services(db_path)
-        backend = graph.backend
         self._audio_router = graph.audio_router
         self._qt_engine_provider = graph.qt_engine_provider
         settings = SettingsService(repo)
@@ -309,7 +366,6 @@ class ApplicationContainer:
         ctx.setContextProperty("playlists", plb)
         ctx.setContextProperty("settingsBridge", sb)
 
-        self._backend = backend
         self._settings = settings
         self._playback = playback
         self._queue = queue
@@ -440,7 +496,6 @@ class ApplicationContainer:
         self._queue = None
         self._playback = None
         self._settings = None
-        self._backend = None
         self._app = None
 
         if error is not None:

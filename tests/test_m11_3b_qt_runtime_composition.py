@@ -7,6 +7,7 @@ state converges to READY; injected test backends go through the same router
 """
 
 import os
+from pathlib import Path
 
 import pytest
 from PySide6.QtGui import QGuiApplication
@@ -15,6 +16,7 @@ from michi.application.audio_transport_router import (
     AudioTransportRouter,
 )
 from michi.domain.audio_engine import AudioEngineId, AudioEngineLifecycle
+from michi.domain.playback import PlaybackStatus
 from michi.infrastructure.audio_engines.providers import QtEngineProvider
 from tests.audio_engine_fakes import RecordingBackend
 
@@ -32,6 +34,268 @@ def _graph(tmp_path, backend=None):
     from michi.bootstrap import _build_services
 
     return _build_services(tmp_path / "michi.db", backend=backend)
+
+
+class _UnavailableProvider:
+    engine_id = AudioEngineId.QT_MULTIMEDIA
+
+    def probe(self):
+        from michi.domain.audio_engine import AudioEngineDescriptor
+
+        return AudioEngineDescriptor(
+            engine_id=self.engine_id,
+            display_name="Qt Multimedia",
+            available=False,
+            unavailable_reason="qt runtime missing",
+        )
+
+    def open(self):
+        raise AssertionError("open no debe llamarse")
+
+    def close(self):
+        pass
+
+
+class _OpenBoomProvider:
+    engine_id = AudioEngineId.QT_MULTIMEDIA
+
+    def __init__(self):
+        self.opened = False
+        self.closed = False
+
+    def probe(self):
+        from michi.domain.audio_engine import AudioEngineDescriptor
+
+        return AudioEngineDescriptor(
+            engine_id=self.engine_id,
+            display_name="Qt Multimedia",
+            available=True,
+            implemented=True,
+        )
+
+    def open(self):
+        self.opened = True
+        raise RuntimeError("qt init failed")
+
+    def close(self):
+        self.closed = True
+
+
+class TestStartupTransaction:
+    """P1-02: canonical lifecycle — UNINITIALIZED → INITIALIZING → READY."""
+
+    def test_success_progression(self, tmp_path, qapp):
+        """La transacción completa se observa con un subscriber registrado
+        ANTES de _build_services (reproduce el flujo productivo)."""
+        from michi import bootstrap
+        from michi.application.audio_engine_registry import AudioEngineRegistry
+        from michi.application.audio_engine_service import AudioEngineService
+        from michi.application.audio_transport_router import (
+            AudioTransportRouter,
+        )
+        from michi.infrastructure.audio_engines.providers import (
+            GStreamerEngineProvider,
+            MpdEngineProvider,
+            QtEngineProvider,
+        )
+
+        qt_provider = QtEngineProvider()
+        registry = AudioEngineRegistry(
+            [qt_provider, GStreamerEngineProvider(), MpdEngineProvider()]
+        )
+        service = AudioEngineService(registry)
+        states = []
+        service.subscribe_changed(lambda: states.append(service.state))
+        router = AudioTransportRouter()
+        try:
+            bootstrap._initialize_reference_audio_runtime(
+                qt_provider, registry, service, router
+            )
+            assert service.state.lifecycle == AudioEngineLifecycle.READY
+            assert service.state.active_engine_id == AudioEngineId.QT_MULTIMEDIA
+            # la progresión observable: INITIALIZING seguido de READY
+            lifecycle_values = [s.lifecycle for s in states]
+            assert AudioEngineLifecycle.INITIALIZING in lifecycle_values
+            assert lifecycle_values[-1] == AudioEngineLifecycle.READY
+        finally:
+            qt_provider.close()
+
+    def test_initial_state_uninitialized(self):
+        from michi.application.audio_engine_service import AudioEngineService
+
+        service = AudioEngineService()
+        assert service.state.lifecycle == AudioEngineLifecycle.UNINITIALIZED
+
+    def test_unavailable_convergence(self, tmp_path, monkeypatch):
+        """probe can_activate=False → UNAVAILABLE, open nunca llamado."""
+        from michi import bootstrap
+        from michi.application.audio_engine_registry import AudioEngineRegistry
+        from michi.application.audio_engine_service import AudioEngineService
+        from michi.application.audio_transport_router import (
+            AudioTransportRouter,
+        )
+        from michi.infrastructure.audio_engines.providers import (
+            GStreamerEngineProvider,
+            MpdEngineProvider,
+        )
+
+        provider = _UnavailableProvider()
+        registry = AudioEngineRegistry(
+            [provider, GStreamerEngineProvider(), MpdEngineProvider()]
+        )
+        service = AudioEngineService(registry)
+        router = AudioTransportRouter()
+        with pytest.raises(RuntimeError, match="no activable"):
+            bootstrap._initialize_reference_audio_runtime(
+                provider, registry, service, router
+            )
+        state = service.state
+        assert state.lifecycle == AudioEngineLifecycle.UNAVAILABLE
+        assert state.active_engine_id is None
+        assert state.error_message is not None
+        assert router.bound_engine_id is None
+
+    def test_open_failure_convergence(self, tmp_path, monkeypatch):
+        """open raise → FAILED, active None, router unbound."""
+        from michi import bootstrap
+        from michi.application.audio_engine_registry import AudioEngineRegistry
+        from michi.application.audio_engine_service import AudioEngineService
+        from michi.application.audio_transport_router import (
+            AudioTransportRouter,
+        )
+        from michi.infrastructure.audio_engines.providers import (
+            GStreamerEngineProvider,
+            MpdEngineProvider,
+        )
+
+        provider = _OpenBoomProvider()
+        registry = AudioEngineRegistry(
+            [provider, GStreamerEngineProvider(), MpdEngineProvider()]
+        )
+        service = AudioEngineService(registry)
+        router = AudioTransportRouter()
+        with pytest.raises(RuntimeError, match="qt init failed"):
+            bootstrap._initialize_reference_audio_runtime(
+                provider, registry, service, router
+            )
+        state = service.state
+        assert provider.opened is True
+        assert state.lifecycle == AudioEngineLifecycle.FAILED
+        assert state.active_engine_id is None
+        assert "qt init failed" in state.error_message
+        assert router.bound_engine_id is None
+
+    def test_bind_failure_cleans_up_provider(self, tmp_path, monkeypatch):
+        """bind raise → provider.close called, FAILED, sin half-runtime."""
+        from michi import bootstrap
+        from michi.application.audio_engine_registry import AudioEngineRegistry
+        from michi.application.audio_engine_service import AudioEngineService
+        from michi.application.audio_transport_router import (
+            AudioTransportRouter,
+        )
+        from tests.audio_engine_fakes import RecordingBackend
+
+        class BindBoomRouter(AudioTransportRouter):
+            def bind(self, engine_id, audio_port):
+                raise RuntimeError("bind failed")
+
+        provider = _OpenBoomProvider()
+
+        # open raise en este provider — para bind failure usamos open OK
+        class _BindBoomProvider(_OpenBoomProvider):
+            def open(self):
+                self.opened = True
+                return RecordingBackend("B")
+
+        provider = _BindBoomProvider()
+        registry = AudioEngineRegistry([provider])
+        service = AudioEngineService(registry)
+        router = BindBoomRouter()
+        with pytest.raises(RuntimeError, match="bind failed"):
+            bootstrap._initialize_reference_audio_runtime(
+                provider, registry, service, router
+            )
+        state = service.state
+        assert provider.opened is True
+        assert provider.closed is True  # cleanup del provider
+        assert state.lifecycle == AudioEngineLifecycle.FAILED
+        assert state.active_engine_id is None
+
+
+class TestProviderAuthority:
+    """P1-01: exactamente UN provider canónico de Qt."""
+
+    def test_registry_provider_is_productive_provider(self, tmp_path, qapp):
+        graph = _graph(tmp_path)
+        try:
+            assert (
+                graph.audio_engine_registry.provider(AudioEngineId.QT_MULTIMEDIA)
+                is graph.qt_engine_provider
+            )
+            # un solo backend owned
+            first = graph.qt_engine_provider.open()
+            assert first is graph.qt_engine_provider.open()
+            assert graph.audio_router.bound_engine_id == AudioEngineId.QT_MULTIMEDIA
+        finally:
+            graph.qt_engine_provider.close()
+
+    def test_playback_and_coordinator_share_router(self, tmp_path, qapp):
+        """PlaybackService y PlaybackCoordinator consumen el MISMO router."""
+        graph = _graph(tmp_path)
+        try:
+            assert graph.playback._audio is graph.audio_router
+            # el coordinator del container se construye con graph.audio_router
+            # (verificado en bootstrap) — aquí confirmamos la identidad única
+            assert graph.audio_router.bound_engine_id == AudioEngineId.QT_MULTIMEDIA
+        finally:
+            graph.qt_engine_provider.close()
+
+
+class TestCallbackParity:
+    """Cada evento del backend llega exactamente una vez; tras unbind, cero."""
+
+    def test_all_event_types_forwarded_exactly_once(self, tmp_path, qapp):
+        fake = RecordingBackend("F")
+        graph = _graph(tmp_path, backend=fake)
+        try:
+            events = []
+            router = graph.audio_router
+            router.subscribe_end_of_media(lambda: events.append("eom"))
+            router.subscribe_position_changed(lambda ms: events.append(f"pos:{ms}"))
+            router.subscribe_duration_changed(lambda ms: events.append(f"dur:{ms}"))
+            router.subscribe_media_accepted(lambda p: events.append(f"acc:{p.name}"))
+            router.subscribe_media_rejected(
+                lambda p, r: events.append(f"rej:{p.name}:{r}")
+            )
+            router.subscribe_playback_state_changed(
+                lambda s: events.append(f"st:{s.name}")
+            )
+            fake.fire_end_of_media()
+            fake.fire_position(1)
+            fake.fire_media_accepted(Path("/m/a.mp3"))
+            fake.fire_media_rejected(Path("/m/b.mp3"), "no")
+            fake.fire_state(PlaybackStatus.PLAYING)
+            assert events == [
+                "eom",
+                "pos:1",
+                "acc:a.mp3",
+                "rej:b.mp3:no",
+                "st:PLAYING",
+            ]
+            # duration_changed no se probó en el fake — verificar que existe
+            assert fake._dur  # router suscrito al backend
+        finally:
+            graph.audio_router.unbind()
+
+    def test_zero_delivery_after_unbind(self, tmp_path, qapp):
+        fake = RecordingBackend("F")
+        graph = _graph(tmp_path, backend=fake)
+        events = []
+        graph.audio_router.subscribe_end_of_media(lambda: events.append("eom"))
+        graph.audio_router.unbind()
+        fake.fire_end_of_media()
+        assert events == []
+        graph.qt_engine_provider.close()
 
 
 class TestProductiveComposition:

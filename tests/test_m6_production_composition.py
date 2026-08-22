@@ -241,7 +241,7 @@ class TestProductionComposition:
         db_path, graph = _make_graph(tmp_path, StatScanner([a, b]), extractor)
         graph.library.scan(str(music))
         graph.library.activate(0)  # arms the pending track
-        graph.backend.trigger_media_accepted(a)  # commit -> history entry
+        graph.bound_audio_port.trigger_media_accepted(a)  # commit -> history entry
         assert graph.library.state.history_paths, "activation should arm history"
 
         _teardown_graph(graph)
