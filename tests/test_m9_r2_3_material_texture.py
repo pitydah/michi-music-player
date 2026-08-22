@@ -92,3 +92,40 @@ def test_sheen_glint_and_rim_are_tokens_and_present():
     assert "M78.013 0.298" in glass  # start of the normalized cat path
     assert "MichiSemanticColors.glassGlint" in glass
     assert "parent.height * 0.5, 56" in glass
+
+
+# ── Now Playing Bar polish (textures / motion / buttons, positions frozen) ───
+
+
+def test_bar_backplane_shares_the_film_grain():
+    bar = read("player/NowPlayingBar.qml")
+    assert "MichiMaterialTexture {" in bar
+    assert "tileSeed: 17" in bar
+    assert "visible: !MichiAccessibility.highContrast" in bar
+
+
+def test_play_button_crossfades_and_breathes():
+    bar = read("player/NowPlayingBar.qml")
+    # two stacked icons crossfading on status
+    assert 'name: "play"' in bar and 'name: "pause"' in bar
+    assert 'opacity: root.status === "playing" ? 0 : 1' in bar
+    assert 'opacity: root.status === "playing" ? 1 : 0' in bar
+    # gradient base + state overlay (no raw Qt.rgba in the bar)
+    assert "gradient: Gradient {" in bar
+    assert "MichiSemanticColors.surfacePressed" in bar
+    # breathing aura while playing
+    assert "SequentialAnimation on opacity" in bar
+    assert 'running: root.status === "playing"' in bar
+
+
+def test_slider_handles_react_to_hover():
+    bar = read("player/NowPlayingBar.qml")
+    assert "scale: timeline.pressed ? 1.08 : timeline.hovered ? 1.04 : 1" in bar
+    assert "scale: volumeSlider.pressed ? 1.08" in bar
+    assert "hoverEnabled: true" in bar
+
+
+def test_bar_time_formatting_delegates_to_michi_format():
+    bar = read("player/NowPlayingBar.qml")
+    assert "return MichiFormat.formatDuration(seconds * 1000)" in bar
+    assert "var minutes = Math.floor(safe / 60)" not in bar

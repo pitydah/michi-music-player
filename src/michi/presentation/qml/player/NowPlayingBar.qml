@@ -61,6 +61,14 @@ Item {
         border.color: MichiSemanticColors.borderSubtle
     }
 
+    // The bar is the app's most visible surface — it shares the premium
+    // film-grain material with the rest of the glass (fixed seed).
+    MichiMaterialTexture {
+        anchors.fill: parent
+        tileSeed: 17
+        visible: !MichiAccessibility.highContrast
+    }
+
     Rectangle {
         anchors.top: parent.top
         anchors.horizontalCenter: parent.horizontalCenter
@@ -191,6 +199,7 @@ Item {
                     value: Math.min(root.position, to)
                     enabled: root.duration > 0
                     focusPolicy: Qt.StrongFocus
+                    hoverEnabled: true
                     Accessible.role: Accessible.Slider
                     Accessible.name: "Playback position"
                     Accessible.description: formatTime(value) + " of " + formatTime(root.duration)
@@ -230,11 +239,12 @@ Item {
                         color: MichiPalette.textPrimary
                         border.width: 2
                         border.color: timeline.pressed || timeline.visualFocus
-                            ? MichiPalette.auroraCyan : MichiPalette.auroraPurple
-                        scale: timeline.pressed ? 1.08 : 1
+                            ? MichiPalette.auroraCyan
+                            : timeline.hovered ? MichiPalette.auroraBlue : MichiPalette.auroraPurple
+                        scale: timeline.pressed ? 1.08 : timeline.hovered ? 1.04 : 1
                         Behavior on scale {
                             enabled: !MichiAccessibility.reducedMotion
-                            NumberAnimation { duration: MichiMotion.micro }
+                            NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
                         }
                         MichiFocusRing { visualFocus: timeline.visualFocus }
                     }
@@ -294,21 +304,56 @@ Item {
                         Accessible.name: root.status === "playing" ? "Pause" : "Play"
                         onClicked: root.playPauseRequested()
 
-                        contentItem: MichiIcon {
+                        contentItem: Item {
                             anchors.centerIn: parent
                             width: 28
                             height: 28
-                            name: root.status === "playing" ? "pause" : "play"
-                            iconColor: playPauseButton.enabled
-                                ? MichiPalette.auroraCyan : MichiPalette.textDisabled
-                            strokeWidth: 2
+                            // Crossfade between play/pause (position and
+                            // size unchanged — only opacity/scale animate)
+                            MichiIcon {
+                                anchors.fill: parent
+                                name: "play"
+                                iconColor: playPauseButton.enabled
+                                    ? MichiPalette.auroraCyan : MichiPalette.textDisabled
+                                strokeWidth: 2
+                                opacity: root.status === "playing" ? 0 : 1
+                                scale: root.status === "playing" ? 0.6 : 1
+                                Behavior on opacity {
+                                    enabled: !MichiAccessibility.reducedMotion
+                                    NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
+                                }
+                                Behavior on scale {
+                                    enabled: !MichiAccessibility.reducedMotion
+                                    NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
+                                }
+                            }
+                            MichiIcon {
+                                anchors.fill: parent
+                                name: "pause"
+                                iconColor: playPauseButton.enabled
+                                    ? MichiPalette.auroraCyan : MichiPalette.textDisabled
+                                strokeWidth: 2
+                                opacity: root.status === "playing" ? 1 : 0
+                                scale: root.status === "playing" ? 1 : 0.6
+                                Behavior on opacity {
+                                    enabled: !MichiAccessibility.reducedMotion
+                                    NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
+                                }
+                                Behavior on scale {
+                                    enabled: !MichiAccessibility.reducedMotion
+                                    NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
+                                }
+                            }
                         }
                         background: Rectangle {
                             radius: 17
-                            color: playPauseButton.pressed
-                                ? MichiSemanticColors.surfacePressed
-                                : playPauseButton.hovered
-                                    ? MichiSemanticColors.surfaceHover : MichiPalette.smoke
+                            // Tinted material: vertical gradient base with
+                            // a state overlay on top (pressed/hovered)
+                            gradient: Gradient {
+                                orientation: Gradient.Vertical
+                                GradientStop { position: 0; color: MichiPalette.smokeRaised }
+                                GradientStop { position: 1; color: MichiPalette.smoke }
+                            }
                             border.width: 1
                             border.color: playPauseButton.visualFocus
                                 ? MichiSemanticColors.focusRing
@@ -318,7 +363,17 @@ Item {
                             scale: playPauseButton.pressed ? 0.96
                                 : playPauseButton.hovered ? 1.025 : 1
 
-                            // Soft radial glow aura during playback
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: 17
+                                color: playPauseButton.pressed
+                                    ? MichiSemanticColors.surfacePressed
+                                    : playPauseButton.hovered
+                                        ? MichiSemanticColors.surfaceHover : "transparent"
+                            }
+
+                            // Soft radial glow aura during playback, gently
+                            // breathing (2.4s cycle)
                             Rectangle {
                                 anchors.centerIn: parent
                                 width: parent.width + 6
@@ -329,6 +384,13 @@ Item {
                                 border.color: MichiSemanticColors.auroraCyanBorderSubtle
                                 visible: root.status === "playing"
                                 opacity: 0.6
+                                SequentialAnimation on opacity {
+                                    running: root.status === "playing"
+                                        && !MichiAccessibility.reducedMotion
+                                    loops: Animation.Infinite
+                                    NumberAnimation { to: 0.6; duration: 1200; easing.type: MichiMotion.outCubic }
+                                    NumberAnimation { to: 0.22; duration: 1200; easing.type: MichiMotion.inOutCubic }
+                                }
                             }
 
                             Behavior on scale {
@@ -449,6 +511,12 @@ Item {
                         border.color: volumeSlider.visualFocus
                             || volumeSlider.hovered
                             ? MichiPalette.auroraCyan : MichiPalette.auroraPurple
+                        scale: volumeSlider.pressed ? 1.08
+                            : volumeSlider.hovered ? 1.04 : 1
+                        Behavior on scale {
+                            enabled: !MichiAccessibility.reducedMotion
+                            NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
+                        }
                         Rectangle {
                             anchors.centerIn: parent
                             width: 20
@@ -599,10 +667,9 @@ Item {
     }
 
     function formatTime(seconds) {
-        var safe = Math.max(0, Math.floor(seconds))
-        var minutes = Math.floor(safe / 60)
-        var remainder = safe % 60
-        return minutes + ":" + (remainder < 10 ? "0" : "") + remainder
+        // Delegates to the shared formatter (position values are seconds;
+        // MichiFormat expects ms — the floor semantics match exactly).
+        return MichiFormat.formatDuration(seconds * 1000)
     }
 
     function qualityText() {

@@ -183,7 +183,13 @@ Audit finding: the grain was mathematically invisible (18 sub-pixel SVG dots,
   non-subtle elevations, using the orphaned `MichiElevation` blur tokens;
   tinted gradient layered above the blur (opacity 0.88)
 - Canon: `michi-grain.svg` removed; color tokens stay theme-owned;
-  `test_m9_r2_3_material_texture.py` (4 structural tests)
+  `test_m9_r2_3_material_texture.py` (8 structural tests)
+- **Now Playing Bar polish (positions frozen)**: backplane shares the film
+  grain (seed 17); play/pause icons crossfade (opacity+scale, no layout
+  shift); the playback aura breathes on a 2.4s cycle; play button gains a
+  gradient material with a pressed/hover overlay; timeline and volume
+  handles react to hover (scale + aurora border); bar time formatting
+  delegates to `MichiFormat`
 
 ## Management notes
 
