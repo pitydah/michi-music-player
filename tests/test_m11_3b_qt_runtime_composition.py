@@ -240,15 +240,79 @@ class TestProviderAuthority:
             graph.qt_engine_provider.close()
 
     def test_playback_and_coordinator_share_router(self, tmp_path, qapp):
-        """PlaybackService y PlaybackCoordinator consumen el MISMO router."""
+        """PlaybackService y PlaybackCoordinator (instancia REAL) consumen el
+        MISMO objeto router — identidad de objeto, no texto de fuente."""
+        from michi.application.coordinator import PlaybackCoordinator
+
         graph = _graph(tmp_path)
         try:
             assert graph.playback._audio is graph.audio_router
-            # el coordinator del container se construye con graph.audio_router
-            # (verificado en bootstrap) — aquí confirmamos la identidad única
-            assert graph.audio_router.bound_engine_id == AudioEngineId.QT_MULTIMEDIA
+            # instancia REAL del coordinator con el wiring productivo
+            coordinator = PlaybackCoordinator(
+                graph.audio_router, graph.queue, graph.playback
+            )
+            assert coordinator._audio is graph.audio_router
+            assert coordinator._audio is graph.playback._audio
+            coordinator.stop()
         finally:
             graph.qt_engine_provider.close()
+
+
+class TestFirstErrorWinsCleanup:
+    """P1-01: un fallo de cleanup secundario (router.unbind raise) NUNCA
+    reemplaza el error primario del startup."""
+
+    def test_cleanup_unbind_failure_preserves_primary_error(self, tmp_path):
+        from michi import bootstrap
+        from michi.application.audio_engine_registry import AudioEngineRegistry
+        from michi.application.audio_engine_service import AudioEngineService
+        from michi.application.audio_transport_router import (
+            AudioTransportRouter,
+        )
+        from tests.audio_engine_fakes import RecordingBackend
+
+        class UnbindBoomRouter(AudioTransportRouter):
+            def bind(self, engine_id, audio_port):
+                raise RuntimeError("primary bind failure")
+
+            def unbind(self):
+                raise RuntimeError("secondary unbind failure")
+
+        class OkOpenProvider:
+            engine_id = AudioEngineId.QT_MULTIMEDIA
+
+            def __init__(self):
+                self.closed = False
+
+            def probe(self):
+                from michi.domain.audio_engine import AudioEngineDescriptor
+
+                return AudioEngineDescriptor(
+                    engine_id=self.engine_id,
+                    display_name="Qt Multimedia",
+                    available=True,
+                    implemented=True,
+                )
+
+            def open(self):
+                return RecordingBackend("B")
+
+            def close(self):
+                self.closed = True
+
+        provider = OkOpenProvider()
+        registry = AudioEngineRegistry([provider])
+        service = AudioEngineService(registry)
+        router = UnbindBoomRouter()
+        with pytest.raises(RuntimeError, match="primary bind failure"):
+            bootstrap._initialize_reference_audio_runtime(
+                provider, registry, service, router
+            )
+        state = service.state
+        assert state.lifecycle == AudioEngineLifecycle.FAILED
+        assert state.active_engine_id is None
+        assert "primary bind failure" in state.error_message
+        assert provider.closed is True  # cleanup del provider intentado
 
 
 class TestCallbackParity:
@@ -272,18 +336,18 @@ class TestCallbackParity:
             )
             fake.fire_end_of_media()
             fake.fire_position(1)
+            fake.fire_duration(1234)
             fake.fire_media_accepted(Path("/m/a.mp3"))
             fake.fire_media_rejected(Path("/m/b.mp3"), "no")
             fake.fire_state(PlaybackStatus.PLAYING)
             assert events == [
                 "eom",
                 "pos:1",
+                "dur:1234",
                 "acc:a.mp3",
                 "rej:b.mp3:no",
                 "st:PLAYING",
             ]
-            # duration_changed no se probó en el fake — verificar que existe
-            assert fake._dur  # router suscrito al backend
         finally:
             graph.audio_router.unbind()
 

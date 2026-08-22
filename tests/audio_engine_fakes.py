@@ -99,6 +99,10 @@ class RecordingBackend(AudioPort):
         self.closed = True
 
     # event faking
+    def fire_duration(self, ms: int) -> None:
+        for cb in list(self._dur):
+            cb(ms)
+
     def fire_end_of_media(self) -> None:
         for cb in list(self._eom):
             cb()

@@ -134,16 +134,20 @@ def _initialize_reference_audio_runtime(
         if router.bound_engine_id != AudioEngineId.QT_MULTIMEDIA:
             raise RuntimeError("router bind validation failed")
     except Exception as original:
-        try:
-            router.unbind()
-        finally:
-            if provider_owned:
-                from contextlib import suppress
+        # M11.3B-R2 FIRST-ERROR-WINS: every cleanup step is best effort —
+        # a secondary cleanup failure (e.g. router.unbind raising) must
+        # NEVER replace the primary startup failure, must NEVER skip the
+        # FAILED state, and the primary exception is always re-raised
+        # (bare raise preserves the original traceback).
+        from contextlib import suppress
 
-                with suppress(Exception):
-                    qt_provider.close()  # best-effort secondary evidence
+        with suppress(Exception):
+            router.unbind()
+        if provider_owned:
+            with suppress(Exception):
+                qt_provider.close()
         engine_service.mark_failed(AudioEngineId.QT_MULTIMEDIA, str(original))
-        raise original
+        raise
     engine_service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
     return backend
 
