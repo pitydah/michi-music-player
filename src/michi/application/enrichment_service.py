@@ -188,7 +188,6 @@ class EnrichmentService:
                 external_artist_id=resolution.external_entity_id,
                 status=IdentityStatus.RESOLVED,
                 match_method=method,
-                manually_confirmed=False,
                 resolved_at=_utc_now_iso(),
             )
         )
@@ -295,7 +294,6 @@ class EnrichmentService:
                 release_id=resolution.release_id,
                 status=IdentityStatus.RESOLVED,
                 match_method=method,
-                manually_confirmed=False,
                 resolved_at=_utc_now_iso(),
             )
         )
@@ -364,7 +362,6 @@ class EnrichmentService:
             external_artist_id=external_artist_id,
             status=IdentityStatus.RESOLVED,
             match_method=MatchMethod.MANUAL,
-            manually_confirmed=True,
             resolved_at=_utc_now_iso(),
         )
         self._persist_artist_identity_transition(identity)
@@ -393,7 +390,6 @@ class EnrichmentService:
             release_id=release_id,
             status=IdentityStatus.RESOLVED,
             match_method=MatchMethod.MANUAL,
-            manually_confirmed=True,
             resolved_at=_utc_now_iso(),
         )
         self._persist_album_identity_transition(identity)
