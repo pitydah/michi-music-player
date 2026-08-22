@@ -1,12 +1,14 @@
-"""GStreamer AudioPort transport (M11.3C / M11.3C-R1).
+"""GStreamer AudioPort transport (M11.3C / M11.3C-R1 / M11.3C-R4).
 
 Lazy PyGObject/GI bindings, infrastructure-only. The adapter owns ONE GLib
-MainContext/MainLoop/pump thread per port; the current pipeline's bus watch
-and ONE bounded position timer are GSource objects attached explicitly to
-that custom context. Bus messages are translated with a GENERATION-AWARE
-provenance policy (per message type), delivered to the owner thread via a
-Qt signal bridge (QueuedConnection) — same thread-affinity as
-QtMultimediaBackend.
+MainContext/MainLoop/pump thread per port; the bounded position timer is an
+explicitly attached GSource on that custom context, and the current Gst.Bus
+watch is installed with Gst.Bus.add_watch while the port's custom
+MainContext is thread-default (removed with Gst.Bus.remove_watch(), which
+takes NO watch-id argument). Bus messages are translated with a
+GENERATION-AWARE provenance policy (per message type), delivered to the
+owner thread via a Qt signal bridge (QueuedConnection) — same
+thread-affinity as QtMultimediaBackend.
 
 NO GStreamer types leave this module.
 """
@@ -127,12 +129,15 @@ class GStreamerBindings:
             if context is not None:
                 context.pop_thread_default()
 
-    def remove_bus_watch(self, bus, watch_id) -> None:
-        from contextlib import suppress
+    def remove_bus_watch(self, bus) -> bool:
+        """Gst.Bus.remove_watch() contract — NO watch-id argument (M11.3C-R4).
 
-        if watch_id is not None:
-            with suppress(Exception):
-                bus.remove_watch(watch_id)
+        The add_watch() return value is a source ID for bookkeeping only;
+        Gst.Bus.remove_watch() takes no argument and returns True on
+        success. Passing an id raises TypeError — NEVER suppressed: a
+        lifecycle API mismatch must not silently become success."""
+        self.ensure_loaded()
+        return bool(bus.remove_watch())
 
     def attach_source(self, source, context) -> int:
         return source.attach(context)
@@ -324,8 +329,16 @@ class GStreamerAudioPort(AudioPort):
             self._bindings.attach_source(self._timer_source, self._context)
 
     def _detach_pipeline_sources(self) -> None:
+        """Remove the current bus watch with truthful result semantics.
+
+        M11.3C-R4: a failed (or impossible) watch removal raises — the
+        lifecycle cleanup must never be silently claimed as successful.
+        Callers decide how the failure composes with their own errors."""
         if self._bus_source is not None:
-            self._bindings.remove_bus_watch(self._bus, self._bus_source)
+            if self._bus is None:
+                raise RuntimeError("GStreamer bus watch exists without owning bus")
+            if not self._bindings.remove_bus_watch(self._bus):
+                raise RuntimeError("GStreamer bus watch could not be removed")
             self._bus_source = None
             self._bus_source_attached = False
         self._bus = None
@@ -488,10 +501,17 @@ class GStreamerAudioPort(AudioPort):
         # 4) quit del pump, 5) join. La PRIMERA falla cronológica es la
         # autoritativa; las posteriores NUNCA reemplazan a la primaria.
         primary_error = None
-        if not self._teardown_pipeline_terminal():
-            primary_error = RuntimeError(
-                "pipeline no pudo transicionar a NULL durante close"
-            )
+        try:
+            teardown_ok = self._teardown_pipeline_terminal()
+        except RuntimeError as exc:
+            # bus watch removal failure (or watch-without-bus): the first
+            # chronological cleanup error stays authoritative (M11.3C-R4)
+            primary_error = exc
+        else:
+            if not teardown_ok:
+                primary_error = RuntimeError(
+                    "pipeline no pudo transicionar a NULL durante close"
+                )
         # destroy timer + sources
         if self._timer_source is not None:
             self._bindings.destroy_source(self._timer_source)
